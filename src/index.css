@@ -1,0 +1,197 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* PCM BÁSICO - Sistema de Gestão de Manutenção Industrial
+   Design System: Visual industrial, funcional, cores neutras
+*/
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+
+@layer base {
+  :root {
+    /* Industrial color palette */
+    --background: 210 20% 96%;
+    --foreground: 215 25% 15%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 215 25% 15%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 215 25% 15%;
+
+    /* Dark industrial blue - primary brand */
+    --primary: 213 56% 24%;
+    --primary-foreground: 0 0% 100%;
+
+    /* Light gray for secondary elements */
+    --secondary: 210 14% 89%;
+    --secondary-foreground: 215 25% 20%;
+
+    --muted: 210 14% 93%;
+    --muted-foreground: 215 16% 47%;
+
+    /* Industrial accent - steel blue */
+    --accent: 210 29% 80%;
+    --accent-foreground: 215 25% 15%;
+
+    /* Status colors */
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
+
+    --success: 142 72% 29%;
+    --success-foreground: 0 0% 100%;
+
+    --warning: 38 92% 50%;
+    --warning-foreground: 0 0% 100%;
+
+    --info: 199 89% 48%;
+    --info-foreground: 0 0% 100%;
+
+    --border: 214 20% 84%;
+    --input: 214 20% 84%;
+    --ring: 213 56% 24%;
+
+    --radius: 0.375rem;
+
+    /* Sidebar - industrial dark */
+    --sidebar-background: 215 28% 17%;
+    --sidebar-foreground: 210 20% 90%;
+    --sidebar-primary: 199 89% 48%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 215 25% 25%;
+    --sidebar-accent-foreground: 210 20% 95%;
+    --sidebar-border: 215 20% 25%;
+    --sidebar-ring: 199 89% 48%;
+
+    /* Custom industrial tokens */
+    --industrial-steel: 210 10% 60%;
+    --industrial-dark: 215 28% 17%;
+    --industrial-highlight: 199 89% 48%;
+  }
+
+  .dark {
+    --background: 215 28% 10%;
+    --foreground: 210 20% 95%;
+
+    --card: 215 28% 14%;
+    --card-foreground: 210 20% 95%;
+
+    --popover: 215 28% 14%;
+    --popover-foreground: 210 20% 95%;
+
+    --primary: 199 89% 48%;
+    --primary-foreground: 215 28% 10%;
+
+    --secondary: 215 25% 22%;
+    --secondary-foreground: 210 20% 90%;
+
+    --muted: 215 25% 20%;
+    --muted-foreground: 215 16% 60%;
+
+    --accent: 215 25% 25%;
+    --accent-foreground: 210 20% 95%;
+
+    --destructive: 0 62% 45%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 215 25% 25%;
+    --input: 215 25% 25%;
+    --ring: 199 89% 48%;
+
+    --sidebar-background: 215 28% 8%;
+    --sidebar-foreground: 210 20% 90%;
+    --sidebar-primary: 199 89% 48%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 215 25% 15%;
+    --sidebar-accent-foreground: 210 20% 95%;
+    --sidebar-border: 215 25% 18%;
+    --sidebar-ring: 199 89% 48%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+    font-family: 'Inter', system-ui, sans-serif;
+  }
+
+  /* Industrial typography */
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-semibold tracking-tight;
+  }
+
+  /* Monospace for codes and numbers */
+  .font-mono {
+    font-family: 'JetBrains Mono', monospace;
+  }
+}
+
+@layer components {
+  /* Industrial card style */
+  .card-industrial {
+    @apply bg-card border border-border shadow-sm rounded-md;
+  }
+
+  /* Status badges */
+  .status-aberta {
+    @apply bg-warning/15 text-warning border border-warning/30;
+  }
+  
+  .status-andamento {
+    @apply bg-info/15 text-info border border-info/30;
+  }
+  
+  .status-fechada {
+    @apply bg-success/15 text-success border border-success/30;
+  }
+
+  /* Industrial button variants */
+  .btn-industrial {
+    @apply bg-primary text-primary-foreground font-medium px-4 py-2 rounded-md 
+           hover:bg-primary/90 transition-colors shadow-sm;
+  }
+
+  .btn-industrial-secondary {
+    @apply bg-secondary text-secondary-foreground font-medium px-4 py-2 rounded-md 
+           hover:bg-secondary/80 transition-colors border border-border;
+  }
+
+  /* Indicator cards */
+  .indicator-card {
+    @apply bg-card border border-border rounded-md p-4 shadow-sm;
+  }
+
+  /* Table industrial style */
+  .table-industrial {
+    @apply w-full border-collapse;
+  }
+
+  .table-industrial th {
+    @apply bg-muted text-muted-foreground font-semibold text-left px-4 py-3 
+           border-b border-border text-sm uppercase tracking-wider;
+  }
+
+  .table-industrial td {
+    @apply px-4 py-3 border-b border-border text-sm;
+  }
+
+  .table-industrial tr:hover {
+    @apply bg-muted/50;
+  }
+}
+
+@layer utilities {
+  /* Industrial shadows */
+  .shadow-industrial {
+    box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+  }
+
+  .shadow-industrial-lg {
+    box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+  }
+}
