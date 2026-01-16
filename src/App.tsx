@@ -21,6 +21,18 @@ import Hierarquia from "./pages/Hierarquia";
 import Materiais from "./pages/Materiais";
 import Solicitacoes from "./pages/Solicitacoes";
 import Preventiva from "./pages/Preventiva";
+import Inspecoes from "./pages/Inspecoes";
+import FMEA from "./pages/FMEA";
+import RCA from "./pages/RCA";
+import SSMA from "./pages/SSMA";
+import Melhorias from "./pages/Melhorias";
+import Fornecedores from "./pages/Fornecedores";
+import Backlog from "./pages/Backlog";
+import Programacao from "./pages/Programacao";
+import Preditiva from "./pages/Preditiva";
+import Custos from "./pages/Custos";
+import Relatorios from "./pages/Relatorios";
+import DocumentosTecnicos from "./pages/DocumentosTecnicos";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -43,11 +55,23 @@ const App = () => (
               <Route path="/os/nova" element={<NovaOS />} />
               <Route path="/os/fechar" element={<FecharOS />} />
               <Route path="/os/historico" element={<HistoricoOS />} />
+              <Route path="/backlog" element={<Backlog />} />
+              <Route path="/programacao" element={<Programacao />} />
               <Route path="/preventiva" element={<Preventiva />} />
+              <Route path="/preditiva" element={<Preditiva />} />
+              <Route path="/inspecoes" element={<Inspecoes />} />
+              <Route path="/fmea" element={<FMEA />} />
+              <Route path="/rca" element={<RCA />} />
+              <Route path="/melhorias" element={<Melhorias />} />
+              <Route path="/hierarquia" element={<Hierarquia />} />
               <Route path="/equipamentos" element={<Equipamentos />} />
               <Route path="/mecanicos" element={<Mecanicos />} />
-              <Route path="/hierarquia" element={<Hierarquia />} />
               <Route path="/materiais" element={<Materiais />} />
+              <Route path="/fornecedores" element={<Fornecedores />} />
+              <Route path="/documentos" element={<DocumentosTecnicos />} />
+              <Route path="/custos" element={<Custos />} />
+              <Route path="/relatorios" element={<Relatorios />} />
+              <Route path="/ssma" element={<SSMA />} />
               <Route path="/usuarios" element={<Usuarios />} />
               <Route path="/auditoria" element={<Auditoria />} />
             </Route>
