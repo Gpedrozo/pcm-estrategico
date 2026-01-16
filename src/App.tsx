@@ -19,6 +19,8 @@ import Usuarios from "./pages/Usuarios";
 import Auditoria from "./pages/Auditoria";
 import Hierarquia from "./pages/Hierarquia";
 import Materiais from "./pages/Materiais";
+import Solicitacoes from "./pages/Solicitacoes";
+import Preventiva from "./pages/Preventiva";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -37,9 +39,11 @@ const App = () => (
             {/* Protected Routes with Layout */}
             <Route element={<AppLayout />}>
               <Route path="/dashboard" element={<Dashboard />} />
+              <Route path="/solicitacoes" element={<Solicitacoes />} />
               <Route path="/os/nova" element={<NovaOS />} />
               <Route path="/os/fechar" element={<FecharOS />} />
               <Route path="/os/historico" element={<HistoricoOS />} />
+              <Route path="/preventiva" element={<Preventiva />} />
               <Route path="/equipamentos" element={<Equipamentos />} />
               <Route path="/mecanicos" element={<Mecanicos />} />
               <Route path="/hierarquia" element={<Hierarquia />} />

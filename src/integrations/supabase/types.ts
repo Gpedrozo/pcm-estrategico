@@ -14,6 +14,213 @@ export type Database = {
   }
   public: {
     Tables: {
+      acoes_corretivas: {
+        Row: {
+          created_at: string
+          data_conclusao: string | null
+          descricao: string
+          evidencias: string | null
+          id: string
+          observacoes: string | null
+          prazo: string
+          rca_id: string | null
+          responsavel_id: string | null
+          responsavel_nome: string
+          status: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          data_conclusao?: string | null
+          descricao: string
+          evidencias?: string | null
+          id?: string
+          observacoes?: string | null
+          prazo: string
+          rca_id?: string | null
+          responsavel_id?: string | null
+          responsavel_nome: string
+          status?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          data_conclusao?: string | null
+          descricao?: string
+          evidencias?: string | null
+          id?: string
+          observacoes?: string | null
+          prazo?: string
+          rca_id?: string | null
+          responsavel_id?: string | null
+          responsavel_nome?: string
+          status?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "acoes_corretivas_rca_id_fkey"
+            columns: ["rca_id"]
+            isOneToOne: false
+            referencedRelation: "analise_causa_raiz"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      analise_causa_raiz: {
+        Row: {
+          arvore_falhas: Json | null
+          causa_raiz_identificada: string | null
+          created_at: string
+          data_conclusao: string | null
+          descricao_problema: string
+          diagrama_ishikawa: Json | null
+          eficacia_verificada: boolean | null
+          equipamento_id: string | null
+          id: string
+          metodo_analise: string | null
+          numero_rca: number
+          os_id: string | null
+          porque_1: string | null
+          porque_2: string | null
+          porque_3: string | null
+          porque_4: string | null
+          porque_5: string | null
+          responsavel_id: string | null
+          responsavel_nome: string | null
+          status: string | null
+          tag: string | null
+          titulo: string
+          updated_at: string
+        }
+        Insert: {
+          arvore_falhas?: Json | null
+          causa_raiz_identificada?: string | null
+          created_at?: string
+          data_conclusao?: string | null
+          descricao_problema: string
+          diagrama_ishikawa?: Json | null
+          eficacia_verificada?: boolean | null
+          equipamento_id?: string | null
+          id?: string
+          metodo_analise?: string | null
+          numero_rca?: number
+          os_id?: string | null
+          porque_1?: string | null
+          porque_2?: string | null
+          porque_3?: string | null
+          porque_4?: string | null
+          porque_5?: string | null
+          responsavel_id?: string | null
+          responsavel_nome?: string | null
+          status?: string | null
+          tag?: string | null
+          titulo: string
+          updated_at?: string
+        }
+        Update: {
+          arvore_falhas?: Json | null
+          causa_raiz_identificada?: string | null
+          created_at?: string
+          data_conclusao?: string | null
+          descricao_problema?: string
+          diagrama_ishikawa?: Json | null
+          eficacia_verificada?: boolean | null
+          equipamento_id?: string | null
+          id?: string
+          metodo_analise?: string | null
+          numero_rca?: number
+          os_id?: string | null
+          porque_1?: string | null
+          porque_2?: string | null
+          porque_3?: string | null
+          porque_4?: string | null
+          porque_5?: string | null
+          responsavel_id?: string | null
+          responsavel_nome?: string | null
+          status?: string | null
+          tag?: string | null
+          titulo?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "analise_causa_raiz_equipamento_id_fkey"
+            columns: ["equipamento_id"]
+            isOneToOne: false
+            referencedRelation: "equipamentos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "analise_causa_raiz_os_id_fkey"
+            columns: ["os_id"]
+            isOneToOne: false
+            referencedRelation: "ordens_servico"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      anomalias_inspecao: {
+        Row: {
+          created_at: string
+          descricao: string
+          equipamento_id: string | null
+          foto_url: string | null
+          id: string
+          inspecao_id: string | null
+          os_gerada_id: string | null
+          severidade: string | null
+          status: string | null
+          tag: string | null
+        }
+        Insert: {
+          created_at?: string
+          descricao: string
+          equipamento_id?: string | null
+          foto_url?: string | null
+          id?: string
+          inspecao_id?: string | null
+          os_gerada_id?: string | null
+          severidade?: string | null
+          status?: string | null
+          tag?: string | null
+        }
+        Update: {
+          created_at?: string
+          descricao?: string
+          equipamento_id?: string | null
+          foto_url?: string | null
+          id?: string
+          inspecao_id?: string | null
+          os_gerada_id?: string | null
+          severidade?: string | null
+          status?: string | null
+          tag?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "anomalias_inspecao_equipamento_id_fkey"
+            columns: ["equipamento_id"]
+            isOneToOne: false
+            referencedRelation: "equipamentos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "anomalias_inspecao_inspecao_id_fkey"
+            columns: ["inspecao_id"]
+            isOneToOne: false
+            referencedRelation: "inspecoes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "anomalias_inspecao_os_gerada_id_fkey"
+            columns: ["os_gerada_id"]
+            isOneToOne: false
+            referencedRelation: "ordens_servico"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       areas: {
         Row: {
           ativo: boolean
@@ -84,6 +291,257 @@ export type Database = {
           usuario_nome?: string
         }
         Relationships: []
+      }
+      avaliacoes_fornecedores: {
+        Row: {
+          avaliador_id: string | null
+          avaliador_nome: string
+          comentarios: string | null
+          contrato_id: string | null
+          created_at: string
+          fornecedor_id: string | null
+          id: string
+          nota_custo: number | null
+          nota_geral: number | null
+          nota_prazo: number | null
+          nota_qualidade: number | null
+          nota_seguranca: number | null
+          os_id: string | null
+        }
+        Insert: {
+          avaliador_id?: string | null
+          avaliador_nome: string
+          comentarios?: string | null
+          contrato_id?: string | null
+          created_at?: string
+          fornecedor_id?: string | null
+          id?: string
+          nota_custo?: number | null
+          nota_geral?: number | null
+          nota_prazo?: number | null
+          nota_qualidade?: number | null
+          nota_seguranca?: number | null
+          os_id?: string | null
+        }
+        Update: {
+          avaliador_id?: string | null
+          avaliador_nome?: string
+          comentarios?: string | null
+          contrato_id?: string | null
+          created_at?: string
+          fornecedor_id?: string | null
+          id?: string
+          nota_custo?: number | null
+          nota_geral?: number | null
+          nota_prazo?: number | null
+          nota_qualidade?: number | null
+          nota_seguranca?: number | null
+          os_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "avaliacoes_fornecedores_contrato_id_fkey"
+            columns: ["contrato_id"]
+            isOneToOne: false
+            referencedRelation: "contratos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "avaliacoes_fornecedores_fornecedor_id_fkey"
+            columns: ["fornecedor_id"]
+            isOneToOne: false
+            referencedRelation: "fornecedores"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "avaliacoes_fornecedores_os_id_fkey"
+            columns: ["os_id"]
+            isOneToOne: false
+            referencedRelation: "ordens_servico"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      configuracoes_sistema: {
+        Row: {
+          categoria: string | null
+          chave: string
+          created_at: string
+          descricao: string | null
+          editavel: boolean | null
+          id: string
+          tipo: string | null
+          updated_at: string
+          valor: string | null
+        }
+        Insert: {
+          categoria?: string | null
+          chave: string
+          created_at?: string
+          descricao?: string | null
+          editavel?: boolean | null
+          id?: string
+          tipo?: string | null
+          updated_at?: string
+          valor?: string | null
+        }
+        Update: {
+          categoria?: string | null
+          chave?: string
+          created_at?: string
+          descricao?: string | null
+          editavel?: boolean | null
+          id?: string
+          tipo?: string | null
+          updated_at?: string
+          valor?: string | null
+        }
+        Relationships: []
+      }
+      contratos: {
+        Row: {
+          anexos: Json | null
+          created_at: string
+          data_fim: string | null
+          data_inicio: string
+          descricao: string | null
+          fornecedor_id: string | null
+          id: string
+          numero_contrato: string
+          penalidade_descricao: string | null
+          responsavel_id: string | null
+          responsavel_nome: string | null
+          sla_atendimento_horas: number | null
+          sla_resolucao_horas: number | null
+          status: string | null
+          tipo: string | null
+          titulo: string
+          updated_at: string
+          valor_mensal: number | null
+          valor_total: number | null
+        }
+        Insert: {
+          anexos?: Json | null
+          created_at?: string
+          data_fim?: string | null
+          data_inicio: string
+          descricao?: string | null
+          fornecedor_id?: string | null
+          id?: string
+          numero_contrato: string
+          penalidade_descricao?: string | null
+          responsavel_id?: string | null
+          responsavel_nome?: string | null
+          sla_atendimento_horas?: number | null
+          sla_resolucao_horas?: number | null
+          status?: string | null
+          tipo?: string | null
+          titulo: string
+          updated_at?: string
+          valor_mensal?: number | null
+          valor_total?: number | null
+        }
+        Update: {
+          anexos?: Json | null
+          created_at?: string
+          data_fim?: string | null
+          data_inicio?: string
+          descricao?: string | null
+          fornecedor_id?: string | null
+          id?: string
+          numero_contrato?: string
+          penalidade_descricao?: string | null
+          responsavel_id?: string | null
+          responsavel_nome?: string | null
+          sla_atendimento_horas?: number | null
+          sla_resolucao_horas?: number | null
+          status?: string | null
+          tipo?: string | null
+          titulo?: string
+          updated_at?: string
+          valor_mensal?: number | null
+          valor_total?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contratos_fornecedor_id_fkey"
+            columns: ["fornecedor_id"]
+            isOneToOne: false
+            referencedRelation: "fornecedores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      documentos_tecnicos: {
+        Row: {
+          aprovador_id: string | null
+          aprovador_nome: string | null
+          arquivo_nome: string | null
+          arquivo_tamanho: number | null
+          arquivo_url: string | null
+          codigo: string
+          created_at: string
+          data_aprovacao: string | null
+          data_validade: string | null
+          descricao: string | null
+          equipamento_id: string | null
+          id: string
+          status: string | null
+          tag: string | null
+          tipo: string | null
+          titulo: string
+          updated_at: string
+          versao: string | null
+        }
+        Insert: {
+          aprovador_id?: string | null
+          aprovador_nome?: string | null
+          arquivo_nome?: string | null
+          arquivo_tamanho?: number | null
+          arquivo_url?: string | null
+          codigo: string
+          created_at?: string
+          data_aprovacao?: string | null
+          data_validade?: string | null
+          descricao?: string | null
+          equipamento_id?: string | null
+          id?: string
+          status?: string | null
+          tag?: string | null
+          tipo?: string | null
+          titulo: string
+          updated_at?: string
+          versao?: string | null
+        }
+        Update: {
+          aprovador_id?: string | null
+          aprovador_nome?: string | null
+          arquivo_nome?: string | null
+          arquivo_tamanho?: number | null
+          arquivo_url?: string | null
+          codigo?: string
+          created_at?: string
+          data_aprovacao?: string | null
+          data_validade?: string | null
+          descricao?: string | null
+          equipamento_id?: string | null
+          id?: string
+          status?: string | null
+          tag?: string | null
+          tipo?: string | null
+          titulo?: string
+          updated_at?: string
+          versao?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "documentos_tecnicos_equipamento_id_fkey"
+            columns: ["equipamento_id"]
+            isOneToOne: false
+            referencedRelation: "equipamentos"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       equipamentos: {
         Row: {
@@ -210,6 +668,297 @@ export type Database = {
           },
         ]
       }
+      fmea: {
+        Row: {
+          acao_recomendada: string | null
+          causa_falha: string | null
+          created_at: string
+          deteccao: number | null
+          efeito_falha: string | null
+          equipamento_id: string | null
+          falha_funcional: string
+          funcao: string
+          id: string
+          modo_falha: string
+          ocorrencia: number | null
+          plano_preventivo_id: string | null
+          prazo: string | null
+          responsavel: string | null
+          rpn: number | null
+          severidade: number | null
+          status: string | null
+          tag: string
+          updated_at: string
+        }
+        Insert: {
+          acao_recomendada?: string | null
+          causa_falha?: string | null
+          created_at?: string
+          deteccao?: number | null
+          efeito_falha?: string | null
+          equipamento_id?: string | null
+          falha_funcional: string
+          funcao: string
+          id?: string
+          modo_falha: string
+          ocorrencia?: number | null
+          plano_preventivo_id?: string | null
+          prazo?: string | null
+          responsavel?: string | null
+          rpn?: number | null
+          severidade?: number | null
+          status?: string | null
+          tag: string
+          updated_at?: string
+        }
+        Update: {
+          acao_recomendada?: string | null
+          causa_falha?: string | null
+          created_at?: string
+          deteccao?: number | null
+          efeito_falha?: string | null
+          equipamento_id?: string | null
+          falha_funcional?: string
+          funcao?: string
+          id?: string
+          modo_falha?: string
+          ocorrencia?: number | null
+          plano_preventivo_id?: string | null
+          prazo?: string | null
+          responsavel?: string | null
+          rpn?: number | null
+          severidade?: number | null
+          status?: string | null
+          tag?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fmea_equipamento_id_fkey"
+            columns: ["equipamento_id"]
+            isOneToOne: false
+            referencedRelation: "equipamentos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fmea_plano_preventivo_id_fkey"
+            columns: ["plano_preventivo_id"]
+            isOneToOne: false
+            referencedRelation: "planos_preventivos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      fornecedores: {
+        Row: {
+          ativo: boolean | null
+          avaliacao_media: number | null
+          cnpj: string | null
+          codigo: string
+          contato_nome: string | null
+          contato_telefone: string | null
+          created_at: string
+          email: string | null
+          endereco: string | null
+          especialidade: string | null
+          id: string
+          nome_fantasia: string | null
+          observacoes: string | null
+          razao_social: string
+          telefone: string | null
+          tipo: string | null
+          total_avaliacoes: number | null
+          updated_at: string
+        }
+        Insert: {
+          ativo?: boolean | null
+          avaliacao_media?: number | null
+          cnpj?: string | null
+          codigo: string
+          contato_nome?: string | null
+          contato_telefone?: string | null
+          created_at?: string
+          email?: string | null
+          endereco?: string | null
+          especialidade?: string | null
+          id?: string
+          nome_fantasia?: string | null
+          observacoes?: string | null
+          razao_social: string
+          telefone?: string | null
+          tipo?: string | null
+          total_avaliacoes?: number | null
+          updated_at?: string
+        }
+        Update: {
+          ativo?: boolean | null
+          avaliacao_media?: number | null
+          cnpj?: string | null
+          codigo?: string
+          contato_nome?: string | null
+          contato_telefone?: string | null
+          created_at?: string
+          email?: string | null
+          endereco?: string | null
+          especialidade?: string | null
+          id?: string
+          nome_fantasia?: string | null
+          observacoes?: string | null
+          razao_social?: string
+          telefone?: string | null
+          tipo?: string | null
+          total_avaliacoes?: number | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      incidentes_ssma: {
+        Row: {
+          acoes_imediatas: string | null
+          causas_basicas: string | null
+          causas_imediatas: string | null
+          created_at: string
+          custo_estimado: number | null
+          data_ocorrencia: string
+          descricao: string
+          dias_afastamento: number | null
+          equipamento_id: string | null
+          id: string
+          local_ocorrencia: string | null
+          numero_incidente: number
+          pessoas_envolvidas: string | null
+          rca_id: string | null
+          responsavel_id: string | null
+          responsavel_nome: string | null
+          severidade: string | null
+          status: string | null
+          tag: string | null
+          testemunhas: string | null
+          tipo: string
+          updated_at: string
+        }
+        Insert: {
+          acoes_imediatas?: string | null
+          causas_basicas?: string | null
+          causas_imediatas?: string | null
+          created_at?: string
+          custo_estimado?: number | null
+          data_ocorrencia: string
+          descricao: string
+          dias_afastamento?: number | null
+          equipamento_id?: string | null
+          id?: string
+          local_ocorrencia?: string | null
+          numero_incidente?: number
+          pessoas_envolvidas?: string | null
+          rca_id?: string | null
+          responsavel_id?: string | null
+          responsavel_nome?: string | null
+          severidade?: string | null
+          status?: string | null
+          tag?: string | null
+          testemunhas?: string | null
+          tipo: string
+          updated_at?: string
+        }
+        Update: {
+          acoes_imediatas?: string | null
+          causas_basicas?: string | null
+          causas_imediatas?: string | null
+          created_at?: string
+          custo_estimado?: number | null
+          data_ocorrencia?: string
+          descricao?: string
+          dias_afastamento?: number | null
+          equipamento_id?: string | null
+          id?: string
+          local_ocorrencia?: string | null
+          numero_incidente?: number
+          pessoas_envolvidas?: string | null
+          rca_id?: string | null
+          responsavel_id?: string | null
+          responsavel_nome?: string | null
+          severidade?: string | null
+          status?: string | null
+          tag?: string | null
+          testemunhas?: string | null
+          tipo?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "incidentes_ssma_equipamento_id_fkey"
+            columns: ["equipamento_id"]
+            isOneToOne: false
+            referencedRelation: "equipamentos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "incidentes_ssma_rca_id_fkey"
+            columns: ["rca_id"]
+            isOneToOne: false
+            referencedRelation: "analise_causa_raiz"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      inspecoes: {
+        Row: {
+          anomalias_encontradas: number | null
+          created_at: string
+          data_inspecao: string
+          descricao: string | null
+          hora_fim: string | null
+          hora_inicio: string | null
+          id: string
+          inspetor_id: string | null
+          inspetor_nome: string
+          itens_inspecionados: Json | null
+          numero_inspecao: number
+          observacoes: string | null
+          rota_nome: string
+          status: string | null
+          turno: string | null
+          updated_at: string
+        }
+        Insert: {
+          anomalias_encontradas?: number | null
+          created_at?: string
+          data_inspecao?: string
+          descricao?: string | null
+          hora_fim?: string | null
+          hora_inicio?: string | null
+          id?: string
+          inspetor_id?: string | null
+          inspetor_nome: string
+          itens_inspecionados?: Json | null
+          numero_inspecao?: number
+          observacoes?: string | null
+          rota_nome: string
+          status?: string | null
+          turno?: string | null
+          updated_at?: string
+        }
+        Update: {
+          anomalias_encontradas?: number | null
+          created_at?: string
+          data_inspecao?: string
+          descricao?: string | null
+          hora_fim?: string | null
+          hora_inicio?: string | null
+          id?: string
+          inspetor_id?: string | null
+          inspetor_nome?: string
+          itens_inspecionados?: Json | null
+          numero_inspecao?: number
+          observacoes?: string | null
+          rota_nome?: string
+          status?: string | null
+          turno?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       materiais: {
         Row: {
           ativo: boolean
@@ -332,6 +1081,161 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      medicoes_preditivas: {
+        Row: {
+          created_at: string
+          equipamento_id: string | null
+          id: string
+          limite_alerta: number | null
+          limite_critico: number | null
+          observacoes: string | null
+          os_gerada_id: string | null
+          responsavel_id: string | null
+          responsavel_nome: string | null
+          status: string | null
+          tag: string
+          tipo_medicao: string
+          unidade: string
+          valor: number
+        }
+        Insert: {
+          created_at?: string
+          equipamento_id?: string | null
+          id?: string
+          limite_alerta?: number | null
+          limite_critico?: number | null
+          observacoes?: string | null
+          os_gerada_id?: string | null
+          responsavel_id?: string | null
+          responsavel_nome?: string | null
+          status?: string | null
+          tag: string
+          tipo_medicao: string
+          unidade: string
+          valor: number
+        }
+        Update: {
+          created_at?: string
+          equipamento_id?: string | null
+          id?: string
+          limite_alerta?: number | null
+          limite_critico?: number | null
+          observacoes?: string | null
+          os_gerada_id?: string | null
+          responsavel_id?: string | null
+          responsavel_nome?: string | null
+          status?: string | null
+          tag?: string
+          tipo_medicao?: string
+          unidade?: string
+          valor?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "medicoes_preditivas_equipamento_id_fkey"
+            columns: ["equipamento_id"]
+            isOneToOne: false
+            referencedRelation: "equipamentos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "medicoes_preditivas_os_gerada_id_fkey"
+            columns: ["os_gerada_id"]
+            isOneToOne: false
+            referencedRelation: "ordens_servico"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      melhorias: {
+        Row: {
+          anexos: Json | null
+          aprovador_id: string | null
+          aprovador_nome: string | null
+          area: string | null
+          beneficios: string | null
+          created_at: string
+          custo_implementacao: number | null
+          data_aprovacao: string | null
+          data_implementacao: string | null
+          descricao: string
+          economia_anual: number | null
+          equipamento_id: string | null
+          id: string
+          numero_melhoria: number
+          proponente_id: string | null
+          proponente_nome: string
+          roi_meses: number | null
+          situacao_antes: string | null
+          situacao_depois: string | null
+          status: string | null
+          tag: string | null
+          tipo: string | null
+          titulo: string
+          updated_at: string
+        }
+        Insert: {
+          anexos?: Json | null
+          aprovador_id?: string | null
+          aprovador_nome?: string | null
+          area?: string | null
+          beneficios?: string | null
+          created_at?: string
+          custo_implementacao?: number | null
+          data_aprovacao?: string | null
+          data_implementacao?: string | null
+          descricao: string
+          economia_anual?: number | null
+          equipamento_id?: string | null
+          id?: string
+          numero_melhoria?: number
+          proponente_id?: string | null
+          proponente_nome: string
+          roi_meses?: number | null
+          situacao_antes?: string | null
+          situacao_depois?: string | null
+          status?: string | null
+          tag?: string | null
+          tipo?: string | null
+          titulo: string
+          updated_at?: string
+        }
+        Update: {
+          anexos?: Json | null
+          aprovador_id?: string | null
+          aprovador_nome?: string | null
+          area?: string | null
+          beneficios?: string | null
+          created_at?: string
+          custo_implementacao?: number | null
+          data_aprovacao?: string | null
+          data_implementacao?: string | null
+          descricao?: string
+          economia_anual?: number | null
+          equipamento_id?: string | null
+          id?: string
+          numero_melhoria?: number
+          proponente_id?: string | null
+          proponente_nome?: string
+          roi_meses?: number | null
+          situacao_antes?: string | null
+          situacao_depois?: string | null
+          status?: string | null
+          tag?: string | null
+          tipo?: string | null
+          titulo?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "melhorias_equipamento_id_fkey"
+            columns: ["equipamento_id"]
+            isOneToOne: false
+            referencedRelation: "equipamentos"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       movimentacoes_materiais: {
         Row: {
@@ -470,6 +1374,173 @@ export type Database = {
           },
         ]
       }
+      permissoes_trabalho: {
+        Row: {
+          aprovador_id: string | null
+          aprovador_nome: string | null
+          checklist_seguranca: Json | null
+          created_at: string
+          data_fim: string
+          data_inicio: string
+          descricao_servico: string
+          epis_requeridos: string | null
+          equipamento_id: string | null
+          executante_nome: string
+          id: string
+          isolamentos: string | null
+          medidas_controle: string | null
+          numero_pt: number
+          observacoes: string | null
+          os_id: string | null
+          riscos_identificados: string | null
+          status: string | null
+          supervisor_nome: string
+          tag: string | null
+          tipo: string | null
+          updated_at: string
+        }
+        Insert: {
+          aprovador_id?: string | null
+          aprovador_nome?: string | null
+          checklist_seguranca?: Json | null
+          created_at?: string
+          data_fim: string
+          data_inicio: string
+          descricao_servico: string
+          epis_requeridos?: string | null
+          equipamento_id?: string | null
+          executante_nome: string
+          id?: string
+          isolamentos?: string | null
+          medidas_controle?: string | null
+          numero_pt?: number
+          observacoes?: string | null
+          os_id?: string | null
+          riscos_identificados?: string | null
+          status?: string | null
+          supervisor_nome: string
+          tag?: string | null
+          tipo?: string | null
+          updated_at?: string
+        }
+        Update: {
+          aprovador_id?: string | null
+          aprovador_nome?: string | null
+          checklist_seguranca?: Json | null
+          created_at?: string
+          data_fim?: string
+          data_inicio?: string
+          descricao_servico?: string
+          epis_requeridos?: string | null
+          equipamento_id?: string | null
+          executante_nome?: string
+          id?: string
+          isolamentos?: string | null
+          medidas_controle?: string | null
+          numero_pt?: number
+          observacoes?: string | null
+          os_id?: string | null
+          riscos_identificados?: string | null
+          status?: string | null
+          supervisor_nome?: string
+          tag?: string | null
+          tipo?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "permissoes_trabalho_equipamento_id_fkey"
+            columns: ["equipamento_id"]
+            isOneToOne: false
+            referencedRelation: "equipamentos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "permissoes_trabalho_os_id_fkey"
+            columns: ["os_id"]
+            isOneToOne: false
+            referencedRelation: "ordens_servico"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      planos_preventivos: {
+        Row: {
+          ativo: boolean | null
+          checklist: Json | null
+          codigo: string
+          condicao_disparo: string | null
+          created_at: string
+          descricao: string | null
+          equipamento_id: string | null
+          especialidade: string | null
+          frequencia_ciclos: number | null
+          frequencia_dias: number | null
+          id: string
+          instrucoes: string | null
+          materiais_previstos: Json | null
+          nome: string
+          proxima_execucao: string | null
+          tag: string | null
+          tempo_estimado_min: number | null
+          tipo_gatilho: string | null
+          ultima_execucao: string | null
+          updated_at: string
+        }
+        Insert: {
+          ativo?: boolean | null
+          checklist?: Json | null
+          codigo: string
+          condicao_disparo?: string | null
+          created_at?: string
+          descricao?: string | null
+          equipamento_id?: string | null
+          especialidade?: string | null
+          frequencia_ciclos?: number | null
+          frequencia_dias?: number | null
+          id?: string
+          instrucoes?: string | null
+          materiais_previstos?: Json | null
+          nome: string
+          proxima_execucao?: string | null
+          tag?: string | null
+          tempo_estimado_min?: number | null
+          tipo_gatilho?: string | null
+          ultima_execucao?: string | null
+          updated_at?: string
+        }
+        Update: {
+          ativo?: boolean | null
+          checklist?: Json | null
+          codigo?: string
+          condicao_disparo?: string | null
+          created_at?: string
+          descricao?: string | null
+          equipamento_id?: string | null
+          especialidade?: string | null
+          frequencia_ciclos?: number | null
+          frequencia_dias?: number | null
+          id?: string
+          instrucoes?: string | null
+          materiais_previstos?: Json | null
+          nome?: string
+          proxima_execucao?: string | null
+          tag?: string | null
+          tempo_estimado_min?: number | null
+          tipo_gatilho?: string | null
+          ultima_execucao?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "planos_preventivos_equipamento_id_fkey"
+            columns: ["equipamento_id"]
+            isOneToOne: false
+            referencedRelation: "equipamentos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       plantas: {
         Row: {
           ativo: boolean
@@ -564,6 +1635,84 @@ export type Database = {
             columns: ["area_id"]
             isOneToOne: false
             referencedRelation: "areas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      solicitacoes_manutencao: {
+        Row: {
+          classificacao: string | null
+          created_at: string
+          data_aprovacao: string | null
+          data_limite: string | null
+          descricao_falha: string
+          equipamento_id: string | null
+          id: string
+          impacto: string | null
+          numero_solicitacao: number
+          observacoes: string | null
+          os_id: string | null
+          sla_horas: number | null
+          solicitante_nome: string
+          solicitante_setor: string | null
+          status: string | null
+          tag: string
+          updated_at: string
+          usuario_aprovacao: string | null
+        }
+        Insert: {
+          classificacao?: string | null
+          created_at?: string
+          data_aprovacao?: string | null
+          data_limite?: string | null
+          descricao_falha: string
+          equipamento_id?: string | null
+          id?: string
+          impacto?: string | null
+          numero_solicitacao?: number
+          observacoes?: string | null
+          os_id?: string | null
+          sla_horas?: number | null
+          solicitante_nome: string
+          solicitante_setor?: string | null
+          status?: string | null
+          tag: string
+          updated_at?: string
+          usuario_aprovacao?: string | null
+        }
+        Update: {
+          classificacao?: string | null
+          created_at?: string
+          data_aprovacao?: string | null
+          data_limite?: string | null
+          descricao_falha?: string
+          equipamento_id?: string | null
+          id?: string
+          impacto?: string | null
+          numero_solicitacao?: number
+          observacoes?: string | null
+          os_id?: string | null
+          sla_horas?: number | null
+          solicitante_nome?: string
+          solicitante_setor?: string | null
+          status?: string | null
+          tag?: string
+          updated_at?: string
+          usuario_aprovacao?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "solicitacoes_manutencao_equipamento_id_fkey"
+            columns: ["equipamento_id"]
+            isOneToOne: false
+            referencedRelation: "equipamentos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "solicitacoes_manutencao_os_id_fkey"
+            columns: ["os_id"]
+            isOneToOne: false
+            referencedRelation: "ordens_servico"
             referencedColumns: ["id"]
           },
         ]

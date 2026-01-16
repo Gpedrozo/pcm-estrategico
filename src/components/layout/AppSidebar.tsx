@@ -11,7 +11,15 @@ import {
   LogOut,
   Settings,
   Building2,
-  Package
+  Package,
+  MessageSquare,
+  Calendar,
+  Search,
+  Shield,
+  TrendingUp,
+  FileSearch,
+  Lightbulb,
+  Truck
 } from 'lucide-react';
 import { NavLink, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
@@ -34,9 +42,18 @@ const mainMenuItems = [
 ];
 
 const osMenuItems = [
+  { title: 'Solicitações', url: '/solicitacoes', icon: MessageSquare },
   { title: 'Emitir O.S', url: '/os/nova', icon: FilePlus },
   { title: 'Fechar O.S', url: '/os/fechar', icon: FileCheck },
   { title: 'Histórico', url: '/os/historico', icon: History },
+];
+
+const manutencaoMenuItems = [
+  { title: 'Preventiva', url: '/preventiva', icon: Calendar },
+  { title: 'Inspeções', url: '/inspecoes', icon: Search },
+  { title: 'FMEA/RCM', url: '/fmea', icon: FileSearch },
+  { title: 'Causa Raiz', url: '/rca', icon: TrendingUp },
+  { title: 'Melhorias', url: '/melhorias', icon: Lightbulb },
 ];
 
 const cadastroMenuItems = [
@@ -44,6 +61,11 @@ const cadastroMenuItems = [
   { title: 'Equipamentos', url: '/equipamentos', icon: Tag },
   { title: 'Mecânicos', url: '/mecanicos', icon: Wrench },
   { title: 'Materiais', url: '/materiais', icon: Package },
+  { title: 'Fornecedores', url: '/fornecedores', icon: Truck },
+];
+
+const ssmaMenuItems = [
+  { title: 'SSMA', url: '/ssma', icon: Shield },
 ];
 
 const adminMenuItems = [
@@ -115,11 +137,33 @@ export function AppSidebar() {
 
         <SidebarGroup className="mt-4">
           <SidebarGroupLabel className="text-sidebar-foreground/50 uppercase text-xs font-semibold px-3 mb-2">
+            Manutenção
+          </SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {manutencaoMenuItems.map(renderMenuLink)}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+
+        <SidebarGroup className="mt-4">
+          <SidebarGroupLabel className="text-sidebar-foreground/50 uppercase text-xs font-semibold px-3 mb-2">
             Cadastros
           </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
               {cadastroMenuItems.map(renderMenuLink)}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+
+        <SidebarGroup className="mt-4">
+          <SidebarGroupLabel className="text-sidebar-foreground/50 uppercase text-xs font-semibold px-3 mb-2">
+            Segurança
+          </SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {ssmaMenuItems.map(renderMenuLink)}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
