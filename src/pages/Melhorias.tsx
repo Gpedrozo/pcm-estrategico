@@ -20,7 +20,7 @@ export default function Melhorias() {
     titulo: '',
     descricao: '',
     tag: '',
-    tipo: 'CONFIABILIDADE' as 'CONFIABILIDADE' | 'SEGURANCA' | 'PRODUTIVIDADE' | 'CUSTO' | 'QUALIDADE',
+    tipo: 'KAIZEN' as 'KAIZEN' | 'PROJETO' | 'LICAO_APRENDIDA' | 'SUGESTAO',
     area: '',
     situacao_antes: '',
     situacao_depois: '',
@@ -50,7 +50,7 @@ export default function Melhorias() {
     });
     setIsModalOpen(false);
     setFormData({
-      titulo: '', descricao: '', tag: '', tipo: 'CONFIABILIDADE', area: '',
+      titulo: '', descricao: '', tag: '', tipo: 'KAIZEN', area: '',
       situacao_antes: '', situacao_depois: '', beneficios: '', custo_implementacao: 0, economia_anual: 0
     });
   };
@@ -58,10 +58,10 @@ export default function Melhorias() {
   const getStatusBadge = (status: string) => {
     const styles: Record<string, string> = {
       'PROPOSTA': 'bg-muted text-muted-foreground',
-      'EM_ANALISE': 'bg-info/10 text-info',
+      'EM_AVALIACAO': 'bg-info/10 text-info',
       'APROVADA': 'bg-success/10 text-success',
       'EM_IMPLEMENTACAO': 'bg-warning/10 text-warning',
-      'CONCLUIDA': 'bg-primary/10 text-primary',
+      'IMPLEMENTADA': 'bg-primary/10 text-primary',
       'REJEITADA': 'bg-destructive/10 text-destructive',
     };
     return styles[status] || 'bg-muted text-muted-foreground';
@@ -69,11 +69,10 @@ export default function Melhorias() {
 
   const getTipoBadge = (tipo: string) => {
     const styles: Record<string, string> = {
-      'CONFIABILIDADE': 'bg-blue-500/10 text-blue-500',
-      'SEGURANCA': 'bg-red-500/10 text-red-500',
-      'PRODUTIVIDADE': 'bg-green-500/10 text-green-500',
-      'CUSTO': 'bg-yellow-500/10 text-yellow-500',
-      'QUALIDADE': 'bg-purple-500/10 text-purple-500',
+      'KAIZEN': 'bg-blue-500/10 text-blue-500',
+      'PROJETO': 'bg-green-500/10 text-green-500',
+      'LICAO_APRENDIDA': 'bg-yellow-500/10 text-yellow-500',
+      'SUGESTAO': 'bg-purple-500/10 text-purple-500',
     };
     return styles[tipo] || '';
   };
@@ -92,8 +91,8 @@ export default function Melhorias() {
   }
 
   // Calculate totals
-  const totalEconomia = melhorias?.filter(m => m.status === 'CONCLUIDA').reduce((acc, m) => acc + (m.economia_anual || 0), 0) || 0;
-  const totalCusto = melhorias?.filter(m => m.status === 'CONCLUIDA').reduce((acc, m) => acc + (m.custo_implementacao || 0), 0) || 0;
+  const totalEconomia = melhorias?.filter(m => m.status === 'IMPLEMENTADA').reduce((acc, m) => acc + (m.economia_anual || 0), 0) || 0;
+  const totalCusto = melhorias?.filter(m => m.status === 'IMPLEMENTADA').reduce((acc, m) => acc + (m.custo_implementacao || 0), 0) || 0;
 
   return (
     <div className="space-y-6">
@@ -121,7 +120,7 @@ export default function Melhorias() {
             <TrendingUp className="h-5 w-5 text-success" />
             <p className="text-sm text-muted-foreground">Implementadas</p>
           </div>
-          <p className="text-2xl font-bold text-success">{melhorias?.filter(m => m.status === 'CONCLUIDA').length || 0}</p>
+          <p className="text-2xl font-bold text-success">{melhorias?.filter(m => m.status === 'IMPLEMENTADA').length || 0}</p>
         </div>
         <div className="bg-card border border-border rounded-lg p-4">
           <div className="flex items-center gap-2">
@@ -191,11 +190,10 @@ export default function Melhorias() {
                 <Select value={formData.tipo} onValueChange={(v: any) => setFormData({...formData, tipo: v})}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="CONFIABILIDADE">Confiabilidade</SelectItem>
-                    <SelectItem value="SEGURANCA">Segurança</SelectItem>
-                    <SelectItem value="PRODUTIVIDADE">Produtividade</SelectItem>
-                    <SelectItem value="CUSTO">Redução de Custo</SelectItem>
-                    <SelectItem value="QUALIDADE">Qualidade</SelectItem>
+                    <SelectItem value="KAIZEN">Kaizen</SelectItem>
+                    <SelectItem value="PROJETO">Projeto</SelectItem>
+                    <SelectItem value="LICAO_APRENDIDA">Lição Aprendida</SelectItem>
+                    <SelectItem value="SUGESTAO">Sugestão</SelectItem>
                   </SelectContent>
                 </Select>
               </div>

@@ -9,7 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Plus, Search, ShieldAlert, AlertTriangle, FileWarning, Calendar } from 'lucide-react';
-import { useIncidentes, useCreateIncidente, usePermissoesTrabalho, useCreatePermissaoTrabalho, type IncidenteRow, type PermissaoTrabalhoRow } from '@/hooks/useSSMA';
+import { useIncidentesSSMA, useCreateIncidenteSSMA, usePermissoesTrabalho, useCreatePermissaoTrabalho, type IncidenteSSMARow, type PermissaoTrabalhoRow } from '@/hooks/useSSMA';
 import { useEquipamentos } from '@/hooks/useEquipamentos';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -21,17 +21,18 @@ export default function SSMA() {
   const [isPTModalOpen, setIsPTModalOpen] = useState(false);
 
   const [incidenteForm, setIncidenteForm] = useState({
-    tipo: 'QUASE_ACIDENTE' as 'ACIDENTE' | 'QUASE_ACIDENTE' | 'INCIDENTE' | 'DESVIO',
+    tipo: 'QUASE_ACIDENTE' as 'ACIDENTE' | 'QUASE_ACIDENTE' | 'INCIDENTE_AMBIENTAL' | 'DESVIO',
     descricao: '',
     local_ocorrencia: '',
     data_ocorrencia: new Date().toISOString().split('T')[0],
-    severidade: 'MEDIA' as 'LEVE' | 'MEDIA' | 'GRAVE' | 'FATAL',
+    severidade: 'MODERADO' as 'LEVE' | 'MODERADO' | 'GRAVE' | 'FATAL',
     pessoas_envolvidas: '',
     acoes_imediatas: '',
+    dias_afastamento: 0,
   });
 
   const [ptForm, setPTForm] = useState({
-    tipo: 'TRABALHO_QUENTE' as 'TRABALHO_QUENTE' | 'ESPACO_CONFINADO' | 'ALTURA' | 'ELETRICA' | 'ESCAVACAO',
+    tipo: 'TRABALHO_QUENTE' as 'GERAL' | 'TRABALHO_ALTURA' | 'ESPACO_CONFINADO' | 'TRABALHO_QUENTE' | 'ELETRICA' | 'ESCAVACAO',
     descricao_servico: '',
     tag: '',
     data_inicio: new Date().toISOString().split('T')[0],
@@ -43,24 +44,31 @@ export default function SSMA() {
     epis_requeridos: '',
   });
 
-  const { data: incidentes, isLoading: loadingIncidentes } = useIncidentes();
+  const { data: incidentes, isLoading: loadingIncidentes } = useIncidentesSSMA();
   const { data: permissoes, isLoading: loadingPT } = usePermissoesTrabalho();
   const { data: equipamentos } = useEquipamentos();
-  const createIncidente = useCreateIncidente();
+  const createIncidente = useCreateIncidenteSSMA();
   const createPT = useCreatePermissaoTrabalho();
 
   const handleSubmitIncidente = async (e: React.FormEvent) => {
     e.preventDefault();
     await createIncidente.mutateAsync({
       ...incidenteForm,
-      responsavel_id: user?.id,
-      responsavel_nome: user?.nome,
+      equipamento_id: null,
+      tag: null,
+      testemunhas: null,
+      causas_imediatas: null,
+      causas_basicas: null,
+      custo_estimado: null,
+      status: 'ABERTO',
+      responsavel_id: user?.id || null,
+      responsavel_nome: user?.nome || null,
     });
     setIsIncidenteModalOpen(false);
     setIncidenteForm({
       tipo: 'QUASE_ACIDENTE', descricao: '', local_ocorrencia: '',
-      data_ocorrencia: new Date().toISOString().split('T')[0], severidade: 'MEDIA',
-      pessoas_envolvidas: '', acoes_imediatas: ''
+      data_ocorrencia: new Date().toISOString().split('T')[0], severidade: 'MODERADO',
+      pessoas_envolvidas: '', acoes_imediatas: '', dias_afastamento: 0
     });
   };
 
@@ -68,8 +76,6 @@ export default function SSMA() {
     e.preventDefault();
     await createPT.mutateAsync({
       ...ptForm,
-      aprovador_id: user?.id,
-      aprovador_nome: user?.nome,
     });
     setIsPTModalOpen(false);
     setPTForm({
@@ -106,9 +112,12 @@ export default function SSMA() {
     const styles: Record<string, string> = {
       'ABERTO': 'bg-warning/10 text-warning',
       'EM_INVESTIGACAO': 'bg-info/10 text-info',
-      'CONCLUIDO': 'bg-success/10 text-success',
-      'VIGENTE': 'bg-success/10 text-success',
-      'ENCERRADA': 'bg-muted text-muted-foreground',
+      'AGUARDANDO_ACOES': 'bg-primary/10 text-primary',
+      'ENCERRADO': 'bg-success/10 text-success',
+      'PENDENTE': 'bg-muted text-muted-foreground',
+      'APROVADA': 'bg-success/10 text-success',
+      'EM_EXECUCAO': 'bg-info/10 text-info',
+      'CONCLUIDA': 'bg-primary/10 text-primary',
       'CANCELADA': 'bg-destructive/10 text-destructive',
     };
     return styles[status] || '';
@@ -162,7 +171,7 @@ export default function SSMA() {
             <Calendar className="h-5 w-5 text-success" />
             <p className="text-sm text-muted-foreground">PTs Vigentes</p>
           </div>
-          <p className="text-2xl font-bold text-success">{permissoes?.filter(p => p.status === 'VIGENTE').length || 0}</p>
+          <p className="text-2xl font-bold text-success">{permissoes?.filter(p => p.status === 'APROVADA' || p.status === 'EM_EXECUCAO').length || 0}</p>
         </div>
       </div>
 
@@ -272,7 +281,7 @@ export default function SSMA() {
                   <SelectContent>
                     <SelectItem value="ACIDENTE">Acidente</SelectItem>
                     <SelectItem value="QUASE_ACIDENTE">Quase Acidente</SelectItem>
-                    <SelectItem value="INCIDENTE">Incidente</SelectItem>
+                    <SelectItem value="INCIDENTE_AMBIENTAL">Incidente Ambiental</SelectItem>
                     <SelectItem value="DESVIO">Desvio</SelectItem>
                   </SelectContent>
                 </Select>
@@ -283,7 +292,7 @@ export default function SSMA() {
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="LEVE">Leve</SelectItem>
-                    <SelectItem value="MEDIA">Média</SelectItem>
+                    <SelectItem value="MODERADO">Moderado</SelectItem>
                     <SelectItem value="GRAVE">Grave</SelectItem>
                     <SelectItem value="FATAL">Fatal</SelectItem>
                   </SelectContent>
@@ -331,9 +340,10 @@ export default function SSMA() {
                 <Select value={ptForm.tipo} onValueChange={(v: any) => setPTForm({...ptForm, tipo: v})}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
+                    <SelectItem value="GERAL">Geral</SelectItem>
                     <SelectItem value="TRABALHO_QUENTE">Trabalho a Quente</SelectItem>
                     <SelectItem value="ESPACO_CONFINADO">Espaço Confinado</SelectItem>
-                    <SelectItem value="ALTURA">Trabalho em Altura</SelectItem>
+                    <SelectItem value="TRABALHO_ALTURA">Trabalho em Altura</SelectItem>
                     <SelectItem value="ELETRICA">Eletricidade</SelectItem>
                     <SelectItem value="ESCAVACAO">Escavação</SelectItem>
                   </SelectContent>
