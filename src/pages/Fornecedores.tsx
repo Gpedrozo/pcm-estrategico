@@ -18,7 +18,7 @@ export default function Fornecedores() {
     razao_social: '',
     nome_fantasia: '',
     cnpj: '',
-    tipo: 'SERVICO' as 'SERVICO' | 'MATERIAL' | 'AMBOS',
+    tipo: 'PRESTADOR' as 'PRESTADOR' | 'FORNECEDOR' | 'AMBOS',
     especialidade: '',
     telefone: '',
     email: '',
@@ -44,15 +44,15 @@ export default function Fornecedores() {
     await createMutation.mutateAsync(formData);
     setIsModalOpen(false);
     setFormData({
-      codigo: '', razao_social: '', nome_fantasia: '', cnpj: '', tipo: 'SERVICO',
+      codigo: '', razao_social: '', nome_fantasia: '', cnpj: '', tipo: 'PRESTADOR',
       especialidade: '', telefone: '', email: '', contato_nome: '', endereco: '', observacoes: ''
     });
   };
 
   const getTipoBadge = (tipo: string) => {
     const styles: Record<string, string> = {
-      'SERVICO': 'bg-info/10 text-info',
-      'MATERIAL': 'bg-success/10 text-success',
+      'PRESTADOR': 'bg-info/10 text-info',
+      'FORNECEDOR': 'bg-success/10 text-success',
       'AMBOS': 'bg-primary/10 text-primary',
     };
     return styles[tipo] || '';
@@ -104,12 +104,12 @@ export default function Fornecedores() {
           <p className="text-2xl font-bold">{fornecedores?.length || 0}</p>
         </div>
         <div className="bg-card border border-border rounded-lg p-4">
-          <p className="text-sm text-info">Serviços</p>
-          <p className="text-2xl font-bold text-info">{fornecedores?.filter(f => f.tipo === 'SERVICO' || f.tipo === 'AMBOS').length || 0}</p>
+          <p className="text-sm text-info">Prestadores</p>
+          <p className="text-2xl font-bold text-info">{fornecedores?.filter(f => f.tipo === 'PRESTADOR' || f.tipo === 'AMBOS').length || 0}</p>
         </div>
         <div className="bg-card border border-border rounded-lg p-4">
-          <p className="text-sm text-success">Materiais</p>
-          <p className="text-2xl font-bold text-success">{fornecedores?.filter(f => f.tipo === 'MATERIAL' || f.tipo === 'AMBOS').length || 0}</p>
+          <p className="text-sm text-success">Fornecedores</p>
+          <p className="text-2xl font-bold text-success">{fornecedores?.filter(f => f.tipo === 'FORNECEDOR' || f.tipo === 'AMBOS').length || 0}</p>
         </div>
         <div className="bg-card border border-border rounded-lg p-4">
           <p className="text-sm text-muted-foreground">Ativos</p>
@@ -176,8 +176,8 @@ export default function Fornecedores() {
                 <Select value={formData.tipo} onValueChange={(v: any) => setFormData({...formData, tipo: v})}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="SERVICO">Serviço</SelectItem>
-                    <SelectItem value="MATERIAL">Material</SelectItem>
+                    <SelectItem value="PRESTADOR">Prestador de Serviço</SelectItem>
+                    <SelectItem value="FORNECEDOR">Fornecedor de Material</SelectItem>
                     <SelectItem value="AMBOS">Ambos</SelectItem>
                   </SelectContent>
                 </Select>

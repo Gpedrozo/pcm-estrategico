@@ -97,8 +97,8 @@ export default function RCA() {
           <p className="text-2xl font-bold text-info">{rcas?.filter(r => r.status === 'EM_ANALISE').length || 0}</p>
         </div>
         <div className="bg-card border border-border rounded-lg p-4">
-          <p className="text-sm text-warning">Aguardando Ações</p>
-          <p className="text-2xl font-bold text-warning">{rcas?.filter(r => r.status === 'AGUARDANDO_ACOES').length || 0}</p>
+          <p className="text-sm text-warning">Verificando Eficácia</p>
+          <p className="text-2xl font-bold text-warning">{rcas?.filter(r => r.status === 'VERIFICANDO_EFICACIA').length || 0}</p>
         </div>
         <div className="bg-card border border-border rounded-lg p-4">
           <p className="text-sm text-success">Concluídas</p>
