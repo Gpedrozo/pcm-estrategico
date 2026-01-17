@@ -9,7 +9,7 @@ import { Calendar, Clock, AlertTriangle, Filter, LayoutGrid, List } from 'lucide
 import { useOrdensServico } from '@/hooks/useOrdensServico';
 import { OSStatusBadge } from '@/components/os/OSStatusBadge';
 import { OSTypeBadge } from '@/components/os/OSTypeBadge';
-import { format, startOfWeek, addWeeks, isWithinInterval, parseISO } from 'date-fns';
+import { format, startOfWeek, addWeeks, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
 export default function Backlog() {
