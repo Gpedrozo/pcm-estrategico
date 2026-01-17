@@ -27,6 +27,7 @@ import RCA from "./pages/RCA";
 import SSMA from "./pages/SSMA";
 import Melhorias from "./pages/Melhorias";
 import Fornecedores from "./pages/Fornecedores";
+import Contratos from "./pages/Contratos";
 import Backlog from "./pages/Backlog";
 import Programacao from "./pages/Programacao";
 import Preditiva from "./pages/Preditiva";
@@ -68,6 +69,7 @@ const App = () => (
               <Route path="/mecanicos" element={<Mecanicos />} />
               <Route path="/materiais" element={<Materiais />} />
               <Route path="/fornecedores" element={<Fornecedores />} />
+              <Route path="/contratos" element={<Contratos />} />
               <Route path="/documentos" element={<DocumentosTecnicos />} />
               <Route path="/custos" element={<Custos />} />
               <Route path="/relatorios" element={<Relatorios />} />

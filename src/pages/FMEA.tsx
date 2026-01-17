@@ -7,8 +7,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Plus, Search, AlertTriangle, TrendingUp } from 'lucide-react';
-import { useFMEA, useCreateFMEA, type FMEARow } from '@/hooks/useFMEA';
+import { Plus, Search } from 'lucide-react';
+import { useFMEA, useCreateFMEA } from '@/hooks/useFMEA';
 import { useEquipamentos } from '@/hooks/useEquipamentos';
 
 export default function FMEA() {

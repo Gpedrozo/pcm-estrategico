@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Plus, Search, GitBranch, CheckCircle2, XCircle } from 'lucide-react';
-import { useRCAs, useCreateRCA, type RCARow } from '@/hooks/useRCA';
+import { useRCAs, useCreateRCA } from '@/hooks/useRCA';
 import { useEquipamentos } from '@/hooks/useEquipamentos';
 import { useAuth } from '@/contexts/AuthContext';
 

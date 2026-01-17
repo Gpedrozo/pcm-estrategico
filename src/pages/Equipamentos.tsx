@@ -27,7 +27,7 @@ import {
 } from '@/components/ui/select';
 import { Plus, Search, Tag, Edit, Trash2, Loader2, AlertTriangle, CheckCircle, AlertCircle, Building2 } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Badge } from '@/components/ui/badge';
+
 import { 
   useEquipamentos, 
   useCreateEquipamento, 
