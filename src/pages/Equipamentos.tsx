@@ -392,14 +392,14 @@ export default function Equipamentos() {
                 Sistema (Hierarquia)
               </Label>
               <Select 
-                value={formData.sistema_id} 
-                onValueChange={(value) => setFormData({ ...formData, sistema_id: value })}
+                value={formData.sistema_id || "none"} 
+                onValueChange={(value) => setFormData({ ...formData, sistema_id: value === "none" ? "" : value })}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Selecione o sistema (opcional)" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Nenhum</SelectItem>
+                  <SelectItem value="none">Nenhum</SelectItem>
                   {sistemas?.filter(s => s.ativo).map((sistema) => {
                     const area = sistema.area as any;
                     const planta = area?.planta;

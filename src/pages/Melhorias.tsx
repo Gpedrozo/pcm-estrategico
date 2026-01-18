@@ -69,10 +69,10 @@ export default function Melhorias() {
 
   const getTipoBadge = (tipo: string) => {
     const styles: Record<string, string> = {
-      'KAIZEN': 'bg-blue-500/10 text-blue-500',
-      'PROJETO': 'bg-green-500/10 text-green-500',
-      'LICAO_APRENDIDA': 'bg-yellow-500/10 text-yellow-500',
-      'SUGESTAO': 'bg-purple-500/10 text-purple-500',
+      'KAIZEN': 'bg-info/10 text-info',
+      'PROJETO': 'bg-success/10 text-success',
+      'LICAO_APRENDIDA': 'bg-warning/10 text-warning',
+      'SUGESTAO': 'bg-primary/10 text-primary',
     };
     return styles[tipo] || '';
   };
