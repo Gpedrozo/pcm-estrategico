@@ -1,6 +1,5 @@
 import { useState, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -20,13 +19,12 @@ import {
 import { useOrdensServico } from '@/hooks/useOrdensServico';
 import { useExecucoesOS } from '@/hooks/useExecucoesOS';
 import { useEquipamentos } from '@/hooks/useEquipamentos';
-import { format, subMonths, startOfMonth, endOfMonth, isWithinInterval, parseISO } from 'date-fns';
+import { format, subMonths, startOfMonth, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
 export default function Custos() {
   const [activeTab, setActiveTab] = useState('resumo');
   const [selectedPeriod, setSelectedPeriod] = useState('3');
-  const [selectedMonth, setSelectedMonth] = useState(format(new Date(), 'yyyy-MM'));
   
   const { data: ordensServico, isLoading: loadingOS } = useOrdensServico();
   const { data: execucoes, isLoading: loadingExec } = useExecucoesOS();
