@@ -22,10 +22,10 @@ const acaoLabels: Record<string, { label: string; color: string }> = {
   GERAR_PDF: { label: 'Gerar PDF', color: 'bg-warning/10 text-warning' },
   CRIAR_USUARIO: { label: 'Criar Usuário', color: 'bg-success/10 text-success' },
   EDITAR_USUARIO: { label: 'Editar Usuário', color: 'bg-info/10 text-info' },
-  CRIAR_PLANO_PREVENTIVO: { label: 'Criar Plano', color: 'bg-cyan-500/10 text-cyan-500' },
-  EXECUTAR_PLANO_PREVENTIVO: { label: 'Executar Plano', color: 'bg-cyan-500/10 text-cyan-500' },
-  CADASTRAR_MATERIAL: { label: 'Cadastrar Material', color: 'bg-emerald-500/10 text-emerald-500' },
-  AJUSTAR_ESTOQUE: { label: 'Ajustar Estoque', color: 'bg-amber-500/10 text-amber-500' },
+  CRIAR_PLANO_PREVENTIVO: { label: 'Criar Plano', color: 'bg-info/10 text-info' },
+  EXECUTAR_PLANO_PREVENTIVO: { label: 'Executar Plano', color: 'bg-info/10 text-info' },
+  CADASTRAR_MATERIAL: { label: 'Cadastrar Material', color: 'bg-success/10 text-success' },
+  AJUSTAR_ESTOQUE: { label: 'Ajustar Estoque', color: 'bg-warning/10 text-warning' },
 };
 
 export default function Auditoria() {

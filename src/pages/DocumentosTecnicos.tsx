@@ -332,10 +332,10 @@ export default function DocumentosTecnicos() {
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>TAG do Equipamento</Label>
-                <Select value={formData.tag} onValueChange={(v) => setFormData({...formData, tag: v})}>
+                <Select value={formData.tag || "general"} onValueChange={(v) => setFormData({...formData, tag: v === "general" ? "" : v})}>
                   <SelectTrigger><SelectValue placeholder="Geral" /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">Geral</SelectItem>
+                    <SelectItem value="general">Geral</SelectItem>
                     {equipamentos?.filter(e => e.ativo).map(e => (
                       <SelectItem key={e.id} value={e.tag}>{e.tag}</SelectItem>
                     ))}
