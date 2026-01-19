@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useReactToPrint } from 'react-to-print';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -11,12 +12,20 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from '@/components/ui/dialog';
 import { useEquipamentos } from '@/hooks/useEquipamentos';
 import { useCreateOrdemServico } from '@/hooks/useOrdensServico';
 import { useLogAuditoria } from '@/hooks/useAuditoria';
 import { useAuth } from '@/contexts/AuthContext';
-import { FilePlus, ArrowLeft, Check, Loader2 } from 'lucide-react';
+import { ArrowLeft, Check, Loader2, Printer, CheckCircle } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
+import { OSPrintTemplate } from '@/components/os/OSPrintTemplate';
 
 type TipoOS = 'CORRETIVA' | 'PREVENTIVA' | 'PREDITIVA' | 'INSPECAO' | 'MELHORIA';
 type PrioridadeOS = 'URGENTE' | 'ALTA' | 'MEDIA' | 'BAIXA';
@@ -25,6 +34,7 @@ export default function NovaOS() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { log } = useLogAuditoria();
+  const printRef = useRef<HTMLDivElement>(null);
   
   const { data: equipamentos, isLoading: loadingEquipamentos } = useEquipamentos();
   const createOSMutation = useCreateOrdemServico();
@@ -39,8 +49,40 @@ export default function NovaOS() {
     custoEstimado: '',
   });
 
+  const [createdOS, setCreatedOS] = useState<{
+    numero_os: number;
+    data_solicitacao: string;
+    tag: string;
+    equipamento: string;
+    problema: string;
+    solicitante: string;
+    tipo: string;
+    prioridade: string;
+    tempo_estimado?: number | null;
+    custo_estimado?: number | null;
+  } | null>(null);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [nomeEmpresa, setNomeEmpresa] = useState('MANUTENÇÃO INDUSTRIAL');
+
   const selectedEquipamento = equipamentos?.find(eq => eq.tag === formData.tag);
   const equipamentosAtivos = equipamentos?.filter(eq => eq.ativo) || [];
+
+  const handlePrint = useReactToPrint({
+    contentRef: printRef,
+    documentTitle: createdOS ? `OS_${String(createdOS.numero_os).padStart(4, '0')}` : 'OS',
+    pageStyle: `
+      @page {
+        size: A4;
+        margin: 10mm;
+      }
+      @media print {
+        body {
+          -webkit-print-color-adjust: exact;
+          print-color-adjust: exact;
+        }
+      }
+    `,
+  });
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -62,6 +104,25 @@ export default function NovaOS() {
     });
 
     await log('CRIAR_OS', `Criação da O.S ${result.numero_os}`, formData.tag);
+    
+    // Show success modal with print option
+    setCreatedOS({
+      numero_os: result.numero_os,
+      data_solicitacao: result.data_solicitacao,
+      tag: formData.tag,
+      equipamento: selectedEquipamento?.nome || '',
+      problema: formData.problema,
+      solicitante: formData.solicitante,
+      tipo: formData.tipo,
+      prioridade: formData.prioridade,
+      tempo_estimado: formData.tempoEstimado ? parseInt(formData.tempoEstimado) : null,
+      custo_estimado: formData.custoEstimado ? parseFloat(formData.custoEstimado) : null,
+    });
+    setShowSuccessModal(true);
+  };
+
+  const handleCloseSuccess = () => {
+    setShowSuccessModal(false);
     navigate('/os/historico');
   };
 
@@ -259,6 +320,67 @@ export default function NovaOS() {
           </div>
         </form>
       </div>
+
+      {/* Success Modal with Print Option */}
+      <Dialog open={showSuccessModal} onOpenChange={setShowSuccessModal}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-success">
+              <CheckCircle className="h-6 w-6" />
+              Ordem de Serviço Criada com Sucesso!
+            </DialogTitle>
+            <DialogDescription>
+              O.S #{createdOS && String(createdOS.numero_os).padStart(4, '0')} foi criada. 
+              Você pode imprimir para entregar ao mecânico.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            {/* Config */}
+            <div className="flex items-end gap-4 p-4 bg-muted/50 rounded-lg">
+              <div className="flex-1 space-y-2">
+                <Label htmlFor="empresa">Nome da Empresa (cabeçalho)</Label>
+                <Input
+                  id="empresa"
+                  value={nomeEmpresa}
+                  onChange={(e) => setNomeEmpresa(e.target.value)}
+                  placeholder="Nome da empresa"
+                />
+              </div>
+              <Button onClick={() => handlePrint()} className="gap-2">
+                <Printer className="h-4 w-4" />
+                Imprimir
+              </Button>
+            </div>
+
+            {/* Preview */}
+            {createdOS && (
+              <div className="border rounded-lg overflow-hidden">
+                <div className="bg-muted px-4 py-2 flex items-center gap-2 border-b">
+                  <Printer className="h-4 w-4" />
+                  <span className="text-sm font-medium">Pré-visualização da Impressão</span>
+                </div>
+                <div className="overflow-auto max-h-[400px] bg-gray-100 p-4">
+                  <div className="transform scale-[0.5] origin-top-left" style={{ width: '200%' }}>
+                    <OSPrintTemplate ref={printRef} os={createdOS} nomeEmpresa={nomeEmpresa} />
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Actions */}
+            <div className="flex gap-3 pt-4 border-t">
+              <Button onClick={() => handlePrint()} className="flex-1 gap-2">
+                <Printer className="h-4 w-4" />
+                Imprimir e Fechar
+              </Button>
+              <Button variant="outline" onClick={handleCloseSuccess}>
+                Fechar sem Imprimir
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
