@@ -35,6 +35,7 @@ import Custos from "./pages/Custos";
 import Relatorios from "./pages/Relatorios";
 import DocumentosTecnicos from "./pages/DocumentosTecnicos";
 import NotFound from "./pages/NotFound";
+import Instalar from "./pages/Instalar";
 
 const queryClient = new QueryClient();
 
@@ -48,6 +49,7 @@ const App = () => (
           <Routes>
             <Route path="/" element={<Index />} />
             <Route path="/login" element={<Login />} />
+            <Route path="/instalar" element={<Instalar />} />
             
             {/* Protected Routes with Layout */}
             <Route element={<AppLayout />}>
