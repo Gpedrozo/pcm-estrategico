@@ -20,7 +20,8 @@ import { useEquipamentos } from '@/hooks/useEquipamentos';
 import { useExecucaoByOSId } from '@/hooks/useExecucoesOS';
 import { OSStatusBadge } from '@/components/os/OSStatusBadge';
 import { OSTypeBadge } from '@/components/os/OSTypeBadge';
-import { Search, FileText, Eye, Filter, AlertTriangle } from 'lucide-react';
+import { OSPrintDialog } from '@/components/os/OSPrintDialog';
+import { Search, FileText, Eye, Filter, AlertTriangle, Printer } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 
 type StatusOS = 'ABERTA' | 'EM_ANDAMENTO' | 'AGUARDANDO_MATERIAL' | 'FECHADA' | 'CANCELADA';
@@ -329,6 +330,14 @@ export default function HistoricoOS() {
                         >
                           <Eye className="h-4 w-4" />
                         </Button>
+                        <OSPrintDialog 
+                          os={os}
+                          trigger={
+                            <Button variant="ghost" size="icon" title="Imprimir">
+                              <Printer className="h-4 w-4" />
+                            </Button>
+                          }
+                        />
                       </div>
                     </td>
                   </tr>
