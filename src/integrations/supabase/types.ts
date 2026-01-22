@@ -362,6 +362,114 @@ export type Database = {
           },
         ]
       }
+      componentes_equipamento: {
+        Row: {
+          ativo: boolean | null
+          codigo: string
+          corrente: string | null
+          created_at: string
+          data_instalacao: string | null
+          dimensoes: Json | null
+          equipamento_id: string
+          especificacoes: Json | null
+          estado: string | null
+          fabricante: string | null
+          horas_operacao: number | null
+          id: string
+          intervalo_manutencao_dias: number | null
+          modelo: string | null
+          nome: string
+          numero_serie: string | null
+          observacoes: string | null
+          parent_id: string | null
+          posicao: string | null
+          potencia: string | null
+          proxima_manutencao: string | null
+          quantidade: number | null
+          rpm: string | null
+          tensao: string | null
+          tipo: string
+          ultima_manutencao: string | null
+          updated_at: string
+          vida_util_horas: number | null
+        }
+        Insert: {
+          ativo?: boolean | null
+          codigo: string
+          corrente?: string | null
+          created_at?: string
+          data_instalacao?: string | null
+          dimensoes?: Json | null
+          equipamento_id: string
+          especificacoes?: Json | null
+          estado?: string | null
+          fabricante?: string | null
+          horas_operacao?: number | null
+          id?: string
+          intervalo_manutencao_dias?: number | null
+          modelo?: string | null
+          nome: string
+          numero_serie?: string | null
+          observacoes?: string | null
+          parent_id?: string | null
+          posicao?: string | null
+          potencia?: string | null
+          proxima_manutencao?: string | null
+          quantidade?: number | null
+          rpm?: string | null
+          tensao?: string | null
+          tipo: string
+          ultima_manutencao?: string | null
+          updated_at?: string
+          vida_util_horas?: number | null
+        }
+        Update: {
+          ativo?: boolean | null
+          codigo?: string
+          corrente?: string | null
+          created_at?: string
+          data_instalacao?: string | null
+          dimensoes?: Json | null
+          equipamento_id?: string
+          especificacoes?: Json | null
+          estado?: string | null
+          fabricante?: string | null
+          horas_operacao?: number | null
+          id?: string
+          intervalo_manutencao_dias?: number | null
+          modelo?: string | null
+          nome?: string
+          numero_serie?: string | null
+          observacoes?: string | null
+          parent_id?: string | null
+          posicao?: string | null
+          potencia?: string | null
+          proxima_manutencao?: string | null
+          quantidade?: number | null
+          rpm?: string | null
+          tensao?: string | null
+          tipo?: string
+          ultima_manutencao?: string | null
+          updated_at?: string
+          vida_util_horas?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "componentes_equipamento_equipamento_id_fkey"
+            columns: ["equipamento_id"]
+            isOneToOne: false
+            referencedRelation: "equipamentos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "componentes_equipamento_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "componentes_equipamento"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       configuracoes_sistema: {
         Row: {
           categoria: string | null
