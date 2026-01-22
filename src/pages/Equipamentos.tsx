@@ -25,7 +25,19 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Plus, Search, Tag, Edit, Trash2, Loader2, AlertTriangle, CheckCircle, AlertCircle, Building2 } from 'lucide-react';
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+} from '@/components/ui/sheet';
+import { Badge } from '@/components/ui/badge';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { 
+  Plus, Search, Tag, Edit, Trash2, Loader2, AlertTriangle, CheckCircle, 
+  AlertCircle, Building2, Eye, Settings2, FileText, Wrench 
+} from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 
 import { 
@@ -37,6 +49,7 @@ import {
 } from '@/hooks/useEquipamentos';
 import { useSistemas } from '@/hooks/useHierarquia';
 import { useAuth } from '@/contexts/AuthContext';
+import { ComponentesPanel } from '@/components/equipamentos/ComponentesPanel';
 
 interface FormData {
   tag: string;
@@ -69,6 +82,7 @@ export default function Equipamentos() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [editingEquip, setEditingEquip] = useState<EquipamentoRow | null>(null);
   const [deletingEquip, setDeletingEquip] = useState<EquipamentoRow | null>(null);
+  const [selectedEquip, setSelectedEquip] = useState<EquipamentoRow | null>(null);
   const [formData, setFormData] = useState<FormData>(initialFormData);
 
   const { data: equipamentos, isLoading, error } = useEquipamentos();
@@ -156,6 +170,10 @@ export default function Equipamentos() {
     }
   };
 
+  const handleViewDetails = (equip: EquipamentoRow) => {
+    setSelectedEquip(equip);
+  };
+
   const getCriticidadeBadge = (criticidade: string) => {
     const styles: Record<string, string> = {
       'A': 'bg-destructive/10 text-destructive border-destructive/20',
@@ -230,7 +248,7 @@ export default function Equipamentos() {
         <div>
           <h1 className="text-2xl font-bold text-foreground">Equipamentos</h1>
           <p className="text-muted-foreground">
-            Cadastro de TAGs e equipamentos • {equipamentos?.length || 0} registros
+            Cadastro de TAGs, equipamentos e componentes • {equipamentos?.length || 0} registros
           </p>
         </div>
         <Button onClick={handleNew} className="gap-2">
@@ -269,7 +287,8 @@ export default function Equipamentos() {
             return (
               <div
                 key={equip.id}
-                className="bg-card border border-border rounded-lg p-4 hover:shadow-industrial-lg transition-shadow"
+                className="bg-card border border-border rounded-lg p-4 hover:shadow-industrial-lg transition-shadow cursor-pointer"
+                onClick={() => handleViewDetails(equip)}
               >
                 <div className="flex items-start justify-between">
                   <div className="flex items-center gap-3">
@@ -281,7 +300,10 @@ export default function Equipamentos() {
                       <p className="text-sm text-muted-foreground line-clamp-1">{equip.nome}</p>
                     </div>
                   </div>
-                  <div className="flex gap-1">
+                  <div className="flex gap-1" onClick={e => e.stopPropagation()}>
+                    <Button variant="ghost" size="icon" onClick={() => handleViewDetails(equip)}>
+                      <Eye className="h-4 w-4" />
+                    </Button>
                     <Button variant="ghost" size="icon" onClick={() => handleEdit(equip)}>
                       <Edit className="h-4 w-4" />
                     </Button>
@@ -334,6 +356,124 @@ export default function Equipamentos() {
           })}
         </div>
       )}
+
+      {/* Equipment Details Sheet */}
+      <Sheet open={!!selectedEquip} onOpenChange={(open) => !open && setSelectedEquip(null)}>
+        <SheetContent side="right" className="w-full sm:max-w-4xl overflow-y-auto">
+          {selectedEquip && (
+            <>
+              <SheetHeader className="pb-4 border-b">
+                <div className="flex items-center gap-3">
+                  <div className="p-3 rounded-lg bg-primary/10">
+                    <Tag className="h-6 w-6 text-primary" />
+                  </div>
+                  <div>
+                    <SheetTitle className="font-mono text-xl">{selectedEquip.tag}</SheetTitle>
+                    <p className="text-muted-foreground">{selectedEquip.nome}</p>
+                  </div>
+                </div>
+              </SheetHeader>
+
+              <Tabs defaultValue="componentes" className="mt-6">
+                <TabsList className="grid w-full grid-cols-3">
+                  <TabsTrigger value="componentes" className="gap-2">
+                    <Settings2 className="h-4 w-4" />
+                    Componentes
+                  </TabsTrigger>
+                  <TabsTrigger value="info" className="gap-2">
+                    <FileText className="h-4 w-4" />
+                    Informações
+                  </TabsTrigger>
+                  <TabsTrigger value="manutencao" className="gap-2">
+                    <Wrench className="h-4 w-4" />
+                    Manutenção
+                  </TabsTrigger>
+                </TabsList>
+
+                <TabsContent value="componentes" className="mt-4">
+                  <ComponentesPanel 
+                    equipamentoId={selectedEquip.id} 
+                    equipamentoTag={selectedEquip.tag}
+                  />
+                </TabsContent>
+
+                <TabsContent value="info" className="mt-4 space-y-4">
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-base">Dados do Equipamento</CardTitle>
+                    </CardHeader>
+                    <CardContent className="grid grid-cols-2 gap-4 text-sm">
+                      <div>
+                        <p className="text-muted-foreground">TAG</p>
+                        <p className="font-mono font-medium">{selectedEquip.tag}</p>
+                      </div>
+                      <div>
+                        <p className="text-muted-foreground">Nome</p>
+                        <p className="font-medium">{selectedEquip.nome}</p>
+                      </div>
+                      <div>
+                        <p className="text-muted-foreground">Criticidade</p>
+                        <Badge variant="outline" className={getCriticidadeBadge(selectedEquip.criticidade)}>
+                          {selectedEquip.criticidade}
+                        </Badge>
+                      </div>
+                      <div>
+                        <p className="text-muted-foreground">Nível de Risco</p>
+                        <Badge variant="outline" className={getRiscoBadge(selectedEquip.nivel_risco).bg}>
+                          {selectedEquip.nivel_risco}
+                        </Badge>
+                      </div>
+                      {selectedEquip.localizacao && (
+                        <div>
+                          <p className="text-muted-foreground">Localização</p>
+                          <p className="font-medium">{selectedEquip.localizacao}</p>
+                        </div>
+                      )}
+                      {selectedEquip.fabricante && (
+                        <div>
+                          <p className="text-muted-foreground">Fabricante</p>
+                          <p className="font-medium">{selectedEquip.fabricante}</p>
+                        </div>
+                      )}
+                      {selectedEquip.modelo && (
+                        <div>
+                          <p className="text-muted-foreground">Modelo</p>
+                          <p className="font-medium">{selectedEquip.modelo}</p>
+                        </div>
+                      )}
+                      {selectedEquip.numero_serie && (
+                        <div>
+                          <p className="text-muted-foreground">Número de Série</p>
+                          <p className="font-mono font-medium">{selectedEquip.numero_serie}</p>
+                        </div>
+                      )}
+                      {getHierarchyPath(selectedEquip) && (
+                        <div className="col-span-2">
+                          <p className="text-muted-foreground">Hierarquia</p>
+                          <p className="font-medium flex items-center gap-2">
+                            <Building2 className="h-4 w-4" />
+                            {getHierarchyPath(selectedEquip)}
+                          </p>
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                </TabsContent>
+
+                <TabsContent value="manutencao" className="mt-4">
+                  <Card>
+                    <CardContent className="pt-6 text-center text-muted-foreground">
+                      <Wrench className="h-12 w-12 mx-auto mb-3 opacity-30" />
+                      <p>Histórico de manutenções será exibido aqui</p>
+                      <p className="text-sm">Vinculado às Ordens de Serviço deste equipamento</p>
+                    </CardContent>
+                  </Card>
+                </TabsContent>
+              </Tabs>
+            </>
+          )}
+        </SheetContent>
+      </Sheet>
 
       {/* Create/Edit Modal */}
       <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
