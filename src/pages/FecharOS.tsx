@@ -5,6 +5,9 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
   Select,
   SelectContent,
@@ -18,15 +21,61 @@ import { useMateriaisAtivos, useAddMaterialOS, type MaterialRow } from '@/hooks/
 import { useCreateExecucaoOS } from '@/hooks/useExecucoesOS';
 import { useLogAuditoria } from '@/hooks/useAuditoria';
 import { useAuth } from '@/contexts/AuthContext';
-import { ArrowLeft, Check, FileCheck, Loader2, Plus, Trash2, Package } from 'lucide-react';
+import { 
+  ArrowLeft, 
+  Check, 
+  FileCheck, 
+  Loader2, 
+  Plus, 
+  Trash2, 
+  Package, 
+  AlertTriangle,
+  Wrench,
+  Clock,
+  ClipboardCheck,
+  FileText
+} from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { OSStatusBadge } from '@/components/os/OSStatusBadge';
 import { OSTypeBadge } from '@/components/os/OSTypeBadge';
 import { Skeleton } from '@/components/ui/skeleton';
 
+// Modo de Falha options
+const MODOS_FALHA = [
+  { value: 'DESGASTE', label: 'Desgaste' },
+  { value: 'FADIGA', label: 'Fadiga' },
+  { value: 'CORROSAO', label: 'Corrosão' },
+  { value: 'SOBRECARGA', label: 'Sobrecarga' },
+  { value: 'DESALINHAMENTO', label: 'Desalinhamento' },
+  { value: 'LUBRIFICACAO_DEFICIENTE', label: 'Lubrificação Deficiente' },
+  { value: 'CONTAMINACAO', label: 'Contaminação' },
+  { value: 'ERRO_OPERACIONAL', label: 'Erro Operacional' },
+  { value: 'FALTA_MANUTENCAO', label: 'Falta de Manutenção' },
+  { value: 'DEFEITO_FABRICACAO', label: 'Defeito de Fabricação' },
+  { value: 'OUTRO', label: 'Outro' },
+];
+
+// Causa Raiz options (6M - Ishikawa)
+const CAUSAS_RAIZ = [
+  { value: 'MAO_OBRA', label: 'Mão de Obra', description: 'Falha humana, treinamento' },
+  { value: 'METODO', label: 'Método', description: 'Procedimento inadequado' },
+  { value: 'MATERIAL', label: 'Material', description: 'Peça defeituosa, qualidade' },
+  { value: 'MAQUINA', label: 'Máquina', description: 'Falha do equipamento' },
+  { value: 'MEIO_AMBIENTE', label: 'Meio Ambiente', description: 'Condições externas' },
+  { value: 'MEDICAO', label: 'Medição', description: 'Erro de instrumentação' },
+];
+
 interface MaterialUsado {
   material: MaterialRow;
   quantidade: number;
+}
+
+interface RCAFormData {
+  modoFalha: string;
+  causaRaiz: string;
+  acaoCorretiva: string;
+  licoesAprendidas: string;
+  requireRCA: boolean;
 }
 
 export default function FecharOS() {
@@ -43,6 +92,7 @@ export default function FecharOS() {
   const addMaterialOSMutation = useAddMaterialOS();
   
   const [selectedOS, setSelectedOS] = useState<OrdemServicoRow | null>(null);
+  const [activeTab, setActiveTab] = useState('execucao');
   const [formData, setFormData] = useState({
     mecanicoId: '',
     horaInicio: '',
@@ -50,12 +100,22 @@ export default function FecharOS() {
     servicoExecutado: '',
     custoTerceiros: '',
   });
+  const [rcaData, setRcaData] = useState<RCAFormData>({
+    modoFalha: '',
+    causaRaiz: '',
+    acaoCorretiva: '',
+    licoesAprendidas: '',
+    requireRCA: false,
+  });
   const [materiaisUsados, setMateriaisUsados] = useState<MaterialUsado[]>([]);
   const [materialSelecionado, setMaterialSelecionado] = useState('');
   const [quantidadeMaterial, setQuantidadeMaterial] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const selectedMecanico = mecanicos?.find(m => m.id === formData.mecanicoId);
+  
+  // Determine if RCA is required based on OS type
+  const isCorretiva = selectedOS?.tipo === 'CORRETIVA';
 
   const calculateDuration = () => {
     if (!formData.horaInicio || !formData.horaFim) return null;
@@ -154,15 +214,19 @@ export default function FecharOS() {
         });
       }
 
-      // Update OS status to closed
+      // Update OS status to closed with RCA data if applicable
       await updateOSMutation.mutateAsync({
         id: selectedOS.id,
         status: 'FECHADA',
         data_fechamento: new Date().toISOString(),
         usuario_fechamento: user?.id || null,
+        modo_falha: rcaData.requireRCA && isCorretiva ? rcaData.modoFalha : null,
+        causa_raiz: rcaData.requireRCA && isCorretiva ? rcaData.causaRaiz : null,
+        acao_corretiva: rcaData.requireRCA && isCorretiva ? rcaData.acaoCorretiva : null,
+        licoes_aprendidas: rcaData.requireRCA && isCorretiva ? rcaData.licoesAprendidas : null,
       });
 
-      await log('FECHAR_OS', `Fechamento da O.S ${selectedOS.numero_os} - Custo total: ${formatCurrency(custoTotal)}`, selectedOS.tag);
+      await log('FECHAR_OS', `Fechamento da O.S ${selectedOS.numero_os} - Custo total: ${formatCurrency(custoTotal)}${rcaData.requireRCA ? ' (com RCA)' : ''}`, selectedOS.tag);
 
       toast({
         title: 'O.S Fechada com Sucesso!',
@@ -179,12 +243,20 @@ export default function FecharOS() {
 
   const handleSelectOS = (os: OrdemServicoRow) => {
     setSelectedOS(os);
+    setActiveTab('execucao');
     setFormData({
       mecanicoId: '',
       horaInicio: '',
       horaFim: '',
       servicoExecutado: '',
       custoTerceiros: '',
+    });
+    setRcaData({
+      modoFalha: '',
+      causaRaiz: '',
+      acaoCorretiva: '',
+      licoesAprendidas: '',
+      requireRCA: os.tipo === 'CORRETIVA',
     });
     setMateriaisUsados([]);
   };
