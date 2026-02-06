@@ -3,9 +3,14 @@ import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
 import { AppSidebar } from './AppSidebar';
 import { useAuth } from '@/contexts/AuthContext';
 import { Menu, Loader2 } from 'lucide-react';
+import { CommandPalette } from '@/components/command-palette/CommandPalette';
+import { NotificationCenter } from '@/components/notifications/NotificationCenter';
+import { GlobalSearch } from './GlobalSearch';
+import { useState } from 'react';
 
 export function AppLayout() {
   const { isAuthenticated, isLoading } = useAuth();
+  const [commandOpen, setCommandOpen] = useState(false);
 
   if (isLoading) {
     return (
@@ -21,6 +26,7 @@ export function AppLayout() {
 
   return (
     <SidebarProvider>
+      <CommandPalette />
       <div className="flex min-h-screen w-full">
         <AppSidebar />
         <div className="flex-1 flex flex-col">
@@ -28,8 +34,17 @@ export function AppLayout() {
             <SidebarTrigger className="p-2 hover:bg-muted rounded-md">
               <Menu className="h-5 w-5" />
             </SidebarTrigger>
+            <GlobalSearch onOpen={() => {
+              const event = new KeyboardEvent('keydown', {
+                key: 'k',
+                metaKey: true,
+                bubbles: true,
+              });
+              document.dispatchEvent(event);
+            }} />
             <div className="flex-1" />
-            <span className="text-sm text-muted-foreground">
+            <NotificationCenter />
+            <span className="text-sm text-muted-foreground hidden md:block">
               {new Date().toLocaleDateString('pt-BR', { 
                 weekday: 'long', 
                 year: 'numeric', 
