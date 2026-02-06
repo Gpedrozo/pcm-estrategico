@@ -199,7 +199,7 @@ export function NotificationCenter() {
       case 'success':
         return <Check className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />;
       case 'warning':
-        return <AlertTriangle className="h-4 w-4 text-yellow-500" />;
+        return <AlertTriangle className="h-4 w-4 text-amber-600 dark:text-amber-400" />;
       case 'error':
         return <AlertTriangle className="h-4 w-4 text-red-500" />;
       default:
