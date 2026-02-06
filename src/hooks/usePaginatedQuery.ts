@@ -106,7 +106,7 @@ export function usePaginatedQuery<T>({
       const to = from + pagination.pageSize - 1;
 
       let query = supabase
-        .from(tableName)
+        .from(tableName as any)
         .select(select)
         .range(from, to);
 
@@ -114,11 +114,11 @@ export function usePaginatedQuery<T>({
       Object.entries(filters).forEach(([key, value]) => {
         if (value !== undefined && value !== '') {
           if (Array.isArray(value)) {
-            query = query.in(key, value);
+            query = query.in(key as any, value);
           } else if (typeof value === 'string' && value.includes('%')) {
-            query = query.ilike(key, value);
+            query = query.ilike(key as any, value);
           } else {
-            query = query.eq(key, value);
+            query = query.eq(key as any, value);
           }
         }
       });
