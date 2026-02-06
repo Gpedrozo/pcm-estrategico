@@ -75,18 +75,18 @@ export function usePaginatedQuery<T>({
     queryKey: [...queryKey, 'count', JSON.stringify(filters)],
     queryFn: async () => {
       let query = supabase
-        .from(tableName)
+        .from(tableName as any)
         .select('id', { count: 'exact', head: true });
 
       // Apply filters
       Object.entries(filters).forEach(([key, value]) => {
         if (value !== undefined && value !== '') {
           if (Array.isArray(value)) {
-            query = query.in(key, value);
+            query = query.in(key as any, value);
           } else if (typeof value === 'string' && value.includes('%')) {
-            query = query.ilike(key, value);
+            query = query.ilike(key as any, value);
           } else {
-            query = query.eq(key, value);
+            query = query.eq(key as any, value);
           }
         }
       });
