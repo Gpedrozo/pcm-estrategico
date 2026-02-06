@@ -197,7 +197,7 @@ export function NotificationCenter() {
   const getIcon = (type: Notification['type']) => {
     switch (type) {
       case 'success':
-        return <Check className="h-4 w-4 text-green-500" />;
+        return <Check className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />;
       case 'warning':
         return <AlertTriangle className="h-4 w-4 text-yellow-500" />;
       case 'error':
