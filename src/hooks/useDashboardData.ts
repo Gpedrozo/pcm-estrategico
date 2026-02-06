@@ -4,8 +4,27 @@ import { supabase } from '@/integrations/supabase/client';
 import { useIndicadores } from './useIndicadores';
 import { useOrdensServico } from './useOrdensServico';
 import { useExecucoesOS } from './useExecucoesOS';
-import { format, subMonths, startOfMonth, parseISO, differenceInDays } from 'date-fns';
+import { format, subMonths, startOfMonth, parseISO, differenceInDays, differenceInHours } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+
+interface TopEquipmentItem {
+  tag: string;
+  equipamento: string;
+  totalOS: number;
+  corretivas: number;
+  preventivas: number;
+  disponibilidade?: number;
+}
+
+interface RecentActivity {
+  id: string;
+  type: 'os_created' | 'os_closed' | 'preventive_executed' | 'alert' | 'measurement';
+  title: string;
+  description: string;
+  timestamp: string;
+  status?: 'success' | 'warning' | 'error' | 'info';
+  tag?: string;
+}
 
 export function useDashboardData() {
   const { data: indicadores, isLoading: loadingIndicadores } = useIndicadores();
@@ -131,6 +150,132 @@ export function useDashboardData() {
     };
   }, [ordensServico]);
 
+  // Top equipment by OS count
+  const topEquipamentos = useMemo((): TopEquipmentItem[] => {
+    if (!ordensServico) return [];
+    
+    const equipCounts: Record<string, { 
+      tag: string; 
+      equipamento: string; 
+      total: number; 
+      corretivas: number; 
+      preventivas: number;
+    }> = {};
+    
+    ordensServico.forEach(os => {
+      if (!equipCounts[os.tag]) {
+        equipCounts[os.tag] = { 
+          tag: os.tag, 
+          equipamento: os.equipamento, 
+          total: 0, 
+          corretivas: 0, 
+          preventivas: 0 
+        };
+      }
+      equipCounts[os.tag].total++;
+      if (os.tipo === 'CORRETIVA') equipCounts[os.tag].corretivas++;
+      if (os.tipo === 'PREVENTIVA') equipCounts[os.tag].preventivas++;
+    });
+    
+    return Object.values(equipCounts)
+      .sort((a, b) => b.total - a.total)
+      .slice(0, 5)
+      .map(item => ({
+        tag: item.tag,
+        equipamento: item.equipamento,
+        totalOS: item.total,
+        corretivas: item.corretivas,
+        preventivas: item.preventivas,
+      }));
+  }, [ordensServico]);
+
+  // Recent activity feed
+  const recentActivities = useMemo((): RecentActivity[] => {
+    if (!ordensServico) return [];
+    
+    const activities: RecentActivity[] = [];
+    
+    // Get recent OS events (last 10)
+    const recentOS = ordensServico.slice(0, 10);
+    
+    recentOS.forEach(os => {
+      activities.push({
+        id: `os-${os.id}`,
+        type: os.status === 'FECHADA' ? 'os_closed' : 'os_created',
+        title: os.status === 'FECHADA' 
+          ? `O.S #${os.numero_os} Fechada` 
+          : `O.S #${os.numero_os} Criada`,
+        description: os.problema.substring(0, 100),
+        timestamp: os.status === 'FECHADA' && os.data_fechamento 
+          ? os.data_fechamento 
+          : os.data_solicitacao,
+        status: os.prioridade === 'URGENTE' ? 'warning' : 
+                os.status === 'FECHADA' ? 'success' : 'info',
+        tag: os.tag,
+      });
+    });
+    
+    return activities
+      .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+      .slice(0, 8);
+  }, [ordensServico]);
+
+  // Calculate advanced KPIs
+  const advancedKPIs = useMemo(() => {
+    if (!ordensServico || !execucoes) {
+      return {
+        mtbf: 720,
+        mttr: 2,
+        disponibilidade: 98,
+        confiabilidade: 95,
+        oee: 85,
+      };
+    }
+    
+    // Calculate MTTR from executions
+    const temposReparo = execucoes.map(e => e.tempo_execucao / 60); // Convert to hours
+    const mttr = temposReparo.length > 0 
+      ? temposReparo.reduce((a, b) => a + b, 0) / temposReparo.length 
+      : 2;
+    
+    // Estimate MTBF from corrective OS intervals
+    const corretivas = ordensServico
+      .filter(os => os.tipo === 'CORRETIVA' && os.status === 'FECHADA')
+      .sort((a, b) => new Date(a.data_solicitacao).getTime() - new Date(b.data_solicitacao).getTime());
+    
+    let mtbf = 720; // Default 30 days in hours
+    if (corretivas.length >= 2) {
+      const intervals: number[] = [];
+      for (let i = 1; i < corretivas.length; i++) {
+        const prev = new Date(corretivas[i-1].data_solicitacao);
+        const curr = new Date(corretivas[i].data_solicitacao);
+        intervals.push(differenceInHours(curr, prev));
+      }
+      if (intervals.length > 0) {
+        mtbf = intervals.reduce((a, b) => a + b, 0) / intervals.length;
+      }
+    }
+    
+    // Availability = MTBF / (MTBF + MTTR) * 100
+    const disponibilidade = (mtbf / (mtbf + mttr)) * 100;
+    
+    // Reliability (simplified exponential model)
+    const t = 168; // One week in hours
+    const lambda = 1 / mtbf; // Failure rate
+    const confiabilidade = Math.exp(-lambda * t) * 100;
+    
+    // OEE simplified (using availability as main factor)
+    const oee = disponibilidade * 0.95; // Assuming 95% performance and quality
+    
+    return {
+      mtbf: Math.max(mtbf, 1),
+      mttr: Math.max(mttr, 0.1),
+      disponibilidade: Math.min(disponibilidade, 100),
+      confiabilidade: Math.min(confiabilidade, 100),
+      oee: Math.min(oee, 100),
+    };
+  }, [ordensServico, execucoes]);
+
   return {
     indicadores,
     osDistribuicaoPorTipo,
@@ -140,6 +285,9 @@ export function useDashboardData() {
     osRecentes,
     aderenciaPreventiva,
     taxaCorretivaPreventiva,
+    topEquipamentos,
+    recentActivities,
+    advancedKPIs,
     isLoading: loadingIndicadores || loadingOS || loadingExec,
   };
 }
