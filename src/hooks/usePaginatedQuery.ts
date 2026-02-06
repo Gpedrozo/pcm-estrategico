@@ -111,18 +111,19 @@ export function usePaginatedQuery<T>({
         .select(select)
         .range(from, to);
 
-      // Apply filters
-      Object.entries(filters).forEach(([key, value]) => {
+      // Apply filters - using for...of to avoid type inference issues
+      const filterEntries = Object.entries(filters);
+      for (const [key, value] of filterEntries) {
         if (value !== undefined && value !== '') {
           if (Array.isArray(value)) {
-            query = query.in(key as any, value);
+            query = (query as any).in(key, value);
           } else if (typeof value === 'string' && value.includes('%')) {
-            query = query.ilike(key as any, value);
+            query = (query as any).ilike(key, value);
           } else {
-            query = query.eq(key as any, value);
+            query = (query as any).eq(key, value);
           }
         }
-      });
+      }
 
       // Apply sorting
       if (sorting) {
