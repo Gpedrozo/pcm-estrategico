@@ -36,6 +36,7 @@ import Relatorios from "./pages/Relatorios";
 import DocumentosTecnicos from "./pages/DocumentosTecnicos";
 import NotFound from "./pages/NotFound";
 import Instalar from "./pages/Instalar";
+import MasterTI from "./pages/MasterTI";
 
 const queryClient = new QueryClient();
 
@@ -78,6 +79,7 @@ const App = () => (
               <Route path="/ssma" element={<SSMA />} />
               <Route path="/usuarios" element={<Usuarios />} />
               <Route path="/auditoria" element={<Auditoria />} />
+              <Route path="/master-ti" element={<MasterTI />} />
             </Route>
 
             {/* Catch-all */}

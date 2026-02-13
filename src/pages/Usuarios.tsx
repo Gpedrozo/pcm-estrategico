@@ -20,7 +20,7 @@ import { Search, Edit, Shield, User as UserIcon, AlertTriangle, Loader2, Users }
 import { Skeleton } from '@/components/ui/skeleton';
 import { useAuth } from '@/contexts/AuthContext';
 
-type UserRole = 'ADMIN' | 'USUARIO';
+type UserRole = 'ADMIN' | 'USUARIO' | 'MASTER_TI';
 
 export default function Usuarios() {
   const { isAdmin } = useAuth();
