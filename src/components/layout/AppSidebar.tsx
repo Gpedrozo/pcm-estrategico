@@ -25,7 +25,8 @@ import {
   Activity,
   DollarSign,
   BarChart3,
-  FileArchive
+  FileArchive,
+  Crown
 } from 'lucide-react';
 import { NavLink, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
@@ -93,7 +94,7 @@ const adminMenuItems = [
 ];
 
 export function AppSidebar() {
-  const { user, logout, isAdmin } = useAuth();
+  const { user, logout, isAdmin, isMasterTI } = useAuth();
   const location = useLocation();
 
   const isActive = (path: string) => location.pathname === path;
@@ -217,6 +218,19 @@ export function AppSidebar() {
             <SidebarGroupContent>
               <SidebarMenu>
                 {adminMenuItems.map(renderMenuLink)}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
+
+        {isMasterTI && (
+          <SidebarGroup className="mt-4">
+            <SidebarGroupLabel className="text-sidebar-foreground/50 uppercase text-xs font-semibold px-3 mb-2">
+              Master TI
+            </SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                {renderMenuLink({ title: 'Painel Master', url: '/master-ti', icon: Crown })}
               </SidebarMenu>
             </SidebarGroupContent>
           </SidebarGroup>

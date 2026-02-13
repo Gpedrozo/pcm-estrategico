@@ -9,10 +9,12 @@ export interface ProfileRow {
   updated_at: string;
 }
 
+export type AppRole = 'ADMIN' | 'USUARIO' | 'MASTER_TI';
+
 export interface UserRoleRow {
   id: string;
   user_id: string;
-  role: 'ADMIN' | 'USUARIO';
+  role: AppRole;
   created_at: string;
 }
 
@@ -20,7 +22,7 @@ export interface UsuarioCompleto {
   id: string;
   nome: string;
   email: string;
-  role: 'ADMIN' | 'USUARIO';
+  role: AppRole;
   created_at: string;
 }
 
@@ -65,7 +67,7 @@ export function useUpdateUsuarioRole() {
   const { toast } = useToast();
 
   return useMutation({
-    mutationFn: async ({ userId, role }: { userId: string; role: 'ADMIN' | 'USUARIO' }) => {
+    mutationFn: async ({ userId, role }: { userId: string; role: AppRole }) => {
       const { error } = await supabase
         .from('user_roles')
         .update({ role })

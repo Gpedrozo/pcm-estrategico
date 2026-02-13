@@ -2,11 +2,13 @@ import React, { createContext, useContext, useState, useCallback, useEffect } fr
 import { supabase } from '@/integrations/supabase/client';
 import type { User, Session } from '@supabase/supabase-js';
 
+type AppRole = 'ADMIN' | 'USUARIO' | 'MASTER_TI';
+
 interface AuthUser {
   id: string;
   nome: string;
   email: string;
-  tipo: 'ADMIN' | 'USUARIO';
+  tipo: AppRole;
 }
 
 interface AuthContextType {
@@ -18,6 +20,7 @@ interface AuthContextType {
   signup: (email: string, password: string, nome: string) => Promise<{ error: string | null }>;
   logout: () => Promise<void>;
   isAdmin: boolean;
+  isMasterTI: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -45,7 +48,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       return {
         nome: profile?.nome || 'Usuário',
-        tipo: (roleData?.role as 'ADMIN' | 'USUARIO') || 'USUARIO',
+        tipo: (roleData?.role as AppRole) || 'USUARIO',
       };
     } catch (error) {
       console.error('Error fetching user profile:', error);
@@ -173,7 +176,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     await supabase.auth.signOut();
   }, [user]);
 
-  const isAdmin = user?.tipo === 'ADMIN';
+  const isAdmin = user?.tipo === 'ADMIN' || user?.tipo === 'MASTER_TI';
+  const isMasterTI = user?.tipo === 'MASTER_TI';
 
   return (
     <AuthContext.Provider value={{
@@ -185,6 +189,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       signup,
       logout,
       isAdmin,
+      isMasterTI,
     }}>
       {children}
     </AuthContext.Provider>
