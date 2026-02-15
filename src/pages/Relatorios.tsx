@@ -3,36 +3,22 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { 
-  FileText, 
-  Download, 
-  Calendar, 
-  BarChart3, 
-  PieChart, 
-  TrendingUp,
-  Wrench,
-  Clock,
-  DollarSign,
-  AlertTriangle,
-  FileSpreadsheet,
-  Printer
+  FileText, Download, Calendar, BarChart3, PieChart, TrendingUp,
+  Wrench, Clock, DollarSign, AlertTriangle, FileSpreadsheet, Printer, Loader2
 } from 'lucide-react';
 import { useOrdensServico } from '@/hooks/useOrdensServico';
 import { useIndicadores } from '@/hooks/useIndicadores';
+import { useDadosEmpresa } from '@/hooks/useDadosEmpresa';
 import { format, subDays } from 'date-fns';
+import { 
+  generateOSReportPDF, generateIndicadoresPDF, generateExcelReport 
+} from '@/lib/reportGenerator';
+import { useToast } from '@/hooks/use-toast';
 
-type ReportType = 
-  | 'os_periodo'
-  | 'indicadores'
-  | 'custos'
-  | 'backlog'
-  | 'preventivas'
-  | 'equipamentos'
-  | 'mecanicos'
-  | 'executivo';
+type ReportType = 'os_periodo' | 'indicadores' | 'custos' | 'backlog' | 'preventivas' | 'equipamentos' | 'mecanicos' | 'executivo';
 
 interface ReportConfig {
   id: ReportType;
@@ -43,62 +29,14 @@ interface ReportConfig {
 }
 
 const reports: ReportConfig[] = [
-  {
-    id: 'os_periodo',
-    title: 'Ordens de Serviço por Período',
-    description: 'Listagem detalhada de todas as OS em um período específico',
-    icon: <FileText className="h-6 w-6" />,
-    category: 'operacional',
-  },
-  {
-    id: 'indicadores',
-    title: 'Indicadores KPI',
-    description: 'MTBF, MTTR, Disponibilidade e Backlog',
-    icon: <BarChart3 className="h-6 w-6" />,
-    category: 'gerencial',
-  },
-  {
-    id: 'custos',
-    title: 'Custos de Manutenção',
-    description: 'Análise de custos por categoria e equipamento',
-    icon: <DollarSign className="h-6 w-6" />,
-    category: 'gerencial',
-  },
-  {
-    id: 'backlog',
-    title: 'Relatório de Backlog',
-    description: 'OS pendentes e tempo em fila',
-    icon: <Clock className="h-6 w-6" />,
-    category: 'operacional',
-  },
-  {
-    id: 'preventivas',
-    title: 'Aderência Preventivas',
-    description: 'Execução vs. programação de preventivas',
-    icon: <Calendar className="h-6 w-6" />,
-    category: 'gerencial',
-  },
-  {
-    id: 'equipamentos',
-    title: 'Desempenho por Equipamento',
-    description: 'Histórico e indicadores por TAG',
-    icon: <Wrench className="h-6 w-6" />,
-    category: 'operacional',
-  },
-  {
-    id: 'mecanicos',
-    title: 'Produtividade de Mecânicos',
-    description: 'Horas trabalhadas e OS executadas por técnico',
-    icon: <TrendingUp className="h-6 w-6" />,
-    category: 'gerencial',
-  },
-  {
-    id: 'executivo',
-    title: 'Resumo Executivo',
-    description: 'Visão consolidada para gestão',
-    icon: <PieChart className="h-6 w-6" />,
-    category: 'executivo',
-  },
+  { id: 'os_periodo', title: 'Ordens de Serviço por Período', description: 'Listagem detalhada de todas as OS em um período específico', icon: <FileText className="h-6 w-6" />, category: 'operacional' },
+  { id: 'indicadores', title: 'Indicadores KPI', description: 'MTBF, MTTR, Disponibilidade e Backlog', icon: <BarChart3 className="h-6 w-6" />, category: 'gerencial' },
+  { id: 'custos', title: 'Custos de Manutenção', description: 'Análise de custos por categoria e equipamento', icon: <DollarSign className="h-6 w-6" />, category: 'gerencial' },
+  { id: 'backlog', title: 'Relatório de Backlog', description: 'OS pendentes e tempo em fila', icon: <Clock className="h-6 w-6" />, category: 'operacional' },
+  { id: 'preventivas', title: 'Aderência Preventivas', description: 'Execução vs. programação de preventivas', icon: <Calendar className="h-6 w-6" />, category: 'gerencial' },
+  { id: 'equipamentos', title: 'Desempenho por Equipamento', description: 'Histórico e indicadores por TAG', icon: <Wrench className="h-6 w-6" />, category: 'operacional' },
+  { id: 'mecanicos', title: 'Produtividade de Mecânicos', description: 'Horas trabalhadas e OS executadas por técnico', icon: <TrendingUp className="h-6 w-6" />, category: 'gerencial' },
+  { id: 'executivo', title: 'Resumo Executivo', description: 'Visão consolidada para gestão', icon: <PieChart className="h-6 w-6" />, category: 'executivo' },
 ];
 
 export default function Relatorios() {
@@ -110,18 +48,60 @@ export default function Relatorios() {
   
   const { data: ordensServico, isLoading: loadingOS } = useOrdensServico();
   const { data: indicadores, isLoading: loadingIndicadores } = useIndicadores();
+  const { data: empresa } = useDadosEmpresa();
+  const { toast } = useToast();
 
-  const handleGenerateReport = async (format: 'pdf' | 'excel') => {
+  const handleGenerateReport = async (fmt: 'pdf' | 'excel') => {
+    if (!selectedReport) return;
     setIsGenerating(true);
     
-    // Simulate report generation
-    await new Promise(resolve => setTimeout(resolve, 1500));
-    
-    // In a real implementation, this would call an API to generate the report
-    // For now, we'll show a success message
-    alert(`Relatório ${selectedReport} gerado em formato ${format.toUpperCase()}`);
-    
-    setIsGenerating(false);
+    try {
+      const options = {
+        title: reports.find(r => r.id === selectedReport)?.title || '',
+        dateFrom, dateTo, filterTag,
+        empresaNome: empresa?.nome_fantasia || empresa?.razao_social || 'PCM Estratégico',
+        logoUrl: empresa?.logo_relatorio_url || '',
+      };
+
+      if (fmt === 'pdf') {
+        switch (selectedReport) {
+          case 'indicadores':
+            generateIndicadoresPDF(indicadores, options);
+            break;
+          default:
+            generateOSReportPDF(ordensServico || [], options);
+            break;
+        }
+      } else {
+        // Excel
+        const osColumns = [
+          { header: 'Nº OS', key: 'numero_os' },
+          { header: 'TAG', key: 'tag' },
+          { header: 'Equipamento', key: 'equipamento' },
+          { header: 'Tipo', key: 'tipo' },
+          { header: 'Prioridade', key: 'prioridade' },
+          { header: 'Status', key: 'status' },
+          { header: 'Solicitante', key: 'solicitante' },
+          { header: 'Problema', key: 'problema' },
+          { header: 'Data', key: 'data_solicitacao' },
+        ];
+        
+        const filtered = (ordensServico || []).filter(os => {
+          const d = os.data_solicitacao?.slice(0, 10);
+          if (d < dateFrom || d > dateTo) return false;
+          if (filterTag && !os.tag.includes(filterTag)) return false;
+          return true;
+        });
+        
+        generateExcelReport(filtered, osColumns, `Relatorio_${selectedReport}_${dateFrom}`);
+      }
+      
+      toast({ title: 'Relatório Gerado', description: `Arquivo ${fmt.toUpperCase()} baixado com sucesso.` });
+    } catch (err: any) {
+      toast({ title: 'Erro', description: err.message || 'Erro ao gerar relatório.', variant: 'destructive' });
+    } finally {
+      setIsGenerating(false);
+    }
   };
 
   const getCategoryBadge = (category: string) => {
@@ -156,35 +136,24 @@ export default function Relatorios() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Report Selection */}
         <div className="lg:col-span-2">
           <h2 className="text-lg font-semibold mb-4">Selecione um Relatório</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {reports.map((report) => (
               <Card 
                 key={report.id}
-                className={`cursor-pointer transition-all hover:shadow-lg ${
-                  selectedReport === report.id ? 'ring-2 ring-primary' : ''
-                }`}
+                className={`cursor-pointer transition-all hover:shadow-lg ${selectedReport === report.id ? 'ring-2 ring-primary' : ''}`}
                 onClick={() => setSelectedReport(report.id)}
               >
                 <CardContent className="p-4">
                   <div className="flex items-start gap-4">
-                    <div className={`p-3 rounded-lg ${
-                      selectedReport === report.id 
-                        ? 'bg-primary text-primary-foreground' 
-                        : 'bg-muted'
-                    }`}>
+                    <div className={`p-3 rounded-lg ${selectedReport === report.id ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}>
                       {report.icon}
                     </div>
                     <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-1">
-                        <h3 className="font-semibold">{report.title}</h3>
-                      </div>
+                      <h3 className="font-semibold">{report.title}</h3>
                       <p className="text-sm text-muted-foreground">{report.description}</p>
-                      <Badge className={`mt-2 ${getCategoryBadge(report.category)}`}>
-                        {report.category}
-                      </Badge>
+                      <Badge className={`mt-2 ${getCategoryBadge(report.category)}`}>{report.category}</Badge>
                     </div>
                   </div>
                 </CardContent>
@@ -193,7 +162,6 @@ export default function Relatorios() {
           </div>
         </div>
 
-        {/* Report Configuration */}
         <div>
           <Card className="sticky top-4">
             <CardHeader>
@@ -211,38 +179,23 @@ export default function Relatorios() {
             <CardContent className="space-y-4">
               <div className="space-y-2">
                 <Label>Data Inicial</Label>
-                <Input 
-                  type="date" 
-                  value={dateFrom} 
-                  onChange={(e) => setDateFrom(e.target.value)}
-                />
+                <Input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} />
               </div>
-              
               <div className="space-y-2">
                 <Label>Data Final</Label>
-                <Input 
-                  type="date" 
-                  value={dateTo} 
-                  onChange={(e) => setDateTo(e.target.value)}
-                />
+                <Input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} />
               </div>
-
               <div className="space-y-2">
                 <Label>Filtrar por TAG (opcional)</Label>
-                <Input 
-                  placeholder="Ex: COMP-001"
-                  value={filterTag} 
-                  onChange={(e) => setFilterTag(e.target.value.toUpperCase())}
-                />
+                <Input placeholder="Ex: COMP-001" value={filterTag} onChange={(e) => setFilterTag(e.target.value.toUpperCase())} />
               </div>
-
               <div className="pt-4 space-y-2">
                 <Button 
                   className="w-full gap-2" 
                   onClick={() => handleGenerateReport('pdf')}
                   disabled={!selectedReport || isGenerating}
                 >
-                  <FileText className="h-4 w-4" />
+                  {isGenerating ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileText className="h-4 w-4" />}
                   {isGenerating ? 'Gerando...' : 'Gerar PDF'}
                 </Button>
                 <Button 
@@ -254,21 +207,12 @@ export default function Relatorios() {
                   <FileSpreadsheet className="h-4 w-4" />
                   Exportar Excel
                 </Button>
-                <Button 
-                  variant="ghost" 
-                  className="w-full gap-2"
-                  disabled={!selectedReport}
-                >
-                  <Printer className="h-4 w-4" />
-                  Visualizar
-                </Button>
               </div>
             </CardContent>
           </Card>
         </div>
       </div>
 
-      {/* Quick Stats */}
       <div className="mt-8">
         <h2 className="text-lg font-semibold mb-4">Estatísticas Rápidas</h2>
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -287,7 +231,7 @@ export default function Relatorios() {
                 <Clock className="h-5 w-5 text-warning" />
                 <span className="text-sm text-muted-foreground">MTTR</span>
               </div>
-              <p className="text-2xl font-bold">{indicadores?.mttr.toFixed(1) || 0}h</p>
+              <p className="text-2xl font-bold">{indicadores?.mttr?.toFixed(1) || 0}h</p>
             </CardContent>
           </Card>
           <Card>
@@ -296,7 +240,7 @@ export default function Relatorios() {
                 <TrendingUp className="h-5 w-5 text-success" />
                 <span className="text-sm text-muted-foreground">Disponibilidade</span>
               </div>
-              <p className="text-2xl font-bold">{indicadores?.disponibilidade.toFixed(1) || 0}%</p>
+              <p className="text-2xl font-bold">{indicadores?.disponibilidade?.toFixed(1) || 0}%</p>
             </CardContent>
           </Card>
           <Card>
@@ -310,20 +254,6 @@ export default function Relatorios() {
           </Card>
         </div>
       </div>
-
-      {/* Recent Reports */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Relatórios Recentes</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="text-center py-8 text-muted-foreground">
-            <Download className="h-12 w-12 mx-auto mb-4 opacity-50" />
-            <p>Nenhum relatório gerado recentemente</p>
-            <p className="text-sm">Selecione um relatório acima para começar</p>
-          </div>
-        </CardContent>
-      </Card>
     </div>
   );
 }

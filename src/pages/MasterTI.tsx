@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { Shield, Users, Database, Activity, Settings, FileText, Lock, ServerCrash } from 'lucide-react';
+import { Shield, Users, Database, Activity, Settings, FileText, Lock, ServerCrash, Building2, Image, ShieldCheck } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { MasterUsersManager } from '@/components/master-ti/MasterUsersManager';
 import { MasterDatabaseManager } from '@/components/master-ti/MasterDatabaseManager';
@@ -8,6 +8,9 @@ import { MasterSystemMonitor } from '@/components/master-ti/MasterSystemMonitor'
 import { MasterGlobalSettings } from '@/components/master-ti/MasterGlobalSettings';
 import { MasterAuditLogs } from '@/components/master-ti/MasterAuditLogs';
 import { MasterSecurity } from '@/components/master-ti/MasterSecurity';
+import { MasterEmpresaData } from '@/components/master-ti/MasterEmpresaData';
+import { MasterLogoManager } from '@/components/master-ti/MasterLogoManager';
+import { MasterPermissionsManager } from '@/components/master-ti/MasterPermissionsManager';
 
 export default function MasterTI() {
   const { isMasterTI } = useAuth();
@@ -32,7 +35,6 @@ export default function MasterTI() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
       <div className="flex items-center gap-4">
         <div className="w-12 h-12 rounded-xl bg-primary flex items-center justify-center">
           <Shield className="h-6 w-6 text-primary-foreground" />
@@ -43,11 +45,19 @@ export default function MasterTI() {
         </div>
       </div>
 
-      {/* Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
         <TabsList className="bg-card border border-border h-auto flex-wrap gap-1 p-1">
           <TabsTrigger value="users" className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
             <Users className="h-4 w-4" /> Usuários
+          </TabsTrigger>
+          <TabsTrigger value="permissions" className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+            <ShieldCheck className="h-4 w-4" /> Permissões
+          </TabsTrigger>
+          <TabsTrigger value="empresa" className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+            <Building2 className="h-4 w-4" /> Empresa
+          </TabsTrigger>
+          <TabsTrigger value="logos" className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+            <Image className="h-4 w-4" /> Logos
           </TabsTrigger>
           <TabsTrigger value="database" className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
             <Database className="h-4 w-4" /> Banco de Dados
@@ -67,6 +77,9 @@ export default function MasterTI() {
         </TabsList>
 
         <TabsContent value="users"><MasterUsersManager /></TabsContent>
+        <TabsContent value="permissions"><MasterPermissionsManager /></TabsContent>
+        <TabsContent value="empresa"><MasterEmpresaData /></TabsContent>
+        <TabsContent value="logos"><MasterLogoManager /></TabsContent>
         <TabsContent value="database"><MasterDatabaseManager /></TabsContent>
         <TabsContent value="monitor"><MasterSystemMonitor /></TabsContent>
         <TabsContent value="settings"><MasterGlobalSettings /></TabsContent>

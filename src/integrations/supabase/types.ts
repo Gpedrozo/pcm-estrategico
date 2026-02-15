@@ -580,6 +580,84 @@ export type Database = {
           },
         ]
       }
+      dados_empresa: {
+        Row: {
+          cep: string | null
+          cidade: string | null
+          cnpj: string | null
+          created_at: string
+          email: string | null
+          endereco: string | null
+          estado: string | null
+          id: string
+          inscricao_estadual: string | null
+          logo_login_url: string | null
+          logo_menu_url: string | null
+          logo_os_url: string | null
+          logo_pdf_url: string | null
+          logo_principal_url: string | null
+          logo_relatorio_url: string | null
+          nome_fantasia: string | null
+          razao_social: string
+          responsavel_cargo: string | null
+          responsavel_nome: string | null
+          site: string | null
+          telefone: string | null
+          updated_at: string
+          whatsapp: string | null
+        }
+        Insert: {
+          cep?: string | null
+          cidade?: string | null
+          cnpj?: string | null
+          created_at?: string
+          email?: string | null
+          endereco?: string | null
+          estado?: string | null
+          id?: string
+          inscricao_estadual?: string | null
+          logo_login_url?: string | null
+          logo_menu_url?: string | null
+          logo_os_url?: string | null
+          logo_pdf_url?: string | null
+          logo_principal_url?: string | null
+          logo_relatorio_url?: string | null
+          nome_fantasia?: string | null
+          razao_social?: string
+          responsavel_cargo?: string | null
+          responsavel_nome?: string | null
+          site?: string | null
+          telefone?: string | null
+          updated_at?: string
+          whatsapp?: string | null
+        }
+        Update: {
+          cep?: string | null
+          cidade?: string | null
+          cnpj?: string | null
+          created_at?: string
+          email?: string | null
+          endereco?: string | null
+          estado?: string | null
+          id?: string
+          inscricao_estadual?: string | null
+          logo_login_url?: string | null
+          logo_menu_url?: string | null
+          logo_os_url?: string | null
+          logo_pdf_url?: string | null
+          logo_principal_url?: string | null
+          logo_relatorio_url?: string | null
+          nome_fantasia?: string | null
+          razao_social?: string
+          responsavel_cargo?: string | null
+          responsavel_nome?: string | null
+          site?: string | null
+          telefone?: string | null
+          updated_at?: string
+          whatsapp?: string | null
+        }
+        Relationships: []
+      }
       documentos_tecnicos: {
         Row: {
           aprovador_id: string | null
@@ -1481,6 +1559,78 @@ export type Database = {
             referencedColumns: ["tag"]
           },
         ]
+      }
+      permissoes_granulares: {
+        Row: {
+          acessar_historico: boolean | null
+          acessar_indicadores: boolean | null
+          alterar_status: boolean | null
+          created_at: string
+          criar: boolean | null
+          editar: boolean | null
+          excluir: boolean | null
+          exportar: boolean | null
+          id: string
+          importar: boolean | null
+          imprimir: boolean | null
+          modulo: string
+          updated_at: string
+          user_id: string
+          ver_criticidade: boolean | null
+          ver_custos: boolean | null
+          ver_dados_financeiros: boolean | null
+          ver_obs_internas: boolean | null
+          ver_status: boolean | null
+          ver_valores: boolean | null
+          visualizar: boolean | null
+        }
+        Insert: {
+          acessar_historico?: boolean | null
+          acessar_indicadores?: boolean | null
+          alterar_status?: boolean | null
+          created_at?: string
+          criar?: boolean | null
+          editar?: boolean | null
+          excluir?: boolean | null
+          exportar?: boolean | null
+          id?: string
+          importar?: boolean | null
+          imprimir?: boolean | null
+          modulo: string
+          updated_at?: string
+          user_id: string
+          ver_criticidade?: boolean | null
+          ver_custos?: boolean | null
+          ver_dados_financeiros?: boolean | null
+          ver_obs_internas?: boolean | null
+          ver_status?: boolean | null
+          ver_valores?: boolean | null
+          visualizar?: boolean | null
+        }
+        Update: {
+          acessar_historico?: boolean | null
+          acessar_indicadores?: boolean | null
+          alterar_status?: boolean | null
+          created_at?: string
+          criar?: boolean | null
+          editar?: boolean | null
+          excluir?: boolean | null
+          exportar?: boolean | null
+          id?: string
+          importar?: boolean | null
+          imprimir?: boolean | null
+          modulo?: string
+          updated_at?: string
+          user_id?: string
+          ver_criticidade?: boolean | null
+          ver_custos?: boolean | null
+          ver_dados_financeiros?: boolean | null
+          ver_obs_internas?: boolean | null
+          ver_status?: boolean | null
+          ver_valores?: boolean | null
+          visualizar?: boolean | null
+        }
+        Relationships: []
       }
       permissoes_trabalho: {
         Row: {

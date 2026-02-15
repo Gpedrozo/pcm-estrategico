@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -36,7 +36,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { 
   Plus, Search, Tag, Edit, Trash2, Loader2, AlertTriangle, CheckCircle, 
-  AlertCircle, Building2, Eye, Settings2, FileText, Wrench 
+  AlertCircle, Building2, Eye, Settings2, FileText, Wrench, Download, Upload
 } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 
@@ -50,6 +50,8 @@ import {
 import { useSistemas } from '@/hooks/useHierarquia';
 import { useAuth } from '@/contexts/AuthContext';
 import { ComponentesPanel } from '@/components/equipamentos/ComponentesPanel';
+import { generateEquipmentTemplate, parseEquipmentFile } from '@/lib/reportGenerator';
+import { useToast } from '@/hooks/use-toast';
 
 interface FormData {
   tag: string;
@@ -77,6 +79,7 @@ const initialFormData: FormData = {
 
 export default function Equipamentos() {
   const { isAdmin } = useAuth();
+  const { toast } = useToast();
   const [search, setSearch] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -84,6 +87,8 @@ export default function Equipamentos() {
   const [deletingEquip, setDeletingEquip] = useState<EquipamentoRow | null>(null);
   const [selectedEquip, setSelectedEquip] = useState<EquipamentoRow | null>(null);
   const [formData, setFormData] = useState<FormData>(initialFormData);
+  const [importing, setImporting] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const { data: equipamentos, isLoading, error } = useEquipamentos();
   const { data: sistemas } = useSistemas();
@@ -244,17 +249,56 @@ export default function Equipamentos() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-wrap gap-4">
         <div>
           <h1 className="text-2xl font-bold text-foreground">Equipamentos</h1>
           <p className="text-muted-foreground">
             Cadastro de TAGs, equipamentos e componentes • {equipamentos?.length || 0} registros
           </p>
         </div>
-        <Button onClick={handleNew} className="gap-2">
-          <Plus className="h-4 w-4" />
-          Novo Equipamento
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" onClick={() => generateEquipmentTemplate()} className="gap-2">
+            <Download className="h-4 w-4" />
+            Baixar Modelo
+          </Button>
+          <input ref={fileInputRef} type="file" accept=".xlsx,.xls" className="hidden" onChange={async (e) => {
+            const file = e.target.files?.[0];
+            if (!file) return;
+            setImporting(true);
+            try {
+              const { valid, errors } = await parseEquipmentFile(file);
+              // Check for duplicate TAGs
+              const existingTags = new Set(equipamentos?.map(eq => eq.tag) || []);
+              const toInsert = valid.filter(v => {
+                if (existingTags.has(v.tag)) {
+                  errors.push({ row: 0, reason: `TAG ${v.tag} já existe` });
+                  return false;
+                }
+                return true;
+              });
+              for (const eq of toInsert) {
+                await createMutation.mutateAsync(eq);
+              }
+              toast({
+                title: 'Importação Concluída',
+                description: `${toInsert.length} importados, ${errors.length} rejeitados.${errors.length > 0 ? '\n' + errors.map(e => `Linha ${e.row}: ${e.reason}`).join('; ') : ''}`,
+              });
+            } catch (err: any) {
+              toast({ title: 'Erro na importação', description: err.message, variant: 'destructive' });
+            } finally {
+              setImporting(false);
+              if (fileInputRef.current) fileInputRef.current.value = '';
+            }
+          }} />
+          <Button variant="outline" onClick={() => fileInputRef.current?.click()} disabled={importing} className="gap-2">
+            {importing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+            Importar Planilha
+          </Button>
+          <Button onClick={handleNew} className="gap-2">
+            <Plus className="h-4 w-4" />
+            Novo Equipamento
+          </Button>
+        </div>
       </div>
 
       {/* Search */}
