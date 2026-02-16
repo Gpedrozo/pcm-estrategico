@@ -1,1 +1,4 @@
 project_id = "cplowhoklcegnjvwmrsk"
+
+[functions.analisar-causa-raiz]
+verify_jwt = false

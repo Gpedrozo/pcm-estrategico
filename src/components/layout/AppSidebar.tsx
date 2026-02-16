@@ -66,6 +66,7 @@ const planejamentoMenuItems = [
 const analisesMenuItems = [
   { title: 'FMEA/RCM', url: '/fmea', icon: FileSearch },
   { title: 'Causa Raiz', url: '/rca', icon: TrendingUp },
+  { title: 'Inteligência IA', url: '/inteligencia-causa-raiz', icon: Activity },
   { title: 'Melhorias', url: '/melhorias', icon: Lightbulb },
 ];
 

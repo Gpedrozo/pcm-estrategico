@@ -67,6 +67,59 @@ export type Database = {
           },
         ]
       }
+      ai_root_cause_analysis: {
+        Row: {
+          confidence_score: number | null
+          created_at: string
+          criticality: string | null
+          equipamento_id: string | null
+          generated_at: string
+          id: string
+          main_hypothesis: string | null
+          possible_causes: Json | null
+          preventive_actions: Json | null
+          raw_response: Json | null
+          summary: string | null
+          tag: string
+        }
+        Insert: {
+          confidence_score?: number | null
+          created_at?: string
+          criticality?: string | null
+          equipamento_id?: string | null
+          generated_at?: string
+          id?: string
+          main_hypothesis?: string | null
+          possible_causes?: Json | null
+          preventive_actions?: Json | null
+          raw_response?: Json | null
+          summary?: string | null
+          tag: string
+        }
+        Update: {
+          confidence_score?: number | null
+          created_at?: string
+          criticality?: string | null
+          equipamento_id?: string | null
+          generated_at?: string
+          id?: string
+          main_hypothesis?: string | null
+          possible_causes?: Json | null
+          preventive_actions?: Json | null
+          raw_response?: Json | null
+          summary?: string | null
+          tag?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_root_cause_analysis_equipamento_id_fkey"
+            columns: ["equipamento_id"]
+            isOneToOne: false
+            referencedRelation: "equipamentos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       analise_causa_raiz: {
         Row: {
           arvore_falhas: Json | null
