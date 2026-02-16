@@ -46,7 +46,7 @@ export default defineConfig(({ mode }) => ({
       },
 
       workbox: {
-        maximumFileSizeToCacheInBytes: 5 * 1024 * 1024, // 🔥 Corrige erro da Vercel (5MB)
+        maximumFileSizeToCacheInBytes: 5 * 1024 * 1024,
 
         globPatterns: ["**/*.{js,css,html,ico,png,svg,woff2}"],
 
@@ -73,23 +73,8 @@ export default defineConfig(({ mode }) => ({
     },
   },
 
-  // 🔥 Otimização real de bundle
   build: {
     sourcemap: false,
-    chunkSizeWarningLimit: 1500, // só alerta acima disso
-
-    rollupOptions: {
-      output: {
-        manualChunks(id) {
-          if (id.includes("node_modules")) {
-            if (id.includes("react")) return "react-vendor";
-            if (id.includes("redux")) return "redux-vendor";
-            if (id.includes("supabase")) return "supabase";
-            if (id.includes("chart")) return "charts";
-            return "vendor";
-          }
-        },
-      },
-    },
+    chunkSizeWarningLimit: 1500,
   },
 }));
