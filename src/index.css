@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -5,8 +7,6 @@
 /* PCM BÁSICO - Sistema de Gestão de Manutenção Industrial
    Design System: Visual industrial, funcional, cores neutras
 */
-
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
 
 @layer base {
   :root {
@@ -108,9 +108,7 @@
     --sidebar-border: 215 25% 18%;
     --sidebar-ring: 199 89% 48%;
   }
-}
 
-@layer base {
   * {
     @apply border-border;
   }
@@ -132,12 +130,10 @@
 }
 
 @layer components {
-  /* Industrial card style */
   .card-industrial {
     @apply bg-card border border-border shadow-sm rounded-md;
   }
 
-  /* Status badges */
   .status-aberta {
     @apply bg-warning/15 text-warning border border-warning/30;
   }
@@ -150,7 +146,6 @@
     @apply bg-success/15 text-success border border-success/30;
   }
 
-  /* Industrial button variants */
   .btn-industrial {
     @apply bg-primary text-primary-foreground font-medium px-4 py-2 rounded-md 
            hover:bg-primary/90 transition-colors shadow-sm;
@@ -161,12 +156,10 @@
            hover:bg-secondary/80 transition-colors border border-border;
   }
 
-  /* Indicator cards */
   .indicator-card {
     @apply bg-card border border-border rounded-md p-4 shadow-sm;
   }
 
-  /* Table industrial style */
   .table-industrial {
     @apply w-full border-collapse;
   }
@@ -186,7 +179,6 @@
 }
 
 @layer utilities {
-  /* Industrial shadows */
   .shadow-industrial {
     box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
   }
