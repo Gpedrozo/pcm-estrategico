@@ -11,8 +11,9 @@ const TABLES = [
   'acoes_corretivas', 'inspecoes', 'anomalias_inspecao', 'medicoes_preditivas',
   'melhorias', 'incidentes_ssma', 'permissoes_trabalho', 'fornecedores', 'contratos',
   'avaliacoes_fornecedores', 'documentos_tecnicos', 'solicitacoes_manutencao',
-  'auditoria', 'profiles', 'user_roles', 'plantas', 'areas', 'sistemas',
+  'auditoria', 'profiles', 'user_roles', 'plantas', 'areas',
   'componentes_equipamento', 'configuracoes_sistema', 'security_logs', 'rate_limits',
+  'dados_empresa', 'permissoes_granulares', 'ai_root_cause_analysis',
 ] as const;
 
 type TableName = typeof TABLES[number];

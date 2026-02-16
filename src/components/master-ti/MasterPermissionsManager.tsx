@@ -55,8 +55,13 @@ export function MasterPermissionsManager() {
     if (existingPerms) {
       const map: Record<string, Record<string, boolean>> = {};
       existingPerms.forEach(p => {
-        const { id, user_id, modulo, ...boolFields } = p;
-        map[modulo] = boolFields;
+        const fields: Record<string, boolean> = {};
+        // Only extract boolean permission fields
+        const boolKeys = [...PERM_FIELDS_MODULO, ...PERM_FIELDS_SENSIVEIS].map(f => f.key);
+        boolKeys.forEach(key => {
+          fields[key] = !!(p as any)[key];
+        });
+        map[p.modulo] = fields;
       });
       // Ensure all modules exist
       MODULOS.forEach(m => {

@@ -22,6 +22,12 @@ import { useAuth } from '@/contexts/AuthContext';
 
 type UserRole = 'ADMIN' | 'USUARIO' | 'MASTER_TI';
 
+const ROLE_LABELS: Record<UserRole, string> = {
+  MASTER_TI: 'Master TI',
+  ADMIN: 'Administrador',
+  USUARIO: 'Usuário',
+};
+
 export default function Usuarios() {
   const { isAdmin } = useAuth();
   const [search, setSearch] = useState('');
@@ -176,9 +182,11 @@ export default function Usuarios() {
                   <td>
                     <div className="flex items-center gap-3">
                       <div className={`p-2 rounded-lg ${
-                        user.role === 'ADMIN' ? 'bg-primary/10' : 'bg-muted'
+                        user.role === 'MASTER_TI' ? 'bg-destructive/10' : user.role === 'ADMIN' ? 'bg-primary/10' : 'bg-muted'
                       }`}>
-                        {user.role === 'ADMIN' ? (
+                        {user.role === 'MASTER_TI' ? (
+                          <Shield className="h-4 w-4 text-destructive" />
+                        ) : user.role === 'ADMIN' ? (
                           <Shield className="h-4 w-4 text-primary" />
                         ) : (
                           <UserIcon className="h-4 w-4 text-muted-foreground" />
@@ -189,11 +197,13 @@ export default function Usuarios() {
                   </td>
                   <td>
                     <span className={`inline-flex items-center px-2.5 py-0.5 rounded-md text-xs font-medium ${
-                      user.role === 'ADMIN'
+                      user.role === 'MASTER_TI'
+                        ? 'bg-destructive/10 text-destructive border border-destructive/20'
+                        : user.role === 'ADMIN'
                         ? 'bg-primary/10 text-primary border border-primary/20'
                         : 'bg-secondary text-secondary-foreground'
                     }`}>
-                      {user.role === 'ADMIN' ? 'Administrador' : 'Usuário'}
+                      {ROLE_LABELS[user.role] || user.role}
                     </span>
                   </td>
                   <td className="text-muted-foreground">{formatDate(user.created_at)}</td>
@@ -240,6 +250,7 @@ export default function Usuarios() {
                 <SelectContent>
                   <SelectItem value="USUARIO">Usuário</SelectItem>
                   <SelectItem value="ADMIN">Administrador</SelectItem>
+                  <SelectItem value="MASTER_TI">Master TI</SelectItem>
                 </SelectContent>
               </Select>
             </div>
