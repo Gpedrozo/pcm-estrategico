@@ -105,6 +105,39 @@ export function useCreateSolicitacao() {
   });
 }
 
+export function useConvertSolicitacaoToOS() {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: async ({ solicitacaoId, osId }: { solicitacaoId: string; osId: string }) => {
+      const { data, error } = await supabase
+        .from('solicitacoes_manutencao')
+        .update({ status: 'CONVERTIDA' as any, os_id: osId })
+        .eq('id', solicitacaoId)
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data as SolicitacaoRow;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['solicitacoes'] });
+      toast({
+        title: 'Solicitacao convertida',
+        description: 'A solicitacao foi convertida em Ordem de Servico.',
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: 'Erro ao converter',
+        description: error.message,
+        variant: 'destructive',
+      });
+    },
+  });
+}
+
 export function useUpdateSolicitacao() {
   const queryClient = useQueryClient();
   const { toast } = useToast();

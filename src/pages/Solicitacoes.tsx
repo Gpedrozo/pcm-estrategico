@@ -7,10 +7,12 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Plus, Search, MessageSquare, Clock, AlertTriangle } from 'lucide-react';
-import { useSolicitacoes, useCreateSolicitacao, useUpdateSolicitacao, type SolicitacaoRow } from '@/hooks/useSolicitacoes';
+import { Plus, Search, MessageSquare, Clock, AlertTriangle, ArrowRightLeft } from 'lucide-react';
+import { useSolicitacoes, useCreateSolicitacao, useUpdateSolicitacao, useConvertSolicitacaoToOS, type SolicitacaoRow } from '@/hooks/useSolicitacoes';
+import { useCreateOrdemServico } from '@/hooks/useOrdensServico';
 import { useEquipamentos } from '@/hooks/useEquipamentos';
 import { useAuth } from '@/contexts/AuthContext';
+import { useToast } from '@/hooks/use-toast';
 
 export default function Solicitacoes() {
   const { user } = useAuth();
@@ -25,9 +27,29 @@ export default function Solicitacoes() {
     classificacao: 'PROGRAMAVEL' as 'EMERGENCIAL' | 'URGENTE' | 'PROGRAMAVEL',
   });
 
+  const { toast } = useToast();
   const { data: solicitacoes, isLoading } = useSolicitacoes();
   const { data: equipamentos } = useEquipamentos();
   const createMutation = useCreateSolicitacao();
+  const createOSMutation = useCreateOrdemServico();
+  const convertMutation = useConvertSolicitacaoToOS();
+
+  const handleConverterEmOS = async (sol: SolicitacaoRow) => {
+    try {
+      const equip = equipamentos?.find(e => e.tag === sol.tag);
+      const os = await createOSMutation.mutateAsync({
+        tag: sol.tag,
+        equipamento: equip?.nome || sol.tag,
+        tipo: sol.classificacao === 'EMERGENCIAL' ? 'CORRETIVA' : 'CORRETIVA',
+        prioridade: sol.impacto === 'ALTO' ? 'URGENTE' : sol.impacto === 'MEDIO' ? 'MEDIA' : 'BAIXA',
+        solicitante: sol.solicitante_nome,
+        problema: sol.descricao_falha,
+      });
+      await convertMutation.mutateAsync({ solicitacaoId: sol.id, osId: os.id });
+    } catch {
+      // errors handled by mutations
+    }
+  };
 
   const filteredSolicitacoes = solicitacoes?.filter(s => {
     if (!search) return true;
@@ -104,11 +126,12 @@ export default function Solicitacoes() {
               <th>Status</th>
               <th>SLA</th>
               <th>Data</th>
+              <th className="text-right">Acoes</th>
             </tr>
           </thead>
           <tbody>
             {filteredSolicitacoes.length === 0 ? (
-              <tr><td colSpan={7} className="text-center py-8 text-muted-foreground">Nenhuma solicitação encontrada</td></tr>
+              <tr><td colSpan={8} className="text-center py-8 text-muted-foreground">Nenhuma solicitacao encontrada</td></tr>
             ) : (
               filteredSolicitacoes.map((sol) => (
                 <tr key={sol.id}>
@@ -117,8 +140,25 @@ export default function Solicitacoes() {
                   <td>{sol.solicitante_nome}</td>
                   <td><Badge className={getClassificacaoBadge(sol.classificacao)}>{sol.classificacao}</Badge></td>
                   <td><Badge className={getStatusBadge(sol.status)}>{sol.status}</Badge></td>
-                  <td className="flex items-center gap-1"><Clock className="h-3 w-3" />{sol.sla_horas}h</td>
+                  <td><span className="flex items-center gap-1"><Clock className="h-3 w-3" />{sol.sla_horas}h</span></td>
                   <td>{new Date(sol.created_at).toLocaleDateString('pt-BR')}</td>
+                  <td className="text-right">
+                    {(sol.status === 'PENDENTE' || sol.status === 'APROVADA') && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="gap-1"
+                        disabled={createOSMutation.isPending || convertMutation.isPending}
+                        onClick={() => handleConverterEmOS(sol)}
+                      >
+                        <ArrowRightLeft className="h-3 w-3" />
+                        Converter em OS
+                      </Button>
+                    )}
+                    {sol.status === 'CONVERTIDA' && (
+                      <Badge className="bg-success/10 text-success">OS Vinculada</Badge>
+                    )}
+                  </td>
                 </tr>
               ))
             )}

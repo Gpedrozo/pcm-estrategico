@@ -45,14 +45,14 @@ export function useUsuarios() {
 
       if (rolesError) throw rolesError;
 
-      // Combine data
+      // Combine data - email not available from profiles table, show ID-based identifier
       const usuarios: UsuarioCompleto[] = (profiles || []).map(profile => {
         const userRole = roles?.find(r => r.user_id === profile.id);
         return {
           id: profile.id,
-          nome: profile.nome,
-          email: '', // Email not available from profiles
-          role: userRole?.role || 'USUARIO',
+          nome: profile.nome || 'Sem nome',
+          email: profile.id?.substring(0, 8) + '...',
+          role: (userRole?.role as AppRole) || 'USUARIO',
           created_at: profile.created_at,
         };
       });

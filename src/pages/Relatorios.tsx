@@ -14,8 +14,17 @@ import { useIndicadores } from '@/hooks/useIndicadores';
 import { useDadosEmpresa } from '@/hooks/useDadosEmpresa';
 import { format, subDays } from 'date-fns';
 import { 
-  generateOSReportPDF, generateIndicadoresPDF, generateExcelReport 
+  generateOSReportPDF, generateIndicadoresPDF, generateExcelReport,
+  generatePreventivaReportPDF, generatePreditivaReportPDF,
+  generateInspecaoReportPDF, generateFMEAReportPDF, generateRCAReportPDF,
+  generateSSMAReportPDF
 } from '@/lib/reportGenerator';
+import { usePlanosPreventivos } from '@/hooks/usePlanosPreventivos';
+import { useMedicoesPreditivas } from '@/hooks/useMedicoesPreditivas';
+import { useInspecoes } from '@/hooks/useInspecoes';
+import { useFMEA } from '@/hooks/useFMEA';
+import { useRCAs } from '@/hooks/useRCA';
+import { useSSMA } from '@/hooks/useSSMA';
 import { useToast } from '@/hooks/use-toast';
 
 type ReportType = 'os_periodo' | 'indicadores' | 'custos' | 'backlog' | 'preventivas' | 'equipamentos' | 'mecanicos' | 'executivo';
@@ -29,14 +38,14 @@ interface ReportConfig {
 }
 
 const reports: ReportConfig[] = [
-  { id: 'os_periodo', title: 'Ordens de Serviço por Período', description: 'Listagem detalhada de todas as OS em um período específico', icon: <FileText className="h-6 w-6" />, category: 'operacional' },
+  { id: 'os_periodo', title: 'Ordens de Servico por Periodo', description: 'Listagem detalhada de todas as OS em um periodo especifico', icon: <FileText className="h-6 w-6" />, category: 'operacional' },
   { id: 'indicadores', title: 'Indicadores KPI', description: 'MTBF, MTTR, Disponibilidade e Backlog', icon: <BarChart3 className="h-6 w-6" />, category: 'gerencial' },
-  { id: 'custos', title: 'Custos de Manutenção', description: 'Análise de custos por categoria e equipamento', icon: <DollarSign className="h-6 w-6" />, category: 'gerencial' },
-  { id: 'backlog', title: 'Relatório de Backlog', description: 'OS pendentes e tempo em fila', icon: <Clock className="h-6 w-6" />, category: 'operacional' },
-  { id: 'preventivas', title: 'Aderência Preventivas', description: 'Execução vs. programação de preventivas', icon: <Calendar className="h-6 w-6" />, category: 'gerencial' },
-  { id: 'equipamentos', title: 'Desempenho por Equipamento', description: 'Histórico e indicadores por TAG', icon: <Wrench className="h-6 w-6" />, category: 'operacional' },
-  { id: 'mecanicos', title: 'Produtividade de Mecânicos', description: 'Horas trabalhadas e OS executadas por técnico', icon: <TrendingUp className="h-6 w-6" />, category: 'gerencial' },
-  { id: 'executivo', title: 'Resumo Executivo', description: 'Visão consolidada para gestão', icon: <PieChart className="h-6 w-6" />, category: 'executivo' },
+  { id: 'preventivas', title: 'Manutencao Preventiva', description: 'Planos preventivos, aderencia e proximas execucoes', icon: <Calendar className="h-6 w-6" />, category: 'operacional' },
+  { id: 'equipamentos', title: 'Manutencao Preditiva', description: 'Medicoes, tendencias e alertas de condicao', icon: <Wrench className="h-6 w-6" />, category: 'operacional' },
+  { id: 'backlog', title: 'Inspecoes', description: 'Inspecoes realizadas, anomalias e checklist', icon: <Clock className="h-6 w-6" />, category: 'operacional' },
+  { id: 'mecanicos', title: 'FMEA', description: 'Analise de modo e efeito de falha com RPN', icon: <TrendingUp className="h-6 w-6" />, category: 'gerencial' },
+  { id: 'custos', title: 'Analise de Causa Raiz', description: 'RCA - 5 Porques e analises de falha', icon: <DollarSign className="h-6 w-6" />, category: 'gerencial' },
+  { id: 'executivo', title: 'SSMA', description: 'Seguranca, Saude e Meio Ambiente - incidentes e taxas', icon: <PieChart className="h-6 w-6" />, category: 'executivo' },
 ];
 
 export default function Relatorios() {
@@ -49,6 +58,12 @@ export default function Relatorios() {
   const { data: ordensServico, isLoading: loadingOS } = useOrdensServico();
   const { data: indicadores, isLoading: loadingIndicadores } = useIndicadores();
   const { data: empresa } = useDadosEmpresa();
+  const { data: planos } = usePlanosPreventivos();
+  const { data: medicoes } = useMedicoesPreditivas();
+  const { data: inspecoes } = useInspecoes();
+  const { data: fmeas } = useFMEA();
+  const { data: rcas } = useRCA();
+  const { data: incidentes } = useSSMA();
   const { toast } = useToast();
 
   const handleGenerateReport = async (fmt: 'pdf' | 'excel') => {
@@ -67,6 +82,24 @@ export default function Relatorios() {
         switch (selectedReport) {
           case 'indicadores':
             generateIndicadoresPDF(indicadores, options);
+            break;
+          case 'preventivas':
+            generatePreventivaReportPDF(planos || [], options);
+            break;
+          case 'equipamentos':
+            generatePreditivaReportPDF(medicoes || [], options);
+            break;
+          case 'backlog':
+            generateInspecaoReportPDF(inspecoes || [], options);
+            break;
+          case 'mecanicos':
+            generateFMEAReportPDF(fmeas || [], options);
+            break;
+          case 'custos':
+            generateRCAReportPDF(rcas || [], options);
+            break;
+          case 'executivo':
+            generateSSMAReportPDF(incidentes || [], options);
             break;
           default:
             generateOSReportPDF(ordensServico || [], options);
