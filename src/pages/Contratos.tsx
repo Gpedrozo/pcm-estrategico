@@ -1,10 +1,13 @@
 import { useState, useMemo } from "react"
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Progress } from "@/components/ui/progress"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { Eye, Pencil, Printer, Plus } from "lucide-react"
 import {
   ResponsiveContainer,
   BarChart,
@@ -19,11 +22,15 @@ import {
   LineChart,
   Line,
 } from "recharts"
-import { differenceInDays } from "date-fns"
+import { Eye, Pencil, Printer, Plus } from "lucide-react"
+import { differenceInDays, format, parseISO } from "date-fns"
+import { ptBR } from "date-fns/locale"
 import { useContratos } from "@/hooks/useContratos"
+import { useFornecedores } from "@/hooks/useFornecedores"
 
-export default function ContratosModulo() {
-  const { data: contratos = [] } = useContratos()
+export default function ContratosDashboardPage() {
+  const { data: contratos = [], isLoading } = useContratos()
+  const { data: fornecedores } = useFornecedores()
 
   const [selectedContrato, setSelectedContrato] = useState<any>(null)
   const [viewOpen, setViewOpen] = useState(false)
@@ -47,15 +54,13 @@ export default function ContratosModulo() {
 
     const slaMedio =
       totalContratos > 0
-        ? contratos.reduce(
-            (acc: number, c: any) => acc + (c.sla_percentual || 0),
-            0
-          ) / totalContratos
+        ? Math.round(
+            contratos.reduce(
+              (acc: number, c: any) => acc + (c.sla_percentual || 0),
+              0
+            ) / totalContratos
+          )
         : 0
-
-    const riscoAlto = contratos.filter(
-      (c: any) => c.risco === "ALTO"
-    ).length
 
     const vencendo30 = contratos.filter((c: any) => {
       if (!c.data_fim) return false
@@ -63,13 +68,17 @@ export default function ContratosModulo() {
       return dias <= 30 && dias >= 0
     }).length
 
+    const riscoAlto = contratos.filter((c: any) => c.risco === "ALTO")
+      .length
+
     return {
       totalContratos,
       valorTotal,
+      valorExecutado,
       saldoTotal,
-      slaMedio: Math.round(slaMedio),
-      riscoAlto,
+      slaMedio,
       vencendo30,
+      riscoAlto,
     }
   }, [contratos])
 
@@ -86,7 +95,7 @@ export default function ContratosModulo() {
     statusMap[c.status] = (statusMap[c.status] || 0) + 1
   })
 
-  const statusData = Object.keys(statusMap).map((key) => ({
+  const statusData = Object.keys(statusMap).map((key: any) => ({
     name: key,
     value: statusMap[key],
   }))
@@ -96,15 +105,27 @@ export default function ContratosModulo() {
     if (riscoMap[c.risco] !== undefined) riscoMap[c.risco]++
   })
 
-  const riscoData = Object.keys(riscoMap).map((key) => ({
+  const riscoData = Object.keys(riscoMap).map((key: any) => ({
     name: key,
     value: riscoMap[key],
   }))
 
   /* ================= RENDER ================= */
 
+  if (isLoading) {
+    return <div>Carregando...</div>
+  }
+
   return (
     <div className="space-y-8">
+
+      {/* HEADER */}
+      <div className="flex justify-between items-center">
+        <h1 className="text-2xl font-bold">Contratos</h1>
+        <Button>
+          <Plus className="mr-2 h-4 w-4" /> Novo Contrato
+        </Button>
+      </div>
 
       {/* KPI GRID */}
       <div className="grid grid-cols-4 gap-6">
@@ -120,7 +141,7 @@ export default function ContratosModulo() {
 
         <Card>
           <CardHeader>
-            <CardTitle>Valor Total da Carteira</CardTitle>
+            <CardTitle>Valor Total</CardTitle>
           </CardHeader>
           <CardContent className="text-2xl font-bold">
             {metrics.valorTotal.toLocaleString("pt-BR", {
@@ -148,9 +169,7 @@ export default function ContratosModulo() {
           </CardHeader>
           <CardContent>
             <Progress value={metrics.slaMedio} />
-            <div className="mt-2 font-bold">
-              {metrics.slaMedio}%
-            </div>
+            <div className="mt-2 font-bold">{metrics.slaMedio}%</div>
           </CardContent>
         </Card>
 
@@ -158,15 +177,15 @@ export default function ContratosModulo() {
 
       {/* ALERTAS */}
       <div className="flex gap-4">
-        {metrics.riscoAlto > 0 && (
-          <Badge variant="destructive">
-            {metrics.riscoAlto} contratos com risco alto
+        {metrics.vencendo30 > 0 && (
+          <Badge variant="warning">
+            {metrics.vencendo30} vencem em 30 dias
           </Badge>
         )}
 
-        {metrics.vencendo30 > 0 && (
-          <Badge variant="secondary">
-            {metrics.vencendo30} vencem em 30 dias
+        {metrics.riscoAlto > 0 && (
+          <Badge variant="destructive">
+            {metrics.riscoAlto} com risco alto
           </Badge>
         )}
       </div>
@@ -185,8 +204,8 @@ export default function ContratosModulo() {
                 <XAxis dataKey="name" hide />
                 <YAxis />
                 <Tooltip />
-                <Bar dataKey="total" />
-                <Bar dataKey="executado" />
+                <Bar dataKey="total" fill="#4f46e5" />
+                <Bar dataKey="executado" fill="#10b981" />
               </BarChart>
             </ResponsiveContainer>
           </CardContent>
@@ -199,8 +218,14 @@ export default function ContratosModulo() {
           <CardContent className="h-80">
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
-                <Pie data={statusData} dataKey="value" nameKey="name" outerRadius={100} label>
-                  {statusData.map((_, index) => (
+                <Pie
+                  data={statusData}
+                  dataKey="value"
+                  nameKey="name"
+                  outerRadius={100}
+                  label
+                >
+                  {statusData.map((entry, index) => (
                     <Cell key={index} />
                   ))}
                 </Pie>
@@ -215,15 +240,15 @@ export default function ContratosModulo() {
       {/* LISTA DE CONTRATOS */}
       <Card>
         <CardHeader>
-          <CardTitle>Lista de Contratos</CardTitle>
+          <CardTitle>Contratos</CardTitle>
         </CardHeader>
         <CardContent>
-
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b">
                 <th>Nº</th>
                 <th>Título</th>
+                <th>Fornecedor</th>
                 <th>Valor</th>
                 <th>Status</th>
                 <th>Ações</th>
@@ -235,7 +260,12 @@ export default function ContratosModulo() {
                   <td>{contrato.numero_contrato}</td>
                   <td>{contrato.titulo}</td>
                   <td>
-                    {contrato.valor_total?.toLocaleString("pt-BR", {
+                    {contrato.fornecedor?.nome_fantasia ||
+                      contrato.fornecedor?.razao_social ||
+                      "-"}
+                  </td>
+                  <td>
+                    {contrato.valor_total.toLocaleString("pt-BR", {
                       style: "currency",
                       currency: "BRL",
                     })}
@@ -271,7 +301,6 @@ export default function ContratosModulo() {
               ))}
             </tbody>
           </table>
-
         </CardContent>
       </Card>
 
@@ -281,20 +310,19 @@ export default function ContratosModulo() {
           <DialogHeader>
             <DialogTitle>Detalhes do Contrato</DialogTitle>
           </DialogHeader>
-
           {selectedContrato && (
             <div className="space-y-2">
               <p><strong>Número:</strong> {selectedContrato.numero_contrato}</p>
               <p><strong>Título:</strong> {selectedContrato.titulo}</p>
-              <p><strong>Valor:</strong> {selectedContrato.valor_total}</p>
+              <p><strong>Fornecedor:</strong> {selectedContrato.fornecedor?.nome_fantasia}</p>
               <p><strong>Status:</strong> {selectedContrato.status}</p>
+              <p><strong>Valor:</strong> {selectedContrato.valor_total}</p>
               <Button onClick={() => window.print()}>
                 <Printer className="h-4 w-4 mr-2" />
                 Imprimir
               </Button>
             </div>
           )}
-
         </DialogContent>
       </Dialog>
 
