@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react"
-import { supabase } from "@/integracoes/supabase/client"
+import { supabase } from "../integracoes/supabase/client"
 
 interface Contrato {
   id: string
