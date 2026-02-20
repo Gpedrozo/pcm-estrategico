@@ -1,6 +1,8 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { contratosService } from '@/services/contratos.service';
+import { contratoSchema, type ContratoFormData } from '@/schemas/contrato.schema';
+import { ZodError } from 'zod';
 
 export interface ContratoRow {
   id: string;
@@ -22,54 +24,27 @@ export interface ContratoRow {
   anexos: unknown | null;
   created_at: string;
   updated_at: string;
+  fornecedor?: { razao_social: string; nome_fantasia: string | null } | null;
 }
 
-export interface ContratoInsert {
-  numero_contrato: string;
-  titulo: string;
-  descricao?: string | null;
-  fornecedor_id?: string | null;
-  tipo?: string | null;
-  status?: string | null;
-  data_inicio: string;
-  data_fim?: string | null;
-  valor_total?: number | null;
-  valor_mensal?: number | null;
-  sla_atendimento_horas?: number | null;
-  sla_resolucao_horas?: number | null;
-  responsavel_nome?: string | null;
-  penalidade_descricao?: string | null;
-}
-
-export interface ContratoUpdate {
-  numero_contrato?: string;
-  titulo?: string;
-  descricao?: string | null;
-  tipo?: string | null;
-  status?: string | null;
-  data_fim?: string | null;
-  valor_total?: number | null;
-  valor_mensal?: number | null;
-  sla_atendimento_horas?: number | null;
-  sla_resolucao_horas?: number | null;
-  responsavel_nome?: string | null;
-  penalidade_descricao?: string | null;
-}
+export type ContratoInsert = ContratoFormData;
 
 export function useContratos() {
   return useQuery({
     queryKey: ['contratos'],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('contratos')
-        .select(`
-          *,
-          fornecedor:fornecedores(razao_social, nome_fantasia)
-        `)
-        .order('created_at', { ascending: false });
+      const data = await contratosService.listar();
+      return data as ContratoRow[];
+    },
+  });
+}
 
-      if (error) throw error;
-      return data as (ContratoRow & { fornecedor: { razao_social: string; nome_fantasia: string | null } | null })[];
+export function useContratosAtivos() {
+  return useQuery({
+    queryKey: ['contratos', 'ativos'],
+    queryFn: async () => {
+      const data = await contratosService.listarAtivos();
+      return data as ContratoRow[];
     },
   });
 }
@@ -79,36 +54,10 @@ export function useContratosByFornecedor(fornecedorId: string | undefined) {
     queryKey: ['contratos', 'fornecedor', fornecedorId],
     queryFn: async () => {
       if (!fornecedorId) return [];
-      
-      const { data, error } = await supabase
-        .from('contratos')
-        .select('*')
-        .eq('fornecedor_id', fornecedorId)
-        .order('created_at', { ascending: false });
-
-      if (error) throw error;
+      const data = await contratosService.listarPorFornecedor(fornecedorId);
       return data as ContratoRow[];
     },
     enabled: !!fornecedorId,
-  });
-}
-
-export function useContratosAtivos() {
-  return useQuery({
-    queryKey: ['contratos', 'ativos'],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('contratos')
-        .select(`
-          *,
-          fornecedor:fornecedores(razao_social, nome_fantasia)
-        `)
-        .eq('status', 'ATIVO')
-        .order('data_fim', { ascending: true });
-
-      if (error) throw error;
-      return data as (ContratoRow & { fornecedor: { razao_social: string; nome_fantasia: string | null } | null })[];
-    },
   });
 }
 
@@ -117,29 +66,23 @@ export function useCreateContrato() {
   const { toast } = useToast();
 
   return useMutation({
-    mutationFn: async (contrato: ContratoInsert) => {
-      const { data, error } = await supabase
-        .from('contratos')
-        .insert(contrato)
-        .select()
-        .single();
-
-      if (error) throw error;
-      return data as ContratoRow;
+    mutationFn: async (contrato: ContratoFormData) => {
+      try {
+        contratoSchema.parse(contrato);
+        return await contratosService.criar(contrato);
+      } catch (error) {
+        if (error instanceof ZodError) {
+          throw new Error(error.errors[0]?.message || 'Erro de validação');
+        }
+        throw error;
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['contratos'] });
-      toast({
-        title: 'Contrato cadastrado',
-        description: 'Contrato cadastrado com sucesso.',
-      });
+      toast({ title: 'Sucesso!', description: 'Contrato cadastrado com sucesso.' });
     },
     onError: (error: Error) => {
-      toast({
-        title: 'Erro ao cadastrar contrato',
-        description: error.message || 'Ocorreu um erro ao cadastrar o contrato.',
-        variant: 'destructive',
-      });
+      toast({ title: 'Erro ao cadastrar', description: error.message, variant: 'destructive' });
     },
   });
 }
@@ -149,30 +92,15 @@ export function useUpdateContrato() {
   const { toast } = useToast();
 
   return useMutation({
-    mutationFn: async ({ id, ...updates }: ContratoUpdate & { id: string }) => {
-      const { data, error } = await supabase
-        .from('contratos')
-        .update(updates)
-        .eq('id', id)
-        .select()
-        .single();
-
-      if (error) throw error;
-      return data as ContratoRow;
+    mutationFn: async ({ id, ...updates }: Partial<ContratoFormData> & { id: string }) => {
+      return await contratosService.atualizar(id, updates);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['contratos'] });
-      toast({
-        title: 'Contrato atualizado',
-        description: 'Contrato atualizado com sucesso.',
-      });
+      toast({ title: 'Sucesso!', description: 'Contrato atualizado com sucesso.' });
     },
     onError: (error: Error) => {
-      toast({
-        title: 'Erro ao atualizar contrato',
-        description: error.message || 'Ocorreu um erro ao atualizar o contrato.',
-        variant: 'destructive',
-      });
+      toast({ title: 'Erro ao atualizar', description: error.message, variant: 'destructive' });
     },
   });
 }
@@ -182,27 +110,13 @@ export function useDeleteContrato() {
   const { toast } = useToast();
 
   return useMutation({
-    mutationFn: async (id: string) => {
-      const { error } = await supabase
-        .from('contratos')
-        .delete()
-        .eq('id', id);
-
-      if (error) throw error;
-    },
+    mutationFn: (id: string) => contratosService.excluir(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['contratos'] });
-      toast({
-        title: 'Contrato excluído',
-        description: 'Contrato excluído com sucesso.',
-      });
+      toast({ title: 'Sucesso!', description: 'Contrato removido com sucesso.' });
     },
     onError: (error: Error) => {
-      toast({
-        title: 'Erro ao excluir contrato',
-        description: error.message || 'Ocorreu um erro ao excluir o contrato.',
-        variant: 'destructive',
-      });
+      toast({ title: 'Erro ao excluir', description: error.message, variant: 'destructive' });
     },
   });
 }
