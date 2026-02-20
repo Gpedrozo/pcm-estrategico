@@ -1,247 +1,221 @@
-import { useState, useMemo } from "react"
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card"
+"use client"
+
+import { useEffect, useMemo, useState } from "react"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Badge } from "@/components/ui/badge"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import {
-  ResponsiveContainer,
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  Tooltip,
-  PieChart,
-  Pie,
-  Cell,
-  CartesianGrid,
-  LineChart,
-  Line,
-} from "recharts"
-import { Eye, Pencil, Printer, Plus } from "lucide-react"
-import { differenceInDays, format, parseISO } from "date-fns"
-import { ptBR } from "date-fns/locale"
-import { useContratos } from "@/hooks/useContratos"
-import { useFornecedores } from "@/hooks/useFornecedores"
+import { Progress } from "@/components/ui/progress"
+import { Eye, Pencil, Printer, FileDown } from "lucide-react"
+import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid } from "recharts"
+import * as XLSX from "xlsx"
+import jsPDF from "jspdf"
 
-export default function ContratosDashboardPage() {
-  const { data: contratos = [], isLoading } = useContratos()
-  const { data: fornecedores } = useFornecedores()
+interface Contrato {
+  id: string
+  numero_contrato: string
+  titulo: string
+  status: string
+  fornecedor?: { nome_fantasia?: string }
+  valor_total: number
+  valor_executado?: number
+  data_inicio?: string
+  data_fim?: string
+  risco?: string
+  sla_percentual?: number
+  aditivos?: any[]
+}
 
-  const [selectedContrato, setSelectedContrato] = useState<any>(null)
-  const [viewOpen, setViewOpen] = useState(false)
+export default function ContratosPage() {
 
-  /* ================= KPI CALCULOS ================= */
+  const [contratos, setContratos] = useState<Contrato[]>([])
+  const [filtered, setFiltered] = useState<Contrato[]>([])
+  const [statusFilter, setStatusFilter] = useState("")
+  const [fornecedorFilter, setFornecedorFilter] = useState("")
+  const [search, setSearch] = useState("")
+  const [selected, setSelected] = useState<Contrato | null>(null)
+  const [open, setOpen] = useState(false)
 
-  const metrics = useMemo(() => {
-    const totalContratos = contratos.length
+  /* ================= FETCH ================= */
 
-    const valorTotal = contratos.reduce(
-      (acc: number, c: any) => acc + (c.valor_total || 0),
-      0
+  useEffect(() => {
+    fetch("/api/contratos")
+      .then(res => res.json())
+      .then(data => {
+        setContratos(data || [])
+        setFiltered(data || [])
+      })
+      .catch(() => setContratos([]))
+  }, [])
+
+  /* ================= FILTRO ================= */
+
+  useEffect(() => {
+    let result = contratos
+
+    if (statusFilter)
+      result = result.filter(c => c.status === statusFilter)
+
+    if (fornecedorFilter)
+      result = result.filter(c =>
+        c.fornecedor?.nome_fantasia === fornecedorFilter
+      )
+
+    if (search)
+      result = result.filter(c =>
+        c.titulo?.toLowerCase().includes(search.toLowerCase())
+      )
+
+    setFiltered(result)
+  }, [statusFilter, fornecedorFilter, search, contratos])
+
+  /* ================= KPI ================= */
+
+  const totalValor = useMemo(
+    () => filtered.reduce((acc, c) => acc + (c.valor_total || 0), 0),
+    [filtered]
+  )
+
+  const saldo = useMemo(
+    () =>
+      filtered.reduce(
+        (acc, c) => acc + (c.valor_total - (c.valor_executado || 0)),
+        0
+      ),
+    [filtered]
+  )
+
+  const slaMedio = useMemo(() => {
+    if (!filtered.length) return 0
+    return Math.round(
+      filtered.reduce((acc, c) => acc + (c.sla_percentual || 0), 0) /
+        filtered.length
     )
+  }, [filtered])
 
-    const valorExecutado = contratos.reduce(
-      (acc: number, c: any) => acc + (c.valor_executado || 0),
-      0
-    )
+  /* ================= EXPORT EXCEL ================= */
 
-    const saldoTotal = valorTotal - valorExecutado
+  function exportExcel() {
+    const worksheet = XLSX.utils.json_to_sheet(filtered)
+    const workbook = XLSX.utils.book_new()
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Contratos")
+    XLSX.writeFile(workbook, "contratos.xlsx")
+  }
 
-    const slaMedio =
-      totalContratos > 0
-        ? Math.round(
-            contratos.reduce(
-              (acc: number, c: any) => acc + (c.sla_percentual || 0),
-              0
-            ) / totalContratos
-          )
-        : 0
+  /* ================= EXPORT PDF ================= */
 
-    const vencendo30 = contratos.filter((c: any) => {
-      if (!c.data_fim) return false
-      const dias = differenceInDays(new Date(c.data_fim), new Date())
-      return dias <= 30 && dias >= 0
-    }).length
+  function exportPDF() {
+    const doc = new jsPDF()
+    doc.setFontSize(14)
+    doc.text("Relatório de Contratos", 14, 20)
 
-    const riscoAlto = contratos.filter((c: any) => c.risco === "ALTO")
-      .length
+    let y = 30
+    filtered.forEach(c => {
+      doc.text(`${c.numero_contrato} - ${c.titulo}`, 14, y)
+      y += 8
+    })
 
-    return {
-      totalContratos,
-      valorTotal,
-      valorExecutado,
-      saldoTotal,
-      slaMedio,
-      vencendo30,
-      riscoAlto,
-    }
-  }, [contratos])
+    doc.save("contratos.pdf")
+  }
 
-  /* ================= GRAFICOS ================= */
+  /* ================= WEBHOOK ALERT ================= */
 
-  const financeiroData = contratos.map((c: any) => ({
-    name: c.numero_contrato,
-    total: c.valor_total || 0,
-    executado: c.valor_executado || 0,
-  }))
-
-  const statusMap: any = {}
-  contratos.forEach((c: any) => {
-    statusMap[c.status] = (statusMap[c.status] || 0) + 1
-  })
-
-  const statusData = Object.keys(statusMap).map((key: any) => ({
-    name: key,
-    value: statusMap[key],
-  }))
-
-  const riscoMap: any = { BAIXO: 0, MEDIO: 0, ALTO: 0 }
-  contratos.forEach((c: any) => {
-    if (riscoMap[c.risco] !== undefined) riscoMap[c.risco]++
-  })
-
-  const riscoData = Object.keys(riscoMap).map((key: any) => ({
-    name: key,
-    value: riscoMap[key],
-  }))
+  async function sendWebhook(contrato: Contrato) {
+    await fetch("/api/webhook-alerta", {
+      method: "POST",
+      body: JSON.stringify(contrato),
+    })
+    alert("Webhook enviado!")
+  }
 
   /* ================= RENDER ================= */
 
-  if (isLoading) {
-    return <div>Carregando...</div>
-  }
-
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
 
-      {/* HEADER */}
-      <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-bold">Contratos</h1>
-        <Button>
-          <Plus className="mr-2 h-4 w-4" /> Novo Contrato
-        </Button>
+      <h1 className="text-2xl font-bold">Gestão de Contratos</h1>
+
+      {/* FILTROS */}
+      <Card>
+        <CardContent className="flex gap-4 p-4">
+          <Input
+            placeholder="Buscar contrato..."
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+          />
+
+          <Select onValueChange={setStatusFilter}>
+            <SelectTrigger className="w-40">
+              <SelectValue placeholder="Status" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="">Todos</SelectItem>
+              <SelectItem value="ATIVO">Ativo</SelectItem>
+              <SelectItem value="ENCERRADO">Encerrado</SelectItem>
+            </SelectContent>
+          </Select>
+
+          <Button onClick={exportExcel}>
+            <FileDown className="mr-2 h-4 w-4" /> Excel
+          </Button>
+
+          <Button onClick={exportPDF}>
+            <FileDown className="mr-2 h-4 w-4" /> PDF
+          </Button>
+        </CardContent>
+      </Card>
+
+      {/* KPI */}
+      <div className="grid grid-cols-3 gap-4">
+        <Card>
+          <CardContent className="p-6">
+            <div className="text-muted-foreground">Valor Total</div>
+            <div className="text-2xl font-bold">
+              R$ {totalValor.toLocaleString()}
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-6">
+            <div className="text-muted-foreground">Saldo</div>
+            <div className="text-2xl font-bold">
+              R$ {saldo.toLocaleString()}
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-6">
+            <div className="text-muted-foreground">SLA Médio</div>
+            <Progress value={slaMedio} />
+            <div className="font-bold mt-2">{slaMedio}%</div>
+          </CardContent>
+        </Card>
       </div>
 
-      {/* KPI GRID */}
-      <div className="grid grid-cols-4 gap-6">
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Total de Contratos</CardTitle>
-          </CardHeader>
-          <CardContent className="text-3xl font-bold">
-            {metrics.totalContratos}
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Valor Total</CardTitle>
-          </CardHeader>
-          <CardContent className="text-2xl font-bold">
-            {metrics.valorTotal.toLocaleString("pt-BR", {
-              style: "currency",
-              currency: "BRL",
-            })}
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Saldo Contratual</CardTitle>
-          </CardHeader>
-          <CardContent className="text-2xl font-bold">
-            {metrics.saldoTotal.toLocaleString("pt-BR", {
-              style: "currency",
-              currency: "BRL",
-            })}
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>SLA Médio</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <Progress value={metrics.slaMedio} />
-            <div className="mt-2 font-bold">{metrics.slaMedio}%</div>
-          </CardContent>
-        </Card>
-
-      </div>
-
-      {/* ALERTAS */}
-      <div className="flex gap-4">
-        {metrics.vencendo30 > 0 && (
-          <Badge variant="warning">
-            {metrics.vencendo30} vencem em 30 dias
-          </Badge>
-        )}
-
-        {metrics.riscoAlto > 0 && (
-          <Badge variant="destructive">
-            {metrics.riscoAlto} com risco alto
-          </Badge>
-        )}
-      </div>
-
-      {/* GRAFICOS */}
-      <div className="grid grid-cols-2 gap-8">
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Financeiro por Contrato</CardTitle>
-          </CardHeader>
-          <CardContent className="h-80">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={financeiroData}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="name" hide />
-                <YAxis />
-                <Tooltip />
-                <Bar dataKey="total" fill="#4f46e5" />
-                <Bar dataKey="executado" fill="#10b981" />
-              </BarChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Status</CardTitle>
-          </CardHeader>
-          <CardContent className="h-80">
-            <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <Pie
-                  data={statusData}
-                  dataKey="value"
-                  nameKey="name"
-                  outerRadius={100}
-                  label
-                >
-                  {statusData.map((entry, index) => (
-                    <Cell key={index} />
-                  ))}
-                </Pie>
-                <Tooltip />
-              </PieChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
-
-      </div>
-
-      {/* LISTA DE CONTRATOS */}
+      {/* GRAFICO */}
       <Card>
         <CardHeader>
-          <CardTitle>Contratos</CardTitle>
+          <CardTitle>Financeiro</CardTitle>
         </CardHeader>
+        <CardContent className="h-80">
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={filtered}>
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis dataKey="numero_contrato" />
+              <YAxis />
+              <Tooltip />
+              <Bar dataKey="valor_total" />
+            </BarChart>
+          </ResponsiveContainer>
+        </CardContent>
+      </Card>
+
+      {/* TABELA */}
+      <Card>
         <CardContent>
           <table className="w-full text-sm">
             <thead>
@@ -250,50 +224,28 @@ export default function ContratosDashboardPage() {
                 <th>Título</th>
                 <th>Fornecedor</th>
                 <th>Valor</th>
-                <th>Status</th>
                 <th>Ações</th>
               </tr>
             </thead>
             <tbody>
-              {contratos.map((contrato: any) => (
-                <tr key={contrato.id} className="border-b">
-                  <td>{contrato.numero_contrato}</td>
-                  <td>{contrato.titulo}</td>
-                  <td>
-                    {contrato.fornecedor?.nome_fantasia ||
-                      contrato.fornecedor?.razao_social ||
-                      "-"}
-                  </td>
-                  <td>
-                    {contrato.valor_total.toLocaleString("pt-BR", {
-                      style: "currency",
-                      currency: "BRL",
-                    })}
-                  </td>
-                  <td>{contrato.status}</td>
+              {filtered.map(c => (
+                <tr key={c.id} className="border-b">
+                  <td>{c.numero_contrato}</td>
+                  <td>{c.titulo}</td>
+                  <td>{c.fornecedor?.nome_fantasia || "-"}</td>
+                  <td>R$ {c.valor_total?.toLocaleString()}</td>
                   <td className="flex gap-2 py-2">
 
-                    <Button
-                      size="icon"
-                      variant="outline"
-                      onClick={() => {
-                        setSelectedContrato(contrato)
-                        setViewOpen(true)
-                      }}
-                    >
+                    <Button size="icon" variant="outline" onClick={() => { setSelected(c); setOpen(true) }}>
                       <Eye className="h-4 w-4" />
                     </Button>
 
-                    <Button size="icon" variant="outline">
-                      <Pencil className="h-4 w-4" />
+                    <Button size="icon" variant="outline" onClick={() => window.print()}>
+                      <Printer className="h-4 w-4" />
                     </Button>
 
-                    <Button
-                      size="icon"
-                      variant="outline"
-                      onClick={() => window.print()}
-                    >
-                      <Printer className="h-4 w-4" />
+                    <Button size="icon" variant="outline" onClick={() => sendWebhook(c)}>
+                      ⚠
                     </Button>
 
                   </td>
@@ -304,23 +256,30 @@ export default function ContratosDashboardPage() {
         </CardContent>
       </Card>
 
-      {/* MODAL VISUALIZAR */}
-      <Dialog open={viewOpen} onOpenChange={setViewOpen}>
+      {/* MODAL DETALHES + ADITIVOS */}
+      <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Detalhes do Contrato</DialogTitle>
           </DialogHeader>
-          {selectedContrato && (
+
+          {selected && (
             <div className="space-y-2">
-              <p><strong>Número:</strong> {selectedContrato.numero_contrato}</p>
-              <p><strong>Título:</strong> {selectedContrato.titulo}</p>
-              <p><strong>Fornecedor:</strong> {selectedContrato.fornecedor?.nome_fantasia}</p>
-              <p><strong>Status:</strong> {selectedContrato.status}</p>
-              <p><strong>Valor:</strong> {selectedContrato.valor_total}</p>
-              <Button onClick={() => window.print()}>
-                <Printer className="h-4 w-4 mr-2" />
-                Imprimir
-              </Button>
+              <p><strong>Número:</strong> {selected.numero_contrato}</p>
+              <p><strong>Título:</strong> {selected.titulo}</p>
+              <p><strong>Status:</strong> {selected.status}</p>
+              <p><strong>Valor:</strong> R$ {selected.valor_total}</p>
+
+              <h3 className="font-bold mt-4">Histórico de Aditivos</h3>
+              {selected.aditivos?.length ? (
+                selected.aditivos.map((a: any, i: number) => (
+                  <div key={i} className="border p-2 rounded">
+                    {a.descricao}
+                  </div>
+                ))
+              ) : (
+                <p className="text-muted-foreground">Sem aditivos</p>
+              )}
             </div>
           )}
         </DialogContent>
