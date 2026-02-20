@@ -120,3 +120,38 @@ export function useDeleteContrato() {
     },
   });
 }
+export function useUpdateContrato() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async ({ id, data }: { id: string; data: Partial<ContratoInsert> }) => {
+      const { error } = await supabase
+        .from('contratos')
+        .update(data)
+        .eq('id', id)
+
+      if (error) throw error
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['contratos'] })
+    },
+  })
+}
+
+export function useDeleteContrato() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase
+        .from('contratos')
+        .delete()
+        .eq('id', id)
+
+      if (error) throw error
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['contratos'] })
+    },
+  })
+}
