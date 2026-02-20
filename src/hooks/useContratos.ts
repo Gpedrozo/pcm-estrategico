@@ -29,6 +29,10 @@ export interface ContratoRow {
 
 export type ContratoInsert = ContratoFormData;
 
+/* ================================
+   QUERIES
+================================ */
+
 export function useContratos() {
   return useQuery({
     queryKey: ['contratos'],
@@ -61,6 +65,10 @@ export function useContratosByFornecedor(fornecedorId: string | undefined) {
   });
 }
 
+/* ================================
+   MUTATIONS
+================================ */
+
 export function useCreateContrato() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
@@ -79,10 +87,17 @@ export function useCreateContrato() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['contratos'] });
-      toast({ title: 'Sucesso!', description: 'Contrato cadastrado com sucesso.' });
+      toast({
+        title: 'Sucesso!',
+        description: 'Contrato cadastrado com sucesso.',
+      });
     },
     onError: (error: Error) => {
-      toast({ title: 'Erro ao cadastrar', description: error.message, variant: 'destructive' });
+      toast({
+        title: 'Erro ao cadastrar',
+        description: error.message,
+        variant: 'destructive',
+      });
     },
   });
 }
@@ -92,15 +107,25 @@ export function useUpdateContrato() {
   const { toast } = useToast();
 
   return useMutation({
-    mutationFn: async ({ id, ...updates }: Partial<ContratoFormData> & { id: string }) => {
+    mutationFn: async (
+      payload: Partial<ContratoFormData> & { id: string }
+    ) => {
+      const { id, ...updates } = payload;
       return await contratosService.atualizar(id, updates);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['contratos'] });
-      toast({ title: 'Sucesso!', description: 'Contrato atualizado com sucesso.' });
+      toast({
+        title: 'Sucesso!',
+        description: 'Contrato atualizado com sucesso.',
+      });
     },
     onError: (error: Error) => {
-      toast({ title: 'Erro ao atualizar', description: error.message, variant: 'destructive' });
+      toast({
+        title: 'Erro ao atualizar',
+        description: error.message,
+        variant: 'destructive',
+      });
     },
   });
 }
@@ -110,48 +135,22 @@ export function useDeleteContrato() {
   const { toast } = useToast();
 
   return useMutation({
-    mutationFn: (id: string) => contratosService.excluir(id),
+    mutationFn: async (id: string) => {
+      return await contratosService.excluir(id);
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['contratos'] });
-      toast({ title: 'Sucesso!', description: 'Contrato removido com sucesso.' });
+      toast({
+        title: 'Sucesso!',
+        description: 'Contrato removido com sucesso.',
+      });
     },
     onError: (error: Error) => {
-      toast({ title: 'Erro ao excluir', description: error.message, variant: 'destructive' });
+      toast({
+        title: 'Erro ao excluir',
+        description: error.message,
+        variant: 'destructive',
+      });
     },
   });
-}
-export function useUpdateContrato() {
-  const queryClient = useQueryClient()
-
-  return useMutation({
-    mutationFn: async ({ id, data }: { id: string; data: Partial<ContratoInsert> }) => {
-      const { error } = await supabase
-        .from('contratos')
-        .update(data)
-        .eq('id', id)
-
-      if (error) throw error
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['contratos'] })
-    },
-  })
-}
-
-export function useDeleteContrato() {
-  const queryClient = useQueryClient()
-
-  return useMutation({
-    mutationFn: async (id: string) => {
-      const { error } = await supabase
-        .from('contratos')
-        .delete()
-        .eq('id', id)
-
-      if (error) throw error
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['contratos'] })
-    },
-  })
 }
