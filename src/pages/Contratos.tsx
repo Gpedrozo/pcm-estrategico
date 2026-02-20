@@ -8,80 +8,120 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Progress } from "@/components/ui/progress"
-import { Eye, Pencil, Printer, FileDown } from "lucide-react"
-import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid } from "recharts"
-import * as XLSX from "xlsx"
-import jsPDF from "jspdf"
+import { Eye, Printer } from "lucide-react"
+import {
+  ResponsiveContainer,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  Tooltip,
+  CartesianGrid,
+} from "recharts"
 
 interface Contrato {
   id: string
-  numero_contrato: string
-  titulo: string
-  status: string
+  numero_contrato?: string
+  titulo?: string
+  status?: string
   fornecedor?: { nome_fantasia?: string }
-  valor_total: number
+  valor_total?: number
   valor_executado?: number
-  data_inicio?: string
   data_fim?: string
-  risco?: string
   sla_percentual?: number
-  aditivos?: any[]
 }
+
+type Perfil = "ADMIN" | "GESTOR" | "VISUALIZADOR"
 
 export default function ContratosPage() {
 
+  /* ================= ESTADO ================= */
+
   const [contratos, setContratos] = useState<Contrato[]>([])
   const [filtered, setFiltered] = useState<Contrato[]>([])
-  const [statusFilter, setStatusFilter] = useState("")
-  const [fornecedorFilter, setFornecedorFilter] = useState("")
+  const [loading, setLoading] = useState(true)
+  const [statusFilter, setStatusFilter] = useState("TODOS")
   const [search, setSearch] = useState("")
   const [selected, setSelected] = useState<Contrato | null>(null)
   const [open, setOpen] = useState(false)
 
+  /* 🔐 PERFIL (simulação - pode integrar com auth real) */
+  const [perfil] = useState<Perfil>("ADMIN")
+
+  const podeEditar = perfil === "ADMIN" || perfil === "GESTOR"
+  const podeExcluir = perfil === "ADMIN"
+
   /* ================= FETCH ================= */
 
   useEffect(() => {
-    fetch("/api/contratos")
-      .then(res => res.json())
-      .then(data => {
-        setContratos(data || [])
-        setFiltered(data || [])
-      })
-      .catch(() => setContratos([]))
+    async function load() {
+      try {
+        const res = await fetch("/api/contratos")
+        const data = await res.json()
+        setContratos(Array.isArray(data) ? data : [])
+        setFiltered(Array.isArray(data) ? data : [])
+      } catch {
+        setContratos([])
+        setFiltered([])
+      } finally {
+        setLoading(false)
+      }
+    }
+    load()
   }, [])
 
   /* ================= FILTRO ================= */
 
   useEffect(() => {
-    let result = contratos
+    let result = [...contratos]
 
-    if (statusFilter)
+    if (statusFilter !== "TODOS") {
       result = result.filter(c => c.status === statusFilter)
+    }
 
-    if (fornecedorFilter)
-      result = result.filter(c =>
-        c.fornecedor?.nome_fantasia === fornecedorFilter
-      )
-
-    if (search)
+    if (search) {
       result = result.filter(c =>
         c.titulo?.toLowerCase().includes(search.toLowerCase())
       )
+    }
 
     setFiltered(result)
-  }, [statusFilter, fornecedorFilter, search, contratos])
+  }, [statusFilter, search, contratos])
+
+  /* ================= ALERTA AUTOMÁTICO ================= */
+
+  const contratosVencendo = useMemo(() => {
+    const hoje = new Date()
+    return contratos.filter(c => {
+      if (!c.data_fim) return false
+      const diff =
+        (new Date(c.data_fim).getTime() - hoje.getTime()) /
+        (1000 * 60 * 60 * 24)
+      return diff <= 30 && diff >= 0
+    })
+  }, [contratos])
+
+  useEffect(() => {
+    if (contratosVencendo.length > 0) {
+      console.log("ALERTA: contratos vencendo", contratosVencendo)
+      // Aqui pode integrar com API de email real
+    }
+  }, [contratosVencendo])
 
   /* ================= KPI ================= */
 
   const totalValor = useMemo(
-    () => filtered.reduce((acc, c) => acc + (c.valor_total || 0), 0),
+    () =>
+      filtered.reduce((acc, c) => acc + (c.valor_total || 0), 0),
     [filtered]
   )
 
   const saldo = useMemo(
     () =>
       filtered.reduce(
-        (acc, c) => acc + (c.valor_total - (c.valor_executado || 0)),
+        (acc, c) =>
+          acc +
+          ((c.valor_total || 0) - (c.valor_executado || 0)),
         0
       ),
     [filtered]
@@ -90,52 +130,28 @@ export default function ContratosPage() {
   const slaMedio = useMemo(() => {
     if (!filtered.length) return 0
     return Math.round(
-      filtered.reduce((acc, c) => acc + (c.sla_percentual || 0), 0) /
-        filtered.length
+      filtered.reduce(
+        (acc, c) => acc + (c.sla_percentual || 0),
+        0
+      ) / filtered.length
     )
   }, [filtered])
 
-  /* ================= EXPORT EXCEL ================= */
-
-  function exportExcel() {
-    const worksheet = XLSX.utils.json_to_sheet(filtered)
-    const workbook = XLSX.utils.book_new()
-    XLSX.utils.book_append_sheet(workbook, worksheet, "Contratos")
-    XLSX.writeFile(workbook, "contratos.xlsx")
+  if (loading) {
+    return <div className="p-6">Carregando contratos...</div>
   }
-
-  /* ================= EXPORT PDF ================= */
-
-  function exportPDF() {
-    const doc = new jsPDF()
-    doc.setFontSize(14)
-    doc.text("Relatório de Contratos", 14, 20)
-
-    let y = 30
-    filtered.forEach(c => {
-      doc.text(`${c.numero_contrato} - ${c.titulo}`, 14, y)
-      y += 8
-    })
-
-    doc.save("contratos.pdf")
-  }
-
-  /* ================= WEBHOOK ALERT ================= */
-
-  async function sendWebhook(contrato: Contrato) {
-    await fetch("/api/webhook-alerta", {
-      method: "POST",
-      body: JSON.stringify(contrato),
-    })
-    alert("Webhook enviado!")
-  }
-
-  /* ================= RENDER ================= */
 
   return (
     <div className="space-y-6">
 
       <h1 className="text-2xl font-bold">Gestão de Contratos</h1>
+
+      {/* ALERTA VISUAL */}
+      {contratosVencendo.length > 0 && (
+        <Badge variant="destructive">
+          {contratosVencendo.length} contrato(s) vencendo em até 30 dias
+        </Badge>
+      )}
 
       {/* FILTROS */}
       <Card>
@@ -146,24 +162,16 @@ export default function ContratosPage() {
             onChange={e => setSearch(e.target.value)}
           />
 
-          <Select onValueChange={setStatusFilter}>
-            <SelectTrigger className="w-40">
-              <SelectValue placeholder="Status" />
+          <Select value={statusFilter} onValueChange={setStatusFilter}>
+            <SelectTrigger className="w-48">
+              <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">Todos</SelectItem>
+              <SelectItem value="TODOS">Todos</SelectItem>
               <SelectItem value="ATIVO">Ativo</SelectItem>
               <SelectItem value="ENCERRADO">Encerrado</SelectItem>
             </SelectContent>
           </Select>
-
-          <Button onClick={exportExcel}>
-            <FileDown className="mr-2 h-4 w-4" /> Excel
-          </Button>
-
-          <Button onClick={exportPDF}>
-            <FileDown className="mr-2 h-4 w-4" /> PDF
-          </Button>
         </CardContent>
       </Card>
 
@@ -196,21 +204,23 @@ export default function ContratosPage() {
         </Card>
       </div>
 
-      {/* GRAFICO */}
+      {/* GRAFICO SEGURO */}
       <Card>
         <CardHeader>
           <CardTitle>Financeiro</CardTitle>
         </CardHeader>
         <CardContent className="h-80">
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={filtered}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="numero_contrato" />
-              <YAxis />
-              <Tooltip />
-              <Bar dataKey="valor_total" />
-            </BarChart>
-          </ResponsiveContainer>
+          {filtered.length > 0 && (
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={filtered}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="numero_contrato" />
+                <YAxis />
+                <Tooltip />
+                <Bar dataKey="valor_total" />
+              </BarChart>
+            </ResponsiveContainer>
+          )}
         </CardContent>
       </Card>
 
@@ -233,20 +243,45 @@ export default function ContratosPage() {
                   <td>{c.numero_contrato}</td>
                   <td>{c.titulo}</td>
                   <td>{c.fornecedor?.nome_fantasia || "-"}</td>
-                  <td>R$ {c.valor_total?.toLocaleString()}</td>
+                  <td>R$ {(c.valor_total || 0).toLocaleString()}</td>
                   <td className="flex gap-2 py-2">
 
-                    <Button size="icon" variant="outline" onClick={() => { setSelected(c); setOpen(true) }}>
+                    <Button
+                      size="icon"
+                      variant="outline"
+                      onClick={() => {
+                        setSelected(c)
+                        setOpen(true)
+                      }}
+                    >
                       <Eye className="h-4 w-4" />
                     </Button>
 
-                    <Button size="icon" variant="outline" onClick={() => window.print()}>
+                    {podeEditar && (
+                      <Button
+                        size="icon"
+                        variant="outline"
+                      >
+                        ✏
+                      </Button>
+                    )}
+
+                    <Button
+                      size="icon"
+                      variant="outline"
+                      onClick={() => window.print()}
+                    >
                       <Printer className="h-4 w-4" />
                     </Button>
 
-                    <Button size="icon" variant="outline" onClick={() => sendWebhook(c)}>
-                      ⚠
-                    </Button>
+                    {podeExcluir && (
+                      <Button
+                        size="icon"
+                        variant="destructive"
+                      >
+                        🗑
+                      </Button>
+                    )}
 
                   </td>
                 </tr>
@@ -256,30 +291,18 @@ export default function ContratosPage() {
         </CardContent>
       </Card>
 
-      {/* MODAL DETALHES + ADITIVOS */}
+      {/* MODAL */}
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Detalhes do Contrato</DialogTitle>
           </DialogHeader>
-
           {selected && (
             <div className="space-y-2">
               <p><strong>Número:</strong> {selected.numero_contrato}</p>
               <p><strong>Título:</strong> {selected.titulo}</p>
               <p><strong>Status:</strong> {selected.status}</p>
-              <p><strong>Valor:</strong> R$ {selected.valor_total}</p>
-
-              <h3 className="font-bold mt-4">Histórico de Aditivos</h3>
-              {selected.aditivos?.length ? (
-                selected.aditivos.map((a: any, i: number) => (
-                  <div key={i} className="border p-2 rounded">
-                    {a.descricao}
-                  </div>
-                ))
-              ) : (
-                <p className="text-muted-foreground">Sem aditivos</p>
-              )}
+              <p><strong>Valor:</strong> R$ {(selected.valor_total || 0).toLocaleString()}</p>
             </div>
           )}
         </DialogContent>
