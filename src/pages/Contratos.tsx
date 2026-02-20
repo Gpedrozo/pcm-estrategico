@@ -1,313 +1,232 @@
-"use client"
+import { useState, useEffect, useMemo } from "react"
+import { useForm } from "react-hook-form"
+import { z } from "zod"
+import { zodResolver } from "@hookform/resolvers/zod"
+import toast from "react-hot-toast"
+import { format, differenceInDays } from "date-fns"
 
-import { useEffect, useMemo, useState } from "react"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Badge } from "@/components/ui/badge"
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { Progress } from "@/components/ui/progress"
-import { Eye, Printer } from "lucide-react"
-import {
-  ResponsiveContainer,
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  Tooltip,
-  CartesianGrid,
-} from "recharts"
+/* =====================================================
+   🔐 CONTROLE DE PERFIL (SIMULAÇÃO)
+   Substitua pelo seu auth real (NextAuth / Supabase)
+===================================================== */
 
-interface Contrato {
-  id: string
-  numero_contrato?: string
-  titulo?: string
-  status?: string
-  fornecedor?: { nome_fantasia?: string }
-  valor_total?: number
-  valor_executado?: number
-  data_fim?: string
-  sla_percentual?: number
+const currentUser = {
+  name: "Admin",
+  role: "ADMIN" // ADMIN | GESTOR | VISUALIZADOR
 }
 
-type Perfil = "ADMIN" | "GESTOR" | "VISUALIZADOR"
+const canEdit = currentUser.role === "ADMIN" || currentUser.role === "GESTOR"
 
-export default function ContratosPage() {
+/* =====================================================
+   🧠 VALIDAÇÃO ZOD
+===================================================== */
 
-  /* ================= ESTADO ================= */
+const contratoSchema = z.object({
+  nome: z.string().min(3, "Nome obrigatório"),
+  tipo: z.string().min(2, "Tipo obrigatório"),
+  status: z.string(),
+  fornecedor: z.string().min(2, "Fornecedor obrigatório"),
+  dataInicio: z.string(),
+  dataFim: z.string(),
+  valorTotal: z.coerce.number(),
+  valorMensal: z.coerce.number()
+})
 
-  const [contratos, setContratos] = useState<Contrato[]>([])
-  const [filtered, setFiltered] = useState<Contrato[]>([])
-  const [loading, setLoading] = useState(true)
-  const [statusFilter, setStatusFilter] = useState("TODOS")
-  const [search, setSearch] = useState("")
-  const [selected, setSelected] = useState<Contrato | null>(null)
-  const [open, setOpen] = useState(false)
+type ContratoForm = z.infer<typeof contratoSchema>
 
-  /* 🔐 PERFIL (simulação - pode integrar com auth real) */
-  const [perfil] = useState<Perfil>("ADMIN")
+/* =====================================================
+   📄 COMPONENTE PRINCIPAL
+===================================================== */
 
-  const podeEditar = perfil === "ADMIN" || perfil === "GESTOR"
-  const podeExcluir = perfil === "ADMIN"
+export default function Contratos() {
+  const [contratos, setContratos] = useState<any[]>([])
+  const [editing, setEditing] = useState<any | null>(null)
+  const [filtroStatus, setFiltroStatus] = useState("")
+  const [filtroFornecedor, setFiltroFornecedor] = useState("")
+  const [filtroData, setFiltroData] = useState("")
 
-  /* ================= FETCH ================= */
+  const {
+    register,
+    handleSubmit,
+    reset,
+    formState: { errors }
+  } = useForm<ContratoForm>({
+    resolver: zodResolver(contratoSchema)
+  })
+
+  /* =====================================================
+     📧 ALERTA AUTOMÁTICO DE VENCIMENTO
+  ===================================================== */
 
   useEffect(() => {
-    async function load() {
-      try {
-        const res = await fetch("/api/contratos")
-        const data = await res.json()
-        setContratos(Array.isArray(data) ? data : [])
-        setFiltered(Array.isArray(data) ? data : [])
-      } catch {
-        setContratos([])
-        setFiltered([])
-      } finally {
-        setLoading(false)
+    contratos.forEach((contrato) => {
+      if (contrato.dataFim) {
+        const dias = differenceInDays(new Date(contrato.dataFim), new Date())
+        if (dias <= 15 && dias > 0) {
+          toast.error(`Contrato ${contrato.nome} vence em ${dias} dias`)
+        }
       }
-    }
-    load()
-  }, [])
-
-  /* ================= FILTRO ================= */
-
-  useEffect(() => {
-    let result = [...contratos]
-
-    if (statusFilter !== "TODOS") {
-      result = result.filter(c => c.status === statusFilter)
-    }
-
-    if (search) {
-      result = result.filter(c =>
-        c.titulo?.toLowerCase().includes(search.toLowerCase())
-      )
-    }
-
-    setFiltered(result)
-  }, [statusFilter, search, contratos])
-
-  /* ================= ALERTA AUTOMÁTICO ================= */
-
-  const contratosVencendo = useMemo(() => {
-    const hoje = new Date()
-    return contratos.filter(c => {
-      if (!c.data_fim) return false
-      const diff =
-        (new Date(c.data_fim).getTime() - hoje.getTime()) /
-        (1000 * 60 * 60 * 24)
-      return diff <= 30 && diff >= 0
     })
   }, [contratos])
 
-  useEffect(() => {
-    if (contratosVencendo.length > 0) {
-      console.log("ALERTA: contratos vencendo", contratosVencendo)
-      // Aqui pode integrar com API de email real
+  /* =====================================================
+     📥 SALVAR CONTRATO
+  ===================================================== */
+
+  const onSubmit = (data: ContratoForm) => {
+    if (!canEdit) {
+      toast.error("Sem permissão para editar")
+      return
     }
-  }, [contratosVencendo])
 
-  /* ================= KPI ================= */
+    if (editing) {
+      setContratos((prev) =>
+        prev.map((c) =>
+          c.id === editing.id ? { ...editing, ...data } : c
+        )
+      )
+      toast.success("Contrato atualizado")
+    } else {
+      const novo = {
+        id: crypto.randomUUID(),
+        ...data
+      }
+      setContratos((prev) => [...prev, novo])
+      toast.success("Contrato criado com sucesso")
+    }
 
-  const totalValor = useMemo(
-    () =>
-      filtered.reduce((acc, c) => acc + (c.valor_total || 0), 0),
-    [filtered]
-  )
-
-  const saldo = useMemo(
-    () =>
-      filtered.reduce(
-        (acc, c) =>
-          acc +
-          ((c.valor_total || 0) - (c.valor_executado || 0)),
-        0
-      ),
-    [filtered]
-  )
-
-  const slaMedio = useMemo(() => {
-    if (!filtered.length) return 0
-    return Math.round(
-      filtered.reduce(
-        (acc, c) => acc + (c.sla_percentual || 0),
-        0
-      ) / filtered.length
-    )
-  }, [filtered])
-
-  if (loading) {
-    return <div className="p-6">Carregando contratos...</div>
+    reset()
+    setEditing(null)
   }
 
+  /* =====================================================
+     🔍 FILTRO INTELIGENTE
+  ===================================================== */
+
+  const contratosFiltrados = useMemo(() => {
+    return contratos.filter((c) => {
+      return (
+        (filtroStatus ? c.status === filtroStatus : true) &&
+        (filtroFornecedor ? c.fornecedor.includes(filtroFornecedor) : true) &&
+        (filtroData ? c.dataFim === filtroData : true)
+      )
+    })
+  }, [contratos, filtroStatus, filtroFornecedor, filtroData])
+
+  /* =====================================================
+     📊 KPI
+  ===================================================== */
+
+  const totalContratos = contratos.length
+  const ativos = contratos.filter((c) => c.status === "Ativo").length
+  const valorTotal = contratos.reduce((acc, c) => acc + c.valorTotal, 0)
+
   return (
-    <div className="space-y-6">
-
+    <div className="p-6 space-y-6">
       <h1 className="text-2xl font-bold">Gestão de Contratos</h1>
-
-      {/* ALERTA VISUAL */}
-      {contratosVencendo.length > 0 && (
-        <Badge variant="destructive">
-          {contratosVencendo.length} contrato(s) vencendo em até 30 dias
-        </Badge>
-      )}
-
-      {/* FILTROS */}
-      <Card>
-        <CardContent className="flex gap-4 p-4">
-          <Input
-            placeholder="Buscar contrato..."
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-          />
-
-          <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="w-48">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="TODOS">Todos</SelectItem>
-              <SelectItem value="ATIVO">Ativo</SelectItem>
-              <SelectItem value="ENCERRADO">Encerrado</SelectItem>
-            </SelectContent>
-          </Select>
-        </CardContent>
-      </Card>
 
       {/* KPI */}
       <div className="grid grid-cols-3 gap-4">
-        <Card>
-          <CardContent className="p-6">
-            <div className="text-muted-foreground">Valor Total</div>
-            <div className="text-2xl font-bold">
-              R$ {totalValor.toLocaleString()}
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="p-6">
-            <div className="text-muted-foreground">Saldo</div>
-            <div className="text-2xl font-bold">
-              R$ {saldo.toLocaleString()}
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="p-6">
-            <div className="text-muted-foreground">SLA Médio</div>
-            <Progress value={slaMedio} />
-            <div className="font-bold mt-2">{slaMedio}%</div>
-          </CardContent>
-        </Card>
+        <div className="bg-white p-4 shadow rounded">
+          <p>Total Contratos</p>
+          <h2 className="text-xl font-bold">{totalContratos}</h2>
+        </div>
+        <div className="bg-white p-4 shadow rounded">
+          <p>Ativos</p>
+          <h2 className="text-xl font-bold">{ativos}</h2>
+        </div>
+        <div className="bg-white p-4 shadow rounded">
+          <p>Valor Total</p>
+          <h2 className="text-xl font-bold">
+            R$ {valorTotal.toLocaleString()}
+          </h2>
+        </div>
       </div>
 
-      {/* GRAFICO SEGURO */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Financeiro</CardTitle>
-        </CardHeader>
-        <CardContent className="h-80">
-          {filtered.length > 0 && (
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={filtered}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="numero_contrato" />
-                <YAxis />
-                <Tooltip />
-                <Bar dataKey="valor_total" />
-              </BarChart>
-            </ResponsiveContainer>
-          )}
-        </CardContent>
-      </Card>
+      {/* FILTROS */}
+      <div className="flex gap-4">
+        <select onChange={(e) => setFiltroStatus(e.target.value)}>
+          <option value="">Status</option>
+          <option>Ativo</option>
+          <option>Encerrado</option>
+        </select>
 
-      {/* TABELA */}
-      <Card>
-        <CardContent>
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b">
-                <th>Nº</th>
-                <th>Título</th>
-                <th>Fornecedor</th>
-                <th>Valor</th>
-                <th>Ações</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.map(c => (
-                <tr key={c.id} className="border-b">
-                  <td>{c.numero_contrato}</td>
-                  <td>{c.titulo}</td>
-                  <td>{c.fornecedor?.nome_fantasia || "-"}</td>
-                  <td>R$ {(c.valor_total || 0).toLocaleString()}</td>
-                  <td className="flex gap-2 py-2">
+        <input
+          placeholder="Fornecedor"
+          onChange={(e) => setFiltroFornecedor(e.target.value)}
+        />
 
-                    <Button
-                      size="icon"
-                      variant="outline"
-                      onClick={() => {
-                        setSelected(c)
-                        setOpen(true)
-                      }}
-                    >
-                      <Eye className="h-4 w-4" />
-                    </Button>
+        <input
+          type="date"
+          onChange={(e) => setFiltroData(e.target.value)}
+        />
+      </div>
 
-                    {podeEditar && (
-                      <Button
-                        size="icon"
-                        variant="outline"
-                      >
-                        ✏
-                      </Button>
-                    )}
+      {/* FORM */}
+      {canEdit && (
+        <form
+          onSubmit={handleSubmit(onSubmit)}
+          className="bg-white p-6 shadow rounded space-y-4"
+        >
+          <input placeholder="Nome" {...register("nome")} />
+          {errors.nome && <span>{errors.nome.message}</span>}
 
-                    <Button
-                      size="icon"
-                      variant="outline"
-                      onClick={() => window.print()}
-                    >
-                      <Printer className="h-4 w-4" />
-                    </Button>
+          <input placeholder="Tipo" {...register("tipo")} />
 
-                    {podeExcluir && (
-                      <Button
-                        size="icon"
-                        variant="destructive"
-                      >
-                        🗑
-                      </Button>
-                    )}
+          <input placeholder="Fornecedor" {...register("fornecedor")} />
 
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </CardContent>
-      </Card>
+          <select {...register("status")}>
+            <option>Ativo</option>
+            <option>Encerrado</option>
+          </select>
 
-      {/* MODAL */}
-      <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Detalhes do Contrato</DialogTitle>
-          </DialogHeader>
-          {selected && (
-            <div className="space-y-2">
-              <p><strong>Número:</strong> {selected.numero_contrato}</p>
-              <p><strong>Título:</strong> {selected.titulo}</p>
-              <p><strong>Status:</strong> {selected.status}</p>
-              <p><strong>Valor:</strong> R$ {(selected.valor_total || 0).toLocaleString()}</p>
+          <input type="date" {...register("dataInicio")} />
+          <input type="date" {...register("dataFim")} />
+
+          <input type="number" placeholder="Valor Total" {...register("valorTotal")} />
+          <input type="number" placeholder="Valor Mensal" {...register("valorMensal")} />
+
+          <button
+            type="submit"
+            className="bg-blue-600 text-white px-4 py-2 rounded"
+          >
+            {editing ? "Atualizar" : "Cadastrar"}
+          </button>
+        </form>
+      )}
+
+      {/* LISTA */}
+      <div className="space-y-2">
+        {contratosFiltrados.map((c) => (
+          <div
+            key={c.id}
+            className="bg-white p-4 shadow rounded flex justify-between"
+          >
+            <div>
+              <p className="font-bold">{c.nome}</p>
+              <p>{c.fornecedor}</p>
+              <p>Status: {c.status}</p>
+              {c.dataFim && (
+                <p>
+                  Vencimento: {format(new Date(c.dataFim), "dd/MM/yyyy")}
+                </p>
+              )}
             </div>
-          )}
-        </DialogContent>
-      </Dialog>
 
+            {canEdit && (
+              <button
+                onClick={() => {
+                  setEditing(c)
+                  reset(c)
+                }}
+                className="text-blue-600"
+              >
+                Editar
+              </button>
+            )}
+          </div>
+        ))}
+      </div>
     </div>
   )
 }
