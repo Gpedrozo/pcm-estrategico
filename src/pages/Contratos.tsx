@@ -1,248 +1,197 @@
-import { useState, useEffect, useMemo } from "react"
-import { useForm } from "react-hook-form"
-import { z } from "zod"
-import { zodResolver } from "@hookform/resolvers/zod"
-import { differenceInDays, format } from "date-fns"
+import { useEffect, useState } from "react"
+import { supabase } from "@/integracoes/supabase/client"
 
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Card, CardContent } from "@/components/ui/card"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { useToast } from "@/components/ui/use-toast"
-
-/* =====================================================
-   🔐 CONTROLE DE PERFISSÃO (SIMULAÇÃO)
-   Integre depois com seu Auth real
-===================================================== */
-
-const currentUser = {
-  name: "Admin",
-  role: "ADMIN" // ADMIN | GESTOR | VISUALIZADOR
+interface Contrato {
+  id: string
+  nome: string
+  tipo: string
+  status: string
+  data_inicio: string
+  data_fim: string | null
+  valor_total: number
+  valor_mensal: number
+  sla_atendimento: number
+  sla_resolucao: number
+  penalidades: string | null
 }
 
-const canEdit =
-  currentUser.role === "ADMIN" || currentUser.role === "GESTOR"
-
-/* =====================================================
-   🧠 VALIDAÇÃO
-===================================================== */
-
-const contratoSchema = z.object({
-  nome: z.string().min(3, "Nome obrigatório"),
-  tipo: z.string().min(2, "Tipo obrigatório"),
-  fornecedor: z.string().min(2, "Fornecedor obrigatório"),
-  status: z.string(),
-  dataInicio: z.string(),
-  dataFim: z.string().optional(),
-  valorTotal: z.coerce.number(),
-  valorMensal: z.coerce.number()
-})
-
-type ContratoForm = z.infer<typeof contratoSchema>
-
-/* =====================================================
-   📄 COMPONENTE
-===================================================== */
-
 export default function Contratos() {
-  const { toast } = useToast()
+  const [contratos, setContratos] = useState<Contrato[]>([])
+  const [loading, setLoading] = useState(true)
+  const [openModal, setOpenModal] = useState(false)
+  const [editando, setEditando] = useState<Contrato | null>(null)
 
-  const [contratos, setContratos] = useState<any[]>([])
-  const [editing, setEditing] = useState<any | null>(null)
-
-  const [filtroStatus, setFiltroStatus] = useState("")
-  const [filtroFornecedor, setFiltroFornecedor] = useState("")
-
-  const {
-    register,
-    handleSubmit,
-    reset,
-    formState: { errors }
-  } = useForm<ContratoForm>({
-    resolver: zodResolver(contratoSchema)
+  const [form, setForm] = useState<any>({
+    nome: "",
+    tipo: "Serviço",
+    status: "Ativo",
+    data_inicio: "",
+    data_fim: "",
+    valor_total: 0,
+    valor_mensal: 0,
+    sla_atendimento: 0,
+    sla_resolucao: 0,
+    penalidades: ""
   })
 
-  /* =====================================================
-     📧 ALERTA AUTOMÁTICO DE VENCIMENTO
-  ===================================================== */
+  async function carregarContratos() {
+    setLoading(true)
+    const { data, error } = await supabase
+      .from("contratos")
+      .select("*")
+      .order("created_at", { ascending: false })
+
+    if (!error && data) {
+      setContratos(data)
+    }
+
+    setLoading(false)
+  }
 
   useEffect(() => {
-    contratos.forEach((contrato) => {
-      if (contrato.dataFim) {
-        const dias = differenceInDays(new Date(contrato.dataFim), new Date())
-        if (dias <= 15 && dias > 0) {
-          toast({
-            title: "Contrato próximo do vencimento",
-            description: `${contrato.nome} vence em ${dias} dias`,
-            variant: "destructive"
-          })
-        }
-      }
-    })
-  }, [contratos])
+    carregarContratos()
+  }, [])
 
-  /* =====================================================
-     💾 SALVAR
-  ===================================================== */
+  function handleChange(e: any) {
+    setForm({ ...form, [e.target.name]: e.target.value })
+  }
 
-  const onSubmit = (data: ContratoForm) => {
-    if (!canEdit) {
-      toast({
-        title: "Sem permissão",
-        description: "Você não pode editar contratos.",
-        variant: "destructive"
-      })
+  async function salvarContrato() {
+    if (!form.nome || !form.data_inicio) {
+      alert("Preencha os campos obrigatórios")
       return
     }
 
-    if (editing) {
-      setContratos((prev) =>
-        prev.map((c) =>
-          c.id === editing.id ? { ...editing, ...data } : c
-        )
-      )
-      toast({ title: "Contrato atualizado com sucesso" })
+    if (editando) {
+      await supabase
+        .from("contratos")
+        .update(form)
+        .eq("id", editando.id)
     } else {
-      setContratos((prev) => [
-        ...prev,
-        { id: crypto.randomUUID(), ...data }
-      ])
-      toast({ title: "Contrato criado com sucesso" })
+      await supabase
+        .from("contratos")
+        .insert([form])
     }
 
-    reset()
-    setEditing(null)
+    setOpenModal(false)
+    setEditando(null)
+    setForm({
+      nome: "",
+      tipo: "Serviço",
+      status: "Ativo",
+      data_inicio: "",
+      data_fim: "",
+      valor_total: 0,
+      valor_mensal: 0,
+      sla_atendimento: 0,
+      sla_resolucao: 0,
+      penalidades: ""
+    })
+
+    carregarContratos()
   }
 
-  /* =====================================================
-     🔍 FILTRO
-  ===================================================== */
+  async function excluirContrato(id: string) {
+    if (!confirm("Deseja excluir este contrato?")) return
+    await supabase.from("contratos").delete().eq("id", id)
+    carregarContratos()
+  }
 
-  const contratosFiltrados = useMemo(() => {
-    return contratos.filter((c) => {
-      return (
-        (filtroStatus ? c.status === filtroStatus : true) &&
-        (filtroFornecedor
-          ? c.fornecedor
-              .toLowerCase()
-              .includes(filtroFornecedor.toLowerCase())
-          : true)
-      )
-    })
-  }, [contratos, filtroStatus, filtroFornecedor])
-
-  /* =====================================================
-     📊 KPI
-  ===================================================== */
-
-  const total = contratos.length
-  const ativos = contratos.filter((c) => c.status === "Ativo").length
-  const valorTotal = contratos.reduce(
-    (acc, c) => acc + c.valorTotal,
-    0
-  )
+  function editarContrato(contrato: Contrato) {
+    setEditando(contrato)
+    setForm(contrato)
+    setOpenModal(true)
+  }
 
   return (
-    <div className="p-6 space-y-6">
-      <h1 className="text-2xl font-bold">Gestão de Contratos</h1>
-
-      {/* KPI */}
-      <div className="grid md:grid-cols-3 gap-4">
-        <Card>
-          <CardContent className="p-4">
-            <p>Total</p>
-            <h2 className="text-xl font-bold">{total}</h2>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="p-4">
-            <p>Ativos</p>
-            <h2 className="text-xl font-bold">{ativos}</h2>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="p-4">
-            <p>Valor Total</p>
-            <h2 className="text-xl font-bold">
-              R$ {valorTotal.toLocaleString()}
-            </h2>
-          </CardContent>
-        </Card>
+    <div className="p-6">
+      <div className="flex justify-between mb-6">
+        <h1 className="text-2xl font-bold">Gestão de Contratos</h1>
+        <button
+          onClick={() => setOpenModal(true)}
+          className="bg-blue-600 text-white px-4 py-2 rounded"
+        >
+          Novo Contrato
+        </button>
       </div>
 
-      {/* FILTROS */}
-      <div className="flex gap-4">
-        <Select onValueChange={setFiltroStatus}>
-          <SelectTrigger className="w-48">
-            <SelectValue placeholder="Filtrar Status" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="Ativo">Ativo</SelectItem>
-            <SelectItem value="Encerrado">Encerrado</SelectItem>
-          </SelectContent>
-        </Select>
+      {loading ? (
+        <p>Carregando...</p>
+      ) : (
+        <table className="w-full border">
+          <thead>
+            <tr className="bg-gray-100">
+              <th>Nome</th>
+              <th>Status</th>
+              <th>Vigência</th>
+              <th>Valor</th>
+              <th>Ações</th>
+            </tr>
+          </thead>
+          <tbody>
+            {contratos.map((c) => {
+              const vencido =
+                c.data_fim &&
+                new Date(c.data_fim) < new Date()
 
-        <Input
-          placeholder="Filtrar fornecedor"
-          onChange={(e) => setFiltroFornecedor(e.target.value)}
-        />
-      </div>
-
-      {/* FORM */}
-      {canEdit && (
-        <Card>
-          <CardContent className="p-6 space-y-4">
-            <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-              <Input placeholder="Nome" {...register("nome")} />
-              <Input placeholder="Tipo" {...register("tipo")} />
-              <Input placeholder="Fornecedor" {...register("fornecedor")} />
-              <Input type="date" {...register("dataInicio")} />
-              <Input type="date" {...register("dataFim")} />
-              <Input type="number" placeholder="Valor Total" {...register("valorTotal")} />
-              <Input type="number" placeholder="Valor Mensal" {...register("valorMensal")} />
-
-              <Button type="submit">
-                {editing ? "Atualizar" : "Cadastrar"}
-              </Button>
-            </form>
-          </CardContent>
-        </Card>
+              return (
+                <tr key={c.id} className={vencido ? "bg-red-50" : ""}>
+                  <td>{c.nome}</td>
+                  <td>{c.status}</td>
+                  <td>
+                    {c.data_inicio} até {c.data_fim || "Indeterminado"}
+                  </td>
+                  <td>R$ {c.valor_total}</td>
+                  <td className="space-x-2">
+                    <button
+                      onClick={() => editarContrato(c)}
+                      className="text-blue-600"
+                    >
+                      Editar
+                    </button>
+                    <button
+                      onClick={() => excluirContrato(c.id)}
+                      className="text-red-600"
+                    >
+                      Excluir
+                    </button>
+                  </td>
+                </tr>
+              )
+            })}
+          </tbody>
+        </table>
       )}
 
-      {/* LISTA */}
-      <div className="space-y-3">
-        {contratosFiltrados.map((c) => (
-          <Card key={c.id}>
-            <CardContent className="p-4 flex justify-between">
-              <div>
-                <p className="font-bold">{c.nome}</p>
-                <p>{c.fornecedor}</p>
-                <p>Status: {c.status}</p>
-                {c.dataFim && (
-                  <p>
-                    Vence em{" "}
-                    {format(new Date(c.dataFim), "dd/MM/yyyy")}
-                  </p>
-                )}
-              </div>
+      {openModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center">
+          <div className="bg-white p-6 rounded w-[600px]">
+            <h2 className="text-xl font-bold mb-4">
+              {editando ? "Editar Contrato" : "Novo Contrato"}
+            </h2>
 
-              {canEdit && (
-                <Button
-                  variant="outline"
-                  onClick={() => {
-                    setEditing(c)
-                    reset(c)
-                  }}
-                >
-                  Editar
-                </Button>
-              )}
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+            <div className="grid grid-cols-2 gap-4">
+              <input name="nome" placeholder="Nome" value={form.nome} onChange={handleChange} />
+              <input name="tipo" placeholder="Tipo" value={form.tipo} onChange={handleChange} />
+              <input name="status" placeholder="Status" value={form.status} onChange={handleChange} />
+              <input type="date" name="data_inicio" value={form.data_inicio} onChange={handleChange} />
+              <input type="date" name="data_fim" value={form.data_fim || ""} onChange={handleChange} />
+              <input name="valor_total" type="number" value={form.valor_total} onChange={handleChange} />
+              <input name="valor_mensal" type="number" value={form.valor_mensal} onChange={handleChange} />
+              <input name="sla_atendimento" type="number" value={form.sla_atendimento} onChange={handleChange} />
+              <input name="sla_resolucao" type="number" value={form.sla_resolucao} onChange={handleChange} />
+              <textarea name="penalidades" value={form.penalidades || ""} onChange={handleChange} placeholder="Penalidades" className="col-span-2" />
+            </div>
+
+            <div className="flex justify-end gap-4 mt-6">
+              <button onClick={() => setOpenModal(false)}>Cancelar</button>
+              <button onClick={salvarContrato} className="bg-blue-600 text-white px-4 py-2 rounded">
+                Salvar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
