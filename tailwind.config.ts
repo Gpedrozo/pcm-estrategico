@@ -2,7 +2,12 @@ import type { Config } from "tailwindcss";
 
 export default {
   darkMode: ["class"],
-  content: ["./pages/**/*.{ts,tsx}", "./components/**/*.{ts,tsx}", "./app/**/*.{ts,tsx}", "./src/**/*.{ts,tsx}"],
+  content: [
+    "./pages/**/*.{ts,tsx}",
+    "./components/**/*.{ts,tsx}",
+    "./app/**/*.{ts,tsx}",
+    "./src/**/*.{ts,tsx}"
+  ],
   prefix: "",
   theme: {
     container: {
@@ -17,12 +22,14 @@ export default {
         sans: ['Inter', 'system-ui', 'sans-serif'],
         mono: ['JetBrains Mono', 'monospace'],
       },
+
       colors: {
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
         ring: "hsl(var(--ring))",
         background: "hsl(var(--background))",
         foreground: "hsl(var(--foreground))",
+
         primary: {
           DEFAULT: "hsl(var(--primary))",
           foreground: "hsl(var(--primary-foreground))",
@@ -63,6 +70,7 @@ export default {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
         },
+
         sidebar: {
           DEFAULT: "hsl(var(--sidebar-background))",
           foreground: "hsl(var(--sidebar-foreground))",
@@ -73,18 +81,23 @@ export default {
           border: "hsl(var(--sidebar-border))",
           ring: "hsl(var(--sidebar-ring))",
         },
+
         industrial: {
           steel: "hsl(var(--industrial-steel))",
           dark: "hsl(var(--industrial-dark))",
           highlight: "hsl(var(--industrial-highlight))",
         },
       },
+
       borderRadius: {
         lg: "var(--radius)",
         md: "calc(var(--radius) - 2px)",
         sm: "calc(var(--radius) - 4px)",
       },
+
       keyframes: {
+
+        // Já existentes
         "accordion-down": {
           from: { height: "0" },
           to: { height: "var(--radix-accordion-content-height)" },
@@ -101,27 +114,53 @@ export default {
           from: { transform: "translateX(-100%)", opacity: "0" },
           to: { transform: "translateX(0)", opacity: "1" },
         },
+
+        // 🔥 NOVAS ANIMAÇÕES SPLASH GPPIS
+
+        "fade-in-scale": {
+          "0%": {
+            opacity: "0",
+            transform: "scale(0.85)"
+          },
+          "100%": {
+            opacity: "1",
+            transform: "scale(1)"
+          },
+        },
+
+        "logo-glow": {
+          "0%, 100%": {
+            filter: "drop-shadow(0 0 8px rgba(0,150,255,0.6))"
+          },
+          "50%": {
+            filter: "drop-shadow(0 0 20px rgba(0,150,255,1))"
+          },
+        },
+
+        "background-move": {
+          "0%": { backgroundPosition: "0% 50%" },
+          "100%": { backgroundPosition: "100% 50%" },
+        },
+
+        "fade-out": {
+          "0%": { opacity: "1" },
+          "100%": { opacity: "0" },
+        },
       },
+
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
         "pulse-subtle": "pulse-subtle 2s ease-in-out infinite",
         "slide-in": "slide-in 0.3s ease-out",
+
+        // 🔥 Splash Animations
+        "fade-in-scale": "fade-in-scale 1.2s ease-out forwards",
+        "logo-glow": "logo-glow 2.5s ease-in-out infinite",
+        "background-move": "background-move 6s linear infinite",
+        "fade-out": "fade-out 0.8s ease-in forwards",
       },
     },
   },
   plugins: [require("tailwindcss-animate")],
 } satisfies Config;
-theme: {
-  extend: {
-    keyframes: {
-      fadeIn: {
-        '0%': { opacity: '0', transform: 'scale(0.9)' },
-        '100%': { opacity: '1', transform: 'scale(1)' },
-      },
-    },
-    animation: {
-      fadeIn: 'fadeIn 1.5s ease-in-out',
-    },
-  },
-},
