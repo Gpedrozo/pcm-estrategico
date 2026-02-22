@@ -2,7 +2,6 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
 type Empresa = {
-  id: string;
   logo_principal_url: string | null;
   logo_menu_url: string | null;
   logo_login_url: string | null;
@@ -11,91 +10,61 @@ type Empresa = {
   logo_relatorio_url: string | null;
 };
 
+const BUCKET = "logos";
+
+function getPublicUrl(path?: string | null) {
+  if (!path) return null;
+
+  if (path.startsWith("http")) return path;
+
+  const { data } = supabase.storage.from(BUCKET).getPublicUrl(path);
+
+  return data.publicUrl;
+}
+
 export function MasterLogoManager() {
   const [empresa, setEmpresa] = useState<Empresa | null>(null);
-  const [loading, setLoading] = useState(true);
-
-  async function carregarEmpresa() {
-    const { data, error } = await supabase
-      .from("dados_empresa")
-      .select("*")
-      .limit(1)
-      .single();
-
-    if (error) {
-      console.error(error);
-      setLoading(false);
-      return;
-    }
-
-    setEmpresa(data);
-    setLoading(false);
-  }
 
   useEffect(() => {
-    carregarEmpresa();
+    load();
   }, []);
+
+  async function load() {
+    const { data } = await supabase
+      .from("dados_empresa")
+      .select("*")
+      .single();
+
+    setEmpresa(data);
+  }
 
   function fixCache(url?: string | null) {
     if (!url) return null;
     return url + "?v=" + Date.now();
   }
 
-  if (loading) {
-    return <div>Carregando logos...</div>;
-  }
+  const logoPrincipal = fixCache(getPublicUrl(empresa?.logo_principal_url));
+  const logoMenu = fixCache(getPublicUrl(empresa?.logo_menu_url));
+  const logoLogin = fixCache(getPublicUrl(empresa?.logo_login_url));
 
   return (
-    <div className="grid gap-6">
+    <div className="space-y-6">
 
-      <LogoItem
-        titulo="Logo Principal"
-        url={fixCache(empresa?.logo_principal_url)}
-      />
-
-      <LogoItem
-        titulo="Logo Menu"
-        url={fixCache(empresa?.logo_menu_url)}
-      />
-
-      <LogoItem
-        titulo="Logo Login"
-        url={fixCache(empresa?.logo_login_url)}
-      />
-
-      <LogoItem
-        titulo="Logo PDF"
-        url={fixCache(empresa?.logo_pdf_url)}
-      />
-
-      <LogoItem
-        titulo="Logo OS"
-        url={fixCache(empresa?.logo_os_url)}
-      />
-
-      <LogoItem
-        titulo="Logo Relatório"
-        url={fixCache(empresa?.logo_relatorio_url)}
-      />
-
-    </div>
-  );
-}
-
-function LogoItem({ titulo, url }: { titulo: string; url?: string | null }) {
-  return (
-    <div className="space-y-2">
-      <p className="text-sm font-semibold">{titulo}</p>
-
-      <div className="border rounded-xl p-4 flex items-center justify-center bg-white">
-        <img
-          src={url || "/logo.png"}
-          className="max-h-20 object-contain"
-          onError={(e) => {
-            (e.target as HTMLImageElement).src = "/logo.png";
-          }}
-        />
+      <div>
+        <p>Logo Principal</p>
+        <img src={logoPrincipal || "/logo.png"} className="h-16 object-contain" />
       </div>
+
+      <div>
+        <p>Logo Menu</p>
+        <img src={logoMenu || "/logo.png"} className="h-12 object-contain" />
+      </div>
+
+      <div>
+        <p>Logo Login</p>
+        <img src={logoLogin || "/logo.png"} className="h-20 object-contain" />
+      </div>
+
     </div>
   );
 }
