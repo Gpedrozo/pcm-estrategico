@@ -23,7 +23,7 @@ import { MasterGlobalSettings } from "@/components/master-ti/MasterGlobalSetting
 import { MasterAuditLogs } from "@/components/master-ti/MasterAuditLogs";
 import { MasterSecurity } from "@/components/master-ti/MasterSecurity";
 import { MasterEmpresaData } from "@/components/master-ti/MasterEmpresaData";
-import { MasterLogoManager } from "@/components/master-ti/MasterLogoManager";
+import { MasterLogoManager } from "@/components/master-ti/MasterLogoManager"
 import { MasterPermissionsManager } from "@/components/master-ti/MasterPermissionsManager";
 
 type TabKey =
