@@ -10,7 +10,7 @@ type Empresa = {
   logo_relatorio_url: string | null;
 };
 
-export default function MasterLogoManager() {
+export function MasterLogoManager() {
   const [empresa, setEmpresa] = useState<Empresa | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -45,13 +45,12 @@ export default function MasterLogoManager() {
   }
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-6">
 
       <div>
-        <p>Logo Principal</p>
+        <p className="text-sm font-semibold">Logo Principal</p>
         <img
           src={noCache(empresa?.logo_principal_url) || "/logo.png"}
-          alt="logo"
           className="h-16 object-contain"
           onError={(e) => {
             (e.target as HTMLImageElement).src = "/logo.png";
@@ -60,10 +59,9 @@ export default function MasterLogoManager() {
       </div>
 
       <div>
-        <p>Logo Menu</p>
+        <p className="text-sm font-semibold">Logo Menu</p>
         <img
           src={noCache(empresa?.logo_menu_url) || "/logo.png"}
-          alt="logo"
           className="h-12 object-contain"
           onError={(e) => {
             (e.target as HTMLImageElement).src = "/logo.png";
@@ -72,10 +70,9 @@ export default function MasterLogoManager() {
       </div>
 
       <div>
-        <p>Logo Login</p>
+        <p className="text-sm font-semibold">Logo Login</p>
         <img
           src={noCache(empresa?.logo_login_url) || "/logo.png"}
-          alt="logo"
           className="h-20 object-contain"
           onError={(e) => {
             (e.target as HTMLImageElement).src = "/logo.png";
