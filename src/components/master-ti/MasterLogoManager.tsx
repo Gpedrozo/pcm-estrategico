@@ -1,80 +1,107 @@
-import { useRef, useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Upload, Loader2 } from "lucide-react";
+import { useState, useRef } from "react"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
+import { Loader2, Upload, Image as ImageIcon } from "lucide-react"
+
 import {
   useDadosEmpresa,
   useUpdateDadosEmpresa,
   uploadLogo,
-} from "@/hooks/useDadosEmpresa";
-import { useToast } from "@/hooks/use-toast";
+} from "@/hooks/useDadosEmpresa"
 
-type LogoType =
-  | "logo_principal_url"
-  | "logo_menu_url"
-  | "logo_login_url"
-  | "logo_pdf_url"
-  | "logo_os_url"
-  | "logo_relatorio_url";
+import { useToast } from "@/hooks/use-toast"
 
-const LOGOS: { key: LogoType; label: string }[] = [
-  { key: "logo_principal_url", label: "Logo do Sistema" },
-  { key: "logo_menu_url", label: "Logo Menu" },
-  { key: "logo_login_url", label: "Logo Login" },
-  { key: "logo_pdf_url", label: "Logo PDF" },
-  { key: "logo_os_url", label: "Logo Ordem de Serviço" },
-  { key: "logo_relatorio_url", label: "Logo Relatórios" },
-];
+const LOGO_SLOTS = [
+  {
+    key: "logo_principal_url",
+    label: "Logo Principal",
+    desc: "Usada no topo do sistema",
+  },
+  {
+    key: "logo_menu_url",
+    label: "Logo Menu",
+    desc: "Usada no menu lateral",
+  },
+  {
+    key: "logo_login_url",
+    label: "Logo Login",
+    desc: "Tela de login",
+  },
+  {
+    key: "logo_pdf_url",
+    label: "Logo PDF",
+    desc: "Documentos",
+  },
+  {
+    key: "logo_os_url",
+    label: "Logo Ordem de Serviço",
+    desc: "Impressão O.S",
+  },
+  {
+    key: "logo_relatorio_url",
+    label: "Logo Relatórios",
+    desc: "Relatórios",
+  },
+] as const
 
 export function MasterLogoManager() {
-  const { data: empresa, isLoading, refetch } = useDadosEmpresa();
-  const updateEmpresa = useUpdateDadosEmpresa();
-  const { toast } = useToast();
+  const { data: empresa, isLoading } = useDadosEmpresa()
+  const updateMutation = useUpdateDadosEmpresa()
+  const { toast } = useToast()
 
-  const fileInput = useRef<HTMLInputElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
-  const [logoSelecionada, setLogoSelecionada] = useState<LogoType | null>(null);
-  const [uploading, setUploading] = useState(false);
+  const [uploading, setUploading] = useState<string | null>(null)
+  const [activeSlot, setActiveSlot] = useState<string | null>(null)
 
-  function escolherLogo(tipo: LogoType) {
-    setLogoSelecionada(tipo);
-    fileInput.current?.click();
+  const triggerUpload = (slot: string) => {
+    setActiveSlot(slot)
+    fileInputRef.current?.click()
   }
 
-  async function handleUpload(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
+  const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
 
-    if (!file || !logoSelecionada || !empresa) return;
+    if (!file || !activeSlot || !empresa) return
+
+    if (!file.type.startsWith("image/")) {
+      toast({
+        title: "Arquivo inválido",
+        description: "Selecione uma imagem",
+        variant: "destructive",
+      })
+      return
+    }
 
     try {
-      setUploading(true);
+      setUploading(activeSlot)
 
-      const path = `${logoSelecionada}/${Date.now()}-${file.name}`;
+      const path = `${activeSlot}`
 
-      const url = await uploadLogo(file, path);
+      const url = await uploadLogo(file, path)
 
-      await updateEmpresa.mutateAsync({
+      await updateMutation.mutateAsync({
         id: empresa.id,
-        [logoSelecionada]: url,
-      });
-
-      await refetch();
+        [activeSlot]: url,
+      })
 
       toast({
         title: "Logo atualizada",
-        description: "Nova imagem aplicada ao sistema.",
-      });
+        description: "A nova logo já está ativa.",
+      })
     } catch (error: any) {
-      console.error(error);
-
       toast({
         title: "Erro no upload",
-        description: error.message || "Erro ao enviar imagem",
+        description: error.message,
         variant: "destructive",
-      });
+      })
     } finally {
-      setUploading(false);
-      setLogoSelecionada(null);
+      setUploading(null)
+      setActiveSlot(null)
+
+      if (fileInputRef.current) {
+        fileInputRef.current.value = ""
+      }
     }
   }
 
@@ -83,75 +110,72 @@ export function MasterLogoManager() {
       <div className="flex justify-center p-10">
         <Loader2 className="animate-spin h-8 w-8" />
       </div>
-    );
+    )
   }
 
   if (!empresa) {
-    return <div>Nenhuma empresa cadastrada.</div>;
+    return (
+      <div className="text-center p-10 text-muted-foreground">
+        Nenhuma empresa cadastrada.
+      </div>
+    )
   }
 
   return (
     <div className="space-y-6">
-
       <input
+        ref={fileInputRef}
         type="file"
-        ref={fileInput}
-        onChange={handleUpload}
         accept="image/*"
         className="hidden"
+        onChange={handleUpload}
       />
 
-      {LOGOS.map((logo) => {
-        const url = empresa?.[logo.key];
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        {LOGO_SLOTS.map((slot) => {
+          const url = empresa?.[slot.key as keyof typeof empresa] as string
 
-        return (
-          <Card key={logo.key}>
-            <CardHeader>
-              <CardTitle>{logo.label}</CardTitle>
-            </CardHeader>
+          return (
+            <Card key={slot.key}>
+              <CardHeader>
+                <CardTitle className="text-sm">{slot.label}</CardTitle>
+                <p className="text-xs text-muted-foreground">{slot.desc}</p>
+              </CardHeader>
 
-            <CardContent className="space-y-4">
+              <CardContent>
+                <div className="h-28 rounded-md bg-muted flex items-center justify-center overflow-hidden mb-3">
 
-              {/* LOGO ATUAL */}
-              <div className="w-full h-32 bg-muted rounded flex items-center justify-center overflow-hidden">
+                  {url ? (
+                    <img
+                      src={url}
+                      alt="logo"
+                      className="max-h-full object-contain"
+                    />
+                  ) : (
+                    <ImageIcon className="h-8 w-8 text-muted-foreground" />
+                  )}
 
-                {url ? (
-                  <img
-                    src={url}
-                    alt="logo"
-                    className="max-h-full object-contain"
-                  />
-                ) : (
-                  <span className="text-muted-foreground">
-                    Nenhuma logo cadastrada
-                  </span>
-                )}
+                </div>
 
-              </div>
+                <Button
+                  onClick={() => triggerUpload(slot.key)}
+                  className="w-full gap-2"
+                  variant="outline"
+                  disabled={uploading === slot.key}
+                >
+                  {uploading === slot.key ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Upload className="h-4 w-4" />
+                  )}
 
-              {/* BOTÃO */}
-              <Button
-                className="w-full"
-                onClick={() => escolherLogo(logo.key)}
-                disabled={uploading}
-              >
-                {uploading ? (
-                  <>
-                    <Loader2 className="animate-spin mr-2 h-4 w-4" />
-                    Enviando...
-                  </>
-                ) : (
-                  <>
-                    <Upload className="mr-2 h-4 w-4" />
-                    Alterar Logo
-                  </>
-                )}
-              </Button>
-
-            </CardContent>
-          </Card>
-        );
-      })}
+                  Alterar Logo
+                </Button>
+              </CardContent>
+            </Card>
+          )
+        })}
+      </div>
     </div>
-  );
+  )
 }
