@@ -1,19 +1,39 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { supabase } from "@/integrations/supabase/client"
+import { useToast } from "@/hooks/use-toast"
 
 export interface DadosEmpresa {
   id: string
   razao_social: string
   nome_fantasia: string
+  cnpj: string
+  inscricao_estadual: string
+  endereco: string
+  cidade: string
+  estado: string
+  cep: string
+  telefone: string
+  whatsapp: string
+  email: string
+  site: string
+  responsavel_nome: string
+  responsavel_cargo: string
   logo_principal_url: string
   logo_menu_url: string
   logo_login_url: string
+  logo_pdf_url: string
+  logo_os_url: string
+  logo_relatorio_url: string
 }
 
 export function useDadosEmpresa() {
+
   return useQuery({
-    queryKey: ["empresa"],
+
+    queryKey: ["dados_empresa"],
+
     queryFn: async () => {
+
       const { data, error } = await supabase
         .from("dados_empresa")
         .select("*")
@@ -21,17 +41,22 @@ export function useDadosEmpresa() {
         .maybeSingle()
 
       if (error) throw error
-      return data
+
+      return data as DadosEmpresa | null
     },
   })
 }
 
-export function useUpdateEmpresa() {
+export function useUpdateDadosEmpresa() {
+
   const queryClient = useQueryClient()
+  const { toast } = useToast()
 
   return useMutation({
-    mutationFn: async (dados: Partial<DadosEmpresa> & { id: string }) => {
-      const { id, ...rest } = dados
+
+    mutationFn: async (updates: Partial<DadosEmpresa> & { id: string }) => {
+
+      const { id, ...rest } = updates
 
       const { data, error } = await supabase
         .from("dados_empresa")
@@ -44,20 +69,39 @@ export function useUpdateEmpresa() {
 
       return data
     },
+
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["empresa"] })
+
+      queryClient.invalidateQueries({ queryKey: ["dados_empresa"] })
+
+      toast({
+        title: "Sucesso",
+        description: "Dados da empresa atualizados"
+      })
+    },
+
+    onError: (error: any) => {
+
+      toast({
+        title: "Erro",
+        description: error.message,
+        variant: "destructive"
+      })
     },
   })
 }
 
-export async function uploadLogo(file: File, path: string) {
-  const { error } = await supabase.storage
+export async function uploadLogo(file: File, path: string): Promise<string> {
+
+  const { error } = await supabase
+    .storage
     .from("logos")
     .upload(path, file, { upsert: true })
 
   if (error) throw error
 
-  const { data } = supabase.storage
+  const { data } = supabase
+    .storage
     .from("logos")
     .getPublicUrl(path)
 
