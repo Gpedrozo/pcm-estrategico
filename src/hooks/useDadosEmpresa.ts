@@ -1,66 +1,42 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { supabase } from '@/integrations/supabase/client'
-import { useToast } from '@/hooks/use-toast'
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
+import { supabase } from "@/integrations/supabase/client"
 
 export interface DadosEmpresa {
   id: string
   razao_social: string
   nome_fantasia: string
-  cnpj: string
-  inscricao_estadual: string
-  endereco: string
-  cidade: string
-  estado: string
-  cep: string
-  telefone: string
-  whatsapp: string
-  email: string
-  site: string
-  responsavel_nome: string
-  responsavel_cargo: string
   logo_principal_url: string
   logo_menu_url: string
   logo_login_url: string
-  logo_pdf_url: string
-  logo_os_url: string
-  logo_relatorio_url: string
 }
 
 export function useDadosEmpresa() {
   return useQuery({
-    queryKey: ['dados_empresa'],
+    queryKey: ["empresa"],
     queryFn: async () => {
-
       const { data, error } = await supabase
-        .from('dados_empresa')
-        .select('*')
+        .from("dados_empresa")
+        .select("*")
         .limit(1)
         .maybeSingle()
 
       if (error) throw error
-
-      return data as DadosEmpresa | null
+      return data
     },
-    staleTime: 1000 * 60 * 5,
   })
 }
 
-export function useUpdateDadosEmpresa() {
+export function useUpdateEmpresa() {
   const queryClient = useQueryClient()
-  const { toast } = useToast()
 
   return useMutation({
-    mutationFn: async (updates: Partial<DadosEmpresa> & { id: string }) => {
-
-      const { id, ...rest } = updates
+    mutationFn: async (dados: Partial<DadosEmpresa> & { id: string }) => {
+      const { id, ...rest } = dados
 
       const { data, error } = await supabase
-        .from('dados_empresa')
-        .update({
-          ...rest,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', id)
+        .from("dados_empresa")
+        .update(rest)
+        .eq("id", id)
         .select()
         .single()
 
@@ -68,49 +44,22 @@ export function useUpdateDadosEmpresa() {
 
       return data
     },
-
     onSuccess: () => {
-
-      queryClient.invalidateQueries({
-        queryKey: ['dados_empresa']
-      })
-
-      toast({
-        title: 'Empresa atualizada',
-        description: 'Dados salvos com sucesso'
-      })
+      queryClient.invalidateQueries({ queryKey: ["empresa"] })
     },
-
-    onError: (error: any) => {
-      toast({
-        title: 'Erro',
-        description: error.message,
-        variant: 'destructive'
-      })
-    }
   })
 }
 
-export async function uploadLogo(file: File, path: string): Promise<string> {
-
-  const fileExt = file.name.split('.').pop()
-
-  const fileName = `${Date.now()}.${fileExt}`
-
-  const fullPath = `${path}/${fileName}`
-
+export async function uploadLogo(file: File, path: string) {
   const { error } = await supabase.storage
-    .from('logos')
-    .upload(fullPath, file, {
-      upsert: true
-    })
+    .from("logos")
+    .upload(path, file, { upsert: true })
 
   if (error) throw error
 
   const { data } = supabase.storage
-    .from('logos')
-    .getPublicUrl(fullPath)
+    .from("logos")
+    .getPublicUrl(path)
 
-  // evita cache da imagem antiga
-  return `${data.publicUrl}?t=${Date.now()}`
+  return data.publicUrl
 }
