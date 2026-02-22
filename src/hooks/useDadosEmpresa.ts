@@ -1,95 +1,63 @@
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
-import { supabase } from "@/integrations/supabase/client"
-import { useToast } from "@/hooks/use-toast"
+import { useState, useEffect } from "react"
 
-export interface DadosEmpresa {
-  id: string
-  razao_social: string
-  nome_fantasia: string
+export interface Empresa {
+  id?: string
+  nome: string
   cnpj: string
-  inscricao_estadual: string
-  endereco: string
-  cidade: string
-  estado: string
-  cep: string
   telefone: string
-  whatsapp: string
   email: string
-  site: string
-  responsavel_nome: string
-  responsavel_cargo: string
-  logo_principal_url: string
-  logo_menu_url: string
-  logo_login_url: string
-  logo_pdf_url: string
-  logo_os_url: string
-  logo_relatorio_url: string
+  endereco: string
+  logo?: string
 }
 
 export function useDadosEmpresa() {
-  return useQuery({
-    queryKey: ["dados_empresa"],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("dados_empresa")
-        .select("*")
-        .limit(1)
-        .maybeSingle()
+  const [empresa, setEmpresa] = useState<Empresa | null>(null)
+  const [loading, setLoading] = useState(true)
 
-      if (error) throw error
+  useEffect(() => {
+    const data = localStorage.getItem("empresa")
 
-      return data as DadosEmpresa | null
-    },
-  })
+    if (data) {
+      setEmpresa(JSON.parse(data))
+    }
+
+    setLoading(false)
+  }, [])
+
+  return { empresa, loading }
 }
 
 export function useUpdateDadosEmpresa() {
-  const queryClient = useQueryClient()
-  const { toast } = useToast()
+  const [loading, setLoading] = useState(false)
 
-  return useMutation({
-    mutationFn: async (updates: Partial<DadosEmpresa> & { id: string }) => {
-      const { id, ...rest } = updates
+  async function updateEmpresa(data: Empresa) {
+    setLoading(true)
 
-      const { data, error } = await supabase
-        .from("dados_empresa")
-        .update(rest)
-        .eq("id", id)
-        .select()
-        .single()
+    localStorage.setItem("empresa", JSON.stringify(data))
 
-      if (error) throw error
+    setLoading(false)
 
-      return data
-    },
+    return true
+  }
 
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["dados_empresa"] })
-
-      toast({
-        title: "Dados atualizados",
-        description: "Empresa atualizada com sucesso",
-      })
-    },
-
-    onError: (error: any) => {
-      toast({
-        title: "Erro ao atualizar",
-        description: error.message,
-        variant: "destructive",
-      })
-    },
-  })
+  return { updateEmpresa, loading }
 }
 
-export async function uploadLogo(file: File, path: string): Promise<string> {
-  const { error } = await supabase.storage
-    .from("logos")
-    .upload(path, file, { upsert: true })
+/*
+Alias para compatibilidade com componentes antigos
+*/
+export function useUpdateEmpresa() {
+  return useUpdateDadosEmpresa()
+}
 
-  if (error) throw error
+export async function uploadLogo(file: File) {
+  return new Promise<string>((resolve) => {
+    const reader = new FileReader()
 
-  const { data } = supabase.storage.from("logos").getPublicUrl(path)
+    reader.onload = () => {
+      resolve(reader.result as string)
+    }
 
-  return data.publicUrl
+    reader.readAsDataURL(file)
+  })
 }
