@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import {
   Shield,
@@ -12,6 +12,8 @@ import {
   Building2,
   Image,
   ShieldCheck,
+  AlertCircle,
+  Loader2,
 } from "lucide-react";
 import {
   Tabs,
@@ -19,16 +21,6 @@ import {
   TabsList,
   TabsTrigger,
 } from "@/components/ui/tabs";
-
-import { MasterUsersManager } from "@/components/master-ti/MasterUsersManager";
-import { MasterDatabaseManager } from "@/components/master-ti/MasterDatabaseManager";
-import { MasterSystemMonitor } from "@/components/master-ti/MasterSystemMonitor";
-import { MasterGlobalSettings } from "@/components/master-ti/MasterGlobalSettings";
-import { MasterAuditLogs } from "@/components/master-ti/MasterAuditLogs";
-import { MasterSecurity } from "@/components/master-ti/MasterSecurity";
-import { MasterEmpresaData } from "@/components/master-ti/MasterEmpresaData";
-import { MasterLogoManager } from "@/components/master-ti/MasterLogoManager";
-import { MasterPermissionsManager } from "@/components/master-ti/MasterPermissionsManager";
 
 type TabKey =
   | "users"
@@ -41,31 +33,121 @@ type TabKey =
   | "audit"
   | "security";
 
+// ======================
+// MasterUsersManager corrigido
+// ======================
+type UserType = {
+  id: string;
+  name: string;
+  email: string;
+  role: string;
+};
+
+function MasterUsersManager() {
+  const { token } = useAuth();
+  const [users, setUsers] = useState<UserType[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    const fetchUsers = async () => {
+      setLoading(true);
+      setError("");
+
+      try {
+        const res = await fetch("/api/users", {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+        });
+
+        if (!res.ok) {
+          throw new Error(`Erro ao buscar usuários: ${res.statusText}`);
+        }
+
+        const data = await res.json();
+        setUsers(data);
+      } catch (err: any) {
+        console.error(err);
+        setError(err.message || "Erro desconhecido ao carregar usuários");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchUsers();
+  }, [token]);
+
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center h-40">
+        <Loader2 className="h-6 w-6 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex items-center gap-2 p-3 rounded-md bg-destructive/10 text-destructive text-sm">
+        <AlertCircle className="h-4 w-4" />
+        <span>{error}</span>
+      </div>
+    );
+  }
+
+  if (!users.length) {
+    return <p className="text-muted-foreground">Nenhum usuário encontrado.</p>;
+  }
+
+  return (
+    <div className="space-y-2">
+      {users.map((user) => (
+        <div
+          key={user.id}
+          className="flex justify-between items-center p-3 border rounded hover:bg-gray-50"
+        >
+          <div className="flex items-center gap-3">
+            <Users className="h-5 w-5 text-primary" />
+            <div>
+              <p className="font-medium text-foreground">{user.name}</p>
+              <p className="text-sm text-muted-foreground">{user.email}</p>
+            </div>
+          </div>
+          <span className="text-sm font-medium text-muted-foreground">
+            {user.role}
+          </span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ======================
+// MasterTI principal
+// ======================
 export default function MasterTI() {
   const auth = useAuth();
-
-  // 🔐 Garantia absoluta contra undefined
   const isMasterTI = Boolean(auth?.isMasterTI);
-
   const [activeTab, setActiveTab] = useState<TabKey>("users");
 
-  // 🔎 Configuração centralizada das abas (evita erro humano)
+  // Configuração das abas
   const tabsConfig = useMemo(
     () => [
       { key: "users", label: "Usuários", icon: Users, component: <MasterUsersManager /> },
-      { key: "permissions", label: "Permissões", icon: ShieldCheck, component: <MasterPermissionsManager /> },
-      { key: "empresa", label: "Empresa", icon: Building2, component: <MasterEmpresaData /> },
-      { key: "logos", label: "Logos", icon: Image, component: <MasterLogoManager /> },
-      { key: "database", label: "Banco de Dados", icon: Database, component: <MasterDatabaseManager /> },
-      { key: "monitor", label: "Monitoramento", icon: Activity, component: <MasterSystemMonitor /> },
-      { key: "settings", label: "Configurações", icon: Settings, component: <MasterGlobalSettings /> },
-      { key: "audit", label: "Auditoria", icon: FileText, component: <MasterAuditLogs /> },
-      { key: "security", label: "Segurança", icon: Lock, component: <MasterSecurity /> },
+      { key: "permissions", label: "Permissões", icon: ShieldCheck, component: <p>Permissões em construção</p> },
+      { key: "empresa", label: "Empresa", icon: Building2, component: <p>Dados da empresa em construção</p> },
+      { key: "logos", label: "Logos", icon: Image, component: <p>Gerenciamento de logos em construção</p> },
+      { key: "database", label: "Banco de Dados", icon: Database, component: <p>Banco de dados em construção</p> },
+      { key: "monitor", label: "Monitoramento", icon: Activity, component: <p>Monitoramento em construção</p> },
+      { key: "settings", label: "Configurações", icon: Settings, component: <p>Configurações em construção</p> },
+      { key: "audit", label: "Auditoria", icon: FileText, component: <p>Auditoria em construção</p> },
+      { key: "security", label: "Segurança", icon: Lock, component: <p>Segurança em construção</p> },
     ] as const,
     []
   );
 
-  // 🚫 Proteção total de acesso
+  // Proteção de acesso
   if (!isMasterTI) {
     return (
       <div className="flex items-center justify-center h-[60vh]">
