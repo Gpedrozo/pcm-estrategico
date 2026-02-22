@@ -1,6 +1,5 @@
 import { useState, useMemo } from "react";
 import { useAuth } from "@/contexts/AuthContext";
-
 import {
   Shield,
   Users,
@@ -38,12 +37,12 @@ type TabKey =
   | "audit"
   | "security";
 
-type TabConfig = {
+interface TabConfig {
   key: TabKey;
   label: string;
   icon: any;
   component: React.ReactNode;
-};
+}
 
 export default function MasterTI() {
   const auth = useAuth();
@@ -121,14 +120,14 @@ export default function MasterTI() {
             <ServerCrash className="h-8 w-8 text-destructive" />
           </div>
 
-          <h2 className="text-xl font-bold text-foreground">
+          <h2 className="text-xl font-bold">
             Acesso Negado
           </h2>
 
           <p className="text-muted-foreground max-w-md">
             Este painel é exclusivo para usuários com perfil
-            <strong> MASTER TI</strong>.
-            Verifique suas permissões ou contate o administrador do sistema.
+            <strong> MASTER TI</strong>.  
+            Verifique suas permissões ou contate o administrador.
           </p>
 
         </div>
@@ -147,18 +146,16 @@ export default function MasterTI() {
         </div>
 
         <div>
-          <h1 className="text-2xl font-bold text-foreground">
+          <h1 className="text-2xl font-bold">
             Painel Master TI
           </h1>
 
           <p className="text-muted-foreground">
-            Gerenciamento total e estratégico do sistema
+            Gerenciamento total do sistema
           </p>
         </div>
 
       </div>
-
-      {/* Tabs */}
 
       <Tabs
         value={activeTab}
@@ -174,7 +171,7 @@ export default function MasterTI() {
               value={key}
               className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
             >
-              <Icon className="h-4 w-4" />
+              <Icon size={16} />
               {label}
             </TabsTrigger>
           ))}
