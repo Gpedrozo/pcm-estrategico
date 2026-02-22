@@ -11,7 +11,7 @@ import {
   Lock,
   ServerCrash,
   Building2,
-  Image,
+  Image as ImageIcon,
   ShieldCheck,
 } from "lucide-react";
 
@@ -38,67 +38,136 @@ type TabKey =
   | "audit"
   | "security";
 
+type TabConfig = {
+  key: TabKey;
+  label: string;
+  icon: any;
+  component: React.ReactNode;
+};
+
 export default function MasterTI() {
   const auth = useAuth();
+
   const isMasterTI = Boolean(auth?.isMasterTI);
+
   const [activeTab, setActiveTab] = useState<TabKey>("users");
 
-  // Configuração centralizada das abas
-  const tabsConfig = useMemo(
-    () =>
-      [
-        { key: "users", label: "Usuários", icon: Users, component: <MasterUsersManager /> },
-        { key: "permissions", label: "Permissões", icon: ShieldCheck, component: <MasterPermissionsManager /> },
-        { key: "empresa", label: "Empresa", icon: Building2, component: <MasterEmpresaData /> },
-        { key: "logos", label: "Logos", icon: Image, component: <MasterLogoManager /> },
-        { key: "database", label: "Banco de Dados", icon: Database, component: <MasterDatabaseManager /> },
-        { key: "monitor", label: "Monitoramento", icon: Activity, component: <MasterSystemMonitor /> },
-        { key: "settings", label: "Configurações", icon: Settings, component: <MasterGlobalSettings /> },
-        { key: "audit", label: "Auditoria", icon: FileText, component: <MasterAuditLogs /> },
-        { key: "security", label: "Segurança", icon: Lock, component: <MasterSecurity /> },
-      ] as const,
+  const tabsConfig: TabConfig[] = useMemo(
+    () => [
+      {
+        key: "users",
+        label: "Usuários",
+        icon: Users,
+        component: <MasterUsersManager />,
+      },
+      {
+        key: "permissions",
+        label: "Permissões",
+        icon: ShieldCheck,
+        component: <MasterPermissionsManager />,
+      },
+      {
+        key: "empresa",
+        label: "Empresa",
+        icon: Building2,
+        component: <MasterEmpresaData />,
+      },
+      {
+        key: "logos",
+        label: "Logos",
+        icon: ImageIcon,
+        component: <MasterLogoManager />,
+      },
+      {
+        key: "database",
+        label: "Banco de Dados",
+        icon: Database,
+        component: <MasterDatabaseManager />,
+      },
+      {
+        key: "monitor",
+        label: "Monitoramento",
+        icon: Activity,
+        component: <MasterSystemMonitor />,
+      },
+      {
+        key: "settings",
+        label: "Configurações",
+        icon: Settings,
+        component: <MasterGlobalSettings />,
+      },
+      {
+        key: "audit",
+        label: "Auditoria",
+        icon: FileText,
+        component: <MasterAuditLogs />,
+      },
+      {
+        key: "security",
+        label: "Segurança",
+        icon: Lock,
+        component: <MasterSecurity />,
+      },
+    ],
     []
   );
 
-  // Proteção de acesso
   if (!isMasterTI) {
     return (
       <div className="flex items-center justify-center h-[60vh]">
         <div className="text-center space-y-4">
+
           <div className="mx-auto w-16 h-16 rounded-full bg-destructive/10 flex items-center justify-center">
             <ServerCrash className="h-8 w-8 text-destructive" />
           </div>
-          <h2 className="text-xl font-bold text-foreground">Acesso Negado</h2>
+
+          <h2 className="text-xl font-bold text-foreground">
+            Acesso Negado
+          </h2>
+
           <p className="text-muted-foreground max-w-md">
-            Este painel é exclusivo para usuários com perfil <strong>MASTER TI</strong>.
+            Este painel é exclusivo para usuários com perfil
+            <strong> MASTER TI</strong>.
             Verifique suas permissões ou contate o administrador do sistema.
           </p>
+
         </div>
       </div>
     );
   }
 
-  // Render principal
   return (
     <div className="space-y-6">
+
       {/* Header */}
       <div className="flex items-center gap-4">
+
         <div className="w-12 h-12 rounded-xl bg-primary flex items-center justify-center">
           <Shield className="h-6 w-6 text-primary-foreground" />
         </div>
+
         <div>
-          <h1 className="text-2xl font-bold text-foreground">Painel Master TI</h1>
-          <p className="text-muted-foreground">Gerenciamento total e estratégico do sistema</p>
+          <h1 className="text-2xl font-bold text-foreground">
+            Painel Master TI
+          </h1>
+
+          <p className="text-muted-foreground">
+            Gerenciamento total e estratégico do sistema
+          </p>
         </div>
+
       </div>
 
       {/* Tabs */}
+
       <Tabs
         value={activeTab}
         onValueChange={(value) => setActiveTab(value as TabKey)}
         className="space-y-6"
       >
+
         <TabsList className="bg-card border border-border h-auto flex-wrap gap-1 p-1">
+
           {tabsConfig.map(({ key, label, icon: Icon }) => (
             <TabsTrigger
               key={key}
@@ -109,6 +178,7 @@ export default function MasterTI() {
               {label}
             </TabsTrigger>
           ))}
+
         </TabsList>
 
         {tabsConfig.map(({ key, component }) => (
@@ -116,6 +186,7 @@ export default function MasterTI() {
             {component}
           </TabsContent>
         ))}
+
       </Tabs>
     </div>
   );
