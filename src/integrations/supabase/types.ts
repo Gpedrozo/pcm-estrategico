@@ -345,6 +345,39 @@ export type Database = {
         }
         Relationships: []
       }
+      auditoria_logs: {
+        Row: {
+          created_at: string | null
+          dados_antes: Json | null
+          dados_depois: Json | null
+          id: string
+          operacao: string
+          registro_id: string
+          tabela: string
+          usuario_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          dados_antes?: Json | null
+          dados_depois?: Json | null
+          id?: string
+          operacao: string
+          registro_id: string
+          tabela: string
+          usuario_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          dados_antes?: Json | null
+          dados_depois?: Json | null
+          id?: string
+          operacao?: string
+          registro_id?: string
+          tabela?: string
+          usuario_id?: string | null
+        }
+        Relationships: []
+      }
       avaliacoes_fornecedores: {
         Row: {
           avaliador_id: string | null
@@ -558,6 +591,41 @@ export type Database = {
           valor?: string | null
         }
         Relationships: []
+      }
+      contrato_alertas: {
+        Row: {
+          contrato_id: string
+          created_at: string | null
+          id: string
+          mensagem: string
+          tipo: string
+          visualizado: boolean | null
+        }
+        Insert: {
+          contrato_id: string
+          created_at?: string | null
+          id?: string
+          mensagem: string
+          tipo: string
+          visualizado?: boolean | null
+        }
+        Update: {
+          contrato_id?: string
+          created_at?: string | null
+          id?: string
+          mensagem?: string
+          tipo?: string
+          visualizado?: boolean | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contrato_alertas_contrato_id_fkey"
+            columns: ["contrato_id"]
+            isOneToOne: false
+            referencedRelation: "contratos"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       contratos: {
         Row: {
@@ -1533,6 +1601,36 @@ export type Database = {
           },
         ]
       }
+      notificacoes: {
+        Row: {
+          created_at: string | null
+          id: string
+          lida: boolean | null
+          mensagem: string
+          metadata: Json | null
+          tipo: string
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          lida?: boolean | null
+          mensagem: string
+          metadata?: Json | null
+          tipo: string
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          lida?: boolean | null
+          mensagem?: string
+          metadata?: Json | null
+          tipo?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       ordens_servico: {
         Row: {
           acao_corretiva: string | null
@@ -2117,6 +2215,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      check_expiring_contracts: { Args: never; Returns: undefined }
       check_rate_limit: {
         Args: {
           p_endpoint: string
