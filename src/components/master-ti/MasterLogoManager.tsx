@@ -5,29 +5,31 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Label } from '@/components/ui/label';
-import { Loader2, Upload, Image as ImageIcon, Trash2 } from 'lucide-react';
+import { Loader2, Upload, Image as ImageIcon, Trash2, Info } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
+import { useLogAuditoria } from '@/hooks/useAuditoria';
 
 interface LogoSlot {
   key: keyof Pick<DadosEmpresa, 'logo_principal_url' | 'logo_menu_url' | 'logo_login_url' | 'logo_os_url' | 'logo_pdf_url' | 'logo_relatorio_url'>;
   label: string;
   description: string;
+  dimensions: string;
 }
 
 const LOGO_SLOTS: LogoSlot[] = [
-  { key: 'logo_principal_url', label: 'Logo Principal', description: 'Logo padrão do sistema' },
-  { key: 'logo_menu_url', label: 'Logo Menu', description: 'Exibida no menu lateral' },
-  { key: 'logo_login_url', label: 'Logo Login', description: 'Tela de autenticação' },
-  { key: 'logo_os_url', label: 'Logo OS', description: 'Impressão de Ordens de Serviço' },
-  { key: 'logo_pdf_url', label: 'Logo PDF', description: 'Cabeçalho de documentos PDF' },
-  { key: 'logo_relatorio_url', label: 'Logo Relatório', description: 'Cabeçalho de relatórios' },
+  { key: 'logo_principal_url', label: 'Logo Principal', description: 'Logo padrão usado em todo o sistema', dimensions: 'Recomendado: 200x60px' },
+  { key: 'logo_menu_url', label: 'Logo Menu Lateral', description: 'Exibida no menu de navegação lateral', dimensions: 'Recomendado: 160x40px' },
+  { key: 'logo_login_url', label: 'Logo Tela de Login', description: 'Exibida na tela de autenticação', dimensions: 'Recomendado: 300x100px' },
+  { key: 'logo_os_url', label: 'Logo Ordens de Serviço', description: 'Cabeçalho na impressão de OS', dimensions: 'Recomendado: 200x60px' },
+  { key: 'logo_pdf_url', label: 'Logo Documentos PDF', description: 'Cabeçalho de documentos PDF exportados', dimensions: 'Recomendado: 200x60px' },
+  { key: 'logo_relatorio_url', label: 'Logo Relatórios', description: 'Cabeçalho de relatórios gerenciais', dimensions: 'Recomendado: 200x60px' },
 ];
 
 export function MasterLogoManager() {
   const { data: empresa, isLoading } = useDadosEmpresa();
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const { log } = useLogAuditoria();
   const [uploading, setUploading] = useState<string | null>(null);
 
   const updateLogoMutation = useMutation({
@@ -39,9 +41,11 @@ export function MasterLogoManager() {
         .eq('id', empresa.id);
       if (error) throw error;
     },
-    onSuccess: () => {
+    onSuccess: (_, vars) => {
       queryClient.invalidateQueries({ queryKey: ['dados-empresa'] });
-      toast({ title: 'Logo atualizada', description: 'Logo salva com sucesso.' });
+      const slotLabel = LOGO_SLOTS.find(s => s.key === vars.logoKey)?.label || vars.logoKey;
+      toast({ title: 'Logo atualizada', description: `${slotLabel} salva com sucesso.` });
+      log('ATUALIZAR_LOGO', `Logo "${slotLabel}" ${vars.url ? 'atualizada' : 'removida'}`, 'MASTER_TI');
     },
     onError: (error: Error) => {
       toast({ title: 'Erro', description: error.message, variant: 'destructive' });
@@ -51,7 +55,6 @@ export function MasterLogoManager() {
   async function handleUpload(logoSlot: LogoSlot, e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
-
     try {
       setUploading(logoSlot.key);
       const url = await uploadLogo(file, `${logoSlot.key.replace('_url', '')}-${Date.now()}.${file.name.split('.').pop()}`);
@@ -60,13 +63,8 @@ export function MasterLogoManager() {
       toast({ title: 'Erro no upload', description: error.message, variant: 'destructive' });
     } finally {
       setUploading(null);
-      // Reset input
       e.target.value = '';
     }
-  }
-
-  async function handleRemove(logoSlot: LogoSlot) {
-    updateLogoMutation.mutate({ logoKey: logoSlot.key, url: null });
   }
 
   if (isLoading) return <div className="flex justify-center p-8"><Loader2 className="h-8 w-8 animate-spin" /></div>;
@@ -77,20 +75,36 @@ export function MasterLogoManager() {
         <CardContent className="p-8 text-center">
           <ImageIcon className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
           <h3 className="text-lg font-semibold">Nenhuma empresa cadastrada</h3>
-          <p className="text-muted-foreground text-sm mt-2">
-            Cadastre os dados da empresa na aba <strong>Empresa</strong> antes de gerenciar logos.
-          </p>
+          <p className="text-muted-foreground text-sm mt-2">Cadastre os dados da empresa na aba <strong>Empresa</strong> antes de gerenciar logos.</p>
         </CardContent>
       </Card>
     );
   }
 
+  const configuredCount = LOGO_SLOTS.filter(s => !!(empresa[s.key] as string | null)).length;
+
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-3">
-        <ImageIcon className="h-6 w-6 text-primary" />
-        <h2 className="text-xl font-bold">Gerenciamento de Logos</h2>
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <ImageIcon className="h-6 w-6 text-primary" />
+          <div>
+            <h2 className="text-xl font-bold">Gerenciamento de Logos</h2>
+            <p className="text-sm text-muted-foreground">As logos são auto-redimensionáveis em cada contexto do sistema</p>
+          </div>
+        </div>
+        <Badge variant="secondary">{configuredCount}/{LOGO_SLOTS.length} configuradas</Badge>
       </div>
+
+      <Card className="bg-info/5 border-info/20">
+        <CardContent className="p-4 flex items-start gap-3">
+          <Info className="h-5 w-5 text-info mt-0.5 shrink-0" />
+          <div className="text-sm">
+            <p className="font-medium text-info">Logos Auto-Redimensionáveis</p>
+            <p className="text-muted-foreground mt-1">Todas as logos são automaticamente redimensionadas para se adequar ao espaço disponível. Use imagens em alta resolução (PNG/SVG) com fundo transparente para melhor resultado.</p>
+          </div>
+        </CardContent>
+      </Card>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {LOGO_SLOTS.map(slot => {
@@ -109,46 +123,35 @@ export function MasterLogoManager() {
                   )}
                 </CardTitle>
                 <p className="text-xs text-muted-foreground">{slot.description}</p>
+                <p className="text-[10px] text-muted-foreground font-mono">{slot.dimensions}</p>
               </CardHeader>
               <CardContent className="space-y-3">
-                {/* Preview */}
-                <div className="h-24 rounded-lg border border-dashed border-border flex items-center justify-center bg-muted/30 overflow-hidden">
+                <div className="h-28 rounded-lg border border-dashed border-border flex items-center justify-center bg-muted/30 overflow-hidden">
                   {currentUrl ? (
                     <img
                       src={currentUrl}
                       alt={slot.label}
                       className="max-h-full max-w-full object-contain p-2"
-                      onError={(e) => {
-                        (e.target as HTMLImageElement).style.display = 'none';
-                      }}
+                      style={{ imageRendering: 'auto' }}
+                      onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
                     />
                   ) : (
-                    <ImageIcon className="h-8 w-8 text-muted-foreground/30" />
+                    <div className="text-center">
+                      <ImageIcon className="h-8 w-8 text-muted-foreground/30 mx-auto" />
+                      <p className="text-[10px] text-muted-foreground mt-1">Nenhuma logo</p>
+                    </div>
                   )}
                 </div>
-
-                {/* Actions */}
                 <div className="flex gap-2">
                   <Button variant="outline" size="sm" className="flex-1 gap-1" asChild disabled={isUploading}>
                     <label className="cursor-pointer">
                       {isUploading ? <Loader2 className="h-3 w-3 animate-spin" /> : <Upload className="h-3 w-3" />}
                       {isUploading ? 'Enviando...' : 'Upload'}
-                      <input
-                        type="file"
-                        accept="image/*"
-                        className="hidden"
-                        onChange={(e) => handleUpload(slot, e)}
-                        disabled={isUploading}
-                      />
+                      <input type="file" accept="image/*" className="hidden" onChange={(e) => handleUpload(slot, e)} disabled={isUploading} />
                     </label>
                   </Button>
                   {currentUrl && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleRemove(slot)}
-                      disabled={updateLogoMutation.isPending}
-                    >
+                    <Button variant="ghost" size="sm" onClick={() => updateLogoMutation.mutate({ logoKey: slot.key, url: null })} disabled={updateLogoMutation.isPending}>
                       <Trash2 className="h-3 w-3 text-destructive" />
                     </Button>
                   )}
