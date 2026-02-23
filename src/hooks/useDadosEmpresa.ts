@@ -1,63 +1,102 @@
-import { useState, useEffect } from "react"
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
 
-export interface Empresa {
-  id?: string
-  nome: string
-  cnpj: string
-  telefone: string
-  email: string
-  endereco: string
-  logo?: string
+export interface DadosEmpresa {
+  id: string;
+  razao_social: string;
+  nome_fantasia: string | null;
+  cnpj: string | null;
+  inscricao_estadual: string | null;
+  endereco: string | null;
+  cidade: string | null;
+  estado: string | null;
+  cep: string | null;
+  telefone: string | null;
+  whatsapp: string | null;
+  email: string | null;
+  site: string | null;
+  responsavel_nome: string | null;
+  responsavel_cargo: string | null;
+  logo_principal_url: string | null;
+  logo_login_url: string | null;
+  logo_menu_url: string | null;
+  logo_os_url: string | null;
+  logo_pdf_url: string | null;
+  logo_relatorio_url: string | null;
+  created_at: string;
+  updated_at: string;
 }
 
+// Alias for backward compatibility
+export type Empresa = DadosEmpresa;
+
 export function useDadosEmpresa() {
-  const [empresa, setEmpresa] = useState<Empresa | null>(null)
-  const [loading, setLoading] = useState(true)
+  return useQuery({
+    queryKey: ['dados-empresa'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('dados_empresa')
+        .select('*')
+        .limit(1)
+        .maybeSingle();
 
-  useEffect(() => {
-    const data = localStorage.getItem("empresa")
-
-    if (data) {
-      setEmpresa(JSON.parse(data))
-    }
-
-    setLoading(false)
-  }, [])
-
-  return { empresa, loading }
+      if (error) throw error;
+      return data as DadosEmpresa | null;
+    },
+  });
 }
 
 export function useUpdateDadosEmpresa() {
-  const [loading, setLoading] = useState(false)
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
 
-  async function updateEmpresa(data: Empresa) {
-    setLoading(true)
+  return useMutation({
+    mutationFn: async (payload: Partial<DadosEmpresa> & { id: string }) => {
+      const { id, ...updates } = payload;
+      const { data, error } = await supabase
+        .from('dados_empresa')
+        .update(updates)
+        .eq('id', id)
+        .select()
+        .single();
 
-    localStorage.setItem("empresa", JSON.stringify(data))
-
-    setLoading(false)
-
-    return true
-  }
-
-  return { updateEmpresa, loading }
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['dados-empresa'] });
+      toast({
+        title: 'Sucesso!',
+        description: 'Dados da empresa atualizados.',
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: 'Erro ao atualizar',
+        description: error.message,
+        variant: 'destructive',
+      });
+    },
+  });
 }
 
-/*
-Alias para compatibilidade com componentes antigos
-*/
 export function useUpdateEmpresa() {
-  return useUpdateDadosEmpresa()
+  return useUpdateDadosEmpresa();
 }
 
-export async function uploadLogo(file: File) {
-  return new Promise<string>((resolve) => {
-    const reader = new FileReader()
+export async function uploadLogo(file: File, path?: string) {
+  const filePath = path || `logos/${Date.now()}-${file.name}`;
 
-    reader.onload = () => {
-      resolve(reader.result as string)
-    }
+  const { error: uploadError } = await supabase.storage
+    .from('empresa-logos')
+    .upload(filePath, file, { upsert: true });
 
-    reader.readAsDataURL(file)
-  })
+  if (uploadError) throw uploadError;
+
+  const { data } = supabase.storage
+    .from('empresa-logos')
+    .getPublicUrl(filePath);
+
+  return data.publicUrl;
 }
