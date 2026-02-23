@@ -46,18 +46,19 @@ const Index = () => {
           />
 
           {/* Texto */}
-          <h1
-            className="
-              mt-6
-              text-xs
-              sm:text-sm
-              md:text-base
-              tracking-[0.4em]
-              text-zinc-400
-            "
-          >
-            Transformando Dados de Manutenção em Resultados.
-          </h1>
+         <h1
+  className="
+    mt-8
+    text-base
+    sm:text-lg
+    md:text-xl
+    font-extralight
+    tracking-[0.25em]
+    text-zinc-300
+  "
+>
+  Transformando dados de manutenção em resultados.
+</h1>
         </div>
       </div>
     );
