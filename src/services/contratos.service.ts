@@ -33,7 +33,7 @@ export const contratosService = {
     const validated = contratoSchema.parse(payload);
     const { data, error } = await supabase
       .from('contratos')
-      .insert([validated])
+      .insert([validated as any])
       .select()
       .single();
 
