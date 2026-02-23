@@ -3,12 +3,17 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Loader2, Save, Building2 } from 'lucide-react';
-import { useDadosEmpresa, useUpdateDadosEmpresa } from '@/hooks/useDadosEmpresa';
+import { Loader2, Save, Building2, Plus } from 'lucide-react';
+import { useDadosEmpresa, type DadosEmpresa } from '@/hooks/useDadosEmpresa';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
 
 export function MasterEmpresaData() {
   const { data: empresa, isLoading } = useDadosEmpresa();
-  const updateMutation = useUpdateDadosEmpresa();
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
   const [form, setForm] = useState({
     razao_social: '', nome_fantasia: '', cnpj: '', inscricao_estadual: '',
     endereco: '', cidade: '', estado: '', cep: '',
@@ -37,9 +42,38 @@ export function MasterEmpresaData() {
     }
   }, [empresa]);
 
+  const saveMutation = useMutation({
+    mutationFn: async (formData: typeof form) => {
+      if (empresa?.id) {
+        // Update existing
+        const { error } = await supabase
+          .from('dados_empresa')
+          .update(formData)
+          .eq('id', empresa.id);
+        if (error) throw error;
+      } else {
+        // Create new
+        const { error } = await supabase
+          .from('dados_empresa')
+          .insert([formData]);
+        if (error) throw error;
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['dados-empresa'] });
+      toast({ title: 'Sucesso!', description: empresa?.id ? 'Dados atualizados.' : 'Empresa cadastrada com sucesso.' });
+    },
+    onError: (error: Error) => {
+      toast({ title: 'Erro ao salvar', description: error.message, variant: 'destructive' });
+    },
+  });
+
   const handleSave = () => {
-    if (!empresa) return;
-    updateMutation.mutate({ id: empresa.id, ...form });
+    if (!form.razao_social.trim()) {
+      toast({ title: 'Campo obrigatório', description: 'Razão Social é obrigatória.', variant: 'destructive' });
+      return;
+    }
+    saveMutation.mutate(form);
   };
 
   if (isLoading) return <div className="flex justify-center p-8"><Loader2 className="h-8 w-8 animate-spin" /></div>;
@@ -49,11 +83,16 @@ export function MasterEmpresaData() {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <Building2 className="h-6 w-6 text-primary" />
-          <h2 className="text-xl font-bold">Dados da Empresa</h2>
+          <div>
+            <h2 className="text-xl font-bold">Dados da Empresa</h2>
+            {!empresa && (
+              <p className="text-sm text-muted-foreground">Nenhuma empresa cadastrada. Preencha os dados abaixo para cadastrar.</p>
+            )}
+          </div>
         </div>
-        <Button onClick={handleSave} disabled={updateMutation.isPending} className="gap-2">
-          {updateMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-          Salvar
+        <Button onClick={handleSave} disabled={saveMutation.isPending} className="gap-2">
+          {saveMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : empresa ? <Save className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
+          {empresa ? 'Salvar' : 'Cadastrar Empresa'}
         </Button>
       </div>
 
@@ -62,7 +101,7 @@ export function MasterEmpresaData() {
           <CardHeader><CardTitle className="text-base">Dados Cadastrais</CardTitle></CardHeader>
           <CardContent className="space-y-4">
             {[
-              ['Razão Social', 'razao_social'],
+              ['Razão Social *', 'razao_social'],
               ['Nome Fantasia', 'nome_fantasia'],
               ['CNPJ', 'cnpj'],
               ['Inscrição Estadual', 'inscricao_estadual'],
