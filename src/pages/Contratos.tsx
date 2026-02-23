@@ -92,7 +92,7 @@ export default function Contratos() {
     if (editingContrato) {
       await updateContrato.mutateAsync({
         id: editingContrato.id,
-        data: formData,
+        ...formData,
       });
     } else {
       await createContrato.mutateAsync({
