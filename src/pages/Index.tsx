@@ -56,7 +56,7 @@ const Index = () => {
               text-zinc-400
             "
           >
-            Gustavo Pedrozo Pinto Info Sistem
+            Transformando Dados de Manutenção em Resultados.
           </h1>
         </div>
       </div>
