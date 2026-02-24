@@ -133,40 +133,16 @@ export default function PlanoDetailPanel({ plano, equipamentos }: Props) {
     setIsEditingPlano(false);
   };
 
-  const handleExportPDF = () => {
-    const doc = new jsPDF();
-    doc.setFontSize(16);
-    doc.text(`Plano Preventivo: ${plano.codigo}`, 14, 20);
-    doc.setFontSize(11);
-    doc.text(`Nome: ${plano.nome}`, 14, 30);
-    doc.text(`TAG: ${plano.tag || 'N/A'}`, 14, 37);
-    doc.text(`Frequência: ${plano.frequencia_dias} dias`, 14, 44);
-    doc.text(`Tempo Total: ${formatMin(tempoTotalPlano)}`, 14, 51);
-    doc.text(`Próxima Execução: ${plano.proxima_execucao ? new Date(plano.proxima_execucao).toLocaleDateString('pt-BR') : 'N/A'}`, 14, 58);
-
-    let y = 72;
-    doc.setFontSize(13);
-    doc.text('Atividades e Serviços', 14, y);
-    y += 10;
-
-    (atividades || []).forEach((atv, i) => {
-      if (y > 270) { doc.addPage(); y = 20; }
-      doc.setFontSize(11);
-      doc.setFont('helvetica', 'bold');
-      doc.text(`${i + 1}. ${atv.nome} (${formatMin(atv.tempo_total_min)})`, 14, y);
-      y += 7;
-      doc.setFont('helvetica', 'normal');
-      doc.setFontSize(10);
-      (atv.servicos || []).forEach((s, j) => {
-        if (y > 270) { doc.addPage(); y = 20; }
-        doc.text(`   ${j + 1}. ${s.descricao} — ${formatMin(s.tempo_estimado_min)}`, 18, y);
-        y += 6;
-      });
-      y += 4;
-    });
-
-    doc.save(`plano-${plano.codigo}.pdf`);
-  };
+  const handlePrint = useReactToPrint({
+    contentRef: printRef,
+    documentTitle: `Preventiva_${plano.codigo}`,
+    pageStyle: `
+      @page { size: A4; margin: 10mm; }
+      @media print {
+        body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+      }
+    `,
+  });
 
   const handleSaveTemplate = async () => {
     if (!templateNome.trim() || !atividades) return;
