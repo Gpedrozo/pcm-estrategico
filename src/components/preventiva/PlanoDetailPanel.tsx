@@ -1,11 +1,12 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef } from 'react';
+import { useReactToPrint } from 'react-to-print';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Separator } from '@/components/ui/separator';
 import { Switch } from '@/components/ui/switch';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -14,7 +15,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import {
   Plus, Trash2, Edit, Play, Clock, Calendar, ChevronDown, ChevronRight,
   GripVertical, Copy, History, CheckSquare, Download, Timer, Save, X,
-  FileText, ListChecks, Settings, ArrowUp, ArrowDown
+  FileText, ListChecks, Settings, ArrowUp, ArrowDown, Printer, Eye
 } from 'lucide-react';
 import type { PlanoPreventivo } from '@/hooks/usePlanosPreventivos';
 import { useUpdatePlanoPreventivo, useDeletePlanoPreventivo } from '@/hooks/usePlanosPreventivos';
@@ -26,7 +27,8 @@ import {
 import { useExecucoesByPlano, useCreateExecucao } from '@/hooks/useExecucoesPreventivas';
 import { useTemplatesPreventivos, useCreateTemplate } from '@/hooks/useTemplatesPreventivos';
 import type { EquipamentoRow } from '@/hooks/useEquipamentos';
-import jsPDF from 'jspdf';
+import { useDadosEmpresa } from '@/hooks/useDadosEmpresa';
+import { PreventivaPrintTemplate } from './PreventivaPrintTemplate';
 
 interface Props {
   plano: PlanoPreventivo;
