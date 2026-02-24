@@ -16,8 +16,9 @@ const MasterSystemMonitor = lazy(() => import("@/components/master-ti/MasterSyst
 const MasterGlobalSettings = lazy(() => import("@/components/master-ti/MasterGlobalSettings").then(m => ({ default: m.MasterGlobalSettings })));
 const MasterAuditLogs = lazy(() => import("@/components/master-ti/MasterAuditLogs").then(m => ({ default: m.MasterAuditLogs })));
 const MasterSecurity = lazy(() => import("@/components/master-ti/MasterSecurity").then(m => ({ default: m.MasterSecurity })));
+const MasterDocumentLayouts = lazy(() => import("@/components/master-ti/MasterDocumentLayouts").then(m => ({ default: m.MasterDocumentLayouts })));
 
-type TabKey = "users" | "permissions" | "empresa" | "logos" | "database" | "monitor" | "settings" | "audit" | "security";
+type TabKey = "users" | "permissions" | "empresa" | "logos" | "database" | "monitor" | "settings" | "audit" | "security" | "documents";
 
 const TABS: { key: TabKey; label: string; icon: React.ElementType }[] = [
   { key: "users", label: "Usuários", icon: Users },
