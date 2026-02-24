@@ -96,6 +96,7 @@ export function useCreateInspecao() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['inspecoes'] });
+      queryClient.invalidateQueries({ queryKey: ['document-sequences'] });
       toast({
         title: 'Inspeção iniciada',
         description: 'A inspeção foi registrada com sucesso.',

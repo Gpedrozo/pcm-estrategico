@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -7,8 +7,10 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useCreatePlanoLubrificacao } from '@/hooks/useLubrificacao';
 import { useEquipamentos } from '@/hooks/useEquipamentos';
+import { useNextDocumentNumber } from '@/hooks/useDocumentEngine';
 import { uploadToStorage } from '@/services/storage';
 import type { PlanoLubrificacaoInsert } from '@/types/lubrificacao';
+import { Loader2, Hash } from 'lucide-react';
 
 interface Props {
   open: boolean;
@@ -18,9 +20,20 @@ interface Props {
 export default function PlanoFormDialog({ open, onOpenChange }: Props) {
   const create = useCreatePlanoLubrificacao();
   const { data: equipamentos } = useEquipamentos();
+  const nextNumber = useNextDocumentNumber();
 
   const [nome, setNome] = useState('');
   const [codigo, setCodigo] = useState('');
+
+  // Auto-generate code on open
+  useEffect(() => {
+    if (open && !codigo) {
+      nextNumber.mutate('LUBRIFICACAO', {
+        onSuccess: (val) => setCodigo(val)
+      });
+    }
+  }, [open]);
+
   const [equipamentoId, setEquipamentoId] = useState<string | null>(null);
   const [tag, setTag] = useState('');
   const [localizacao, setLocalizacao] = useState('');
@@ -96,7 +109,22 @@ export default function PlanoFormDialog({ open, onOpenChange }: Props) {
           </div>
           <div>
             <Label>Código</Label>
-            <Input value={codigo} onChange={(e) => setCodigo(e.target.value)} />
+            <div className="flex gap-2">
+              <Input 
+                value={codigo} 
+                onChange={(e) => setCodigo(e.target.value)} 
+                placeholder="Ex: LB-000001"
+              />
+              <Button 
+                type="button" 
+                variant="outline" 
+                size="icon" 
+                onClick={() => nextNumber.mutate('LUBRIFICACAO', { onSuccess: setCodigo })}
+                disabled={nextNumber.isPending}
+              >
+                {nextNumber.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Hash className="h-4 w-4" />}
+              </Button>
+            </div>
           </div>
           <div>
             <Label>Equipamento</Label>

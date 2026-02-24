@@ -96,6 +96,7 @@ export function useCreatePlanoPreventivo() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['planos-preventivos'] });
+      queryClient.invalidateQueries({ queryKey: ['document-sequences'] });
       toast({
         title: 'Plano criado',
         description: 'O plano preventivo foi criado com sucesso.',

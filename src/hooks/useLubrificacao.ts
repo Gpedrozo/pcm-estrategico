@@ -37,6 +37,7 @@ export function useCreatePlanoLubrificacao() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['planos-lubrificacao'] });
+      queryClient.invalidateQueries({ queryKey: ['document-sequences'] });
       toast({ title: 'Plano criado', description: 'Plano de lubrificação criado.' });
     },
     onError: (error: any) => {
@@ -166,8 +167,8 @@ export function useGenerateExecucoesNow() {
       } catch (err) {
         console.warn('Erro ao criar OSs em lote', err);
       }
-
-      for (const plano of planos as any[]) {
+  // Calculate next execution for each treated plan
+  for (const plano of planos as any[]) {
         try {
           const tipo = plano.periodicidade_tipo;
           const valor = Number(plano.periodicidade_valor) || 0;
@@ -177,13 +178,16 @@ export function useGenerateExecucoesNow() {
           if (tipo === 'DIAS') next.setDate(next.getDate() + valor);
           else if (tipo === 'SEMANAS') next.setDate(next.getDate() + 7 * valor);
           else if (tipo === 'MESES') next.setMonth(next.getMonth() + valor);
-
+          
           await supabase
             .from('planos_lubrificacao')
-            .update({ proxima_execucao: next.toISOString() })
+            .update({ 
+              proxima_execucao: next.toISOString(),
+              updated_at: new Date().toISOString()
+            })
             .eq('id', plano.id);
-        } catch {
-          // ignore
+        } catch (err) {
+          console.error(`Erro ao atualizar próxima execução do plano ${plano.id}`, err);
         }
       }
 

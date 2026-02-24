@@ -117,6 +117,7 @@ export function useCreateOrdemServico() {
       queryClient.invalidateQueries({ queryKey: ['ordens-servico-recent'] });
       queryClient.invalidateQueries({ queryKey: ['ordens-servico-pending'] });
       queryClient.invalidateQueries({ queryKey: ['indicadores'] });
+      queryClient.invalidateQueries({ queryKey: ['document-sequences'] });
       toast({
         title: 'O.S Criada com Sucesso!',
         description: `Ordem de Serviço nº ${data.numero_os} foi registrada.`,
