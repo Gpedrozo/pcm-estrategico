@@ -315,6 +315,50 @@ export type Database = {
           },
         ]
       }
+      atividades_preventivas: {
+        Row: {
+          created_at: string
+          id: string
+          nome: string
+          observacoes: string | null
+          ordem: number
+          plano_id: string
+          responsavel: string | null
+          tempo_total_min: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          nome: string
+          observacoes?: string | null
+          ordem?: number
+          plano_id: string
+          responsavel?: string | null
+          tempo_total_min?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          nome?: string
+          observacoes?: string | null
+          ordem?: number
+          plano_id?: string
+          responsavel?: string | null
+          tempo_total_min?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "atividades_preventivas_plano_id_fkey"
+            columns: ["plano_id"]
+            isOneToOne: false
+            referencedRelation: "planos_preventivos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       auditoria: {
         Row: {
           acao: string
@@ -971,6 +1015,66 @@ export type Database = {
             columns: ["os_id"]
             isOneToOne: false
             referencedRelation: "ordens_servico"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      execucoes_preventivas: {
+        Row: {
+          checklist: Json | null
+          created_at: string
+          data_execucao: string
+          executor_id: string | null
+          executor_nome: string
+          id: string
+          observacoes: string | null
+          os_gerada_id: string | null
+          plano_id: string
+          status: string
+          tempo_real_min: number | null
+          updated_at: string
+        }
+        Insert: {
+          checklist?: Json | null
+          created_at?: string
+          data_execucao?: string
+          executor_id?: string | null
+          executor_nome: string
+          id?: string
+          observacoes?: string | null
+          os_gerada_id?: string | null
+          plano_id: string
+          status?: string
+          tempo_real_min?: number | null
+          updated_at?: string
+        }
+        Update: {
+          checklist?: Json | null
+          created_at?: string
+          data_execucao?: string
+          executor_id?: string | null
+          executor_nome?: string
+          id?: string
+          observacoes?: string | null
+          os_gerada_id?: string | null
+          plano_id?: string
+          status?: string
+          tempo_real_min?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "execucoes_preventivas_os_gerada_id_fkey"
+            columns: ["os_gerada_id"]
+            isOneToOne: false
+            referencedRelation: "ordens_servico"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "execucoes_preventivas_plano_id_fkey"
+            columns: ["plano_id"]
+            isOneToOne: false
+            referencedRelation: "planos_preventivos"
             referencedColumns: ["id"]
           },
         ]
@@ -1890,6 +1994,7 @@ export type Database = {
           materiais_previstos: Json | null
           nome: string
           proxima_execucao: string | null
+          responsavel_nome: string | null
           tag: string | null
           tempo_estimado_min: number | null
           tipo_gatilho: string | null
@@ -1912,6 +2017,7 @@ export type Database = {
           materiais_previstos?: Json | null
           nome: string
           proxima_execucao?: string | null
+          responsavel_nome?: string | null
           tag?: string | null
           tempo_estimado_min?: number | null
           tipo_gatilho?: string | null
@@ -1934,6 +2040,7 @@ export type Database = {
           materiais_previstos?: Json | null
           nome?: string
           proxima_execucao?: string | null
+          responsavel_nome?: string | null
           tag?: string | null
           tempo_estimado_min?: number | null
           tipo_gatilho?: string | null
@@ -2067,6 +2174,50 @@ export type Database = {
         }
         Relationships: []
       }
+      servicos_preventivos: {
+        Row: {
+          atividade_id: string
+          concluido: boolean
+          created_at: string
+          descricao: string
+          id: string
+          observacoes: string | null
+          ordem: number
+          tempo_estimado_min: number
+          updated_at: string
+        }
+        Insert: {
+          atividade_id: string
+          concluido?: boolean
+          created_at?: string
+          descricao: string
+          id?: string
+          observacoes?: string | null
+          ordem?: number
+          tempo_estimado_min?: number
+          updated_at?: string
+        }
+        Update: {
+          atividade_id?: string
+          concluido?: boolean
+          created_at?: string
+          descricao?: string
+          id?: string
+          observacoes?: string | null
+          ordem?: number
+          tempo_estimado_min?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "servicos_preventivos_atividade_id_fkey"
+            columns: ["atividade_id"]
+            isOneToOne: false
+            referencedRelation: "atividades_preventivas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       sistemas: {
         Row: {
           area_id: string
@@ -2188,6 +2339,33 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      templates_preventivos: {
+        Row: {
+          created_at: string
+          descricao: string | null
+          estrutura: Json
+          id: string
+          nome: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          descricao?: string | null
+          estrutura?: Json
+          id?: string
+          nome: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          descricao?: string | null
+          estrutura?: Json
+          id?: string
+          nome?: string
+          updated_at?: string
+        }
+        Relationships: []
       }
       user_roles: {
         Row: {
