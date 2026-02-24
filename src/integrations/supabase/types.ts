@@ -823,6 +823,69 @@ export type Database = {
         }
         Relationships: []
       }
+      document_layouts: {
+        Row: {
+          ativo: boolean
+          autor_nome: string | null
+          configuracao: Json
+          created_at: string
+          id: string
+          nome: string
+          tipo_documento: string
+          updated_at: string
+          versao: string
+        }
+        Insert: {
+          ativo?: boolean
+          autor_nome?: string | null
+          configuracao?: Json
+          created_at?: string
+          id?: string
+          nome: string
+          tipo_documento: string
+          updated_at?: string
+          versao?: string
+        }
+        Update: {
+          ativo?: boolean
+          autor_nome?: string | null
+          configuracao?: Json
+          created_at?: string
+          id?: string
+          nome?: string
+          tipo_documento?: string
+          updated_at?: string
+          versao?: string
+        }
+        Relationships: []
+      }
+      document_sequences: {
+        Row: {
+          created_at: string
+          id: string
+          prefixo: string
+          tipo_documento: string
+          ultimo_numero: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          prefixo: string
+          tipo_documento: string
+          ultimo_numero?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          prefixo?: string
+          tipo_documento?: string
+          ultimo_numero?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       documentos_tecnicos: {
         Row: {
           aprovador_id: string | null
@@ -2420,6 +2483,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      next_document_number: { Args: { p_tipo: string }; Returns: string }
       update_my_profile: { Args: { new_name: string }; Returns: boolean }
     }
     Enums: {

@@ -2,17 +2,11 @@ import { useRef, useState } from 'react';
 import { useReactToPrint } from 'react-to-print';
 import { Button } from '@/components/ui/button';
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
+  Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger,
 } from '@/components/ui/dialog';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Printer, Eye } from 'lucide-react';
 import { OSPrintTemplate } from './OSPrintTemplate';
+import { useDadosEmpresa } from '@/hooks/useDadosEmpresa';
 
 interface OSPrintDialogProps {
   os: {
@@ -32,22 +26,17 @@ interface OSPrintDialogProps {
 
 export function OSPrintDialog({ os, trigger }: OSPrintDialogProps) {
   const [open, setOpen] = useState(false);
-  const [nomeEmpresa, setNomeEmpresa] = useState('MANUTENÇÃO INDUSTRIAL');
   const printRef = useRef<HTMLDivElement>(null);
+  const { data: empresa } = useDadosEmpresa();
 
   const handlePrint = useReactToPrint({
     contentRef: printRef,
-    documentTitle: `OS_${String(os.numero_os).padStart(4, '0')}`,
+    documentTitle: `OS-${String(os.numero_os).padStart(6, '0')}`,
     pageStyle: `
-      @page {
-        size: A4;
-        margin: 10mm;
-      }
+      @page { size: A4; margin: 0; }
       @media print {
-        body {
-          -webkit-print-color-adjust: exact;
-          print-color-adjust: exact;
-        }
+        html, body { margin: 0; padding: 0; }
+        body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
       }
     `,
   });
@@ -57,8 +46,7 @@ export function OSPrintDialog({ os, trigger }: OSPrintDialogProps) {
       <DialogTrigger asChild>
         {trigger || (
           <Button variant="outline" size="sm" className="gap-2">
-            <Printer className="h-4 w-4" />
-            Imprimir
+            <Printer className="h-4 w-4" /> Imprimir
           </Button>
         )}
       </DialogTrigger>
@@ -66,40 +54,31 @@ export function OSPrintDialog({ os, trigger }: OSPrintDialogProps) {
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Printer className="h-5 w-5" />
-            Imprimir Ordem de Serviço #{String(os.numero_os).padStart(4, '0')}
+            Imprimir Ordem de Serviço — OS-{String(os.numero_os).padStart(6, '0')}
           </DialogTitle>
           <DialogDescription>
-            Visualize e imprima a OS para entregar ao mecânico
+            Visualize e imprima a OS para entregar ao técnico
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4">
-          {/* Config */}
           <div className="flex items-end gap-4 p-4 bg-muted/50 rounded-lg">
-            <div className="flex-1 space-y-2">
-              <Label htmlFor="empresa">Nome da Empresa (cabeçalho)</Label>
-              <Input
-                id="empresa"
-                value={nomeEmpresa}
-                onChange={(e) => setNomeEmpresa(e.target.value)}
-                placeholder="Nome da empresa"
-              />
+            <div className="flex-1 text-sm text-muted-foreground">
+              Documento profissional com dados da empresa atualizados automaticamente.
             </div>
             <Button onClick={() => handlePrint()} className="gap-2">
-              <Printer className="h-4 w-4" />
-              Imprimir
+              <Printer className="h-4 w-4" /> Imprimir
             </Button>
           </div>
 
-          {/* Preview */}
           <div className="border rounded-lg overflow-hidden">
             <div className="bg-muted px-4 py-2 flex items-center gap-2 border-b">
               <Eye className="h-4 w-4" />
               <span className="text-sm font-medium">Pré-visualização</span>
             </div>
             <div className="overflow-auto max-h-[500px] bg-gray-100 p-4">
-              <div className="transform scale-[0.6] origin-top-left" style={{ width: '166.67%' }}>
-                <OSPrintTemplate ref={printRef} os={os} nomeEmpresa={nomeEmpresa} />
+              <div className="transform scale-[0.55] origin-top-left" style={{ width: '181.82%' }}>
+                <OSPrintTemplate ref={printRef} os={os} empresa={empresa} />
               </div>
             </div>
           </div>

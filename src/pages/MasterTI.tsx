@@ -2,7 +2,7 @@ import { useState, useMemo, lazy, Suspense } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import {
   Shield, Users, Database, Activity, Settings, FileText,
-  Lock, ServerCrash, Building2, Image as ImageIcon, ShieldCheck, Loader2,
+  Lock, ServerCrash, Building2, Image as ImageIcon, ShieldCheck, Loader2, FileOutput,
 } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
@@ -16,8 +16,9 @@ const MasterSystemMonitor = lazy(() => import("@/components/master-ti/MasterSyst
 const MasterGlobalSettings = lazy(() => import("@/components/master-ti/MasterGlobalSettings").then(m => ({ default: m.MasterGlobalSettings })));
 const MasterAuditLogs = lazy(() => import("@/components/master-ti/MasterAuditLogs").then(m => ({ default: m.MasterAuditLogs })));
 const MasterSecurity = lazy(() => import("@/components/master-ti/MasterSecurity").then(m => ({ default: m.MasterSecurity })));
+const MasterDocumentLayouts = lazy(() => import("@/components/master-ti/MasterDocumentLayouts").then(m => ({ default: m.MasterDocumentLayouts })));
 
-type TabKey = "users" | "permissions" | "empresa" | "logos" | "database" | "monitor" | "settings" | "audit" | "security";
+type TabKey = "users" | "permissions" | "empresa" | "logos" | "database" | "monitor" | "settings" | "audit" | "security" | "documents";
 
 const TABS: { key: TabKey; label: string; icon: React.ElementType }[] = [
   { key: "users", label: "Usuários", icon: Users },
@@ -29,6 +30,7 @@ const TABS: { key: TabKey; label: string; icon: React.ElementType }[] = [
   { key: "settings", label: "Configurações", icon: Settings },
   { key: "audit", label: "Auditoria", icon: FileText },
   { key: "security", label: "Segurança", icon: Lock },
+  { key: "documents", label: "Documentos", icon: FileOutput },
 ];
 
 function TabFallback() {
@@ -92,6 +94,7 @@ export default function MasterTI() {
           <TabsContent value="settings"><MasterGlobalSettings /></TabsContent>
           <TabsContent value="audit"><MasterAuditLogs /></TabsContent>
           <TabsContent value="security"><MasterSecurity /></TabsContent>
+          <TabsContent value="documents"><MasterDocumentLayouts /></TabsContent>
         </Suspense>
       </Tabs>
     </div>

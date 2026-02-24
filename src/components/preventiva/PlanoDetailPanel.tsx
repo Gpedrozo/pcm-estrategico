@@ -137,8 +137,9 @@ export default function PlanoDetailPanel({ plano, equipamentos }: Props) {
     contentRef: printRef,
     documentTitle: `Preventiva_${plano.codigo}`,
     pageStyle: `
-      @page { size: A4; margin: 10mm; }
+      @page { size: A4; margin: 0; }
       @media print {
+        html, body { margin: 0; padding: 0; }
         body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
       }
     `,
