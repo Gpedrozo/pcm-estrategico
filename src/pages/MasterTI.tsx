@@ -2,7 +2,7 @@ import { useState, useMemo, lazy, Suspense } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import {
   Shield, Users, Database, Activity, Settings, FileText,
-  Lock, ServerCrash, Building2, Image as ImageIcon, ShieldCheck, Loader2,
+  Lock, ServerCrash, Building2, Image as ImageIcon, ShieldCheck, Loader2, FileOutput,
 } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
