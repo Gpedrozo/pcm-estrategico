@@ -1,11 +1,12 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef } from 'react';
+import { useReactToPrint } from 'react-to-print';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Separator } from '@/components/ui/separator';
 import { Switch } from '@/components/ui/switch';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -14,7 +15,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import {
   Plus, Trash2, Edit, Play, Clock, Calendar, ChevronDown, ChevronRight,
   GripVertical, Copy, History, CheckSquare, Download, Timer, Save, X,
-  FileText, ListChecks, Settings, ArrowUp, ArrowDown
+  FileText, ListChecks, Settings, ArrowUp, ArrowDown, Printer, Eye
 } from 'lucide-react';
 import type { PlanoPreventivo } from '@/hooks/usePlanosPreventivos';
 import { useUpdatePlanoPreventivo, useDeletePlanoPreventivo } from '@/hooks/usePlanosPreventivos';
@@ -26,7 +27,8 @@ import {
 import { useExecucoesByPlano, useCreateExecucao } from '@/hooks/useExecucoesPreventivas';
 import { useTemplatesPreventivos, useCreateTemplate } from '@/hooks/useTemplatesPreventivos';
 import type { EquipamentoRow } from '@/hooks/useEquipamentos';
-import jsPDF from 'jspdf';
+import { useDadosEmpresa } from '@/hooks/useDadosEmpresa';
+import { PreventivaPrintTemplate } from './PreventivaPrintTemplate';
 
 interface Props {
   plano: PlanoPreventivo;
@@ -53,7 +55,10 @@ export default function PlanoDetailPanel({ plano, equipamentos }: Props) {
   const [execObs, setExecObs] = useState('');
   const [saveTemplateOpen, setSaveTemplateOpen] = useState(false);
   const [templateNome, setTemplateNome] = useState('');
+  const [printDialogOpen, setPrintDialogOpen] = useState(false);
+  const printRef = useRef<HTMLDivElement>(null);
 
+  const { data: empresa } = useDadosEmpresa();
   const { data: atividades, isLoading: loadAtiv } = useAtividadesByPlano(plano.id);
   const { data: execucoes } = useExecucoesByPlano(plano.id);
   const { data: templates } = useTemplatesPreventivos();
@@ -128,40 +133,16 @@ export default function PlanoDetailPanel({ plano, equipamentos }: Props) {
     setIsEditingPlano(false);
   };
 
-  const handleExportPDF = () => {
-    const doc = new jsPDF();
-    doc.setFontSize(16);
-    doc.text(`Plano Preventivo: ${plano.codigo}`, 14, 20);
-    doc.setFontSize(11);
-    doc.text(`Nome: ${plano.nome}`, 14, 30);
-    doc.text(`TAG: ${plano.tag || 'N/A'}`, 14, 37);
-    doc.text(`Frequência: ${plano.frequencia_dias} dias`, 14, 44);
-    doc.text(`Tempo Total: ${formatMin(tempoTotalPlano)}`, 14, 51);
-    doc.text(`Próxima Execução: ${plano.proxima_execucao ? new Date(plano.proxima_execucao).toLocaleDateString('pt-BR') : 'N/A'}`, 14, 58);
-
-    let y = 72;
-    doc.setFontSize(13);
-    doc.text('Atividades e Serviços', 14, y);
-    y += 10;
-
-    (atividades || []).forEach((atv, i) => {
-      if (y > 270) { doc.addPage(); y = 20; }
-      doc.setFontSize(11);
-      doc.setFont('helvetica', 'bold');
-      doc.text(`${i + 1}. ${atv.nome} (${formatMin(atv.tempo_total_min)})`, 14, y);
-      y += 7;
-      doc.setFont('helvetica', 'normal');
-      doc.setFontSize(10);
-      (atv.servicos || []).forEach((s, j) => {
-        if (y > 270) { doc.addPage(); y = 20; }
-        doc.text(`   ${j + 1}. ${s.descricao} — ${formatMin(s.tempo_estimado_min)}`, 18, y);
-        y += 6;
-      });
-      y += 4;
-    });
-
-    doc.save(`plano-${plano.codigo}.pdf`);
-  };
+  const handlePrint = useReactToPrint({
+    contentRef: printRef,
+    documentTitle: `Preventiva_${plano.codigo}`,
+    pageStyle: `
+      @page { size: A4; margin: 10mm; }
+      @media print {
+        body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+      }
+    `,
+  });
 
   const handleSaveTemplate = async () => {
     if (!templateNome.trim() || !atividades) return;
@@ -218,8 +199,8 @@ export default function PlanoDetailPanel({ plano, equipamentos }: Props) {
             <Button size="sm" variant="outline" onClick={() => { setEditingPlanoData({ nome: plano.nome, descricao: plano.descricao, frequencia_dias: plano.frequencia_dias, instrucoes: plano.instrucoes, ativo: plano.ativo }); setIsEditingPlano(true); }}>
               <Edit className="h-4 w-4 mr-1" /> Editar
             </Button>
-            <Button size="sm" variant="outline" onClick={handleExportPDF}>
-              <Download className="h-4 w-4 mr-1" /> PDF
+            <Button size="sm" variant="outline" onClick={() => setPrintDialogOpen(true)}>
+              <Printer className="h-4 w-4 mr-1" /> Imprimir
             </Button>
             <Button size="sm" onClick={() => setExecFormOpen(true)}>
               <Play className="h-4 w-4 mr-1" /> Executar
@@ -582,6 +563,53 @@ export default function PlanoDetailPanel({ plano, equipamentos }: Props) {
           <DialogFooter>
             <Button onClick={handleSaveTemplate} disabled={createTemplate.isPending}>Salvar</Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Print Dialog */}
+      <Dialog open={printDialogOpen} onOpenChange={setPrintDialogOpen}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Printer className="h-5 w-5" />
+              Imprimir Plano Preventivo — {plano.codigo}
+            </DialogTitle>
+            <DialogDescription>
+              Visualize e imprima o plano para entregar ao técnico
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            <div className="flex items-end gap-4 p-4 bg-muted/50 rounded-lg">
+              <div className="flex-1 text-sm text-muted-foreground">
+                {atividades?.length || 0} atividades • {atividades?.reduce((s, a) => s + (a.servicos?.length || 0), 0) || 0} serviços • Tempo total: {formatMin(tempoTotalPlano)}
+              </div>
+              <Button onClick={() => handlePrint()} className="gap-2">
+                <Printer className="h-4 w-4" />
+                Imprimir
+              </Button>
+            </div>
+
+            <div className="border rounded-lg overflow-hidden">
+              <div className="bg-muted px-4 py-2 flex items-center gap-2 border-b">
+                <Eye className="h-4 w-4" />
+                <span className="text-sm font-medium">Pré-visualização</span>
+              </div>
+              <div className="overflow-auto max-h-[500px] bg-gray-100 p-4">
+                <div className="transform scale-[0.6] origin-top-left" style={{ width: '166.67%' }}>
+                  <PreventivaPrintTemplate
+                    ref={printRef}
+                    data={{
+                      plano,
+                      atividades: atividades || [],
+                      tempoTotal: tempoTotalPlano,
+                    }}
+                    empresa={empresa}
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
         </DialogContent>
       </Dialog>
     </div>
