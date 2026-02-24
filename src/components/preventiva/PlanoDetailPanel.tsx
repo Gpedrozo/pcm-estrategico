@@ -1,5 +1,4 @@
-import { useState, useMemo, useRef } from 'react';
-import { useReactToPrint } from 'react-to-print';
+import { useState, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -29,6 +28,7 @@ import { useTemplatesPreventivos, useCreateTemplate } from '@/hooks/useTemplates
 import type { EquipamentoRow } from '@/hooks/useEquipamentos';
 import { useDadosEmpresa } from '@/hooks/useDadosEmpresa';
 import { PreventivaPrintTemplate } from './PreventivaPrintTemplate';
+import { PrintPreviewDialog } from '@/components/print/PrintPreviewDialog';
 
 interface Props {
   plano: PlanoPreventivo;
