@@ -17,12 +17,12 @@ interface LogoSlot {
 }
 
 const LOGO_SLOTS: LogoSlot[] = [
-  { key: 'logo_principal_url', label: 'Logo Principal', description: 'Logo padrão usado em todo o sistema', dimensions: 'Recomendado: 200x60px' },
-  { key: 'logo_menu_url', label: 'Logo Menu Lateral', description: 'Exibida no menu de navegação lateral', dimensions: 'Recomendado: 160x40px' },
-  { key: 'logo_login_url', label: 'Logo Tela de Login', description: 'Exibida na tela de autenticação', dimensions: 'Recomendado: 300x100px' },
-  { key: 'logo_os_url', label: 'Logo Ordens de Serviço', description: 'Cabeçalho na impressão de OS', dimensions: 'Recomendado: 200x60px' },
-  { key: 'logo_pdf_url', label: 'Logo Documentos PDF', description: 'Cabeçalho de documentos PDF exportados', dimensions: 'Recomendado: 200x60px' },
-  { key: 'logo_relatorio_url', label: 'Logo Relatórios', description: 'Cabeçalho de relatórios gerenciais', dimensions: 'Recomendado: 200x60px' },
+  { key: 'logo_principal_url', label: 'Logo Principal', description: 'Logo padrão usado em todo o sistema', dimensions: '200×60px' },
+  { key: 'logo_menu_url', label: 'Logo Menu Lateral', description: 'Exibida no menu de navegação lateral', dimensions: '160×40px' },
+  { key: 'logo_login_url', label: 'Logo Tela de Login', description: 'Exibida na tela de autenticação', dimensions: '300×100px' },
+  { key: 'logo_os_url', label: 'Logo Ordens de Serviço', description: 'Cabeçalho na impressão de OS', dimensions: '200×60px' },
+  { key: 'logo_pdf_url', label: 'Logo Documentos PDF', description: 'Cabeçalho de documentos PDF', dimensions: '200×60px' },
+  { key: 'logo_relatorio_url', label: 'Logo Relatórios', description: 'Cabeçalho de relatórios gerenciais', dimensions: '200×60px' },
 ];
 
 export function MasterLogoManager() {
@@ -34,11 +34,8 @@ export function MasterLogoManager() {
 
   const updateLogoMutation = useMutation({
     mutationFn: async ({ logoKey, url }: { logoKey: string; url: string | null }) => {
-      if (!empresa?.id) throw new Error('Empresa não cadastrada. Cadastre os dados da empresa primeiro.');
-      const { error } = await supabase
-        .from('dados_empresa')
-        .update({ [logoKey]: url })
-        .eq('id', empresa.id);
+      if (!empresa?.id) throw new Error('Cadastre os dados da empresa primeiro.');
+      const { error } = await supabase.from('dados_empresa').update({ [logoKey]: url }).eq('id', empresa.id);
       if (error) throw error;
     },
     onSuccess: (_, vars) => {
@@ -47,18 +44,16 @@ export function MasterLogoManager() {
       toast({ title: 'Logo atualizada', description: `${slotLabel} salva com sucesso.` });
       log('ATUALIZAR_LOGO', `Logo "${slotLabel}" ${vars.url ? 'atualizada' : 'removida'}`, 'MASTER_TI');
     },
-    onError: (error: Error) => {
-      toast({ title: 'Erro', description: error.message, variant: 'destructive' });
-    },
+    onError: (error: Error) => toast({ title: 'Erro', description: error.message, variant: 'destructive' }),
   });
 
-  async function handleUpload(logoSlot: LogoSlot, e: React.ChangeEvent<HTMLInputElement>) {
+  async function handleUpload(slot: LogoSlot, e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
     try {
-      setUploading(logoSlot.key);
-      const url = await uploadLogo(file, `${logoSlot.key.replace('_url', '')}-${Date.now()}.${file.name.split('.').pop()}`);
-      await updateLogoMutation.mutateAsync({ logoKey: logoSlot.key, url });
+      setUploading(slot.key);
+      const url = await uploadLogo(file, `${slot.key.replace('_url', '')}-${Date.now()}.${file.name.split('.').pop()}`);
+      await updateLogoMutation.mutateAsync({ logoKey: slot.key, url });
     } catch (error: any) {
       toast({ title: 'Erro no upload', description: error.message, variant: 'destructive' });
     } finally {
@@ -90,7 +85,7 @@ export function MasterLogoManager() {
           <ImageIcon className="h-6 w-6 text-primary" />
           <div>
             <h2 className="text-xl font-bold">Gerenciamento de Logos</h2>
-            <p className="text-sm text-muted-foreground">As logos são auto-redimensionáveis em cada contexto do sistema</p>
+            <p className="text-sm text-muted-foreground">Logos auto-redimensionáveis em cada contexto</p>
           </div>
         </div>
         <Badge variant="secondary">{configuredCount}/{LOGO_SLOTS.length} configuradas</Badge>
@@ -101,7 +96,7 @@ export function MasterLogoManager() {
           <Info className="h-5 w-5 text-info mt-0.5 shrink-0" />
           <div className="text-sm">
             <p className="font-medium text-info">Logos Auto-Redimensionáveis</p>
-            <p className="text-muted-foreground mt-1">Todas as logos são automaticamente redimensionadas para se adequar ao espaço disponível. Use imagens em alta resolução (PNG/SVG) com fundo transparente para melhor resultado.</p>
+            <p className="text-muted-foreground mt-1">Use imagens PNG/SVG com fundo transparente para melhor resultado. As logos se adaptam automaticamente ao espaço disponível.</p>
           </div>
         </CardContent>
       </Card>
@@ -110,7 +105,6 @@ export function MasterLogoManager() {
         {LOGO_SLOTS.map(slot => {
           const currentUrl = empresa[slot.key] as string | null;
           const isUploading = uploading === slot.key;
-
           return (
             <Card key={slot.key}>
               <CardHeader className="pb-2">
@@ -128,13 +122,7 @@ export function MasterLogoManager() {
               <CardContent className="space-y-3">
                 <div className="h-28 rounded-lg border border-dashed border-border flex items-center justify-center bg-muted/30 overflow-hidden">
                   {currentUrl ? (
-                    <img
-                      src={currentUrl}
-                      alt={slot.label}
-                      className="max-h-full max-w-full object-contain p-2"
-                      style={{ imageRendering: 'auto' }}
-                      onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
-                    />
+                    <img src={currentUrl} alt={slot.label} className="max-h-full max-w-full object-contain p-2" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
                   ) : (
                     <div className="text-center">
                       <ImageIcon className="h-8 w-8 text-muted-foreground/30 mx-auto" />
