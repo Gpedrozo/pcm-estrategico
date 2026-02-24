@@ -111,8 +111,8 @@ export const PreventivaPrintTemplate = forwardRef<HTMLDivElement, PreventivaPrin
           <div className="border-b-2 border-black p-2 text-[9px]">
             <span className="font-bold text-gray-500 text-[8px]">PLANO: </span>
             <span className="font-semibold">{plano.nome.toUpperCase()}</span>
-            {plano.responsavel_nome && (
-              <span className="ml-4 text-gray-500">Responsável: {plano.responsavel_nome}</span>
+            {(plano as any).responsavel_nome && (
+              <span className="ml-4 text-gray-500">Responsável: {(plano as any).responsavel_nome}</span>
             )}
           </div>
 

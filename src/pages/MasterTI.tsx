@@ -94,6 +94,7 @@ export default function MasterTI() {
           <TabsContent value="settings"><MasterGlobalSettings /></TabsContent>
           <TabsContent value="audit"><MasterAuditLogs /></TabsContent>
           <TabsContent value="security"><MasterSecurity /></TabsContent>
+          <TabsContent value="documents"><MasterDocumentLayouts /></TabsContent>
         </Suspense>
       </Tabs>
     </div>
