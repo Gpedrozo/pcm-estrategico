@@ -7,7 +7,6 @@ export function usePlanosLubrificacao() {
   return useQuery({
     queryKey: ['planos-lubrificacao'],
     queryFn: async () => {
-      // Select only essential fields for the list to reduce payload
       const { data, error } = await supabase
         .from('planos_lubrificacao')
         .select('id,codigo,nome,tag,proxima_execucao,ativo,tempo_estimado_min')
@@ -17,7 +16,7 @@ export function usePlanosLubrificacao() {
       if (error) throw error;
       return data as PlanoLubrificacao[];
     },
-    staleTime: 60_000, // cache 60s to avoid frequent reloads
+    staleTime: 60_000,
   });
 }
 
@@ -57,6 +56,7 @@ export function useExecucoesByPlanoLubrificacao(planoId: string | null) {
         .eq('plano_id', planoId!)
         .order('data_execucao', { ascending: false })
         .limit(50);
+
       if (error) throw error;
       return data;
     },
@@ -74,11 +74,13 @@ export function useCreateExecucaoLubrificacao() {
         data_execucao: new Date().toISOString(),
         status: 'CONCLUIDO',
       };
+
       const { data, error } = await supabase
         .from('execucoes_lubrificacao')
         .insert(payload)
         .select()
         .single();
+
       if (error) throw error;
       return data;
     },
@@ -87,7 +89,8 @@ export function useCreateExecucaoLubrificacao() {
       qc.invalidateQueries({ queryKey: ['planos-lubrificacao'] });
       toast({ title: 'Execução registrada' });
     },
-    onError: (e: any) => toast({ title: 'Erro', description: e.message, variant: 'destructive' }),
+    onError: (e: any) =>
+      toast({ title: 'Erro', description: e.message, variant: 'destructive' }),
   });
 }
 
@@ -97,26 +100,40 @@ export function useGenerateExecucoesNow() {
 
   return useMutation({
     mutationFn: async () => {
-      // Find planos whose proxima_execucao is past or null
       const now = new Date().toISOString();
+
       const { data: planos, error: e1 } = await supabase
         .from('planos_lubrificacao')
         .select('*')
         .lte('proxima_execucao', now)
         .or('proxima_execucao.is.null');
+
       if (e1) throw e1;
 
       if (!planos || planos.length === 0) return { created: 0 };
 
       let created = 0;
-      // Bulk insert executions to reduce roundtrips
-      const nowIso = new Date().toISOString();
-      const execInserts = (planos as any[]).map(p => ({ plano_id: p.id, data_execucao: nowIso, status: 'PENDENTE' }));
-      const { data: insertedExecs, error: e2 } = await supabase.from('execucoes_lubrificacao').insert(execInserts).select();
-      if (e2) throw e2;
-      created = Array.isArray(insertedExecs) ? insertedExecs.length : (insertedExecs ? 1 : 0);
 
-      // Create OS in bulk for inserted executions
+      const nowIso = new Date().toISOString();
+      const execInserts = (planos as any[]).map(p => ({
+        plano_id: p.id,
+        data_execucao: nowIso,
+        status: 'PENDENTE',
+      }));
+
+      const { data: insertedExecs, error: e2 } = await supabase
+        .from('execucoes_lubrificacao')
+        .insert(execInserts)
+        .select();
+
+      if (e2) throw e2;
+
+      created = Array.isArray(insertedExecs)
+        ? insertedExecs.length
+        : insertedExecs
+        ? 1
+        : 0;
+
       try {
         const osPayloads = (planos as any[]).map(p => ({
           tipo: 'LUBRIFICACAO',
@@ -127,37 +144,57 @@ export function useGenerateExecucoesNow() {
           problema: `Execução de lubrificação do plano ${p.codigo} - ${p.nome}`,
           tempo_estimado: p.tempo_estimado_min || null,
         }));
-        const { data: osDataArr, error: e3 } = await supabase.from('ordens_servico').insert(osPayloads).select();
+
+        const { data: osDataArr, error: e3 } = await supabase
+          .from('ordens_servico')
+          .insert(osPayloads)
+          .select();
+
         if (!e3 && Array.isArray(osDataArr) && Array.isArray(insertedExecs)) {
-          // Map OS ids back to exec rows (assumes same order)
-          const updates = insertedExecs.map((ex: any, idx: number) => ({ id: ex.id, os_gerada_id: osDataArr[idx]?.id || null }));
-          // Bulk update executions using multiple updates (sequential updates are acceptable here)
+          const updates = insertedExecs.map((ex: any, idx: number) => ({
+            id: ex.id,
+            os_gerada_id: osDataArr[idx]?.id || null,
+          }));
+
           for (const u of updates) {
-            await supabase.from('execucoes_lubrificacao').update({ os_gerada_id: u.os_gerada_id }).eq('id', u.id);
+            await supabase
+              .from('execucoes_lubrificacao')
+              .update({ os_gerada_id: u.os_gerada_id })
+              .eq('id', u.id);
           }
         }
       } catch (err) {
-        // don't block; just log
         console.warn('Erro ao criar OSs em lote', err);
       }
-        // Calculate next execution based on periodicidade
+
+      for (const plano of planos as any[]) {
         try {
           const tipo = plano.periodicidade_tipo;
           const valor = Number(plano.periodicidade_valor) || 0;
+
           const next = new Date();
+
           if (tipo === 'DIAS') next.setDate(next.getDate() + valor);
-          else if (tipo === 'SEMANAS') next.setDate(next.getDate() + (7 * valor));
+          else if (tipo === 'SEMANAS') next.setDate(next.getDate() + 7 * valor);
           else if (tipo === 'MESES') next.setMonth(next.getMonth() + valor);
-          // TODO: HORAS - requires machine hours tracking
-          await supabase.from('planos_lubrificacao').update({ proxima_execucao: next.toISOString() }).eq('id', plano.id);
-        } catch (err) {
+
+          await supabase
+            .from('planos_lubrificacao')
+            .update({ proxima_execucao: next.toISOString() })
+            .eq('id', plano.id);
+        } catch {
           // ignore
         }
       }
 
       qc.invalidateQueries({ queryKey: ['planos-lubrificacao'] });
       qc.invalidateQueries({ queryKey: ['execucoes-lubrificacao'] });
-      toast({ title: 'Geração de execuções', description: `${created} tarefas criadas.` });
+
+      toast({
+        title: 'Geração de execuções',
+        description: `${created} tarefas criadas.`,
+      });
+
       return { created };
     },
   });
