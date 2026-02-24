@@ -56,7 +56,6 @@ export default function PlanoDetailPanel({ plano, equipamentos }: Props) {
   const [saveTemplateOpen, setSaveTemplateOpen] = useState(false);
   const [templateNome, setTemplateNome] = useState('');
   const [printDialogOpen, setPrintDialogOpen] = useState(false);
-  const printRef = useRef<HTMLDivElement>(null);
 
   const { data: empresa } = useDadosEmpresa();
   const { data: atividades, isLoading: loadAtiv } = useAtividadesByPlano(plano.id);
