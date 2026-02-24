@@ -198,6 +198,44 @@ export function generateEquipmentTemplate() {
   XLSX.writeFile(wb, 'Modelo_Cadastro_Equipamentos.xlsx');
 }
 
+export function generateLubrificacaoPlanoPDF(
+  planos: any[],
+  options: ReportOptions
+) {
+  const doc = new jsPDF();
+  const startY = addProfessionalHeader(doc, options);
+
+  doc.setFontSize(10);
+  doc.text(`Total de planos: ${planos.length}`, 14, startY);
+
+  autoTable(doc, {
+    startY: startY + 6,
+    head: [['Código', 'Nome', 'TAG', 'Ponto', 'Lubrificante', 'Periodicidade', 'Próxima Execução']],
+    body: planos.map(p => [p.codigo, p.nome, p.tag || '', p.ponto || '', p.tipo_lubrificante || '', `${p.periodicidade_valor || ''} ${p.periodicidade_tipo || ''}`, p.proxima_execucao ? format(new Date(p.proxima_execucao), 'dd/MM/yyyy') : '']),
+    styles: { fontSize: 8, cellPadding: 3 },
+    headStyles: { fillColor: [40, 55, 75], fontStyle: 'bold' },
+    margin: { left: 14, right: 14 },
+  });
+
+  addProfessionalFooter(doc, options);
+  doc.save(`Planos_Lubrificacao_${format(new Date(), 'yyyyMMdd')}.pdf`);
+}
+
+export function generateLubrificacaoConsumptionExcel(
+  data: any[],
+  fileName = 'Consumo_Lubrificante'
+) {
+  const columns = [
+    'Data', 'Plano', 'Equipamento', 'TAG', 'Lubrificante', 'Quantidade Utilizada'
+  ];
+  const wsData = [columns, ...data.map(d => [d.data_execucao ? format(new Date(d.data_execucao), 'dd/MM/yyyy') : '', d.plano_nome || '', d.equipamento || '', d.tag || '', d.tipo_lubrificante || '', d.quantidade_utilizada ?? ''])];
+  const ws = XLSX.utils.aoa_to_sheet(wsData);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Consumo');
+  ws['!cols'] = columns.map(() => ({ wch: 20 }));
+  XLSX.writeFile(wb, `${fileName}.xlsx`);
+}
+
 export function parseEquipmentFile(file: File): Promise<{ valid: any[]; errors: { row: number; reason: string }[] }> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();

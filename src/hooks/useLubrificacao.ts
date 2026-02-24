@@ -115,6 +115,28 @@ export function useGenerateExecucoesNow() {
         if (e2) continue;
         created++;
 
+        // Create an OS for this execution (integrate with ordens_servico)
+        try {
+          const osPayload: any = {
+            tipo: 'LUBRIFICACAO',
+            prioridade: 'NORMAL',
+            tag: plano.tag || '',
+            equipamento: plano.equipamento_id || plano.nome || '',
+            solicitante: 'Sistema Automático',
+            problema: `Execução de lubrificação do plano ${plano.codigo} - ${plano.nome}`,
+            tempo_estimado: plano.tempo_estimado_min || null,
+          };
+          const { data: osData, error: e3 } = await supabase.from('ordens_servico').insert(osPayload).select().single();
+          if (!e3 && osData) {
+            // try to link os id to execution (if column exists)
+            try {
+              await supabase.from('execucoes_lubrificacao').update({ os_gerada_id: osData.id }).eq('id', exec.id);
+            } catch (_) {}
+          }
+        } catch (_) {
+          // ignore OS creation errors to not block generation
+        }
+
         // Calculate next execution based on periodicidade
         try {
           const tipo = plano.periodicidade_tipo;
