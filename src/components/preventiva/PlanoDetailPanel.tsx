@@ -133,17 +133,7 @@ export default function PlanoDetailPanel({ plano, equipamentos }: Props) {
     setIsEditingPlano(false);
   };
 
-  const handlePrint = useReactToPrint({
-    contentRef: printRef,
-    documentTitle: `Preventiva_${plano.codigo}`,
-    pageStyle: `
-      @page { size: A4; margin: 0; }
-      @media print {
-        html, body { margin: 0; padding: 0; }
-        body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-      }
-    `,
-  });
+  // Print is now handled by PrintPreviewDialog
 
   const handleSaveTemplate = async () => {
     if (!templateNome.trim() || !atividades) return;
