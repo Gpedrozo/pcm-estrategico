@@ -1,5 +1,4 @@
-import { useState, useMemo, useRef } from 'react';
-import { useReactToPrint } from 'react-to-print';
+import { useState, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -29,6 +28,7 @@ import { useTemplatesPreventivos, useCreateTemplate } from '@/hooks/useTemplates
 import type { EquipamentoRow } from '@/hooks/useEquipamentos';
 import { useDadosEmpresa } from '@/hooks/useDadosEmpresa';
 import { PreventivaPrintTemplate } from './PreventivaPrintTemplate';
+import { PrintPreviewDialog } from '@/components/print/PrintPreviewDialog';
 
 interface Props {
   plano: PlanoPreventivo;
@@ -56,7 +56,6 @@ export default function PlanoDetailPanel({ plano, equipamentos }: Props) {
   const [saveTemplateOpen, setSaveTemplateOpen] = useState(false);
   const [templateNome, setTemplateNome] = useState('');
   const [printDialogOpen, setPrintDialogOpen] = useState(false);
-  const printRef = useRef<HTMLDivElement>(null);
 
   const { data: empresa } = useDadosEmpresa();
   const { data: atividades, isLoading: loadAtiv } = useAtividadesByPlano(plano.id);
@@ -133,17 +132,7 @@ export default function PlanoDetailPanel({ plano, equipamentos }: Props) {
     setIsEditingPlano(false);
   };
 
-  const handlePrint = useReactToPrint({
-    contentRef: printRef,
-    documentTitle: `Preventiva_${plano.codigo}`,
-    pageStyle: `
-      @page { size: A4; margin: 0; }
-      @media print {
-        html, body { margin: 0; padding: 0; }
-        body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-      }
-    `,
-  });
+  // Print is now handled by PrintPreviewDialog
 
   const handleSaveTemplate = async () => {
     if (!templateNome.trim() || !atividades) return;
@@ -568,51 +557,26 @@ export default function PlanoDetailPanel({ plano, equipamentos }: Props) {
       </Dialog>
 
       {/* Print Dialog */}
-      <Dialog open={printDialogOpen} onOpenChange={setPrintDialogOpen}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Printer className="h-5 w-5" />
-              Imprimir Plano Preventivo — {plano.codigo}
-            </DialogTitle>
-            <DialogDescription>
-              Visualize e imprima o plano para entregar ao técnico
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="space-y-4">
-            <div className="flex items-end gap-4 p-4 bg-muted/50 rounded-lg">
-              <div className="flex-1 text-sm text-muted-foreground">
-                {atividades?.length || 0} atividades • {atividades?.reduce((s, a) => s + (a.servicos?.length || 0), 0) || 0} serviços • Tempo total: {formatMin(tempoTotalPlano)}
-              </div>
-              <Button onClick={() => handlePrint()} className="gap-2">
-                <Printer className="h-4 w-4" />
-                Imprimir
-              </Button>
-            </div>
-
-            <div className="border rounded-lg overflow-hidden">
-              <div className="bg-muted px-4 py-2 flex items-center gap-2 border-b">
-                <Eye className="h-4 w-4" />
-                <span className="text-sm font-medium">Pré-visualização</span>
-              </div>
-              <div className="overflow-auto max-h-[500px] bg-gray-100 p-4">
-                <div className="transform scale-[0.6] origin-top-left" style={{ width: '166.67%' }}>
-                  <PreventivaPrintTemplate
-                    ref={printRef}
-                    data={{
-                      plano,
-                      atividades: atividades || [],
-                      tempoTotal: tempoTotalPlano,
-                    }}
-                    empresa={empresa}
-                  />
-                </div>
-              </div>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
+      {printDialogOpen && (
+        <PrintPreviewDialog
+          title={`Imprimir Plano Preventivo — ${plano.codigo}`}
+          subtitle="Visualize e imprima o plano para entregar ao técnico"
+          documentTitle={`Preventiva_${plano.codigo}`}
+          trigger={<span />}
+        >
+          {(ref) => (
+            <PreventivaPrintTemplate
+              ref={ref}
+              data={{
+                plano,
+                atividades: atividades || [],
+                tempoTotal: tempoTotalPlano,
+              }}
+              empresa={empresa}
+            />
+          )}
+        </PrintPreviewDialog>
+      )}
     </div>
   );
 }
