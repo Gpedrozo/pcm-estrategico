@@ -2,13 +2,14 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Activity, CheckCircle, AlertTriangle, Clock, Database, Users, FileText, Wrench, BarChart3, ClipboardList, ShieldAlert, Package, Factory, Settings, Gauge, TrendingUp, Zap } from 'lucide-react';
+import { Activity, CheckCircle, AlertTriangle, Clock, Database, Users, FileText, Wrench, BarChart3, ClipboardList, ShieldAlert, Package, Factory, Settings, Gauge, TrendingUp, Zap, Droplet } from 'lucide-react';
 import { Progress } from '@/components/ui/progress';
 
 const MODULE_TABLES = [
   { module: 'Ordens de Serviço', table: 'ordens_servico' as const, icon: FileText, color: 'text-info' },
   { module: 'Equipamentos', table: 'equipamentos' as const, icon: Wrench, color: 'text-primary' },
   { module: 'Planos Preventivos', table: 'planos_preventivos' as const, icon: ClipboardList, color: 'text-success' },
+  { module: 'Planos Lubrificação', table: 'planos_lubrificacao' as const, icon: Droplet, color: 'text-primary' },
   { module: 'Medições Preditivas', table: 'medicoes_preditivas' as const, icon: Gauge, color: 'text-warning' },
   { module: 'Inspeções', table: 'inspecoes' as const, icon: ShieldAlert, color: 'text-info' },
   { module: 'FMEA', table: 'fmea' as const, icon: BarChart3, color: 'text-destructive' },
