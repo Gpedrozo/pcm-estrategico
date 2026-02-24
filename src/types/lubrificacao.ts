@@ -44,3 +44,27 @@ export interface PlanoLubrificacaoInsert {
   anexos?: any;
   ativo?: boolean;
 }
+
+export interface AtividadeLubrificacao {
+  id: string;
+  plano_id: string;
+  descricao: string;
+  tempo_estimado_min: number | null;
+  responsavel: string | null;
+  tipo: string | null;
+  ordem: number | null;
+}
+
+export interface ExecucaoLubrificacao {
+  id: string;
+  plano_id: string;
+  executor_id: string | null;
+  executor_nome: string | null;
+  data_execucao: string;
+  tempo_real_min: number | null;
+  status: 'PENDENTE' | 'EM_EXECUCAO' | 'CONCLUIDO' | 'ATRASADO';
+  observacoes: string | null;
+  fotos: any;
+  quantidade_utilizada: number | null;
+  created_at: string;
+}

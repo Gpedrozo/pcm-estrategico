@@ -3,8 +3,17 @@ import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Trash2, Edit, Camera } from 'lucide-react';
 import type { PlanoLubrificacao } from '@/types/lubrificacao';
+import { useCreateExecucaoLubrificacao, useExecucoesByPlanoLubrificacao } from '@/hooks/useLubrificacao';
+import ExecucaoFormDialog from '@/components/lubrificacao/ExecucaoFormDialog';
 
 export default function PlanoDetailPanel({ plano }: { plano: PlanoLubrificacao }) {
+  const { data: execucoes } = useExecucoesByPlanoLubrificacao(plano.id);
+  const createExec = useCreateExecucaoLubrificacao();
+  const [openExec, setOpenExec] = React.useState(false);
+
+  const handleGenerate = () => {
+    createExec.mutate({ plano_id: plano.id });
+  };
   return (
     <div className="h-full overflow-auto">
       <Card className="p-4">
@@ -35,11 +44,18 @@ export default function PlanoDetailPanel({ plano }: { plano: PlanoLubrificacao }
           <p className="text-sm text-muted-foreground">{plano.instrucoes || 'Nenhuma instrução cadastrada.'}</p>
         </div>
 
-        <div className="mt-4 flex gap-2">
-          <Button variant="outline"><Camera className="h-4 w-4" /> Fotos</Button>
-          <Button variant="outline">Gerar Tarefa</Button>
+        <div className="mt-4">
+          <div className="flex items-center justify-between">
+            <div className="text-sm text-muted-foreground">Execuções: <span className="font-semibold">{execucoes?.length || 0}</span></div>
+            <div className="flex gap-2">
+              <Button variant="outline"><Camera className="h-4 w-4" /> Fotos</Button>
+              <Button variant="outline" onClick={handleGenerate}>Gerar Tarefa</Button>
+              <Button onClick={() => setOpenExec(true)}>Registrar Execução</Button>
+            </div>
+          </div>
         </div>
       </Card>
+      <ExecucaoFormDialog open={openExec} onOpenChange={setOpenExec} planoId={plano.id} />
     </div>
   );
 }
