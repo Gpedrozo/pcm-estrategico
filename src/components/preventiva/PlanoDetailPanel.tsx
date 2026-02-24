@@ -10,6 +10,7 @@ import { Separator } from '@/components/ui/separator';
 import { Switch } from '@/components/ui/switch';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Skeleton } from '@/components/ui/skeleton';
 import {
   Plus, Trash2, Edit, Play, Clock, Calendar, ChevronDown, ChevronRight,
   GripVertical, Copy, History, CheckSquare, Download, Timer, Save, X,
