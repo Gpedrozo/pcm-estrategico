@@ -199,8 +199,8 @@ export default function PlanoDetailPanel({ plano, equipamentos }: Props) {
             <Button size="sm" variant="outline" onClick={() => { setEditingPlanoData({ nome: plano.nome, descricao: plano.descricao, frequencia_dias: plano.frequencia_dias, instrucoes: plano.instrucoes, ativo: plano.ativo }); setIsEditingPlano(true); }}>
               <Edit className="h-4 w-4 mr-1" /> Editar
             </Button>
-            <Button size="sm" variant="outline" onClick={handleExportPDF}>
-              <Download className="h-4 w-4 mr-1" /> PDF
+            <Button size="sm" variant="outline" onClick={() => setPrintDialogOpen(true)}>
+              <Printer className="h-4 w-4 mr-1" /> Imprimir
             </Button>
             <Button size="sm" onClick={() => setExecFormOpen(true)}>
               <Play className="h-4 w-4 mr-1" /> Executar
