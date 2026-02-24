@@ -7,14 +7,17 @@ export function usePlanosLubrificacao() {
   return useQuery({
     queryKey: ['planos-lubrificacao'],
     queryFn: async () => {
+      // Select only essential fields for the list to reduce payload
       const { data, error } = await supabase
         .from('planos_lubrificacao')
-        .select('*')
-        .order('codigo');
+        .select('id,codigo,nome,tag,proxima_execucao,ativo,tempo_estimado_min')
+        .order('codigo')
+        .limit(200);
 
       if (error) throw error;
       return data as PlanoLubrificacao[];
     },
+    staleTime: 60_000, // cache 60s to avoid frequent reloads
   });
 }
 
@@ -106,37 +109,37 @@ export function useGenerateExecucoesNow() {
       if (!planos || planos.length === 0) return { created: 0 };
 
       let created = 0;
-      for (const plano of planos as any[]) {
-        const { data: exec, error: e2 } = await supabase
-          .from('execucoes_lubrificacao')
-          .insert({ plano_id: plano.id, data_execucao: new Date().toISOString(), status: 'PENDENTE' })
-          .select()
-          .single();
-        if (e2) continue;
-        created++;
+      // Bulk insert executions to reduce roundtrips
+      const nowIso = new Date().toISOString();
+      const execInserts = (planos as any[]).map(p => ({ plano_id: p.id, data_execucao: nowIso, status: 'PENDENTE' }));
+      const { data: insertedExecs, error: e2 } = await supabase.from('execucoes_lubrificacao').insert(execInserts).select();
+      if (e2) throw e2;
+      created = Array.isArray(insertedExecs) ? insertedExecs.length : (insertedExecs ? 1 : 0);
 
-        // Create an OS for this execution (integrate with ordens_servico)
-        try {
-          const osPayload: any = {
-            tipo: 'LUBRIFICACAO',
-            prioridade: 'NORMAL',
-            tag: plano.tag || '',
-            equipamento: plano.equipamento_id || plano.nome || '',
-            solicitante: 'Sistema Automático',
-            problema: `Execução de lubrificação do plano ${plano.codigo} - ${plano.nome}`,
-            tempo_estimado: plano.tempo_estimado_min || null,
-          };
-          const { data: osData, error: e3 } = await supabase.from('ordens_servico').insert(osPayload).select().single();
-          if (!e3 && osData) {
-            // try to link os id to execution (if column exists)
-            try {
-              await supabase.from('execucoes_lubrificacao').update({ os_gerada_id: osData.id }).eq('id', exec.id);
-            } catch (_) {}
+      // Create OS in bulk for inserted executions
+      try {
+        const osPayloads = (planos as any[]).map(p => ({
+          tipo: 'LUBRIFICACAO',
+          prioridade: 'NORMAL',
+          tag: p.tag || '',
+          equipamento: p.equipamento_id || p.nome || '',
+          solicitante: 'Sistema Automático',
+          problema: `Execução de lubrificação do plano ${p.codigo} - ${p.nome}`,
+          tempo_estimado: p.tempo_estimado_min || null,
+        }));
+        const { data: osDataArr, error: e3 } = await supabase.from('ordens_servico').insert(osPayloads).select();
+        if (!e3 && Array.isArray(osDataArr) && Array.isArray(insertedExecs)) {
+          // Map OS ids back to exec rows (assumes same order)
+          const updates = insertedExecs.map((ex: any, idx: number) => ({ id: ex.id, os_gerada_id: osDataArr[idx]?.id || null }));
+          // Bulk update executions using multiple updates (sequential updates are acceptable here)
+          for (const u of updates) {
+            await supabase.from('execucoes_lubrificacao').update({ os_gerada_id: u.os_gerada_id }).eq('id', u.id);
           }
-        } catch (_) {
-          // ignore OS creation errors to not block generation
         }
-
+      } catch (err) {
+        // don't block; just log
+        console.warn('Erro ao criar OSs em lote', err);
+      }
         // Calculate next execution based on periodicidade
         try {
           const tipo = plano.periodicidade_tipo;

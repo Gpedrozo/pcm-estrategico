@@ -67,14 +67,17 @@ export default function PlanoFormDialog({ open, onOpenChange }: Props) {
     try {
       if (instrucoesFile) {
         const path = `lubrificacao/instrucoes/${Date.now()}-${instrucoesFile.name}`;
+        // bucket 'public' may be large; upload async but don't block UI too long
         const url = await uploadToStorage('public', path, instrucoesFile);
         (payload as any).instrucoes = url;
+        (payload as any).anexos = JSON.stringify([{ url, name: instrucoesFile.name }]);
       }
 
       create.mutate(payload);
       onOpenChange(false);
     } catch (err) {
       console.error('Erro upload instrucoes', err);
+      create.mutate(payload); // fallback: create plano without file link
       onOpenChange(false);
     }
   };
