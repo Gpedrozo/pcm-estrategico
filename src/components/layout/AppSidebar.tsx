@@ -27,6 +27,7 @@ import {
   BarChart3,
   FileArchive,
   Crown
+  ,Droplet
 } from 'lucide-react';
 import { NavLink, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
@@ -57,6 +58,7 @@ const osMenuItems = [
 ];
 
 const planejamentoMenuItems = [
+  { title: 'Lubrificação', url: '/lubrificacao', icon: Droplet },
   { title: 'Programação', url: '/programacao', icon: CalendarClock },
   { title: 'Preventiva', url: '/preventiva', icon: Calendar },
   { title: 'Preditiva', url: '/preditiva', icon: Activity },

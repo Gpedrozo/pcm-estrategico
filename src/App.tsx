@@ -35,6 +35,7 @@ import Preditiva from "./pages/Preditiva";
 import Custos from "./pages/Custos";
 import Relatorios from "./pages/Relatorios";
 import DocumentosTecnicos from "./pages/DocumentosTecnicos";
+import Lubrificacao from "./pages/Lubrificacao";
 import NotFound from "./pages/NotFound";
 import Instalar from "./pages/Instalar";
 import MasterTI from "./pages/MasterTI";
@@ -76,6 +77,7 @@ const App = () => (
               <Route path="/fornecedores" element={<Fornecedores />} />
               <Route path="/contratos" element={<Contratos />} />
               <Route path="/documentos" element={<DocumentosTecnicos />} />
+              <Route path="/lubrificacao" element={<Lubrificacao />} />
               <Route path="/custos" element={<Custos />} />
               <Route path="/relatorios" element={<Relatorios />} />
               <Route path="/ssma" element={<SSMA />} />
