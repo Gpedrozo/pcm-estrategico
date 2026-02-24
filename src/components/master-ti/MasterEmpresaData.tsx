@@ -10,6 +10,20 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useLogAuditoria } from '@/hooks/useAuditoria';
 
+const FIELDS_CADASTRAIS = [
+  { label: 'Razão Social *', key: 'razao_social' },
+  { label: 'Nome Fantasia', key: 'nome_fantasia' },
+  { label: 'CNPJ', key: 'cnpj' },
+  { label: 'Inscrição Estadual', key: 'inscricao_estadual' },
+];
+
+const FIELDS_CONTATO = [
+  { label: 'Telefone', key: 'telefone' },
+  { label: 'WhatsApp', key: 'whatsapp' },
+  { label: 'E-mail', key: 'email' },
+  { label: 'Site', key: 'site' },
+];
+
 export function MasterEmpresaData() {
   const { data: empresa, isLoading } = useDadosEmpresa();
   const queryClient = useQueryClient();
@@ -59,9 +73,7 @@ export function MasterEmpresaData() {
       toast({ title: 'Sucesso!', description: empresa?.id ? 'Dados atualizados.' : 'Empresa cadastrada.' });
       log(empresa?.id ? 'EDITAR_EMPRESA' : 'CRIAR_EMPRESA', `Dados da empresa ${empresa?.id ? 'atualizados' : 'cadastrados'}`, 'MASTER_TI');
     },
-    onError: (error: Error) => {
-      toast({ title: 'Erro ao salvar', description: error.message, variant: 'destructive' });
-    },
+    onError: (error: Error) => toast({ title: 'Erro ao salvar', description: error.message, variant: 'destructive' }),
   });
 
   const handleSave = () => {
@@ -71,6 +83,8 @@ export function MasterEmpresaData() {
     }
     saveMutation.mutate(form);
   };
+
+  const updateField = (key: string, value: string) => setForm(f => ({ ...f, [key]: value }));
 
   if (isLoading) return <div className="flex justify-center p-8"><Loader2 className="h-8 w-8 animate-spin" /></div>;
 
@@ -86,7 +100,7 @@ export function MasterEmpresaData() {
         </div>
         <Button onClick={handleSave} disabled={saveMutation.isPending} className="gap-2">
           {saveMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : empresa ? <Save className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
-          {empresa ? 'Salvar' : 'Cadastrar'}
+          {empresa ? 'Salvar Alterações' : 'Cadastrar Empresa'}
         </Button>
       </div>
 
@@ -94,10 +108,10 @@ export function MasterEmpresaData() {
         <Card>
           <CardHeader><CardTitle className="text-base">Dados Cadastrais</CardTitle></CardHeader>
           <CardContent className="space-y-4">
-            {[['Razão Social *', 'razao_social'], ['Nome Fantasia', 'nome_fantasia'], ['CNPJ', 'cnpj'], ['Inscrição Estadual', 'inscricao_estadual']].map(([label, key]) => (
-              <div key={key} className="space-y-1">
-                <Label>{label}</Label>
-                <Input value={(form as any)[key]} onChange={e => setForm(f => ({ ...f, [key]: e.target.value }))} />
+            {FIELDS_CADASTRAIS.map(f => (
+              <div key={f.key} className="space-y-1">
+                <Label>{f.label}</Label>
+                <Input value={(form as any)[f.key]} onChange={e => updateField(f.key, e.target.value)} />
               </div>
             ))}
           </CardContent>
@@ -106,22 +120,22 @@ export function MasterEmpresaData() {
         <Card>
           <CardHeader><CardTitle className="text-base">Endereço</CardTitle></CardHeader>
           <CardContent className="space-y-4">
-            <div className="space-y-1"><Label>Endereço</Label><Input value={form.endereco} onChange={e => setForm(f => ({ ...f, endereco: e.target.value }))} /></div>
+            <div className="space-y-1"><Label>Endereço</Label><Input value={form.endereco} onChange={e => updateField('endereco', e.target.value)} /></div>
             <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-1"><Label>Cidade</Label><Input value={form.cidade} onChange={e => setForm(f => ({ ...f, cidade: e.target.value }))} /></div>
-              <div className="space-y-1"><Label>Estado</Label><Input value={form.estado} onChange={e => setForm(f => ({ ...f, estado: e.target.value }))} /></div>
+              <div className="space-y-1"><Label>Cidade</Label><Input value={form.cidade} onChange={e => updateField('cidade', e.target.value)} /></div>
+              <div className="space-y-1"><Label>Estado</Label><Input value={form.estado} onChange={e => updateField('estado', e.target.value)} /></div>
             </div>
-            <div className="space-y-1"><Label>CEP</Label><Input value={form.cep} onChange={e => setForm(f => ({ ...f, cep: e.target.value }))} /></div>
+            <div className="space-y-1"><Label>CEP</Label><Input value={form.cep} onChange={e => updateField('cep', e.target.value)} /></div>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader><CardTitle className="text-base">Contato</CardTitle></CardHeader>
           <CardContent className="space-y-4">
-            {[['Telefone', 'telefone'], ['WhatsApp', 'whatsapp'], ['E-mail', 'email'], ['Site', 'site']].map(([label, key]) => (
-              <div key={key} className="space-y-1">
-                <Label>{label}</Label>
-                <Input value={(form as any)[key]} onChange={e => setForm(f => ({ ...f, [key]: e.target.value }))} />
+            {FIELDS_CONTATO.map(f => (
+              <div key={f.key} className="space-y-1">
+                <Label>{f.label}</Label>
+                <Input value={(form as any)[f.key]} onChange={e => updateField(f.key, e.target.value)} />
               </div>
             ))}
           </CardContent>
@@ -130,8 +144,8 @@ export function MasterEmpresaData() {
         <Card>
           <CardHeader><CardTitle className="text-base">Responsável Técnico</CardTitle></CardHeader>
           <CardContent className="space-y-4">
-            <div className="space-y-1"><Label>Nome</Label><Input value={form.responsavel_nome} onChange={e => setForm(f => ({ ...f, responsavel_nome: e.target.value }))} /></div>
-            <div className="space-y-1"><Label>Cargo</Label><Input value={form.responsavel_cargo} onChange={e => setForm(f => ({ ...f, responsavel_cargo: e.target.value }))} /></div>
+            <div className="space-y-1"><Label>Nome</Label><Input value={form.responsavel_nome} onChange={e => updateField('responsavel_nome', e.target.value)} /></div>
+            <div className="space-y-1"><Label>Cargo</Label><Input value={form.responsavel_cargo} onChange={e => updateField('responsavel_cargo', e.target.value)} /></div>
           </CardContent>
         </Card>
       </div>

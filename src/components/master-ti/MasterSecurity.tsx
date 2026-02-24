@@ -6,9 +6,10 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Shield, AlertTriangle, CheckCircle, Lock, Key, Activity, Search, ChevronLeft, ChevronRight, Users, Database, ShieldAlert, Eye, EyeOff } from 'lucide-react';
+import { Shield, AlertTriangle, CheckCircle, Lock, Key, Activity, Search, ChevronLeft, ChevronRight, Users, Database, ShieldAlert, Eye } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Progress } from '@/components/ui/progress';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
 const PAGE_SIZE = 20;
 
@@ -20,12 +21,25 @@ const RLS_TABLES = [
   'dados_empresa', 'permissoes_granulares', 'configuracoes_sistema',
   'security_logs', 'rate_limits', 'componentes_equipamento',
   'execucoes_os', 'materiais_os', 'movimentacoes_materiais',
+  'contrato_alertas', 'notificacoes',
+];
+
+const SECURITY_POLICIES = [
+  { name: 'Row Level Security (RLS)', desc: 'Todas as tabelas protegidas com RLS', status: true },
+  { name: 'Rate Limiting', desc: 'Limitação de requisições por endpoint', status: true },
+  { name: 'Security Definer Functions', desc: 'Funções seguras para acesso a dados sensíveis', status: true },
+  { name: 'Auditoria Completa', desc: 'Registro de todas as ações do sistema', status: true },
+  { name: 'Separação de Roles', desc: 'Tabela user_roles separada de profiles', status: true },
+  { name: 'Triggers de Auditoria DB', desc: 'Registro automático de INSERT/UPDATE/DELETE', status: true },
+  { name: 'Permissões Granulares', desc: 'Controle fino por módulo e ação', status: true },
+  { name: 'Proteção contra Escalação', desc: 'Roles impossível de auto-promoção', status: true },
 ];
 
 export function MasterSecurity() {
   const [secTab, setSecTab] = useState('overview');
   const [logPage, setLogPage] = useState(0);
   const [logSearch, setLogSearch] = useState('');
+  const [viewingLog, setViewingLog] = useState<any>(null);
 
   const { data: securityData, isLoading } = useQuery({
     queryKey: ['master-security-full'],
@@ -61,16 +75,8 @@ export function MasterSecurity() {
   const { data: logData, isLoading: loadingLogs } = useQuery({
     queryKey: ['master-security-logs', logPage, logSearch],
     queryFn: async () => {
-      let query = supabase
-        .from('security_logs')
-        .select('*', { count: 'exact' })
-        .order('created_at', { ascending: false })
-        .range(logPage * PAGE_SIZE, (logPage + 1) * PAGE_SIZE - 1);
-
-      if (logSearch) {
-        query = query.or(`action.ilike.%${logSearch}%,resource.ilike.%${logSearch}%,error_message.ilike.%${logSearch}%`);
-      }
-
+      let query = supabase.from('security_logs').select('*', { count: 'exact' }).order('created_at', { ascending: false }).range(logPage * PAGE_SIZE, (logPage + 1) * PAGE_SIZE - 1);
+      if (logSearch) query = query.or(`action.ilike.%${logSearch}%,resource.ilike.%${logSearch}%,error_message.ilike.%${logSearch}%`);
       const { data, count, error } = await query;
       if (error) throw error;
       return { logs: data || [], total: count ?? 0 };
@@ -81,18 +87,7 @@ export function MasterSecurity() {
   const logTotalPages = Math.ceil((logData?.total ?? 0) / PAGE_SIZE);
   const securityScore = Math.max(0, 100 - (securityData?.failedAttempts ?? 0) * 5 - (securityData?.rateLimits ?? 0) * 10);
 
-  if (isLoading) return <div className="space-y-4">{[1, 2, 3].map(i => <Skeleton key={i} className="h-20 w-full" />)}</div>;
-
-  const POLICIES_INFO = [
-    { name: 'Row Level Security (RLS)', desc: 'Todas as tabelas protegidas com RLS', status: true },
-    { name: 'Rate Limiting', desc: 'Limitação de requisições por endpoint', status: true },
-    { name: 'Security Definer Functions', desc: 'Funções seguras para acesso a dados sensíveis', status: true },
-    { name: 'Auditoria Completa', desc: 'Registro de todas as ações do sistema', status: true },
-    { name: 'Separação de Roles', desc: 'Tabela user_roles separada de profiles', status: true },
-    { name: 'Triggers de Auditoria DB', desc: 'Registro automático de INSERT/UPDATE/DELETE', status: true },
-    { name: 'Permissões Granulares', desc: 'Controle fino por módulo e ação', status: true },
-    { name: 'Proteção contra Escalação', desc: 'Roles em tabela separada, impossível auto-promoção', status: true },
-  ];
+  if (isLoading) return <div className="space-y-4">{[1,2,3].map(i => <Skeleton key={i} className="h-20 w-full" />)}</div>;
 
   return (
     <div className="space-y-6">
@@ -143,7 +138,7 @@ export function MasterSecurity() {
             <CardHeader><CardTitle className="flex items-center gap-2"><Shield className="h-5 w-5" /> Políticas de Segurança Ativas</CardTitle></CardHeader>
             <CardContent>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                {POLICIES_INFO.map(p => (
+                {SECURITY_POLICIES.map(p => (
                   <div key={p.name} className="flex items-center justify-between p-3 rounded-lg bg-muted/30 border border-border/50">
                     <div>
                       <span className="text-sm font-medium">{p.name}</span>
@@ -161,7 +156,7 @@ export function MasterSecurity() {
 
         <TabsContent value="rls" className="mt-4">
           <Card>
-            <CardHeader><CardTitle className="flex items-center gap-2"><Database className="h-5 w-5" /> Tabelas com RLS Habilitado</CardTitle></CardHeader>
+            <CardHeader><CardTitle className="flex items-center gap-2"><Database className="h-5 w-5" /> Tabelas com RLS ({RLS_TABLES.length})</CardTitle></CardHeader>
             <CardContent>
               <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
                 {RLS_TABLES.map(table => (
@@ -171,7 +166,6 @@ export function MasterSecurity() {
                   </div>
                 ))}
               </div>
-              <p className="text-xs text-muted-foreground mt-4">{RLS_TABLES.length} tabelas protegidas com Row Level Security</p>
             </CardContent>
           </Card>
         </TabsContent>
@@ -191,18 +185,10 @@ export function MasterSecurity() {
             <Card>
               <CardContent className="p-0">
                 <table className="table-industrial w-full">
-                  <thead>
-                    <tr>
-                      <th>Data</th>
-                      <th>Ação</th>
-                      <th>Recurso</th>
-                      <th>Status</th>
-                      <th>Mensagem</th>
-                    </tr>
-                  </thead>
+                  <thead><tr><th>Data</th><th>Ação</th><th>Recurso</th><th>Status</th><th>Mensagem</th><th>Detalhes</th></tr></thead>
                   <tbody>
                     {!logData?.logs.length ? (
-                      <tr><td colSpan={5} className="text-center py-6 text-muted-foreground">Nenhum evento</td></tr>
+                      <tr><td colSpan={6} className="text-center py-6 text-muted-foreground">Nenhum evento</td></tr>
                     ) : (
                       logData.logs.map(log => (
                         <tr key={log.id}>
@@ -215,6 +201,9 @@ export function MasterSecurity() {
                             </Badge>
                           </td>
                           <td className="text-sm text-muted-foreground max-w-xs truncate">{log.error_message || '—'}</td>
+                          <td>
+                            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setViewingLog(log)}><Eye className="h-3 w-3" /></Button>
+                          </td>
                         </tr>
                       ))
                     )}
@@ -239,7 +228,7 @@ export function MasterSecurity() {
               <CardContent className="p-4 text-center">
                 <ShieldAlert className="h-8 w-8 mx-auto mb-2 text-destructive" />
                 <p className="text-3xl font-bold">{securityData?.masterCount ?? 0}</p>
-                <p className="text-sm text-muted-foreground">Usuários MASTER_TI</p>
+                <p className="text-sm text-muted-foreground">MASTER_TI</p>
                 <p className="text-xs text-muted-foreground mt-1">Acesso total ao sistema</p>
               </CardContent>
             </Card>
@@ -278,6 +267,34 @@ export function MasterSecurity() {
           </Card>
         </TabsContent>
       </Tabs>
+
+      {/* Security Log Detail */}
+      <Dialog open={!!viewingLog} onOpenChange={open => !open && setViewingLog(null)}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader><DialogTitle>Detalhes do Evento de Segurança</DialogTitle></DialogHeader>
+          {viewingLog && (
+            <div className="space-y-3 text-sm">
+              <div className="grid grid-cols-2 gap-3">
+                <div><span className="text-muted-foreground">Data:</span><p>{new Date(viewingLog.created_at).toLocaleString('pt-BR')}</p></div>
+                <div><span className="text-muted-foreground">Ação:</span><p className="font-medium">{viewingLog.action}</p></div>
+                <div><span className="text-muted-foreground">Recurso:</span><p className="font-mono">{viewingLog.resource}</p></div>
+                <div><span className="text-muted-foreground">Status:</span>
+                  <Badge variant="outline" className={viewingLog.success ? 'bg-success/10 text-success' : 'bg-destructive/10 text-destructive'}>
+                    {viewingLog.success ? 'Sucesso' : 'Falha'}
+                  </Badge>
+                </div>
+              </div>
+              {viewingLog.error_message && (
+                <div><span className="text-muted-foreground">Mensagem de Erro:</span><p className="mt-1 p-3 bg-destructive/5 rounded-lg text-destructive">{viewingLog.error_message}</p></div>
+              )}
+              {viewingLog.metadata && (
+                <div><span className="text-muted-foreground">Metadata:</span><pre className="mt-1 p-3 bg-muted/30 rounded-lg text-xs overflow-auto max-h-48">{JSON.stringify(viewingLog.metadata, null, 2)}</pre></div>
+              )}
+              <div><span className="text-muted-foreground">User ID:</span><p className="font-mono text-xs">{viewingLog.user_id || '—'}</p></div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

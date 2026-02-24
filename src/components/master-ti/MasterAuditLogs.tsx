@@ -1,14 +1,15 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Search, FileText, Download, ChevronLeft, ChevronRight, Activity, Database, Shield, Clock, BarChart3 } from 'lucide-react';
+import { Search, FileText, Download, ChevronLeft, ChevronRight, Activity, Database, Clock, BarChart3, Eye } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
 const PAGE_SIZE = 25;
 
@@ -17,55 +18,37 @@ export function MasterAuditLogs() {
   const [page, setPage] = useState(0);
   const [actionFilter, setActionFilter] = useState('ALL');
   const [activeTab, setActiveTab] = useState('auditoria');
+  const [viewingLog, setViewingLog] = useState<any>(null);
 
   // Auditoria manual logs
   const { data: auditData, isLoading: loadingAudit } = useQuery({
     queryKey: ['master-audit-logs', page, search, actionFilter],
     queryFn: async () => {
-      let query = supabase
-        .from('auditoria')
-        .select('*', { count: 'exact' })
-        .order('data_hora', { ascending: false })
-        .range(page * PAGE_SIZE, (page + 1) * PAGE_SIZE - 1);
-
-      if (search) {
-        query = query.or(`usuario_nome.ilike.%${search}%,acao.ilike.%${search}%,descricao.ilike.%${search}%,tag.ilike.%${search}%`);
-      }
-      if (actionFilter !== 'ALL') {
-        query = query.ilike('acao', `%${actionFilter}%`);
-      }
-
-      const { data: logs, count, error } = await query;
+      let query = supabase.from('auditoria').select('*', { count: 'exact' }).order('data_hora', { ascending: false }).range(page * PAGE_SIZE, (page + 1) * PAGE_SIZE - 1);
+      if (search) query = query.or(`usuario_nome.ilike.%${search}%,acao.ilike.%${search}%,descricao.ilike.%${search}%,tag.ilike.%${search}%`);
+      if (actionFilter !== 'ALL') query = query.ilike('acao', `%${actionFilter}%`);
+      const { data, count, error } = await query;
       if (error) throw error;
-      return { logs: logs || [], total: count ?? 0 };
+      return { logs: data || [], total: count ?? 0 };
     },
     enabled: activeTab === 'auditoria',
   });
 
-  // Auditoria_logs (trigger-based DB audit trail)
+  // DB audit trail
   const [dbPage, setDbPage] = useState(0);
   const [dbSearch, setDbSearch] = useState('');
   const [dbTableFilter, setDbTableFilter] = useState('ALL');
+  const [viewingDbLog, setViewingDbLog] = useState<any>(null);
 
   const { data: dbAuditData, isLoading: loadingDbAudit } = useQuery({
     queryKey: ['master-db-audit-logs', dbPage, dbSearch, dbTableFilter],
     queryFn: async () => {
-      let query = supabase
-        .from('auditoria_logs')
-        .select('*', { count: 'exact' })
-        .order('created_at', { ascending: false })
-        .range(dbPage * PAGE_SIZE, (dbPage + 1) * PAGE_SIZE - 1);
-
-      if (dbSearch) {
-        query = query.or(`tabela.ilike.%${dbSearch}%,operacao.ilike.%${dbSearch}%`);
-      }
-      if (dbTableFilter !== 'ALL') {
-        query = query.eq('tabela', dbTableFilter);
-      }
-
-      const { data: logs, count, error } = await query;
+      let query = supabase.from('auditoria_logs').select('*', { count: 'exact' }).order('created_at', { ascending: false }).range(dbPage * PAGE_SIZE, (dbPage + 1) * PAGE_SIZE - 1);
+      if (dbSearch) query = query.or(`tabela.ilike.%${dbSearch}%,operacao.ilike.%${dbSearch}%`);
+      if (dbTableFilter !== 'ALL') query = query.eq('tabela', dbTableFilter);
+      const { data, count, error } = await query;
       if (error) throw error;
-      return { logs: logs || [], total: count ?? 0 };
+      return { logs: data || [], total: count ?? 0 };
     },
     enabled: activeTab === 'db_audit',
   });
@@ -81,12 +64,7 @@ export function MasterAuditLogs() {
         supabase.from('auditoria_logs').select('*', { count: 'exact', head: true }),
         supabase.from('auditoria_logs').select('*', { count: 'exact', head: true }).gte('created_at', oneDayAgo),
       ]);
-      return {
-        totalAudit: totalAudit.count ?? 0,
-        todayAudit: todayAudit.count ?? 0,
-        totalDbAudit: totalDbAudit.count ?? 0,
-        todayDbAudit: todayDbAudit.count ?? 0,
-      };
+      return { totalAudit: totalAudit.count ?? 0, todayAudit: todayAudit.count ?? 0, totalDbAudit: totalDbAudit.count ?? 0, todayDbAudit: todayDbAudit.count ?? 0 };
     },
   });
 
@@ -143,7 +121,6 @@ export function MasterAuditLogs() {
         </TabsList>
 
         <TabsContent value="auditoria" className="space-y-4 mt-4">
-          {/* Controls */}
           <div className="flex flex-col md:flex-row gap-3 items-start md:items-center justify-between">
             <div className="flex gap-3 flex-1">
               <div className="relative flex-1 max-w-sm">
@@ -159,6 +136,8 @@ export function MasterAuditLogs() {
                   <SelectItem value="CRIAR">Criar</SelectItem>
                   <SelectItem value="EDITAR">Editar</SelectItem>
                   <SelectItem value="EXCLUIR">Excluir</SelectItem>
+                  <SelectItem value="ATUALIZAR">Atualizar</SelectItem>
+                  <SelectItem value="FECHAR">Fechar</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -174,21 +153,13 @@ export function MasterAuditLogs() {
             <Card>
               <CardContent className="p-0">
                 <table className="table-industrial w-full">
-                  <thead>
-                    <tr>
-                      <th>Data/Hora</th>
-                      <th>Usuário</th>
-                      <th>Ação</th>
-                      <th>Descrição</th>
-                      <th>TAG</th>
-                    </tr>
-                  </thead>
+                  <thead><tr><th>Data/Hora</th><th>Usuário</th><th>Ação</th><th>Descrição</th><th>TAG</th></tr></thead>
                   <tbody>
                     {!auditData?.logs.length ? (
-                      <tr><td colSpan={5} className="text-center py-8 text-muted-foreground"><FileText className="h-8 w-8 mx-auto mb-2 opacity-50" />Nenhum registro</td></tr>
+                      <tr><td colSpan={5} className="text-center py-8 text-muted-foreground">Nenhum registro</td></tr>
                     ) : (
                       auditData.logs.map(log => (
-                        <tr key={log.id}>
+                        <tr key={log.id} className="cursor-pointer hover:bg-muted/50" onClick={() => setViewingLog(log)}>
                           <td className="text-sm text-muted-foreground whitespace-nowrap">{new Date(log.data_hora).toLocaleString('pt-BR')}</td>
                           <td className="font-medium text-sm">{log.usuario_nome}</td>
                           <td><Badge variant="outline" className={actionColor(log.acao)}>{log.acao}</Badge></td>
@@ -222,7 +193,7 @@ export function MasterAuditLogs() {
               <SelectTrigger className="w-52"><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="ALL">Todas as tabelas</SelectItem>
-                {['ordens_servico', 'equipamentos', 'materiais', 'mecanicos', 'planos_preventivos', 'contratos', 'fornecedores'].map(t => (
+                {['ordens_servico', 'equipamentos', 'materiais', 'mecanicos', 'planos_preventivos', 'contratos', 'fornecedores', 'profiles', 'user_roles', 'dados_empresa', 'configuracoes_sistema'].map(t => (
                   <SelectItem key={t} value={t}>{t}</SelectItem>
                 ))}
               </SelectContent>
@@ -235,15 +206,7 @@ export function MasterAuditLogs() {
             <Card>
               <CardContent className="p-0">
                 <table className="table-industrial w-full">
-                  <thead>
-                    <tr>
-                      <th>Data</th>
-                      <th>Tabela</th>
-                      <th>Operação</th>
-                      <th>Registro ID</th>
-                      <th>Usuário ID</th>
-                    </tr>
-                  </thead>
+                  <thead><tr><th>Data</th><th>Tabela</th><th>Operação</th><th>Registro ID</th><th>Detalhes</th></tr></thead>
                   <tbody>
                     {!dbAuditData?.logs.length ? (
                       <tr><td colSpan={5} className="text-center py-8 text-muted-foreground">Nenhum registro de alteração</td></tr>
@@ -252,11 +215,13 @@ export function MasterAuditLogs() {
                         <tr key={log.id}>
                           <td className="text-sm text-muted-foreground whitespace-nowrap">{log.created_at ? new Date(log.created_at).toLocaleString('pt-BR') : '—'}</td>
                           <td className="font-mono text-sm">{log.tabela}</td>
-                          <td>
-                            <Badge variant="outline" className={actionColor(log.operacao)}>{log.operacao}</Badge>
-                          </td>
+                          <td><Badge variant="outline" className={actionColor(log.operacao)}>{log.operacao}</Badge></td>
                           <td className="font-mono text-xs text-muted-foreground">{log.registro_id?.toString().slice(0, 8)}...</td>
-                          <td className="font-mono text-xs text-muted-foreground">{log.usuario_id?.toString().slice(0, 8) || '—'}...</td>
+                          <td>
+                            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setViewingDbLog(log)} title="Ver detalhes">
+                              <Eye className="h-3 w-3" />
+                            </Button>
+                          </td>
                         </tr>
                       ))
                     )}
@@ -275,6 +240,54 @@ export function MasterAuditLogs() {
           )}
         </TabsContent>
       </Tabs>
+
+      {/* Audit Detail Dialog */}
+      <Dialog open={!!viewingLog} onOpenChange={open => !open && setViewingLog(null)}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader><DialogTitle>Detalhes da Ação</DialogTitle></DialogHeader>
+          {viewingLog && (
+            <div className="space-y-3 text-sm">
+              <div className="grid grid-cols-2 gap-3">
+                <div><span className="text-muted-foreground">Data/Hora:</span><p className="font-medium">{new Date(viewingLog.data_hora).toLocaleString('pt-BR')}</p></div>
+                <div><span className="text-muted-foreground">Usuário:</span><p className="font-medium">{viewingLog.usuario_nome}</p></div>
+                <div><span className="text-muted-foreground">Ação:</span><Badge variant="outline" className={actionColor(viewingLog.acao)}>{viewingLog.acao}</Badge></div>
+                <div><span className="text-muted-foreground">TAG:</span><p className="font-mono">{viewingLog.tag || '—'}</p></div>
+              </div>
+              <div><span className="text-muted-foreground">Descrição:</span><p className="mt-1 p-3 bg-muted/30 rounded-lg">{viewingLog.descricao}</p></div>
+              <div><span className="text-muted-foreground">ID do Registro:</span><p className="font-mono text-xs">{viewingLog.id}</p></div>
+              <div><span className="text-muted-foreground">ID do Usuário:</span><p className="font-mono text-xs">{viewingLog.usuario_id || '—'}</p></div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* DB Audit Detail Dialog */}
+      <Dialog open={!!viewingDbLog} onOpenChange={open => !open && setViewingDbLog(null)}>
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-auto">
+          <DialogHeader><DialogTitle>Detalhes da Alteração no Banco</DialogTitle></DialogHeader>
+          {viewingDbLog && (
+            <div className="space-y-4 text-sm">
+              <div className="grid grid-cols-3 gap-3">
+                <div><span className="text-muted-foreground">Tabela:</span><p className="font-mono font-medium">{viewingDbLog.tabela}</p></div>
+                <div><span className="text-muted-foreground">Operação:</span><Badge variant="outline" className={actionColor(viewingDbLog.operacao)}>{viewingDbLog.operacao}</Badge></div>
+                <div><span className="text-muted-foreground">Data:</span><p>{viewingDbLog.created_at ? new Date(viewingDbLog.created_at).toLocaleString('pt-BR') : '—'}</p></div>
+              </div>
+              {viewingDbLog.dados_antes && (
+                <div>
+                  <p className="text-muted-foreground mb-1 font-medium">Dados Antes:</p>
+                  <pre className="bg-muted/30 p-3 rounded-lg overflow-auto text-xs max-h-48">{JSON.stringify(viewingDbLog.dados_antes, null, 2)}</pre>
+                </div>
+              )}
+              {viewingDbLog.dados_depois && (
+                <div>
+                  <p className="text-muted-foreground mb-1 font-medium">Dados Depois:</p>
+                  <pre className="bg-muted/30 p-3 rounded-lg overflow-auto text-xs max-h-48">{JSON.stringify(viewingDbLog.dados_depois, null, 2)}</pre>
+                </div>
+              )}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

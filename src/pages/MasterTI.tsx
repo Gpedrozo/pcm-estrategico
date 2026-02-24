@@ -1,68 +1,44 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, lazy, Suspense } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import {
-  Shield,
-  Users,
-  Database,
-  Activity,
-  Settings,
-  FileText,
-  Lock,
-  ServerCrash,
-  Building2,
-  Image as ImageIcon,
-  ShieldCheck,
+  Shield, Users, Database, Activity, Settings, FileText,
+  Lock, ServerCrash, Building2, Image as ImageIcon, ShieldCheck, Loader2,
 } from "lucide-react";
-
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
-import { MasterUsersManager } from "@/components/master-ti/MasterUsersManager";
-import { MasterDatabaseManager } from "@/components/master-ti/MasterDatabaseManager";
-import { MasterSystemMonitor } from "@/components/master-ti/MasterSystemMonitor";
-import { MasterGlobalSettings } from "@/components/master-ti/MasterGlobalSettings";
-import { MasterAuditLogs } from "@/components/master-ti/MasterAuditLogs";
-import { MasterSecurity } from "@/components/master-ti/MasterSecurity";
-import { MasterEmpresaData } from "@/components/master-ti/MasterEmpresaData";
-import { MasterLogoManager } from "@/components/master-ti/MasterLogoManager";
-import { MasterPermissionsManager } from "@/components/master-ti/MasterPermissionsManager";
+// Lazy load heavy modules
+const MasterUsersManager = lazy(() => import("@/components/master-ti/MasterUsersManager").then(m => ({ default: m.MasterUsersManager })));
+const MasterPermissionsManager = lazy(() => import("@/components/master-ti/MasterPermissionsManager").then(m => ({ default: m.MasterPermissionsManager })));
+const MasterEmpresaData = lazy(() => import("@/components/master-ti/MasterEmpresaData").then(m => ({ default: m.MasterEmpresaData })));
+const MasterLogoManager = lazy(() => import("@/components/master-ti/MasterLogoManager").then(m => ({ default: m.MasterLogoManager })));
+const MasterDatabaseManager = lazy(() => import("@/components/master-ti/MasterDatabaseManager").then(m => ({ default: m.MasterDatabaseManager })));
+const MasterSystemMonitor = lazy(() => import("@/components/master-ti/MasterSystemMonitor").then(m => ({ default: m.MasterSystemMonitor })));
+const MasterGlobalSettings = lazy(() => import("@/components/master-ti/MasterGlobalSettings").then(m => ({ default: m.MasterGlobalSettings })));
+const MasterAuditLogs = lazy(() => import("@/components/master-ti/MasterAuditLogs").then(m => ({ default: m.MasterAuditLogs })));
+const MasterSecurity = lazy(() => import("@/components/master-ti/MasterSecurity").then(m => ({ default: m.MasterSecurity })));
 
-type TabKey =
-  | "users"
-  | "permissions"
-  | "empresa"
-  | "logos"
-  | "database"
-  | "monitor"
-  | "settings"
-  | "audit"
-  | "security";
+type TabKey = "users" | "permissions" | "empresa" | "logos" | "database" | "monitor" | "settings" | "audit" | "security";
 
-interface TabConfig {
-  key: TabKey;
-  label: string;
-  icon: any;
-  component: React.ReactNode;
+const TABS: { key: TabKey; label: string; icon: React.ElementType }[] = [
+  { key: "users", label: "Usuários", icon: Users },
+  { key: "permissions", label: "Permissões", icon: ShieldCheck },
+  { key: "empresa", label: "Empresa", icon: Building2 },
+  { key: "logos", label: "Logos", icon: ImageIcon },
+  { key: "database", label: "Banco de Dados", icon: Database },
+  { key: "monitor", label: "Monitoramento", icon: Activity },
+  { key: "settings", label: "Configurações", icon: Settings },
+  { key: "audit", label: "Auditoria", icon: FileText },
+  { key: "security", label: "Segurança", icon: Lock },
+];
+
+function TabFallback() {
+  return <div className="flex justify-center p-12"><Loader2 className="h-8 w-8 animate-spin text-muted-foreground" /></div>;
 }
 
 export default function MasterTI() {
   const auth = useAuth();
   const isMasterTI = Boolean(auth?.isMasterTI);
   const [activeTab, setActiveTab] = useState<TabKey>("users");
-
-  const tabsConfig: TabConfig[] = useMemo(
-    () => [
-      { key: "users", label: "Usuários", icon: Users, component: <MasterUsersManager /> },
-      { key: "permissions", label: "Permissões", icon: ShieldCheck, component: <MasterPermissionsManager /> },
-      { key: "empresa", label: "Empresa", icon: Building2, component: <MasterEmpresaData /> },
-      { key: "logos", label: "Logos", icon: ImageIcon, component: <MasterLogoManager /> },
-      { key: "database", label: "Banco de Dados", icon: Database, component: <MasterDatabaseManager /> },
-      { key: "monitor", label: "Monitoramento", icon: Activity, component: <MasterSystemMonitor /> },
-      { key: "settings", label: "Configurações", icon: Settings, component: <MasterGlobalSettings /> },
-      { key: "audit", label: "Auditoria", icon: FileText, component: <MasterAuditLogs /> },
-      { key: "security", label: "Segurança", icon: Lock, component: <MasterSecurity /> },
-    ],
-    []
-  );
 
   if (!isMasterTI) {
     return (
@@ -73,9 +49,7 @@ export default function MasterTI() {
           </div>
           <h2 className="text-xl font-bold">Acesso Negado</h2>
           <p className="text-muted-foreground max-w-md">
-            Este painel é exclusivo para usuários com perfil
-            <strong> MASTER TI</strong>.
-            Verifique suas permissões ou contate o administrador.
+            Este painel é exclusivo para usuários com perfil <strong>MASTER TI</strong>.
           </p>
         </div>
       </div>
@@ -90,13 +64,13 @@ export default function MasterTI() {
         </div>
         <div>
           <h1 className="text-2xl font-bold">Painel Master TI</h1>
-          <p className="text-muted-foreground">Gerenciamento total do sistema</p>
+          <p className="text-muted-foreground text-sm">Gerenciamento total do sistema</p>
         </div>
       </div>
 
       <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as TabKey)} className="space-y-6">
         <TabsList className="bg-card border border-border h-auto flex-wrap gap-1 p-1">
-          {tabsConfig.map(({ key, label, icon: Icon }) => (
+          {TABS.map(({ key, label, icon: Icon }) => (
             <TabsTrigger
               key={key}
               value={key}
@@ -108,11 +82,17 @@ export default function MasterTI() {
           ))}
         </TabsList>
 
-        {tabsConfig.map(({ key, component }) => (
-          <TabsContent key={key} value={key}>
-            {component}
-          </TabsContent>
-        ))}
+        <Suspense fallback={<TabFallback />}>
+          <TabsContent value="users"><MasterUsersManager /></TabsContent>
+          <TabsContent value="permissions"><MasterPermissionsManager /></TabsContent>
+          <TabsContent value="empresa"><MasterEmpresaData /></TabsContent>
+          <TabsContent value="logos"><MasterLogoManager /></TabsContent>
+          <TabsContent value="database"><MasterDatabaseManager /></TabsContent>
+          <TabsContent value="monitor"><MasterSystemMonitor /></TabsContent>
+          <TabsContent value="settings"><MasterGlobalSettings /></TabsContent>
+          <TabsContent value="audit"><MasterAuditLogs /></TabsContent>
+          <TabsContent value="security"><MasterSecurity /></TabsContent>
+        </Suspense>
       </Tabs>
     </div>
   );

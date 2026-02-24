@@ -23,6 +23,9 @@ interface ConfigItem {
   editavel: boolean | null;
 }
 
+const CATEGORIAS = ['GERAL', 'SISTEMA', 'NOTIFICACOES', 'SEGURANCA', 'MANUTENCAO', 'INTEGRACAO'];
+const TIPOS = ['STRING', 'NUMBER', 'BOOLEAN', 'JSON'];
+
 export function MasterGlobalSettings() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -46,10 +49,10 @@ export function MasterGlobalSettings() {
       const { error } = await supabase.from('configuracoes_sistema').update({ valor }).eq('id', id);
       if (error) throw error;
     },
-    onSuccess: (_, vars) => {
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['master-configs'] });
       toast({ title: 'Configuração salva' });
-      log('EDITAR_CONFIGURACAO', `Configuração atualizada`, 'MASTER_TI');
+      log('EDITAR_CONFIGURACAO', 'Configuração atualizada', 'MASTER_TI');
       setEditingId(null);
     },
     onError: (e: any) => toast({ title: 'Erro', description: e.message, variant: 'destructive' }),
@@ -77,7 +80,7 @@ export function MasterGlobalSettings() {
     return acc;
   }, {} as Record<string, ConfigItem[]>) || {};
 
-  if (isLoading) return <div className="space-y-4">{[1, 2, 3].map(i => <Skeleton key={i} className="h-24 w-full" />)}</div>;
+  if (isLoading) return <div className="space-y-4">{[1,2,3].map(i => <Skeleton key={i} className="h-24 w-full" />)}</div>;
 
   return (
     <div className="space-y-6">
@@ -85,6 +88,7 @@ export function MasterGlobalSettings() {
         <div className="flex items-center gap-3">
           <Settings className="h-6 w-6 text-primary" />
           <h2 className="text-xl font-bold">Configurações do Sistema</h2>
+          <Badge variant="secondary">{configs?.length ?? 0} configurações</Badge>
         </div>
         <Button onClick={() => setShowAdd(true)} className="gap-2"><Plus className="h-4 w-4" /> Nova Configuração</Button>
       </div>
@@ -167,11 +171,7 @@ export function MasterGlobalSettings() {
                 <Select value={newConfig.categoria} onValueChange={v => setNewConfig(c => ({ ...c, categoria: v }))}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="GERAL">Geral</SelectItem>
-                    <SelectItem value="SISTEMA">Sistema</SelectItem>
-                    <SelectItem value="NOTIFICACOES">Notificações</SelectItem>
-                    <SelectItem value="SEGURANCA">Segurança</SelectItem>
-                    <SelectItem value="MANUTENCAO">Manutenção</SelectItem>
+                    {CATEGORIAS.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
                   </SelectContent>
                 </Select>
               </div>
@@ -180,10 +180,7 @@ export function MasterGlobalSettings() {
                 <Select value={newConfig.tipo} onValueChange={v => setNewConfig(c => ({ ...c, tipo: v }))}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="STRING">String</SelectItem>
-                    <SelectItem value="NUMBER">Número</SelectItem>
-                    <SelectItem value="BOOLEAN">Booleano</SelectItem>
-                    <SelectItem value="JSON">JSON</SelectItem>
+                    {TIPOS.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}
                   </SelectContent>
                 </Select>
               </div>

@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
-import { Search, Edit, Shield, User, Crown, Loader2, Users, Mail, Calendar, Eye } from 'lucide-react';
+import { Search, Edit, Shield, User, Crown, Loader2, Users, Eye, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useLogAuditoria } from '@/hooks/useAuditoria';
 
@@ -18,7 +18,6 @@ type AppRole = 'MASTER_TI' | 'ADMIN' | 'USUARIO';
 interface UserData {
   id: string;
   nome: string;
-  email?: string;
   role: AppRole;
   created_at: string;
   updated_at?: string;
@@ -30,6 +29,8 @@ const ROLE_CONFIG: Record<AppRole, { label: string; icon: React.ElementType; col
   USUARIO: { label: 'Usuário', icon: User, color: 'bg-secondary text-secondary-foreground border-border' },
 };
 
+const PAGE_SIZE = 15;
+
 export function MasterUsersManager() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -40,6 +41,7 @@ export function MasterUsersManager() {
   const [viewingUser, setViewingUser] = useState<UserData | null>(null);
   const [formRole, setFormRole] = useState<AppRole>('USUARIO');
   const [formNome, setFormNome] = useState('');
+  const [page, setPage] = useState(0);
 
   const { data: users, isLoading } = useQuery({
     queryKey: ['master-users'],
@@ -64,7 +66,7 @@ export function MasterUsersManager() {
     },
     onSuccess: (_, vars) => {
       queryClient.invalidateQueries({ queryKey: ['master-users'] });
-      toast({ title: 'Usuário atualizado', description: 'Dados salvos com sucesso.' });
+      toast({ title: 'Usuário atualizado com sucesso.' });
       log('EDITAR_USUARIO', `Usuário "${vars.nome}" atualizado para perfil ${vars.role}`, 'MASTER_TI');
       setEditingUser(null);
     },
@@ -72,10 +74,13 @@ export function MasterUsersManager() {
   });
 
   const filtered = users?.filter(u => {
-    const matchSearch = !search || u.nome.toLowerCase().includes(search.toLowerCase());
+    const matchSearch = !search || u.nome.toLowerCase().includes(search.toLowerCase()) || u.id.toLowerCase().includes(search.toLowerCase());
     const matchRole = roleFilter === 'ALL' || u.role === roleFilter;
     return matchSearch && matchRole;
   }) || [];
+
+  const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
+  const paged = filtered.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
 
   const stats = {
     total: users?.length || 0,
@@ -112,9 +117,9 @@ export function MasterUsersManager() {
       <div className="flex flex-col md:flex-row gap-3">
         <div className="relative flex-1 max-w-md">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input placeholder="Buscar usuários..." value={search} onChange={e => setSearch(e.target.value)} className="pl-9" />
+          <Input placeholder="Buscar por nome ou ID..." value={search} onChange={e => { setSearch(e.target.value); setPage(0); }} className="pl-9" />
         </div>
-        <Select value={roleFilter} onValueChange={setRoleFilter}>
+        <Select value={roleFilter} onValueChange={v => { setRoleFilter(v); setPage(0); }}>
           <SelectTrigger className="w-48"><SelectValue /></SelectTrigger>
           <SelectContent>
             <SelectItem value="ALL">Todos os perfis</SelectItem>
@@ -139,10 +144,10 @@ export function MasterUsersManager() {
               </tr>
             </thead>
             <tbody>
-              {filtered.length === 0 ? (
+              {paged.length === 0 ? (
                 <tr><td colSpan={5} className="text-center py-8 text-muted-foreground">Nenhum usuário encontrado</td></tr>
               ) : (
-                filtered.map(user => {
+                paged.map(user => {
                   const cfg = ROLE_CONFIG[user.role];
                   const Icon = cfg.icon;
                   return (
@@ -163,12 +168,8 @@ export function MasterUsersManager() {
                       <td className="text-muted-foreground text-sm">{user.updated_at ? new Date(user.updated_at).toLocaleDateString('pt-BR') : '—'}</td>
                       <td>
                         <div className="flex justify-end gap-1">
-                          <Button variant="ghost" size="icon" onClick={() => setViewingUser(user)} title="Detalhes">
-                            <Eye className="h-4 w-4" />
-                          </Button>
-                          <Button variant="ghost" size="icon" onClick={() => { setEditingUser(user); setFormRole(user.role); setFormNome(user.nome); }} title="Editar">
-                            <Edit className="h-4 w-4" />
-                          </Button>
+                          <Button variant="ghost" size="icon" onClick={() => setViewingUser(user)} title="Detalhes"><Eye className="h-4 w-4" /></Button>
+                          <Button variant="ghost" size="icon" onClick={() => { setEditingUser(user); setFormRole(user.role); setFormNome(user.nome); }} title="Editar"><Edit className="h-4 w-4" /></Button>
                         </div>
                       </td>
                     </tr>
@@ -179,6 +180,15 @@ export function MasterUsersManager() {
           </table>
         </CardContent>
       </Card>
+
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-center gap-2">
+          <Button variant="outline" size="icon" disabled={page === 0} onClick={() => setPage(p => p - 1)}><ChevronLeft className="h-4 w-4" /></Button>
+          <span className="text-sm text-muted-foreground">Página {page + 1} de {totalPages}</span>
+          <Button variant="outline" size="icon" disabled={page >= totalPages - 1} onClick={() => setPage(p => p + 1)}><ChevronRight className="h-4 w-4" /></Button>
+        </div>
+      )}
 
       {/* View Dialog */}
       <Dialog open={!!viewingUser} onOpenChange={open => !open && setViewingUser(null)}>

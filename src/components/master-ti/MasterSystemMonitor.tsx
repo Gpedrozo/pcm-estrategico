@@ -26,6 +26,9 @@ const MODULE_TABLES = [
   { module: 'Usuários', table: 'profiles' as const, icon: Users, color: 'text-primary' },
   { module: 'Auditoria', table: 'auditoria' as const, icon: FileText, color: 'text-warning' },
   { module: 'Security Logs', table: 'security_logs' as const, icon: ShieldAlert, color: 'text-destructive' },
+  { module: 'Notificações', table: 'notificacoes' as const, icon: ClipboardList, color: 'text-info' },
+  { module: 'Permissões Granulares', table: 'permissoes_granulares' as const, icon: Settings, color: 'text-primary' },
+  { module: 'Configurações', table: 'configuracoes_sistema' as const, icon: Settings, color: 'text-muted-foreground' },
 ] as const;
 
 export function MasterSystemMonitor() {
@@ -33,34 +36,23 @@ export function MasterSystemMonitor() {
     queryKey: ['master-system-health-full'],
     queryFn: async () => {
       const start = performance.now();
-
-      // Count all module tables in parallel
-      const moduleCounts = await Promise.all(
-        MODULE_TABLES.map(async (m) => {
-          try {
-            const { count, error } = await supabase.from(m.table).select('*', { count: 'exact', head: true });
-            return { ...m, count: error ? -1 : (count ?? 0) };
-          } catch {
-            return { ...m, count: -1 };
-          }
-        })
-      );
-
-      // Recent activity (24h)
       const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
-      const oneWeekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
 
-      const [recentOS, recentAudit, recentOS7d, recentSolicit] = await Promise.all([
+      const [moduleCounts, recentOS, recentAudit, recentSolicit, recentSecurity] = await Promise.all([
+        Promise.all(
+          MODULE_TABLES.map(async (m) => {
+            const t0 = performance.now();
+            try {
+              const { count, error } = await supabase.from(m.table).select('*', { count: 'exact', head: true });
+              return { ...m, count: error ? -1 : (count ?? 0), responseTime: Math.round(performance.now() - t0) };
+            } catch { return { ...m, count: -1, responseTime: Math.round(performance.now() - t0) }; }
+          })
+        ),
         supabase.from('ordens_servico').select('id', { count: 'exact', head: true }).gte('created_at', oneDayAgo),
         supabase.from('auditoria').select('id', { count: 'exact', head: true }).gte('data_hora', oneDayAgo),
-        supabase.from('ordens_servico').select('id', { count: 'exact', head: true }).gte('created_at', oneWeekAgo),
         supabase.from('solicitacoes_manutencao').select('id', { count: 'exact', head: true }).gte('created_at', oneDayAgo),
+        supabase.from('security_logs').select('id', { count: 'exact', head: true }).gte('created_at', oneDayAgo),
       ]);
-
-      // OS by status
-      const { data: osAberta } = await supabase.from('ordens_servico').select('id', { count: 'exact', head: true }).eq('status', 'ABERTA');
-      const { data: osAndamento } = await supabase.from('ordens_servico').select('id', { count: 'exact', head: true }).eq('status', 'EM_ANDAMENTO');
-      const { data: osFechada } = await supabase.from('ordens_servico').select('id', { count: 'exact', head: true }).eq('status', 'FECHADA');
 
       const responseTime = Math.round(performance.now() - start);
 
@@ -69,16 +61,18 @@ export function MasterSystemMonitor() {
         moduleCounts,
         recentOS24h: recentOS.count ?? 0,
         recentAudit24h: recentAudit.count ?? 0,
-        recentOS7d: recentOS7d.count ?? 0,
         recentSolicit24h: recentSolicit.count ?? 0,
+        recentSecurity24h: recentSecurity.count ?? 0,
         totalRecords: moduleCounts.filter(m => m.count >= 0).reduce((a, b) => a + b.count, 0),
         activeModules: moduleCounts.filter(m => m.count > 0).length,
+        errorModules: moduleCounts.filter(m => m.count === -1).length,
+        avgResponseTime: Math.round(moduleCounts.reduce((a, b) => a + b.responseTime, 0) / moduleCounts.length),
       };
     },
     refetchInterval: 15000,
   });
 
-  const status = !healthData ? 'loading' : healthData.responseTime < 500 ? 'healthy' : healthData.responseTime < 2000 ? 'warning' : 'critical';
+  const status = !healthData ? 'loading' : healthData.errorModules > 0 ? 'critical' : healthData.responseTime < 500 ? 'healthy' : healthData.responseTime < 2000 ? 'warning' : 'critical';
   const statusConfig = {
     loading: { color: 'bg-muted', label: 'Verificando...', icon: Clock },
     healthy: { color: 'bg-success', label: 'Operacional', icon: CheckCircle },
@@ -114,45 +108,55 @@ export function MasterSystemMonitor() {
       </Card>
 
       {/* Key Metrics */}
-      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3">
         {[
           { label: 'Tempo Resposta', value: `${healthData?.responseTime ?? 0}ms`, icon: Clock, ok: (healthData?.responseTime ?? 0) < 500 },
           { label: 'Total Registros', value: (healthData?.totalRecords ?? 0).toLocaleString('pt-BR'), icon: Database, ok: true },
           { label: 'Módulos Ativos', value: `${healthData?.activeModules ?? 0}/${MODULE_TABLES.length}`, icon: Activity, ok: true },
+          { label: 'Módulos com Erro', value: String(healthData?.errorModules ?? 0), icon: AlertTriangle, ok: (healthData?.errorModules ?? 0) === 0 },
           { label: 'OS (24h)', value: String(healthData?.recentOS24h ?? 0), icon: FileText, ok: true },
           { label: 'Auditorias (24h)', value: String(healthData?.recentAudit24h ?? 0), icon: BarChart3, ok: true },
-          { label: 'Solicitações (24h)', value: String(healthData?.recentSolicit24h ?? 0), icon: ClipboardList, ok: true },
+          { label: 'Segurança (24h)', value: String(healthData?.recentSecurity24h ?? 0), icon: ShieldAlert, ok: (healthData?.recentSecurity24h ?? 0) < 50 },
         ].map(m => (
           <Card key={m.label}>
-            <CardContent className="p-4 text-center">
-              <m.icon className={`h-5 w-5 mx-auto mb-2 ${m.ok ? 'text-primary' : 'text-destructive'}`} />
-              <p className="text-xl font-bold font-mono">{m.value}</p>
-              <p className="text-[11px] text-muted-foreground mt-1">{m.label}</p>
+            <CardContent className="p-3 text-center">
+              <m.icon className={`h-4 w-4 mx-auto mb-1 ${m.ok ? 'text-primary' : 'text-destructive'}`} />
+              <p className="text-lg font-bold font-mono">{m.value}</p>
+              <p className="text-[10px] text-muted-foreground">{m.label}</p>
             </CardContent>
           </Card>
         ))}
       </div>
 
-      {/* Performance Bar */}
+      {/* Performance */}
       <Card>
         <CardHeader className="pb-2">
-          <CardTitle className="text-sm flex items-center gap-2"><Gauge className="h-4 w-4" /> Performance do Banco de Dados</CardTitle>
+          <CardTitle className="text-sm flex items-center gap-2"><Gauge className="h-4 w-4" /> Performance do Banco</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="space-y-2">
-            <div className="flex justify-between text-sm">
-              <span className="text-muted-foreground">Tempo de resposta</span>
-              <span className="font-mono font-bold">{healthData?.responseTime ?? 0}ms / 3000ms</span>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">Tempo total de resposta</span>
+                <span className="font-mono font-bold">{healthData?.responseTime ?? 0}ms</span>
+              </div>
+              <Progress value={Math.min(((healthData?.responseTime ?? 0) / 3000) * 100, 100)} className="h-3" />
             </div>
-            <Progress value={Math.min(((healthData?.responseTime ?? 0) / 3000) * 100, 100)} className="h-3" />
+            <div className="space-y-2">
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">Média por módulo</span>
+                <span className="font-mono font-bold">{healthData?.avgResponseTime ?? 0}ms</span>
+              </div>
+              <Progress value={Math.min(((healthData?.avgResponseTime ?? 0) / 500) * 100, 100)} className="h-3" />
+            </div>
           </div>
         </CardContent>
       </Card>
 
-      {/* Module-by-Module Monitoring */}
+      {/* Module-by-Module */}
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2"><Activity className="h-5 w-5" /> Monitoramento por Módulo</CardTitle>
+          <CardTitle className="flex items-center gap-2"><Activity className="h-5 w-5" /> Monitoramento por Módulo ({MODULE_TABLES.length})</CardTitle>
         </CardHeader>
         <CardContent className="p-0">
           <table className="table-industrial w-full">
@@ -161,6 +165,7 @@ export function MasterSystemMonitor() {
                 <th>Módulo</th>
                 <th>Tabela</th>
                 <th>Registros</th>
+                <th>Tempo (ms)</th>
                 <th>Status</th>
               </tr>
             </thead>
@@ -179,6 +184,7 @@ export function MasterSystemMonitor() {
                       {m.count >= 0 ? m.count.toLocaleString('pt-BR') : 'ERRO'}
                     </Badge>
                   </td>
+                  <td className={`font-mono text-xs ${m.responseTime > 300 ? 'text-warning' : 'text-muted-foreground'}`}>{m.responseTime}ms</td>
                   <td>
                     {m.count >= 0 ? (
                       <Badge variant="outline" className="bg-success/10 text-success border-success/20 text-[10px]">
