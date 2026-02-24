@@ -5,6 +5,7 @@ import { Trash2, Edit, Camera } from 'lucide-react';
 import type { PlanoLubrificacao } from '@/types/lubrificacao';
 import { useCreateExecucaoLubrificacao, useExecucoesByPlanoLubrificacao } from '@/hooks/useLubrificacao';
 import ExecucaoFormDialog from '@/components/lubrificacao/ExecucaoFormDialog';
+import AtividadesList from '@/components/lubrificacao/AtividadesList';
 
 export default function PlanoDetailPanel({ plano }: { plano: PlanoLubrificacao }) {
   const { data: execucoes } = useExecucoesByPlanoLubrificacao(plano.id);
@@ -52,6 +53,11 @@ export default function PlanoDetailPanel({ plano }: { plano: PlanoLubrificacao }
               <Button variant="outline" onClick={handleGenerate}>Gerar Tarefa</Button>
               <Button onClick={() => setOpenExec(true)}>Registrar Execução</Button>
             </div>
+          </div>
+
+          <div className="mt-4">
+            <h3 className="font-medium mb-2">Atividades</h3>
+            <AtividadesList planoId={plano.id} />
           </div>
         </div>
       </Card>

@@ -13,7 +13,7 @@ export default function Lubrificacao() {
   const [selectedPlanoId, setSelectedPlanoId] = useState<string | null>(null);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
 
-  const { data: planos, isLoading } = usePlanosLubrificacao();
+  const { data: planos, isLoading, isError, error } = usePlanosLubrificacao();
 
   const filteredPlanos = useMemo(() => {
     if (!planos) return [];
@@ -27,6 +27,15 @@ export default function Lubrificacao() {
       <div className="space-y-4">
         <Skeleton className="h-10 w-64" />
         <Skeleton className="h-[600px] w-full" />
+      </div>
+    );
+  }
+
+  if (isError) {
+    return (
+      <div className="p-6">
+        <h2 className="text-lg font-bold text-destructive">Erro ao carregar planos</h2>
+        <pre className="mt-2 text-sm text-muted-foreground">{String((error as any)?.message || error)}</pre>
       </div>
     );
   }
