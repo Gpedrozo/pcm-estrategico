@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -9,7 +8,8 @@ import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import {
-  FileText, Hash, RotateCcw, Settings, History, Eye, Save, Loader2, CheckCircle2
+  FileText, Hash, RotateCcw, Settings, History, Save, Loader2, CheckCircle2,
+  Eye, EyeOff, GripVertical, ArrowUp, ArrowDown,
 } from 'lucide-react';
 import {
   useDocumentSequences, useResetSequence,
@@ -26,44 +26,79 @@ const DOCUMENT_TYPES = [
   { key: 'RELATORIO', label: 'Relatório', color: 'bg-destructive/10 text-destructive' },
 ];
 
-const OS_FIELDS = [
-  { key: 'numero_os', label: 'Nº OS' },
-  { key: 'tag', label: 'TAG' },
-  { key: 'equipamento', label: 'Equipamento' },
-  { key: 'tipo', label: 'Tipo' },
-  { key: 'prioridade', label: 'Prioridade' },
-  { key: 'status', label: 'Status' },
-  { key: 'data_solicitacao', label: 'Data Solicitação' },
-  { key: 'solicitante', label: 'Solicitante' },
-  { key: 'problema', label: 'Problema' },
-  { key: 'tempo_estimado', label: 'Tempo Estimado' },
-  { key: 'custo_estimado', label: 'Custo Estimado' },
-  { key: 'modo_falha', label: 'Modo de Falha' },
-  { key: 'causa_raiz', label: 'Causa Raiz' },
-  { key: 'acao_corretiva', label: 'Ação Corretiva' },
-];
+const FIELDS_BY_TYPE: Record<string, { key: string; label: string; category: string }[]> = {
+  ORDEM_SERVICO: [
+    { key: 'numero_os', label: 'Nº OS', category: 'Identificação' },
+    { key: 'tag', label: 'TAG', category: 'Identificação' },
+    { key: 'equipamento', label: 'Equipamento', category: 'Identificação' },
+    { key: 'tipo', label: 'Tipo', category: 'Classificação' },
+    { key: 'prioridade', label: 'Prioridade', category: 'Classificação' },
+    { key: 'status', label: 'Status', category: 'Classificação' },
+    { key: 'data_solicitacao', label: 'Data Solicitação', category: 'Datas' },
+    { key: 'solicitante', label: 'Solicitante', category: 'Responsáveis' },
+    { key: 'problema', label: 'Problema', category: 'Descrição' },
+    { key: 'tempo_estimado', label: 'Tempo Estimado', category: 'Operacional' },
+    { key: 'custo_estimado', label: 'Custo Estimado', category: 'Financeiro' },
+    { key: 'modo_falha', label: 'Modo de Falha', category: 'Análise' },
+    { key: 'causa_raiz', label: 'Causa Raiz', category: 'Análise' },
+    { key: 'acao_corretiva', label: 'Ação Corretiva', category: 'Análise' },
+    { key: 'setor', label: 'Setor', category: 'Localização' },
+  ],
+  PREVENTIVA: [
+    { key: 'codigo', label: 'Código', category: 'Identificação' },
+    { key: 'tag', label: 'TAG', category: 'Identificação' },
+    { key: 'nome', label: 'Nome do Plano', category: 'Identificação' },
+    { key: 'tipo_gatilho', label: 'Tipo Gatilho', category: 'Classificação' },
+    { key: 'frequencia_dias', label: 'Frequência', category: 'Programação' },
+    { key: 'proxima_execucao', label: 'Próxima Execução', category: 'Programação' },
+    { key: 'responsavel_nome', label: 'Responsável', category: 'Responsáveis' },
+    { key: 'especialidade', label: 'Especialidade', category: 'Classificação' },
+    { key: 'instrucoes', label: 'Instruções', category: 'Descrição' },
+    { key: 'atividades', label: 'Atividades', category: 'Operacional' },
+    { key: 'servicos', label: 'Serviços', category: 'Operacional' },
+    { key: 'materiais_previstos', label: 'Materiais Previstos', category: 'Operacional' },
+  ],
+  INSPECAO: [
+    { key: 'numero_inspecao', label: 'Nº Inspeção', category: 'Identificação' },
+    { key: 'rota_nome', label: 'Rota', category: 'Identificação' },
+    { key: 'inspetor_nome', label: 'Inspetor', category: 'Responsáveis' },
+    { key: 'data_inspecao', label: 'Data', category: 'Datas' },
+    { key: 'turno', label: 'Turno', category: 'Classificação' },
+    { key: 'status', label: 'Status', category: 'Classificação' },
+    { key: 'anomalias_encontradas', label: 'Anomalias', category: 'Operacional' },
+    { key: 'observacoes', label: 'Observações', category: 'Descrição' },
+  ],
+  LUBRIFICACAO: [
+    { key: 'codigo', label: 'Código', category: 'Identificação' },
+    { key: 'tag', label: 'TAG', category: 'Identificação' },
+    { key: 'tipo_lubrificante', label: 'Lubrificante', category: 'Operacional' },
+    { key: 'quantidade', label: 'Quantidade', category: 'Operacional' },
+    { key: 'frequencia', label: 'Frequência', category: 'Programação' },
+    { key: 'responsavel', label: 'Responsável', category: 'Responsáveis' },
+  ],
+  RELATORIO: [
+    { key: 'numero_os', label: 'Nº OS', category: 'Identificação' },
+    { key: 'tag', label: 'TAG', category: 'Identificação' },
+    { key: 'equipamento', label: 'Equipamento', category: 'Identificação' },
+    { key: 'tipo', label: 'Tipo', category: 'Classificação' },
+    { key: 'prioridade', label: 'Prioridade', category: 'Classificação' },
+    { key: 'status', label: 'Status', category: 'Classificação' },
+    { key: 'data_solicitacao', label: 'Data', category: 'Datas' },
+    { key: 'solicitante', label: 'Solicitante', category: 'Responsáveis' },
+    { key: 'custo_estimado', label: 'Custo', category: 'Financeiro' },
+  ],
+};
 
-const PR_FIELDS = [
-  { key: 'codigo', label: 'Código' },
-  { key: 'tag', label: 'TAG' },
-  { key: 'nome', label: 'Nome do Plano' },
-  { key: 'tipo_gatilho', label: 'Tipo Gatilho' },
-  { key: 'frequencia_dias', label: 'Frequência' },
-  { key: 'proxima_execucao', label: 'Próxima Execução' },
-  { key: 'responsavel_nome', label: 'Responsável' },
-  { key: 'especialidade', label: 'Especialidade' },
-  { key: 'instrucoes', label: 'Instruções' },
-  { key: 'atividades', label: 'Atividades' },
-  { key: 'servicos', label: 'Serviços' },
-];
-
-const LAYOUT_OPTIONS = [
-  { key: 'mostrar_logo', label: 'Logomarca da Empresa' },
-  { key: 'mostrar_cnpj', label: 'CNPJ / Dados da Empresa' },
-  { key: 'mostrar_assinaturas', label: 'Campos de Assinatura' },
-  { key: 'mostrar_materiais', label: 'Seção de Materiais' },
-  { key: 'mostrar_observacoes', label: 'Seção de Observações' },
-  { key: 'mostrar_checklist', label: 'Checklist de Serviços' },
+const SECTION_OPTIONS = [
+  { key: 'mostrar_logo', label: 'Logomarca da Empresa', description: 'Exibir logo no cabeçalho' },
+  { key: 'mostrar_cnpj', label: 'CNPJ / Dados da Empresa', description: 'Exibir CNPJ e contato abaixo do cabeçalho' },
+  { key: 'mostrar_assinaturas', label: 'Campos de Assinatura', description: 'Áreas para assinatura no rodapé' },
+  { key: 'mostrar_materiais', label: 'Seção de Materiais', description: 'Tabela de peças e materiais' },
+  { key: 'mostrar_observacoes', label: 'Seção de Observações', description: 'Campo de observações livres' },
+  { key: 'mostrar_checklist', label: 'Checklist de Serviços', description: 'Lista de serviços com checkboxes' },
+  { key: 'mostrar_executor', label: 'Blocos de Executor', description: 'Campos para nome e assinatura do executor' },
+  { key: 'mostrar_horarios', label: 'Horários de Execução', description: 'Hora início, fim e tempo total' },
+  { key: 'mostrar_status_final', label: 'Status Final', description: 'Checkboxes serviço finalizado/equipamento liberado' },
 ];
 
 export function MasterDocumentLayouts() {
@@ -101,9 +136,19 @@ export function MasterDocumentLayouts() {
     setEditConfig({ ...editConfig, [key]: !editConfig[key] });
   };
 
+  const moveField = (field: string, direction: 'up' | 'down') => {
+    const current = editConfig.campos_visiveis || [];
+    const idx = current.indexOf(field);
+    if (idx < 0) return;
+    const newIdx = direction === 'up' ? idx - 1 : idx + 1;
+    if (newIdx < 0 || newIdx >= current.length) return;
+    const updated = [...current];
+    [updated[idx], updated[newIdx]] = [updated[newIdx], updated[idx]];
+    setEditConfig({ ...editConfig, campos_visiveis: updated });
+  };
+
   const handleSaveLayout = async () => {
     if (!editingLayout) return;
-    // Increment version
     const parts = editingLayout.versao.split('.');
     const newMinor = parseInt(parts[1] || '0') + 1;
     const newVersao = `${parts[0]}.${newMinor}`;
@@ -117,19 +162,20 @@ export function MasterDocumentLayouts() {
       autor_nome: 'Master TI',
     });
 
-    // Deactivate old version
     await updateLayout.mutateAsync({ id: editingLayout.id, ativo: false });
-
     setEditingLayout(null);
     toast({ title: 'Layout salvo', description: `Nova versão ${newVersao} criada.` });
   };
 
-  const getFieldsForType = (tipo: string) => {
-    switch (tipo) {
-      case 'ORDEM_SERVICO': return OS_FIELDS;
-      case 'PREVENTIVA': return PR_FIELDS;
-      default: return OS_FIELDS;
+  const getFieldsForType = (tipo: string) => FIELDS_BY_TYPE[tipo] || FIELDS_BY_TYPE.ORDEM_SERVICO;
+
+  const groupedFields = (tipo: string) => {
+    const fields = getFieldsForType(tipo);
+    const groups: Record<string, typeof fields> = {};
+    for (const f of fields) {
+      (groups[f.category] = groups[f.category] || []).push(f);
     }
+    return groups;
   };
 
   return (
@@ -138,7 +184,7 @@ export function MasterDocumentLayouts() {
         <FileText className="h-6 w-6 text-primary" />
         <div>
           <h2 className="text-lg font-bold">Gestão de Documentos & Layouts</h2>
-          <p className="text-sm text-muted-foreground">Controle de numeração, campos visíveis e versões dos documentos</p>
+          <p className="text-sm text-muted-foreground">Controle numeração, campos visíveis, seções e versões dos documentos</p>
         </div>
       </div>
 
@@ -152,7 +198,7 @@ export function MasterDocumentLayouts() {
         {/* NUMERAÇÃO */}
         <TabsContent value="sequences" className="space-y-4">
           <p className="text-sm text-muted-foreground">
-            Controle automático de numeração sequencial de documentos. Cada tipo tem prefixo e sequência independentes.
+            Controle automático de numeração sequencial. Cada tipo de documento possui prefixo e sequência independentes.
           </p>
           {loadSeq ? (
             <div className="flex justify-center p-8"><Loader2 className="h-6 w-6 animate-spin" /></div>
@@ -190,7 +236,7 @@ export function MasterDocumentLayouts() {
         {/* LAYOUTS */}
         <TabsContent value="layouts" className="space-y-4">
           <p className="text-sm text-muted-foreground">
-            Configure campos visíveis, seções e opções de cada tipo de documento.
+            Configure campos visíveis, ordem das colunas e seções de cada tipo de documento.
           </p>
           {loadLayouts ? (
             <div className="flex justify-center p-8"><Loader2 className="h-6 w-6 animate-spin" /></div>
@@ -198,6 +244,8 @@ export function MasterDocumentLayouts() {
             <div className="space-y-4">
               {(layouts || []).filter(l => l.ativo).map(layout => {
                 const docType = DOCUMENT_TYPES.find(d => d.key === layout.tipo_documento);
+                const visibleFields = layout.configuracao?.campos_visiveis || [];
+                const allFields = getFieldsForType(layout.tipo_documento);
                 return (
                   <Card key={layout.id}>
                     <CardHeader className="pb-3">
@@ -213,11 +261,17 @@ export function MasterDocumentLayouts() {
                       </div>
                     </CardHeader>
                     <CardContent>
+                      <div className="flex items-center gap-2 mb-2">
+                        <Eye className="h-3.5 w-3.5 text-muted-foreground" />
+                        <span className="text-xs text-muted-foreground font-medium">
+                          {visibleFields.length} de {allFields.length} campos visíveis
+                        </span>
+                      </div>
                       <div className="flex flex-wrap gap-1.5">
-                        {(layout.configuracao?.campos_visiveis || []).map((field: string) => (
+                        {visibleFields.map((field: string) => (
                           <Badge key={field} variant="secondary" className="text-xs">
                             <CheckCircle2 className="h-3 w-3 mr-1" />
-                            {getFieldsForType(layout.tipo_documento).find(f => f.key === field)?.label || field}
+                            {allFields.find(f => f.key === field)?.label || field}
                           </Badge>
                         ))}
                       </div>
@@ -232,7 +286,7 @@ export function MasterDocumentLayouts() {
         {/* HISTÓRICO */}
         <TabsContent value="versions" className="space-y-4">
           <p className="text-sm text-muted-foreground">
-            Histórico de todas as versões de layout criadas.
+            Histórico completo de todas as versões de layout criadas, com autor e data.
           </p>
           {(layouts || []).sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()).map(layout => {
             const docType = DOCUMENT_TYPES.find(d => d.key === layout.tipo_documento);
@@ -275,39 +329,72 @@ export function MasterDocumentLayouts() {
 
       {/* Edit Layout */}
       <Dialog open={!!editingLayout} onOpenChange={() => setEditingLayout(null)}>
-        <DialogContent className="max-w-lg max-h-[80vh] overflow-y-auto">
+        <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Configurar Layout — {editingLayout?.nome}</DialogTitle>
+            <DialogTitle className="flex items-center gap-2">
+              <Settings className="h-5 w-5" />
+              Configurar Layout — {editingLayout?.nome}
+            </DialogTitle>
           </DialogHeader>
 
           {editingLayout && (
             <div className="space-y-6">
-              {/* Fields */}
+              {/* Fields by Category */}
               <div>
-                <Label className="text-sm font-semibold mb-3 block">Campos Visíveis</Label>
-                <div className="grid grid-cols-2 gap-2">
-                  {getFieldsForType(editingLayout.tipo_documento).map(field => (
-                    <label key={field.key} className="flex items-center gap-2 p-2 border border-border rounded-md cursor-pointer hover:bg-muted/50">
-                      <Switch
-                        checked={(editConfig.campos_visiveis || []).includes(field.key)}
-                        onCheckedChange={() => toggleField(field.key)}
-                        className="scale-75"
-                      />
-                      <span className="text-sm">{field.label}</span>
-                    </label>
-                  ))}
-                </div>
+                <Label className="text-sm font-semibold mb-3 block">Campos Visíveis no Documento</Label>
+                <p className="text-xs text-muted-foreground mb-3">
+                  Selecione quais campos aparecem no documento impresso. Use as setas para reordenar.
+                </p>
+
+                {Object.entries(groupedFields(editingLayout.tipo_documento)).map(([category, fields]) => (
+                  <div key={category} className="mb-4">
+                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">{category}</p>
+                    <div className="space-y-1">
+                      {fields.map(field => {
+                        const isVisible = (editConfig.campos_visiveis || []).includes(field.key);
+                        const idx = (editConfig.campos_visiveis || []).indexOf(field.key);
+                        return (
+                          <div key={field.key} className={`flex items-center gap-2 p-2 rounded-md border transition-colors ${isVisible ? 'border-primary/30 bg-primary/5' : 'border-border'}`}>
+                            <Switch
+                              checked={isVisible}
+                              onCheckedChange={() => toggleField(field.key)}
+                              className="scale-75"
+                            />
+                            <span className="text-sm flex-1">{field.label}</span>
+                            {isVisible && (
+                              <div className="flex gap-0.5">
+                                <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => moveField(field.key, 'up')} disabled={idx <= 0}>
+                                  <ArrowUp className="h-3 w-3" />
+                                </Button>
+                                <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => moveField(field.key, 'down')} disabled={idx >= (editConfig.campos_visiveis || []).length - 1}>
+                                  <ArrowDown className="h-3 w-3" />
+                                </Button>
+                              </div>
+                            )}
+                            {isVisible ? <Eye className="h-3.5 w-3.5 text-primary" /> : <EyeOff className="h-3.5 w-3.5 text-muted-foreground/40" />}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ))}
               </div>
 
               <Separator />
 
-              {/* Layout Options */}
+              {/* Section Options */}
               <div>
                 <Label className="text-sm font-semibold mb-3 block">Seções do Documento</Label>
+                <p className="text-xs text-muted-foreground mb-3">
+                  Ative ou desative seções inteiras do documento impresso.
+                </p>
                 <div className="space-y-2">
-                  {LAYOUT_OPTIONS.map(opt => (
+                  {SECTION_OPTIONS.map(opt => (
                     <div key={opt.key} className="flex items-center justify-between p-2 border border-border rounded-md">
-                      <span className="text-sm">{opt.label}</span>
+                      <div>
+                        <span className="text-sm font-medium">{opt.label}</span>
+                        <p className="text-xs text-muted-foreground">{opt.description}</p>
+                      </div>
                       <Switch
                         checked={editConfig[opt.key] !== false}
                         onCheckedChange={() => toggleOption(opt.key)}

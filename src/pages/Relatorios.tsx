@@ -59,8 +59,13 @@ export default function Relatorios() {
       const options = {
         title: reports.find(r => r.id === selectedReport)?.title || '',
         dateFrom, dateTo, filterTag,
-        empresaNome: empresa?.nome_fantasia || empresa?.razao_social || 'PCM Estratégico',
-        logoUrl: empresa?.logo_relatorio_url || '',
+        empresaNome: empresa?.nome_fantasia || empresa?.razao_social || 'Manutenção Industrial',
+        empresaCnpj: empresa?.cnpj || '',
+        empresaTelefone: empresa?.telefone || '',
+        empresaEmail: empresa?.email || '',
+        empresaEndereco: empresa?.endereco || '',
+        logoUrl: empresa?.logo_relatorio_url || empresa?.logo_pdf_url || '',
+        layoutVersion: '1.0',
       };
 
       if (fmt === 'pdf') {
