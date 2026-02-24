@@ -30,6 +30,7 @@ const TABS: { key: TabKey; label: string; icon: React.ElementType }[] = [
   { key: "settings", label: "Configurações", icon: Settings },
   { key: "audit", label: "Auditoria", icon: FileText },
   { key: "security", label: "Segurança", icon: Lock },
+  { key: "documents", label: "Documentos", icon: FileOutput },
 ];
 
 function TabFallback() {
