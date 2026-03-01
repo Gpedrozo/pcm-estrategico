@@ -253,10 +253,10 @@ export function AppSidebar() {
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <div className="w-8 h-8 rounded-full bg-sidebar-accent flex items-center justify-center">
-              <span className="text-sm font-medium text-sidebar-accent-foreground">{user?.nome.charAt(0).toUpperCase()}</span>
+              <span className="text-sm font-medium text-sidebar-accent-foreground">{user?.nome?.charAt(0)?.toUpperCase() ?? 'U'}</span>
             </div>
             <div className="flex flex-col">
-              <span className="text-sm font-medium text-sidebar-foreground">{user?.nome}</span>
+              <span className="text-sm font-medium text-sidebar-foreground">{user?.nome || 'Usuário'}</span>
               <span className="text-xs text-sidebar-foreground/60">{user?.tipo}</span>
             </div>
           </div>
