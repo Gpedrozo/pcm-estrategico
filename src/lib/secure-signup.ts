@@ -14,11 +14,11 @@ export function buildSecureSignupMetadata({
   role = 'USUARIO',
 }: BuildSecureSignupMetadataInput) {
   if (!empresaId) {
-    throw new Error('empresa_id é obrigatório para cadastro de usuário');
+    throw new Error('empresa_id é obrigatório para criação de usuário');
   }
 
   if (!VALID_ROLES.includes(role)) {
-    throw new Error('role inválida para cadastro de usuário');
+    throw new Error(`role '${role}' inválido. Valores permitidos: ${VALID_ROLES.join(', ')}`);
   }
 
   return {

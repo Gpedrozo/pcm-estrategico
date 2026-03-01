@@ -146,7 +146,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       metadata = buildSecureSignupMetadata({ nome, empresaId, role });
     } catch (validationError) {
-      return { error: validationError instanceof Error ? validationError.message : 'Dados inválidos para cadastro' };
+      return { error: validationError instanceof Error ? validationError.message : 'Dados inválidos para cadastro (empresa_id obrigatório)' };
     }
 
     const { error } = await supabase.auth.signUp({

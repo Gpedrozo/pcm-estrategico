@@ -28,15 +28,28 @@ CREATE TRIGGER update_empresas_updated_at
 
 INSERT INTO public.empresas (nome, cnpj)
 SELECT
-  COALESCE(NULLIF(de.razao_social, ''), NULLIF(de.nome_fantasia, ''), 'Empresa Padrão'),
-  NULLIF(de.cnpj, '')
-FROM public.dados_empresa de
-LIMIT 1
-ON CONFLICT DO NOTHING;
-
-INSERT INTO public.empresas (nome)
-SELECT 'Empresa Padrão'
+  COALESCE(
+    (
+      SELECT COALESCE(NULLIF(de.razao_social, ''), NULLIF(de.nome_fantasia, ''))
+      FROM public.dados_empresa de
+      LIMIT 1
+    ),
+    'Empresa Padrão'
+  ),
+  (
+    SELECT NULLIF(de.cnpj, '')
+    FROM public.dados_empresa de
+    LIMIT 1
+  )
 WHERE NOT EXISTS (SELECT 1 FROM public.empresas);
+
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM public.empresas) THEN
+    RAISE EXCEPTION 'Nenhuma empresa disponível para vincular profiles';
+  END IF;
+END;
+$$;
 
 ALTER TABLE public.profiles
   ADD COLUMN IF NOT EXISTS empresa_id uuid,
@@ -239,9 +252,12 @@ BEGIN
   v_user_agent := v_headers ->> 'user-agent';
 
   v_target_id := COALESCE(
-    CASE WHEN TG_OP = 'DELETE' THEN OLD.id::text ELSE NEW.id::text END,
-    CASE WHEN TG_OP = 'DELETE' THEN OLD.user_id::text ELSE NEW.user_id::text END
+    CASE WHEN TG_OP = 'DELETE' THEN OLD.id::text ELSE NEW.id::text END
   );
+
+  IF v_target_id IS NULL THEN
+    RAISE EXCEPTION 'Não foi possível identificar target_id para auditoria da tabela %', TG_TABLE_NAME;
+  END IF;
 
   v_empresa_id := COALESCE(
     CASE
