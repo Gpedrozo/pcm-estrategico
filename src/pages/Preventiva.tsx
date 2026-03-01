@@ -30,7 +30,7 @@ export default function Preventiva() {
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [filterAtivo, setFilterAtivo] = useState<boolean | null>(true);
 
-  const { data: planos, isLoading } = usePlanosPreventivos();
+  const { data: planos, isLoading, isError, error } = usePlanosPreventivos();
   const { data: equipamentos } = useEquipamentos();
 
   const filteredPlanos = useMemo(() => {
@@ -39,7 +39,10 @@ export default function Preventiva() {
       if (filterAtivo !== null && p.ativo !== filterAtivo) return false;
       if (!search) return true;
       const s = search.toLowerCase();
-      return p.codigo.toLowerCase().includes(s) || p.nome.toLowerCase().includes(s) || p.tag?.toLowerCase().includes(s);
+      const codigo = (p.codigo || '').toLowerCase();
+      const nome = (p.nome || '').toLowerCase();
+      const tag = (p.tag || '').toLowerCase();
+      return codigo.includes(s) || nome.includes(s) || tag.includes(s);
     });
   }, [planos, search, filterAtivo]);
 
@@ -56,6 +59,15 @@ export default function Preventiva() {
       <div className="space-y-4">
         <Skeleton className="h-10 w-64" />
         <Skeleton className="h-[600px] w-full" />
+      </div>
+    );
+  }
+
+  if (isError) {
+    return (
+      <div className="p-6">
+        <h2 className="text-lg font-bold text-destructive">Erro ao carregar planos</h2>
+        <pre className="mt-2 text-sm text-muted-foreground">{String((error as any)?.message || error)}</pre>
       </div>
     );
   }
@@ -121,8 +133,8 @@ export default function Preventiva() {
                   <p className="text-sm font-medium truncate">{plano.nome}</p>
                   {plano.tag && <p className="text-xs text-muted-foreground">TAG: {plano.tag}</p>}
                   <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground">
-                    <span className="flex items-center gap-1"><Calendar className="h-3 w-3" />{plano.frequencia_dias}d</span>
-                    <span className="flex items-center gap-1"><Clock className="h-3 w-3" />{formatMinutes(plano.tempo_estimado_min)}</span>
+                    <span className="flex items-center gap-1"><Calendar className="h-3 w-3" />{plano.frequencia_dias ?? 0}d</span>
+                    <span className="flex items-center gap-1"><Clock className="h-3 w-3" />{formatMinutes(plano.tempo_estimado_min ?? 0)}</span>
                   </div>
                   {plano.proxima_execucao && (
                     <p className="text-[10px] mt-1 text-info">
