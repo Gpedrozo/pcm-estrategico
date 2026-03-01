@@ -1,3 +1,4 @@
+-- Promote designated enterprise owner account to SYSTEM_OWNER (idempotent).
 INSERT INTO public.user_roles (user_id, role)
 SELECT id, 'SYSTEM_OWNER'::public.app_role
 FROM auth.users

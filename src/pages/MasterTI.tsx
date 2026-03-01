@@ -52,7 +52,7 @@ export default function MasterTI() {
           </div>
           <h2 className="text-xl font-bold">Acesso Negado</h2>
           <p className="text-muted-foreground max-w-md">
-            Este painel é exclusivo para usuários com perfil <strong>MASTER TI</strong> ou <strong>SYSTEM OWNER</strong>.
+            Este painel é exclusivo para usuários com perfil <strong>MASTER_TI</strong> ou <strong>SYSTEM_OWNER</strong>.
           </p>
         </div>
       </div>
