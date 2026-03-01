@@ -32,6 +32,7 @@ import {
 } from 'lucide-react';
 import { NavLink, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
+import { useBranding } from '@/contexts/BrandingContext';
 import {
   Sidebar,
   SidebarContent,
@@ -99,7 +100,8 @@ const adminMenuItems = [
 ];
 
 export function AppSidebar() {
-  const { user, logout, isAdmin, isMasterTI, isSystemOwner } = useAuth();
+  const { user, logout, isAdmin, isMasterTI } = useAuth();
+  const { branding } = useBranding();
   const location = useLocation();
 
   const isActive = (path: string) => location.pathname === path;
@@ -127,11 +129,21 @@ export function AppSidebar() {
     <Sidebar className="border-r border-sidebar-border">
       <SidebarHeader className="p-4 border-b border-sidebar-border">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-md bg-sidebar-primary flex items-center justify-center">
-            <Settings className="h-6 w-6 text-sidebar-primary-foreground" />
-          </div>
+          {branding?.logo_menu_url ? (
+            <img
+              src={branding.logo_menu_url}
+              alt={branding.nome_fantasia || branding.razao_social || 'Logo'}
+              className="w-10 h-10 rounded-md object-contain bg-sidebar-primary p-1"
+            />
+          ) : (
+            <div className="w-10 h-10 rounded-md bg-sidebar-primary flex items-center justify-center">
+              <Settings className="h-6 w-6 text-sidebar-primary-foreground" />
+            </div>
+          )}
           <div>
-            <h1 className="text-lg font-bold text-sidebar-foreground">PCM ESTRATÉGICO</h1>
+            <h1 className="text-lg font-bold text-sidebar-foreground">
+              {branding?.nome_fantasia || branding?.razao_social || 'PCM ESTRATÉGICO'}
+            </h1>
             <p className="text-xs text-sidebar-foreground/60">Sistema de Manutenção</p>
           </div>
         </div>
@@ -241,18 +253,7 @@ export function AppSidebar() {
           </SidebarGroup>
         )}
 
-        {isSystemOwner && (
-          <SidebarGroup className="mt-4">
-            <SidebarGroupLabel className="text-sidebar-foreground/50 uppercase text-xs font-semibold px-3 mb-2">
-              System Owner
-            </SidebarGroupLabel>
-            <SidebarGroupContent>
-              <SidebarMenu>
-                {renderMenuLink({ title: 'Owner Portal', url: '/owner', icon: Shield })}
-              </SidebarMenu>
-            </SidebarGroupContent>
-          </SidebarGroup>
-        )}
+        
       </SidebarContent>
 
       <SidebarFooter className="p-4 border-t border-sidebar-border">

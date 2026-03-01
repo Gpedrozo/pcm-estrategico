@@ -6,6 +6,12 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { SpeedInsights } from "@vercel/speed-insights/react";
+import { TenantProvider } from "@/contexts/TenantContext";
+import { BrandingProvider } from "@/contexts/BrandingContext";
+import { EnvironmentGuard } from "@/guards/EnvironmentGuard";
+import { isOwnerDomain } from "@/lib/security";
+import OwnerPortal from "@/owner/OwnerPortal";
+import OwnerLogin from "@/owner/OwnerLogin";
 
 // Pages
 import Index from "./pages/Index";
@@ -40,7 +46,6 @@ import NotFound from "./pages/NotFound";
 import Instalar from "./pages/Instalar";
 import MasterTI from "./pages/MasterTI";
 import ArquivosOwner from "./pages/ArquivosOwner";
-import Owner from "./pages/Owner";
 import RootCauseAIPage from "./modules/rootCauseAI/RootCauseAIPage";
 
 const queryClient = new QueryClient();
@@ -50,13 +55,35 @@ const AdminOnlyRoute = ({ children }: { children: React.ReactNode }) => {
   return isAdmin ? <>{children}</> : <Navigate to="/dashboard" replace />;
 };
 
-const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <AuthProvider>
-      <TooltipProvider>
-        <Toaster />
-        <Sonner />
-        <BrowserRouter>
+function OwnerRoutes() {
+  return (
+    <Routes>
+      <Route
+        path="/login"
+        element={
+          <EnvironmentGuard allowOwner>
+            <OwnerLogin />
+          </EnvironmentGuard>
+        }
+      />
+      <Route
+        path="/"
+        element={
+          <EnvironmentGuard allowOwner>
+            <OwnerPortal />
+          </EnvironmentGuard>
+        }
+      />
+      <Route path="*" element={<Navigate to="/" replace />} />
+    </Routes>
+  );
+}
+
+function TenantRoutes() {
+  return (
+    <EnvironmentGuard>
+      <TenantProvider>
+        <BrandingProvider>
           <Routes>
             <Route path="/" element={<Index />} />
             <Route path="/login" element={<Login />} />
@@ -90,7 +117,6 @@ const App = () => (
               <Route path="/ssma" element={<SSMA />} />
               <Route path="/usuarios" element={<Usuarios />} />
               <Route path="/auditoria" element={<Auditoria />} />
-
               <Route
                 path="/admin/arquivos-owner"
                 element={
@@ -99,15 +125,27 @@ const App = () => (
                   </AdminOnlyRoute>
                 }
               />
-
               <Route path="/master-ti" element={<MasterTI />} />
-              <Route path="/owner" element={<Owner />} />
               <Route path="/inteligencia-causa-raiz" element={<RootCauseAIPage />} />
             </Route>
 
             {/* Catch-all */}
             <Route path="*" element={<NotFound />} />
           </Routes>
+        </BrandingProvider>
+      </TenantProvider>
+    </EnvironmentGuard>
+  );
+}
+
+const App = () => (
+  <QueryClientProvider client={queryClient}>
+    <AuthProvider>
+      <TooltipProvider>
+        <Toaster />
+        <Sonner />
+        <BrowserRouter>
+          {isOwnerDomain() ? <OwnerRoutes /> : <TenantRoutes />}
         </BrowserRouter>
         <SpeedInsights />
       </TooltipProvider>

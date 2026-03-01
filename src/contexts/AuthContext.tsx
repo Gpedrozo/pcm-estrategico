@@ -1,15 +1,20 @@
 import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import type { User, Session } from '@supabase/supabase-js';
-import { buildSecureSignupMetadata } from '@/lib/secure-signup';
-
-type AppRole = 'ADMIN' | 'USUARIO' | 'MASTER_TI' | 'SYSTEM_OWNER';
+import type { Session } from '@supabase/supabase-js';
+import {
+  buildSecureSignupMetadata,
+  getEffectiveRole,
+  resolveTenantSlug,
+  type AppRole,
+} from '@/lib/security';
 
 interface AuthUser {
   id: string;
   nome: string;
   email: string;
   tipo: AppRole;
+  roles: AppRole[];
+  tenantId: string | null;
 }
 
 interface AuthContextType {
@@ -18,11 +23,13 @@ interface AuthContextType {
   isAuthenticated: boolean;
   isLoading: boolean;
   login: (email: string, password: string) => Promise<{ error: string | null }>;
-  signup: (email: string, password: string, nome: string, empresaId?: string, role?: AppRole) => Promise<{ error: string | null }>;
+  signup: (email: string, password: string, nome: string) => Promise<{ error: string | null }>;
   logout: () => Promise<void>;
   isAdmin: boolean;
   isMasterTI: boolean;
   isSystemOwner: boolean;
+  effectiveRole: AppRole;
+  tenantId: string | null;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -32,7 +39,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  const fetchUserProfile = async (userId: string) => {
+  const fetchUserProfile = async (userId: string, email?: string | null) => {
     try {
       // Fetch profile
       const { data: profile } = await supabase
@@ -44,17 +51,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // Fetch role
       const { data: roleData } = await supabase
         .from('user_roles')
-        .select('role')
+        .select('role, tenant_id')
         .eq('user_id', userId)
-        .maybeSingle();
+        .order('created_at', { ascending: true });
+
+      const roles = (roleData || []).map((item: { role: AppRole }) => item.role);
+      const tenantId = (roleData || [])[0]?.tenant_id || null;
+      const effectiveRole = getEffectiveRole({ roles, email });
 
       return {
         nome: profile?.nome || 'Usuário',
-        tipo: (roleData?.role as AppRole) || 'USUARIO',
+        tipo: effectiveRole,
+        roles,
+        tenantId,
       };
     } catch (error) {
       console.error('Error fetching user profile:', error);
-      return { nome: 'Usuário', tipo: 'USUARIO' as const };
+      return { nome: 'Usuário', tipo: 'USUARIO' as const, roles: ['USUARIO'], tenantId: null };
     }
   };
 
@@ -67,12 +80,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (session?.user) {
           // Defer Supabase calls with setTimeout to avoid deadlock
           setTimeout(async () => {
-            const profileData = await fetchUserProfile(session.user.id);
+            const profileData = await fetchUserProfile(session.user.id, session.user.email);
             setUser({
               id: session.user.id,
               email: session.user.email || '',
               nome: profileData.nome,
               tipo: profileData.tipo,
+              roles: profileData.roles,
+              tenantId: profileData.tenantId,
             });
             setIsLoading(false);
           }, 0);
@@ -88,12 +103,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setSession(session);
       
       if (session?.user) {
-        fetchUserProfile(session.user.id).then(profileData => {
+        fetchUserProfile(session.user.id, session.user.email).then(profileData => {
           setUser({
             id: session.user.id,
             email: session.user.email || '',
             nome: profileData.nome,
             tipo: profileData.tipo,
+            roles: profileData.roles,
+            tenantId: profileData.tenantId,
           });
           setIsLoading(false);
         });
@@ -140,22 +157,32 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return { error: null };
   }, []);
 
-  const signup = useCallback(async (email: string, password: string, nome: string, empresaId?: string, role: AppRole = 'USUARIO'): Promise<{ error: string | null }> => {
+  const signup = useCallback(async (email: string, password: string, nome: string): Promise<{ error: string | null }> => {
     const redirectUrl = `${window.location.origin}/`;
-    let metadata: ReturnType<typeof buildSecureSignupMetadata>;
+    const tenantSlug = resolveTenantSlug(window.location.hostname);
 
-    try {
-      metadata = buildSecureSignupMetadata({ nome, empresaId, role });
-    } catch (validationError) {
-      return { error: validationError instanceof Error ? validationError.message : 'Dados inválidos para cadastro (empresa_id obrigatório)' };
+    const { data: tenantData, error: tenantError } = await supabase
+      .from('tenants' as any)
+      .select('id, slug')
+      .eq('slug', tenantSlug)
+      .maybeSingle();
+
+    if (tenantError || !tenantData?.id) {
+      return { error: 'Tenant inválido. Contate o administrador.' };
     }
-
     const { error } = await supabase.auth.signUp({
       email,
       password,
       options: {
         emailRedirectTo: redirectUrl,
-        data: metadata,
+        data: {
+          nome: nome,
+          ...buildSecureSignupMetadata({
+            tenantId: tenantData.id,
+            tenantSlug: tenantData.slug,
+            email,
+          }),
+        },
       },
     });
 
@@ -183,9 +210,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     await supabase.auth.signOut();
   }, [user]);
 
-  const isAdmin = user?.tipo === 'ADMIN' || user?.tipo === 'MASTER_TI';
-  const isMasterTI = user?.tipo === 'MASTER_TI';
-  const isSystemOwner = user?.tipo === 'SYSTEM_OWNER';
+  const effectiveRole = user?.tipo || 'USUARIO';
+  const isAdmin = effectiveRole === 'ADMIN' || effectiveRole === 'MASTER_TI';
+  const isMasterTI = effectiveRole === 'MASTER_TI';
+  const isSystemOwner = effectiveRole === 'SYSTEM_OWNER';
+  const tenantId = user?.tenantId || null;
 
   return (
     <AuthContext.Provider value={{
@@ -199,6 +228,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       isAdmin,
       isMasterTI,
       isSystemOwner,
+      effectiveRole,
+      tenantId,
     }}>
       {children}
     </AuthContext.Provider>

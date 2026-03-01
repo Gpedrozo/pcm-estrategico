@@ -24,8 +24,7 @@ interface ComponentesPanelProps {
 }
 
 export function ComponentesPanel({ equipamentoId, equipamentoTag }: ComponentesPanelProps) {
-  const { user } = useAuth();
-  const isAdmin = user?.tipo === 'ADMIN';
+  const { isAdmin } = useAuth();
 
   const [search, setSearch] = useState('');
   const [tipoFilter, setTipoFilter] = useState<string>('all');

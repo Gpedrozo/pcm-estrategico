@@ -1,9 +1,11 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { useTenant } from '@/contexts/TenantContext';
 
 export interface DadosEmpresa {
   id: string;
+  tenant_id?: string | null;
   razao_social: string;
   nome_fantasia: string | null;
   cnpj: string | null;
@@ -32,18 +34,22 @@ export interface DadosEmpresa {
 export type Empresa = DadosEmpresa;
 
 export function useDadosEmpresa() {
+  const { tenant } = useTenant();
+
   return useQuery({
-    queryKey: ['dados-empresa'],
+    queryKey: ['dados-empresa', tenant?.id],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('dados_empresa')
         .select('*')
+        .eq('tenant_id', tenant?.id || '')
         .limit(1)
         .maybeSingle();
 
       if (error) throw error;
       return data as DadosEmpresa | null;
     },
+    enabled: Boolean(tenant?.id),
   });
 }
 
