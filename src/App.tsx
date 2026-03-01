@@ -2,8 +2,8 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
-import { AuthProvider } from "@/contexts/AuthContext";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { SpeedInsights } from "@vercel/speed-insights/react";
 
@@ -39,10 +39,16 @@ import Lubrificacao from "./pages/Lubrificacao";
 import NotFound from "./pages/NotFound";
 import Instalar from "./pages/Instalar";
 import MasterTI from "./pages/MasterTI";
+import ArquivosOwner from "./pages/ArquivosOwner";
 import Owner from "./pages/Owner";
 import RootCauseAIPage from "./modules/rootCauseAI/RootCauseAIPage";
 
 const queryClient = new QueryClient();
+
+const AdminOnlyRoute = ({ children }: { children: React.ReactNode }) => {
+  const { isAdmin } = useAuth();
+  return isAdmin ? <>{children}</> : <Navigate to="/dashboard" replace />;
+};
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
@@ -55,7 +61,7 @@ const App = () => (
             <Route path="/" element={<Index />} />
             <Route path="/login" element={<Login />} />
             <Route path="/instalar" element={<Instalar />} />
-            
+
             {/* Protected Routes with Layout */}
             <Route element={<AppLayout />}>
               <Route path="/dashboard" element={<Dashboard />} />
@@ -84,6 +90,16 @@ const App = () => (
               <Route path="/ssma" element={<SSMA />} />
               <Route path="/usuarios" element={<Usuarios />} />
               <Route path="/auditoria" element={<Auditoria />} />
+
+              <Route
+                path="/admin/arquivos-owner"
+                element={
+                  <AdminOnlyRoute>
+                    <ArquivosOwner />
+                  </AdminOnlyRoute>
+                }
+              />
+
               <Route path="/master-ti" element={<MasterTI />} />
               <Route path="/owner" element={<Owner />} />
               <Route path="/inteligencia-causa-raiz" element={<RootCauseAIPage />} />
