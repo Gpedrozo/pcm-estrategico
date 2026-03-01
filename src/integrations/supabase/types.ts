@@ -2453,7 +2453,17 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      users_full: {
+        Row: {
+          created_at: string
+          email: string
+          id: string
+          nome: string
+          role: Database["public"]["Enums"]["app_role"]
+          updated_at: string
+        }
+        Relationships: []
+      }
     }
     Functions: {
       check_expiring_contracts: { Args: never; Returns: undefined }
@@ -2484,6 +2494,29 @@ export type Database = {
         Returns: boolean
       }
       next_document_number: { Args: { p_tipo: string }; Returns: string }
+      reconcile_user_identity_drift: {
+        Args: never
+        Returns: {
+          missing_profiles_inserted: number
+          missing_roles_inserted: number
+        }[]
+      }
+      user_sync_data_diagnostics: {
+        Args: never
+        Returns: {
+          metric: string
+          total: number
+        }[]
+      }
+      user_sync_trigger_diagnostics: {
+        Args: never
+        Returns: {
+          trigger_enabled: string | null
+          trigger_exists: boolean
+          trigger_function: string
+          trigger_name: string
+        }[]
+      }
       update_my_profile: { Args: { new_name: string }; Returns: boolean }
     }
     Enums: {

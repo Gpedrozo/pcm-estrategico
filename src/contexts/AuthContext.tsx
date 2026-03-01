@@ -1,8 +1,7 @@
 import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import type { User, Session } from '@supabase/supabase-js';
-
-type AppRole = 'ADMIN' | 'USUARIO' | 'MASTER_TI';
+import { getEffectiveRole, type AppRole } from '@/utils/userRoles';
 
 interface AuthUser {
   id: string;
@@ -40,15 +39,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         .maybeSingle();
 
       // Fetch role
-      const { data: roleData } = await supabase
+      const { data: roleRows, error: roleError } = await supabase
         .from('user_roles')
         .select('role')
-        .eq('user_id', userId)
-        .maybeSingle();
+        .eq('user_id', userId);
+
+      if (roleError) throw roleError;
 
       return {
         nome: profile?.nome || 'Usuário',
-        tipo: (roleData?.role as AppRole) || 'USUARIO',
+        tipo: getEffectiveRole((roleRows || []) as Array<{ role: AppRole }>),
       };
     } catch (error) {
       console.error('Error fetching user profile:', error);

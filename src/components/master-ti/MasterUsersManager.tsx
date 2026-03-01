@@ -12,6 +12,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Search, Edit, Shield, User, Crown, Loader2, Users, Eye, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useLogAuditoria } from '@/hooks/useAuditoria';
+import { fetchUsuariosFull } from '@/hooks/useUsuarios';
 
 type AppRole = 'MASTER_TI' | 'ADMIN' | 'USUARIO';
 
@@ -45,16 +46,7 @@ export function MasterUsersManager() {
 
   const { data: users, isLoading, error } = useQuery({
     queryKey: ['master-users'],
-    queryFn: async () => {
-      const { data: profiles, error: pErr } = await supabase.from('profiles').select('*').order('nome');
-      if (pErr) throw pErr;
-      const { data: roles, error: rErr } = await supabase.from('user_roles').select('*');
-      if (rErr) throw rErr;
-      return (profiles || []).map(p => {
-        const r = roles?.find(r => r.user_id === p.id);
-        return { id: p.id, nome: p.nome, role: (r?.role || 'USUARIO') as AppRole, created_at: p.created_at, updated_at: p.updated_at };
-      });
-    },
+    queryFn: fetchUsuariosFull,
   });
 
   const updateMutation = useMutation({
@@ -66,6 +58,7 @@ export function MasterUsersManager() {
     },
     onSuccess: (_, vars) => {
       queryClient.invalidateQueries({ queryKey: ['master-users'] });
+      queryClient.invalidateQueries({ queryKey: ['usuarios'] });
       toast({ title: 'Usuário atualizado com sucesso.' });
       log('EDITAR_USUARIO', `Usuário "${vars.nome}" atualizado para perfil ${vars.role}`, 'MASTER_TI');
       setEditingUser(null);
