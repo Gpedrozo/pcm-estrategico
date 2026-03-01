@@ -32,7 +32,7 @@ CREATE TABLE IF NOT EXISTS public.enterprise_companies (
 
 CREATE TABLE IF NOT EXISTS public.enterprise_subscriptions (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  empresa_id uuid NOT NULL REFERENCES public.enterprise_companies(id),
+  empresa_id uuid NOT NULL REFERENCES public.enterprise_companies(id) ON DELETE RESTRICT,
   plano_id uuid NOT NULL REFERENCES public.enterprise_plans(id),
   stripe_customer_id text,
   stripe_subscription_id text UNIQUE,
@@ -58,7 +58,7 @@ CREATE TABLE IF NOT EXISTS public.enterprise_impersonation_sessions (
   owner_user_id uuid NOT NULL,
   empresa_id uuid NOT NULL REFERENCES public.enterprise_companies(id),
   reason text,
-  expires_at timestamptz NOT NULL DEFAULT now() + interval '30 minutes',
+  expires_at timestamptz NOT NULL,
   active boolean NOT NULL DEFAULT true,
   created_at timestamptz NOT NULL DEFAULT now()
 );
@@ -91,7 +91,7 @@ RETURNS boolean
 LANGUAGE sql
 STABLE
 SECURITY DEFINER
-SET search_path TO 'public', 'auth'
+SET search_path TO public, auth
 AS $$
   SELECT
     public.has_role(auth.uid(), 'SYSTEM_OWNER'::public.app_role)
@@ -108,7 +108,7 @@ RETURNS boolean
 LANGUAGE sql
 STABLE
 SECURITY DEFINER
-SET search_path TO 'public'
+SET search_path TO public, auth
 AS $$
   SELECT public.is_system_owner()
     AND coalesce(auth.jwt() ->> 'aal', '') = 'aal2';
@@ -207,7 +207,7 @@ BEGIN
     RAISE EXCEPTION 'Empresa não encontrada';
   END IF;
 
-  IF p_confirmation IS NULL OR trim(p_confirmation) <> company_name THEN
+  IF p_confirmation IS NULL OR lower(trim(p_confirmation)) <> lower(company_name) THEN
     RAISE EXCEPTION 'Confirmação inválida para exclusão';
   END IF;
 
@@ -232,6 +232,16 @@ BEGIN
     RAISE EXCEPTION 'Impersonação permitida apenas para SYSTEM_OWNER com 2FA';
   END IF;
 
+  IF NOT EXISTS (
+    SELECT 1
+    FROM public.enterprise_companies
+    WHERE id = p_company_id
+      AND deleted_at IS NULL
+  ) THEN
+    RAISE EXCEPTION 'Empresa inválida para impersonação';
+  END IF;
+
+  -- p_minutes capped between 1 and 240 (4h) to reduce long-lived support impersonation risk
   INSERT INTO public.enterprise_impersonation_sessions (owner_user_id, empresa_id, reason, expires_at, active)
   VALUES (auth.uid(), p_company_id, p_reason, now() + make_interval(mins => GREATEST(1, LEAST(p_minutes, 240))), true)
   RETURNING * INTO v_session;
@@ -283,6 +293,7 @@ RETURNS TABLE (
   total_usuarios bigint,
   mrr numeric(12,2),
   receita_anual_estimada numeric(12,2),
+  crescimento_mensal numeric(7,2),
   empresas_trial bigint,
   inadimplentes bigint
 )
@@ -291,21 +302,58 @@ STABLE
 SECURITY DEFINER
 SET search_path TO 'public'
 AS $$
+  WITH company_stats AS (
+    SELECT
+      count(*) FILTER (WHERE deleted_at IS NULL) AS total_empresas,
+      count(*) FILTER (WHERE deleted_at IS NULL AND status = 'active') AS empresas_ativas,
+      count(*) FILTER (WHERE deleted_at IS NULL AND status = 'suspended') AS empresas_suspensas,
+      count(*) FILTER (WHERE deleted_at IS NULL AND status = 'trial') AS empresas_trial
+    FROM public.enterprise_companies
+  ),
+  month_bounds AS (
+    SELECT
+      date_trunc('month', now()) AS current_month_start,
+      date_trunc('month', now()) + interval '1 month' AS next_month_start,
+      date_trunc('month', now()) - interval '1 month' AS previous_month_start
+  ),
+  subscription_stats AS (
+    SELECT
+      coalesce(sum(p.valor_mensal) FILTER (WHERE s.status = 'active'), 0)::numeric(12,2) AS mrr,
+      count(*) FILTER (WHERE s.status = 'past_due') AS inadimplentes,
+      coalesce(sum(p.valor_mensal) FILTER (
+        WHERE s.created_at < mb.next_month_start
+          AND (s.canceled_at IS NULL OR s.canceled_at >= mb.current_month_start)
+          AND s.status <> 'incomplete'
+      ), 0)::numeric(12,2) AS mrr_mes_atual,
+      coalesce(sum(p.valor_mensal) FILTER (
+        WHERE s.created_at < mb.current_month_start
+          AND (s.canceled_at IS NULL OR s.canceled_at >= mb.previous_month_start)
+          AND s.status <> 'incomplete'
+      ), 0)::numeric(12,2) AS mrr_mes_anterior
+    FROM public.enterprise_subscriptions s
+    JOIN public.enterprise_plans p ON p.id = s.plano_id
+    CROSS JOIN month_bounds mb
+  ),
+  user_stats AS (
+    SELECT count(*) AS total_usuarios FROM public.profiles
+  )
   SELECT
-    (SELECT count(*) FROM public.enterprise_companies WHERE deleted_at IS NULL),
-    (SELECT count(*) FROM public.enterprise_companies WHERE status = 'active' AND deleted_at IS NULL),
-    (SELECT count(*) FROM public.enterprise_companies WHERE status = 'suspended' AND deleted_at IS NULL),
-    (SELECT count(*) FROM public.profiles),
-    (SELECT coalesce(sum(valor_mensal), 0)::numeric(12,2)
-      FROM public.enterprise_subscriptions s
-      JOIN public.enterprise_plans p ON p.id = s.plano_id
-      WHERE s.status = 'active'),
-    (SELECT (coalesce(sum(valor_mensal), 0) * 12)::numeric(12,2)
-      FROM public.enterprise_subscriptions s
-      JOIN public.enterprise_plans p ON p.id = s.plano_id
-      WHERE s.status = 'active'),
-    (SELECT count(*) FROM public.enterprise_companies WHERE status = 'trial' AND deleted_at IS NULL),
-    (SELECT count(*) FROM public.enterprise_subscriptions WHERE status = 'past_due')
+    cs.total_empresas,
+    cs.empresas_ativas,
+    cs.empresas_suspensas,
+    us.total_usuarios,
+    ss.mrr,
+    (ss.mrr * 12)::numeric(12,2),
+    CASE
+      WHEN ss.mrr_mes_anterior = 0 AND ss.mrr_mes_atual > 0 THEN 100::numeric(7,2)
+      WHEN ss.mrr_mes_anterior = 0 THEN 0::numeric(7,2)
+      ELSE round((((ss.mrr_mes_atual - ss.mrr_mes_anterior) / ss.mrr_mes_anterior) * 100)::numeric, 2)::numeric(7,2)
+    END AS crescimento_mensal,
+    cs.empresas_trial,
+    ss.inadimplentes
+  FROM company_stats cs
+  CROSS JOIN subscription_stats ss
+  CROSS JOIN user_stats us
   WHERE public.is_system_owner();
 $$;
 

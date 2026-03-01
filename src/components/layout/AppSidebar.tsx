@@ -246,7 +246,7 @@ export function AppSidebar() {
             </SidebarGroupLabel>
             <SidebarGroupContent>
               <SidebarMenu>
-                {renderMenuLink({ title: 'Owner Portal', url: '/owner', icon: Crown })}
+                {renderMenuLink({ title: 'Owner Portal', url: '/owner', icon: Shield })}
               </SidebarMenu>
             </SidebarGroupContent>
           </SidebarGroup>

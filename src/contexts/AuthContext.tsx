@@ -177,7 +177,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     await supabase.auth.signOut();
   }, [user]);
 
-  const isAdmin = user?.tipo === 'ADMIN' || user?.tipo === 'MASTER_TI' || user?.tipo === 'SYSTEM_OWNER';
+  const isAdmin = user?.tipo === 'ADMIN' || user?.tipo === 'MASTER_TI';
   const isMasterTI = user?.tipo === 'MASTER_TI';
   const isSystemOwner = user?.tipo === 'SYSTEM_OWNER';
 
