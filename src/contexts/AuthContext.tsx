@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import type { User, Session } from '@supabase/supabase-js';
+import { buildSecureSignupMetadata } from '@/lib/secure-signup';
 
 type AppRole = 'ADMIN' | 'USUARIO' | 'MASTER_TI' | 'SYSTEM_OWNER';
 
@@ -17,7 +18,7 @@ interface AuthContextType {
   isAuthenticated: boolean;
   isLoading: boolean;
   login: (email: string, password: string) => Promise<{ error: string | null }>;
-  signup: (email: string, password: string, nome: string) => Promise<{ error: string | null }>;
+  signup: (email: string, password: string, nome: string, empresaId?: string, role?: AppRole) => Promise<{ error: string | null }>;
   logout: () => Promise<void>;
   isAdmin: boolean;
   isMasterTI: boolean;
@@ -139,17 +140,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return { error: null };
   }, []);
 
-  const signup = useCallback(async (email: string, password: string, nome: string): Promise<{ error: string | null }> => {
+  const signup = useCallback(async (email: string, password: string, nome: string, empresaId?: string, role: AppRole = 'USUARIO'): Promise<{ error: string | null }> => {
     const redirectUrl = `${window.location.origin}/`;
-    
+    let metadata: ReturnType<typeof buildSecureSignupMetadata>;
+
+    try {
+      metadata = buildSecureSignupMetadata({ nome, empresaId, role });
+    } catch (validationError) {
+      return { error: validationError instanceof Error ? validationError.message : 'Dados inválidos para cadastro (empresa_id obrigatório)' };
+    }
+
     const { error } = await supabase.auth.signUp({
       email,
       password,
       options: {
         emailRedirectTo: redirectUrl,
-        data: {
-          nome: nome,
-        },
+        data: metadata,
       },
     });
 

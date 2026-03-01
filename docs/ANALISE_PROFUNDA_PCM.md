@@ -574,3 +574,46 @@ PRIORIDADE MÉDIA:
 ---
 
 *Documento gerado para guiar a evolução do PCM Estratégico para nível de excelência industrial.*
+---
+
+## ADENDO 2026-03-01 — REESTRUTURAÇÃO SUPABASE, AUDITORIA E MULTI-TENANT
+
+### Escopo técnico executado (mudanças mínimas de segurança)
+- Migração criada: `supabase/migrations/20260301025500_secure_user_registration_and_enterprise_audit.sql`
+- Implementações:
+  - Tabela `empresas` (base de tenant) com RLS.
+  - `profiles` com `empresa_id` obrigatório e `must_change_password = true`.
+  - Tabela `enterprise_audit_logs` com campos mínimos:
+    - `executor_id`, `target_entity`, `target_id`, `action`, `before`, `after`, `ip`, `user_agent`, `created_at`.
+  - Função `log_enterprise_event(...)` para registro centralizado.
+  - Trigger `handle_new_user` reforçada para:
+    - validar/definir `empresa_id`,
+    - validar/definir `role`,
+    - criar `profiles` e `user_roles` no mesmo fluxo,
+    - registrar `CREATE_USER` em `enterprise_audit_logs`.
+  - Triggers de auditoria para `profiles`, `user_roles`, `empresas`, `dados_empresa`.
+
+### Mapeamento estrutural de módulos e persistência
+- Arquivos com chamadas Supabase (`supabase.from(...)`): **42**
+- Tabelas utilizadas no frontend/serviços: `auditoria`, `auditoria_logs`, `dados_empresa`, `configuracoes_sistema`, `profiles`, `security_logs`, `user_roles`, `ordens_servico`, `solicitacoes_manutencao`, `materiais`, `medicoes_preditivas`, `planos_preventivos`, `atividades_lubrificacao`, `atividades_preventivas`, `servicos_preventivos`, `componentes_equipamento`, `document_layouts`, `document_sequences`, `documentos_tecnicos`, `equipamentos`, `execucoes_os`, `execucoes_preventivas`, `fmea`, `contratos`, `fornecedores`, `areas`, `plantas`, `sistemas`, `execucoes_lubrificacao`, `movimentacoes_materiais`, `mecanicos`, `melhorias`, `permissoes_granulares`, `acoes_corretivas`, `analise_causa_raiz`, `incidentes_ssma`, `permissoes_trabalho`, `templates_preventivos`, `ai_root_cause_analysis`.
+
+### Pontos sem rastreabilidade total (identificados)
+- Fluxos de autenticação de login/logout ainda registram na tabela legada `auditoria` (não em `enterprise_audit_logs`).
+- Eventos de reset de senha e ações administrativas fora de tabelas auditadas ainda dependem de padronização via `log_enterprise_event(...)`.
+
+### Verificação de armazenamento paralelo
+- `localStorage`: identificado apenas em `src/integrations/supabase/client.ts` para persistência de sessão Supabase (uso esperado para auth client-side).
+- Mock data: `src/data/mockData.ts` existe, porém **sem imports ativos** no código de produção atual.
+
+### Tabelas para revisão estrutural (não destrutivo)
+- `dados_empresa` vs `empresas`: potencial redundância funcional; manter ambas temporariamente e avaliar convergência com plano de migração controlada.
+- `auditoria` vs `enterprise_audit_logs`: coexistência temporária para compatibilidade; planejar depreciação da tabela legada `auditoria`.
+
+### Riscos e plano de evolução SaaS escalável
+1. **Risco**: políticas RLS históricas amplas em tabelas legadas podem permitir visibilidade acima do desejado.
+2. **Risco**: ausência de `empresa_id` em todas as tabelas de domínio impede isolamento tenant completo.
+3. **Plano faseado**:
+   - Fase 1: padronizar todas as ações críticas em `enterprise_audit_logs`.
+   - Fase 2: adicionar `empresa_id` nas tabelas de domínio prioritárias e índices/fks.
+   - Fase 3: reforçar RLS por tenant em todos os módulos.
+   - Fase 4: descontinuar gradualmente estruturas legadas redundantes após validação.
