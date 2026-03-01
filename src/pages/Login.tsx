@@ -6,12 +6,23 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Loader2, AlertCircle, Settings } from 'lucide-react';
 import { z } from 'zod';
+import { useEmpresaBranding } from '@/hooks/useEmpresaBranding';
 
 // Validação do login
 const loginSchema = z.object({
   email: z.string().email('Email inválido').max(255, 'Email muito longo'),
   password: z.string().min(6, 'Senha deve ter pelo menos 6 caracteres').max(100, 'Senha muito longa'),
 });
+
+const getContrastTextColor = (backgroundColor: string) => {
+  const hex = backgroundColor.replace('#', '');
+  if (hex.length !== 6) return '#ffffff';
+  const r = parseInt(hex.slice(0, 2), 16);
+  const g = parseInt(hex.slice(2, 4), 16);
+  const b = parseInt(hex.slice(4, 6), 16);
+  const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+  return luminance > 0.6 ? '#111827' : '#ffffff';
+};
 
 export default function Login() {
   // Login form
@@ -22,6 +33,7 @@ export default function Login() {
 
   const { login, isAuthenticated, isLoading } = useAuth();
   const navigate = useNavigate();
+  const { branding } = useEmpresaBranding();
 
   // Redireciona para dashboard se já estiver logado
   useEffect(() => {
@@ -70,10 +82,17 @@ export default function Login() {
       <div className="w-full max-w-md">
         {/* Logo e Header */}
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-xl bg-primary mb-4">
-            <Settings className="h-8 w-8 text-primary-foreground" />
+          <div
+            className="inline-flex items-center justify-center w-16 h-16 rounded-xl mb-4 overflow-hidden"
+            style={{ backgroundColor: branding.cor_primaria }}
+          >
+            {branding.logo_url ? (
+              <img src={branding.logo_url} alt={branding.nome_exibicao} className="w-full h-full object-cover" />
+            ) : (
+              <Settings className="h-8 w-8 text-primary-foreground" />
+            )}
           </div>
-          <h1 className="text-2xl font-bold text-foreground">PCM ESTRATÉGICO</h1>
+          <h1 className="text-2xl font-bold text-foreground">{branding.nome_exibicao}</h1>
           <p className="text-muted-foreground mt-1">Sistema de Gestão de Manutenção Industrial</p>
         </div>
 
@@ -119,6 +138,7 @@ export default function Login() {
               type="submit" 
               className="w-full h-11 font-medium"
               disabled={isLoginLoading}
+              style={{ backgroundColor: branding.cor_primaria, color: getContrastTextColor(branding.cor_primaria) }}
             >
               {isLoginLoading ? (
                 <>

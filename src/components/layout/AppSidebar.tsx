@@ -97,7 +97,7 @@ const adminMenuItems = [
 ];
 
 export function AppSidebar() {
-  const { user, logout, isAdmin, isMasterTI } = useAuth();
+  const { user, logout, isAdmin, isMasterTI, isSystemOwner } = useAuth();
   const location = useLocation();
 
   const isActive = (path: string) => location.pathname === path;
@@ -234,6 +234,19 @@ export function AppSidebar() {
             <SidebarGroupContent>
               <SidebarMenu>
                 {renderMenuLink({ title: 'Painel Master', url: '/master-ti', icon: Crown })}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
+
+        {isSystemOwner && (
+          <SidebarGroup className="mt-4">
+            <SidebarGroupLabel className="text-sidebar-foreground/50 uppercase text-xs font-semibold px-3 mb-2">
+              System Owner
+            </SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                {renderMenuLink({ title: 'Owner Portal', url: '/owner', icon: Shield })}
               </SidebarMenu>
             </SidebarGroupContent>
           </SidebarGroup>
