@@ -43,7 +43,7 @@ export function MasterUsersManager() {
   const [formNome, setFormNome] = useState('');
   const [page, setPage] = useState(0);
 
-  const { data: users, isLoading } = useQuery({
+  const { data: users, isLoading, error } = useQuery({
     queryKey: ['master-users'],
     queryFn: async () => {
       const { data: profiles, error: pErr } = await supabase.from('profiles').select('*').order('nome');
@@ -90,6 +90,7 @@ export function MasterUsersManager() {
   };
 
   if (isLoading) return <div className="space-y-4">{[1,2,3].map(i => <Skeleton key={i} className="h-20 w-full" />)}</div>;
+  if (error) return <div className="rounded-lg border border-destructive/30 bg-destructive/10 p-4 text-sm text-destructive">Erro ao carregar usuários: {(error as Error).message}</div>;
 
   return (
     <div className="space-y-6">
