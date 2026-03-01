@@ -7,12 +7,16 @@ import { CommandPalette } from '@/components/command-palette/CommandPalette';
 import { NotificationCenter } from '@/components/notifications/NotificationCenter';
 import { GlobalSearch } from './GlobalSearch';
 import { useState } from 'react';
+import { useBranding } from '@/contexts/BrandingContext';
+import { useTenant } from '@/contexts/TenantContext';
 
 export function AppLayout() {
   const { isAuthenticated, isLoading } = useAuth();
+  const { branding } = useBranding();
+  const { tenant, tenantError, isTenantLoading } = useTenant();
   const [commandOpen, setCommandOpen] = useState(false);
 
-  if (isLoading) {
+  if (isLoading || isTenantLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -22,6 +26,17 @@ export function AppLayout() {
 
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />;
+  }
+
+  if (tenantError) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background p-6">
+        <div className="text-center">
+          <h1 className="text-xl font-semibold mb-2">Acesso bloqueado</h1>
+          <p className="text-muted-foreground">{tenantError}</p>
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -43,6 +58,9 @@ export function AppLayout() {
               document.dispatchEvent(event);
             }} />
             <div className="flex-1" />
+            <span className="text-sm font-medium text-foreground hidden lg:block">
+              {branding?.nome_sistema || tenant?.nome || 'PCM Estratégico'}
+            </span>
             <NotificationCenter />
             <span className="text-sm text-muted-foreground hidden md:block">
               {new Date().toLocaleDateString('pt-BR', { 

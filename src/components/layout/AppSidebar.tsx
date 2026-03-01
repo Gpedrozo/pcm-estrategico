@@ -44,6 +44,8 @@ import {
   SidebarFooter,
 } from '@/components/ui/sidebar';
 import { cn } from '@/lib/utils';
+import { useBranding } from '@/contexts/BrandingContext';
+import { useTenantFeatures } from '@/hooks/useTenantFeatures';
 
 const mainMenuItems = [
   { title: 'Dashboard', url: '/dashboard', icon: LayoutDashboard },
@@ -98,6 +100,8 @@ const adminMenuItems = [
 
 export function AppSidebar() {
   const { user, logout, isAdmin, isMasterTI } = useAuth();
+  const { branding } = useBranding();
+  const { data: features } = useTenantFeatures();
   const location = useLocation();
 
   const isActive = (path: string) => location.pathname === path;
@@ -129,7 +133,7 @@ export function AppSidebar() {
             <Settings className="h-6 w-6 text-sidebar-primary-foreground" />
           </div>
           <div>
-            <h1 className="text-lg font-bold text-sidebar-foreground">PCM ESTRATÉGICO</h1>
+            <h1 className="text-lg font-bold text-sidebar-foreground">{branding?.nome_sistema || 'PCM ESTRATÉGICO'}</h1>
             <p className="text-xs text-sidebar-foreground/60">Sistema de Manutenção</p>
           </div>
         </div>
@@ -163,33 +167,43 @@ export function AppSidebar() {
             Planejamento
           </SidebarGroupLabel>
           <SidebarGroupContent>
-            <SidebarMenu>
-              {planejamentoMenuItems.map(renderMenuLink)}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
+              <SidebarMenu>
+                {planejamentoMenuItems
+                  .filter((item) => (item.url === '/preventiva' ? features?.preventiva ?? true : true))
+                  .map(renderMenuLink)}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
 
         <SidebarGroup className="mt-4">
           <SidebarGroupLabel className="text-sidebar-foreground/50 uppercase text-xs font-semibold px-3 mb-2">
             Análises
           </SidebarGroupLabel>
           <SidebarGroupContent>
-            <SidebarMenu>
-              {analisesMenuItems.map(renderMenuLink)}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
+              <SidebarMenu>
+                {analisesMenuItems
+                  .filter((item) => {
+                    if (item.url === '/fmea') return features?.fmea ?? true;
+                    if (item.url === '/rca' || item.url === '/inteligencia-causa-raiz') return features?.rca ?? true;
+                    return true;
+                  })
+                  .map(renderMenuLink)}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
 
         <SidebarGroup className="mt-4">
           <SidebarGroupLabel className="text-sidebar-foreground/50 uppercase text-xs font-semibold px-3 mb-2">
             Cadastros
           </SidebarGroupLabel>
           <SidebarGroupContent>
-            <SidebarMenu>
-              {cadastroMenuItems.map(renderMenuLink)}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
+              <SidebarMenu>
+                {cadastroMenuItems
+                  .filter((item) => (item.url === '/documentos' ? features?.documentos ?? true : true))
+                  .map(renderMenuLink)}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
 
         <SidebarGroup className="mt-4">
           <SidebarGroupLabel className="text-sidebar-foreground/50 uppercase text-xs font-semibold px-3 mb-2">

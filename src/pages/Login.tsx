@@ -6,6 +6,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Loader2, AlertCircle, Settings } from 'lucide-react';
 import { z } from 'zod';
+import { useBranding } from '@/contexts/BrandingContext';
+import { useTenant } from '@/contexts/TenantContext';
 
 // Validação do login
 const loginSchema = z.object({
@@ -21,6 +23,8 @@ export default function Login() {
   const [isLoginLoading, setIsLoginLoading] = useState(false);
 
   const { login, isAuthenticated, isLoading } = useAuth();
+  const { branding } = useBranding();
+  const { tenantError, isTenantLoading } = useTenant();
   const navigate = useNavigate();
 
   // Redireciona para dashboard se já estiver logado
@@ -57,7 +61,7 @@ export default function Login() {
   };
 
   // Loading inicial
-  if (isLoading) {
+  if (isLoading || isTenantLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -70,10 +74,14 @@ export default function Login() {
       <div className="w-full max-w-md">
         {/* Logo e Header */}
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-xl bg-primary mb-4">
-            <Settings className="h-8 w-8 text-primary-foreground" />
-          </div>
-          <h1 className="text-2xl font-bold text-foreground">PCM ESTRATÉGICO</h1>
+          {branding?.logo_url ? (
+            <img src={branding.logo_url} alt={branding.nome_sistema} className="h-16 mx-auto mb-4 object-contain" />
+          ) : (
+            <div className="inline-flex items-center justify-center w-16 h-16 rounded-xl bg-primary mb-4">
+              <Settings className="h-8 w-8 text-primary-foreground" />
+            </div>
+          )}
+          <h1 className="text-2xl font-bold text-foreground">{branding?.nome_sistema || 'PCM ESTRATÉGICO'}</h1>
           <p className="text-muted-foreground mt-1">Sistema de Gestão de Manutenção Industrial</p>
         </div>
 
@@ -114,11 +122,17 @@ export default function Login() {
                 <span>{loginError}</span>
               </div>
             )}
+            {tenantError && (
+              <div className="flex items-center gap-2 p-3 rounded-md bg-destructive/10 text-destructive text-sm">
+                <AlertCircle className="h-4 w-4 flex-shrink-0" />
+                <span>{tenantError}</span>
+              </div>
+            )}
 
             <Button 
               type="submit" 
               className="w-full h-11 font-medium"
-              disabled={isLoginLoading}
+              disabled={isLoginLoading || !!tenantError}
             >
               {isLoginLoading ? (
                 <>

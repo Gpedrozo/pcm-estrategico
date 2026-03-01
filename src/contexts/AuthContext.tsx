@@ -2,12 +2,14 @@ import React, { createContext, useContext, useState, useCallback, useEffect } fr
 import { supabase } from '@/integrations/supabase/client';
 import type { User, Session } from '@supabase/supabase-js';
 import { getEffectiveRole, type AppRole } from '@/utils/userRoles';
+import { useTenant } from '@/contexts/TenantContext';
 
 interface AuthUser {
   id: string;
   nome: string;
   email: string;
   tipo: AppRole;
+  empresa_id?: string | null;
 }
 
 interface AuthContextType {
@@ -25,26 +27,36 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
+  const { empresaId } = useTenant();
   const [user, setUser] = useState<AuthUser | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   const fetchUserProfile = async (userId: string) => {
     try {
-      const { data: userRows, error } = await supabase
+      let query = supabase
         .from('users_full')
-        .select('nome, role')
-        .eq('id', userId);
+        .select('nome, role, empresa_id')
+        .eq('id', userId)
+        .order('created_at', { ascending: true });
+
+      if (empresaId) {
+        query = query.eq('empresa_id', empresaId);
+      }
+
+      const { data: userRows, error } = await query;
+      const filteredRows = userRows || [];
 
       if (error) throw error;
 
       return {
-        nome: userRows?.[0]?.nome || 'Usuário',
-        tipo: getEffectiveRole((userRows || []) as Array<{ role: AppRole }>),
+        nome: filteredRows?.[0]?.nome || 'Usuário',
+        tipo: getEffectiveRole((filteredRows || []) as Array<{ role: AppRole }>),
+        empresa_id: filteredRows?.[0]?.empresa_id || null,
       };
     } catch (error) {
       console.error('Error fetching user profile:', error);
-      return { nome: 'Usuário', tipo: 'USUARIO' as const };
+      return { nome: 'Usuário', tipo: 'USUARIO' as const, empresa_id: null };
     }
   };
 
@@ -63,6 +75,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               email: session.user.email || '',
               nome: profileData.nome,
               tipo: profileData.tipo,
+              empresa_id: profileData.empresa_id,
             });
             setIsLoading(false);
           }, 0);
@@ -84,6 +97,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             email: session.user.email || '',
             nome: profileData.nome,
             tipo: profileData.tipo,
+            empresa_id: profileData.empresa_id,
           });
           setIsLoading(false);
         });
@@ -94,6 +108,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     return () => subscription.unsubscribe();
   }, []);
+
+  useEffect(() => {
+    if (!session?.user) return;
+
+    let mounted = true;
+    fetchUserProfile(session.user.id).then((profileData) => {
+      if (!mounted) return;
+      setUser({
+        id: session.user.id,
+        email: session.user.email || '',
+        nome: profileData.nome,
+        tipo: profileData.tipo,
+        empresa_id: profileData.empresa_id,
+      });
+    });
+
+    return () => {
+      mounted = false;
+    };
+  }, [empresaId, session?.user?.id]);
 
   const login = useCallback(async (email: string, password: string): Promise<{ error: string | null }> => {
     const { error } = await supabase.auth.signInWithPassword({

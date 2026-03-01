@@ -120,3 +120,52 @@ Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/c
    - Permitir acesso se `has_global_role(auth.uid(), 'MASTER_TI')`
    - Ou se o usuário pertence à mesma `empresa_id` na `public.empresa_usuarios`.
 4. Validar com `public.tenant_integrity_check()`.
+
+## Arquitetura white-label enterprise
+
+### Resolução de tenant
+
+- O tenant é resolvido por:
+  - subdomínio (`empresa.sistema.com`)
+  - domínio customizado (`dominio_customizado`)
+  - fallback local via `?tenant=<slug>` em desenvolvimento
+- A aplicação bloqueia acesso para tenant inexistente/inativo e para assinatura não ativa.
+
+### Estrutura de planos e limites
+
+- `public.planos`: catálogo de planos (`features` em `jsonb` + limites)
+- `public.empresa_limites`: uso runtime por empresa
+- `public.empresa_assinaturas`: estrutura billing-ready (Stripe IDs e período)
+- Validação automática de limite de usuários em `empresa_usuarios` (trigger).
+
+### Modelo white-label
+
+- `public.empresa_branding` guarda:
+  - `logo_url`
+  - `cor_primaria`
+  - `cor_secundaria`
+  - `nome_sistema`
+  - `favicon_url`
+  - `css_customizado`
+- Frontend aplica branding dinamicamente por tenant via contexts de tenant/branding.
+
+### Fluxo onboarding de empresa
+
+1. Criar `empresas` com `slug`, `plano_id` e status ativo.
+2. Criar assinatura em `empresa_assinaturas`.
+3. Criar branding em `empresa_branding`.
+4. Vincular OWNER em `empresa_usuarios`.
+
+### Fluxo onboarding de usuário
+
+1. Criar usuário no `auth.users`.
+2. Vincular usuário em `empresa_usuarios`.
+3. Trigger de limite valida capacidade do plano antes da inclusão.
+4. Permissões passam a valer por RLS e funções do banco.
+
+### Como adicionar nova feature isolada por plano
+
+1. Adicionar chave em `planos.features` (`jsonb`), ex: `"modulo_x": true`.
+2. Consultar no backend/frontend via `empresa_tem_feature(empresa_id, 'modulo_x')`.
+3. Exibir módulo no frontend somente quando `true`.
+4. Toda tabela nova da feature deve ter `empresa_id` + RLS com `can_access_empresa(empresa_id)`.

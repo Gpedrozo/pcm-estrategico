@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { useTenant } from '@/contexts/TenantContext';
 
 export interface DadosEmpresa {
   id: string;
@@ -32,14 +33,21 @@ export interface DadosEmpresa {
 export type Empresa = DadosEmpresa;
 
 export function useDadosEmpresa() {
+  const { empresaId } = useTenant();
+
   return useQuery({
-    queryKey: ['dados-empresa'],
+    queryKey: ['dados-empresa', empresaId],
     queryFn: async () => {
-      const { data, error } = await supabase
+      let query = supabase
         .from('dados_empresa')
         .select('*')
-        .limit(1)
-        .maybeSingle();
+        .limit(1);
+
+      if (empresaId) {
+        query = query.eq('empresa_id', empresaId);
+      }
+
+      const { data, error } = await query.maybeSingle();
 
       if (error) throw error;
       return data as DadosEmpresa | null;
@@ -48,18 +56,23 @@ export function useDadosEmpresa() {
 }
 
 export function useUpdateDadosEmpresa() {
+  const { empresaId } = useTenant();
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
   return useMutation({
     mutationFn: async (payload: Partial<DadosEmpresa> & { id: string }) => {
       const { id, ...updates } = payload;
-      const { data, error } = await supabase
+      let query = supabase
         .from('dados_empresa')
         .update(updates)
-        .eq('id', id)
-        .select()
-        .single();
+        .eq('id', id);
+
+      if (empresaId) {
+        query = query.eq('empresa_id', empresaId);
+      }
+
+      const { data, error } = await query.select().single();
 
       if (error) throw error;
       return data;
