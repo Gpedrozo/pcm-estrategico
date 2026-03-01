@@ -40,6 +40,7 @@ import NotFound from "./pages/NotFound";
 import Instalar from "./pages/Instalar";
 import MasterTI from "./pages/MasterTI";
 import ArquivosOwner from "./pages/ArquivosOwner";
+import Owner from "./pages/Owner";
 import RootCauseAIPage from "./modules/rootCauseAI/RootCauseAIPage";
 
 const queryClient = new QueryClient();
@@ -60,7 +61,7 @@ const App = () => (
             <Route path="/" element={<Index />} />
             <Route path="/login" element={<Login />} />
             <Route path="/instalar" element={<Instalar />} />
-            
+
             {/* Protected Routes with Layout */}
             <Route element={<AppLayout />}>
               <Route path="/dashboard" element={<Dashboard />} />
@@ -89,6 +90,7 @@ const App = () => (
               <Route path="/ssma" element={<SSMA />} />
               <Route path="/usuarios" element={<Usuarios />} />
               <Route path="/auditoria" element={<Auditoria />} />
+
               <Route
                 path="/admin/arquivos-owner"
                 element={
@@ -97,7 +99,9 @@ const App = () => (
                   </AdminOnlyRoute>
                 }
               />
+
               <Route path="/master-ti" element={<MasterTI />} />
+              <Route path="/owner" element={<Owner />} />
               <Route path="/inteligencia-causa-raiz" element={<RootCauseAIPage />} />
             </Route>
 
