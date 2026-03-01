@@ -26,8 +26,9 @@ import {
   DollarSign,
   BarChart3,
   FileArchive,
-  Crown
-  ,Droplet
+  Crown,
+  FolderTree,
+  Droplet,
 } from 'lucide-react';
 import { NavLink, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
@@ -94,6 +95,7 @@ const ssmaMenuItems = [
 const adminMenuItems = [
   { title: 'Usuários', url: '/usuarios', icon: Users },
   { title: 'Auditoria', url: '/auditoria', icon: ClipboardList },
+  { title: 'Arquivos Owner', url: '/admin/arquivos-owner', icon: FolderTree },
 ];
 
 export function AppSidebar() {

@@ -39,6 +39,7 @@ import Lubrificacao from "./pages/Lubrificacao";
 import NotFound from "./pages/NotFound";
 import Instalar from "./pages/Instalar";
 import MasterTI from "./pages/MasterTI";
+import ArquivosOwner from "./pages/ArquivosOwner";
 import RootCauseAIPage from "./modules/rootCauseAI/RootCauseAIPage";
 
 const queryClient = new QueryClient();
@@ -83,6 +84,7 @@ const App = () => (
               <Route path="/ssma" element={<SSMA />} />
               <Route path="/usuarios" element={<Usuarios />} />
               <Route path="/auditoria" element={<Auditoria />} />
+              <Route path="/admin/arquivos-owner" element={<ArquivosOwner />} />
               <Route path="/master-ti" element={<MasterTI />} />
               <Route path="/inteligencia-causa-raiz" element={<RootCauseAIPage />} />
             </Route>
