@@ -21,7 +21,7 @@ BEGIN
   END IF;
 
   IF NOT EXISTS (SELECT 1 FROM public.empresas) THEN
-    INSERT INTO public.empresas (nome) VALUES ('Empresa Padrão');
+    INSERT INTO public.empresas (nome) VALUES ('Empresa Padrao');
   END IF;
 END $$;
 
@@ -168,7 +168,6 @@ UPDATE public.areas a SET empresa_id = p.empresa_id FROM public.plantas p WHERE 
 UPDATE public.sistemas s SET empresa_id = a.empresa_id FROM public.areas a WHERE a.id = s.area_id AND s.empresa_id IS NULL;
 UPDATE public.equipamentos e SET empresa_id = s.empresa_id FROM public.sistemas s WHERE s.id = e.sistema_id AND e.empresa_id IS NULL;
 UPDATE public.equipamentos e SET empresa_id = os.empresa_id FROM public.ordens_servico os WHERE os.tag = e.tag AND e.empresa_id IS NULL;
-UPDATE public.ordens_servico os SET empresa_id = e.empresa_id FROM public.equipamentos e WHERE e.tag = os.tag AND os.empresa_id IS NULL;
 
 UPDATE public.execucoes_os eo SET empresa_id = os.empresa_id FROM public.ordens_servico os WHERE os.id = eo.os_id AND eo.empresa_id IS NULL;
 UPDATE public.materiais_os mo SET empresa_id = os.empresa_id FROM public.ordens_servico os WHERE os.id = mo.os_id AND mo.empresa_id IS NULL;
@@ -215,7 +214,7 @@ BEGIN
       EXECUTE format('UPDATE public.%I SET empresa_id = COALESCE(empresa_id, (SELECT id FROM public.empresas ORDER BY created_at LIMIT 1))', v_table);
       EXECUTE format('SELECT COUNT(*) FROM public.%I WHERE empresa_id IS NULL', v_table) INTO v_null_count;
       IF v_null_count > 0 THEN
-        RAISE EXCEPTION 'Inconsistência detectada: % ainda possui % linhas sem empresa_id. Corrija antes de aplicar NOT NULL.', v_table, v_null_count;
+        RAISE EXCEPTION 'Inconsistencia detectada: % ainda possui % linhas sem empresa_id. Corrija antes de aplicar NOT NULL.', v_table, v_null_count;
       END IF;
       EXECUTE format('ALTER TABLE public.%I ALTER COLUMN empresa_id SET DEFAULT public.get_current_empresa_id()', v_table);
       EXECUTE format('ALTER TABLE public.%I ALTER COLUMN empresa_id SET NOT NULL', v_table);
@@ -286,11 +285,11 @@ LANGUAGE plpgsql
 AS $$
 BEGIN
   IF NEW.empresa_id IS NULL THEN
-    RAISE EXCEPTION 'empresa_id é obrigatório em %', TG_TABLE_NAME;
+    RAISE EXCEPTION 'empresa_id e obrigatorio em %', TG_TABLE_NAME;
   END IF;
 
   IF TG_OP = 'UPDATE' AND NEW.empresa_id IS DISTINCT FROM OLD.empresa_id THEN
-    RAISE EXCEPTION 'Alteração manual de empresa_id não permitida em %', TG_TABLE_NAME;
+    RAISE EXCEPTION 'Alteracao manual de empresa_id nao permitida em % (tentativa: % -> %)', TG_TABLE_NAME, OLD.empresa_id, NEW.empresa_id;
   END IF;
 
   RETURN NEW;
@@ -366,7 +365,7 @@ BEGIN
   IF NEW.role = 'MASTER_TI'::public.app_role
      AND NOT public.is_master_ti()
      AND auth.uid() IS NOT NULL THEN
-    RAISE EXCEPTION 'Somente MASTER_TI pode promover usuários para MASTER_TI';
+    RAISE EXCEPTION 'Somente MASTER_TI pode promover usuarios para MASTER_TI (tentativa de: %)', auth.uid();
   END IF;
 
   IF NEW.empresa_id IS NULL THEN
