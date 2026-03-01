@@ -1,40 +1,21 @@
-import { Shield, FolderTree } from 'lucide-react';
-import { useAuth } from '@/contexts/AuthContext';
+import { FolderTree } from 'lucide-react';
 
 export const OWNER_FILES = [
   {
-    path: 'src/pages/MasterTI.tsx',
-    description: 'Página principal do painel do owner (Master TI).',
+    path: '/master-ti',
+    description: 'Tela principal do owner (Master TI), acessível para perfil administrativo apropriado.',
   },
   {
-    path: 'src/components/master-ti/',
-    description: 'Componentes e módulos administrativos do owner.',
+    path: '/usuarios',
+    description: 'Gestão administrativa de usuários e perfis vinculados ao owner.',
   },
   {
-    path: 'src/components/layout/AppSidebar.tsx',
-    description: 'Menu lateral com acesso da administração ao owner.',
-  },
-  {
-    path: 'src/contexts/AuthContext.tsx',
-    description: 'Controle de perfil MASTER_TI e permissões de acesso.',
+    path: '/auditoria',
+    description: 'Histórico administrativo de ações relacionadas ao owner.',
   },
 ];
 
 export default function ArquivosOwner() {
-  const { isAdmin } = useAuth();
-
-  if (!isAdmin) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="text-center">
-          <Shield className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-          <h2 className="text-lg font-semibold text-foreground">Acesso Restrito</h2>
-          <p className="text-muted-foreground">Apenas administradores podem visualizar os arquivos do owner.</p>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="space-y-6">
       <div>
