@@ -4,6 +4,8 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
+import { TenantProvider } from "@/contexts/TenantContext";
+import { BrandingProvider } from "@/contexts/BrandingContext";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { SpeedInsights } from "@vercel/speed-insights/react";
 
@@ -46,11 +48,13 @@ const queryClient = new QueryClient();
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
-    <AuthProvider>
-      <TooltipProvider>
-        <Toaster />
-        <Sonner />
-        <BrowserRouter>
+    <BrowserRouter>
+      <TenantProvider>
+        <BrandingProvider>
+          <AuthProvider>
+            <TooltipProvider>
+              <Toaster />
+              <Sonner />
           <Routes>
             <Route path="/" element={<Index />} />
             <Route path="/login" element={<Login />} />
@@ -92,10 +96,12 @@ const App = () => (
             {/* Catch-all */}
             <Route path="*" element={<NotFound />} />
           </Routes>
-        </BrowserRouter>
-        <SpeedInsights />
-      </TooltipProvider>
-    </AuthProvider>
+              <SpeedInsights />
+            </TooltipProvider>
+          </AuthProvider>
+        </BrandingProvider>
+      </TenantProvider>
+    </BrowserRouter>
   </QueryClientProvider>
 );
 

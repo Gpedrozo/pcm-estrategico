@@ -23,42 +23,49 @@ export interface UsuarioCompleto {
   nome: string;
   email: string;
   role: AppRole;
+  empresa_id?: string;
+  role_empresa?: 'OWNER' | 'ADMIN' | 'MANAGER' | 'USER';
+  role_global?: 'MASTER_TI' | null;
   created_at: string;
+  updated_at?: string;
+}
+
+export async function fetchUsuariosFull(): Promise<UsuarioCompleto[]> {
+  const { data, error } = await supabase
+    .from('users_full')
+    .select('id, nome, email, role, empresa_id, role_empresa, role_global, created_at, updated_at')
+    .order('nome', { ascending: true });
+
+  if (error) throw error;
+
+  if (!data || data.length === 0) {
+    console.warn('[usuarios] users_full retornou vazio. Tentando reconciliação de identidade.');
+    const { error: reconcileError } = await supabase.rpc('reconcile_user_identity_drift');
+    if (!reconcileError) {
+      const { data: retryData, error: retryError } = await supabase
+        .from('users_full')
+        .select('id, nome, email, role, empresa_id, role_empresa, role_global, created_at, updated_at')
+        .order('nome', { ascending: true });
+
+      if (retryError) throw retryError;
+      console.info('[usuarios] Reconciliação executada com sucesso.');
+      return (retryData || []) as UsuarioCompleto[];
+    }
+    console.error('[usuarios] Falha na reconciliação de identidade:', reconcileError.message);
+    const isPermissionError = (reconcileError as { code?: string }).code === 'P0001';
+    if (isPermissionError) {
+      throw new Error('Sem permissão para reconciliar usuários automaticamente. Verifique o perfil ADMIN/MASTER_TI.');
+    }
+    throw reconcileError;
+  }
+
+  return (data || []) as UsuarioCompleto[];
 }
 
 export function useUsuarios() {
   return useQuery({
     queryKey: ['usuarios'],
-    queryFn: async () => {
-      // Get profiles
-      const { data: profiles, error: profilesError } = await supabase
-        .from('profiles')
-        .select('*')
-        .order('nome', { ascending: true });
-
-      if (profilesError) throw profilesError;
-
-      // Get roles
-      const { data: roles, error: rolesError } = await supabase
-        .from('user_roles')
-        .select('*');
-
-      if (rolesError) throw rolesError;
-
-      // Combine data
-      const usuarios: UsuarioCompleto[] = (profiles || []).map(profile => {
-        const userRole = roles?.find(r => r.user_id === profile.id);
-        return {
-          id: profile.id,
-          nome: profile.nome,
-          email: '', // Email not available from profiles
-          role: userRole?.role || 'USUARIO',
-          created_at: profile.created_at,
-        };
-      });
-
-      return usuarios;
-    },
+    queryFn: fetchUsuariosFull,
   });
 }
 
@@ -77,6 +84,7 @@ export function useUpdateUsuarioRole() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['usuarios'] });
+      queryClient.invalidateQueries({ queryKey: ['master-users'] });
       toast({
         title: 'Perfil Atualizado',
         description: 'O perfil do usuário foi atualizado com sucesso.',
@@ -107,6 +115,7 @@ export function useUpdateUsuarioNome() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['usuarios'] });
+      queryClient.invalidateQueries({ queryKey: ['master-users'] });
       toast({
         title: 'Nome Atualizado',
         description: 'O nome do usuário foi atualizado com sucesso.',
