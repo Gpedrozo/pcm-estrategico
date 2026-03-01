@@ -2487,7 +2487,7 @@ export type Database = {
       update_my_profile: { Args: { new_name: string }; Returns: boolean }
     }
     Enums: {
-      app_role: "ADMIN" | "USUARIO" | "MASTER_TI"
+      app_role: "ADMIN" | "USUARIO" | "MASTER_TI" | "SYSTEM_OWNER"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -2615,7 +2615,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["ADMIN", "USUARIO", "MASTER_TI"],
+      app_role: ["ADMIN", "USUARIO", "MASTER_TI", "SYSTEM_OWNER"],
     },
   },
 } as const

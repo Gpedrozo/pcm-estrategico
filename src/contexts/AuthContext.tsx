@@ -41,16 +41,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         .eq('id', userId)
         .maybeSingle();
 
-      // Fetch role
+      // Fetch roles
       const { data: roleData } = await supabase
         .from('user_roles')
         .select('role')
-        .eq('user_id', userId)
-        .maybeSingle();
+        .eq('user_id', userId);
+
+      const roles = (roleData ?? []).map((item) => item.role as AppRole);
+      const tipo: AppRole = roles.includes('SYSTEM_OWNER')
+        ? 'SYSTEM_OWNER'
+        : roles.includes('MASTER_TI')
+          ? 'MASTER_TI'
+          : roles.includes('ADMIN')
+            ? 'ADMIN'
+            : 'USUARIO';
 
       return {
         nome: profile?.nome || 'Usuário',
-        tipo: (roleData?.role as AppRole) || 'USUARIO',
+        tipo,
       };
     } catch (error) {
       console.error('Error fetching user profile:', error);
