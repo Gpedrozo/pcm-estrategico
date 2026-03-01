@@ -38,8 +38,7 @@ function TabFallback() {
 }
 
 export default function MasterTI() {
-  const auth = useAuth();
-  const isMasterTI = Boolean(auth?.isMasterTI);
+  const { isMasterTI } = useAuth();
   const [activeTab, setActiveTab] = useState<TabKey>("users");
 
   if (!isMasterTI) {

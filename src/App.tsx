@@ -6,6 +6,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { EnvironmentGuard } from "@/components/guards/EnvironmentGuard";
+import { MasterTIGuard } from "@/components/guards/MasterTIGuard";
 import { SystemOwnerGuard } from "@/components/guards/SystemOwnerGuard";
 import { SpeedInsights } from "@vercel/speed-insights/react";
 
@@ -87,7 +88,7 @@ const App = () => (
                 <Route path="/ssma" element={<SSMA />} />
                 <Route path="/usuarios" element={<Usuarios />} />
                 <Route path="/auditoria" element={<Auditoria />} />
-                <Route path="/master-ti" element={<MasterTI />} />
+                <Route path="/master-ti" element={<MasterTIGuard><MasterTI /></MasterTIGuard>} />
                 <Route path="/owner" element={<SystemOwnerGuard><Owner /></SystemOwnerGuard>} />
                 <Route path="/inteligencia-causa-raiz" element={<RootCauseAIPage />} />
               </Route>
