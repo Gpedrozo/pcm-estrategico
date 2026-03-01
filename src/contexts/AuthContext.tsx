@@ -2,7 +2,7 @@ import React, { createContext, useContext, useState, useCallback, useEffect } fr
 import { supabase } from '@/integrations/supabase/client';
 import type { User, Session } from '@supabase/supabase-js';
 
-type AppRole = 'ADMIN' | 'USUARIO' | 'MASTER_TI';
+type AppRole = 'ADMIN' | 'USUARIO' | 'MASTER_TI' | 'SYSTEM_OWNER';
 
 interface AuthUser {
   id: string;
@@ -21,6 +21,7 @@ interface AuthContextType {
   logout: () => Promise<void>;
   isAdmin: boolean;
   isMasterTI: boolean;
+  isSystemOwner: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -39,16 +40,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         .eq('id', userId)
         .maybeSingle();
 
-      // Fetch role
+      // Fetch roles
       const { data: roleData } = await supabase
         .from('user_roles')
         .select('role')
-        .eq('user_id', userId)
-        .maybeSingle();
+        .eq('user_id', userId);
+
+      const roles = (roleData ?? []).map((item) => item.role as AppRole);
+      const tipo: AppRole = roles.includes('SYSTEM_OWNER')
+        ? 'SYSTEM_OWNER'
+        : roles.includes('MASTER_TI')
+          ? 'MASTER_TI'
+          : roles.includes('ADMIN')
+            ? 'ADMIN'
+            : 'USUARIO';
 
       return {
         nome: profile?.nome || 'Usuário',
-        tipo: (roleData?.role as AppRole) || 'USUARIO',
+        tipo,
       };
     } catch (error) {
       console.error('Error fetching user profile:', error);
@@ -178,6 +187,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const isAdmin = user?.tipo === 'ADMIN' || user?.tipo === 'MASTER_TI';
   const isMasterTI = user?.tipo === 'MASTER_TI';
+  const isSystemOwner = user?.tipo === 'SYSTEM_OWNER';
 
   return (
     <AuthContext.Provider value={{
@@ -190,6 +200,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       logout,
       isAdmin,
       isMasterTI,
+      isSystemOwner,
     }}>
       {children}
     </AuthContext.Provider>
