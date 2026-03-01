@@ -2,7 +2,7 @@ import React, { createContext, useContext, useState, useCallback, useEffect } fr
 import { supabase } from '@/integrations/supabase/client';
 import type { User, Session } from '@supabase/supabase-js';
 
-type AppRole = 'ADMIN' | 'USUARIO' | 'MASTER_TI';
+type AppRole = 'ADMIN' | 'USUARIO' | 'MASTER_TI' | 'SYSTEM_OWNER';
 
 interface AuthUser {
   id: string;
@@ -21,6 +21,7 @@ interface AuthContextType {
   logout: () => Promise<void>;
   isAdmin: boolean;
   isMasterTI: boolean;
+  isSystemOwner: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -178,6 +179,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const isAdmin = user?.tipo === 'ADMIN' || user?.tipo === 'MASTER_TI';
   const isMasterTI = user?.tipo === 'MASTER_TI';
+  const isSystemOwner = user?.tipo === 'SYSTEM_OWNER';
 
   return (
     <AuthContext.Provider value={{
@@ -190,6 +192,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       logout,
       isAdmin,
       isMasterTI,
+      isSystemOwner,
     }}>
       {children}
     </AuthContext.Provider>
