@@ -25,21 +25,25 @@ WHERE lower(u.email) = 'gustavus82@gmail.com'
   );
 
 -- Allow SYSTEM_OWNER to manage enterprise-level control tables
+DROP POLICY IF EXISTS "System owner can manage user roles" ON public.user_roles;
 CREATE POLICY "System owner can manage user roles" ON public.user_roles
   FOR ALL
   USING (public.is_system_owner(auth.uid()))
   WITH CHECK (public.is_system_owner(auth.uid()));
 
+DROP POLICY IF EXISTS "System owner can manage empresa" ON public.dados_empresa;
 CREATE POLICY "System owner can manage empresa" ON public.dados_empresa
   FOR ALL
   USING (public.is_system_owner(auth.uid()))
   WITH CHECK (public.is_system_owner(auth.uid()));
 
+DROP POLICY IF EXISTS "System owner can manage permissions" ON public.permissoes_granulares;
 CREATE POLICY "System owner can manage permissions" ON public.permissoes_granulares
   FOR ALL
   USING (public.is_system_owner(auth.uid()))
   WITH CHECK (public.is_system_owner(auth.uid()));
 
+DROP POLICY IF EXISTS "System owner can manage configs" ON public.configuracoes_sistema;
 CREATE POLICY "System owner can manage configs" ON public.configuracoes_sistema
   FOR ALL
   USING (public.is_system_owner(auth.uid()))
