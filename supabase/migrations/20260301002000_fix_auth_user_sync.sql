@@ -14,7 +14,8 @@ SELECT
   COALESCE(u.raw_user_meta_data ->> 'nome', u.email, 'Usuário')
 FROM auth.users u
 LEFT JOIN public.profiles p ON p.id = u.id
-WHERE p.id IS NULL;
+WHERE p.id IS NULL
+ON CONFLICT (id) DO NOTHING;
 
 INSERT INTO public.user_roles (user_id, role)
 SELECT
@@ -22,4 +23,5 @@ SELECT
   'USUARIO'::public.app_role
 FROM auth.users u
 LEFT JOIN public.user_roles r ON r.user_id = u.id
-WHERE r.user_id IS NULL;
+WHERE r.user_id IS NULL
+ON CONFLICT (user_id, role) DO NOTHING;
