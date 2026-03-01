@@ -2430,6 +2430,99 @@ export type Database = {
         }
         Relationships: []
       }
+      empresas: {
+        Row: {
+          created_at: string
+          id: string
+          nome: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          nome: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          nome?: string
+        }
+        Relationships: []
+      }
+      empresa_usuarios: {
+        Row: {
+          created_at: string
+          empresa_id: string
+          id: string
+          role: Database["public"]["Enums"]["empresa_role"]
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          empresa_id: string
+          id?: string
+          role?: Database["public"]["Enums"]["empresa_role"]
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          empresa_id?: string
+          id?: string
+          role?: Database["public"]["Enums"]["empresa_role"]
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      global_roles: {
+        Row: {
+          created_at: string
+          role: Database["public"]["Enums"]["global_role"]
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          role?: Database["public"]["Enums"]["global_role"]
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          role?: Database["public"]["Enums"]["global_role"]
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      audit_logs: {
+        Row: {
+          acao: string
+          id: string
+          logged_at: string
+          registro_id: string | null
+          tabela: string
+          user_id_executor: string | null
+        }
+        Insert: {
+          acao: string
+          id?: string
+          logged_at?: string
+          registro_id?: string | null
+          tabela: string
+          user_id_executor?: string | null
+        }
+        Update: {
+          acao?: string
+          id?: string
+          logged_at?: string
+          registro_id?: string | null
+          tabela?: string
+          user_id_executor?: string | null
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           created_at: string
@@ -2457,9 +2550,12 @@ export type Database = {
         Row: {
           created_at: string
           email: string
+          empresa_id: string | null
           id: string
           nome: string
           role: Database["public"]["Enums"]["app_role"]
+          role_empresa: Database["public"]["Enums"]["empresa_role"] | null
+          role_global: Database["public"]["Enums"]["global_role"] | null
           updated_at: string
         }
         Relationships: []
@@ -2493,12 +2589,34 @@ export type Database = {
         }
         Returns: boolean
       }
+      has_empresa_role: {
+        Args: {
+          _user_id: string
+          _empresa_id: string
+          _role: Database["public"]["Enums"]["empresa_role"]
+        }
+        Returns: boolean
+      }
+      has_global_role: {
+        Args: {
+          _user_id: string
+          _role: Database["public"]["Enums"]["global_role"]
+        }
+        Returns: boolean
+      }
       next_document_number: { Args: { p_tipo: string }; Returns: string }
       reconcile_user_identity_drift: {
         Args: never
         Returns: {
           missing_profiles_inserted: number
           missing_roles_inserted: number
+        }[]
+      }
+      tenant_integrity_check: {
+        Args: never
+        Returns: {
+          check_name: string
+          total: number
         }[]
       }
       user_sync_data_diagnostics: {
@@ -2521,6 +2639,8 @@ export type Database = {
     }
     Enums: {
       app_role: "ADMIN" | "USUARIO" | "MASTER_TI"
+      empresa_role: "OWNER" | "ADMIN" | "MANAGER" | "USER"
+      global_role: "MASTER_TI"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -2649,6 +2769,8 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["ADMIN", "USUARIO", "MASTER_TI"],
+      empresa_role: ["OWNER", "ADMIN", "MANAGER", "USER"],
+      global_role: ["MASTER_TI"],
     },
   },
 } as const

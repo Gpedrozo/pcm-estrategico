@@ -23,6 +23,9 @@ export interface UsuarioCompleto {
   nome: string;
   email: string;
   role: AppRole;
+  empresa_id?: string;
+  role_empresa?: 'OWNER' | 'ADMIN' | 'MANAGER' | 'USER';
+  role_global?: 'MASTER_TI' | null;
   created_at: string;
   updated_at?: string;
 }
@@ -30,7 +33,7 @@ export interface UsuarioCompleto {
 export async function fetchUsuariosFull(): Promise<UsuarioCompleto[]> {
   const { data, error } = await supabase
     .from('users_full')
-    .select('id, nome, email, role, created_at, updated_at')
+    .select('id, nome, email, role, empresa_id, role_empresa, role_global, created_at, updated_at')
     .order('nome', { ascending: true });
 
   if (error) throw error;
@@ -41,7 +44,7 @@ export async function fetchUsuariosFull(): Promise<UsuarioCompleto[]> {
     if (!reconcileError) {
       const { data: retryData, error: retryError } = await supabase
         .from('users_full')
-        .select('id, nome, email, role, created_at, updated_at')
+        .select('id, nome, email, role, empresa_id, role_empresa, role_global, created_at, updated_at')
         .order('nome', { ascending: true });
 
       if (retryError) throw retryError;

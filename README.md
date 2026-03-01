@@ -71,3 +71,52 @@ Yes, you can!
 To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
 
 Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
+
+## Modelo de permissões SaaS multi-tenant
+
+### Hierarquia
+
+- **Global** (`public.global_roles`)
+  - `MASTER_TI`
+- **Empresa** (`public.empresa_usuarios`)
+  - `OWNER`
+  - `ADMIN`
+  - `MANAGER`
+  - `USER`
+
+### Autoridade de permissão
+
+- A autorização é centralizada no banco via:
+  - `public.has_global_role(user_id, role)`
+  - `public.has_empresa_role(user_id, empresa_id, role)`
+- O frontend consome `public.users_full` e não faz merge manual de papéis.
+
+### Fluxo de criação de empresa
+
+1. Inserir registro em `public.empresas`.
+2. Vincular usuário responsável em `public.empresa_usuarios` com role `OWNER`.
+3. `MASTER_TI` pode criar e administrar empresas globalmente.
+
+### Fluxo de criação de usuário
+
+1. Usuário é criado no `auth.users`.
+2. Trigger de sincronização cria `profiles`/`user_roles` (legado).
+3. Usuário é vinculado à empresa em `public.empresa_usuarios`.
+4. Visibilidade final ocorre por `RLS + users_full`.
+
+### Fluxo de promoção de role
+
+- Alterações de `global_roles`: apenas `MASTER_TI`.
+- Alterações de `empresa_usuarios`:
+  - `OWNER` e `MASTER_TI` podem gerenciar.
+  - `ADMIN` não pode criar/promover `OWNER` nem `ADMIN`.
+- Toda alteração de roles é auditada em `public.audit_logs`.
+
+### Como adicionar novas tabelas mantendo isolamento
+
+1. Criar coluna obrigatória `empresa_id uuid` com FK para `public.empresas(id)`.
+2. Ativar `RLS` na tabela.
+3. Criar policy padrão:
+   - Permitir acesso se `has_global_role(auth.uid(), 'MASTER_TI')`
+   - Ou se o usuário pertence à mesma `empresa_id` na `public.empresa_usuarios`.
+4. Validar com `public.tenant_integrity_check()`.

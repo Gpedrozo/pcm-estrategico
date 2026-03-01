@@ -31,24 +31,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const fetchUserProfile = async (userId: string) => {
     try {
-      // Fetch profile
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('nome')
-        .eq('id', userId)
-        .maybeSingle();
+      const { data: userRows, error } = await supabase
+        .from('users_full')
+        .select('nome, role')
+        .eq('id', userId);
 
-      // Fetch role
-      const { data: roleRows, error: roleError } = await supabase
-        .from('user_roles')
-        .select('role')
-        .eq('user_id', userId);
-
-      if (roleError) throw roleError;
+      if (error) throw error;
 
       return {
-        nome: profile?.nome || 'Usuário',
-        tipo: getEffectiveRole((roleRows || []) as Array<{ role: AppRole }>),
+        nome: userRows?.[0]?.nome || 'Usuário',
+        tipo: getEffectiveRole((userRows || []) as Array<{ role: AppRole }>),
       };
     } catch (error) {
       console.error('Error fetching user profile:', error);
