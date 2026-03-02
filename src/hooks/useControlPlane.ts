@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
-import { supabase } from '@/integrations/supabase/client'
+import { callRpc } from '@/integrations/supabase/rpc'
 
 export interface OwnerMetrics {
   total_empresas: number
@@ -26,10 +26,10 @@ export function useOwnerDashboardMetrics() {
   return useQuery({
     queryKey: ['owner-dashboard-metrics'],
     queryFn: async () => {
-      const { data, error } = await supabase.rpc('owner_dashboard_metrics')
+      const { data, error } = await callRpc<OwnerMetrics[]>('owner_dashboard_metrics')
       if (error) throw error
       const metrics = Array.isArray(data) ? data[0] : null
-      return (metrics ?? null) as OwnerMetrics | null
+      return metrics ?? null
     },
     staleTime: 30_000,
   })
@@ -39,13 +39,13 @@ export function useOwnerCompanies(page = 1, pageSize = 25) {
   return useQuery({
     queryKey: ['owner-companies', page, pageSize],
     queryFn: async () => {
-      const { data, error } = await supabase.rpc('owner_list_companies', {
+      const { data, error } = await callRpc<OwnerCompany[]>('owner_list_companies', {
         p_page: page,
         p_page_size: pageSize,
       })
 
       if (error) throw error
-      return (data ?? []) as OwnerCompany[]
+      return data ?? []
     },
     staleTime: 30_000,
   })

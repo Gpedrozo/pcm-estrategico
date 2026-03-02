@@ -10,6 +10,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
 import { useLogAuditoria } from '@/hooks/useAuditoria';
+import { writeAuditLog } from '@/lib/audit';
 
 const TABLES = [
   'ordens_servico', 'equipamentos', 'mecanicos', 'materiais', 'planos_preventivos',
@@ -33,7 +34,7 @@ export function MasterDatabaseManager() {
   const [search, setSearch] = useState('');
   const [viewingTable, setViewingTable] = useState<TableName | null>(null);
   const [viewPage, setViewPage] = useState(0);
-  const [editingRow, setEditingRow] = useState<{ idx: number; data: Record<string, any> } | null>(null);
+  const [editingRow, setEditingRow] = useState<{ idx: number; data: Record<string, unknown> } | null>(null);
 
   const { data: tableCounts, isLoading } = useQuery({
     queryKey: ['master-db-counts'],
@@ -60,7 +61,7 @@ export function MasterDatabaseManager() {
         .from(viewingTable)
         .select('*', { count: 'exact' })
         .range(viewPage * VIEW_PAGE_SIZE, (viewPage + 1) * VIEW_PAGE_SIZE - 1)
-        .order('created_at' as any, { ascending: false });
+        .order('created_at', { ascending: false });
 
       if (error) {
         const { data: d2, count: c2, error: e2 } = await supabase
@@ -76,9 +77,19 @@ export function MasterDatabaseManager() {
   });
 
   const updateRowMutation = useMutation({
-    mutationFn: async ({ table, id, updates }: { table: string; id: string; updates: Record<string, any> }) => {
-      const { error } = await supabase.from(table as any).update(updates).eq('id', id);
+    mutationFn: async ({ table, id, updates }: { table: TableName; id: string; updates: Record<string, unknown> }) => {
+      const { error } = await supabase.from(table).update(updates).eq('id', id);
       if (error) throw error;
+
+      await writeAuditLog({
+        action: 'UPDATE_DB_RECORD',
+        table,
+        recordId: id,
+        source: 'master_database_manager',
+        metadata: {
+          changed_fields: Object.keys(updates),
+        },
+      });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['master-db-view', viewingTable] });
@@ -86,7 +97,7 @@ export function MasterDatabaseManager() {
       log('EDITAR_REGISTRO_DB', `Registro editado na tabela ${viewingTable}`, 'MASTER_TI');
       setEditingRow(null);
     },
-    onError: (e: any) => toast({ title: 'Erro ao salvar', description: e.message, variant: 'destructive' }),
+    onError: (e: unknown) => toast({ title: 'Erro ao salvar', description: e instanceof Error ? e.message : 'Falha ao salvar registro', variant: 'destructive' }),
   });
 
   const totalRecords = tableCounts ? Object.values(tableCounts).filter(v => v >= 0).reduce((a, b) => a + b, 0) : 0;
@@ -179,7 +190,7 @@ export function MasterDatabaseManager() {
                   </tr>
                 </thead>
                 <tbody>
-                  {tableData.rows.map((row: any, i: number) => {
+                  {tableData.rows.map((row: Record<string, unknown>, i: number) => {
                     const isEditing = editingRow?.idx === i;
                     return (
                       <tr key={i}>
@@ -206,7 +217,7 @@ export function MasterDatabaseManager() {
                             </Button>
                           )}
                         </td>
-                        {Object.entries(row).map(([col, val]: [string, any], j: number) => (
+                        {Object.entries(row).map(([col, val], j: number) => (
                           <td key={j} className="max-w-[200px] whitespace-nowrap">
                             {isEditing && col !== 'id' && col !== 'created_at' && col !== 'updated_at' ? (
                               <Input

@@ -1,5 +1,5 @@
-import { supabase } from '@/integrations/supabase/client'
 import { logger } from '@/lib/logger'
+import { callRpc } from '@/integrations/supabase/rpc'
 
 interface AuditInput {
   action: string
@@ -22,7 +22,7 @@ export async function writeAuditLog(input: AuditInput) {
     metadata = {},
   } = input
 
-  const { error } = await supabase.rpc('app_write_audit_log', {
+  const { error } = await callRpc<null>('app_write_audit_log', {
     p_action: action,
     p_table: table,
     p_record_id: recordId,

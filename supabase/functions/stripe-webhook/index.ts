@@ -50,6 +50,30 @@ const stripe = new Stripe(stripeSecretKey, {
 
 type SubscriptionStatus = "trialing" | "active" | "past_due" | "canceled" | "incomplete" | "unpaid" | "paused";
 
+function adminClient() {
+  return createClient(
+    Deno.env.get("SUPABASE_URL") ?? "",
+    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
+  );
+}
+
+async function logOperationalAlert(
+  actionType: string,
+  severity: "info" | "warning" | "error" | "critical",
+  details: Record<string, unknown>
+) {
+  try {
+    const supabase = adminClient();
+    await supabase.from("enterprise_audit_logs").insert({
+      action_type: actionType,
+      severity,
+      details,
+    });
+  } catch {
+    // noop
+  }
+}
+
 function normalizeSubscriptionStatus(status: string | null | undefined): SubscriptionStatus {
   const normalized = (status ?? "").toLowerCase();
 
@@ -69,10 +93,7 @@ function normalizeSubscriptionStatus(status: string | null | undefined): Subscri
 }
 
 async function handleSubscriptionChange(payload: Stripe.Subscription) {
-  const supabase = createClient(
-    Deno.env.get("SUPABASE_URL") ?? "",
-    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
-  );
+  const supabase = adminClient();
 
   const stripeSubscriptionId = payload.id;
   const stripeCustomerId = typeof payload.customer === "string" ? payload.customer : payload.customer.id;
@@ -203,6 +224,9 @@ Deno.serve(async (req) => {
   }
 
   if (isRateLimited(req)) {
+    await logOperationalAlert("STRIPE_WEBHOOK_RATE_LIMITED", "warning", {
+      ip: requestKey(req),
+    });
     return new Response(JSON.stringify({ error: "Too many requests" }), {
       status: 429,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -211,6 +235,10 @@ Deno.serve(async (req) => {
 
   try {
     if (!stripeSecretKey || !stripeWebhookSecret) {
+      await logOperationalAlert("STRIPE_WEBHOOK_NOT_CONFIGURED", "critical", {
+        has_secret: Boolean(stripeSecretKey),
+        has_webhook_secret: Boolean(stripeWebhookSecret),
+      });
       return new Response(JSON.stringify({ error: "Stripe secrets not configured" }), {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -220,6 +248,9 @@ Deno.serve(async (req) => {
     const stripeSignature = req.headers.get("stripe-signature");
 
     if (!stripeSignature) {
+      await logOperationalAlert("STRIPE_WEBHOOK_MISSING_SIGNATURE", "warning", {
+        ip: requestKey(req),
+      });
       return new Response(JSON.stringify({ error: "Missing Stripe signature" }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -257,6 +288,11 @@ Deno.serve(async (req) => {
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unexpected error";
+
+    await logOperationalAlert("STRIPE_WEBHOOK_FAILED", "critical", {
+      message,
+      ip: requestKey(req),
+    });
 
     return new Response(JSON.stringify({ error: message }), {
       status: 400,

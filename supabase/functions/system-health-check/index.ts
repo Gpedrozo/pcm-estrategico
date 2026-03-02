@@ -65,6 +65,30 @@ interface MedicaoCritica {
   limite_critico: number | null;
 }
 
+function adminClient() {
+  return createClient(
+    Deno.env.get("SUPABASE_URL")!,
+    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+  );
+}
+
+async function logOperationalAlert(
+  actionType: string,
+  severity: "info" | "warning" | "error" | "critical",
+  details: Record<string, unknown>
+) {
+  try {
+    const supabase = adminClient();
+    await supabase.from("enterprise_audit_logs").insert({
+      action_type: actionType,
+      severity,
+      details,
+    });
+  } catch {
+    // noop: observability must not break endpoint
+  }
+}
+
 Deno.serve(async (req) => {
   const origin = req.headers.get("origin");
   const corsHeaders = resolveCorsHeaders(origin);
@@ -96,6 +120,9 @@ Deno.serve(async (req) => {
 
   const providedKey = req.headers.get("x-system-health-key");
   if (!providedKey || providedKey !== healthCheckApiKey) {
+    await logOperationalAlert("SYSTEM_HEALTH_UNAUTHORIZED", "warning", {
+      ip: resolveClientIp(req),
+    });
     return new Response(JSON.stringify({ error: "Unauthorized" }), {
       status: 401,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -103,6 +130,9 @@ Deno.serve(async (req) => {
   }
 
   if (isRateLimited(req)) {
+    await logOperationalAlert("SYSTEM_HEALTH_RATE_LIMITED", "warning", {
+      ip: resolveClientIp(req),
+    });
     return new Response(JSON.stringify({ error: "Too many requests" }), {
       status: 429,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -110,10 +140,7 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+    const supabase = adminClient();
 
     const today = new Date().toISOString().split("T")[0];
     const alerts: any[] = [];
@@ -234,6 +261,10 @@ Deno.serve(async (req) => {
 
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : "Unexpected error";
+    await logOperationalAlert("SYSTEM_HEALTH_CHECK_FAILED", "critical", {
+      message,
+      ip: resolveClientIp(req),
+    });
     return new Response(
       JSON.stringify({ error: message }),
       { 

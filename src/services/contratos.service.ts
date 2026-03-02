@@ -1,5 +1,6 @@
 import { supabase } from '@/integrations/supabase/client';
 import { contratoSchema, type ContratoFormData } from '@/schemas/contrato.schema';
+import { writeAuditLog } from '@/lib/audit';
 
 export const contratosService = {
   async listar() {
@@ -38,6 +39,18 @@ export const contratosService = {
       .single();
 
     if (error) throw new Error(`Erro ao salvar no banco de dados: ${error.message}`);
+
+    await writeAuditLog({
+      action: 'CREATE_CONTRACT',
+      table: 'contratos',
+      recordId: data?.id,
+      source: 'contratos_service',
+      metadata: {
+        fornecedor_id: data?.fornecedor_id,
+        status: data?.status,
+      },
+    });
+
     return data;
   },
 
@@ -50,6 +63,17 @@ export const contratosService = {
       .single();
 
     if (error) throw new Error(`Erro ao atualizar no banco de dados: ${error.message}`);
+
+    await writeAuditLog({
+      action: 'UPDATE_CONTRACT',
+      table: 'contratos',
+      recordId: id,
+      source: 'contratos_service',
+      metadata: {
+        changed_fields: Object.keys(payload),
+      },
+    });
+
     return data;
   },
 
@@ -60,6 +84,14 @@ export const contratosService = {
       .eq('id', id);
 
     if (error) throw new Error(`Erro ao excluir do banco de dados: ${error.message}`);
+
+    await writeAuditLog({
+      action: 'DELETE_CONTRACT',
+      table: 'contratos',
+      recordId: id,
+      source: 'contratos_service',
+      severity: 'warning',
+    });
   },
 
   async listarPorFornecedor(fornecedorId: string) {
