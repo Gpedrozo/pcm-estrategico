@@ -12,11 +12,15 @@ interface PrintPreviewDialogProps {
   subtitle?: string;
   documentTitle: string;
   trigger?: ReactNode;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
   children: (ref: React.RefObject<HTMLDivElement>) => ReactNode;
 }
 
-export function PrintPreviewDialog({ title, subtitle, documentTitle, trigger, children }: PrintPreviewDialogProps) {
-  const [open, setOpen] = useState(false);
+export function PrintPreviewDialog({ title, subtitle, documentTitle, trigger, open: openProp, onOpenChange, children }: PrintPreviewDialogProps) {
+  const [internalOpen, setInternalOpen] = useState(false);
+  const open = openProp !== undefined ? openProp : internalOpen;
+  const setOpen = onOpenChange !== undefined ? onOpenChange : setInternalOpen;
   const printRef = useRef<HTMLDivElement>(null);
 
   const handlePrint = useReactToPrint({
@@ -25,15 +29,19 @@ export function PrintPreviewDialog({ title, subtitle, documentTitle, trigger, ch
     pageStyle: PRINT_PAGE_STYLE,
   });
 
+  const isControlled = openProp !== undefined;
+
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        {trigger || (
-          <Button variant="outline" size="sm" className="gap-2">
-            <Printer className="h-4 w-4" /> Imprimir
-          </Button>
-        )}
-      </DialogTrigger>
+      {!isControlled && (
+        <DialogTrigger asChild>
+          {trigger || (
+            <Button variant="outline" size="sm" className="gap-2">
+              <Printer className="h-4 w-4" /> Imprimir
+            </Button>
+          )}
+        </DialogTrigger>
+      )}
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
