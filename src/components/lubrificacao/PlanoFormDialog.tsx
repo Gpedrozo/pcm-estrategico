@@ -17,6 +17,9 @@ interface Props {
   onOpenChange: (v: boolean) => void;
 }
 
+type PeriodicidadeTipo = 'DIAS' | 'SEMANAS' | 'MESES' | 'HORAS';
+type NivelCriticidade = 'ALTA' | 'MEDIA' | 'BAIXA';
+
 export default function PlanoFormDialog({ open, onOpenChange }: Props) {
   const create = useCreatePlanoLubrificacao();
   const { data: equipamentos } = useEquipamentos();
@@ -42,12 +45,12 @@ export default function PlanoFormDialog({ open, onOpenChange }: Props) {
   const [codigoLubrificante, setCodigoLubrificante] = useState('');
   const [quantidade, setQuantidade] = useState<number | ''>('');
   const [ferramenta, setFerramenta] = useState('');
-  const [periodicidadeTipo, setPeriodicidadeTipo] = useState<'DIAS' | 'SEMANAS' | 'MESES' | 'HORAS'>('DIAS');
+  const [periodicidadeTipo, setPeriodicidadeTipo] = useState<PeriodicidadeTipo>('DIAS');
   const [periodicidadeValor, setPeriodicidadeValor] = useState<number | ''>('');
   const [tempoEstimado, setTempoEstimado] = useState<number | ''>('');
   const [responsavel, setResponsavel] = useState('');
   const [observacoes, setObservacoes] = useState('');
-  const [nivelCriticidade, setNivelCriticidade] = useState<'ALTA' | 'MEDIA' | 'BAIXA' | ''>('');
+  const [nivelCriticidade, setNivelCriticidade] = useState<NivelCriticidade | ''>('');
   const [instrucoesFile, setInstrucoesFile] = useState<File | null>(null);
 
   const handleFileChange = (f?: File | null) => {
@@ -75,15 +78,15 @@ export default function PlanoFormDialog({ open, onOpenChange }: Props) {
       instrucoes: null,
       anexos: null,
       ativo: true,
-    } as any;
+    };
 
     try {
       if (instrucoesFile) {
         const path = `lubrificacao/instrucoes/${Date.now()}-${instrucoesFile.name}`;
         // bucket 'public' may be large; upload async but don't block UI too long
         const url = await uploadToStorage('public', path, instrucoesFile);
-        (payload as any).instrucoes = url;
-        (payload as any).anexos = JSON.stringify([{ url, name: instrucoesFile.name }]);
+        payload.instrucoes = url;
+        payload.anexos = [{ url, name: instrucoesFile.name }];
       }
 
       create.mutate(payload);
@@ -159,7 +162,7 @@ export default function PlanoFormDialog({ open, onOpenChange }: Props) {
           </div>
           <div>
             <Label>Quantidade prevista</Label>
-            <Input value={quantidade as any} onChange={(e) => setQuantidade(e.target.value === '' ? '' : Number(e.target.value))} />
+            <Input value={quantidade} onChange={(e) => setQuantidade(e.target.value === '' ? '' : Number(e.target.value))} />
           </div>
           <div>
             <Label>Ferramenta necessária</Label>
@@ -167,7 +170,7 @@ export default function PlanoFormDialog({ open, onOpenChange }: Props) {
           </div>
           <div>
             <Label>Periodicidade (tipo)</Label>
-            <Select onValueChange={(v: any) => setPeriodicidadeTipo(v)}>
+            <Select onValueChange={(v) => setPeriodicidadeTipo(v as PeriodicidadeTipo)}>
               <SelectTrigger>
                 <SelectValue>{periodicidadeTipo}</SelectValue>
               </SelectTrigger>
@@ -181,11 +184,11 @@ export default function PlanoFormDialog({ open, onOpenChange }: Props) {
           </div>
           <div>
             <Label>Periodicidade (valor)</Label>
-            <Input value={periodicidadeValor as any} onChange={(e) => setPeriodicidadeValor(e.target.value === '' ? '' : Number(e.target.value))} />
+            <Input value={periodicidadeValor} onChange={(e) => setPeriodicidadeValor(e.target.value === '' ? '' : Number(e.target.value))} />
           </div>
           <div>
             <Label>Tempo estimado (min)</Label>
-            <Input value={tempoEstimado as any} onChange={(e) => setTempoEstimado(e.target.value === '' ? '' : Number(e.target.value))} />
+            <Input value={tempoEstimado} onChange={(e) => setTempoEstimado(e.target.value === '' ? '' : Number(e.target.value))} />
           </div>
           <div>
             <Label>Responsável</Label>
@@ -193,7 +196,7 @@ export default function PlanoFormDialog({ open, onOpenChange }: Props) {
           </div>
           <div>
             <Label>Nível de criticidade</Label>
-            <Select onValueChange={(v: any) => setNivelCriticidade(v)}>
+            <Select onValueChange={(v) => setNivelCriticidade(v as NivelCriticidade)}>
               <SelectTrigger>
                 <SelectValue>{nivelCriticidade || '—'}</SelectValue>
               </SelectTrigger>

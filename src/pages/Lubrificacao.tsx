@@ -45,7 +45,7 @@ export default function Lubrificacao() {
     });
   }, [planos, search, equipamentoFilter, statusFilter]);
 
-  const errorMessage = String((error as any)?.message || error || '');
+  const errorMessage = error instanceof Error ? error.message : String(error || '');
   const missingTableError =
     errorMessage.includes("Could not find the table 'public.planos_lubrificacao'")
     || errorMessage.includes('PGRST205')
@@ -89,7 +89,7 @@ export default function Lubrificacao() {
 
   const handleSubmit = async (payload: PlanoLubrificacaoInsert) => {
     if (editingPlano) {
-      await updatePlano.mutateAsync({ id: editingPlano.id, ...payload } as any);
+      await updatePlano.mutateAsync({ id: editingPlano.id, ...payload });
     } else {
       await createPlano.mutateAsync(payload);
     }

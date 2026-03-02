@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { writeAuditLog } from '@/lib/audit';
 
 export interface PermissaoGranular {
   id: string;
@@ -60,16 +61,28 @@ export function useSavePermissoes() {
       // Insert new permissions
       const rows = permissoes.map(p => ({ ...p, user_id: userId }));
       if (rows.length > 0) {
-        const { error } = await supabase.from('permissoes_granulares').insert(rows as any);
+        const { error } = await supabase.from('permissoes_granulares').insert(rows);
         if (error) throw error;
       }
+
+      await writeAuditLog({
+        action: 'UPDATE_PERMISSIONS',
+        table: 'permissoes_granulares',
+        recordId: userId,
+        source: 'use_save_permissoes',
+        metadata: {
+          user_id: userId,
+          modules: rows.map((row) => row.modulo),
+          total_modules: rows.length,
+        },
+      });
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['permissoes_granulares', variables.userId] });
       toast({ title: 'Permissões Salvas', description: 'Permissões atualizadas com sucesso.' });
     },
-    onError: (error: any) => {
-      toast({ title: 'Erro', description: error.message, variant: 'destructive' });
+    onError: (error: unknown) => {
+      toast({ title: 'Erro', description: error instanceof Error ? error.message : 'Falha ao salvar permissões', variant: 'destructive' });
     },
   });
 }

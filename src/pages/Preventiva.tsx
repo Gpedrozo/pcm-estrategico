@@ -64,10 +64,11 @@ export default function Preventiva() {
   }
 
   if (isError) {
+    const errorMessage = error instanceof Error ? error.message : String(error || '');
     return (
       <div className="p-6">
         <h2 className="text-lg font-bold text-destructive">Erro ao carregar planos</h2>
-        <pre className="mt-2 text-sm text-muted-foreground">{String((error as any)?.message || error)}</pre>
+        <pre className="mt-2 text-sm text-muted-foreground">{errorMessage}</pre>
       </div>
     );
   }

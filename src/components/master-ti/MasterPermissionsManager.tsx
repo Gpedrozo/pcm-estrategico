@@ -9,6 +9,25 @@ import { usePermissoesUsuario, useSavePermissoes, MODULOS, type PermissaoGranula
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery } from '@tanstack/react-query';
 
+type PermissionFieldKey = keyof Pick<PermissaoGranular,
+  | 'visualizar'
+  | 'criar'
+  | 'editar'
+  | 'excluir'
+  | 'alterar_status'
+  | 'imprimir'
+  | 'exportar'
+  | 'importar'
+  | 'acessar_indicadores'
+  | 'acessar_historico'
+  | 'ver_valores'
+  | 'ver_custos'
+  | 'ver_criticidade'
+  | 'ver_status'
+  | 'ver_obs_internas'
+  | 'ver_dados_financeiros'
+>;
+
 const PERM_FIELDS_MODULO = [
   { key: 'visualizar', label: 'Visualizar' },
   { key: 'criar', label: 'Criar' },
@@ -57,9 +76,9 @@ export function MasterPermissionsManager() {
       existingPerms.forEach(p => {
         const fields: Record<string, boolean> = {};
         // Only extract boolean permission fields
-        const boolKeys = [...PERM_FIELDS_MODULO, ...PERM_FIELDS_SENSIVEIS].map(f => f.key);
+        const boolKeys = [...PERM_FIELDS_MODULO, ...PERM_FIELDS_SENSIVEIS].map(f => f.key as PermissionFieldKey);
         boolKeys.forEach(key => {
-          fields[key] = !!(p as any)[key];
+          fields[key] = Boolean(p[key]);
         });
         map[p.modulo] = fields;
       });

@@ -25,7 +25,7 @@ export default function ExecucaoFormDialog({ open, onOpenChange, planoId }: { op
         <div className="space-y-3">
           <div>
             <Label>Quantidade utilizada</Label>
-            <Input value={quantidade as any} onChange={(e) => setQuantidade(e.target.value === '' ? '' : Number(e.target.value))} />
+            <Input value={quantidade} onChange={(e) => setQuantidade(e.target.value === '' ? '' : Number(e.target.value))} />
           </div>
           <div>
             <Label>Observações</Label>

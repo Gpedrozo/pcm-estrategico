@@ -12,6 +12,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Search, Edit, Shield, User, Crown, Loader2, Users, Eye, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useLogAuditoria } from '@/hooks/useAuditoria';
+import { writeAuditLog } from '@/lib/audit';
 
 type AppRole = 'MASTER_TI' | 'ADMIN' | 'USUARIO';
 
@@ -63,6 +64,14 @@ export function MasterUsersManager() {
       if (nErr) throw nErr;
       const { error: rErr } = await supabase.from('user_roles').update({ role }).eq('user_id', userId);
       if (rErr) throw rErr;
+
+      await writeAuditLog({
+        action: 'UPDATE_USER_ROLE',
+        table: 'user_roles',
+        recordId: userId,
+        source: 'master_users_manager',
+        metadata: { user_id: userId, role, nome },
+      });
     },
     onSuccess: (_, vars) => {
       queryClient.invalidateQueries({ queryKey: ['master-users'] });
@@ -70,7 +79,7 @@ export function MasterUsersManager() {
       log('EDITAR_USUARIO', `Usuário "${vars.nome}" atualizado para perfil ${vars.role}`, 'MASTER_TI');
       setEditingUser(null);
     },
-    onError: (e: any) => toast({ title: 'Erro', description: e.message, variant: 'destructive' }),
+    onError: (e: unknown) => toast({ title: 'Erro', description: e instanceof Error ? e.message : 'Falha ao atualizar usuário', variant: 'destructive' }),
   });
 
   const filtered = users?.filter(u => {

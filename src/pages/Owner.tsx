@@ -3,18 +3,13 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useOwnerCompanies, useOwnerDashboardMetrics } from "@/hooks/useControlPlane";
 
-const dashboardMetrics = [
-  { title: "Total de empresas", value: "—" },
-  { title: "Empresas ativas", value: "—" },
-  { title: "Empresas suspensas", value: "—" },
-  { title: "Total de usuários", value: "—" },
-  { title: "MRR", value: "—" },
-  { title: "Receita anual estimada", value: "—" },
-  { title: "Crescimento mensal", value: "—" },
-  { title: "Empresas em trial", value: "—" },
-  { title: "Inadimplentes", value: "—" },
-];
+const formatMoney = (value?: number | null) =>
+  new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(Number(value ?? 0));
+
+const formatNumber = (value?: number | null) =>
+  new Intl.NumberFormat("pt-BR").format(Number(value ?? 0));
 
 const modules = [
   { key: "empresas", label: "Empresas", icon: Building2, description: "Gestão global de empresas com suspensão, reativação e soft delete." },
@@ -26,6 +21,20 @@ const modules = [
 
 export default function Owner() {
   const { isSystemOwner } = useAuth();
+  const { data: metrics } = useOwnerDashboardMetrics();
+  const { data: companies } = useOwnerCompanies(1, 10);
+
+  const dashboardMetrics = [
+    { title: "Total de empresas", value: formatNumber(metrics?.total_empresas) },
+    { title: "Empresas ativas", value: formatNumber(metrics?.empresas_ativas) },
+    { title: "Empresas suspensas", value: formatNumber(metrics?.empresas_suspensas) },
+    { title: "Total de usuários", value: formatNumber(metrics?.total_usuarios) },
+    { title: "MRR", value: formatMoney(metrics?.mrr) },
+    { title: "Receita anual estimada", value: formatMoney(metrics?.receita_anual_estimada) },
+    { title: "Crescimento mensal", value: `${Number(metrics?.crescimento_mensal ?? 0).toFixed(2)}%` },
+    { title: "Empresas em trial", value: formatNumber(metrics?.empresas_trial) },
+    { title: "Inadimplentes", value: formatNumber(metrics?.inadimplentes) },
+  ];
 
   if (!isSystemOwner) {
     return (
@@ -85,9 +94,20 @@ export default function Owner() {
                 <CardDescription>{module.description}</CardDescription>
               </CardHeader>
               <CardContent>
-                <p className="text-sm text-muted-foreground">
-                  Módulo preparado para consultas paginadas (máx. 100 registros por página), trilha de auditoria e políticas exclusivas de SYSTEM_OWNER.
-                </p>
+                {module.key === "empresas" ? (
+                  <div className="space-y-2">
+                    {(companies ?? []).map((company) => (
+                      <div key={company.id} className="flex items-center justify-between rounded border border-border p-2 text-sm">
+                        <span className="font-medium">{company.nome}</span>
+                        <Badge variant="outline">{company.status}</Badge>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-sm text-muted-foreground">
+                    Módulo integrado ao control plane com trilha de auditoria e políticas exclusivas de SYSTEM_OWNER.
+                  </p>
+                )}
               </CardContent>
             </Card>
           </TabsContent>

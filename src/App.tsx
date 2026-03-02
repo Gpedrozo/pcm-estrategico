@@ -4,6 +4,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
+import { usePermission } from "@/hooks/usePermission";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { EnvironmentGuard } from "@/components/guards/EnvironmentGuard";
 import { SpeedInsights } from "@vercel/speed-insights/react";
@@ -11,7 +12,7 @@ import { TenantProvider } from "@/contexts/TenantContext";
 import { BrandingProvider } from "@/contexts/BrandingContext";
 import { isOwnerDomain } from "@/lib/security";
 
-import OwnerPortal from "@/owner/OwnerPortal";
+import Owner from "./pages/Owner";
 import OwnerLogin from "@/owner/OwnerLogin";
 
 import Index from "./pages/Index";
@@ -63,8 +64,16 @@ const queryClient = new QueryClient({
 });
 
 const AdminOnlyRoute = ({ children }: { children: React.ReactNode }) => {
-  const { isAdmin } = useAuth();
-  return isAdmin ? <>{children}</> : <Navigate to="/dashboard" replace />;
+  const { isAdmin, tenantId } = useAuth();
+  const { data: hasTenantAdminPermission, isLoading } = usePermission("tenant.admin", tenantId);
+
+  if (isLoading) return null;
+
+  if (!isAdmin || !hasTenantAdminPermission) {
+    return <Navigate to="/dashboard" replace />;
+  }
+
+  return <>{children}</>;
 };
 
 function OwnerRoutes() {
@@ -83,7 +92,7 @@ function OwnerRoutes() {
         path="/"
         element={
           <EnvironmentGuard allowOwner>
-            <OwnerPortal />
+            <Owner />
           </EnvironmentGuard>
         }
       />

@@ -23,8 +23,6 @@ export function resolveEmpresaSlug(hostname: string = window.location.hostname):
   return subdomain || 'default';
 }
 
-export const resolveTenantSlug = resolveEmpresaSlug;
-
 export function isSystemOwnerEmail(email?: string | null): boolean {
   if (!email) return false;
   if (SYSTEM_OWNER_EMAILS.length === 0) return false;

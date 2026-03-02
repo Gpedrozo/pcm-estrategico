@@ -27,6 +27,10 @@ export interface ServicoPreventivo {
   updated_at: string;
 }
 
+interface AtividadePreventivaRow extends AtividadePreventiva {
+  servicos?: ServicoPreventivo[];
+}
+
 export function useAtividadesByPlano(planoId: string | null) {
   return useQuery({
     queryKey: ['atividades-preventivas', planoId],
@@ -40,9 +44,9 @@ export function useAtividadesByPlano(planoId: string | null) {
 
       if (error) throw error;
 
-      return (data as any[]).map(a => ({
+      return (data as AtividadePreventivaRow[]).map(a => ({
         ...a,
-        servicos: (a.servicos || []).sort((x: any, y: any) => x.ordem - y.ordem),
+        servicos: (a.servicos || []).sort((x, y) => x.ordem - y.ordem),
       })) as AtividadePreventiva[];
     },
   });
@@ -66,7 +70,7 @@ export function useCreateAtividade() {
       qc.invalidateQueries({ queryKey: ['atividades-preventivas', d.plano_id] });
       toast({ title: 'Atividade criada' });
     },
-    onError: (e: any) => toast({ title: 'Erro', description: e.message, variant: 'destructive' }),
+    onError: (e: unknown) => toast({ title: 'Erro', description: e instanceof Error ? e.message : 'Falha ao criar atividade', variant: 'destructive' }),
   });
 }
 
@@ -96,7 +100,7 @@ export function useDeleteAtividade() {
       qc.invalidateQueries({ queryKey: ['atividades-preventivas', planoId] });
       toast({ title: 'Atividade excluída' });
     },
-    onError: (e: any) => toast({ title: 'Erro', description: e.message, variant: 'destructive' }),
+    onError: (e: unknown) => toast({ title: 'Erro', description: e instanceof Error ? e.message : 'Falha ao excluir atividade', variant: 'destructive' }),
   });
 }
 

@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { writeAuditLog } from '@/lib/audit';
 
 export interface ProfileRow {
   id: string;
@@ -74,6 +75,14 @@ export function useUpdateUsuarioRole() {
         .eq('user_id', userId);
 
       if (error) throw error;
+
+      await writeAuditLog({
+        action: 'UPDATE_USER_ROLE',
+        table: 'user_roles',
+        recordId: userId,
+        source: 'use_update_usuario_role',
+        metadata: { user_id: userId, role },
+      });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['usuarios'] });
@@ -82,10 +91,10 @@ export function useUpdateUsuarioRole() {
         description: 'O perfil do usuário foi atualizado com sucesso.',
       });
     },
-    onError: (error: any) => {
+    onError: (error: unknown) => {
       toast({
         title: 'Erro ao atualizar',
-        description: error.message || 'Ocorreu um erro ao atualizar o perfil.',
+        description: error instanceof Error ? error.message : 'Ocorreu um erro ao atualizar o perfil.',
         variant: 'destructive',
       });
     },
@@ -104,6 +113,14 @@ export function useUpdateUsuarioNome() {
         .eq('id', userId);
 
       if (error) throw error;
+
+      await writeAuditLog({
+        action: 'UPDATE_USER_NAME',
+        table: 'profiles',
+        recordId: userId,
+        source: 'use_update_usuario_nome',
+        metadata: { user_id: userId, nome },
+      });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['usuarios'] });
@@ -112,10 +129,10 @@ export function useUpdateUsuarioNome() {
         description: 'O nome do usuário foi atualizado com sucesso.',
       });
     },
-    onError: (error: any) => {
+    onError: (error: unknown) => {
       toast({
         title: 'Erro ao atualizar',
-        description: error.message || 'Ocorreu um erro ao atualizar o nome.',
+        description: error instanceof Error ? error.message : 'Ocorreu um erro ao atualizar o nome.',
         variant: 'destructive',
       });
     },

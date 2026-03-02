@@ -49,10 +49,23 @@ export default function AtividadesList({ planoId }: { planoId: string }) {
       {editing && (
         <div className="p-3 border rounded space-y-2">
           <Label>Descrição</Label>
-          <Input value={editing.descricao} onChange={(e) => setEditing({ ...editing, descricao: e.target.value }) as any} />
+          <Input
+            value={editing.descricao}
+            onChange={(e) => {
+              setEditing((current) => (current ? { ...current, descricao: e.target.value } : current));
+            }}
+          />
           <div className="flex gap-2 justify-end">
             <Button variant="ghost" onClick={() => setEditing(null)}>Cancelar</Button>
-            <Button onClick={() => { update.mutate(editing as any); setEditing(null); }}>Salvar</Button>
+            <Button
+              onClick={() => {
+                if (!editing) return;
+                update.mutate(editing);
+                setEditing(null);
+              }}
+            >
+              Salvar
+            </Button>
           </div>
         </div>
       )}

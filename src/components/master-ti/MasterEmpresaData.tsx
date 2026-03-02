@@ -9,6 +9,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useLogAuditoria } from '@/hooks/useAuditoria';
+import { writeAuditLog } from '@/lib/audit';
 
 const FIELDS_CADASTRAIS = [
   { label: 'Razão Social *', key: 'razao_social' },
@@ -22,7 +23,26 @@ const FIELDS_CONTATO = [
   { label: 'WhatsApp', key: 'whatsapp' },
   { label: 'E-mail', key: 'email' },
   { label: 'Site', key: 'site' },
-];
+] as const;
+
+type EmpresaFormData = {
+  razao_social: string;
+  nome_fantasia: string;
+  cnpj: string;
+  inscricao_estadual: string;
+  endereco: string;
+  cidade: string;
+  estado: string;
+  cep: string;
+  telefone: string;
+  whatsapp: string;
+  email: string;
+  site: string;
+  responsavel_nome: string;
+  responsavel_cargo: string;
+};
+
+type FormFieldKey = keyof EmpresaFormData;
 
 export function MasterEmpresaData() {
   const { data: empresa, isLoading } = useDadosEmpresa();
@@ -30,7 +50,7 @@ export function MasterEmpresaData() {
   const { toast } = useToast();
   const { log } = useLogAuditoria();
 
-  const [form, setForm] = useState({
+  const [form, setForm] = useState<EmpresaFormData>({
     razao_social: '', nome_fantasia: '', cnpj: '', inscricao_estadual: '',
     endereco: '', cidade: '', estado: '', cep: '',
     telefone: '', whatsapp: '', email: '', site: '',
@@ -59,13 +79,27 @@ export function MasterEmpresaData() {
   }, [empresa]);
 
   const saveMutation = useMutation({
-    mutationFn: async (formData: typeof form) => {
+    mutationFn: async (formData: EmpresaFormData) => {
       if (empresa?.id) {
         const { error } = await supabase.from('dados_empresa').update(formData).eq('id', empresa.id);
         if (error) throw error;
+        await writeAuditLog({
+          action: 'UPDATE_COMPANY',
+          table: 'dados_empresa',
+          recordId: empresa.id,
+          source: 'master_empresa_data',
+          metadata: { razao_social: formData.razao_social },
+        });
       } else {
-        const { error } = await supabase.from('dados_empresa').insert([formData]);
+        const { data, error } = await supabase.from('dados_empresa').insert([formData]).select('id').single();
         if (error) throw error;
+        await writeAuditLog({
+          action: 'CREATE_COMPANY',
+          table: 'dados_empresa',
+          recordId: data?.id,
+          source: 'master_empresa_data',
+          metadata: { razao_social: formData.razao_social },
+        });
       }
     },
     onSuccess: () => {
@@ -84,7 +118,7 @@ export function MasterEmpresaData() {
     saveMutation.mutate(form);
   };
 
-  const updateField = (key: string, value: string) => setForm(f => ({ ...f, [key]: value }));
+  const updateField = (key: FormFieldKey, value: string) => setForm(f => ({ ...f, [key]: value }));
 
   if (isLoading) return <div className="flex justify-center p-8"><Loader2 className="h-8 w-8 animate-spin" /></div>;
 
@@ -111,7 +145,7 @@ export function MasterEmpresaData() {
             {FIELDS_CADASTRAIS.map(f => (
               <div key={f.key} className="space-y-1">
                 <Label>{f.label}</Label>
-                <Input value={(form as any)[f.key]} onChange={e => updateField(f.key, e.target.value)} />
+                <Input value={form[f.key as FormFieldKey]} onChange={e => updateField(f.key as FormFieldKey, e.target.value)} />
               </div>
             ))}
           </CardContent>
@@ -135,7 +169,7 @@ export function MasterEmpresaData() {
             {FIELDS_CONTATO.map(f => (
               <div key={f.key} className="space-y-1">
                 <Label>{f.label}</Label>
-                <Input value={(form as any)[f.key]} onChange={e => updateField(f.key, e.target.value)} />
+                <Input value={form[f.key as FormFieldKey]} onChange={e => updateField(f.key as FormFieldKey, e.target.value)} />
               </div>
             ))}
           </CardContent>

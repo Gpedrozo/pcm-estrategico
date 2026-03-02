@@ -6,6 +6,11 @@ vi.mock("@/contexts/AuthContext", () => ({
   useAuth: vi.fn(),
 }));
 
+vi.mock("@/hooks/useControlPlane", () => ({
+  useOwnerDashboardMetrics: () => ({ data: null }),
+  useOwnerCompanies: () => ({ data: [] }),
+}));
+
 import { useAuth } from "@/contexts/AuthContext";
 
 const mockedUseAuth = vi.mocked(useAuth);

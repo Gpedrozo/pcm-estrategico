@@ -8,6 +8,7 @@ import {
   type AppRole,
 } from '@/lib/security';
 import { logger } from '@/lib/logger';
+import { writeAuditLog } from '@/lib/audit';
 
 interface AuthUser {
   id: string;
@@ -154,17 +155,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const { data: { user } } = await supabase.auth.getUser();
 
       if (user) {
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('nome')
-          .eq('id', user.id)
-          .maybeSingle();
-
-        await supabase.from('auditoria').insert({
-          usuario_id: user.id,
-          usuario_nome: profile?.nome || user.email || 'Usuário',
-          acao: 'LOGIN',
-          descricao: 'Login no sistema',
+        await writeAuditLog({
+          action: 'LOGIN',
+          table: 'auth',
+          recordId: user.id,
+          source: 'auth_context',
+          metadata: {
+            email: user.email || email,
+            event: 'login_success',
+          },
         });
       }
     }, 0);
@@ -233,11 +232,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const logout = useCallback(async () => {
     if (user) {
-      await supabase.from('auditoria').insert({
-        usuario_id: user.id,
-        usuario_nome: user.nome,
-        acao: 'LOGOUT',
-        descricao: 'Logout do sistema',
+      await writeAuditLog({
+        action: 'LOGOUT',
+        table: 'auth',
+        recordId: user.id,
+        source: 'auth_context',
+        metadata: {
+          email: user.email,
+          event: 'logout',
+        },
       });
     }
 
