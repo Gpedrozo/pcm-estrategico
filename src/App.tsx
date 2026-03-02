@@ -10,10 +10,10 @@ import { TenantProvider } from "@/contexts/TenantContext";
 import { BrandingProvider } from "@/contexts/BrandingContext";
 import { EnvironmentGuard } from "@/guards/EnvironmentGuard";
 import { isOwnerDomain } from "@/lib/security";
+
 import OwnerPortal from "@/owner/OwnerPortal";
 import OwnerLogin from "@/owner/OwnerLogin";
 
-// Pages
 import Index from "./pages/Index";
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
@@ -89,7 +89,6 @@ function TenantRoutes() {
             <Route path="/login" element={<Login />} />
             <Route path="/instalar" element={<Instalar />} />
 
-            {/* Protected Routes with Layout */}
             <Route element={<AppLayout />}>
               <Route path="/dashboard" element={<Dashboard />} />
               <Route path="/solicitacoes" element={<Solicitacoes />} />
@@ -117,6 +116,7 @@ function TenantRoutes() {
               <Route path="/ssma" element={<SSMA />} />
               <Route path="/usuarios" element={<Usuarios />} />
               <Route path="/auditoria" element={<Auditoria />} />
+
               <Route
                 path="/admin/arquivos-owner"
                 element={
@@ -125,11 +125,11 @@ function TenantRoutes() {
                   </AdminOnlyRoute>
                 }
               />
+
               <Route path="/master-ti" element={<MasterTI />} />
               <Route path="/inteligencia-causa-raiz" element={<RootCauseAIPage />} />
             </Route>
 
-            {/* Catch-all */}
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrandingProvider>

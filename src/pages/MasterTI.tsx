@@ -40,9 +40,10 @@ function TabFallback() {
 export default function MasterTI() {
   const auth = useAuth();
   const isMasterTI = Boolean(auth?.isMasterTI);
+  const isSystemOwner = Boolean(auth?.isSystemOwner);
   const [activeTab, setActiveTab] = useState<TabKey>("users");
 
-  if (!isMasterTI) {
+  if (!isMasterTI && !isSystemOwner) {
     return (
       <div className="flex items-center justify-center h-[60vh]">
         <div className="text-center space-y-4">
@@ -51,7 +52,7 @@ export default function MasterTI() {
           </div>
           <h2 className="text-xl font-bold">Acesso Negado</h2>
           <p className="text-muted-foreground max-w-md">
-            Este painel é exclusivo para usuários com perfil <strong>MASTER TI</strong>.
+            Este painel é exclusivo para usuários com perfil <strong>MASTER_TI</strong> ou <strong>SYSTEM_OWNER</strong>.
           </p>
         </div>
       </div>

@@ -41,22 +41,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const fetchUserProfile = async (userId: string, email?: string | null) => {
     try {
-      // Fetch profile
       const { data: profile } = await supabase
         .from('profiles')
         .select('nome')
         .eq('id', userId)
         .maybeSingle();
 
-      // Fetch role
       const { data: roleData } = await supabase
         .from('user_roles')
         .select('role, tenant_id')
         .eq('user_id', userId)
         .order('created_at', { ascending: true });
 
-      const roles = (roleData || []).map((item: { role: AppRole }) => item.role);
-      const tenantId = (roleData || [])[0]?.tenant_id || null;
+      const roles: AppRole[] = (roleData || []).map(
+        (item: { role: AppRole }) => item.role
+      );
+
+      const tenantId: string | null = (roleData || [])[0]?.tenant_id || null;
+
       const effectiveRole = getEffectiveRole({ roles, email });
 
       return {
@@ -67,20 +69,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       };
     } catch (error) {
       console.error('Error fetching user profile:', error);
-      return { nome: 'Usuário', tipo: 'USUARIO' as const, roles: ['USUARIO'], tenantId: null };
+
+      const roles: AppRole[] = ['USUARIO'];
+
+      return {
+        nome: 'Usuário',
+        tipo: 'USUARIO',
+        roles,
+        tenantId: null,
+      };
     }
   };
 
   useEffect(() => {
-    // Set up auth state listener FIRST
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
         setSession(session);
-        
+
         if (session?.user) {
-          // Defer Supabase calls with setTimeout to avoid deadlock
           setTimeout(async () => {
             const profileData = await fetchUserProfile(session.user.id, session.user.email);
+
             setUser({
               id: session.user.id,
               email: session.user.email || '',
@@ -89,6 +98,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               roles: profileData.roles,
               tenantId: profileData.tenantId,
             });
+
             setIsLoading(false);
           }, 0);
         } else {
@@ -98,10 +108,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     );
 
-    // THEN check for existing session
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
-      
+
       if (session?.user) {
         fetchUserProfile(session.user.id, session.user.email).then(profileData => {
           setUser({
@@ -112,6 +121,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             roles: profileData.roles,
             tenantId: profileData.tenantId,
           });
+
           setIsLoading(false);
         });
       } else {
@@ -132,19 +142,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (error.message.includes('Invalid login credentials')) {
         return { error: 'Email ou senha inválidos' };
       }
+
       return { error: error.message };
     }
 
-    // Log audit
     setTimeout(async () => {
       const { data: { user } } = await supabase.auth.getUser();
+
       if (user) {
         const { data: profile } = await supabase
           .from('profiles')
           .select('nome')
           .eq('id', user.id)
           .maybeSingle();
-        
+
         await supabase.from('auditoria').insert({
           usuario_id: user.id,
           usuario_nome: profile?.nome || user.email || 'Usuário',
@@ -170,13 +181,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (tenantError || !tenantData?.id) {
       return { error: 'Tenant inválido. Contate o administrador.' };
     }
+
     const { error } = await supabase.auth.signUp({
       email,
       password,
       options: {
         emailRedirectTo: redirectUrl,
         data: {
-          nome: nome,
+          nome,
           ...buildSecureSignupMetadata({
             tenantId: tenantData.id,
             tenantSlug: tenantData.slug,
@@ -190,6 +202,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (error.message.includes('User already registered')) {
         return { error: 'Este email já está cadastrado' };
       }
+
       return { error: error.message };
     }
 
@@ -197,7 +210,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const logout = useCallback(async () => {
-    // Log audit before logout
     if (user) {
       await supabase.from('auditoria').insert({
         usuario_id: user.id,
@@ -206,31 +218,33 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         descricao: 'Logout do sistema',
       });
     }
-    
+
     await supabase.auth.signOut();
   }, [user]);
 
-  const effectiveRole = user?.tipo || 'USUARIO';
+  const effectiveRole: AppRole = user?.tipo || 'USUARIO';
   const isAdmin = effectiveRole === 'ADMIN' || effectiveRole === 'MASTER_TI';
   const isMasterTI = effectiveRole === 'MASTER_TI';
   const isSystemOwner = effectiveRole === 'SYSTEM_OWNER';
   const tenantId = user?.tenantId || null;
 
   return (
-    <AuthContext.Provider value={{
-      user,
-      session,
-      isAuthenticated: !!session,
-      isLoading,
-      login,
-      signup,
-      logout,
-      isAdmin,
-      isMasterTI,
-      isSystemOwner,
-      effectiveRole,
-      tenantId,
-    }}>
+    <AuthContext.Provider
+      value={{
+        user,
+        session,
+        isAuthenticated: !!session,
+        isLoading,
+        login,
+        signup,
+        logout,
+        isAdmin,
+        isMasterTI,
+        isSystemOwner,
+        effectiveRole,
+        tenantId,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );
@@ -238,8 +252,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
 export function useAuth() {
   const context = useContext(AuthContext);
-  if (context === undefined) {
+
+  if (!context) {
     throw new Error('useAuth must be used within an AuthProvider');
   }
+
   return context;
 }
