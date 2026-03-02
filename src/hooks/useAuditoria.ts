@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { logger } from '@/lib/logger';
+import { writeAuditLog } from '@/lib/audit';
 
 export interface AuditoriaRow {
   id: string;
@@ -26,13 +27,21 @@ export function useAuditoria() {
     queryKey: ['auditoria'],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('auditoria')
+        .from('audit_logs')
         .select('*')
-        .order('data_hora', { ascending: false })
+        .order('created_at', { ascending: false })
         .limit(200);
 
       if (error) throw error;
-      return data as AuditoriaRow[];
+      return (data || []).map((row: any) => ({
+        id: row.id,
+        usuario_id: row.actor_user_id ?? null,
+        usuario_nome: row.actor_email ?? 'SISTEMA',
+        acao: row.action,
+        descricao: row.metadata?.descricao ?? row.action,
+        tag: row.metadata?.tag ?? null,
+        data_hora: row.created_at,
+      })) as AuditoriaRow[];
     },
   });
 }
@@ -42,14 +51,27 @@ export function useCreateAuditoria() {
 
   return useMutation({
     mutationFn: async (auditoria: AuditoriaInsert) => {
-      const { data, error } = await supabase
-        .from('auditoria')
-        .insert(auditoria)
-        .select()
-        .single();
+      await writeAuditLog({
+        action: auditoria.acao,
+        table: 'app_auditoria',
+        recordId: auditoria.usuario_id ?? null,
+        source: 'use_auditoria_hook',
+        metadata: {
+          descricao: auditoria.descricao,
+          tag: auditoria.tag ?? null,
+          usuario_nome: auditoria.usuario_nome,
+        },
+      });
 
-      if (error) throw error;
-      return data as AuditoriaRow;
+      return {
+        id: crypto.randomUUID(),
+        usuario_id: auditoria.usuario_id ?? null,
+        usuario_nome: auditoria.usuario_nome,
+        acao: auditoria.acao,
+        descricao: auditoria.descricao,
+        tag: auditoria.tag ?? null,
+        data_hora: new Date().toISOString(),
+      } satisfies AuditoriaRow;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['auditoria'] });

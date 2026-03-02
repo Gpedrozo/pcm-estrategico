@@ -40,6 +40,17 @@ Deno.serve(async (req) => {
     const url = new URL(req.url);
     const period = url.searchParams.get("period") || "month"; // month, quarter, year
     const tag = url.searchParams.get("tag"); // optional filter by tag
+    const empresaId = url.searchParams.get("empresa_id");
+
+    if (!empresaId) {
+      return new Response(
+        JSON.stringify({ error: "empresa_id é obrigatório" }),
+        {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        }
+      );
+    }
 
     // Calculate date range
     const endDate = new Date();
@@ -63,6 +74,7 @@ Deno.serve(async (req) => {
     let osQuery = supabase
       .from("ordens_servico")
       .select("*")
+      .eq("empresa_id", empresaId)
       .gte("data_solicitacao", startDateStr)
       .lte("data_solicitacao", endDateStr);
 
@@ -148,6 +160,7 @@ Deno.serve(async (req) => {
 
     // Response
     const report = {
+      empresa_id: empresaId,
       periodo: {
         inicio: startDateStr,
         fim: endDateStr,

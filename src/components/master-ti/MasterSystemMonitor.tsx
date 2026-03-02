@@ -25,7 +25,7 @@ const MODULE_TABLES = [
   { module: 'Componentes', table: 'componentes_equipamento' as const, icon: Settings, color: 'text-muted-foreground' },
   { module: 'Execuções OS', table: 'execucoes_os' as const, icon: Activity, color: 'text-success' },
   { module: 'Usuários', table: 'profiles' as const, icon: Users, color: 'text-primary' },
-  { module: 'Auditoria', table: 'auditoria' as const, icon: FileText, color: 'text-warning' },
+  { module: 'Auditoria', table: 'audit_logs' as const, icon: FileText, color: 'text-warning' },
   { module: 'Security Logs', table: 'security_logs' as const, icon: ShieldAlert, color: 'text-destructive' },
   { module: 'Notificações', table: 'notificacoes' as const, icon: ClipboardList, color: 'text-info' },
   { module: 'Permissões Granulares', table: 'permissoes_granulares' as const, icon: Settings, color: 'text-primary' },
@@ -50,7 +50,7 @@ export function MasterSystemMonitor() {
           })
         ),
         supabase.from('ordens_servico').select('id', { count: 'exact', head: true }).gte('created_at', oneDayAgo),
-        supabase.from('auditoria').select('id', { count: 'exact', head: true }).gte('data_hora', oneDayAgo),
+        supabase.from('audit_logs').select('id', { count: 'exact', head: true }).gte('created_at', oneDayAgo),
         supabase.from('solicitacoes_manutencao').select('id', { count: 'exact', head: true }).gte('created_at', oneDayAgo),
         supabase.from('security_logs').select('id', { count: 'exact', head: true }).gte('created_at', oneDayAgo),
       ]);

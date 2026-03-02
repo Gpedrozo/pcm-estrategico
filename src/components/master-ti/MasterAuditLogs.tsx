@@ -24,12 +24,23 @@ export function MasterAuditLogs() {
   const { data: auditData, isLoading: loadingAudit } = useQuery({
     queryKey: ['master-audit-logs', page, search, actionFilter],
     queryFn: async () => {
-      let query = supabase.from('auditoria').select('*', { count: 'exact' }).order('data_hora', { ascending: false }).range(page * PAGE_SIZE, (page + 1) * PAGE_SIZE - 1);
-      if (search) query = query.or(`usuario_nome.ilike.%${search}%,acao.ilike.%${search}%,descricao.ilike.%${search}%,tag.ilike.%${search}%`);
-      if (actionFilter !== 'ALL') query = query.ilike('acao', `%${actionFilter}%`);
+      let query = supabase.from('audit_logs').select('*', { count: 'exact' }).order('created_at', { ascending: false }).range(page * PAGE_SIZE, (page + 1) * PAGE_SIZE - 1);
+      if (search) query = query.or(`action.ilike.%${search}%,source.ilike.%${search}%`);
+      if (actionFilter !== 'ALL') query = query.ilike('action', `%${actionFilter}%`);
       const { data, count, error } = await query;
       if (error) throw error;
-      return { logs: data || [], total: count ?? 0 };
+      return {
+        logs: (data || []).map((row: any) => ({
+          id: row.id,
+          data_hora: row.created_at,
+          usuario_nome: row.actor_email || 'SISTEMA',
+          acao: row.action,
+          descricao: row.metadata?.descricao || row.action,
+          tag: row.metadata?.tag || null,
+          usuario_id: row.actor_user_id || null,
+        })),
+        total: count ?? 0,
+      };
     },
     enabled: activeTab === 'auditoria',
   });
@@ -43,12 +54,23 @@ export function MasterAuditLogs() {
   const { data: dbAuditData, isLoading: loadingDbAudit } = useQuery({
     queryKey: ['master-db-audit-logs', dbPage, dbSearch, dbTableFilter],
     queryFn: async () => {
-      let query = supabase.from('auditoria_logs').select('*', { count: 'exact' }).order('created_at', { ascending: false }).range(dbPage * PAGE_SIZE, (dbPage + 1) * PAGE_SIZE - 1);
-      if (dbSearch) query = query.or(`tabela.ilike.%${dbSearch}%,operacao.ilike.%${dbSearch}%`);
-      if (dbTableFilter !== 'ALL') query = query.eq('tabela', dbTableFilter);
+      let query = supabase.from('enterprise_audit_logs').select('*', { count: 'exact' }).order('created_at', { ascending: false }).range(dbPage * PAGE_SIZE, (dbPage + 1) * PAGE_SIZE - 1);
+      if (dbSearch) query = query.or(`table_name.ilike.%${dbSearch}%,operation.ilike.%${dbSearch}%,action_type.ilike.%${dbSearch}%`);
+      if (dbTableFilter !== 'ALL') query = query.eq('table_name', dbTableFilter);
       const { data, count, error } = await query;
       if (error) throw error;
-      return { logs: data || [], total: count ?? 0 };
+      return {
+        logs: (data || []).map((row: any) => ({
+          id: row.id,
+          tabela: row.table_name || row.details?.table || 'N/A',
+          operacao: row.operation || row.action_type || 'UNKNOWN',
+          registro_id: row.record_id || row.details?.record_id || null,
+          dados_antes: row.old_data || null,
+          dados_depois: row.new_data || row.details || null,
+          created_at: row.created_at,
+        })),
+        total: count ?? 0,
+      };
     },
     enabled: activeTab === 'db_audit',
   });
@@ -59,10 +81,10 @@ export function MasterAuditLogs() {
     queryFn: async () => {
       const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
       const [totalAudit, todayAudit, totalDbAudit, todayDbAudit] = await Promise.all([
-        supabase.from('auditoria').select('*', { count: 'exact', head: true }),
-        supabase.from('auditoria').select('*', { count: 'exact', head: true }).gte('data_hora', oneDayAgo),
-        supabase.from('auditoria_logs').select('*', { count: 'exact', head: true }),
-        supabase.from('auditoria_logs').select('*', { count: 'exact', head: true }).gte('created_at', oneDayAgo),
+        supabase.from('audit_logs').select('*', { count: 'exact', head: true }),
+        supabase.from('audit_logs').select('*', { count: 'exact', head: true }).gte('created_at', oneDayAgo),
+        supabase.from('enterprise_audit_logs').select('*', { count: 'exact', head: true }),
+        supabase.from('enterprise_audit_logs').select('*', { count: 'exact', head: true }).gte('created_at', oneDayAgo),
       ]);
       return { totalAudit: totalAudit.count ?? 0, todayAudit: todayAudit.count ?? 0, totalDbAudit: totalDbAudit.count ?? 0, todayDbAudit: todayDbAudit.count ?? 0 };
     },

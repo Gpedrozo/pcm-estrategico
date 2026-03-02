@@ -8,6 +8,7 @@ const corsHeaders = {
 
 interface PlanoPreventivo {
   id: string;
+  empresa_id: string;
   codigo: string;
   nome: string;
   tag: string | null;
@@ -22,6 +23,24 @@ interface Equipamento {
   id: string;
   tag: string;
   nome: string;
+}
+
+async function logOperationalEvent(
+  supabase: ReturnType<typeof createClient>,
+  params: {
+    empresaId: string;
+    actionType: string;
+    severity: "info" | "warning" | "error" | "critical";
+    details: Record<string, unknown>;
+  },
+) {
+  await supabase.from("enterprise_audit_logs").insert({
+    empresa_id: params.empresaId,
+    action_type: params.actionType,
+    severity: params.severity,
+    source: "generate_preventive_os",
+    details: params.details,
+  });
 }
 
 Deno.serve(async (req) => {
@@ -43,6 +62,7 @@ Deno.serve(async (req) => {
       .from("planos_preventivos")
       .select(`
         id,
+        empresa_id,
         codigo,
         nome,
         tag,
@@ -95,6 +115,7 @@ Deno.serve(async (req) => {
         const { data: novaOS, error: osError } = await supabase
           .from("ordens_servico")
           .insert({
+            empresa_id: plano.empresa_id,
             tipo: "PREVENTIVA",
             prioridade: "MEDIA",
             tag: tag,
@@ -103,7 +124,6 @@ Deno.serve(async (req) => {
             problema: `Execução do plano preventivo: ${plano.codigo} - ${plano.nome}`,
             status: "ABERTA",
             tempo_estimado: plano.tempo_estimado_min || 60,
-            usuario_abertura: "SISTEMA",
           })
           .select("numero_os")
           .single();
@@ -129,12 +149,16 @@ Deno.serve(async (req) => {
 
         osGeradas.push(`OS #${novaOS?.numero_os} gerada para plano ${plano.codigo}`);
 
-        // Log the action in the audit table
-        await supabase.from("auditoria").insert({
-          usuario_nome: "SISTEMA",
-          acao: "GERAR_OS_PREVENTIVA",
-          descricao: `OS preventiva gerada automaticamente do plano ${plano.codigo}`,
-          tag: tag,
+        await logOperationalEvent(supabase, {
+          empresaId: plano.empresa_id,
+          actionType: "GENERATE_PREVENTIVE_OS",
+          severity: "info",
+          details: {
+            plano_id: plano.id,
+            plano_codigo: plano.codigo,
+            os_numero: novaOS?.numero_os ?? null,
+            tag,
+          },
         });
 
       } catch (err: any) {

@@ -49,10 +49,10 @@ export function MasterSecurity() {
 
       const [totalLogs, failedAttempts, rateLimits, logins24h, loginsWeek, totalUsers, masterCount, adminCount] = await Promise.all([
         supabase.from('security_logs').select('*', { count: 'exact', head: true }),
-        supabase.from('security_logs').select('*', { count: 'exact', head: true }).eq('success', false).gte('created_at', oneDayAgo),
-        supabase.from('security_logs').select('*', { count: 'exact', head: true }).eq('action', 'RATE_LIMIT_EXCEEDED').gte('created_at', oneDayAgo),
-        supabase.from('auditoria').select('*', { count: 'exact', head: true }).eq('acao', 'LOGIN').gte('data_hora', oneDayAgo),
-        supabase.from('auditoria').select('*', { count: 'exact', head: true }).eq('acao', 'LOGIN').gte('data_hora', oneWeekAgo),
+        supabase.from('security_logs').select('*', { count: 'exact', head: true }).in('severity', ['error', 'critical']).gte('created_at', oneDayAgo),
+        supabase.from('security_logs').select('*', { count: 'exact', head: true }).eq('event_type', 'RATE_LIMIT_EXCEEDED').gte('created_at', oneDayAgo),
+        supabase.from('audit_logs').select('*', { count: 'exact', head: true }).eq('action', 'LOGIN').gte('created_at', oneDayAgo),
+        supabase.from('audit_logs').select('*', { count: 'exact', head: true }).eq('action', 'LOGIN').gte('created_at', oneWeekAgo),
         supabase.from('profiles').select('*', { count: 'exact', head: true }),
         supabase.from('user_roles').select('*', { count: 'exact', head: true }).eq('role', 'MASTER_TI'),
         supabase.from('user_roles').select('*', { count: 'exact', head: true }).eq('role', 'ADMIN'),
@@ -76,7 +76,7 @@ export function MasterSecurity() {
     queryKey: ['master-security-logs', logPage, logSearch],
     queryFn: async () => {
       let query = supabase.from('security_logs').select('*', { count: 'exact' }).order('created_at', { ascending: false }).range(logPage * PAGE_SIZE, (logPage + 1) * PAGE_SIZE - 1);
-      if (logSearch) query = query.or(`action.ilike.%${logSearch}%,resource.ilike.%${logSearch}%,error_message.ilike.%${logSearch}%`);
+      if (logSearch) query = query.or(`event_type.ilike.%${logSearch}%,source.ilike.%${logSearch}%`);
       const { data, count, error } = await query;
       if (error) throw error;
       return { logs: data || [], total: count ?? 0 };
@@ -193,14 +193,23 @@ export function MasterSecurity() {
                       logData.logs.map(log => (
                         <tr key={log.id}>
                           <td className="text-sm text-muted-foreground whitespace-nowrap">{new Date(log.created_at).toLocaleString('pt-BR')}</td>
-                          <td className="text-sm font-medium">{log.action}</td>
-                          <td className="text-sm font-mono">{log.resource}</td>
+                          <td className="text-sm font-medium">{log.event_type}</td>
+                          <td className="text-sm font-mono">{log.source}</td>
                           <td>
-                            <Badge variant="outline" className={log.success ? 'bg-success/10 text-success border-success/20' : 'bg-destructive/10 text-destructive border-destructive/20'}>
-                              {log.success ? 'OK' : 'Falha'}
+                            <Badge
+                              variant="outline"
+                              className={
+                                log.severity === 'critical' || log.severity === 'error'
+                                  ? 'bg-destructive/10 text-destructive border-destructive/20'
+                                  : log.severity === 'warning'
+                                    ? 'bg-warning/10 text-warning border-warning/20'
+                                    : 'bg-success/10 text-success border-success/20'
+                              }
+                            >
+                              {log.severity || 'info'}
                             </Badge>
                           </td>
-                          <td className="text-sm text-muted-foreground max-w-xs truncate">{log.error_message || '—'}</td>
+                          <td className="text-sm text-muted-foreground max-w-xs truncate">{String((log.metadata as Record<string, unknown> | null)?.error ?? '—')}</td>
                           <td>
                             <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setViewingLog(log)}><Eye className="h-3 w-3" /></Button>
                           </td>
@@ -276,21 +285,30 @@ export function MasterSecurity() {
             <div className="space-y-3 text-sm">
               <div className="grid grid-cols-2 gap-3">
                 <div><span className="text-muted-foreground">Data:</span><p>{new Date(viewingLog.created_at).toLocaleString('pt-BR')}</p></div>
-                <div><span className="text-muted-foreground">Ação:</span><p className="font-medium">{viewingLog.action}</p></div>
-                <div><span className="text-muted-foreground">Recurso:</span><p className="font-mono">{viewingLog.resource}</p></div>
+                <div><span className="text-muted-foreground">Ação:</span><p className="font-medium">{viewingLog.event_type}</p></div>
+                <div><span className="text-muted-foreground">Origem:</span><p className="font-mono">{viewingLog.source}</p></div>
                 <div><span className="text-muted-foreground">Status:</span>
-                  <Badge variant="outline" className={viewingLog.success ? 'bg-success/10 text-success' : 'bg-destructive/10 text-destructive'}>
-                    {viewingLog.success ? 'Sucesso' : 'Falha'}
+                  <Badge
+                    variant="outline"
+                    className={
+                      viewingLog.severity === 'critical' || viewingLog.severity === 'error'
+                        ? 'bg-destructive/10 text-destructive'
+                        : viewingLog.severity === 'warning'
+                          ? 'bg-warning/10 text-warning'
+                          : 'bg-success/10 text-success'
+                    }
+                  >
+                    {viewingLog.severity || 'info'}
                   </Badge>
                 </div>
               </div>
-              {viewingLog.error_message && (
-                <div><span className="text-muted-foreground">Mensagem de Erro:</span><p className="mt-1 p-3 bg-destructive/5 rounded-lg text-destructive">{viewingLog.error_message}</p></div>
+              {(viewingLog.metadata as Record<string, unknown> | null)?.error && (
+                <div><span className="text-muted-foreground">Mensagem de Erro:</span><p className="mt-1 p-3 bg-destructive/5 rounded-lg text-destructive">{String((viewingLog.metadata as Record<string, unknown> | null)?.error)}</p></div>
               )}
               {viewingLog.metadata && (
                 <div><span className="text-muted-foreground">Metadata:</span><pre className="mt-1 p-3 bg-muted/30 rounded-lg text-xs overflow-auto max-h-48">{JSON.stringify(viewingLog.metadata, null, 2)}</pre></div>
               )}
-              <div><span className="text-muted-foreground">User ID:</span><p className="font-mono text-xs">{viewingLog.user_id || '—'}</p></div>
+              <div><span className="text-muted-foreground">User ID:</span><p className="font-mono text-xs">{viewingLog.actor_user_id || '—'}</p></div>
             </div>
           )}
         </DialogContent>
