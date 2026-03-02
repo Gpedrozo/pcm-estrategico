@@ -18,7 +18,7 @@ const TABLES = [
   'acoes_corretivas', 'inspecoes', 'anomalias_inspecao', 'medicoes_preditivas',
   'melhorias', 'incidentes_ssma', 'permissoes_trabalho', 'fornecedores', 'contratos',
   'avaliacoes_fornecedores', 'documentos_tecnicos', 'solicitacoes_manutencao',
-  'auditoria', 'auditoria_logs', 'profiles', 'user_roles', 'plantas', 'areas', 'sistemas',
+  'enterprise_audit_logs', 'audit_logs', 'profiles', 'user_roles', 'plantas', 'areas', 'sistemas',
   'componentes_equipamento', 'configuracoes_sistema', 'security_logs', 'rate_limits',
   'dados_empresa', 'permissoes_granulares', 'ai_root_cause_analysis', 'contrato_alertas',
   'notificacoes',

@@ -44,7 +44,7 @@ export function MasterSystemMonitor() {
           MODULE_TABLES.map(async (m) => {
             const t0 = performance.now();
             try {
-              const { count, error } = await supabase.from(m.table).select('*', { count: 'exact', head: true });
+              const { count, error } = await supabase.from(m.table as any).select('*', { count: 'exact', head: true });
               return { ...m, count: error ? -1 : (count ?? 0), responseTime: Math.round(performance.now() - t0) };
             } catch { return { ...m, count: -1, responseTime: Math.round(performance.now() - t0) }; }
           })

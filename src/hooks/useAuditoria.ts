@@ -47,6 +47,7 @@ export function useAuditoria() {
 }
 
 export function useCreateAuditoria() {
+  const { user } = useAuth();
   const queryClient = useQueryClient();
 
   return useMutation({
@@ -55,6 +56,7 @@ export function useCreateAuditoria() {
         action: auditoria.acao,
         table: 'app_auditoria',
         recordId: auditoria.usuario_id ?? null,
+        empresaId: user?.tenantId ?? null,
         source: 'use_auditoria_hook',
         metadata: {
           descricao: auditoria.descricao,

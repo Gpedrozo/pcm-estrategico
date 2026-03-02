@@ -8,7 +8,7 @@ const corsHeaders = {
 
 interface PlanoPreventivo {
   id: string;
-  empresa_id: string;
+  empresa_id: string | null;
   codigo: string;
   nome: string;
   tag: string | null;
@@ -28,7 +28,7 @@ interface Equipamento {
 async function logOperationalEvent(
   supabase: ReturnType<typeof createClient>,
   params: {
-    empresaId: string;
+    empresaId: string | null;
     actionType: string;
     severity: "info" | "warning" | "error" | "critical";
     details: Record<string, unknown>;

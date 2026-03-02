@@ -155,10 +155,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const { data: { user } } = await supabase.auth.getUser();
 
       if (user) {
+        const profileData = await fetchUserProfile(user.id, user.email);
+
         await writeAuditLog({
           action: 'LOGIN',
           table: 'auth',
           recordId: user.id,
+          empresaId: profileData.tenantId,
           source: 'auth_context',
           metadata: {
             email: user.email || email,
@@ -236,6 +239,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         action: 'LOGOUT',
         table: 'auth',
         recordId: user.id,
+        empresaId: user.tenantId,
         source: 'auth_context',
         metadata: {
           email: user.email,

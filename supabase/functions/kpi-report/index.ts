@@ -44,14 +44,10 @@ Deno.serve(async (req) => {
 
     if (!empresaId) {
       return new Response(
-        JSON.stringify({ error: "empresa_id é obrigatório" }),
-        {
-          status: 400,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        }
+        JSON.stringify({ error: "Parâmetro obrigatório ausente: empresa_id" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
-
     // Calculate date range
     const endDate = new Date();
     const startDate = new Date();
@@ -162,6 +158,7 @@ Deno.serve(async (req) => {
     const report = {
       empresa_id: empresaId,
       periodo: {
+        empresa_id: empresaId,
         inicio: startDateStr,
         fim: endDateStr,
         tipo: period,

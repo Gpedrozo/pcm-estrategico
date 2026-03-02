@@ -17,7 +17,7 @@ const RLS_TABLES = [
   'ordens_servico', 'equipamentos', 'mecanicos', 'materiais', 'planos_preventivos',
   'fmea', 'analise_causa_raiz', 'inspecoes', 'medicoes_preditivas', 'melhorias',
   'incidentes_ssma', 'fornecedores', 'contratos', 'documentos_tecnicos',
-  'solicitacoes_manutencao', 'auditoria', 'profiles', 'user_roles',
+  'solicitacoes_manutencao', 'enterprise_audit_logs', 'profiles', 'user_roles',
   'dados_empresa', 'permissoes_granulares', 'configuracoes_sistema',
   'security_logs', 'rate_limits', 'componentes_equipamento',
   'execucoes_os', 'materiais_os', 'movimentacoes_materiais',
@@ -49,8 +49,8 @@ export function MasterSecurity() {
 
       const [totalLogs, failedAttempts, rateLimits, logins24h, loginsWeek, totalUsers, masterCount, adminCount] = await Promise.all([
         supabase.from('security_logs').select('*', { count: 'exact', head: true }),
-        supabase.from('security_logs').select('*', { count: 'exact', head: true }).in('severity', ['error', 'critical']).gte('created_at', oneDayAgo),
-        supabase.from('security_logs').select('*', { count: 'exact', head: true }).eq('event_type', 'RATE_LIMIT_EXCEEDED').gte('created_at', oneDayAgo),
+        supabase.from('security_logs').select('*', { count: 'exact', head: true }).eq('success', false).gte('created_at', oneDayAgo),
+        supabase.from('security_logs').select('*', { count: 'exact', head: true }).eq('action', 'RATE_LIMIT_EXCEEDED').gte('created_at', oneDayAgo),
         supabase.from('audit_logs').select('*', { count: 'exact', head: true }).eq('action', 'LOGIN').gte('created_at', oneDayAgo),
         supabase.from('audit_logs').select('*', { count: 'exact', head: true }).eq('action', 'LOGIN').gte('created_at', oneWeekAgo),
         supabase.from('profiles').select('*', { count: 'exact', head: true }),
@@ -76,7 +76,7 @@ export function MasterSecurity() {
     queryKey: ['master-security-logs', logPage, logSearch],
     queryFn: async () => {
       let query = supabase.from('security_logs').select('*', { count: 'exact' }).order('created_at', { ascending: false }).range(logPage * PAGE_SIZE, (logPage + 1) * PAGE_SIZE - 1);
-      if (logSearch) query = query.or(`event_type.ilike.%${logSearch}%,source.ilike.%${logSearch}%`);
+      if (logSearch) query = query.or(`action.ilike.%${logSearch}%,resource.ilike.%${logSearch}%,error_message.ilike.%${logSearch}%`);
       const { data, count, error } = await query;
       if (error) throw error;
       return { logs: data || [], total: count ?? 0 };
