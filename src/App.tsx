@@ -5,10 +5,10 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { AppLayout } from "@/components/layout/AppLayout";
+import { EnvironmentGuard } from "@/components/guards/EnvironmentGuard";
 import { SpeedInsights } from "@vercel/speed-insights/react";
 import { TenantProvider } from "@/contexts/TenantContext";
 import { BrandingProvider } from "@/contexts/BrandingContext";
-import { EnvironmentGuard } from "@/guards/EnvironmentGuard";
 import { isOwnerDomain } from "@/lib/security";
 
 import OwnerPortal from "@/owner/OwnerPortal";
@@ -66,6 +66,7 @@ function OwnerRoutes() {
           </EnvironmentGuard>
         }
       />
+
       <Route
         path="/"
         element={
@@ -74,6 +75,7 @@ function OwnerRoutes() {
           </EnvironmentGuard>
         }
       />
+
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );
