@@ -12,7 +12,7 @@ export function isOwnerDomain(hostname: string = window.location.hostname): bool
   return hostname.toLowerCase() === OWNER_DOMAIN;
 }
 
-export function resolveTenantSlug(hostname: string = window.location.hostname): string {
+export function resolveEmpresaSlug(hostname: string = window.location.hostname): string {
   const lowerHost = hostname.toLowerCase();
 
   if (lowerHost === TENANT_BASE_DOMAIN) return 'default';
@@ -22,6 +22,8 @@ export function resolveTenantSlug(hostname: string = window.location.hostname): 
   const [subdomain] = withoutBase.split('.');
   return subdomain || 'default';
 }
+
+export const resolveTenantSlug = resolveEmpresaSlug;
 
 export function isSystemOwnerEmail(email?: string | null): boolean {
   if (!email) return false;
@@ -47,16 +49,16 @@ export function getEffectiveRole(options: {
 }
 
 export function buildSecureSignupMetadata(options: {
-  tenantId: string;
-  tenantSlug: string;
+  empresaId: string;
+  empresaSlug: string;
   email: string;
   requestedRole?: AppRole;
 }) {
-  const { tenantId, tenantSlug, email, requestedRole } = options;
+  const { empresaId, empresaSlug, email, requestedRole } = options;
 
   return {
-    tenant_id: tenantId,
-    tenant_slug: tenantSlug,
+    empresa_id: empresaId,
+    empresa_slug: empresaSlug,
     requested_role: requestedRole || 'USUARIO',
     email,
   };

@@ -4,9 +4,10 @@ import type { Session } from '@supabase/supabase-js';
 import {
   buildSecureSignupMetadata,
   getEffectiveRole,
-  resolveTenantSlug,
+  resolveEmpresaSlug,
   type AppRole,
 } from '@/lib/security';
+import { logger } from '@/lib/logger';
 
 interface AuthUser {
   id: string;
@@ -49,7 +50,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       const { data: roleData } = await supabase
         .from('user_roles')
-        .select('role, tenant_id')
+        .select('role, empresa_id')
         .eq('user_id', userId)
         .order('created_at', { ascending: true });
 
@@ -57,7 +58,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         (item: { role: AppRole }) => item.role
       );
 
-      const tenantId: string | null = (roleData || [])[0]?.tenant_id || null;
+      const tenantId: string | null = (roleData || [])[0]?.empresa_id || null;
 
       const effectiveRole = getEffectiveRole({ roles, email });
 
@@ -68,7 +69,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         tenantId,
       };
     } catch (error) {
-      console.error('Error fetching user profile:', error);
+      logger.error('fetch_user_profile_failed', {
+        error: String(error),
+        userId,
+      });
 
       const roles: AppRole[] = ['USUARIO'];
 
@@ -170,16 +174,34 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signup = useCallback(async (email: string, password: string, nome: string): Promise<{ error: string | null }> => {
     const redirectUrl = `${window.location.origin}/`;
-    const tenantSlug = resolveTenantSlug(window.location.hostname);
+    const empresaSlug = resolveEmpresaSlug(window.location.hostname);
+    const hostname = window.location.hostname;
 
-    const { data: tenantData, error: tenantError } = await supabase
-      .from('tenants' as any)
-      .select('id, slug')
-      .eq('slug', tenantSlug)
+    const { data: domainConfig, error: domainConfigError } = await supabase
+      .from('empresa_config')
+      .select('empresa_id')
+      .eq('dominio_custom', hostname)
       .maybeSingle();
 
-    if (tenantError || !tenantData?.id) {
-      return { error: 'Tenant inválido. Contate o administrador.' };
+    if (domainConfigError) {
+      return { error: 'Falha ao validar domínio da empresa.' };
+    }
+
+    let empresaId = domainConfig?.empresa_id ?? null;
+
+    if (!empresaId) {
+      const { data: defaultEmpresa, error: defaultEmpresaError } = await supabase
+        .from('empresas')
+        .select('id')
+        .eq('status', 'active')
+        .limit(1)
+        .maybeSingle();
+
+      if (defaultEmpresaError || !defaultEmpresa?.id) {
+        return { error: 'Empresa inválida. Contate o administrador.' };
+      }
+
+      empresaId = defaultEmpresa.id;
     }
 
     const { error } = await supabase.auth.signUp({
@@ -190,8 +212,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         data: {
           nome,
           ...buildSecureSignupMetadata({
-            tenantId: tenantData.id,
-            tenantSlug: tenantData.slug,
+            empresaId,
+            empresaSlug,
             email,
           }),
         },

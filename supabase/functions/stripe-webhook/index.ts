@@ -2,10 +2,44 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import Stripe from "npm:stripe@14.25.0";
 import { createClient } from "jsr:@supabase/supabase-js@2";
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, stripe-signature",
-};
+const allowedOrigins = (Deno.env.get("CORS_ALLOWED_ORIGINS") ?? "")
+  .split(",")
+  .map((origin) => origin.trim())
+  .filter(Boolean);
+
+function resolveCorsHeaders(origin: string | null) {
+  const allowOrigin = origin && allowedOrigins.includes(origin) ? origin : "";
+  return {
+    "Access-Control-Allow-Origin": allowOrigin,
+    "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, stripe-signature",
+    "Access-Control-Allow-Methods": "POST, OPTIONS",
+    Vary: "Origin",
+  };
+}
+
+const webhookRateWindowMs = 60_000;
+const webhookRateLimit = 120;
+const requestCounter = new Map<string, { count: number; windowStart: number }>();
+
+function requestKey(req: Request): string {
+  const forwardedFor = req.headers.get("x-forwarded-for") ?? "";
+  return forwardedFor.split(",")[0]?.trim() || "unknown";
+}
+
+function isRateLimited(req: Request): boolean {
+  const now = Date.now();
+  const key = requestKey(req);
+  const entry = requestCounter.get(key);
+
+  if (!entry || now - entry.windowStart > webhookRateWindowMs) {
+    requestCounter.set(key, { count: 1, windowStart: now });
+    return false;
+  }
+
+  entry.count += 1;
+  requestCounter.set(key, entry);
+  return entry.count > webhookRateLimit;
+}
 
 const stripeSecretKey = Deno.env.get("STRIPE_SECRET_KEY") ?? "";
 const stripeWebhookSecret = Deno.env.get("STRIPE_WEBHOOK_SECRET") ?? "";
@@ -147,6 +181,16 @@ async function handleSubscriptionChange(payload: Stripe.Subscription) {
 }
 
 Deno.serve(async (req) => {
+  const origin = req.headers.get("origin");
+  const corsHeaders = resolveCorsHeaders(origin);
+
+  if (origin && !allowedOrigins.includes(origin)) {
+    return new Response(JSON.stringify({ error: "Origin not allowed" }), {
+      status: 403,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
@@ -154,6 +198,13 @@ Deno.serve(async (req) => {
   if (req.method !== "POST") {
     return new Response(JSON.stringify({ error: "Method not allowed" }), {
       status: 405,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+
+  if (isRateLimited(req)) {
+    return new Response(JSON.stringify({ error: "Too many requests" }), {
+      status: 429,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
@@ -176,6 +227,13 @@ Deno.serve(async (req) => {
     }
 
     const payload = await req.text();
+
+    if (payload.length > 1_000_000) {
+      return new Response(JSON.stringify({ error: "Payload too large" }), {
+        status: 413,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
 
     const event = await stripe.webhooks.constructEventAsync(
       payload,

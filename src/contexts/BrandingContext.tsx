@@ -41,9 +41,9 @@ export function BrandingProvider({ children }: { children: React.ReactNode }) {
       setError(null);
 
       const { data, error: fetchError } = await supabase
-        .from('dados_empresa' as any)
+        .from('dados_empresa')
         .select('razao_social, nome_fantasia, logo_principal_url, logo_login_url, logo_menu_url, logo_os_url, logo_pdf_url, logo_relatorio_url')
-        .eq('tenant_id', tenant.id)
+        .eq('empresa_id', tenant.id)
         .limit(1)
         .maybeSingle();
 

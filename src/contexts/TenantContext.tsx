@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { resolveTenantSlug } from '@/lib/security';
+import { resolveEmpresaSlug } from '@/lib/security';
 
 export interface Tenant {
   id: string;
@@ -24,7 +24,7 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const tenantSlug = useMemo(() => resolveTenantSlug(window.location.hostname), []);
+  const tenantSlug = useMemo(() => resolveEmpresaSlug(window.location.hostname), []);
 
   useEffect(() => {
     let isMounted = true;
@@ -33,19 +33,63 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
       setIsLoading(true);
       setError(null);
 
+      const hostname = window.location.hostname;
+
+      const { data: domainConfig, error: domainError } = await supabase
+        .from('empresa_config')
+        .select('empresa_id')
+        .eq('dominio_custom', hostname)
+        .maybeSingle();
+
+      if (!isMounted) return;
+
+      if (domainError) {
+        setTenant(null);
+        setError(domainError.message);
+        setIsLoading(false);
+        return;
+      }
+
+      let empresaId = domainConfig?.empresa_id ?? null;
+
+      if (!empresaId) {
+        const { data: defaultEmpresa, error: defaultError } = await supabase
+          .from('empresas')
+          .select('id')
+          .eq('status', 'active')
+          .limit(1)
+          .maybeSingle();
+
+        if (!isMounted) return;
+
+        if (defaultError || !defaultEmpresa?.id) {
+          setTenant(null);
+          setError(defaultError?.message || 'Empresa padrão não encontrada');
+          setIsLoading(false);
+          return;
+        }
+
+        empresaId = defaultEmpresa.id;
+      }
+
       const { data, error: fetchError } = await supabase
-        .from('tenants' as any)
-        .select('id, slug, name, is_active')
-        .eq('slug', tenantSlug)
+        .from('empresas')
+        .select('id, nome, ativo')
+        .eq('id', empresaId)
         .maybeSingle();
 
       if (!isMounted) return;
 
       if (fetchError || !data) {
         setTenant(null);
-        setError(fetchError?.message || 'Tenant nao encontrado');
+        setError(fetchError?.message || 'Empresa não encontrada');
       } else {
-        setTenant(data as Tenant);
+        setTenant({
+          id: data.id,
+          slug: tenantSlug,
+          name: data.nome,
+          is_active: data.ativo,
+        });
       }
 
       setIsLoading(false);

@@ -47,8 +47,20 @@ import Instalar from "./pages/Instalar";
 import MasterTI from "./pages/MasterTI";
 import ArquivosOwner from "./pages/ArquivosOwner";
 import RootCauseAIPage from "./modules/rootCauseAI/RootCauseAIPage";
+import { logger } from "@/lib/logger";
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: 1,
+    },
+    mutations: {
+      onError: (error) => {
+        logger.error("mutation_failed", { error: String(error) });
+      },
+    },
+  },
+});
 
 const AdminOnlyRoute = ({ children }: { children: React.ReactNode }) => {
   const { isAdmin } = useAuth();

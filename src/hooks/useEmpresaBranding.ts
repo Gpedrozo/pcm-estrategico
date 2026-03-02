@@ -38,14 +38,14 @@ export function useEmpresaBranding() {
       const hostname = typeof window === 'undefined' ? null : window.location.hostname;
 
       const domainQuery = supabase
-        .from('empresa_config' as never)
+        .from('empresa_config')
         .select('dominio_custom,logo_url,cor_primaria,cor_secundaria,nome_exibicao,favicon_url')
         .eq('dominio_custom', hostname ?? '')
         .limit(1)
         .maybeSingle();
 
       const fallbackQuery = supabase
-        .from('empresa_config' as never)
+        .from('empresa_config')
         .select('dominio_custom,logo_url,cor_primaria,cor_secundaria,nome_exibicao,favicon_url')
         .is('dominio_custom', null)
         .limit(1)

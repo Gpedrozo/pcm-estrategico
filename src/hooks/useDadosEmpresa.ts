@@ -5,7 +5,7 @@ import { useTenant } from '@/contexts/TenantContext';
 
 export interface DadosEmpresa {
   id: string;
-  tenant_id?: string | null;
+  empresa_id?: string | null;
   razao_social: string;
   nome_fantasia: string | null;
   cnpj: string | null;
@@ -42,7 +42,7 @@ export function useDadosEmpresa() {
       const { data, error } = await supabase
         .from('dados_empresa')
         .select('*')
-        .eq('tenant_id', tenant?.id || '')
+        .eq('empresa_id', tenant?.id || '')
         .limit(1)
         .maybeSingle();
 

@@ -1,10 +1,46 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "jsr:@supabase/supabase-js@2";
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-};
+const allowedOrigins = (Deno.env.get("CORS_ALLOWED_ORIGINS") ?? "")
+  .split(",")
+  .map((origin) => origin.trim())
+  .filter(Boolean);
+
+const healthCheckApiKey = Deno.env.get("SYSTEM_HEALTH_API_KEY") ?? "";
+
+function resolveCorsHeaders(origin: string | null) {
+  const allowOrigin = origin && allowedOrigins.includes(origin) ? origin : "";
+  return {
+    "Access-Control-Allow-Origin": allowOrigin,
+    "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-system-health-key",
+    "Access-Control-Allow-Methods": "GET, OPTIONS",
+    Vary: "Origin",
+  };
+}
+
+const rateWindowMs = 60_000;
+const rateLimit = 60;
+const ipBucket = new Map<string, { count: number; windowStart: number }>();
+
+function resolveClientIp(req: Request): string {
+  const forwardedFor = req.headers.get("x-forwarded-for") ?? "";
+  return forwardedFor.split(",")[0]?.trim() || "unknown";
+}
+
+function isRateLimited(req: Request): boolean {
+  const key = resolveClientIp(req);
+  const now = Date.now();
+  const item = ipBucket.get(key);
+
+  if (!item || now - item.windowStart > rateWindowMs) {
+    ipBucket.set(key, { count: 1, windowStart: now });
+    return false;
+  }
+
+  item.count += 1;
+  ipBucket.set(key, item);
+  return item.count > rateLimit;
+}
 
 interface Material {
   id: string;
@@ -30,8 +66,47 @@ interface MedicaoCritica {
 }
 
 Deno.serve(async (req) => {
+  const origin = req.headers.get("origin");
+  const corsHeaders = resolveCorsHeaders(origin);
+
+  if (origin && !allowedOrigins.includes(origin)) {
+    return new Response(JSON.stringify({ error: "Origin not allowed" }), {
+      status: 403,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
+  }
+
+  if (req.method !== "GET") {
+    return new Response(JSON.stringify({ error: "Method not allowed" }), {
+      status: 405,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+
+  if (!healthCheckApiKey) {
+    return new Response(JSON.stringify({ error: "Health check key not configured" }), {
+      status: 500,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+
+  const providedKey = req.headers.get("x-system-health-key");
+  if (!providedKey || providedKey !== healthCheckApiKey) {
+    return new Response(JSON.stringify({ error: "Unauthorized" }), {
+      status: 401,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+
+  if (isRateLimited(req)) {
+    return new Response(JSON.stringify({ error: "Too many requests" }), {
+      status: 429,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
   }
 
   try {
@@ -157,10 +232,10 @@ Deno.serve(async (req) => {
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
 
-  } catch (error: any) {
-    console.error("Erro na função system-health-check:", error);
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : "Unexpected error";
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ error: message }),
       { 
         status: 500, 
         headers: { ...corsHeaders, "Content-Type": "application/json" } 
