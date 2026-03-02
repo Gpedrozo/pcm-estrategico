@@ -45,6 +45,12 @@ export default function Lubrificacao() {
     });
   }, [planos, search, equipamentoFilter, statusFilter]);
 
+  const errorMessage = String((error as any)?.message || error || '');
+  const missingTableError =
+    errorMessage.includes("Could not find the table 'public.planos_lubrificacao'")
+    || errorMessage.includes('PGRST205')
+    || errorMessage.includes('schema cache');
+
   if (isLoading) {
     return (
       <div className="space-y-4">
@@ -58,7 +64,25 @@ export default function Lubrificacao() {
     return (
       <div className="p-6">
         <h2 className="text-lg font-bold text-destructive">Erro ao carregar planos</h2>
-        <pre className="mt-2 text-sm text-muted-foreground">{String((error as any)?.message || error)}</pre>
+        {missingTableError ? (
+          <div className="mt-3 space-y-3 text-sm">
+            <p className="text-muted-foreground">
+              O módulo de lubrificação está implementado, mas a tabela ainda não existe no banco conectado do Supabase.
+            </p>
+            <div className="bg-card border border-border rounded-md p-3">
+              <p className="font-medium mb-1">Como corrigir agora:</p>
+              <ol className="list-decimal ml-5 space-y-1 text-muted-foreground">
+                <li>Abrir Supabase Dashboard → SQL Editor</li>
+                <li>Executar a migration <span className="font-mono">supabase/migrations/20260224020000_create_lubrificacao.sql</span></li>
+                <li>Executar também <span className="font-mono">supabase/migrations/20260301050000_create_maintenance_schedule.sql</span></li>
+                <li>Atualizar a página</li>
+              </ol>
+            </div>
+            <pre className="text-xs text-muted-foreground whitespace-pre-wrap">{errorMessage}</pre>
+          </div>
+        ) : (
+          <pre className="mt-2 text-sm text-muted-foreground">{errorMessage}</pre>
+        )}
       </div>
     );
   }
