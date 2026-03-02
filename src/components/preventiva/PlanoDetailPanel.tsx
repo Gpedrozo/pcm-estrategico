@@ -557,26 +557,25 @@ export default function PlanoDetailPanel({ plano, equipamentos }: Props) {
       </Dialog>
 
       {/* Print Dialog */}
-      {printDialogOpen && (
-        <PrintPreviewDialog
-          title={`Imprimir Plano Preventivo — ${plano.codigo}`}
-          subtitle="Visualize e imprima o plano para entregar ao técnico"
-          documentTitle={`Preventiva_${plano.codigo}`}
-          trigger={<span />}
-        >
-          {(ref) => (
-            <PreventivaPrintTemplate
-              ref={ref}
-              data={{
-                plano,
-                atividades: atividades || [],
-                tempoTotal: tempoTotalPlano,
-              }}
-              empresa={empresa}
-            />
-          )}
-        </PrintPreviewDialog>
-      )}
+      <PrintPreviewDialog
+        title={`Imprimir Plano Preventivo — ${plano.codigo}`}
+        subtitle="Visualize e imprima o plano para entregar ao técnico"
+        documentTitle={`Preventiva_${plano.codigo}`}
+        open={printDialogOpen}
+        onOpenChange={setPrintDialogOpen}
+      >
+        {(ref) => (
+          <PreventivaPrintTemplate
+            ref={ref}
+            data={{
+              plano,
+              atividades: atividades || [],
+              tempoTotal: tempoTotalPlano,
+            }}
+            empresa={empresa}
+          />
+        )}
+      </PrintPreviewDialog>
     </div>
   );
 }
