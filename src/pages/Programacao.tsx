@@ -1,70 +1,111 @@
-import { useState, useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { 
-  Calendar, 
+  Calendar,
   ChevronLeft, 
   ChevronRight, 
-  Users, 
   Clock,
+  CheckCircle2,
   AlertTriangle,
-  CheckCircle2
+  Wrench,
+  ExternalLink,
+  Edit
 } from 'lucide-react';
-import { useOrdensServico } from '@/hooks/useOrdensServico';
-import { useMecanicos } from '@/hooks/useMecanicos';
+import { useNavigate } from 'react-router-dom';
+import { useEquipamentos } from '@/hooks/useEquipamentos';
+import { useMaintenanceSchedule, useUpdateMaintenanceStatus } from '@/hooks/useMaintenanceSchedule';
 import { format, addDays, startOfWeek, isSameDay, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
+type EventTone = 'executado' | 'vencido' | 'proximo' | 'futuro';
+
 export default function Programacao() {
+  const navigate = useNavigate();
   const [currentWeekStart, setCurrentWeekStart] = useState(() => 
     startOfWeek(new Date(), { weekStartsOn: 1 })
   );
-  const [selectedMecanico, setSelectedMecanico] = useState<string>('all');
-  
-  const { data: ordensServico, isLoading: loadingOS } = useOrdensServico();
-  const { data: mecanicos, isLoading: loadingMecanicos } = useMecanicos();
+  const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
+  const [rescheduleDate, setRescheduleDate] = useState('');
+
+  const weekStartIso = currentWeekStart.toISOString();
+  const weekEndIso = addDays(currentWeekStart, 6).toISOString();
+
+  const { data: eventos, isLoading } = useMaintenanceSchedule(weekStartIso, weekEndIso);
+  const { data: equipamentos } = useEquipamentos();
+  const updateSchedule = useUpdateMaintenanceStatus();
 
   const weekDays = useMemo(() => {
     return Array.from({ length: 7 }, (_, i) => addDays(currentWeekStart, i));
   }, [currentWeekStart]);
 
-  // Group OS by day for the current week
-  const osByDay = useMemo(() => {
-    if (!ordensServico) return {};
+  const selectedEvent = useMemo(
+    () => (eventos || []).find((item) => item.id === selectedEventId) || null,
+    [eventos, selectedEventId],
+  );
+
+  const eventTone = (status: string, dataProgramada: string): EventTone => {
+    const lower = (status || '').toLowerCase();
+    if (['executado', 'concluido', 'concluida'].includes(lower)) return 'executado';
+
+    const today = new Date();
+    const eventDate = new Date(dataProgramada);
+    const msPerDay = 1000 * 60 * 60 * 24;
+    const diffDays = Math.ceil((eventDate.getTime() - today.getTime()) / msPerDay);
+
+    if (diffDays < 0) return 'vencido';
+    if (diffDays <= 7) return 'proximo';
+    return 'futuro';
+  };
+
+  const toneClasses = (tone: EventTone) => {
+    if (tone === 'executado') return 'border-l-4 border-l-green-500 bg-green-500/5';
+    if (tone === 'vencido') return 'border-l-4 border-l-red-500 bg-red-500/5';
+    if (tone === 'proximo') return 'border-l-4 border-l-yellow-500 bg-yellow-500/5';
+    return 'border-l-4 border-l-blue-500 bg-blue-500/5';
+  };
+
+  const toneLabel = (tone: EventTone) => {
+    if (tone === 'executado') return 'Executado';
+    if (tone === 'vencido') return 'Vencido';
+    if (tone === 'proximo') return 'Próximo';
+    return 'Futuro';
+  };
+
+  const eventosByDay = useMemo(() => {
+    if (!eventos) return {};
     
-    const grouped: { [key: string]: typeof ordensServico } = {};
+    const grouped: { [key: string]: typeof eventos } = {};
     
     weekDays.forEach(day => {
       const dayKey = format(day, 'yyyy-MM-dd');
-      grouped[dayKey] = ordensServico.filter(os => {
-        if (os.status === 'FECHADA') return false;
-        const osDate = parseISO(os.data_solicitacao);
-        return isSameDay(osDate, day);
+      grouped[dayKey] = eventos.filter((evento) => {
+        const eventDate = parseISO(evento.data_programada);
+        return isSameDay(eventDate, day);
       });
     });
     
     return grouped;
-  }, [ordensServico, weekDays]);
+  }, [eventos, weekDays]);
 
-  // Active mechanics for assignment
-  const activeMecanicos = useMemo(() => 
-    mecanicos?.filter(m => m.ativo) || [], 
-    [mecanicos]
-  );
-
-  // Stats
   const stats = useMemo(() => {
-    const allOs = Object.values(osByDay).flat();
+    const allEvents = Object.values(eventosByDay).flat();
+    const executed = allEvents.filter((item) => eventTone(item.status, item.data_programada) === 'executado').length;
+    const overdue = allEvents.filter((item) => eventTone(item.status, item.data_programada) === 'vencido').length;
+    const near = allEvents.filter((item) => eventTone(item.status, item.data_programada) === 'proximo').length;
+
     return {
-      total: allOs.length,
-      programadas: allOs.filter(os => os.status === 'EM_ANDAMENTO').length,
-      aguardando: allOs.filter(os => os.status === 'AGUARDANDO_MATERIAL').length,
-      mecanicosDisponiveis: activeMecanicos.length,
+      total: allEvents.length,
+      executadas: executed,
+      vencidas: overdue,
+      proximas: near,
     };
-  }, [osByDay, activeMecanicos]);
+  }, [eventosByDay]);
 
   const navigateWeek = (direction: 'prev' | 'next') => {
     setCurrentWeekStart(prev => 
@@ -75,17 +116,6 @@ export default function Programacao() {
   const goToToday = () => {
     setCurrentWeekStart(startOfWeek(new Date(), { weekStartsOn: 1 }));
   };
-
-  const getPriorityBorder = (priority: string) => {
-    switch (priority) {
-      case 'URGENTE': return 'border-l-4 border-l-destructive';
-      case 'ALTA': return 'border-l-4 border-l-warning';
-      case 'MEDIA': return 'border-l-4 border-l-info';
-      default: return 'border-l-4 border-l-muted';
-    }
-  };
-
-  const isLoading = loadingOS || loadingMecanicos;
 
   if (isLoading) {
     return (
@@ -105,18 +135,17 @@ export default function Programacao() {
         <div>
           <h1 className="text-2xl font-bold text-foreground">Programação de Manutenção</h1>
           <p className="text-muted-foreground">
-            Visualização e alocação de ordens de serviço
+            Calendário central de manutenções programadas
           </p>
         </div>
       </div>
 
-      {/* Stats */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center gap-2">
               <Calendar className="h-5 w-5 text-primary" />
-              <span className="text-sm text-muted-foreground">OS na Semana</span>
+              <span className="text-sm text-muted-foreground">Programações</span>
             </div>
             <p className="text-2xl font-bold">{stats.total}</p>
           </CardContent>
@@ -124,33 +153,32 @@ export default function Programacao() {
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center gap-2">
-              <CheckCircle2 className="h-5 w-5 text-info" />
-              <span className="text-sm text-muted-foreground">Em Andamento</span>
+              <CheckCircle2 className="h-5 w-5 text-green-500" />
+              <span className="text-sm text-muted-foreground">Executadas</span>
             </div>
-            <p className="text-2xl font-bold text-info">{stats.programadas}</p>
+            <p className="text-2xl font-bold text-green-500">{stats.executadas}</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center gap-2">
-              <Clock className="h-5 w-5 text-warning" />
-              <span className="text-sm text-muted-foreground">Aguardando</span>
+              <AlertTriangle className="h-5 w-5 text-red-500" />
+              <span className="text-sm text-muted-foreground">Vencidas</span>
             </div>
-            <p className="text-2xl font-bold text-warning">{stats.aguardando}</p>
+            <p className="text-2xl font-bold text-red-500">{stats.vencidas}</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center gap-2">
-              <Users className="h-5 w-5 text-success" />
-              <span className="text-sm text-muted-foreground">Mecânicos</span>
+              <Clock className="h-5 w-5 text-yellow-500" />
+              <span className="text-sm text-muted-foreground">Próximas</span>
             </div>
-            <p className="text-2xl font-bold">{stats.mecanicosDisponiveis}</p>
+            <p className="text-2xl font-bold text-yellow-500">{stats.proximas}</p>
           </CardContent>
         </Card>
       </div>
 
-      {/* Calendar Navigation */}
       <div className="flex items-center justify-between bg-card border border-border rounded-lg p-4">
         <div className="flex items-center gap-2">
           <Button variant="outline" size="icon" onClick={() => navigateWeek('prev')}>
@@ -166,24 +194,13 @@ export default function Programacao() {
             {format(currentWeekStart, "dd 'de' MMMM", { locale: ptBR })} - {format(addDays(currentWeekStart, 6), "dd 'de' MMMM yyyy", { locale: ptBR })}
           </span>
         </div>
-        <Select value={selectedMecanico} onValueChange={setSelectedMecanico}>
-          <SelectTrigger className="w-48">
-            <SelectValue placeholder="Filtrar mecânico" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Todos os mecânicos</SelectItem>
-            {activeMecanicos.map(m => (
-              <SelectItem key={m.id} value={m.id}>{m.nome}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <p className="text-sm text-muted-foreground">Sem ordens de serviço nesta agenda</p>
       </div>
 
-      {/* Weekly Calendar Grid */}
       <div className="grid grid-cols-7 gap-2">
         {weekDays.map((day) => {
           const dayKey = format(day, 'yyyy-MM-dd');
-          const dayOS = osByDay[dayKey] || [];
+          const dayEvents = eventosByDay[dayKey] || [];
           const isToday = isSameDay(day, new Date());
           const isWeekend = day.getDay() === 0 || day.getDay() === 6;
           
@@ -203,31 +220,31 @@ export default function Programacao() {
                 </CardTitle>
               </CardHeader>
               <CardContent className="p-2 space-y-2 overflow-y-auto max-h-[250px]">
-                {dayOS.length === 0 ? (
+                {dayEvents.length === 0 ? (
                   <p className="text-xs text-muted-foreground text-center py-4">
-                    Sem OS programadas
+                    Sem itens programados
                   </p>
                 ) : (
-                  dayOS.map(os => (
+                  dayEvents.map((evento) => {
+                    const tone = eventTone(evento.status, evento.data_programada);
+                    return (
                     <div 
-                      key={os.id} 
-                      className={`p-2 rounded bg-card border text-xs cursor-pointer hover:shadow-md transition-shadow ${getPriorityBorder(os.prioridade)}`}
+                      key={evento.id}
+                      onClick={() => {
+                        setSelectedEventId(evento.id);
+                        setRescheduleDate(evento.data_programada.slice(0, 16));
+                      }}
+                      className={`p-2 rounded border text-xs cursor-pointer hover:shadow-md transition-shadow ${toneClasses(tone)}`}
                     >
                       <div className="flex items-center justify-between mb-1">
-                        <span className="font-mono font-bold">#{os.numero_os}</span>
-                        {os.prioridade === 'URGENTE' && (
-                          <AlertTriangle className="h-3 w-3 text-destructive" />
-                        )}
+                        <Badge variant="outline" className="text-[10px] px-1 py-0">{evento.tipo}</Badge>
+                        <span className="text-[10px] text-muted-foreground">{toneLabel(tone)}</span>
                       </div>
-                      <p className="font-medium text-primary truncate">{os.tag}</p>
-                      <p className="text-muted-foreground truncate">{os.equipamento}</p>
-                      <div className="flex items-center gap-1 mt-1">
-                        <Badge variant="outline" className="text-[10px] px-1 py-0">
-                          {os.tipo}
-                        </Badge>
-                      </div>
+                      <p className="font-medium text-primary truncate">{evento.titulo}</p>
+                      <p className="text-muted-foreground truncate">{new Date(evento.data_programada).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</p>
                     </div>
-                  ))
+                    );
+                  })
                 )}
               </CardContent>
             </Card>
@@ -235,36 +252,78 @@ export default function Programacao() {
         })}
       </div>
 
-      {/* Mechanic Availability */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Users className="h-5 w-5" />
-            Disponibilidade de Mecânicos
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
-            {activeMecanicos.map(mecanico => (
-              <div 
-                key={mecanico.id} 
-                className="p-3 border border-border rounded-lg text-center hover:bg-accent/50 transition-colors"
-              >
-                <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-2">
-                  <span className="font-bold text-primary">
-                    {mecanico.nome.charAt(0)}
-                  </span>
-                </div>
-                <p className="font-medium text-sm truncate">{mecanico.nome}</p>
-                <p className="text-xs text-muted-foreground">{mecanico.especialidade || mecanico.tipo}</p>
-                <Badge variant="outline" className="mt-2 text-xs">
-                  Disponível
-                </Badge>
+      <Dialog open={!!selectedEvent} onOpenChange={(open) => !open && setSelectedEventId(null)}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Programação de Manutenção</DialogTitle>
+          </DialogHeader>
+
+          {selectedEvent && (
+            <div className="space-y-4">
+              <div className="space-y-2 text-sm">
+                <p><span className="text-muted-foreground">Tipo:</span> {selectedEvent.tipo}</p>
+                <p>
+                  <span className="text-muted-foreground">Equipamento:</span>{' '}
+                  {equipamentos?.find((item) => item.id === selectedEvent.equipamento_id)?.nome || 'Não informado'}
+                </p>
+                <p><span className="text-muted-foreground">Descrição:</span> {selectedEvent.descricao || '—'}</p>
+                <p><span className="text-muted-foreground">Data programada:</span> {new Date(selectedEvent.data_programada).toLocaleString('pt-BR')}</p>
+                <p><span className="text-muted-foreground">Responsável:</span> {selectedEvent.responsavel || '—'}</p>
+                <p><span className="text-muted-foreground">Status:</span> {selectedEvent.status}</p>
               </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
+
+              <div className="space-y-2">
+                <Label>Reagendar data</Label>
+                <Input
+                  type="datetime-local"
+                  value={rescheduleDate}
+                  onChange={(e) => setRescheduleDate(e.target.value)}
+                />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                <Button
+                  className="gap-2"
+                  onClick={() => updateSchedule.mutate({ id: selectedEvent.id, status: 'executado' })}
+                >
+                  <CheckCircle2 className="h-4 w-4" /> Marcar como executado
+                </Button>
+
+                <Button
+                  variant="outline"
+                  className="gap-2"
+                  onClick={() => {
+                    if (!rescheduleDate) return;
+                    updateSchedule.mutate({
+                      id: selectedEvent.id,
+                      dataProgramada: new Date(rescheduleDate).toISOString(),
+                      status: 'programado',
+                    });
+                  }}
+                >
+                  <Clock className="h-4 w-4" /> Reagendar data
+                </Button>
+
+                <Button
+                  variant="outline"
+                  className="gap-2"
+                  onClick={() => navigate(`/${selectedEvent.tipo === 'inspecao' ? 'inspecoes' : selectedEvent.tipo}?edit=${selectedEvent.origem_id}`)}
+                >
+                  <Edit className="h-4 w-4" /> Editar plano
+                </Button>
+
+                <Button
+                  variant="outline"
+                  className="gap-2"
+                  onClick={() => navigate(`/${selectedEvent.tipo === 'inspecao' ? 'inspecoes' : selectedEvent.tipo}?item=${selectedEvent.origem_id}`)}
+                >
+                  <ExternalLink className="h-4 w-4" /> Abrir item original
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

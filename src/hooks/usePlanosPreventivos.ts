@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { deleteMaintenanceSchedule, upsertMaintenanceSchedule } from '@/services/maintenanceSchedule';
 
 export interface PlanoPreventivo {
   id: string;
@@ -92,6 +93,16 @@ export function useCreatePlanoPreventivo() {
         .single();
 
       if (error) throw error;
+      await upsertMaintenanceSchedule({
+        tipo: 'preventiva',
+        origemId: data.id,
+        equipamentoId: data.equipamento_id,
+        titulo: `${data.codigo} • ${data.nome}`,
+        descricao: data.descricao,
+        dataProgramada: data.proxima_execucao || new Date().toISOString(),
+        status: data.ativo ? 'programado' : 'inativo',
+        responsavel: data.responsavel_nome,
+      });
       return data as PlanoPreventivo;
     },
     onSuccess: () => {
@@ -126,6 +137,17 @@ export function useUpdatePlanoPreventivo() {
         .single();
 
       if (error) throw error;
+
+      await upsertMaintenanceSchedule({
+        tipo: 'preventiva',
+        origemId: data.id,
+        equipamentoId: data.equipamento_id,
+        titulo: `${data.codigo} • ${data.nome}`,
+        descricao: data.descricao,
+        dataProgramada: data.proxima_execucao || new Date().toISOString(),
+        status: data.ativo ? 'programado' : 'inativo',
+        responsavel: data.responsavel_nome,
+      });
       return data as PlanoPreventivo;
     },
     onSuccess: () => {
@@ -151,6 +173,8 @@ export function useDeletePlanoPreventivo() {
 
   return useMutation({
     mutationFn: async (id: string) => {
+      await deleteMaintenanceSchedule('preventiva', id);
+
       const { error } = await supabase
         .from('planos_preventivos')
         .delete()

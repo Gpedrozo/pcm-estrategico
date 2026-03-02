@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import type { PlanoLubrificacao, PlanoLubrificacaoInsert } from '@/types/lubrificacao';
+import { deleteMaintenanceSchedule, upsertMaintenanceSchedule } from '@/services/maintenanceSchedule';
 
 export function usePlanosLubrificacao() {
   return useQuery({
@@ -9,7 +10,7 @@ export function usePlanosLubrificacao() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('planos_lubrificacao')
-        .select('id,codigo,nome,tag,proxima_execucao,ativo,tempo_estimado_min')
+        .select('*')
         .order('codigo')
         .limit(200);
 
@@ -33,12 +34,89 @@ export function useCreatePlanoLubrificacao() {
         .single();
 
       if (error) throw error;
+
+      await upsertMaintenanceSchedule({
+        tipo: 'lubrificacao',
+        origemId: data.id,
+        equipamentoId: data.equipamento_id,
+        titulo: `${data.codigo} • ${data.nome}`,
+        descricao: data.descricao || data.observacoes,
+        dataProgramada: data.proxima_execucao || new Date().toISOString(),
+        status: data.status || (data.ativo ? 'programado' : 'inativo'),
+        responsavel: data.responsavel_nome || data.responsavel,
+      });
+
       return data as PlanoLubrificacao;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['planos-lubrificacao'] });
       queryClient.invalidateQueries({ queryKey: ['document-sequences'] });
       toast({ title: 'Plano criado', description: 'Plano de lubrificação criado.' });
+    },
+    onError: (error: any) => {
+      toast({ title: 'Erro', description: error.message, variant: 'destructive' });
+    },
+  });
+}
+
+export function useUpdatePlanoLubrificacao() {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: async ({ id, ...updates }: Partial<PlanoLubrificacao> & { id: string }) => {
+      const { data, error } = await supabase
+        .from('planos_lubrificacao')
+        .update(updates)
+        .eq('id', id)
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      await upsertMaintenanceSchedule({
+        tipo: 'lubrificacao',
+        origemId: data.id,
+        equipamentoId: data.equipamento_id,
+        titulo: `${data.codigo} • ${data.nome}`,
+        descricao: data.descricao || data.observacoes,
+        dataProgramada: data.proxima_execucao || new Date().toISOString(),
+        status: data.status || (data.ativo ? 'programado' : 'inativo'),
+        responsavel: data.responsavel_nome || data.responsavel,
+      });
+
+      return data as PlanoLubrificacao;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['planos-lubrificacao'] });
+      queryClient.invalidateQueries({ queryKey: ['maintenance-schedule'] });
+      toast({ title: 'Plano atualizado', description: 'Plano de lubrificação atualizado com sucesso.' });
+    },
+    onError: (error: any) => {
+      toast({ title: 'Erro', description: error.message, variant: 'destructive' });
+    },
+  });
+}
+
+export function useDeletePlanoLubrificacao() {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: async (id: string) => {
+      await deleteMaintenanceSchedule('lubrificacao', id);
+
+      const { error } = await supabase
+        .from('planos_lubrificacao')
+        .delete()
+        .eq('id', id);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['planos-lubrificacao'] });
+      queryClient.invalidateQueries({ queryKey: ['maintenance-schedule'] });
+      toast({ title: 'Plano excluído', description: 'Plano de lubrificação excluído com sucesso.' });
     },
     onError: (error: any) => {
       toast({ title: 'Erro', description: error.message, variant: 'destructive' });

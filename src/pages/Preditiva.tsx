@@ -15,6 +15,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
+import { upsertMaintenanceSchedule } from '@/services/maintenanceSchedule';
 
 interface MedicaoPreditiva {
   id: string;
@@ -54,6 +55,18 @@ const useCreateMedicao = () => {
         .select()
         .single();
       if (error) throw error;
+
+      await upsertMaintenanceSchedule({
+        tipo: 'preditiva',
+        origemId: result.id,
+        equipamentoId: result.equipamento_id,
+        titulo: `${result.tag} • ${result.tipo_medicao}`,
+        descricao: result.observacoes,
+        dataProgramada: result.created_at || new Date().toISOString(),
+        status: result.status || 'programado',
+        responsavel: result.responsavel_nome,
+      });
+
       return result;
     },
     onSuccess: () => {
