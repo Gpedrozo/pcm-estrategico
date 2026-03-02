@@ -49,6 +49,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { format, subDays, subMonths, isWithinInterval, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
+import { normalizeOSStatus, normalizeOSType } from '@/lib/osBadges';
 import {
   BarChart,
   Bar,
@@ -97,7 +98,7 @@ function OSDetailsModal({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-3">
             <span className="font-mono text-xl">O.S {os.numero_os}</span>
-            <OSStatusBadge status={os.status as any} />
+            <OSStatusBadge status={normalizeOSStatus(os.status)} />
           </DialogTitle>
         </DialogHeader>
 
@@ -113,7 +114,7 @@ function OSDetailsModal({
             </div>
             <div>
               <Label className="text-xs text-muted-foreground">Tipo</Label>
-              <p><OSTypeBadge tipo={os.tipo as any} /></p>
+              <p><OSTypeBadge tipo={normalizeOSType(os.tipo)} /></p>
             </div>
             <div>
               <Label className="text-xs text-muted-foreground">Prioridade</Label>
@@ -609,7 +610,7 @@ export default function HistoricoOS() {
                         <td className="font-mono font-medium">{os.numero_os}</td>
                         <td className="font-mono text-primary font-medium">{os.tag}</td>
                         <td className="max-w-[200px] truncate">{os.equipamento}</td>
-                        <td><OSTypeBadge tipo={os.tipo as any} /></td>
+                        <td><OSTypeBadge tipo={normalizeOSType(os.tipo)} /></td>
                         <td>
                           <span className={`text-xs font-medium px-2 py-1 rounded ${
                             os.prioridade === 'URGENTE' ? 'bg-destructive/10 text-destructive' :
@@ -620,7 +621,7 @@ export default function HistoricoOS() {
                             {os.prioridade}
                           </span>
                         </td>
-                        <td><OSStatusBadge status={os.status as any} /></td>
+                        <td><OSStatusBadge status={normalizeOSStatus(os.status)} /></td>
                         <td className="text-muted-foreground">{formatDate(os.data_solicitacao)}</td>
                         <td>{os.solicitante}</td>
                         <td>

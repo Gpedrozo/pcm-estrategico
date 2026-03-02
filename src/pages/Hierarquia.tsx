@@ -118,13 +118,13 @@ export default function Hierarquia() {
   const filteredAreas = areas?.filter(a => 
     a.codigo.toLowerCase().includes(searchTerm.toLowerCase()) ||
     a.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (a.planta as any)?.nome?.toLowerCase().includes(searchTerm.toLowerCase())
+    a.planta?.nome?.toLowerCase().includes(searchTerm.toLowerCase())
   ) || [];
   
   const filteredSistemas = sistemas?.filter(s => 
     s.codigo.toLowerCase().includes(searchTerm.toLowerCase()) ||
     s.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (s.area as any)?.nome?.toLowerCase().includes(searchTerm.toLowerCase())
+    s.area?.nome?.toLowerCase().includes(searchTerm.toLowerCase())
   ) || [];
   
   const openCreateModal = () => {
@@ -360,7 +360,7 @@ export default function Hierarquia() {
                       <td className="font-mono font-medium text-primary">{area.codigo}</td>
                       <td className="font-medium">{area.nome}</td>
                       <td>
-                        <Badge variant="outline">{(area.planta as any)?.nome || '-'}</Badge>
+                        <Badge variant="outline">{area.planta?.nome || '-'}</Badge>
                       </td>
                       <td className="text-muted-foreground max-w-xs truncate">
                         {area.descricao || '-'}
@@ -426,7 +426,7 @@ export default function Hierarquia() {
                       <td className="font-mono font-medium text-primary">{sistema.codigo}</td>
                       <td className="font-medium">{sistema.nome}</td>
                       <td>
-                        <Badge variant="outline">{(sistema.area as any)?.nome || '-'}</Badge>
+                        <Badge variant="outline">{sistema.area?.nome || '-'}</Badge>
                       </td>
                       <td className="text-muted-foreground max-w-xs truncate">
                         {sistema.funcao_principal || '-'}

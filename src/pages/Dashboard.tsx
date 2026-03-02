@@ -26,6 +26,7 @@ import { BacklogSummary } from '@/components/dashboard/BacklogSummary';
 import { QuickActions } from '@/components/dashboard/QuickActions';
 import { OSStatusBadge } from '@/components/os/OSStatusBadge';
 import { OSTypeBadge } from '@/components/os/OSTypeBadge';
+import { normalizeOSStatus, normalizeOSType } from '@/lib/osBadges';
 
 export default function Dashboard() {
   const { user } = useAuth();
@@ -358,7 +359,7 @@ export default function Dashboard() {
                       <td className="font-mono font-medium">{os.numero_os}</td>
                       <td className="font-mono text-primary font-medium">{os.tag}</td>
                       <td className="max-w-[150px] truncate">{os.equipamento}</td>
-                      <td><OSTypeBadge tipo={os.tipo as any} /></td>
+                      <td><OSTypeBadge tipo={normalizeOSType(os.tipo)} /></td>
                       <td>
                         <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
                           os.prioridade === 'URGENTE' ? 'bg-destructive/10 text-destructive' :
@@ -369,7 +370,7 @@ export default function Dashboard() {
                           {os.prioridade}
                         </span>
                       </td>
-                      <td><OSStatusBadge status={os.status as any} /></td>
+                      <td><OSStatusBadge status={normalizeOSStatus(os.status)} /></td>
                       <td className="text-muted-foreground">{formatDate(os.data_solicitacao)}</td>
                     </tr>
                   ))

@@ -243,7 +243,7 @@ export function parseEquipmentFile(file: File): Promise<{ valid: any[]; errors: 
       try {
         const wb = XLSX.read(e.target?.result, { type: 'binary' });
         const ws = wb.Sheets[wb.SheetNames[0]];
-        const rows = XLSX.utils.sheet_to_json(ws, { header: 1 }) as any[][];
+        const rows = XLSX.utils.sheet_to_json(ws, { header: 1 }) as unknown[][];
 
         if (rows.length < 2) {
           resolve({ valid: [], errors: [{ row: 1, reason: 'Planilha vazia' }] });

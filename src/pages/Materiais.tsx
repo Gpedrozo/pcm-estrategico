@@ -104,7 +104,7 @@ export default function Materiais() {
   }) || [];
   
   const filteredMovimentacoes = movimentacoes?.filter(mov => {
-    const material = mov.material as any;
+    const material = mov.material;
     return (
       material?.codigo?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       material?.nome?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -202,6 +202,12 @@ export default function Materiais() {
   const isSubmitting = createMaterial.isPending || updateMaterial.isPending;
   const isDeleting = deleteMaterial.isPending;
   const isMovSubmitting = createMovimentacao.isPending;
+
+  const handleTabChange = (value: string) => {
+    if (value === 'materiais' || value === 'movimentacoes') {
+      setActiveTab(value);
+    }
+  };
   
   if (loadingMateriais) {
     return (
@@ -269,7 +275,7 @@ export default function Materiais() {
       </div>
       
       {/* Tabs */}
-      <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as any)}>
+      <Tabs value={activeTab} onValueChange={handleTabChange}>
         <TabsList>
           <TabsTrigger value="materiais" className="gap-2">
             <Package className="h-4 w-4" />
@@ -407,8 +413,8 @@ export default function Materiais() {
                         </Badge>
                       </td>
                       <td>
-                        <span className="font-mono text-primary">{(mov.material as any)?.codigo}</span>
-                        <span className="ml-2 text-muted-foreground">{(mov.material as any)?.nome}</span>
+                        <span className="font-mono text-primary">{mov.material?.codigo}</span>
+                        <span className="ml-2 text-muted-foreground">{mov.material?.nome}</span>
                       </td>
                       <td className="text-right font-mono font-medium">{mov.quantidade}</td>
                       <td className="text-right font-mono">{formatCurrency(mov.custo_unitario || 0)}</td>

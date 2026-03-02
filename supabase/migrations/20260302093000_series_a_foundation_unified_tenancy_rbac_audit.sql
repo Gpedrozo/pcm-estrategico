@@ -62,6 +62,24 @@ BEGIN
   END IF;
 END $$;
 
+DO $$
+BEGIN
+  IF to_regclass('public.profiles') IS NOT NULL THEN
+    EXECUTE 'DROP POLICY IF EXISTS tenant_isolation ON public.profiles';
+    EXECUTE 'DROP POLICY IF EXISTS tenant_isolation_insert ON public.profiles';
+  END IF;
+
+  IF to_regclass('public.user_roles') IS NOT NULL THEN
+    EXECUTE 'DROP POLICY IF EXISTS tenant_isolation ON public.user_roles';
+    EXECUTE 'DROP POLICY IF EXISTS tenant_isolation_insert ON public.user_roles';
+  END IF;
+
+  IF to_regclass('public.dados_empresa') IS NOT NULL THEN
+    EXECUTE 'DROP POLICY IF EXISTS tenant_isolation ON public.dados_empresa';
+    EXECUTE 'DROP POLICY IF EXISTS tenant_isolation_insert ON public.dados_empresa';
+  END IF;
+END $$;
+
 ALTER TABLE public.profiles DROP COLUMN IF EXISTS tenant_id;
 ALTER TABLE public.user_roles DROP COLUMN IF EXISTS tenant_id;
 ALTER TABLE public.dados_empresa DROP COLUMN IF EXISTS tenant_id;
@@ -134,6 +152,20 @@ SELECT ur.user_id, ur.empresa_id, rr.id, auth.uid()
 FROM public.user_roles ur
 JOIN public.rbac_roles rr ON rr.code = ur.role::text
 ON CONFLICT (user_id, empresa_id, role_id) DO NOTHING;
+
+CREATE OR REPLACE FUNCTION public.get_current_empresa_id()
+RETURNS uuid
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path TO public
+AS $$
+  SELECT COALESCE(
+    NULLIF(auth.jwt() ->> 'empresa_id', '')::uuid,
+    (SELECT empresa_id FROM public.profiles WHERE id = auth.uid() LIMIT 1),
+    (SELECT id FROM public.empresas ORDER BY created_at LIMIT 1)
+  );
+$$;
 
 CREATE OR REPLACE FUNCTION public.has_permission(
   p_permission_code text,
@@ -208,6 +240,15 @@ CREATE POLICY rbac_user_roles_manage ON public.rbac_user_roles
 FOR ALL TO authenticated
 USING (public.is_control_plane_operator())
 WITH CHECK (public.is_control_plane_operator());
+
+CREATE TABLE IF NOT EXISTS public.audit_logs (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  acao text NOT NULL,
+  tabela text NOT NULL,
+  registro_id text,
+  user_id_executor uuid,
+  logged_at timestamptz NOT NULL DEFAULT now()
+);
 
 ALTER TABLE public.audit_logs
   ADD COLUMN IF NOT EXISTS correlation_id uuid DEFAULT gen_random_uuid(),

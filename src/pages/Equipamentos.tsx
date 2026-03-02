@@ -585,7 +585,7 @@ export default function Equipamentos() {
                 <SelectContent>
                   <SelectItem value="none">Nenhum</SelectItem>
                   {sistemas?.filter(s => s.ativo).map((sistema) => {
-                    const area = sistema.area as any;
+                      const area = sistema.area as { codigo?: string; planta?: { codigo?: string } } | undefined;
                     const planta = area?.planta;
                     const path = [planta?.codigo, area?.codigo, sistema.codigo].filter(Boolean).join(' → ');
                     return (

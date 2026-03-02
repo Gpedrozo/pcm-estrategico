@@ -11,6 +11,7 @@ import { OSStatusBadge } from '@/components/os/OSStatusBadge';
 import { OSTypeBadge } from '@/components/os/OSTypeBadge';
 import { format, startOfWeek, addWeeks, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { normalizeOSStatus, normalizeOSType } from '@/lib/osBadges';
 
 export default function Backlog() {
   const [search, setSearch] = useState('');
@@ -239,13 +240,13 @@ export default function Backlog() {
                         <td className="font-mono text-primary font-medium">{os.tag}</td>
                         <td>{os.equipamento}</td>
                         <td className="max-w-[200px] truncate">{os.problema}</td>
-                        <td><OSTypeBadge tipo={os.tipo as any} /></td>
+                        <td><OSTypeBadge tipo={normalizeOSType(os.tipo)} /></td>
                         <td>
                           <Badge className={getPriorityColor(os.prioridade)}>
                             {os.prioridade}
                           </Badge>
                         </td>
-                        <td><OSStatusBadge status={os.status as any} /></td>
+                        <td><OSStatusBadge status={normalizeOSStatus(os.status)} /></td>
                         <td>{os.tempo_estimado ? `${os.tempo_estimado} min` : '-'}</td>
                       </tr>
                     ))}

@@ -158,7 +158,12 @@ export function NotificationCenter() {
           table: 'ordens_servico',
         },
         (payload) => {
-          const newOS = payload.new as any;
+          const newOS = payload.new as {
+            id?: string;
+            prioridade?: string;
+            numero_os?: string;
+            equipamento?: string;
+          };
           setNotifications(prev => [
             {
               id: `new-os-${newOS.id}`,

@@ -39,6 +39,7 @@ import { useToast } from '@/hooks/use-toast';
 import { OSStatusBadge } from '@/components/os/OSStatusBadge';
 import { OSTypeBadge } from '@/components/os/OSTypeBadge';
 import { Skeleton } from '@/components/ui/skeleton';
+import { normalizeOSStatus, normalizeOSType } from '@/lib/osBadges';
 
 // Modo de Falha options
 const MODOS_FALHA = [
@@ -309,8 +310,8 @@ export default function FecharOS() {
                   <div className="flex items-center gap-4 flex-wrap">
                     <span className="font-mono font-bold text-lg">{os.numero_os}</span>
                     <span className="font-mono text-primary font-medium">{os.tag}</span>
-                    <OSTypeBadge tipo={os.tipo as any} />
-                    <OSStatusBadge status={os.status as any} />
+                    <OSTypeBadge tipo={normalizeOSType(os.tipo)} />
+                    <OSStatusBadge status={normalizeOSStatus(os.status)} />
                   </div>
                   {selectedOS?.id === os.id && (
                     <Check className="h-5 w-5 text-primary flex-shrink-0" />

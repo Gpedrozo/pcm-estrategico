@@ -36,6 +36,7 @@ const formatMin = (min: number) => {
 export const PreventivaPrintTemplate = forwardRef<HTMLDivElement, PreventivaPrintTemplateProps>(
   ({ data, empresa, documentNumber, layoutVersion }, ref) => {
     const { plano, atividades, tempoTotal } = data;
+    const planoComResponsavel = plano as PlanoPreventivo & { responsavel_nome?: string | null };
     const docNum = documentNumber || `PR-${plano.codigo}`;
     const proximaExec = plano.proxima_execucao
       ? format(new Date(plano.proxima_execucao), 'dd/MM/yyyy', { locale: ptBR })
@@ -65,8 +66,8 @@ export const PreventivaPrintTemplate = forwardRef<HTMLDivElement, PreventivaPrin
         <div className="border-b-2 border-black p-2 text-[9px]">
           <span className="font-bold text-gray-500 text-[8px]">PLANO: </span>
           <span className="font-semibold">{plano.nome.toUpperCase()}</span>
-          {(plano as any).responsavel_nome && (
-            <span className="ml-4 text-gray-500">Responsável: {(plano as any).responsavel_nome}</span>
+          {planoComResponsavel.responsavel_nome && (
+            <span className="ml-4 text-gray-500">Responsável: {planoComResponsavel.responsavel_nome}</span>
           )}
         </div>
 

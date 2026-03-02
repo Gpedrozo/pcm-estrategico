@@ -8,6 +8,11 @@ CREATE TABLE IF NOT EXISTS public.empresas (
   updated_at timestamptz NOT NULL DEFAULT now()
 );
 
+ALTER TABLE public.empresas
+  ADD COLUMN IF NOT EXISTS cnpj text,
+  ADD COLUMN IF NOT EXISTS created_at timestamptz NOT NULL DEFAULT now(),
+  ADD COLUMN IF NOT EXISTS updated_at timestamptz NOT NULL DEFAULT now();
+
 ALTER TABLE public.empresas ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS "Authenticated users can view empresas" ON public.empresas;
@@ -21,27 +26,113 @@ CREATE POLICY "Admins and Masters can manage empresas" ON public.empresas
   USING (has_role(auth.uid(), 'ADMIN'::app_role) OR has_role(auth.uid(), 'MASTER_TI'::app_role))
   WITH CHECK (has_role(auth.uid(), 'ADMIN'::app_role) OR has_role(auth.uid(), 'MASTER_TI'::app_role));
 
-CREATE TRIGGER update_empresas_updated_at
-  BEFORE UPDATE ON public.empresas
-  FOR EACH ROW
-  EXECUTE FUNCTION public.update_updated_at_column();
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1
+    FROM pg_trigger
+    WHERE tgname = 'update_empresas_updated_at'
+      AND tgrelid = 'public.empresas'::regclass
+  ) THEN
+    CREATE TRIGGER update_empresas_updated_at
+      BEFORE UPDATE ON public.empresas
+      FOR EACH ROW
+      EXECUTE FUNCTION public.update_updated_at_column();
+  END IF;
+END;
+$$;
 
-INSERT INTO public.empresas (nome, cnpj)
-SELECT
-  COALESCE(
-    (
-      SELECT COALESCE(NULLIF(de.razao_social, ''), NULLIF(de.nome_fantasia, ''))
-      FROM public.dados_empresa de
-      LIMIT 1
-    ),
-    'Empresa Padrão'
-  ),
-  (
-    SELECT NULLIF(de.cnpj, '')
-    FROM public.dados_empresa de
-    LIMIT 1
-  )
-WHERE NOT EXISTS (SELECT 1 FROM public.empresas);
+DO $$
+DECLARE
+  v_nome text;
+  v_cnpj text;
+  v_slug text;
+  v_tenant_id uuid;
+BEGIN
+  IF EXISTS (SELECT 1 FROM public.empresas) THEN
+    RETURN;
+  END IF;
+
+  SELECT COALESCE(NULLIF(de.razao_social, ''), NULLIF(de.nome_fantasia, ''), 'Empresa Padrão')
+    INTO v_nome
+  FROM public.dados_empresa de
+  LIMIT 1;
+
+  SELECT NULLIF(de.cnpj, '')
+    INTO v_cnpj
+  FROM public.dados_empresa de
+  LIMIT 1;
+
+  v_nome := COALESCE(v_nome, 'Empresa Padrão');
+  v_slug := regexp_replace(lower(v_nome), '[^a-z0-9]+', '-', 'g');
+  v_slug := trim(both '-' from v_slug);
+  IF v_slug IS NULL OR v_slug = '' THEN
+    v_slug := 'empresa-padrao';
+  END IF;
+
+  IF EXISTS (
+    SELECT 1
+    FROM information_schema.columns
+    WHERE table_schema = 'public'
+      AND table_name = 'empresas'
+      AND column_name = 'tenant_id'
+  ) THEN
+    IF to_regclass('public.tenants') IS NOT NULL THEN
+      SELECT id INTO v_tenant_id FROM public.tenants ORDER BY created_at LIMIT 1;
+
+      IF v_tenant_id IS NULL THEN
+        INSERT INTO public.tenants (slug, name)
+        VALUES ('default', 'Tenant Default')
+        RETURNING id INTO v_tenant_id;
+      END IF;
+    END IF;
+  END IF;
+
+  IF EXISTS (
+    SELECT 1
+    FROM information_schema.columns
+    WHERE table_schema = 'public'
+      AND table_name = 'empresas'
+      AND column_name = 'slug'
+  ) THEN
+    IF EXISTS (
+      SELECT 1
+      FROM information_schema.columns
+      WHERE table_schema = 'public'
+        AND table_name = 'empresas'
+        AND column_name = 'ativo'
+    ) THEN
+      IF v_tenant_id IS NOT NULL THEN
+        INSERT INTO public.empresas (nome, cnpj, slug, ativo, tenant_id)
+        VALUES (v_nome, v_cnpj, v_slug, true, v_tenant_id)
+        ON CONFLICT (slug) DO NOTHING;
+      ELSE
+        INSERT INTO public.empresas (nome, cnpj, slug, ativo)
+        VALUES (v_nome, v_cnpj, v_slug, true)
+        ON CONFLICT (slug) DO NOTHING;
+      END IF;
+    ELSE
+      IF v_tenant_id IS NOT NULL THEN
+        INSERT INTO public.empresas (nome, cnpj, slug, tenant_id)
+        VALUES (v_nome, v_cnpj, v_slug, v_tenant_id)
+        ON CONFLICT (slug) DO NOTHING;
+      ELSE
+        INSERT INTO public.empresas (nome, cnpj, slug)
+        VALUES (v_nome, v_cnpj, v_slug)
+        ON CONFLICT (slug) DO NOTHING;
+      END IF;
+    END IF;
+  ELSE
+    IF v_tenant_id IS NOT NULL THEN
+      INSERT INTO public.empresas (nome, cnpj, tenant_id)
+      VALUES (v_nome, v_cnpj, v_tenant_id);
+    ELSE
+      INSERT INTO public.empresas (nome, cnpj)
+      VALUES (v_nome, v_cnpj);
+    END IF;
+  END IF;
+END;
+$$;
 
 DO $$
 BEGIN

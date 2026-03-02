@@ -2,6 +2,23 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useState, useMemo } from 'react';
 
+interface DynamicSupabaseClient {
+  from: (table: string) => {
+    select: (columns: string, options?: Record<string, unknown>) => DynamicSupabaseQuery;
+  };
+}
+
+interface DynamicSupabaseQuery {
+  in: (column: string, values: string[]) => DynamicSupabaseQuery;
+  ilike: (column: string, pattern: string) => DynamicSupabaseQuery;
+  eq: (column: string, value: string) => DynamicSupabaseQuery;
+  order: (column: string, options: { ascending: boolean }) => DynamicSupabaseQuery;
+  range: (from: number, to: number) => DynamicSupabaseQuery;
+  then: Promise<unknown>['then'];
+}
+
+const dynamicClient = supabase as unknown as DynamicSupabaseClient;
+
 export interface PaginationState {
   pageIndex: number;
   pageSize: number;
@@ -74,8 +91,8 @@ export function usePaginatedQuery<T>({
   const { data: totalCount = 0 } = useQuery({
     queryKey: [...queryKey, 'count', JSON.stringify(filters)],
     queryFn: async () => {
-      let query = supabase
-        .from(tableName as any)
+      let query = dynamicClient
+        .from(tableName)
         .select('id', { count: 'exact', head: true });
 
       // Apply filters - using forEach with a local variable to avoid type inference issues
@@ -83,11 +100,11 @@ export function usePaginatedQuery<T>({
       for (const [key, value] of filterEntries) {
         if (value !== undefined && value !== '') {
           if (Array.isArray(value)) {
-            query = (query as any).in(key, value);
+            query = query.in(key, value);
           } else if (typeof value === 'string' && value.includes('%')) {
-            query = (query as any).ilike(key, value);
+            query = query.ilike(key, value);
           } else {
-            query = (query as any).eq(key, value);
+            query = query.eq(key, value);
           }
         }
       }
@@ -106,8 +123,8 @@ export function usePaginatedQuery<T>({
       const from = pagination.pageIndex * pagination.pageSize;
       const to = from + pagination.pageSize - 1;
 
-      let query = supabase
-        .from(tableName as any)
+      let query = dynamicClient
+        .from(tableName)
         .select(select)
         .range(from, to);
 
@@ -116,11 +133,11 @@ export function usePaginatedQuery<T>({
       for (const [key, value] of filterEntries) {
         if (value !== undefined && value !== '') {
           if (Array.isArray(value)) {
-            query = (query as any).in(key, value);
+            query = query.in(key, value);
           } else if (typeof value === 'string' && value.includes('%')) {
-            query = (query as any).ilike(key, value);
+            query = query.ilike(key, value);
           } else {
-            query = (query as any).eq(key, value);
+            query = query.eq(key, value);
           }
         }
       }

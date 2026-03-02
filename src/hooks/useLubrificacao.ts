@@ -4,6 +4,15 @@ import { useToast } from '@/hooks/use-toast';
 import type { PlanoLubrificacao, PlanoLubrificacaoInsert } from '@/types/lubrificacao';
 import { deleteMaintenanceSchedule, upsertMaintenanceSchedule } from '@/services/maintenanceSchedule';
 
+interface ExecucaoRow {
+  id: string;
+  plano_id: string;
+}
+
+interface OrdemServicoCreated {
+  id: string;
+}
+
 export function usePlanosLubrificacao() {
   return useQuery({
     queryKey: ['planos-lubrificacao'],
@@ -53,8 +62,8 @@ export function useCreatePlanoLubrificacao() {
       queryClient.invalidateQueries({ queryKey: ['document-sequences'] });
       toast({ title: 'Plano criado', description: 'Plano de lubrificação criado.' });
     },
-    onError: (error: any) => {
-      toast({ title: 'Erro', description: error.message, variant: 'destructive' });
+    onError: (error: unknown) => {
+      toast({ title: 'Erro', description: error instanceof Error ? error.message : 'Falha ao criar plano', variant: 'destructive' });
     },
   });
 }
@@ -92,8 +101,8 @@ export function useUpdatePlanoLubrificacao() {
       queryClient.invalidateQueries({ queryKey: ['maintenance-schedule'] });
       toast({ title: 'Plano atualizado', description: 'Plano de lubrificação atualizado com sucesso.' });
     },
-    onError: (error: any) => {
-      toast({ title: 'Erro', description: error.message, variant: 'destructive' });
+    onError: (error: unknown) => {
+      toast({ title: 'Erro', description: error instanceof Error ? error.message : 'Falha ao atualizar plano', variant: 'destructive' });
     },
   });
 }
@@ -118,8 +127,8 @@ export function useDeletePlanoLubrificacao() {
       queryClient.invalidateQueries({ queryKey: ['maintenance-schedule'] });
       toast({ title: 'Plano excluído', description: 'Plano de lubrificação excluído com sucesso.' });
     },
-    onError: (error: any) => {
-      toast({ title: 'Erro', description: error.message, variant: 'destructive' });
+    onError: (error: unknown) => {
+      toast({ title: 'Erro', description: error instanceof Error ? error.message : 'Falha ao excluir plano', variant: 'destructive' });
     },
   });
 }
@@ -147,7 +156,7 @@ export function useCreateExecucaoLubrificacao() {
   const { toast } = useToast();
 
   return useMutation({
-    mutationFn: async (input: { plano_id: string; executor_nome?: string; observacoes?: string; fotos?: any; quantidade_utilizada?: number }) => {
+    mutationFn: async (input: { plano_id: string; executor_nome?: string; observacoes?: string; fotos?: unknown; quantidade_utilizada?: number }) => {
       const payload = {
         ...input,
         data_execucao: new Date().toISOString(),
@@ -168,8 +177,8 @@ export function useCreateExecucaoLubrificacao() {
       qc.invalidateQueries({ queryKey: ['planos-lubrificacao'] });
       toast({ title: 'Execução registrada' });
     },
-    onError: (e: any) =>
-      toast({ title: 'Erro', description: e.message, variant: 'destructive' }),
+    onError: (e: unknown) =>
+      toast({ title: 'Erro', description: e instanceof Error ? e.message : 'Falha ao registrar execução', variant: 'destructive' }),
   });
 }
 
@@ -189,12 +198,13 @@ export function useGenerateExecucoesNow() {
 
       if (e1) throw e1;
 
-      if (!planos || planos.length === 0) return { created: 0 };
+      const planosTyped = (planos || []) as PlanoLubrificacao[];
+      if (planosTyped.length === 0) return { created: 0 };
 
       let created = 0;
 
       const nowIso = new Date().toISOString();
-      const execInserts = (planos as any[]).map(p => ({
+      const execInserts = planosTyped.map(p => ({
         plano_id: p.id,
         data_execucao: nowIso,
         status: 'PENDENTE',
@@ -214,7 +224,7 @@ export function useGenerateExecucoesNow() {
         : 0;
 
       try {
-        const osPayloads = (planos as any[]).map(p => ({
+        const osPayloads = planosTyped.map(p => ({
           tipo: 'LUBRIFICACAO',
           prioridade: 'NORMAL',
           tag: p.tag || '',
@@ -230,9 +240,9 @@ export function useGenerateExecucoesNow() {
           .select();
 
         if (!e3 && Array.isArray(osDataArr) && Array.isArray(insertedExecs)) {
-          const updates = insertedExecs.map((ex: any, idx: number) => ({
+          const updates = (insertedExecs as ExecucaoRow[]).map((ex, idx: number) => ({
             id: ex.id,
-            os_gerada_id: osDataArr[idx]?.id || null,
+            os_gerada_id: (osDataArr as OrdemServicoCreated[])[idx]?.id || null,
           }));
 
           for (const u of updates) {
@@ -246,7 +256,7 @@ export function useGenerateExecucoesNow() {
         console.warn('Erro ao criar OSs em lote', err);
       }
   // Calculate next execution for each treated plan
-  for (const plano of planos as any[]) {
+  for (const plano of planosTyped) {
         try {
           const tipo = plano.periodicidade_tipo;
           const valor = Number(plano.periodicidade_valor) || 0;
