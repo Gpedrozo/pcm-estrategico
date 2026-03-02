@@ -10,7 +10,7 @@ import {
 import { logger } from '@/lib/logger';
 import { writeAuditLog } from '@/lib/audit';
 
-interface AuthUser {
+export interface AuthUser {
   id: string;
   nome: string;
   email: string;
@@ -19,7 +19,7 @@ interface AuthUser {
   tenantId: string | null;
 }
 
-interface AuthContextType {
+export interface AuthContextType {
   user: AuthUser | null;
   session: Session | null;
   isAuthenticated: boolean;

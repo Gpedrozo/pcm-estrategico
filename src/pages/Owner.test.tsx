@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import Owner from "./Owner";
+import { createAuthContextValue } from "@/test/auth-context-mock";
 
 vi.mock("@/contexts/AuthContext", () => ({
   useAuth: vi.fn(),
@@ -17,27 +18,27 @@ const mockedUseAuth = vi.mocked(useAuth);
 
 describe("Owner page access", () => {
   it("blocks common users", () => {
-    mockedUseAuth.mockReturnValue({
+    mockedUseAuth.mockReturnValue(createAuthContextValue({
       isSystemOwner: false,
-    } as never);
+    }));
 
     render(<Owner />);
     expect(screen.getByText("Acesso Negado")).toBeInTheDocument();
   });
 
   it("blocks MASTER_TI users", () => {
-    mockedUseAuth.mockReturnValue({
+    mockedUseAuth.mockReturnValue(createAuthContextValue({
       isSystemOwner: false,
-    } as never);
+    }));
 
     render(<Owner />);
     expect(screen.getByText(/exclusivo para o perfil SYSTEM_OWNER/i)).toBeInTheDocument();
   });
 
   it("allows SYSTEM_OWNER users", () => {
-    mockedUseAuth.mockReturnValue({
+    mockedUseAuth.mockReturnValue(createAuthContextValue({
       isSystemOwner: true,
-    } as never);
+    }));
 
     render(<Owner />);
     expect(screen.getByText("SYSTEM OWNER")).toBeInTheDocument();

@@ -1,0 +1,57 @@
+{
+  "version": "2026-03-02",
+  "table": "enterprise_audit_logs",
+  "defaultSeverity": "critical",
+  "rules": [
+    {
+      "id": "client-runtime-errors",
+      "source": "main_global_handlers",
+      "match": {
+        "actionTypeIn": ["CLIENT_UNHANDLED_ERROR", "CLIENT_UNHANDLED_REJECTION"],
+        "severityIn": ["critical"]
+      },
+      "channels": ["owner_dashboard", "on_call"],
+      "enabled": true
+    },
+    {
+      "id": "auth-anomalies",
+      "source": "auth_context",
+      "match": {
+        "actionTypeIn": ["LOGIN", "LOGOUT"],
+        "severityIn": ["critical"]
+      },
+      "channels": ["owner_dashboard"],
+      "enabled": true
+    },
+    {
+      "id": "control-plane-permission-changes",
+      "source": "master_users_manager",
+      "match": {
+        "actionTypeIn": ["UPDATE_USER_ROLE", "UPDATE_PERMISSIONS"],
+        "severityIn": ["critical"]
+      },
+      "channels": ["owner_dashboard", "security_review"],
+      "enabled": true
+    },
+    {
+      "id": "edge-stripe-critical",
+      "source": "stripe_webhook",
+      "match": {
+        "actionTypeIn": ["STRIPE_WEBHOOK_FAILED", "STRIPE_WEBHOOK_NOT_CONFIGURED"],
+        "severityIn": ["critical"]
+      },
+      "channels": ["owner_dashboard", "billing_ops"],
+      "enabled": true
+    },
+    {
+      "id": "edge-health-critical",
+      "source": "system_health_check",
+      "match": {
+        "actionTypeIn": ["SYSTEM_HEALTH_CHECK_FAILED"],
+        "severityIn": ["critical"]
+      },
+      "channels": ["owner_dashboard", "on_call"],
+      "enabled": true
+    }
+  ]
+}

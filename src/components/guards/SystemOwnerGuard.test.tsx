@@ -2,6 +2,7 @@ import { render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { SystemOwnerGuard } from "./SystemOwnerGuard";
+import { createAuthContextValue } from "@/test/auth-context-mock";
 
 vi.mock("@/contexts/AuthContext", () => ({
   useAuth: vi.fn(),
@@ -32,33 +33,33 @@ function renderWithRoutes() {
 
 describe("SystemOwnerGuard", () => {
   it("allows system owner users", () => {
-    mockedUseAuth.mockReturnValue({
+    mockedUseAuth.mockReturnValue(createAuthContextValue({
       isAuthenticated: true,
       isLoading: false,
       isSystemOwner: true,
-    } as never);
+    }));
 
     renderWithRoutes();
     expect(screen.getByText("Owner content")).toBeInTheDocument();
   });
 
   it("redirects regular authenticated users to dashboard", () => {
-    mockedUseAuth.mockReturnValue({
+    mockedUseAuth.mockReturnValue(createAuthContextValue({
       isAuthenticated: true,
       isLoading: false,
       isSystemOwner: false,
-    } as never);
+    }));
 
     renderWithRoutes();
     expect(screen.getByText("Dashboard page")).toBeInTheDocument();
   });
 
   it("redirects unauthenticated users to login", () => {
-    mockedUseAuth.mockReturnValue({
+    mockedUseAuth.mockReturnValue(createAuthContextValue({
       isAuthenticated: false,
       isLoading: false,
       isSystemOwner: false,
-    } as never);
+    }));
 
     renderWithRoutes();
     expect(screen.getByText("Login page")).toBeInTheDocument();

@@ -4,6 +4,7 @@ import { describe, expect, it, vi, beforeEach } from "vitest";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { SystemOwnerGuard } from "./SystemOwnerGuard";
+import { createAuthContextValue, createAuthUser, createSession } from "@/test/auth-context-mock";
 
 vi.mock("@/contexts/AuthContext", () => ({
   useAuth: vi.fn(),
@@ -44,18 +45,24 @@ describe("SystemOwnerGuard", () => {
     const logout = vi.fn().mockResolvedValue(undefined);
     const maybeSingle = vi.fn().mockResolvedValue({ data: { role: "SYSTEM_OWNER" } });
 
-    mockedUseAuth.mockReturnValue({
-      user: { id: "user-1", nome: "Owner", email: "owner@test.com", tipo: "SYSTEM_OWNER" },
-      session: { user: { id: "user-1" }, expires_at: Math.floor(Date.now() / 1000) + 3600 } as never,
-      isAuthenticated: true,
-      isLoading: false,
-      login: vi.fn(),
-      signup: vi.fn(),
+    mockedUseAuth.mockReturnValue(createAuthContextValue({
+      user: createAuthUser({
+        id: "user-1",
+        nome: "Owner",
+        email: "owner@test.com",
+        tipo: "SYSTEM_OWNER",
+        roles: ["SYSTEM_OWNER"],
+      }),
+      session: createSession({
+        user: { id: "user-1" } as ReturnType<typeof createSession>["user"],
+        expires_at: Math.floor(Date.now() / 1000) + 3600,
+      }),
       logout,
       isAdmin: false,
       isMasterTI: false,
       isSystemOwner: true,
-    });
+      effectiveRole: "SYSTEM_OWNER",
+    }));
 
     mockedSupabaseFrom.mockReturnValue({
       select: () => ({
@@ -65,7 +72,7 @@ describe("SystemOwnerGuard", () => {
           }),
         }),
       }),
-    } as never);
+    });
 
     renderGuard();
 
@@ -79,18 +86,24 @@ describe("SystemOwnerGuard", () => {
     const logout = vi.fn().mockResolvedValue(undefined);
     const maybeSingle = vi.fn().mockResolvedValue({ data: null });
 
-    mockedUseAuth.mockReturnValue({
-      user: { id: "user-2", nome: "Master", email: "master@test.com", tipo: "MASTER_TI" },
-      session: { user: { id: "user-2" }, expires_at: Math.floor(Date.now() / 1000) + 3600 } as never,
-      isAuthenticated: true,
-      isLoading: false,
-      login: vi.fn(),
-      signup: vi.fn(),
+    mockedUseAuth.mockReturnValue(createAuthContextValue({
+      user: createAuthUser({
+        id: "user-2",
+        nome: "Master",
+        email: "master@test.com",
+        tipo: "MASTER_TI",
+        roles: ["MASTER_TI"],
+      }),
+      session: createSession({
+        user: { id: "user-2" } as ReturnType<typeof createSession>["user"],
+        expires_at: Math.floor(Date.now() / 1000) + 3600,
+      }),
       logout,
       isAdmin: true,
       isMasterTI: true,
       isSystemOwner: false,
-    });
+      effectiveRole: "MASTER_TI",
+    }));
 
     mockedSupabaseFrom.mockReturnValue({
       select: () => ({
@@ -100,7 +113,7 @@ describe("SystemOwnerGuard", () => {
           }),
         }),
       }),
-    } as never);
+    });
 
     renderGuard();
 
