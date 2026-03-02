@@ -34,10 +34,9 @@ export function getEffectiveRole(options: {
   email?: string | null;
   hostname?: string;
 }): AppRole {
-  const { roles, email, hostname } = options;
-  const ownerDomain = isOwnerDomain(hostname);
+  const { roles } = options;
 
-  if (ownerDomain && roles.includes('SYSTEM_OWNER') && isSystemOwnerEmail(email)) {
+  if (roles.includes('SYSTEM_OWNER')) {
     return 'SYSTEM_OWNER';
   }
 

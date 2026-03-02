@@ -53,6 +53,7 @@ export const PreventivaPrintTemplate = forwardRef<HTMLDivElement, PreventivaPrin
         documentNumber={docNum}
         empresa={empresa}
         layoutVersion={layoutVersion}
+        hideHeaderFooter
       >
         {/* ═══ PLAN INFO ═══ */}
         <PrintInfoGrid items={[
