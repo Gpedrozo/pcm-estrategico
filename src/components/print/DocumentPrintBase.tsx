@@ -20,10 +20,12 @@ export interface DocumentPrintBaseProps {
   children: ReactNode;
   /** Optional content after signatures (before footer) */
   footer?: ReactNode;
+  /** Hides default print header and professional footer */
+  hideHeaderFooter?: boolean;
 }
 
 export const DocumentPrintBase = forwardRef<HTMLDivElement, DocumentPrintBaseProps>(
-  ({ title, documentNumber, empresa, layoutVersion = '1.0', emissionDate, page = '1 / 1', children, footer }, ref) => {
+  ({ title, documentNumber, empresa, layoutVersion = '1.0', emissionDate, page = '1 / 1', children, footer, hideHeaderFooter = false }, ref) => {
     const dataEmissao = emissionDate || format(new Date(), 'dd/MM/yyyy', { locale: ptBR });
     const displayName = empresa?.nome_fantasia || empresa?.razao_social || 'MANUTENÇÃO INDUSTRIAL';
     const logoUrl = empresa?.logo_os_url || empresa?.logo_pdf_url || empresa?.logo_principal_url || '';
@@ -35,46 +37,50 @@ export const DocumentPrintBase = forwardRef<HTMLDivElement, DocumentPrintBasePro
         style={{ fontFamily: "'Arial', 'Helvetica Neue', sans-serif", fontSize: '10px', padding: '8mm', lineHeight: 1.4 }}
       >
         <div className="border-2 border-black">
-          {/* ═══ HEADER ═══ */}
-          <div className="flex border-b-2 border-black">
-            <div className="w-[25mm] border-r-2 border-black p-2 flex items-center justify-center bg-white">
-              {logoUrl ? (
-                <img src={logoUrl} alt="Logo" className="max-h-[18mm] max-w-[22mm] object-contain" />
-              ) : (
-                <div className="text-[8px] text-gray-400 text-center font-bold">LOGO</div>
-              )}
-            </div>
-            <div className="flex-1 text-center py-2 flex flex-col justify-center">
-              <p className="text-[9px] font-bold tracking-widest text-gray-600">{displayName?.toUpperCase()}</p>
-              <h1 className="text-[16px] font-black tracking-tight mt-0.5">{title}</h1>
-            </div>
-            <div className="w-[48mm] border-l-2 border-black text-[9px]">
-              <div className="border-b border-black p-1.5 flex justify-between">
-                <span className="font-bold">Nº Documento:</span>
-                <span className="font-black text-[12px]">{documentNumber}</span>
+          {!hideHeaderFooter && (
+            <>
+              {/* ═══ HEADER ═══ */}
+              <div className="flex border-b-2 border-black">
+                <div className="w-[25mm] border-r-2 border-black p-2 flex items-center justify-center bg-white">
+                  {logoUrl ? (
+                    <img src={logoUrl} alt="Logo" className="max-h-[18mm] max-w-[22mm] object-contain" />
+                  ) : (
+                    <div className="text-[8px] text-gray-400 text-center font-bold">LOGO</div>
+                  )}
+                </div>
+                <div className="flex-1 text-center py-2 flex flex-col justify-center">
+                  <p className="text-[9px] font-bold tracking-widest text-gray-600">{displayName?.toUpperCase()}</p>
+                  <h1 className="text-[16px] font-black tracking-tight mt-0.5">{title}</h1>
+                </div>
+                <div className="w-[48mm] border-l-2 border-black text-[9px]">
+                  <div className="border-b border-black p-1.5 flex justify-between">
+                    <span className="font-bold">Nº Documento:</span>
+                    <span className="font-black text-[12px]">{documentNumber}</span>
+                  </div>
+                  <div className="border-b border-black p-1.5 flex justify-between">
+                    <span className="font-bold">Emissão:</span>
+                    <span>{dataEmissao}</span>
+                  </div>
+                  <div className="border-b border-black p-1.5 flex justify-between">
+                    <span className="font-bold">Revisão:</span>
+                    <span>00</span>
+                  </div>
+                  <div className="p-1.5 flex justify-between">
+                    <span className="font-bold">Página:</span>
+                    <span>{page}</span>
+                  </div>
+                </div>
               </div>
-              <div className="border-b border-black p-1.5 flex justify-between">
-                <span className="font-bold">Emissão:</span>
-                <span>{dataEmissao}</span>
-              </div>
-              <div className="border-b border-black p-1.5 flex justify-between">
-                <span className="font-bold">Revisão:</span>
-                <span>00</span>
-              </div>
-              <div className="p-1.5 flex justify-between">
-                <span className="font-bold">Página:</span>
-                <span>{page}</span>
-              </div>
-            </div>
-          </div>
 
-          {/* ═══ COMPANY INFO ═══ */}
-          {empresa && (empresa.cnpj || empresa.telefone || empresa.email) && (
-            <div className="border-b-2 border-black px-3 py-1 text-[8px] bg-gray-50 flex justify-between text-gray-600">
-              {empresa.cnpj && <span>CNPJ: {empresa.cnpj}</span>}
-              {empresa.telefone && <span>Tel: {empresa.telefone}</span>}
-              {empresa.email && <span>{empresa.email}</span>}
-            </div>
+              {/* ═══ COMPANY INFO ═══ */}
+              {empresa && (empresa.cnpj || empresa.telefone || empresa.email) && (
+                <div className="border-b-2 border-black px-3 py-1 text-[8px] bg-gray-50 flex justify-between text-gray-600">
+                  {empresa.cnpj && <span>CNPJ: {empresa.cnpj}</span>}
+                  {empresa.telefone && <span>Tel: {empresa.telefone}</span>}
+                  {empresa.email && <span>{empresa.email}</span>}
+                </div>
+              )}
+            </>
           )}
 
           {/* ═══ CONTENT ═══ */}
@@ -96,15 +102,16 @@ export const DocumentPrintBase = forwardRef<HTMLDivElement, DocumentPrintBasePro
           </div>
         </div>
 
-        {/* ═══ PROFESSIONAL FOOTER ═══ */}
-        <div className="mt-3 flex justify-between items-center text-[7px] text-gray-400 px-1">
-          <span>
-            {displayName}
-            {empresa?.endereco && ` • ${empresa.endereco}`}
-            {empresa?.cidade && ` • ${empresa.cidade}/${empresa.estado}`}
-          </span>
-          <span>Página {page} • Versão {layoutVersion} • Emitido em {dataEmissao}</span>
-        </div>
+        {!hideHeaderFooter && (
+          <div className="mt-3 flex justify-between items-center text-[7px] text-gray-400 px-1">
+            <span>
+              {displayName}
+              {empresa?.endereco && ` • ${empresa.endereco}`}
+              {empresa?.cidade && ` • ${empresa.cidade}/${empresa.estado}`}
+            </span>
+            <span>Página {page} • Versão {layoutVersion} • Emitido em {dataEmissao}</span>
+          </div>
+        )}
 
         {footer}
       </div>
