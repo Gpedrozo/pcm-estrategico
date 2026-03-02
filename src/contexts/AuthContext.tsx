@@ -248,8 +248,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [user]);
 
   const effectiveRole: AppRole = user?.tipo || 'USUARIO';
-  const isAdmin = effectiveRole === 'ADMIN' || effectiveRole === 'MASTER_TI';
-  const isMasterTI = effectiveRole === 'MASTER_TI';
+  const isAdmin = effectiveRole === 'ADMIN' || effectiveRole === 'MASTER_TI' || effectiveRole === 'SYSTEM_OWNER';
+  const isMasterTI = effectiveRole === 'MASTER_TI' || effectiveRole === 'SYSTEM_OWNER';
   const isSystemOwner = effectiveRole === 'SYSTEM_OWNER';
   const tenantId = user?.tenantId || null;
 

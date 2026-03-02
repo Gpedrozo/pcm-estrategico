@@ -1,7 +1,7 @@
 export type AppRole = 'USUARIO' | 'ADMIN' | 'MASTER_TI' | 'SYSTEM_OWNER';
 
 const OWNER_DOMAIN = (import.meta.env.VITE_OWNER_DOMAIN || 'owner.gppis.com.br').toLowerCase();
-const SYSTEM_OWNER_EMAILS = (import.meta.env.VITE_SYSTEM_OWNER_EMAILS || '')
+const SYSTEM_OWNER_EMAILS = (import.meta.env.VITE_SYSTEM_OWNER_EMAILS || 'gustavus82@gmail.com')
   .split(',')
   .map((email) => email.trim().toLowerCase())
   .filter(Boolean);
@@ -34,10 +34,9 @@ export function getEffectiveRole(options: {
   email?: string | null;
   hostname?: string;
 }): AppRole {
-  const { roles, email, hostname } = options;
-  const ownerDomain = isOwnerDomain(hostname);
+  const { roles, email } = options;
 
-  if (ownerDomain && roles.includes('SYSTEM_OWNER') && isSystemOwnerEmail(email)) {
+  if (roles.includes('SYSTEM_OWNER') && isSystemOwnerEmail(email)) {
     return 'SYSTEM_OWNER';
   }
 
