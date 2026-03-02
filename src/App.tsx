@@ -2,15 +2,18 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
-import { AuthProvider } from "@/contexts/AuthContext";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { EnvironmentGuard } from "@/components/guards/EnvironmentGuard";
-import { MasterTIGuard } from "@/components/guards/MasterTIGuard";
-import { SystemOwnerGuard } from "@/components/guards/SystemOwnerGuard";
 import { SpeedInsights } from "@vercel/speed-insights/react";
+import { TenantProvider } from "@/contexts/TenantContext";
+import { BrandingProvider } from "@/contexts/BrandingContext";
+import { isOwnerDomain } from "@/lib/security";
 
-// Pages
+import OwnerPortal from "@/owner/OwnerPortal";
+import OwnerLogin from "@/owner/OwnerLogin";
+
 import Index from "./pages/Index";
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
@@ -42,10 +45,100 @@ import Lubrificacao from "./pages/Lubrificacao";
 import NotFound from "./pages/NotFound";
 import Instalar from "./pages/Instalar";
 import MasterTI from "./pages/MasterTI";
-import Owner from "./pages/Owner";
+import ArquivosOwner from "./pages/ArquivosOwner";
 import RootCauseAIPage from "./modules/rootCauseAI/RootCauseAIPage";
 
 const queryClient = new QueryClient();
+
+const AdminOnlyRoute = ({ children }: { children: React.ReactNode }) => {
+  const { isAdmin } = useAuth();
+  return isAdmin ? <>{children}</> : <Navigate to="/dashboard" replace />;
+};
+
+function OwnerRoutes() {
+  return (
+    <Routes>
+      <Route
+        path="/login"
+        element={
+          <EnvironmentGuard allowOwner>
+            <OwnerLogin />
+          </EnvironmentGuard>
+        }
+      />
+
+      <Route
+        path="/"
+        element={
+          <EnvironmentGuard allowOwner>
+            <OwnerPortal />
+          </EnvironmentGuard>
+        }
+      />
+
+      <Route path="*" element={<Navigate to="/" replace />} />
+    </Routes>
+  );
+}
+
+function TenantRoutes() {
+  return (
+    <EnvironmentGuard>
+      <TenantProvider>
+        <BrandingProvider>
+          <Routes>
+            <Route path="/" element={<Index />} />
+            <Route path="/login" element={<Login />} />
+            <Route path="/instalar" element={<Instalar />} />
+
+            <Route element={<AppLayout />}>
+              <Route path="/dashboard" element={<Dashboard />} />
+              <Route path="/solicitacoes" element={<Solicitacoes />} />
+              <Route path="/os/nova" element={<NovaOS />} />
+              <Route path="/os/fechar" element={<FecharOS />} />
+              <Route path="/os/historico" element={<HistoricoOS />} />
+              <Route path="/backlog" element={<Backlog />} />
+              <Route path="/programacao" element={<Programacao />} />
+              <Route path="/preventiva" element={<Preventiva />} />
+              <Route path="/preditiva" element={<Preditiva />} />
+              <Route path="/inspecoes" element={<Inspecoes />} />
+              <Route path="/fmea" element={<FMEA />} />
+              <Route path="/rca" element={<RCA />} />
+              <Route path="/melhorias" element={<Melhorias />} />
+              <Route path="/hierarquia" element={<Hierarquia />} />
+              <Route path="/equipamentos" element={<Equipamentos />} />
+              <Route path="/mecanicos" element={<Mecanicos />} />
+              <Route path="/materiais" element={<Materiais />} />
+              <Route path="/fornecedores" element={<Fornecedores />} />
+              <Route path="/contratos" element={<Contratos />} />
+              <Route path="/documentos" element={<DocumentosTecnicos />} />
+              <Route path="/lubrificacao" element={<Lubrificacao />} />
+              <Route path="/custos" element={<Custos />} />
+              <Route path="/relatorios" element={<Relatorios />} />
+              <Route path="/ssma" element={<SSMA />} />
+              <Route path="/usuarios" element={<Usuarios />} />
+              <Route path="/auditoria" element={<Auditoria />} />
+
+              <Route
+                path="/admin/arquivos-owner"
+                element={
+                  <AdminOnlyRoute>
+                    <ArquivosOwner />
+                  </AdminOnlyRoute>
+                }
+              />
+
+              <Route path="/master-ti" element={<MasterTI />} />
+              <Route path="/inteligencia-causa-raiz" element={<RootCauseAIPage />} />
+            </Route>
+
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </BrandingProvider>
+      </TenantProvider>
+    </EnvironmentGuard>
+  );
+}
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
@@ -54,49 +147,7 @@ const App = () => (
         <Toaster />
         <Sonner />
         <BrowserRouter>
-          <EnvironmentGuard>
-            <Routes>
-              <Route path="/" element={<Index />} />
-              <Route path="/login" element={<Login />} />
-              <Route path="/instalar" element={<Instalar />} />
-              
-              {/* Protected Routes with Layout */}
-              <Route element={<AppLayout />}>
-                <Route path="/dashboard" element={<Dashboard />} />
-                <Route path="/solicitacoes" element={<Solicitacoes />} />
-                <Route path="/os/nova" element={<NovaOS />} />
-                <Route path="/os/fechar" element={<FecharOS />} />
-                <Route path="/os/historico" element={<HistoricoOS />} />
-                <Route path="/backlog" element={<Backlog />} />
-                <Route path="/programacao" element={<Programacao />} />
-                <Route path="/preventiva" element={<Preventiva />} />
-                <Route path="/preditiva" element={<Preditiva />} />
-                <Route path="/inspecoes" element={<Inspecoes />} />
-                <Route path="/fmea" element={<FMEA />} />
-                <Route path="/rca" element={<RCA />} />
-                <Route path="/melhorias" element={<Melhorias />} />
-                <Route path="/hierarquia" element={<Hierarquia />} />
-                <Route path="/equipamentos" element={<Equipamentos />} />
-                <Route path="/mecanicos" element={<Mecanicos />} />
-                <Route path="/materiais" element={<Materiais />} />
-                <Route path="/fornecedores" element={<Fornecedores />} />
-                <Route path="/contratos" element={<Contratos />} />
-                <Route path="/documentos" element={<DocumentosTecnicos />} />
-                <Route path="/lubrificacao" element={<Lubrificacao />} />
-                <Route path="/custos" element={<Custos />} />
-                <Route path="/relatorios" element={<Relatorios />} />
-                <Route path="/ssma" element={<SSMA />} />
-                <Route path="/usuarios" element={<Usuarios />} />
-                <Route path="/auditoria" element={<Auditoria />} />
-                <Route path="/master-ti" element={<MasterTIGuard><MasterTI /></MasterTIGuard>} />
-                <Route path="/owner" element={<SystemOwnerGuard><Owner /></SystemOwnerGuard>} />
-                <Route path="/inteligencia-causa-raiz" element={<RootCauseAIPage />} />
-              </Route>
-
-              {/* Catch-all */}
-              <Route path="*" element={<NotFound />} />
-            </Routes>
-          </EnvironmentGuard>
+          {isOwnerDomain() ? <OwnerRoutes /> : <TenantRoutes />}
         </BrowserRouter>
         <SpeedInsights />
       </TooltipProvider>

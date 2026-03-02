@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { deleteMaintenanceSchedule, upsertMaintenanceSchedule } from '@/services/maintenanceSchedule';
 
 export interface MedicaoPreditivaRow {
   id: string;
@@ -107,6 +108,18 @@ export function useCreateMedicaoPreditiva() {
         .single();
 
       if (error) throw error;
+
+      await upsertMaintenanceSchedule({
+        tipo: 'preditiva',
+        origemId: data.id,
+        equipamentoId: data.equipamento_id,
+        titulo: `${data.tag} • ${data.tipo_medicao}`,
+        descricao: data.observacoes,
+        dataProgramada: data.created_at || new Date().toISOString(),
+        status: data.status || 'programado',
+        responsavel: data.responsavel_nome,
+      });
+
       return data as MedicaoPreditivaRow;
     },
     onSuccess: () => {
@@ -140,6 +153,18 @@ export function useUpdateMedicaoPreditiva() {
         .single();
 
       if (error) throw error;
+
+      await upsertMaintenanceSchedule({
+        tipo: 'preditiva',
+        origemId: data.id,
+        equipamentoId: data.equipamento_id,
+        titulo: `${data.tag} • ${data.tipo_medicao}`,
+        descricao: data.observacoes,
+        dataProgramada: data.created_at || new Date().toISOString(),
+        status: data.status || 'programado',
+        responsavel: data.responsavel_nome,
+      });
+
       return data as MedicaoPreditivaRow;
     },
     onSuccess: () => {
@@ -165,6 +190,8 @@ export function useDeleteMedicaoPreditiva() {
 
   return useMutation({
     mutationFn: async (id: string) => {
+      await deleteMaintenanceSchedule('preditiva', id);
+
       const { error } = await supabase
         .from('medicoes_preditivas')
         .delete()
