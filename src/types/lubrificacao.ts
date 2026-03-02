@@ -18,6 +18,15 @@ export interface PlanoLubrificacao {
   nivel_criticidade: 'ALTA' | 'MEDIA' | 'BAIXA' | null;
   instrucoes: string | null;
   anexos: any;
+  descricao: string | null;
+  ponto_lubrificacao: string | null;
+  lubrificante: string | null;
+  periodicidade: number | null;
+  tipo_periodicidade: 'dias' | 'semanas' | 'meses' | 'horas' | null;
+  tempo_estimado: number | null;
+  prioridade: 'baixa' | 'media' | 'alta' | 'critica' | null;
+  ultima_execucao: string | null;
+  status: string | null;
   ativo: boolean;
   created_at: string;
   updated_at: string;
@@ -42,6 +51,16 @@ export interface PlanoLubrificacaoInsert {
   nivel_criticidade?: 'ALTA' | 'MEDIA' | 'BAIXA' | null;
   instrucoes?: string | null;
   anexos?: any;
+  descricao?: string | null;
+  ponto_lubrificacao?: string | null;
+  lubrificante?: string | null;
+  periodicidade?: number | null;
+  tipo_periodicidade?: 'dias' | 'semanas' | 'meses' | 'horas' | null;
+  tempo_estimado?: number | null;
+  prioridade?: 'baixa' | 'media' | 'alta' | 'critica' | null;
+  ultima_execucao?: string | null;
+  proxima_execucao?: string | null;
+  status?: string | null;
   ativo?: boolean;
 }
 

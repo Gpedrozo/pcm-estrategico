@@ -1,10 +1,11 @@
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
+import { getPostLoginPath } from '@/lib/security';
 import { useEffect, useState } from 'react';
 import logo from '@/assets/gppis-logo.png';
 
 const Index = () => {
-  const { isAuthenticated, isLoading } = useAuth();
+  const { isAuthenticated, isLoading, effectiveRole } = useAuth();
   const [showSplash, setShowSplash] = useState(true);
 
   useEffect(() => {
@@ -64,7 +65,7 @@ const Index = () => {
     );
   }
 
-  return <Navigate to={isAuthenticated ? '/dashboard' : '/login'} replace />;
+  return <Navigate to={isAuthenticated ? getPostLoginPath(effectiveRole) : '/login'} replace />;
 };
 
 export default Index;

@@ -1,32 +1,19 @@
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { Shield, Loader2, AlertCircle } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { getPostLoginPath } from '@/lib/security';
-import { useBranding } from '@/contexts/BrandingContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Loader2, AlertCircle, Settings } from 'lucide-react';
 import { z } from 'zod';
 
-// Validação do login
 const loginSchema = z.object({
   email: z.string().email('Email inválido').max(255, 'Email muito longo'),
   password: z.string().min(6, 'Senha deve ter pelo menos 6 caracteres').max(100, 'Senha muito longa'),
 });
 
-const getContrastTextColor = (backgroundColor: string) => {
-  const hex = backgroundColor.replace('#', '');
-  if (hex.length !== 6) return '#ffffff';
-  const r = parseInt(hex.slice(0, 2), 16);
-  const g = parseInt(hex.slice(2, 4), 16);
-  const b = parseInt(hex.slice(4, 6), 16);
-  const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
-  return luminance > 0.6 ? '#111827' : '#ffffff';
-};
-
-export default function Login() {
-  // Login form
+export default function OwnerLogin() {
   const [loginEmail, setLoginEmail] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
   const [loginError, setLoginError] = useState('');
@@ -34,23 +21,13 @@ export default function Login() {
 
   const { login, isAuthenticated, isLoading, effectiveRole } = useAuth();
   const navigate = useNavigate();
-  const { branding } = useBranding();
 
-  const activeBranding = branding || {
-    nome_fantasia: 'PCM ESTRATÉGICO',
-    razao_social: 'PCM ESTRATÉGICO',
-    logo_login_url: null,
-    logo_menu_url: null,
-  };
-
-  // Redireciona para dashboard se já estiver logado
   useEffect(() => {
     if (!isLoading && isAuthenticated) {
       navigate(getPostLoginPath(effectiveRole));
     }
   }, [isAuthenticated, isLoading, navigate, effectiveRole]);
 
-  // Função de login
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoginError('');
@@ -65,56 +42,41 @@ export default function Login() {
       }
 
       const { error } = await login(loginEmail, loginPassword);
-
-      if (error) {
-        setLoginError(error);
-      }
-    } catch (err) {
+      if (error) setLoginError(error);
+    } catch {
       setLoginError('Erro ao fazer login. Tente novamente.');
     } finally {
       setIsLoginLoading(false);
     }
   };
 
-  // Loading inicial
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      <div className="min-h-screen flex items-center justify-center bg-slate-950">
+        <Loader2 className="h-8 w-8 animate-spin text-emerald-400" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background p-4">
+    <div className="min-h-screen flex items-center justify-center bg-slate-950 p-4">
       <div className="w-full max-w-md">
-        {/* Logo e Header */}
         <div className="text-center mb-8">
-          <div
-            className="inline-flex items-center justify-center w-16 h-16 rounded-xl mb-4 overflow-hidden"
-            style={{ backgroundColor: '#111827' }}
-          >
-            {activeBranding.logo_login_url ? (
-              <img src={activeBranding.logo_login_url} alt={activeBranding.nome_fantasia || 'Logo'} className="w-full h-full object-cover" />
-            ) : (
-              <Settings className="h-8 w-8 text-primary-foreground" />
-            )}
+          <div className="inline-flex items-center justify-center w-16 h-16 rounded-xl bg-emerald-500 mb-4">
+            <Shield className="h-8 w-8 text-slate-900" />
           </div>
-          <h1 className="text-2xl font-bold text-foreground">
-            {activeBranding.nome_fantasia || activeBranding.razao_social || 'PCM ESTRATÉGICO'}
-          </h1>
-          <p className="text-muted-foreground mt-1">Sistema de Gestão de Manutenção Industrial</p>
+          <h1 className="text-2xl font-bold text-slate-100">Owner Portal</h1>
+          <p className="text-slate-400 mt-1">Acesso restrito ao time de sistema</p>
         </div>
 
-        {/* Login Form */}
-        <div className="bg-card border border-border rounded-lg p-6 shadow-industrial">
+        <div className="bg-slate-900 border border-slate-800 rounded-lg p-6">
           <form onSubmit={handleLogin} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="login-email">Email</Label>
+              <Label htmlFor="owner-login-email" className="text-slate-200">Email</Label>
               <Input
-                id="login-email"
+                id="owner-login-email"
                 type="email"
-                placeholder="seu@email.com"
+                placeholder="owner@email.com"
                 value={loginEmail}
                 onChange={(e) => setLoginEmail(e.target.value)}
                 required
@@ -124,9 +86,9 @@ export default function Login() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="login-password">Senha</Label>
+              <Label htmlFor="owner-login-password" className="text-slate-200">Senha</Label>
               <Input
-                id="login-password"
+                id="owner-login-password"
                 type="password"
                 placeholder="••••••••"
                 value={loginPassword}
@@ -138,18 +100,13 @@ export default function Login() {
             </div>
 
             {loginError && (
-              <div className="flex items-center gap-2 p-3 rounded-md bg-destructive/10 text-destructive text-sm">
+              <div className="flex items-center gap-2 p-3 rounded-md bg-red-500/10 text-red-400 text-sm">
                 <AlertCircle className="h-4 w-4 flex-shrink-0" />
                 <span>{loginError}</span>
               </div>
             )}
 
-            <Button 
-              type="submit" 
-              className="w-full h-11 font-medium"
-              disabled={isLoginLoading}
-              style={{ backgroundColor: '#111827', color: getContrastTextColor('#111827') }}
-            >
+            <Button type="submit" className="w-full h-11 font-medium bg-emerald-500 text-slate-900" disabled={isLoginLoading}>
               {isLoginLoading ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -161,11 +118,6 @@ export default function Login() {
             </Button>
           </form>
         </div>
-
-        {/* Footer */}
-        <p className="text-center text-xs text-muted-foreground mt-6">
-          © 2024 PCM ESTRATÉGICO • v2.0
-        </p>
       </div>
     </div>
   );
