@@ -5,6 +5,12 @@ const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL
 
 const SUPABASE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY
 
+const OWNER_HOSTNAME = 'owner.gppis.com.br'
+const LEGACY_OWNER_PROJECT_URL = 'https://dvwsferonoczgmvfubgu.supabase.co'
+const STABLE_PROJECT_URL = 'https://cplowhoklcegnjvwmrsk.supabase.co'
+const STABLE_PROJECT_PUBLISHABLE_KEY =
+  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNwbG93aG9rbGNlZ25qdndtcnNrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg1MjE3NjcsImV4cCI6MjA4NDA5Nzc2N30.2aKTjv_YQuxy1QVV28DVhTWpRqdn0AxZD5rVksfXdhE'
+
 const isTestEnvironment =
   import.meta.env.MODE === 'test' ||
   (typeof process !== 'undefined' && typeof process.env !== 'undefined' && !!process.env.VITEST)
@@ -37,10 +43,20 @@ const hasLocalStorageApi =
 
 const authStorage = hasLocalStorageApi ? window.localStorage : memoryStorage
 
+const isOwnerHostname = typeof window !== 'undefined' && window.location.hostname.toLowerCase() === OWNER_HOSTNAME
+
+const shouldUseStableProjectForOwner =
+  isOwnerHostname &&
+  typeof SUPABASE_URL === 'string' &&
+  SUPABASE_URL.toLowerCase() === LEGACY_OWNER_PROJECT_URL
+
+const effectiveSupabaseUrl = shouldUseStableProjectForOwner ? STABLE_PROJECT_URL : SUPABASE_URL
+const effectiveSupabaseKey = shouldUseStableProjectForOwner ? STABLE_PROJECT_PUBLISHABLE_KEY : SUPABASE_KEY
+
 const fallbackUrl = isTestEnvironment ? 'http://127.0.0.1:54321' : ''
 const fallbackKey = isTestEnvironment ? 'test-key' : ''
 
-export const supabase = createClient<Database>(SUPABASE_URL || fallbackUrl, SUPABASE_KEY || fallbackKey, {
+export const supabase = createClient<Database>(effectiveSupabaseUrl || fallbackUrl, effectiveSupabaseKey || fallbackKey, {
   auth: {
     storage: authStorage,
     persistSession: !isTestEnvironment,
