@@ -16,9 +16,15 @@ Execute os arquivos nesta ordem no SQL Editor do Supabase:
 
 1. `06_cutover_finalize.sql` (apenas no fechamento definitivo)
 
+1. `08_cleanup_legacy_objects.sql`
+
+1. `09_seed_owner_master_users.sql`
+
 ## ObservaÃ§Ãµes
 
-- O passo 7 (`06_cutover_finalize.sql`) deve ser executado somente apÃ³s validar todos os mÃ³dulos no v2.
+- O passo `06_cutover_finalize.sql` deve ser executado somente apÃ³s validar todos os mÃ³dulos no v2.
+
+- O passo `09_seed_owner_master_users.sql` prepara os usuários críticos (`SYSTEM_OWNER` e `MASTER_TI`) após o reset.
 
 - Enquanto houver frontend legado consumindo `auditoria`/`auditoria_logs`, mantenha a fase de compatibilidade ativa.
 

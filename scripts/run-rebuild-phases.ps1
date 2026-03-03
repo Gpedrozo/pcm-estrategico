@@ -30,7 +30,9 @@ $files = @(
   'supabase/rebuild/02_security_rbac_rls_v2.sql',
   'supabase/rebuild/03_front_compat_views.sql',
   'supabase/rebuild/04_edge_refactor_contract.sql',
-  'supabase/rebuild/05_analytics_layer_v2.sql'
+  'supabase/rebuild/05_analytics_layer_v2.sql',
+  'supabase/rebuild/08_cleanup_legacy_objects.sql',
+  'supabase/rebuild/09_seed_owner_master_users.sql'
 )
 
 if ($IncludeCutover) {
@@ -46,9 +48,9 @@ foreach ($file in $files) {
 }
 
 if ($IncludeCutover) {
-  Write-Host "Fases 0-6 executadas com sucesso."
+  Write-Host "Fases 0-6 + 8-9 executadas com sucesso."
 } else {
-  Write-Host "Fases 0-5 executadas com sucesso."
+  Write-Host "Fases 0-5 + 8-9 executadas com sucesso."
   Write-Host "Para Fase 6 (cutover), execute com:"
   Write-Host ".\\scripts\\run-rebuild-phases.ps1 -ProjectRef $ProjectRef -IncludeCutover"
 }

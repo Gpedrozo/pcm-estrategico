@@ -5,6 +5,8 @@ const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL
 const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY
 const SUPABASE_PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || SUPABASE_ANON_KEY
 
+const SUPABASE_PROJECT_ID = import.meta.env.VITE_SUPABASE_PROJECT_ID
+
 const SUPABASE_KEY = SUPABASE_PUBLISHABLE_KEY
 
 const isTestEnvironment =
@@ -17,6 +19,48 @@ if (!hasSupabaseEnv && !isTestEnvironment && !import.meta.env.DEV) {
   throw new Error(
     'Supabase environment is not configured. Define VITE_SUPABASE_URL with VITE_SUPABASE_PUBLISHABLE_KEY or VITE_SUPABASE_ANON_KEY.'
   )
+}
+
+const extractProjectRefFromUrl = (url?: string) => {
+  if (!url) return null
+  try {
+    const parsed = new URL(url)
+    return parsed.hostname.split('.')[0] || null
+  } catch {
+    return null
+  }
+}
+
+const decodeJwtPayload = (token?: string) => {
+  if (!token) return null
+  const tokenParts = token.split('.')
+  if (tokenParts.length < 2) return null
+  try {
+    const base64 = tokenParts[1].replace(/-/g, '+').replace(/_/g, '/')
+    const padded = base64 + '='.repeat((4 - (base64.length % 4)) % 4)
+    const decoded = atob(padded)
+    return JSON.parse(decoded) as Record<string, unknown>
+  } catch {
+    return null
+  }
+}
+
+const projectRefFromUrl = extractProjectRefFromUrl(SUPABASE_URL)
+const projectRefFromKey = (decodeJwtPayload(SUPABASE_KEY)?.ref as string | undefined) || null
+const normalizedProjectId = SUPABASE_PROJECT_ID?.trim() || null
+
+if (!isTestEnvironment && hasSupabaseEnv) {
+  if (projectRefFromUrl && projectRefFromKey && projectRefFromUrl !== projectRefFromKey) {
+    throw new Error('Supabase URL and publishable key are from different projects. Use a single Supabase project for all system databases.')
+  }
+
+  if (normalizedProjectId && projectRefFromUrl && normalizedProjectId !== projectRefFromUrl) {
+    throw new Error('VITE_SUPABASE_PROJECT_ID does not match VITE_SUPABASE_URL. Keep all data in one Supabase project.')
+  }
+
+  if (normalizedProjectId && projectRefFromKey && normalizedProjectId !== projectRefFromKey) {
+    throw new Error('VITE_SUPABASE_PROJECT_ID does not match VITE_SUPABASE_PUBLISHABLE_KEY. Keep all data in one Supabase project.')
+  }
 }
 
 const memoryStorage = (() => {
