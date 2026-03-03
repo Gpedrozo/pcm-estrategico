@@ -15,7 +15,7 @@ export function OwnerAssinaturasModule() {
     return <div className="rounded-lg border border-slate-800 bg-slate-900 p-4 text-sm">Carregando assinaturas...</div>
   }
 
-  const subscriptions = ((data as Subscription[] | undefined) ?? []).slice(0, 30)
+  const subscriptions = ((data as unknown as Subscription[] | undefined) ?? []).slice(0, 30)
 
   return (
     <div className="rounded-lg border border-slate-800 bg-slate-900 p-4">

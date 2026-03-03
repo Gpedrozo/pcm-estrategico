@@ -18,7 +18,7 @@ export function OwnerPlanosModule() {
     return <div className="rounded-lg border border-slate-800 bg-slate-900 p-4 text-sm">Carregando planos...</div>
   }
 
-  const plans = (data as Plan[] | undefined) ?? []
+  const plans = (data as unknown as Plan[] | undefined) ?? []
 
   return (
     <div className="rounded-lg border border-slate-800 bg-slate-900 p-4">

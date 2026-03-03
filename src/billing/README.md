@@ -1,3 +1,3 @@
-# Billing
+﻿# Billing
 
-Integração de planos/assinaturas/limites (Stripe-ready).
+IntegraÃ§Ã£o de planos/assinaturas/limites (Stripe-ready).

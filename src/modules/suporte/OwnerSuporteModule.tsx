@@ -15,7 +15,7 @@ export function OwnerSuporteModule() {
     return <div className="rounded-lg border border-slate-800 bg-slate-900 p-4 text-sm">Carregando chamados...</div>
   }
 
-  const tickets = ((data as Ticket[] | undefined) ?? []).slice(0, 30)
+  const tickets = ((data as unknown as Ticket[] | undefined) ?? []).slice(0, 30)
 
   return (
     <div className="rounded-lg border border-slate-800 bg-slate-900 p-4">

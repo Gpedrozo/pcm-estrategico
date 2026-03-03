@@ -1,4 +1,8 @@
+// @ts-nocheck
+// @ts-ignore: Deno JSR import is resolved at Supabase edge runtime
 import { createClient } from "jsr:@supabase/supabase-js@2";
+
+declare const Deno: any;
 
 function env(name: string): string {
   const value = Deno.env.get(name);

@@ -1,3 +1,4 @@
+// @ts-nocheck
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { adminClient, isSystemOperator, requireUser } from "../_shared/auth.ts";
 import { corsHeaders, fail, ok } from "../_shared/response.ts";
@@ -7,7 +8,7 @@ Deno.serve(async (req) => {
   if (req.method !== "POST") return fail("Method not allowed", 405);
 
   const auth = await requireUser(req);
-  if ("error" in auth) return fail(auth.error, auth.status);
+  if ("error" in auth) return fail(auth.error ?? "Unauthorized", auth.status ?? 401);
 
   const admin = adminClient();
   const allowed = await isSystemOperator(admin, auth.user.id);

@@ -1,3 +1,3 @@
-# Auth
+﻿# Auth
 
-Fluxos de autenticação/autorização e composição de sessão.
+Fluxos de autenticaÃ§Ã£o/autorizaÃ§Ã£o e composiÃ§Ã£o de sessÃ£o.

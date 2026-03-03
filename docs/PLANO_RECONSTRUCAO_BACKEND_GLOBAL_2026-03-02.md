@@ -1,163 +1,212 @@
-# Plano de Reconstrução Global do Backend (Todos os Módulos)
+﻿# Plano de ReconstruÃ§Ã£o Global do Backend (Todos os MÃ³dulos)
 
 Data: 2026-03-02
-Escopo: aplicar a lógica de consolidação estrutural em todos os módulos (preventiva, lubrificação, inspeção, preditiva, OS, contratos, SSMA, FMEA, RCA, etc.)
+Escopo: aplicar a lÃ³gica de consolidaÃ§Ã£o estrutural em todos os mÃ³dulos (preventiva, lubrificaÃ§Ã£o, inspeÃ§Ã£o, preditiva, OS, contratos, SSMA, FMEA, RCA, etc.)
 
 ## 1) Diretriz central
 
-A ideia de concentrar dados para análise está correta, mas com uma observação técnica importante:
+A ideia de concentrar dados para anÃ¡lise estÃ¡ correta, mas com uma observaÃ§Ã£o tÃ©cnica importante:
 
-- Não usar uma única tabela gigante para tudo (isso piora integridade e manutenção).
-- Usar um único banco (Postgres/Supabase) com modelo canônico por domínio + camada analítica para BI.
+- NÃ£o usar uma Ãºnica tabela gigante para tudo (isso piora integridade e manutenÃ§Ã£o).
+
+- Usar um Ãºnico banco (Postgres/Supabase) com modelo canÃ´nico por domÃ­nio + camada analÃ­tica para BI.
 
 Resultado esperado:
 
-- OLTP limpo e consistente para operação diária.
-- Camada analítica pronta para Power BI sem retrabalho.
-- Segurança multi-tenant preservada por empresa_id + RLS.
+- OLTP limpo e consistente para operaÃ§Ã£o diÃ¡ria.
 
-## 2) Diagnóstico resumido do estado atual
+- Camada analÃ­tica pronta para Power BI sem retrabalho.
 
-### 2.1 Pontos fortes já existentes
+- SeguranÃ§a multi-tenant preservada por empresa_id + RLS.
+
+## 2) DiagnÃ³stico resumido do estado atual
+
+### 2.1 Pontos fortes jÃ¡ existentes
 
 - Base multi-tenant com empresa_id em grande parte das tabelas.
-- RLS e RBAC já evoluídos (has_permission e perfis globais).
-- Agenda central maintenance_schedule já criada.
-- Trilha de auditoria avançando para padrão RPC.
+
+- RLS e RBAC jÃ¡ evoluÃ­dos (has_permission e perfis globais).
+
+- Agenda central maintenance_schedule jÃ¡ criada.
+
+- Trilha de auditoria avanÃ§ando para padrÃ£o RPC.
 
 ### 2.2 Principais problemas detectados
 
-- Coexistência de trilhas de auditoria antigas e novas (auditoria, auditoria_logs, audit_logs, enterprise_audit_logs).
-- Parte do frontend ainda depende da tabela legada auditoria.
-- Funções edge com acoplamentos legados (ex.: generate-preventive-os escreve em auditoria).
-- Políticas antigas permissivas (USING true) ainda aparecem no histórico e precisam baseline único.
-- Migrations com histórico acumulado e drift corrigido, mas com legado residual.
+- CoexistÃªncia de trilhas de auditoria antigas e novas (auditoria, auditoria_logs, audit_logs, enterprise_audit_logs).
 
-## 3) Arquitetura alvo (padrão para todos os módulos)
+- Parte do frontend ainda depende da tabela legada auditoria.
+
+- FunÃ§Ãµes edge com acoplamentos legados (ex.: generate-preventive-os escreve em auditoria).
+
+- PolÃ­ticas antigas permissivas (USING true) ainda aparecem no histÃ³rico e precisam baseline Ãºnico.
+
+- Migrations com histÃ³rico acumulado e drift corrigido, mas com legado residual.
+
+## 3) Arquitetura alvo (padrÃ£o para todos os mÃ³dulos)
 
 ## 3.1 Camada operacional (OLTP)
 
-Padrão por módulo:
+PadrÃ£o por mÃ³dulo:
 
-- Tabela de plano/configuração (ex.: planos_preventivos).
-- Tabela de itens/componentes filhos (ex.: atividades, serviços, checklist, materiais planejados).
-- Tabela de execução/histórico (ex.: execucoes).
-- Vinculação clara com OS quando aplicável.
+- Tabela de plano/configuraÃ§Ã£o (ex.: planos_preventivos).
 
-Padrão obrigatório em todas as tabelas:
+- Tabela de itens/componentes filhos (ex.: atividades, serviÃ§os, checklist, materiais planejados).
+
+- Tabela de execuÃ§Ã£o/histÃ³rico (ex.: execucoes).
+
+- VinculaÃ§Ã£o clara com OS quando aplicÃ¡vel.
+
+PadrÃ£o obrigatÃ³rio em todas as tabelas:
 
 - id UUID PK
+
 - empresa_id UUID NOT NULL
+
 - created_at, updated_at
+
 - actor fields quando fizer sentido
-- FKs explícitas e índices de consulta operacional
 
-## 3.2 Camada de agenda única
+- FKs explÃ­citas e Ã­ndices de consulta operacional
 
-- maintenance_schedule permanece como ponto central de programação (todos os módulos alimentam ela).
-- Cada domínio mantém seus detalhes próprios, mas agenda e status ficam padronizados para visão única.
+## 3.2 Camada de agenda Ãºnica
 
-## 3.3 Camada de auditoria única
+- maintenance_schedule permanece como ponto central de programaÃ§Ã£o (todos os mÃ³dulos alimentam ela).
 
-Padrão alvo:
+- Cada domÃ­nio mantÃ©m seus detalhes prÃ³prios, mas agenda e status ficam padronizados para visÃ£o Ãºnica.
+
+## 3.3 Camada de auditoria Ãºnica
+
+PadrÃ£o alvo:
 
 - Escrita de auditoria apenas via RPC app_write_audit_log.
-- Repositório único de eventos operacionais críticos em enterprise_audit_logs (ou tabela final definida, única).
+
+- RepositÃ³rio Ãºnico de eventos operacionais crÃ­ticos em enterprise_audit_logs (ou tabela final definida, Ãºnica).
+
 - Encerrar escrita direta nas tabelas legadas de auditoria.
 
-## 3.4 Camada analítica (BI-ready)
+## 3.4 Camada analÃ­tica (BI-ready)
 
 - Criar schema analytics com views materializadas/tabelas derivadas.
+
 - Modelo estrela para Power BI:
 
   - fatos: fato_os, fato_execucoes, fato_paradas, fato_custos, fato_alertas
-  - dimensões: dim_tempo, dim_equipamento, dim_empresa, dim_tipo_manutencao, dim_status
 
-- ETL SQL interno (jobs agendados) para alimentar métricas sem sobrecarregar telas operacionais.
+  - dimensÃµes: dim_tempo, dim_equipamento, dim_empresa, dim_tipo_manutencao, dim_status
 
-## 4) Aplicação da lógica de Preventivas para todos os módulos
+- ETL SQL interno (jobs agendados) para alimentar mÃ©tricas sem sobrecarregar telas operacionais.
 
-A regra que você propôs vira template global:
+## 4) AplicaÃ§Ã£o da lÃ³gica de Preventivas para todos os mÃ³dulos
 
-1. Cada módulo terá um núcleo canônico (plano + execução + vínculos).
-2. Dados correlatos dispersos serão absorvidos por estruturas consistentes do domínio.
-3. Acesso para BI será por camada analytics, não por tabela operacional bruta.
-4. Todas as mutações passam por política de permissão unificada + auditoria RPC.
+A regra que vocÃª propÃ´s vira template global:
 
-## 5) Estratégia de reconstrução (sem dados reais: janela ideal)
+1. Cada mÃ³dulo terÃ¡ um nÃºcleo canÃ´nico (plano + execuÃ§Ã£o + vÃ­nculos).
 
-## Fase 0 — Congelamento e baseline
+1. Dados correlatos dispersos serÃ£o absorvidos por estruturas consistentes do domÃ­nio.
 
-- Congelar criação de novas migrations antigas.
+1. Acesso para BI serÃ¡ por camada analytics, nÃ£o por tabela operacional bruta.
+
+1. Todas as mutaÃ§Ãµes passam por polÃ­tica de permissÃ£o unificada + auditoria RPC.
+
+## 5) EstratÃ©gia de reconstruÃ§Ã£o (sem dados reais: janela ideal)
+
+## Fase 0 â€” Congelamento e baseline
+
+- Congelar criaÃ§Ã£o de novas migrations antigas.
+
 - Definir baseline final do schema alvo.
-- Gerar inventário de dependências frontend -> tabelas/RPC.
 
-## Fase 1 — Schema canônico limpo
+- Gerar inventÃ¡rio de dependÃªncias frontend -> tabelas/RPC.
 
-- Criar migration baseline única (v2) com:
+## Fase 1 â€” Schema canÃ´nico limpo
+
+- Criar migration baseline Ãºnica (v2) com:
 
   - empresas/profiles/user_roles/rbac
-  - módulos operacionais padronizados
+
+  - mÃ³dulos operacionais padronizados
+
   - maintenance_schedule
-  - auditoria única
+
+  - auditoria Ãºnica
+
   - analytics schema inicial
 
-## Fase 2 — Segurança e governança
+## Fase 2 â€” SeguranÃ§a e governanÃ§a
 
 - RLS padronizada por empresa_id em 100% das tabelas operacionais.
+
 - Policies por papel (USUARIO/ADMIN/MASTER_TI/SYSTEM_OWNER).
-- Remoção de policies permissivas herdadas.
 
-## Fase 3 — Serviços e edge functions
+- RemoÃ§Ã£o de policies permissivas herdadas.
 
-- Refatorar edge functions para o modelo canônico.
+## Fase 3 â€” ServiÃ§os e edge functions
+
+- Refatorar edge functions para o modelo canÃ´nico.
+
 - Eliminar escrita em tabelas legadas de auditoria.
-- Garantir que todos os fluxos críticos registrem eventos em padrão único.
 
-## Fase 4 — Frontend adapter
+- Garantir que todos os fluxos crÃ­ticos registrem eventos em padrÃ£o Ãºnico.
 
-- Ajustar hooks/serviços para apontar apenas para schema v2.
-- Manter camada de compatibilidade temporária só se necessário.
+## Fase 4 â€” Frontend adapter
 
-## Fase 5 — BI layer
+- Ajustar hooks/serviÃ§os para apontar apenas para schema v2.
 
-- Publicar views analíticas padronizadas.
-- Validar extração no Power BI com dataset de teste.
+- Manter camada de compatibilidade temporÃ¡ria sÃ³ se necessÃ¡rio.
 
-## Fase 6 — Cutover e limpeza
+## Fase 5 â€” BI layer
+
+- Publicar views analÃ­ticas padronizadas.
+
+- Validar extraÃ§Ã£o no Power BI com dataset de teste.
+
+## Fase 6 â€” Cutover e limpeza
 
 - Drop definitivo de estruturas legadas.
-- Trava para impedir reintrodução de tabelas antigas.
-- Documentação técnica final + runbooks.
+
+- Trava para impedir reintroduÃ§Ã£o de tabelas antigas.
+
+- DocumentaÃ§Ã£o tÃ©cnica final + runbooks.
 
 ## 6) O que eu mudaria imediatamente
 
-1. Unificar auditoria (prioridade máxima).
-2. Criar dicionário de dados global por módulo (contrato canônico).
-3. Padronizar naming de colunas e status em todos os módulos.
-4. Consolidar agendamento em maintenance_schedule para todos os domínios.
-5. Criar analytics schema desde o início da reconstrução.
+1. Unificar auditoria (prioridade mÃ¡xima).
+
+1. Criar dicionÃ¡rio de dados global por mÃ³dulo (contrato canÃ´nico).
+
+1. Padronizar naming de colunas e status em todos os mÃ³dulos.
+
+1. Consolidar agendamento em maintenance_schedule para todos os domÃ­nios.
+
+1. Criar analytics schema desde o inÃ­cio da reconstruÃ§Ã£o.
 
 ## 7) Riscos e como mitigar
 
 - Risco: reset total sem blueprint -> retrabalho.
-  Mitigação: baseline v2 completo antes de recriar qualquer tabela.
 
-- Risco: quebrar frontend por renomeações.
-  Mitigação: mapa de compatibilidade e rollout por fases.
+  MitigaÃ§Ã£o: baseline v2 completo antes de recriar qualquer tabela.
 
-- Risco: regressão de segurança.
-  Mitigação: suíte de testes de RLS/RBAC e smoke de permissões no pipeline.
+- Risco: quebrar frontend por renomeaÃ§Ãµes.
 
-## 8) Conclusão prática
+  MitigaÃ§Ã£o: mapa de compatibilidade e rollout por fases.
 
-Sim, sua estratégia funciona e este é o melhor momento para fazer (antes de dados reais).
+- Risco: regressÃ£o de seguranÃ§a.
 
-A forma correta não é “uma tabela para tudo”, e sim:
+  MitigaÃ§Ã£o: suÃ­te de testes de RLS/RBAC e smoke de permissÃµes no pipeline.
 
-- um banco único,
-- arquitetura canônica por domínio,
-- auditoria e segurança unificadas,
+## 8) ConclusÃ£o prÃ¡tica
+
+Sim, sua estratÃ©gia funciona e este Ã© o melhor momento para fazer (antes de dados reais).
+
+A forma correta nÃ£o Ã© â€œuma tabela para tudoâ€, e sim:
+
+- um banco Ãºnico,
+
+- arquitetura canÃ´nica por domÃ­nio,
+
+- auditoria e seguranÃ§a unificadas,
+
 - e camada analytics pronta para BI.
 
-Esse desenho entrega operação robusta agora e análise avançada depois.
+Esse desenho entrega operaÃ§Ã£o robusta agora e anÃ¡lise avanÃ§ada depois.

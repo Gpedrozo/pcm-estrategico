@@ -1,619 +1,778 @@
-# ANÁLISE PROFUNDA PÁGINA A PÁGINA - PCM ESTRATÉGICO
-## Sistema de Planejamento e Controle da Manutenção (CMMS)
+﻿# ANÃLISE PROFUNDA PÃGINA A PÃGINA - PCM ESTRATÃ‰GICO
 
-**Data da Análise:** Fevereiro 2026  
-**Versão do Sistema:** 2.0  
-**Tipo de Análise:** Avaliação Profunda para Excelência Industrial
+## Sistema de Planejamento e Controle da ManutenÃ§Ã£o (CMMS)
+
+**Data da AnÃ¡lise:** Fevereiro 2026  
+**VersÃ£o do Sistema:** 2.0  
+**Tipo de AnÃ¡lise:** AvaliaÃ§Ã£o Profunda para ExcelÃªncia Industrial
 
 ---
 
-## SUMÁRIO EXECUTIVO
+## SUMÃRIO EXECUTIVO
 
-### Diagnóstico Geral
-O PCM Estratégico é um sistema CMMS robusto com **21 módulos especializados** cobrindo todo o ciclo de vida da manutenção industrial. O sistema demonstra maturidade **Nível 3 (Definido)** na escala de maturidade do PCM, com potencial para atingir **Nível 4 (Quantificado)** com as melhorias propostas.
+### DiagnÃ³stico Geral
+
+O PCM EstratÃ©gico Ã© um sistema CMMS robusto com **21 mÃ³dulos especializados** cobrindo todo o ciclo de vida da manutenÃ§Ã£o industrial. O sistema demonstra maturidade **NÃ­vel 3 (Definido)** na escala de maturidade do PCM, com potencial para atingir **NÃ­vel 4 (Quantificado)** com as melhorias propostas.
 
 ### Pontos Fortes
-- ✅ Arquitetura hierárquica de ativos (ISO 14224)
-- ✅ Integração RCA no fechamento de OS corretivas
-- ✅ Dashboard com KPIs industriais (MTBF, MTTR, Disponibilidade)
-- ✅ Gestão de custos por categoria (M.O., Materiais, Terceiros)
-- ✅ Módulos especializados (FMEA, RCA, Preditiva, SSMA)
 
-### Pontos Críticos para Melhoria
-- ⚠️ Ausência de OEE (Overall Equipment Effectiveness)
-- ⚠️ Falta de geração automática de OS preventivas
-- ⚠️ Materiais sem vinculação direta com equipamentos
-- ⚠️ Mecânicos sem matriz de competências
-- ⚠️ Ausência de calendário visual de manutenção
+- âœ… Arquitetura hierÃ¡rquica de ativos (ISO 14224)
+
+- âœ… IntegraÃ§Ã£o RCA no fechamento de OS corretivas
+
+- âœ… Dashboard com KPIs industriais (MTBF, MTTR, Disponibilidade)
+
+- âœ… GestÃ£o de custos por categoria (M.O., Materiais, Terceiros)
+
+- âœ… MÃ³dulos especializados (FMEA, RCA, Preditiva, SSMA)
+
+### Pontos CrÃ­ticos para Melhoria
+
+- âš ï¸ AusÃªncia de OEE (Overall Equipment Effectiveness)
+
+- âš ï¸ Falta de geraÃ§Ã£o automÃ¡tica de OS preventivas
+
+- âš ï¸ Materiais sem vinculaÃ§Ã£o direta com equipamentos
+
+- âš ï¸ MecÃ¢nicos sem matriz de competÃªncias
+
+- âš ï¸ AusÃªncia de calendÃ¡rio visual de manutenÃ§Ã£o
 
 ---
 
-## 1️⃣ ANÁLISE DO DASHBOARD DE MANUTENÇÃO
+## 1ï¸âƒ£ ANÃLISE DO DASHBOARD DE MANUTENÃ‡ÃƒO
 
 ### Estado Atual
-| Funcionalidade | Status | Observação |
+
+| Funcionalidade | Status | ObservaÃ§Ã£o |
 |----------------|--------|------------|
-| MTBF | ✅ Implementado | Cálculo básico |
-| MTTR | ✅ Implementado | Cálculo básico |
-| Disponibilidade | ✅ Implementado | MTBF/(MTBF+MTTR) |
-| Backlog | ✅ Implementado | Quantidade e tempo |
-| Custos mensais | ✅ Implementado | Por categoria |
-| Ratio Prev/Corr | ✅ Implementado | - |
-| Aderência PM | ✅ Implementado | - |
+| MTBF | âœ… Implementado | CÃ¡lculo bÃ¡sico |
+| MTTR | âœ… Implementado | CÃ¡lculo bÃ¡sico |
+| Disponibilidade | âœ… Implementado | MTBF/(MTBF+MTTR) |
+| Backlog | âœ… Implementado | Quantidade e tempo |
+| Custos mensais | âœ… Implementado | Por categoria |
+| Ratio Prev/Corr | âœ… Implementado | - |
+| AderÃªncia PM | âœ… Implementado | - |
 
 ### Lacunas Identificadas
 
 #### KPIs Faltantes
-1. **OEE (Overall Equipment Effectiveness)** - Indicador padrão mundial
-2. **Confiabilidade** - R(t) = e^(-λt)
-3. **SLA de Atendimento** - Tempo de resposta vs meta
-4. **Custo por Tipo de Manutenção** - Corretiva vs Preventiva vs Preditiva
-5. **Índice de Retrabalho** - OS reabertas
-6. **Taxa de Falhas** - λ = 1/MTBF
+
+1. **OEE (Overall Equipment Effectiveness)** - Indicador padrÃ£o mundial
+
+1. **Confiabilidade** - R(t) = e^(-Î»t)
+
+1. **SLA de Atendimento** - Tempo de resposta vs meta
+
+1. **Custo por Tipo de ManutenÃ§Ã£o** - Corretiva vs Preventiva vs Preditiva
+
+1. **Ãndice de Retrabalho** - OS reabertas
+
+1. **Taxa de Falhas** - Î» = 1/MTBF
 
 #### Funcionalidades Ausentes
-1. **Filtros Avançados** - Por período, área, criticidade, tipo de ativo
-2. **Alertas Automáticos** - OS urgentes, backlog alto, SLA estourado
-3. **Comparativo de Períodos** - Mês atual vs mês anterior
-4. **Drill-down** - Clicar no KPI para ver detalhes
-5. **Exportação de Relatórios** - PDF com gráficos
+
+1. **Filtros AvanÃ§ados** - Por perÃ­odo, Ã¡rea, criticidade, tipo de ativo
+
+1. **Alertas AutomÃ¡ticos** - OS urgentes, backlog alto, SLA estourado
+
+1. **Comparativo de PerÃ­odos** - MÃªs atual vs mÃªs anterior
+
+1. **Drill-down** - Clicar no KPI para ver detalhes
+
+1. **ExportaÃ§Ã£o de RelatÃ³rios** - PDF com grÃ¡ficos
 
 ### Melhorias Propostas
 
 ```
 PRIORIDADE ALTA:
-├── Adicionar OEE = Disponibilidade × Performance × Qualidade
-├── Adicionar Confiabilidade mensal por equipamento
-├── Adicionar filtros por área, período, criticidade
-├── Adicionar alertas visuais para KPIs fora da meta
-└── Adicionar comparativo com período anterior
+â”œâ”€â”€ Adicionar OEE = Disponibilidade Ã— Performance Ã— Qualidade
+â”œâ”€â”€ Adicionar Confiabilidade mensal por equipamento
+â”œâ”€â”€ Adicionar filtros por Ã¡rea, perÃ­odo, criticidade
+â”œâ”€â”€ Adicionar alertas visuais para KPIs fora da meta
+â””â”€â”€ Adicionar comparativo com perÃ­odo anterior
 
-PRIORIDADE MÉDIA:
-├── Adicionar gráfico de tendência de MTBF/MTTR
-├── Adicionar ranking de equipamentos por falhas
-├── Adicionar custo acumulado por equipamento
-└── Adicionar índice de retrabalho
+PRIORIDADE MÃ‰DIA:
+â”œâ”€â”€ Adicionar grÃ¡fico de tendÃªncia de MTBF/MTTR
+â”œâ”€â”€ Adicionar ranking de equipamentos por falhas
+â”œâ”€â”€ Adicionar custo acumulado por equipamento
+â””â”€â”€ Adicionar Ã­ndice de retrabalho
 ```
 
 ---
 
-## 2️⃣ ANÁLISE DO CADASTRO DE EQUIPAMENTOS
+## 2ï¸âƒ£ ANÃLISE DO CADASTRO DE EQUIPAMENTOS
 
 ### Estado Atual
 
 #### Campos Existentes
-- TAG, Nome, Criticidade (A/B/C), Nível de Risco
-- Localização, Fabricante, Modelo, Nº Série
-- Sistema_ID (vinculação hierárquica)
+
+- TAG, Nome, Criticidade (A/B/C), NÃ­vel de Risco
+
+- LocalizaÃ§Ã£o, Fabricante, Modelo, NÂº SÃ©rie
+
+- Sistema_ID (vinculaÃ§Ã£o hierÃ¡rquica)
+
 - Ativo (status)
 
 #### Hierarquia Implementada
+
 ```
-Planta → Área → Sistema → Equipamento → Componente
+Planta â†’ Ãrea â†’ Sistema â†’ Equipamento â†’ Componente
 ```
 
 ### Lacunas Identificadas
 
-#### Campos Técnicos Faltantes
+#### Campos TÃ©cnicos Faltantes
+
 | Campo | Impacto | Prioridade |
 |-------|---------|------------|
-| Potência (kW/CV) | Alto | Alta |
+| PotÃªncia (kW/CV) | Alto | Alta |
 | Capacidade nominal | Alto | Alta |
-| Ano de fabricação | Médio | Alta |
-| Data de aquisição | Médio | Média |
-| Valor patrimonial | Médio | Média |
-| Vida útil estimada (h) | Alto | Alta |
-| Horas operação atual | Alto | Alta |
-| Manual anexo (URL) | Médio | Média |
+| Ano de fabricaÃ§Ã£o | MÃ©dio | Alta |
+| Data de aquisiÃ§Ã£o | MÃ©dio | MÃ©dia |
+| Valor patrimonial | MÃ©dio | MÃ©dia |
+| Vida Ãºtil estimada (h) | Alto | Alta |
+| Horas operaÃ§Ã£o atual | Alto | Alta |
+| Manual anexo (URL) | MÃ©dio | MÃ©dia |
 | Foto do equipamento | Baixo | Baixa |
 | Centro de custo | Alto | Alta |
 
 #### Hierarquia Completa (Faltante)
+
 ```
 Planta
-  └── Área
-      └── Linha
-          └── Equipamento
-              └── Conjunto
-                  └── Subconjunto
-                      └── Módulo
-                          └── Parte
-                              └── Componente
-                                  └── Peça
+  â””â”€â”€ Ãrea
+      â””â”€â”€ Linha
+          â””â”€â”€ Equipamento
+              â””â”€â”€ Conjunto
+                  â””â”€â”€ Subconjunto
+                      â””â”€â”€ MÃ³dulo
+                          â””â”€â”€ Parte
+                              â””â”€â”€ Componente
+                                  â””â”€â”€ PeÃ§a
 ```
 
 ### Melhorias Propostas
 
 ```
 PRIORIDADE ALTA:
-├── Adicionar campos: potencia, capacidade, ano_fabricacao
-├── Adicionar campos: vida_util_estimada, horas_operacao
-├── Adicionar campo: centro_custo (para contabilidade)
-├── Implementar horímetro virtual com cálculo automático
-└── Adicionar indicador de saúde do ativo
+â”œâ”€â”€ Adicionar campos: potencia, capacidade, ano_fabricacao
+â”œâ”€â”€ Adicionar campos: vida_util_estimada, horas_operacao
+â”œâ”€â”€ Adicionar campo: centro_custo (para contabilidade)
+â”œâ”€â”€ Implementar horÃ­metro virtual com cÃ¡lculo automÃ¡tico
+â””â”€â”€ Adicionar indicador de saÃºde do ativo
 
-PRIORIDADE MÉDIA:
-├── Adicionar upload de manuais técnicos
-├── Adicionar fotos do equipamento
-├── Implementar QR Code para identificação
-├── Adicionar histórico consolidado de manutenções
-└── Adicionar indicadores específicos do ativo (MTBF, MTTR)
+PRIORIDADE MÃ‰DIA:
+â”œâ”€â”€ Adicionar upload de manuais tÃ©cnicos
+â”œâ”€â”€ Adicionar fotos do equipamento
+â”œâ”€â”€ Implementar QR Code para identificaÃ§Ã£o
+â”œâ”€â”€ Adicionar histÃ³rico consolidado de manutenÃ§Ãµes
+â””â”€â”€ Adicionar indicadores especÃ­ficos do ativo (MTBF, MTTR)
 ```
 
 ---
 
-## 3️⃣ ANÁLISE DO CADASTRO DE MATERIAIS
+## 3ï¸âƒ£ ANÃLISE DO CADASTRO DE MATERIAIS
 
 ### Estado Atual
+
 | Campo | Status |
 |-------|--------|
-| Código | ✅ |
-| Nome | ✅ |
-| Unidade | ✅ |
-| Custo unitário | ✅ |
-| Estoque atual | ✅ |
-| Estoque mínimo | ✅ |
-| Localização | ✅ |
-| Movimentações | ✅ |
+| CÃ³digo | âœ… |
+| Nome | âœ… |
+| Unidade | âœ… |
+| Custo unitÃ¡rio | âœ… |
+| Estoque atual | âœ… |
+| Estoque mÃ­nimo | âœ… |
+| LocalizaÃ§Ã£o | âœ… |
+| MovimentaÃ§Ãµes | âœ… |
 
 ### Lacunas Identificadas
 
 #### Campos Faltantes
+
 1. **Aplicabilidade** - Quais equipamentos usam este material
-2. **Fornecedores aprovados** - Lista de fornecedores com preços
-3. **Lead time de reposição** - Tempo médio de entrega
-4. **Ponto de pedido** - Cálculo automático (estoque mínimo + lead time)
-5. **Lote econômico de compra** - EOQ
-6. **Código NCM/Fiscal** - Para notas fiscais
-7. **Classificação ABC** - Por valor de consumo
-8. **Criticidade do item** - Para planejamento
+
+1. **Fornecedores aprovados** - Lista de fornecedores com preÃ§os
+
+1. **Lead time de reposiÃ§Ã£o** - Tempo mÃ©dio de entrega
+
+1. **Ponto de pedido** - CÃ¡lculo automÃ¡tico (estoque mÃ­nimo + lead time)
+
+1. **Lote econÃ´mico de compra** - EOQ
+
+1. **CÃ³digo NCM/Fiscal** - Para notas fiscais
+
+1. **ClassificaÃ§Ã£o ABC** - Por valor de consumo
+
+1. **Criticidade do item** - Para planejamento
 
 #### Funcionalidades Faltantes
-1. Vinculação automática com equipamentos
-2. Cálculo automático de consumo médio mensal
-3. Alertas de ponto de pedido atingido
-4. Sugestão automática de compra
-5. Histórico de preços por fornecedor
+
+1. VinculaÃ§Ã£o automÃ¡tica com equipamentos
+
+1. CÃ¡lculo automÃ¡tico de consumo mÃ©dio mensal
+
+1. Alertas de ponto de pedido atingido
+
+1. SugestÃ£o automÃ¡tica de compra
+
+1. HistÃ³rico de preÃ§os por fornecedor
 
 ### Melhorias Propostas
 
 ```
 PRIORIDADE ALTA:
-├── Criar tabela materiais_equipamentos (N:N)
-├── Adicionar campos: lead_time_dias, ponto_pedido
-├── Adicionar cálculo automático de consumo médio
-├── Implementar alertas de reposição
-└── Adicionar classificação ABC automática
+â”œâ”€â”€ Criar tabela materiais_equipamentos (N:N)
+â”œâ”€â”€ Adicionar campos: lead_time_dias, ponto_pedido
+â”œâ”€â”€ Adicionar cÃ¡lculo automÃ¡tico de consumo mÃ©dio
+â”œâ”€â”€ Implementar alertas de reposiÃ§Ã£o
+â””â”€â”€ Adicionar classificaÃ§Ã£o ABC automÃ¡tica
 
-PRIORIDADE MÉDIA:
-├── Criar tabela fornecedores_materiais
-├── Implementar cotação de preços
-├── Adicionar histórico de preços
-└── Gerar relatório de necessidades de compra
+PRIORIDADE MÃ‰DIA:
+â”œâ”€â”€ Criar tabela fornecedores_materiais
+â”œâ”€â”€ Implementar cotaÃ§Ã£o de preÃ§os
+â”œâ”€â”€ Adicionar histÃ³rico de preÃ§os
+â””â”€â”€ Gerar relatÃ³rio de necessidades de compra
 ```
 
 ---
 
-## 4️⃣ ANÁLISE DAS ORDENS DE SERVIÇO
+## 4ï¸âƒ£ ANÃLISE DAS ORDENS DE SERVIÃ‡O
 
 ### Estado Atual
 
 #### Tipos de OS
-- CORRETIVA ✅
-- PREVENTIVA ✅
-- PREDITIVA ✅
-- INSPECAO ✅
-- MELHORIA ✅
+
+- CORRETIVA âœ…
+
+- PREVENTIVA âœ…
+
+- PREDITIVA âœ…
+
+- INSPECAO âœ…
+
+- MELHORIA âœ…
 
 #### Workflow de Status
+
 ```
-ABERTA → EM_ANDAMENTO → AGUARDANDO_MATERIAL → FECHADA
-                                           → CANCELADA
+ABERTA â†’ EM_ANDAMENTO â†’ AGUARDANDO_MATERIAL â†’ FECHADA
+                                           â†’ CANCELADA
 ```
 
 #### Campos Existentes
-- Número sequencial, TAG, Equipamento
+
+- NÃºmero sequencial, TAG, Equipamento
+
 - Tipo, Prioridade, Solicitante
+
 - Problema, Tempo/Custo estimado
+
 - Modo de falha, Causa raiz (RCA)
-- Ação corretiva, Lições aprendidas
+
+- AÃ§Ã£o corretiva, LiÃ§Ãµes aprendidas
 
 ### Lacunas Identificadas
 
 #### Campos Faltantes
-| Campo | Descrição | Prioridade |
+
+| Campo | DescriÃ§Ã£o | Prioridade |
 |-------|-----------|------------|
-| Checklist procedimentos | Lista de verificação | Alta |
-| Permissão de trabalho | Vinculação com PT | Alta |
-| SLA meta (horas) | Tempo máximo de atendimento | Alta |
+| Checklist procedimentos | Lista de verificaÃ§Ã£o | Alta |
+| PermissÃ£o de trabalho | VinculaÃ§Ã£o com PT | Alta |
+| SLA meta (horas) | Tempo mÃ¡ximo de atendimento | Alta |
 | SLA real (horas) | Tempo efetivo | Alta |
-| Anexos/Fotos | Evidências | Média |
-| Assinatura digital | Responsável execução | Média |
-| Peças substituídas | Lista detalhada | Alta |
-| Parada de produção | Tempo de máquina parada | Alta |
+| Anexos/Fotos | EvidÃªncias | MÃ©dia |
+| Assinatura digital | ResponsÃ¡vel execuÃ§Ã£o | MÃ©dia |
+| PeÃ§as substituÃ­das | Lista detalhada | Alta |
+| Parada de produÃ§Ã£o | Tempo de mÃ¡quina parada | Alta |
 
 #### Funcionalidades Faltantes
-1. Cálculo automático de SLA (meta vs real)
-2. Escalonamento automático por tempo aberto
-3. Notificações por e-mail/push
-4. Workflow de aprovação para custos altos
-5. Vinculação com Permissões de Trabalho
-6. Integração com checklist de segurança
+
+1. CÃ¡lculo automÃ¡tico de SLA (meta vs real)
+
+1. Escalonamento automÃ¡tico por tempo aberto
+
+1. NotificaÃ§Ãµes por e-mail/push
+
+1. Workflow de aprovaÃ§Ã£o para custos altos
+
+1. VinculaÃ§Ã£o com PermissÃµes de Trabalho
+
+1. IntegraÃ§Ã£o com checklist de seguranÃ§a
 
 ### Melhorias Propostas
 
 ```
 PRIORIDADE ALTA:
-├── Adicionar campos: sla_meta, sla_real, tempo_parada
-├── Implementar cálculo automático de SLA
-├── Adicionar escalonamento por tempo aberto
-├── Vincular com Permissões de Trabalho existentes
-└── Adicionar campo de peças substituídas
+â”œâ”€â”€ Adicionar campos: sla_meta, sla_real, tempo_parada
+â”œâ”€â”€ Implementar cÃ¡lculo automÃ¡tico de SLA
+â”œâ”€â”€ Adicionar escalonamento por tempo aberto
+â”œâ”€â”€ Vincular com PermissÃµes de Trabalho existentes
+â””â”€â”€ Adicionar campo de peÃ§as substituÃ­das
 
-PRIORIDADE MÉDIA:
-├── Implementar upload de fotos/anexos
-├── Adicionar assinatura digital do executor
-├── Implementar workflow de aprovação
-└── Adicionar notificações por e-mail
+PRIORIDADE MÃ‰DIA:
+â”œâ”€â”€ Implementar upload de fotos/anexos
+â”œâ”€â”€ Adicionar assinatura digital do executor
+â”œâ”€â”€ Implementar workflow de aprovaÃ§Ã£o
+â””â”€â”€ Adicionar notificaÃ§Ãµes por e-mail
 ```
 
 ---
 
-## 5️⃣ ANÁLISE DO PLANEJAMENTO PREVENTIVO
+## 5ï¸âƒ£ ANÃLISE DO PLANEJAMENTO PREVENTIVO
 
 ### Estado Atual
+
 | Funcionalidade | Status |
 |----------------|--------|
-| Cadastro de planos | ✅ |
-| Frequência em dias | ✅ |
-| Checklist básico | ✅ |
-| Tempo estimado | ✅ |
-| Próxima execução | ✅ |
-| Vinculação com TAG | ✅ |
+| Cadastro de planos | âœ… |
+| FrequÃªncia em dias | âœ… |
+| Checklist bÃ¡sico | âœ… |
+| Tempo estimado | âœ… |
+| PrÃ³xima execuÃ§Ã£o | âœ… |
+| VinculaÃ§Ã£o com TAG | âœ… |
 
 ### Lacunas Identificadas
 
 #### Funcionalidades Faltantes
-1. **Geração Automática de OS** - Não gera OS automaticamente
-2. **Calendário Visual** - Ausente
-3. **Balanceamento de Carga** - Não distribui por mecânicos
-4. **Gatilho por Horas/Ciclos** - Parcial
-5. **Materiais Previstos** - Estrutura JSON, sem uso real
-6. **Planos Legais** - Não identificados (NR-13, NR-10)
 
-#### Relatórios Faltantes
-1. Aderência de preventivas
-2. Preventivas atrasadas
-3. Custo previsto vs realizado
-4. Histórico de execuções por plano
+1. **GeraÃ§Ã£o AutomÃ¡tica de OS** - NÃ£o gera OS automaticamente
+
+1. **CalendÃ¡rio Visual** - Ausente
+
+1. **Balanceamento de Carga** - NÃ£o distribui por mecÃ¢nicos
+
+1. **Gatilho por Horas/Ciclos** - Parcial
+
+1. **Materiais Previstos** - Estrutura JSON, sem uso real
+
+1. **Planos Legais** - NÃ£o identificados (NR-13, NR-10)
+
+#### RelatÃ³rios Faltantes
+
+1. AderÃªncia de preventivas
+
+1. Preventivas atrasadas
+
+1. Custo previsto vs realizado
+
+1. HistÃ³rico de execuÃ§Ãµes por plano
 
 ### Melhorias Propostas
 
 ```
-PRIORIDADE CRÍTICA:
-├── Implementar geração automática de OS (Edge Function)
-├── Criar calendário visual de manutenção
-├── Adicionar balanceamento de carga da equipe
-└── Implementar gatilho por horímetro
+PRIORIDADE CRÃTICA:
+â”œâ”€â”€ Implementar geraÃ§Ã£o automÃ¡tica de OS (Edge Function)
+â”œâ”€â”€ Criar calendÃ¡rio visual de manutenÃ§Ã£o
+â”œâ”€â”€ Adicionar balanceamento de carga da equipe
+â””â”€â”€ Implementar gatilho por horÃ­metro
 
 PRIORIDADE ALTA:
-├── Criar módulo de Planos Legais (NR-13, NR-10)
-├── Adicionar previsão de materiais por plano
-├── Implementar clone de planos
-└── Adicionar histórico de execuções
+â”œâ”€â”€ Criar mÃ³dulo de Planos Legais (NR-13, NR-10)
+â”œâ”€â”€ Adicionar previsÃ£o de materiais por plano
+â”œâ”€â”€ Implementar clone de planos
+â””â”€â”€ Adicionar histÃ³rico de execuÃ§Ãµes
 ```
 
 ---
 
-## 6️⃣ ANÁLISE DA GESTÃO DE MECÂNICOS
+## 6ï¸âƒ£ ANÃLISE DA GESTÃƒO DE MECÃ‚NICOS
 
 ### Estado Atual
+
 | Campo | Status |
 |-------|--------|
-| Nome | ✅ |
-| Telefone | ✅ |
-| Tipo (Próprio/Terceiro) | ✅ |
-| Especialidade | ✅ |
-| Custo/Hora | ✅ |
-| Ativo | ✅ |
+| Nome | âœ… |
+| Telefone | âœ… |
+| Tipo (PrÃ³prio/Terceiro) | âœ… |
+| Especialidade | âœ… |
+| Custo/Hora | âœ… |
+| Ativo | âœ… |
 
 ### Lacunas Identificadas
 
-#### Campos Faltantes para Gestão Completa
-| Campo | Descrição | Prioridade |
-|-------|-----------|------------|
-| CPF/CNPJ | Identificação | Média |
-| Matrícula | Código interno | Alta |
-| Centro de custo | Alocação financeira | Média |
-| Turno de trabalho | Disponibilidade | Alta |
-| Data admissão | Histórico | Baixa |
-| Foto | Identificação visual | Baixa |
+#### Campos Faltantes para GestÃ£o Completa
 
-#### Módulos Faltantes
-1. **Matriz de Competências** - Habilidades por técnico
-2. **Certificações** - NR-10, NR-13, etc.
-3. **Calendário de Disponibilidade** - Férias, folgas
-4. **Produtividade Individual** - OS/dia, tempo médio
-5. **Alocação em OS** - Quem está fazendo o quê
+| Campo | DescriÃ§Ã£o | Prioridade |
+|-------|-----------|------------|
+| CPF/CNPJ | IdentificaÃ§Ã£o | MÃ©dia |
+| MatrÃ­cula | CÃ³digo interno | Alta |
+| Centro de custo | AlocaÃ§Ã£o financeira | MÃ©dia |
+| Turno de trabalho | Disponibilidade | Alta |
+| Data admissÃ£o | HistÃ³rico | Baixa |
+| Foto | IdentificaÃ§Ã£o visual | Baixa |
+
+#### MÃ³dulos Faltantes
+
+1. **Matriz de CompetÃªncias** - Habilidades por tÃ©cnico
+
+1. **CertificaÃ§Ãµes** - NR-10, NR-13, etc.
+
+1. **CalendÃ¡rio de Disponibilidade** - FÃ©rias, folgas
+
+1. **Produtividade Individual** - OS/dia, tempo mÃ©dio
+
+1. **AlocaÃ§Ã£o em OS** - Quem estÃ¡ fazendo o quÃª
 
 ### Melhorias Propostas
 
 ```
 PRIORIDADE ALTA:
-├── Criar tabela mecanicos_competencias
-├── Criar tabela mecanicos_certificacoes
-├── Adicionar campo: turno, matricula
-├── Implementar dashboard de produtividade
-└── Adicionar calendário de disponibilidade
+â”œâ”€â”€ Criar tabela mecanicos_competencias
+â”œâ”€â”€ Criar tabela mecanicos_certificacoes
+â”œâ”€â”€ Adicionar campo: turno, matricula
+â”œâ”€â”€ Implementar dashboard de produtividade
+â””â”€â”€ Adicionar calendÃ¡rio de disponibilidade
 
-PRIORIDADE MÉDIA:
-├── Implementar alocação visual em OS
-├── Criar relatório de desempenho
-├── Adicionar controle de horas trabalhadas
-└── Implementar integração com ponto
+PRIORIDADE MÃ‰DIA:
+â”œâ”€â”€ Implementar alocaÃ§Ã£o visual em OS
+â”œâ”€â”€ Criar relatÃ³rio de desempenho
+â”œâ”€â”€ Adicionar controle de horas trabalhadas
+â””â”€â”€ Implementar integraÃ§Ã£o com ponto
 ```
 
 ---
 
-## 7️⃣ ANÁLISE DA MANUTENÇÃO PREDITIVA
+## 7ï¸âƒ£ ANÃLISE DA MANUTENÃ‡ÃƒO PREDITIVA
 
 ### Estado Atual
+
 | Funcionalidade | Status |
 |----------------|--------|
-| Registro de medições | ✅ |
-| Tipos (Vibração, Temperatura, etc.) | ✅ |
-| Limites de alerta/crítico | ✅ |
-| Status automático | ✅ |
-| Alertas visuais | ✅ |
+| Registro de mediÃ§Ãµes | âœ… |
+| Tipos (VibraÃ§Ã£o, Temperatura, etc.) | âœ… |
+| Limites de alerta/crÃ­tico | âœ… |
+| Status automÃ¡tico | âœ… |
+| Alertas visuais | âœ… |
 
 ### Lacunas Identificadas
 
 #### Funcionalidades Faltantes
-1. **Gráficos de Tendência** - Histórico temporal
-2. **Prognóstico de Falha** - Predição de quando falhará
-3. **Integração com Coletores** - Import automático
-4. **Relatórios de Condição** - Laudo técnico
-5. **Planos de Monitoramento** - Rotas de coleta
-6. **Técnicas Especializadas** - Termografia, análise de óleo
+
+1. **GrÃ¡ficos de TendÃªncia** - HistÃ³rico temporal
+
+1. **PrognÃ³stico de Falha** - PrediÃ§Ã£o de quando falharÃ¡
+
+1. **IntegraÃ§Ã£o com Coletores** - Import automÃ¡tico
+
+1. **RelatÃ³rios de CondiÃ§Ã£o** - Laudo tÃ©cnico
+
+1. **Planos de Monitoramento** - Rotas de coleta
+
+1. **TÃ©cnicas Especializadas** - Termografia, anÃ¡lise de Ã³leo
 
 ### Melhorias Propostas
 
 ```
 PRIORIDADE ALTA:
-├── Implementar gráficos de tendência (Recharts)
-├── Adicionar cálculo de tendência linear
-├── Criar prognóstico simples de falha
-└── Implementar rotas de coleta
+â”œâ”€â”€ Implementar grÃ¡ficos de tendÃªncia (Recharts)
+â”œâ”€â”€ Adicionar cÃ¡lculo de tendÃªncia linear
+â”œâ”€â”€ Criar prognÃ³stico simples de falha
+â””â”€â”€ Implementar rotas de coleta
 
-PRIORIDADE MÉDIA:
-├── Criar relatório de condição PDF
-├── Adicionar comparativo entre medições
-├── Implementar alertas por e-mail
-└── Adicionar fotos das medições (termografia)
+PRIORIDADE MÃ‰DIA:
+â”œâ”€â”€ Criar relatÃ³rio de condiÃ§Ã£o PDF
+â”œâ”€â”€ Adicionar comparativo entre mediÃ§Ãµes
+â”œâ”€â”€ Implementar alertas por e-mail
+â””â”€â”€ Adicionar fotos das mediÃ§Ãµes (termografia)
 ```
 
 ---
 
-## 8️⃣ ANÁLISE DE CUSTOS
+## 8ï¸âƒ£ ANÃLISE DE CUSTOS
 
 ### Estado Atual
+
 | Funcionalidade | Status |
 |----------------|--------|
-| Custo por categoria | ✅ |
-| Custo por equipamento | ✅ |
-| Tendência mensal | ✅ |
-| Top 5 equipamentos | ✅ |
-| Filtro por período | ✅ |
+| Custo por categoria | âœ… |
+| Custo por equipamento | âœ… |
+| TendÃªncia mensal | âœ… |
+| Top 5 equipamentos | âœ… |
+| Filtro por perÃ­odo | âœ… |
 
 ### Lacunas Identificadas
 
-#### Análises Faltantes
+#### AnÃ¡lises Faltantes
+
 1. **Custo por Tipo de OS** - Corretiva vs Preventiva
-2. **Custo por Área/Sistema** - Drill-down hierárquico
-3. **Budget vs Realizado** - Orçamento
-4. **Custo/Hora de Manutenção** - Por tipo
-5. **ROI de Preventivas** - Economia gerada
-6. **Pareto de Custos** - 80/20
+
+1. **Custo por Ãrea/Sistema** - Drill-down hierÃ¡rquico
+
+1. **Budget vs Realizado** - OrÃ§amento
+
+1. **Custo/Hora de ManutenÃ§Ã£o** - Por tipo
+
+1. **ROI de Preventivas** - Economia gerada
+
+1. **Pareto de Custos** - 80/20
 
 ### Melhorias Propostas
 
 ```
 PRIORIDADE ALTA:
-├── Adicionar custo por tipo de OS
-├── Implementar drill-down por área/sistema
-├── Adicionar campo de budget mensal
-├── Calcular economia de preventivas
-└── Implementar Pareto de custos
+â”œâ”€â”€ Adicionar custo por tipo de OS
+â”œâ”€â”€ Implementar drill-down por Ã¡rea/sistema
+â”œâ”€â”€ Adicionar campo de budget mensal
+â”œâ”€â”€ Calcular economia de preventivas
+â””â”€â”€ Implementar Pareto de custos
 ```
 
 ---
 
-## 9️⃣ ANÁLISE DO FMEA
+## 9ï¸âƒ£ ANÃLISE DO FMEA
 
 ### Estado Atual
+
 | Funcionalidade | Status |
 |----------------|--------|
-| Cadastro de análises | ✅ |
-| S × O × D = RPN | ✅ |
-| Classificação por risco | ✅ |
-| Ações recomendadas | ✅ |
-| Status de acompanhamento | ✅ |
+| Cadastro de anÃ¡lises | âœ… |
+| S Ã— O Ã— D = RPN | âœ… |
+| ClassificaÃ§Ã£o por risco | âœ… |
+| AÃ§Ãµes recomendadas | âœ… |
+| Status de acompanhamento | âœ… |
 
 ### Lacunas Identificadas
 
-1. **Vinculação com Planos Preventivos** - Estrutura existe, não usada
-2. **Recálculo após Ação** - RPN novo
-3. **Histórico de RPNs** - Evolução
-4. **Matriz de Criticidade Visual** - Heatmap
-5. **Exportação para Excel** - Relatório padrão
+1. **VinculaÃ§Ã£o com Planos Preventivos** - Estrutura existe, nÃ£o usada
+
+1. **RecÃ¡lculo apÃ³s AÃ§Ã£o** - RPN novo
+
+1. **HistÃ³rico de RPNs** - EvoluÃ§Ã£o
+
+1. **Matriz de Criticidade Visual** - Heatmap
+
+1. **ExportaÃ§Ã£o para Excel** - RelatÃ³rio padrÃ£o
 
 ### Melhorias Propostas
 
 ```
-PRIORIDADE MÉDIA:
-├── Implementar vinculação real com planos
-├── Adicionar RPN antes/depois da ação
-├── Criar gráfico de evolução do RPN
-├── Implementar matriz visual de riscos
-└── Adicionar exportação Excel
+PRIORIDADE MÃ‰DIA:
+â”œâ”€â”€ Implementar vinculaÃ§Ã£o real com planos
+â”œâ”€â”€ Adicionar RPN antes/depois da aÃ§Ã£o
+â”œâ”€â”€ Criar grÃ¡fico de evoluÃ§Ã£o do RPN
+â”œâ”€â”€ Implementar matriz visual de riscos
+â””â”€â”€ Adicionar exportaÃ§Ã£o Excel
 ```
 
 ---
 
-## 🔟 ANÁLISE DO RCA (Análise de Causa Raiz)
+## ðŸ”Ÿ ANÃLISE DO RCA (AnÃ¡lise de Causa Raiz)
 
 ### Estado Atual
+
 | Funcionalidade | Status |
 |----------------|--------|
-| 5 Porquês | ✅ |
-| Diagrama Ishikawa (estrutura) | ✅ |
-| Árvore de Falhas (estrutura) | ✅ |
-| Ações corretivas | ✅ |
-| Verificação de eficácia | ✅ |
+| 5 PorquÃªs | âœ… |
+| Diagrama Ishikawa (estrutura) | âœ… |
+| Ãrvore de Falhas (estrutura) | âœ… |
+| AÃ§Ãµes corretivas | âœ… |
+| VerificaÃ§Ã£o de eficÃ¡cia | âœ… |
 
 ### Lacunas Identificadas
 
 1. **Editor Visual Ishikawa** - Apenas JSON
-2. **Vinculação Automática com OS** - Parcial
-3. **Dashboard de RCAs** - Métricas
-4. **Pareto de Causas** - Frequência de categorias
-5. **Template Pré-definido** - Agilizar criação
+
+1. **VinculaÃ§Ã£o AutomÃ¡tica com OS** - Parcial
+
+1. **Dashboard de RCAs** - MÃ©tricas
+
+1. **Pareto de Causas** - FrequÃªncia de categorias
+
+1. **Template PrÃ©-definido** - Agilizar criaÃ§Ã£o
 
 ### Melhorias Propostas
 
 ```
-PRIORIDADE MÉDIA:
-├── Criar editor visual para Ishikawa
-├── Adicionar dashboard de métricas RCA
-├── Implementar Pareto de causas
-├── Criar templates por tipo de falha
-└── Adicionar timeline de ações
+PRIORIDADE MÃ‰DIA:
+â”œâ”€â”€ Criar editor visual para Ishikawa
+â”œâ”€â”€ Adicionar dashboard de mÃ©tricas RCA
+â”œâ”€â”€ Implementar Pareto de causas
+â”œâ”€â”€ Criar templates por tipo de falha
+â””â”€â”€ Adicionar timeline de aÃ§Ãµes
 ```
 
 ---
 
-## 1️⃣1️⃣ ANÁLISE DE SEGURANÇA (SSMA)
+## 1ï¸âƒ£1ï¸âƒ£ ANÃLISE DE SEGURANÃ‡A (SSMA)
 
 ### Estado Atual
+
 | Funcionalidade | Status |
 |----------------|--------|
-| Registro de incidentes | ✅ |
-| Severidade | ✅ |
-| Dias de afastamento | ✅ |
-| Custo estimado | ✅ |
-| Permissões de trabalho | ✅ |
+| Registro de incidentes | âœ… |
+| Severidade | âœ… |
+| Dias de afastamento | âœ… |
+| Custo estimado | âœ… |
+| PermissÃµes de trabalho | âœ… |
 
 ### Lacunas Identificadas
 
-1. **Checklist de Segurança na OS** - Integração
-2. **APR (Análise Preliminar de Risco)** - Por atividade
-3. **Dashboard de Segurança** - Taxa de frequência
-4. **Pirâmide de Heinrich** - Visualização
-5. **Campanhas de Segurança** - Registro
+1. **Checklist de SeguranÃ§a na OS** - IntegraÃ§Ã£o
+
+1. **APR (AnÃ¡lise Preliminar de Risco)** - Por atividade
+
+1. **Dashboard de SeguranÃ§a** - Taxa de frequÃªncia
+
+1. **PirÃ¢mide de Heinrich** - VisualizaÃ§Ã£o
+
+1. **Campanhas de SeguranÃ§a** - Registro
 
 ---
 
-## DIAGNÓSTICO FINAL
+## DIAGNÃ“STICO FINAL
 
 ### Grau de Maturidade PCM
-| Dimensão | Nota (0-100) | Observação |
-|----------|--------------|------------|
-| Planejamento | 75 | Planos existem, falta automação |
-| Programação | 60 | Calendário básico, sem balanceamento |
-| Execução | 80 | Workflow completo |
-| Controle | 70 | KPIs básicos, falta OEE |
-| Indicadores | 75 | MTBF/MTTR ok, falta confiabilidade |
-| Documentação | 65 | Básico, falta documentos técnicos |
-| Confiabilidade | 70 | FMEA/RCA implementados |
-| **MÉDIA** | **71** | **Nível 3 - Definido** |
 
-### Classificação de Maturidade
+| DimensÃ£o | Nota (0-100) | ObservaÃ§Ã£o |
+|----------|--------------|------------|
+| Planejamento | 75 | Planos existem, falta automaÃ§Ã£o |
+| ProgramaÃ§Ã£o | 60 | CalendÃ¡rio bÃ¡sico, sem balanceamento |
+| ExecuÃ§Ã£o | 80 | Workflow completo |
+| Controle | 70 | KPIs bÃ¡sicos, falta OEE |
+| Indicadores | 75 | MTBF/MTTR ok, falta confiabilidade |
+| DocumentaÃ§Ã£o | 65 | BÃ¡sico, falta documentos tÃ©cnicos |
+| Confiabilidade | 70 | FMEA/RCA implementados |
+| **MÃ‰DIA** | **71** | **NÃ­vel 3 - Definido** |
+
+### ClassificaÃ§Ã£o de Maturidade
+
 ```
-[ ] Nível 1 - Inicial (reativo)
-[ ] Nível 2 - Gerenciado (básico)
-[X] Nível 3 - Definido (estruturado)  ← ATUAL
-[ ] Nível 4 - Quantificado (otimizado) ← META
-[ ] Nível 5 - Otimizado (excelência)
+[ ] NÃ­vel 1 - Inicial (reativo)
+[ ] NÃ­vel 2 - Gerenciado (bÃ¡sico)
+[X] NÃ­vel 3 - Definido (estruturado)  â† ATUAL
+[ ] NÃ­vel 4 - Quantificado (otimizado) â† META
+[ ] NÃ­vel 5 - Otimizado (excelÃªncia)
 ```
 
 ---
 
-## PLANO DE EVOLUÇÃO
+## PLANO DE EVOLUÃ‡ÃƒO
 
-### 🔴 Curto Prazo (1-2 semanas)
-1. ✅ Adicionar OEE ao Dashboard
-2. ✅ Adicionar filtros por período/área no Dashboard
-3. ✅ Implementar SLA automático nas OS
-4. ✅ Adicionar campos técnicos em Equipamentos
-5. ✅ Criar aplicabilidade de materiais
+### ðŸ”´ Curto Prazo (1-2 semanas)
 
-### 🟡 Médio Prazo (3-4 semanas)
-1. Geração automática de OS preventivas
-2. Calendário visual de manutenção
-3. Matriz de competências de técnicos
-4. Gráficos de tendência preditiva
-5. Exportação de relatórios PDF
+1. âœ… Adicionar OEE ao Dashboard
 
-### 🟢 Longo Prazo (1-2 meses)
+1. âœ… Adicionar filtros por perÃ­odo/Ã¡rea no Dashboard
+
+1. âœ… Implementar SLA automÃ¡tico nas OS
+
+1. âœ… Adicionar campos tÃ©cnicos em Equipamentos
+
+1. âœ… Criar aplicabilidade de materiais
+
+### ðŸŸ¡ MÃ©dio Prazo (3-4 semanas)
+
+1. GeraÃ§Ã£o automÃ¡tica de OS preventivas
+
+1. CalendÃ¡rio visual de manutenÃ§Ã£o
+
+1. Matriz de competÃªncias de tÃ©cnicos
+
+1. GrÃ¡ficos de tendÃªncia preditiva
+
+1. ExportaÃ§Ã£o de relatÃ³rios PDF
+
+### ðŸŸ¢ Longo Prazo (1-2 meses)
+
 1. Aplicativo mobile para campo
-2. Integração com coletores preditivos
-3. BI com dashboards customizados
-4. Integração com ERP
-5. Machine Learning para predição de falhas
+
+1. IntegraÃ§Ã£o com coletores preditivos
+
+1. BI com dashboards customizados
+
+1. IntegraÃ§Ã£o com ERP
+
+1. Machine Learning para prediÃ§Ã£o de falhas
 
 ---
 
 ## DIFERENCIAIS COMPETITIVOS RECOMENDADOS
 
-1. **OEE Automático** - Poucos CMMS calculam automaticamente
-2. **RCA Integrado** - Ishikawa/5W no fechamento de OS
-3. **Calendário de Manutenção** - Visualização Gantt
-4. **Mobile-First** - PWA para campo
-5. **Alertas Inteligentes** - Notificações contextuais
+1. **OEE AutomÃ¡tico** - Poucos CMMS calculam automaticamente
+
+1. **RCA Integrado** - Ishikawa/5W no fechamento de OS
+
+1. **CalendÃ¡rio de ManutenÃ§Ã£o** - VisualizaÃ§Ã£o Gantt
+
+1. **Mobile-First** - PWA para campo
+
+1. **Alertas Inteligentes** - NotificaÃ§Ãµes contextuais
 
 ---
 
-*Documento gerado para guiar a evolução do PCM Estratégico para nível de excelência industrial.*
+*Documento gerado para guiar a evoluÃ§Ã£o do PCM EstratÃ©gico para nÃ­vel de excelÃªncia industrial.*
 ---
 
-## ADENDO 2026-03-01 — REESTRUTURAÇÃO SUPABASE, AUDITORIA E MULTI-TENANT
+## ADENDO 2026-03-01 â€” REESTRUTURAÃ‡ÃƒO SUPABASE, AUDITORIA E MULTI-TENANT
 
-### Escopo técnico executado (mudanças mínimas de segurança)
-- Migração criada: `supabase/migrations/20260301025500_secure_user_registration_and_enterprise_audit.sql`
-- Implementações:
+### Escopo tÃ©cnico executado (mudanÃ§as mÃ­nimas de seguranÃ§a)
+
+- MigraÃ§Ã£o criada: `supabase/migrations/20260301025500_secure_user_registration_and_enterprise_audit.sql`
+
+- ImplementaÃ§Ãµes:
+
   - Tabela `empresas` (base de tenant) com RLS.
-  - `profiles` com `empresa_id` obrigatório e `must_change_password = true`.
-  - Tabela `enterprise_audit_logs` com campos mínimos:
+
+  - `profiles` com `empresa_id` obrigatÃ³rio e `must_change_password = true`.
+
+  - Tabela `enterprise_audit_logs` com campos mÃ­nimos:
+
     - `executor_id`, `target_entity`, `target_id`, `action`, `before`, `after`, `ip`, `user_agent`, `created_at`.
-  - Função `log_enterprise_event(...)` para registro centralizado.
-  - Trigger `handle_new_user` reforçada para:
+
+  - FunÃ§Ã£o `log_enterprise_event(...)` para registro centralizado.
+
+  - Trigger `handle_new_user` reforÃ§ada para:
+
     - validar/definir `empresa_id`,
+
     - validar/definir `role`,
+
     - criar `profiles` e `user_roles` no mesmo fluxo,
+
     - registrar `CREATE_USER` em `enterprise_audit_logs`.
+
   - Triggers de auditoria para `profiles`, `user_roles`, `empresas`, `dados_empresa`.
 
-### Mapeamento estrutural de módulos e persistência
+### Mapeamento estrutural de mÃ³dulos e persistÃªncia
+
 - Arquivos com chamadas Supabase (`supabase.from(...)`): **42**
-- Tabelas utilizadas no frontend/serviços: `auditoria`, `auditoria_logs`, `dados_empresa`, `configuracoes_sistema`, `profiles`, `security_logs`, `user_roles`, `ordens_servico`, `solicitacoes_manutencao`, `materiais`, `medicoes_preditivas`, `planos_preventivos`, `atividades_lubrificacao`, `atividades_preventivas`, `servicos_preventivos`, `componentes_equipamento`, `document_layouts`, `document_sequences`, `documentos_tecnicos`, `equipamentos`, `execucoes_os`, `execucoes_preventivas`, `fmea`, `contratos`, `fornecedores`, `areas`, `plantas`, `sistemas`, `execucoes_lubrificacao`, `movimentacoes_materiais`, `mecanicos`, `melhorias`, `permissoes_granulares`, `acoes_corretivas`, `analise_causa_raiz`, `incidentes_ssma`, `permissoes_trabalho`, `templates_preventivos`, `ai_root_cause_analysis`.
+
+- Tabelas utilizadas no frontend/serviÃ§os: `auditoria`, `auditoria_logs`, `dados_empresa`, `configuracoes_sistema`, `profiles`, `security_logs`, `user_roles`, `ordens_servico`, `solicitacoes_manutencao`, `materiais`, `medicoes_preditivas`, `planos_preventivos`, `atividades_lubrificacao`, `atividades_preventivas`, `servicos_preventivos`, `componentes_equipamento`, `document_layouts`, `document_sequences`, `documentos_tecnicos`, `equipamentos`, `execucoes_os`, `execucoes_preventivas`, `fmea`, `contratos`, `fornecedores`, `areas`, `plantas`, `sistemas`, `execucoes_lubrificacao`, `movimentacoes_materiais`, `mecanicos`, `melhorias`, `permissoes_granulares`, `acoes_corretivas`, `analise_causa_raiz`, `incidentes_ssma`, `permissoes_trabalho`, `templates_preventivos`, `ai_root_cause_analysis`.
 
 ### Pontos sem rastreabilidade total (identificados)
-- Fluxos de autenticação de login/logout ainda registram na tabela legada `auditoria` (não em `enterprise_audit_logs`).
-- Eventos de reset de senha e ações administrativas fora de tabelas auditadas ainda dependem de padronização via `log_enterprise_event(...)`.
 
-### Verificação de armazenamento paralelo
-- `localStorage`: identificado apenas em `src/integrations/supabase/client.ts` para persistência de sessão Supabase (uso esperado para auth client-side).
-- Mock data: `src/data/mockData.ts` existe, porém **sem imports ativos** no código de produção atual.
+- Fluxos de autenticaÃ§Ã£o de login/logout ainda registram na tabela legada `auditoria` (nÃ£o em `enterprise_audit_logs`).
 
-### Tabelas para revisão estrutural (não destrutivo)
-- `dados_empresa` vs `empresas`: potencial redundância funcional; manter ambas temporariamente e avaliar convergência com plano de migração controlada.
-- `auditoria` vs `enterprise_audit_logs`: coexistência temporária para compatibilidade; planejar depreciação da tabela legada `auditoria`.
+- Eventos de reset de senha e aÃ§Ãµes administrativas fora de tabelas auditadas ainda dependem de padronizaÃ§Ã£o via `log_enterprise_event(...)`.
 
-### Riscos e plano de evolução SaaS escalável
-1. **Risco**: políticas RLS históricas amplas em tabelas legadas podem permitir visibilidade acima do desejado.
-2. **Risco**: ausência de `empresa_id` em todas as tabelas de domínio impede isolamento tenant completo.
-3. **Plano faseado**:
-   - Fase 1: padronizar todas as ações críticas em `enterprise_audit_logs`.
-   - Fase 2: adicionar `empresa_id` nas tabelas de domínio prioritárias e índices/fks.
-   - Fase 3: reforçar RLS por tenant em todos os módulos.
-   - Fase 4: descontinuar gradualmente estruturas legadas redundantes após validação.
+### VerificaÃ§Ã£o de armazenamento paralelo
+
+- `localStorage`: identificado apenas em `src/integrations/supabase/client.ts` para persistÃªncia de sessÃ£o Supabase (uso esperado para auth client-side).
+
+- Mock data: `src/data/mockData.ts` existe, porÃ©m **sem imports ativos** no cÃ³digo de produÃ§Ã£o atual.
+
+### Tabelas para revisÃ£o estrutural (nÃ£o destrutivo)
+
+- `dados_empresa` vs `empresas`: potencial redundÃ¢ncia funcional; manter ambas temporariamente e avaliar convergÃªncia com plano de migraÃ§Ã£o controlada.
+
+- `auditoria` vs `enterprise_audit_logs`: coexistÃªncia temporÃ¡ria para compatibilidade; planejar depreciaÃ§Ã£o da tabela legada `auditoria`.
+
+### Riscos e plano de evoluÃ§Ã£o SaaS escalÃ¡vel
+
+1. **Risco**: polÃ­ticas RLS histÃ³ricas amplas em tabelas legadas podem permitir visibilidade acima do desejado.
+
+1. **Risco**: ausÃªncia de `empresa_id` em todas as tabelas de domÃ­nio impede isolamento tenant completo.
+
+1. **Plano faseado**:
+
+   - Fase 1: padronizar todas as aÃ§Ãµes crÃ­ticas em `enterprise_audit_logs`.
+
+   - Fase 2: adicionar `empresa_id` nas tabelas de domÃ­nio prioritÃ¡rias e Ã­ndices/fks.
+
+   - Fase 3: reforÃ§ar RLS por tenant em todos os mÃ³dulos.
+
+   - Fase 4: descontinuar gradualmente estruturas legadas redundantes apÃ³s validaÃ§Ã£o.

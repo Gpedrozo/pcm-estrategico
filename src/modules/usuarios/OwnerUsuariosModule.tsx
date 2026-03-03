@@ -14,7 +14,7 @@ export function OwnerUsuariosModule() {
     return <div className="rounded-lg border border-slate-800 bg-slate-900 p-4 text-sm">Carregando usuários...</div>
   }
 
-  const users = ((data as User[] | undefined) ?? []).slice(0, 40)
+  const users = ((data as unknown as User[] | undefined) ?? []).slice(0, 40)
 
   return (
     <div className="rounded-lg border border-slate-800 bg-slate-900 p-4">
