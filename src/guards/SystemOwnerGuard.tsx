@@ -17,7 +17,9 @@ export function SystemOwnerGuard({ children }: { children: React.ReactNode }) {
     return <>{children}</>;
   }
 
-  if (!isOwnerDomain() || effectiveRole !== 'SYSTEM_OWNER' || !canReadControlPlane) {
+  const isGlobalOwnerRole = effectiveRole === 'SYSTEM_OWNER' || effectiveRole === 'SYSTEM_ADMIN';
+
+  if (!isOwnerDomain() || !isGlobalOwnerRole || !canReadControlPlane) {
     return <Navigate to="/login" replace />;
   }
 

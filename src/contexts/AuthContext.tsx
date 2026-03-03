@@ -4,6 +4,7 @@ import type { Session } from '@supabase/supabase-js';
 import {
   buildSecureSignupMetadata,
   getEffectiveRole,
+  normalizeRole,
   resolveEmpresaSlug,
   type AppRole,
 } from '@/lib/security';
@@ -41,7 +42,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  const fetchUserProfile = async (userId: string, email?: string | null) => {
+  const fetchUserProfile = async (
+    userId: string,
+    email?: string | null,
+    metadata?: { app_metadata?: Record<string, unknown>; user_metadata?: Record<string, unknown> }
+  ) => {
     try {
       const { data: profile } = await supabase
         .from('profiles')
@@ -70,9 +75,30 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }));
       }
 
-      const roles: AppRole[] = (roleData || []).map(
-        (item: { role: AppRole }) => item.role
-      );
+      const dbRoles: AppRole[] = (roleData || [])
+        .map((item: { role: string }) => normalizeRole(item.role))
+        .filter((role): role is AppRole => Boolean(role));
+
+      const appRole = normalizeRole((metadata?.app_metadata?.role as string | undefined) ?? null);
+      const appRoles = Array.isArray(metadata?.app_metadata?.roles)
+        ? (metadata?.app_metadata?.roles as unknown[])
+            .map((role) => normalizeRole(String(role)))
+            .filter((role): role is AppRole => Boolean(role))
+        : [];
+      const userMetaRole = normalizeRole((metadata?.user_metadata?.role as string | undefined) ?? null);
+      const userMetaRoles = Array.isArray(metadata?.user_metadata?.roles)
+        ? (metadata?.user_metadata?.roles as unknown[])
+            .map((role) => normalizeRole(String(role)))
+            .filter((role): role is AppRole => Boolean(role))
+        : [];
+
+      const roles: AppRole[] = Array.from(new Set([
+        ...dbRoles,
+        ...appRoles,
+        ...userMetaRoles,
+        ...(appRole ? [appRole] : []),
+        ...(userMetaRole ? [userMetaRole] : []),
+      ]));
 
       const tenantId: string | null = (roleData || [])[0]?.empresa_id || profile?.empresa_id || null;
 
@@ -112,7 +138,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
         if (nextSession?.user) {
           void (async () => {
-            const profileData = await fetchUserProfile(nextSession.user.id, nextSession.user.email);
+            const profileData = await fetchUserProfile(
+              nextSession.user.id,
+              nextSession.user.email,
+              {
+                app_metadata: nextSession.user.app_metadata,
+                user_metadata: nextSession.user.user_metadata,
+              }
+            );
 
             if (!isActive) return;
 
@@ -140,7 +173,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setSession(session);
 
       if (session?.user) {
-        fetchUserProfile(session.user.id, session.user.email).then(profileData => {
+        fetchUserProfile(session.user.id, session.user.email, {
+          app_metadata: session.user.app_metadata,
+          user_metadata: session.user.user_metadata,
+        }).then(profileData => {
           if (!isActive) return;
 
           setUser({
@@ -184,7 +220,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       if (!user) return;
 
-      const profileData = await fetchUserProfile(user.id, user.email);
+      const profileData = await fetchUserProfile(user.id, user.email, {
+        app_metadata: user.app_metadata,
+        user_metadata: user.user_metadata,
+      });
 
       await writeAuditLog({
         action: 'LOGIN',
