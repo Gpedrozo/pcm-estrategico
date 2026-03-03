@@ -1,118 +1,81 @@
-import { AlertTriangle, Building2, CreditCard, Database, FileSearch, Fingerprint, ShieldCheck } from "lucide-react";
-import { useAuth } from "@/contexts/AuthContext";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useOwnerCompanies, useOwnerDashboardMetrics } from "@/hooks/useControlPlane";
+import { useMemo, useState } from 'react'
+import { ShieldCheck } from 'lucide-react'
+import { useAuth } from '@/contexts/AuthContext'
+import { OwnerPortalLayout } from '@/layouts/OwnerPortalLayout'
+import { OwnerDashboardModule } from '@/modules/dashboard/OwnerDashboardModule'
+import { OwnerEmpresasModule } from '@/modules/empresas/OwnerEmpresasModule'
+import { OwnerUsuariosModule } from '@/modules/usuarios/OwnerUsuariosModule'
+import { OwnerPlanosModule } from '@/modules/planos/OwnerPlanosModule'
+import { OwnerAssinaturasModule } from '@/modules/assinaturas/OwnerAssinaturasModule'
+import { OwnerAuditoriaModule } from '@/modules/auditoria/OwnerAuditoriaModule'
+import { OwnerSistemaModule } from '@/modules/sistema/OwnerSistemaModule'
+import { OwnerSuporteModule } from '@/modules/suporte/OwnerSuporteModule'
+import { OwnerConfiguracoesModule } from '@/modules/configuracoes/OwnerConfiguracoesModule'
 
-const formatMoney = (value?: number | null) =>
-  new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(Number(value ?? 0));
-
-const formatNumber = (value?: number | null) =>
-  new Intl.NumberFormat("pt-BR").format(Number(value ?? 0));
-
-const modules = [
-  { key: "empresas", label: "Empresas", icon: Building2, description: "Gestão global de empresas com suspensão, reativação e soft delete." },
-  { key: "planos", label: "Planos", icon: Fingerprint, description: "CRUD de planos e feature flags com limites de usuários, OS e storage." },
-  { key: "assinaturas", label: "Assinaturas", icon: CreditCard, description: "Assinaturas globais, status financeiro e bloqueio de acesso por inadimplência." },
-  { key: "auditoria", label: "Auditoria Global", icon: FileSearch, description: "Logs globais de ações críticas, promoções indevidas e acessos cruzados." },
-  { key: "monitoramento", label: "Monitoramento", icon: Database, description: "Integridade do sistema, uso técnico e eventos de rate limit." },
-];
+const navItems = [
+  { key: 'dashboard', label: 'Dashboard' },
+  { key: 'empresas', label: 'Empresas' },
+  { key: 'usuarios', label: 'Usuários' },
+  { key: 'planos', label: 'Planos' },
+  { key: 'assinaturas', label: 'Assinaturas' },
+  { key: 'auditoria', label: 'Auditoria' },
+  { key: 'sistema', label: 'Sistema' },
+  { key: 'suporte', label: 'Suporte' },
+  { key: 'configuracoes', label: 'Configurações' },
+]
 
 export default function Owner() {
-  const { isSystemOwner } = useAuth();
-  const { data: metrics } = useOwnerDashboardMetrics();
-  const { data: companies } = useOwnerCompanies(1, 10);
+  const { isSystemOwner } = useAuth()
+  const [active, setActive] = useState('dashboard')
 
-  const dashboardMetrics = [
-    { title: "Total de empresas", value: formatNumber(metrics?.total_empresas) },
-    { title: "Empresas ativas", value: formatNumber(metrics?.empresas_ativas) },
-    { title: "Empresas suspensas", value: formatNumber(metrics?.empresas_suspensas) },
-    { title: "Total de usuários", value: formatNumber(metrics?.total_usuarios) },
-    { title: "MRR", value: formatMoney(metrics?.mrr) },
-    { title: "Receita anual estimada", value: formatMoney(metrics?.receita_anual_estimada) },
-    { title: "Crescimento mensal", value: `${Number(metrics?.crescimento_mensal ?? 0).toFixed(2)}%` },
-    { title: "Empresas em trial", value: formatNumber(metrics?.empresas_trial) },
-    { title: "Inadimplentes", value: formatNumber(metrics?.inadimplentes) },
-  ];
+  const content = useMemo(() => {
+    switch (active) {
+      case 'dashboard':
+        return <OwnerDashboardModule />
+      case 'empresas':
+        return <OwnerEmpresasModule />
+      case 'usuarios':
+        return <OwnerUsuariosModule />
+      case 'planos':
+        return <OwnerPlanosModule />
+      case 'assinaturas':
+        return <OwnerAssinaturasModule />
+      case 'auditoria':
+        return <OwnerAuditoriaModule />
+      case 'sistema':
+        return <OwnerSistemaModule />
+      case 'suporte':
+        return <OwnerSuporteModule />
+      case 'configuracoes':
+        return <OwnerConfiguracoesModule />
+      default:
+        return <OwnerDashboardModule />
+    }
+  }, [active])
 
   if (!isSystemOwner) {
     return (
-      <div className="flex items-center justify-center h-[60vh]">
-        <Card className="max-w-md border-destructive/40">
-          <CardHeader className="text-center">
-            <div className="mx-auto h-12 w-12 rounded-full bg-destructive/10 flex items-center justify-center">
-              <ShieldCheck className="h-6 w-6 text-destructive" />
-            </div>
-            <CardTitle>Acesso Negado</CardTitle>
-            <CardDescription>Este portal global é exclusivo para o perfil SYSTEM_OWNER.</CardDescription>
-          </CardHeader>
-        </Card>
+      <div className="flex h-[60vh] items-center justify-center">
+        <div className="max-w-md rounded-lg border border-rose-800 bg-slate-900 p-6 text-center">
+          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-rose-950">
+            <ShieldCheck className="h-6 w-6 text-rose-300" />
+          </div>
+          <h2 className="mt-4 text-lg font-semibold">Acesso Negado</h2>
+          <p className="mt-2 text-sm text-slate-400">Este portal global é exclusivo para o perfil SYSTEM_OWNER.</p>
+        </div>
       </div>
-    );
+    )
   }
 
   return (
-    <div className="space-y-6">
-      <div className="rounded-xl border border-amber-500/40 bg-amber-500/10 p-4">
-        <div className="flex flex-wrap items-center gap-3">
-          <Badge className="bg-amber-500 text-black hover:bg-amber-500">SYSTEM OWNER</Badge>
-          <span className="text-sm font-semibold">AMBIENTE GLOBAL</span>
-        </div>
-        <p className="mt-2 text-sm text-muted-foreground flex items-start gap-2">
-          <AlertTriangle className="h-4 w-4 mt-0.5 text-amber-500" />
-          Operações neste portal impactam todas as empresas. Ações críticas devem ser auditadas e revisadas.
-        </p>
-      </div>
-
-      <section className="grid gap-4 md:grid-cols-3">
-        {dashboardMetrics.map((metric) => (
-          <Card key={metric.title} className="border-amber-500/20">
-            <CardHeader className="pb-2">
-              <CardDescription>{metric.title}</CardDescription>
-              <CardTitle className="text-2xl">{metric.value}</CardTitle>
-            </CardHeader>
-          </Card>
-        ))}
-      </section>
-
-      <Tabs defaultValue="empresas" className="space-y-4">
-        <TabsList className="h-auto flex-wrap">
-          {modules.map((module) => (
-            <TabsTrigger key={module.key} value={module.key} className="gap-2">
-              <module.icon className="h-4 w-4" />
-              {module.label}
-            </TabsTrigger>
-          ))}
-        </TabsList>
-
-        {modules.map((module) => (
-          <TabsContent key={module.key} value={module.key}>
-            <Card className="border-amber-500/20">
-              <CardHeader>
-                <CardTitle>{module.label}</CardTitle>
-                <CardDescription>{module.description}</CardDescription>
-              </CardHeader>
-              <CardContent>
-                {module.key === "empresas" ? (
-                  <div className="space-y-2">
-                    {(companies ?? []).map((company) => (
-                      <div key={company.id} className="flex items-center justify-between rounded border border-border p-2 text-sm">
-                        <span className="font-medium">{company.nome}</span>
-                        <Badge variant="outline">{company.status}</Badge>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="text-sm text-muted-foreground">
-                    Módulo integrado ao control plane com trilha de auditoria e políticas exclusivas de SYSTEM_OWNER.
-                  </p>
-                )}
-              </CardContent>
-            </Card>
-          </TabsContent>
-        ))}
-      </Tabs>
-    </div>
-  );
+    <OwnerPortalLayout
+      title="Owner Portal"
+      subtitle="Controle global multiempresa"
+      navItems={navItems}
+      activeKey={active}
+      onNavigate={setActive}
+    >
+      {content}
+    </OwnerPortalLayout>
+  )
 }

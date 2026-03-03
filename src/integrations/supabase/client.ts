@@ -2,13 +2,15 @@ import { createClient } from '@supabase/supabase-js'
 import type { Database } from './types'
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL
+const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY
+const SUPABASE_PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || SUPABASE_ANON_KEY
 
-const SUPABASE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY
+const OWNER_DOMAIN = (import.meta.env.VITE_OWNER_DOMAIN || 'owner.gppis.com.br').toLowerCase()
+const OWNER_SUPABASE_URL = import.meta.env.VITE_OWNER_SUPABASE_URL
+const OWNER_SUPABASE_ANON_KEY = import.meta.env.VITE_OWNER_SUPABASE_ANON_KEY
+const OWNER_SUPABASE_PUBLISHABLE_KEY = import.meta.env.VITE_OWNER_SUPABASE_PUBLISHABLE_KEY || OWNER_SUPABASE_ANON_KEY
 
-const OWNER_HOSTNAME = 'owner.gppis.com.br'
-const STABLE_PROJECT_URL = 'https://cplowhoklcegnjvwmrsk.supabase.co'
-const STABLE_PROJECT_PUBLISHABLE_KEY =
-  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNwbG93aG9rbGNlZ25qdndtcnNrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg1MjE3NjcsImV4cCI6MjA4NDA5Nzc2N30.2aKTjv_YQuxy1QVV28DVhTWpRqdn0AxZD5rVksfXdhE'
+const SUPABASE_KEY = SUPABASE_PUBLISHABLE_KEY
 
 const isTestEnvironment =
   import.meta.env.MODE === 'test' ||
@@ -16,8 +18,18 @@ const isTestEnvironment =
 
 const hasSupabaseEnv = Boolean(SUPABASE_URL && SUPABASE_KEY)
 
+const currentHostname = typeof window !== 'undefined' ? window.location.hostname.toLowerCase() : ''
+const isOwnerHostname = currentHostname === OWNER_DOMAIN
+
+const hasOwnerSupabaseEnv = Boolean(OWNER_SUPABASE_URL && OWNER_SUPABASE_PUBLISHABLE_KEY)
+
+const resolvedSupabaseUrl = isOwnerHostname && hasOwnerSupabaseEnv ? OWNER_SUPABASE_URL : SUPABASE_URL
+const resolvedSupabaseKey = isOwnerHostname && hasOwnerSupabaseEnv ? OWNER_SUPABASE_PUBLISHABLE_KEY : SUPABASE_KEY
+
 if (!hasSupabaseEnv && !isTestEnvironment && !import.meta.env.DEV) {
-  throw new Error('Supabase environment is not configured. Define VITE_SUPABASE_URL and VITE_SUPABASE_PUBLISHABLE_KEY.')
+  throw new Error(
+    'Supabase environment is not configured. Define VITE_SUPABASE_URL with VITE_SUPABASE_PUBLISHABLE_KEY or VITE_SUPABASE_ANON_KEY.'
+  )
 }
 
 const memoryStorage = (() => {
@@ -42,17 +54,10 @@ const hasLocalStorageApi =
 
 const authStorage = hasLocalStorageApi ? window.localStorage : memoryStorage
 
-const isOwnerHostname = typeof window !== 'undefined' && window.location.hostname.toLowerCase() === OWNER_HOSTNAME
-
-const shouldUseStableProjectForOwner = isOwnerHostname
-
-const effectiveSupabaseUrl = shouldUseStableProjectForOwner ? STABLE_PROJECT_URL : SUPABASE_URL
-const effectiveSupabaseKey = shouldUseStableProjectForOwner ? STABLE_PROJECT_PUBLISHABLE_KEY : SUPABASE_KEY
-
 const fallbackUrl = isTestEnvironment ? 'http://127.0.0.1:54321' : ''
 const fallbackKey = isTestEnvironment ? 'test-key' : ''
 
-export const supabase = createClient<Database>(effectiveSupabaseUrl || fallbackUrl, effectiveSupabaseKey || fallbackKey, {
+export const supabase = createClient<Database>(resolvedSupabaseUrl || fallbackUrl, resolvedSupabaseKey || fallbackKey, {
   auth: {
     storage: authStorage,
     persistSession: !isTestEnvironment,

@@ -160,9 +160,16 @@ Authorization gates:
 ## 23. Environment Variables
 Frontend (Vite):
 - VITE_SUPABASE_URL
-- VITE_SUPABASE_ANON_KEY
+- VITE_SUPABASE_PUBLISHABLE_KEY (or VITE_SUPABASE_ANON_KEY)
 - VITE_OWNER_DOMAIN (optional)
 - VITE_OWNER_PREVIEW (optional)
+- VITE_OWNER_SUPABASE_URL (optional; only if owner uses a different Supabase project)
+- VITE_OWNER_SUPABASE_PUBLISHABLE_KEY (optional; or VITE_OWNER_SUPABASE_ANON_KEY)
+
+Interconnection policy:
+- By default, owner and tenant domains must use the same Supabase project.
+- Global management happens through SYSTEM_OWNER/SYSTEM_ADMIN permissions and RLS policies.
+- Only configure VITE_OWNER_SUPABASE_* if there is an explicit operational need for a different owner project.
 
 Edge Functions:
 - SUPABASE_URL
