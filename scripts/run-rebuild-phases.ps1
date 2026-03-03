@@ -24,6 +24,18 @@ function Invoke-Supabase {
   & npx supabase @Args
 }
 
+function Assert-DbQuerySupport {
+  $helpOutput = if (Get-Command supabase -ErrorAction SilentlyContinue) {
+    & supabase db --help | Out-String
+  } else {
+    & npx supabase db --help | Out-String
+  }
+
+  if ($helpOutput -notmatch '\bquery\b') {
+    throw "Esta versão do Supabase CLI não suporta 'db query'. Use migrações e 'supabase db push --include-all'."
+  }
+}
+
 $files = @(
   'supabase/rebuild/00_drop_all_project_objects.sql',
   'supabase/rebuild/01_create_backend_v2.sql',
@@ -41,6 +53,8 @@ if ($IncludeCutover) {
 
 Write-Host "Linkando projeto Supabase $ProjectRef..."
 Invoke-Supabase -Args @('link', '--project-ref', $ProjectRef)
+
+Assert-DbQuerySupport
 
 foreach ($file in $files) {
   Write-Host "Executando $file ..."

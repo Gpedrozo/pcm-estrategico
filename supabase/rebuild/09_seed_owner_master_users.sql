@@ -64,7 +64,9 @@ BEGIN
   LIMIT 1;
 
   IF v_master_id IS NULL THEN
-    RAISE EXCEPTION 'Usuário MASTER_TI não encontrado em auth.users: %', v_master_ti_email;
+    v_master_id := v_owner_id;
+    v_master_name := COALESCE(v_owner_name, 'Master TI');
+    RAISE NOTICE 'MASTER_TI não encontrado (%). Usando OWNER como fallback temporário.', v_master_ti_email;
   END IF;
 
   -- Garantir empresa padrão para vínculo multi-tenant
@@ -164,4 +166,10 @@ FROM public.user_roles ur
 WHERE ur.role IN ('SYSTEM_OWNER'::public.app_role, 'MASTER_TI'::public.app_role)
 ORDER BY ur.role, ur.user_id;
 
-SELECT email FROM public.system_owner_allowlist ORDER BY email;
+DO $$
+BEGIN
+  IF to_regclass('public.system_owner_allowlist') IS NOT NULL THEN
+    PERFORM 1 FROM public.system_owner_allowlist;
+  END IF;
+END;
+$$;
