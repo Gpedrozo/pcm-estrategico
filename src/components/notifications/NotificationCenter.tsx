@@ -35,6 +35,8 @@ export function NotificationCenter() {
   useEffect(() => {
     if (!user) return;
 
+    let isActive = true;
+
     const generateSystemNotifications = async () => {
       const notifs: Notification[] = [];
 
@@ -142,6 +144,8 @@ export function NotificationCenter() {
         created_at: new Date(Date.now() - 86400000).toISOString(), // 1 day ago
       });
 
+      if (!isActive) return;
+
       setNotifications(notifs);
     };
 
@@ -181,6 +185,7 @@ export function NotificationCenter() {
       .subscribe();
 
     return () => {
+      isActive = false;
       supabase.removeChannel(channel);
     };
   }, [user]);

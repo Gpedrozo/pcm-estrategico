@@ -45,21 +45,36 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       const { data: profile } = await supabase
         .from('profiles')
-        .select('nome')
+        .select('nome,empresa_id')
         .eq('id', userId)
         .maybeSingle();
 
-      const { data: roleData } = await supabase
+      const roleQuery = await supabase
         .from('user_roles')
         .select('role, empresa_id')
         .eq('user_id', userId)
         .order('created_at', { ascending: true });
 
+      let roleData = roleQuery.data;
+
+      if (roleQuery.error && /empresa_id|column/i.test(roleQuery.error.message)) {
+        const fallbackRoleQuery = await supabase
+          .from('user_roles')
+          .select('role')
+          .eq('user_id', userId)
+          .order('created_at', { ascending: true });
+
+        roleData = (fallbackRoleQuery.data || []).map((item: { role: AppRole }) => ({
+          role: item.role,
+          empresa_id: null,
+        }));
+      }
+
       const roles: AppRole[] = (roleData || []).map(
         (item: { role: AppRole }) => item.role
       );
 
-      const tenantId: string | null = (roleData || [])[0]?.empresa_id || null;
+      const tenantId: string | null = (roleData || [])[0]?.empresa_id || profile?.empresa_id || null;
 
       const effectiveRole = getEffectiveRole({ roles, email });
 
@@ -87,17 +102,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
-        setSession(session);
+    let isActive = true;
 
-        if (session?.user) {
-          setTimeout(async () => {
-            const profileData = await fetchUserProfile(session.user.id, session.user.email);
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (_event, nextSession) => {
+        if (!isActive) return;
+
+        setSession(nextSession);
+
+        if (nextSession?.user) {
+          void (async () => {
+            const profileData = await fetchUserProfile(nextSession.user.id, nextSession.user.email);
+
+            if (!isActive) return;
 
             setUser({
-              id: session.user.id,
-              email: session.user.email || '',
+              id: nextSession.user.id,
+              email: nextSession.user.email || '',
               nome: profileData.nome,
               tipo: profileData.tipo,
               roles: profileData.roles,
@@ -105,8 +126,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             });
 
             setIsLoading(false);
-          }, 0);
-        } else {
+          })();
+        } else if (isActive) {
           setUser(null);
           setIsLoading(false);
         }
@@ -114,10 +135,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     );
 
     supabase.auth.getSession().then(({ data: { session } }) => {
+      if (!isActive) return;
+
       setSession(session);
 
       if (session?.user) {
         fetchUserProfile(session.user.id, session.user.email).then(profileData => {
+          if (!isActive) return;
+
           setUser({
             id: session.user.id,
             email: session.user.email || '',
@@ -134,7 +159,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      isActive = false;
+      subscription.unsubscribe();
+    };
   }, []);
 
   const login = useCallback(async (email: string, password: string): Promise<{ error: string | null }> => {
@@ -151,25 +179,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return { error: error.message };
     }
 
-    setTimeout(async () => {
+    void Promise.resolve().then(async () => {
       const { data: { user } } = await supabase.auth.getUser();
 
-      if (user) {
-        const profileData = await fetchUserProfile(user.id, user.email);
+      if (!user) return;
 
-        await writeAuditLog({
-          action: 'LOGIN',
-          table: 'auth',
-          recordId: user.id,
-          empresaId: profileData.tenantId,
-          source: 'auth_context',
-          metadata: {
-            email: user.email || email,
-            event: 'login_success',
-          },
-        });
-      }
-    }, 0);
+      const profileData = await fetchUserProfile(user.id, user.email);
+
+      await writeAuditLog({
+        action: 'LOGIN',
+        table: 'auth',
+        recordId: user.id,
+        empresaId: profileData.tenantId,
+        source: 'auth_context',
+        metadata: {
+          email: user.email || email,
+          event: 'login_success',
+        },
+      });
+    });
 
     return { error: null };
   }, []);

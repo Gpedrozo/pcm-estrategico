@@ -2,3 +2,15 @@ project_id = "dvwsferonoczgmvfubgu"
 
 [functions.analisar-causa-raiz]
 verify_jwt = false
+
+[functions.owner-portal-admin]
+verify_jwt = true
+
+[functions.company-membership]
+verify_jwt = true
+
+[functions.maintenance-os-service]
+verify_jwt = true
+
+[functions.platform-metrics-rollup]
+verify_jwt = true
