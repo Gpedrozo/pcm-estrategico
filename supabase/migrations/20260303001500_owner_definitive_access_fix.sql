@@ -1,61 +1,81 @@
 BEGIN;
 
-CREATE OR REPLACE FUNCTION auth.custom_access_token_hook(event jsonb)
-RETURNS jsonb
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path = auth, public
-AS $$
+DO $$
 BEGIN
-  RETURN event;
+  BEGIN
+    EXECUTE $fn$
+      CREATE OR REPLACE FUNCTION auth.custom_access_token_hook(event jsonb)
+      RETURNS jsonb
+      LANGUAGE plpgsql
+      SECURITY DEFINER
+      SET search_path = auth, public
+      AS $hook$
+      BEGIN
+        RETURN event;
+      END;
+      $hook$
+    $fn$;
+
+    EXECUTE 'REVOKE ALL ON FUNCTION auth.custom_access_token_hook(jsonb) FROM PUBLIC';
+    EXECUTE 'GRANT EXECUTE ON FUNCTION auth.custom_access_token_hook(jsonb) TO postgres';
+    EXECUTE 'GRANT EXECUTE ON FUNCTION auth.custom_access_token_hook(jsonb) TO supabase_admin';
+    EXECUTE 'GRANT EXECUTE ON FUNCTION auth.custom_access_token_hook(jsonb) TO service_role';
+  EXCEPTION
+    WHEN insufficient_privilege THEN
+      RAISE NOTICE 'Sem privilégio para alterar auth.custom_access_token_hook';
+    WHEN undefined_table OR invalid_schema_name THEN
+      RAISE NOTICE 'Schema auth indisponível para alteração do hook';
+  END;
 END;
 $$;
 
-REVOKE ALL ON FUNCTION auth.custom_access_token_hook(jsonb) FROM PUBLIC;
-GRANT EXECUTE ON FUNCTION auth.custom_access_token_hook(jsonb) TO postgres;
-GRANT EXECUTE ON FUNCTION auth.custom_access_token_hook(jsonb) TO supabase_admin;
-GRANT EXECUTE ON FUNCTION auth.custom_access_token_hook(jsonb) TO service_role;
-
 DO $$
 BEGIN
-  IF to_regclass('auth.instances') IS NULL THEN
-    RETURN;
-  END IF;
+  BEGIN
+    IF to_regclass('auth.instances') IS NULL THEN
+      RETURN;
+    END IF;
 
-  UPDATE auth.instances
-  SET raw_base_config = (
-    jsonb_set(
+    UPDATE auth.instances
+    SET raw_base_config = (
       jsonb_set(
         jsonb_set(
           jsonb_set(
             jsonb_set(
               jsonb_set(
-                COALESCE(NULLIF(raw_base_config, '')::jsonb, '{}'::jsonb),
-                '{HOOK_CUSTOM_ACCESS_TOKEN_ENABLED}',
+                jsonb_set(
+                  COALESCE(NULLIF(raw_base_config, '')::jsonb, '{}'::jsonb),
+                  '{HOOK_CUSTOM_ACCESS_TOKEN_ENABLED}',
+                  'false'::jsonb,
+                  true
+                ),
+                '{hook_custom_access_token_enabled}',
                 'false'::jsonb,
                 true
               ),
-              '{hook_custom_access_token_enabled}',
-              'false'::jsonb,
+              '{HOOK_CUSTOM_ACCESS_TOKEN_URI}',
+              'null'::jsonb,
               true
             ),
-            '{HOOK_CUSTOM_ACCESS_TOKEN_URI}',
+            '{hook_custom_access_token_uri}',
             'null'::jsonb,
             true
           ),
-          '{hook_custom_access_token_uri}',
-          'null'::jsonb,
+          '{hooks}',
+          '{}'::jsonb,
           true
         ),
-        '{hooks}',
+        '{hook}',
         '{}'::jsonb,
         true
-      ),
-      '{hook}',
-      '{}'::jsonb,
-      true
-    )::text
-  );
+      )::text
+    );
+  EXCEPTION
+    WHEN insufficient_privilege THEN
+      RAISE NOTICE 'Sem privilégio para atualizar auth.instances';
+    WHEN undefined_table OR invalid_schema_name THEN
+      RAISE NOTICE 'Tabela auth.instances indisponível';
+  END;
 END;
 $$;
 
