@@ -7,6 +7,7 @@ import { OwnerEmpresasModule } from '@/modules/empresas/OwnerEmpresasModule'
 import { OwnerUsuariosModule } from '@/modules/usuarios/OwnerUsuariosModule'
 import { OwnerPlanosModule } from '@/modules/planos/OwnerPlanosModule'
 import { OwnerAssinaturasModule } from '@/modules/assinaturas/OwnerAssinaturasModule'
+import { OwnerContratosModule } from '@/modules/contratos/OwnerContratosModule'
 import { OwnerAuditoriaModule } from '@/modules/auditoria/OwnerAuditoriaModule'
 import { OwnerSistemaModule } from '@/modules/sistema/OwnerSistemaModule'
 import { OwnerSuporteModule } from '@/modules/suporte/OwnerSuporteModule'
@@ -18,6 +19,7 @@ const navItems = [
   { key: 'usuarios', label: 'Usuários' },
   { key: 'planos', label: 'Planos' },
   { key: 'assinaturas', label: 'Assinaturas' },
+  { key: 'contratos', label: 'Contratos' },
   { key: 'auditoria', label: 'Auditoria' },
   { key: 'sistema', label: 'Sistema' },
   { key: 'suporte', label: 'Suporte' },
@@ -40,6 +42,8 @@ export default function Owner() {
         return <OwnerPlanosModule />
       case 'assinaturas':
         return <OwnerAssinaturasModule />
+      case 'contratos':
+        return <OwnerContratosModule />
       case 'auditoria':
         return <OwnerAuditoriaModule />
       case 'sistema':
