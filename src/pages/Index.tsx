@@ -9,12 +9,17 @@ const Index = () => {
   const [showSplash, setShowSplash] = useState(true);
 
   useEffect(() => {
+    if (isAuthenticated || isLoading) {
+      setShowSplash(false);
+      return;
+    }
+
     const timer = setTimeout(() => {
       setShowSplash(false);
-    }, 3500); // tempo da splash (3.5 segundos)
+    }, 600);
 
     return () => clearTimeout(timer);
-  }, []);
+  }, [isAuthenticated, isLoading]);
 
   if (showSplash || isLoading) {
     return (

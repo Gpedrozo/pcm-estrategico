@@ -23,6 +23,7 @@ export function usePermission(permissionCode: string, empresaId?: string | null)
       if (error) throw error
       return Boolean(data)
     },
-    staleTime: 60_000,
+    staleTime: 300_000,
+    refetchOnWindowFocus: false,
   })
 }
