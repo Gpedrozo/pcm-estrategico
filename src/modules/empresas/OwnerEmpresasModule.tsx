@@ -46,6 +46,8 @@ export function OwnerEmpresasModule() {
   })
 
   const [editCompanyId, setEditCompanyId] = useState<string | null>(null)
+  const [formError, setFormError] = useState<string | null>(null)
+  const [formSuccess, setFormSuccess] = useState<string | null>(null)
 
   const plans = useMemo(() => (plansData as Array<{ id: string; name?: string; code?: string; price_month?: number }> | undefined) ?? [], [plansData])
 
@@ -78,10 +80,18 @@ export function OwnerEmpresasModule() {
       inicio: '',
       fim: '',
     })
+    setFormError(null)
+    setFormSuccess(null)
   }
 
   const handleCreate = () => {
-    if (!companyForm.nome || !companyForm.master_nome || !companyForm.master_email) return
+    setFormError(null)
+    setFormSuccess(null)
+
+    if (!companyForm.nome || !companyForm.master_nome || !companyForm.master_email) {
+      setFormError('Preencha Nome da empresa, Nome MASTER e Email MASTER.')
+      return
+    }
 
     createCompanyMutation.mutate({
       company: {
@@ -116,7 +126,11 @@ export function OwnerEmpresasModule() {
         : undefined,
     }, {
       onSuccess: () => {
+        setFormSuccess('Empresa e usuário MASTER criados com sucesso.')
         resetForm()
+      },
+      onError: (error: any) => {
+        setFormError(error?.message || 'Falha ao criar empresa + MASTER.')
       },
     })
   }
@@ -217,6 +231,12 @@ export function OwnerEmpresasModule() {
             </button>
           )}
         </div>
+        {formError && (
+          <p className="mt-2 text-sm text-rose-300">{formError}</p>
+        )}
+        {formSuccess && (
+          <p className="mt-2 text-sm text-emerald-300">{formSuccess}</p>
+        )}
       </div>
 
       <div className="rounded-lg border border-slate-800 bg-slate-900 p-4">
