@@ -77,17 +77,16 @@ export function OwnerEmpresasModule() {
   const plans = useMemo(() => (plansData as Array<{ id: string; name?: string; code?: string; price_month?: number }> | undefined) ?? [], [plansData])
   const subscriptions = useMemo(() => (subscriptionsData as Subscription[] | undefined) ?? [], [subscriptionsData])
   const auditLogs = useMemo(() => ((logsData as AuditLog[] | undefined) ?? []).slice(0, 300), [logsData])
-
-  if (isLoading) {
-    return <div className="rounded-lg border border-slate-800 bg-slate-900 p-4 text-sm">Carregando empresas...</div>
-  }
-
-  const companies = ((data?.companies as Company[] | undefined) ?? []).slice(0, 20)
+  const companies = useMemo(() => ((data?.companies as Company[] | undefined) ?? []).slice(0, 20), [data])
 
   const currentHistoryLogs = useMemo(
     () => auditLogs.filter((log) => log.empresa_id === historyCompanyId).slice(0, 12),
     [auditLogs, historyCompanyId],
   )
+
+  if (isLoading) {
+    return <div className="rounded-lg border border-slate-800 bg-slate-900 p-4 text-sm">Carregando empresas...</div>
+  }
 
   const resetForm = () => {
     setCompanyForm({
