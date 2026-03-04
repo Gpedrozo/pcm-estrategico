@@ -1,21 +1,55 @@
 // @ts-nocheck
 import { supabase } from '@/integrations/supabase/client'
 
-const db = supabase as any
-
 export type OwnerAction =
+  | 'dashboard'
   | 'list_companies'
+  | 'create_company'
+  | 'update_company'
+  | 'set_company_status'
+  | 'list_users'
+  | 'create_user'
+  | 'set_user_status'
+  | 'list_plans'
+  | 'create_plan'
+  | 'update_plan'
+  | 'list_subscriptions'
+  | 'create_subscription'
+  | 'set_subscription_status'
+  | 'list_contracts'
+  | 'update_contract'
+  | 'regenerate_contract'
+  | 'delete_contract'
+  | 'list_support_tickets'
+  | 'respond_support_ticket'
+  | 'list_audit_logs'
+  | 'get_company_settings'
+  | 'update_company_settings'
   | 'block_company'
   | 'change_plan'
   | 'platform_stats'
   | 'create_system_admin'
 
+export interface OwnerCompany {
+  id: string
+  nome?: string
+  slug?: string
+  status?: string
+  created_at?: string
+  updated_at?: string
+  dados_empresa?: {
+    razao_social?: string
+    nome_fantasia?: string
+    cnpj?: string
+  }[]
+}
+
 export interface OwnerUser {
   id: string
   nome?: string
   email?: string
-  ativo?: boolean
-  ultimo_login_em?: string
+  empresa_id?: string
+  user_roles?: Array<{ role: string }>
   created_at?: string
 }
 
@@ -37,23 +71,30 @@ export interface OwnerSubscription {
   id: string
   empresa_id?: string
   plan_id?: string
-  status?: string
+  amount?: number
+  payment_method?: string
+  period?: string
+  starts_at?: string
+  ends_at?: string
   renewal_at?: string
-  trial_ends_at?: string
+  status?: string
   payment_status?: string
+  plans?: { id: string; code?: string; name?: string; user_limit?: number } | null
+  empresas?: { id: string; nome?: string } | null
   updated_at?: string
 }
 
 export interface OwnerAuditLog {
   id: string
-  actor_user_id?: string
-  actor_email?: string
-  action?: string
+  actor_id?: string
+  action_type?: string
   table_name?: string
+  operation?: string
   record_id?: string
-  metadata?: unknown
+  details?: unknown
   source?: string
   severity?: string
+  empresa_id?: string
   created_at?: string
 }
 
@@ -65,10 +106,32 @@ export interface OwnerSupportTicket {
   priority?: string
   subject?: string
   message?: string
-  owner_notes?: string
-  assigned_to?: string
+  owner_response?: string
+  owner_responder_id?: string
+  responded_at?: string
+  empresas?: { id: string; nome?: string } | null
+  profiles?: { id: string; nome?: string; email?: string } | null
   created_at?: string
   updated_at?: string
+}
+
+export interface OwnerContract {
+  id: string
+  empresa_id?: string
+  subscription_id?: string
+  plan_id?: string
+  content?: string
+  generated_at?: string
+  starts_at?: string
+  ends_at?: string
+  amount?: number
+  payment_method?: string
+  version?: number
+  status?: string
+  created_at?: string
+  updated_at?: string
+  empresas?: { id: string; nome?: string } | null
+  plans?: { id: string; code?: string; name?: string } | null
 }
 
 export async function callOwnerAdmin<T = unknown>(payload: Record<string, unknown>) {
@@ -81,63 +144,140 @@ export async function callOwnerAdmin<T = unknown>(payload: Record<string, unknow
 }
 
 export async function listPlatformCompanies() {
-  return callOwnerAdmin<{ companies: Array<Record<string, unknown>> }>({ action: 'list_companies' })
+  return callOwnerAdmin<{ companies: OwnerCompany[] }>({ action: 'list_companies' })
 }
 
 export async function getPlatformStats() {
-  return callOwnerAdmin<Record<string, unknown>>({ action: 'platform_stats' })
+  return callOwnerAdmin<Record<string, unknown>>({ action: 'dashboard' })
 }
 
-export async function listGlobalUsers(limit = 100): Promise<OwnerUser[]> {
-  const { data, error } = await db
-    .from('usuarios')
-    .select('id,nome,email,ativo,ultimo_login_em,created_at')
-    .order('created_at', { ascending: false })
-    .limit(limit)
+export async function createCompany(payload: {
+  company: {
+    nome: string
+    slug?: string
+    razao_social?: string
+    nome_fantasia?: string
+    cnpj?: string
+    endereco?: string
+    telefone?: string
+    email?: string
+    responsavel?: string
+    segmento?: string
+    status?: string
+  }
+  user: {
+    nome: string
+    email: string
+    password?: string
+    role: string
+  }
+  subscription?: {
+    plan_id: string
+    amount?: number
+    payment_method?: string
+    period?: 'monthly' | 'quarterly' | 'yearly' | 'custom'
+    starts_at?: string
+    ends_at?: string | null
+    renewal_at?: string | null
+    status?: 'ativa' | 'atrasada' | 'cancelada' | 'teste'
+    payment_status?: string
+  }
+}) {
+  return callOwnerAdmin({ action: 'create_company', ...payload })
+}
 
-  if (error) throw error
-  return (data ?? []) as OwnerUser[]
+export async function updateCompany(empresaId: string, company: Record<string, unknown>) {
+  return callOwnerAdmin({ action: 'update_company', empresa_id: empresaId, company })
+}
+
+export async function setCompanyStatus(empresaId: string, status: string, reason?: string) {
+  return callOwnerAdmin({ action: 'set_company_status', empresa_id: empresaId, status, reason })
+}
+
+export async function listGlobalUsers(empresaId?: string): Promise<OwnerUser[]> {
+  const data = await callOwnerAdmin<{ users: OwnerUser[] }>({ action: 'list_users', empresa_id: empresaId ?? null })
+  return data.users ?? []
 }
 
 export async function listPlans(): Promise<OwnerPlan[]> {
-  const { data, error } = await db
-    .from('plans')
-    .select('id,code,name,description,user_limit,asset_limit,os_limit,storage_limit_mb,price_month,active,updated_at')
-    .order('price_month', { ascending: true })
-
-  if (error) throw error
-  return (data ?? []) as OwnerPlan[]
+  const data = await callOwnerAdmin<{ plans: OwnerPlan[] }>({ action: 'list_plans' })
+  return data.plans ?? []
 }
 
-export async function listSubscriptions(limit = 200): Promise<OwnerSubscription[]> {
-  const { data, error } = await db
-    .from('subscriptions')
-    .select('id,empresa_id,plan_id,status,renewal_at,trial_ends_at,payment_status,updated_at')
-    .order('updated_at', { ascending: false })
-    .limit(limit)
-
-  if (error) throw error
-  return (data ?? []) as OwnerSubscription[]
+export async function createPlan(plan: Record<string, unknown>) {
+  return callOwnerAdmin({ action: 'create_plan', plan })
 }
 
-export async function listAuditLogs(limit = 200): Promise<OwnerAuditLog[]> {
-  const { data, error } = await db
-    .from('audit_logs')
-    .select('id,actor_user_id,actor_email,action,table_name,record_id,metadata,source,severity,created_at')
-    .order('created_at', { ascending: false })
-    .limit(limit)
-
-  if (error) throw error
-  return (data ?? []) as OwnerAuditLog[]
+export async function updatePlan(plan: Record<string, unknown>) {
+  return callOwnerAdmin({ action: 'update_plan', plan })
 }
 
-export async function listSupportTickets(limit = 200): Promise<OwnerSupportTicket[]> {
-  const { data, error } = await db
-    .from('support_tickets')
-    .select('id,empresa_id,requester_user_id,status,priority,subject,message,owner_notes,assigned_to,created_at,updated_at')
-    .order('updated_at', { ascending: false })
-    .limit(limit)
+export async function listSubscriptions(): Promise<OwnerSubscription[]> {
+  const data = await callOwnerAdmin<{ subscriptions: OwnerSubscription[] }>({ action: 'list_subscriptions' })
+  return data.subscriptions ?? []
+}
 
-  if (error) throw error
-  return (data ?? []) as OwnerSupportTicket[]
+export async function createSubscription(subscription: Record<string, unknown>) {
+  return callOwnerAdmin({ action: 'create_subscription', subscription })
+}
+
+export async function setSubscriptionStatus(empresaId: string, status: string) {
+  return callOwnerAdmin({ action: 'set_subscription_status', empresa_id: empresaId, status })
+}
+
+export async function createUser(user: Record<string, unknown>) {
+  return callOwnerAdmin({ action: 'create_user', user })
+}
+
+export async function setUserStatus(userId: string, status: string) {
+  return callOwnerAdmin({ action: 'set_user_status', user_id: userId, status })
+}
+
+export async function listAuditLogs(filters?: Record<string, unknown>): Promise<OwnerAuditLog[]> {
+  const data = await callOwnerAdmin<{ logs: OwnerAuditLog[] }>({ action: 'list_audit_logs', filters: filters ?? {} })
+  return data.logs ?? []
+}
+
+export async function listSupportTickets(): Promise<OwnerSupportTicket[]> {
+  const data = await callOwnerAdmin<{ tickets: OwnerSupportTicket[] }>({ action: 'list_support_tickets' })
+  return data.tickets ?? []
+}
+
+export async function respondSupportTicket(ticketId: string, response: string, status = 'resolvido') {
+  return callOwnerAdmin({ action: 'respond_support_ticket', ticket_id: ticketId, response, status })
+}
+
+export async function listContracts(): Promise<OwnerContract[]> {
+  const data = await callOwnerAdmin<{ contracts: OwnerContract[] }>({ action: 'list_contracts' })
+  return data.contracts ?? []
+}
+
+export async function updateContract(contractId: string, content: string, summary?: string, status?: string) {
+  return callOwnerAdmin({ action: 'update_contract', contract_id: contractId, content, summary, status })
+}
+
+export async function regenerateContract(contractId: string) {
+  return callOwnerAdmin({ action: 'regenerate_contract', contract_id: contractId })
+}
+
+export async function deleteContract(contractId: string) {
+  return callOwnerAdmin({ action: 'delete_contract', contract_id: contractId })
+}
+
+export async function getCompanySettings(empresaId: string) {
+  return callOwnerAdmin<{ settings: Array<{ chave: string; valor: Record<string, unknown> }> }>({
+    action: 'get_company_settings',
+    empresa_id: empresaId,
+  })
+}
+
+export async function updateCompanySettings(
+  empresaId: string,
+  settings: {
+    modules?: Record<string, boolean>
+    limits?: Record<string, number>
+    features?: Record<string, boolean>
+  },
+) {
+  return callOwnerAdmin({ action: 'update_company_settings', empresa_id: empresaId, settings })
 }
