@@ -139,7 +139,21 @@ export async function callOwnerAdmin<T = unknown>(payload: Record<string, unknow
     body: payload,
   })
 
-  if (error) throw error
+  if (error) {
+    const response = (error as any)?.context
+    if (response && typeof response.json === 'function') {
+      try {
+        const parsed = await response.json()
+        const message = parsed?.error || parsed?.message
+        if (message) {
+          throw new Error(String(message))
+        }
+      } catch {
+      }
+    }
+
+    throw new Error((error as any)?.message || 'Falha ao processar requisição no owner portal.')
+  }
   return data as T
 }
 

@@ -31,16 +31,16 @@ export function OwnerUsuariosModule() {
 
   const { data, isLoading } = useOwnerUsers()
 
-  if (isLoading) {
-    return <div className="rounded-lg border border-slate-800 bg-slate-900 p-4 text-sm">Carregando usuários...</div>
-  }
-
   const companies = useMemo(() => ((companiesData?.companies as Company[] | undefined) ?? []).slice(0, 500), [companiesData])
   const users = useMemo(() => {
     const rows = ((data as unknown as User[] | undefined) ?? []).slice(0, 300)
     if (empresaFilter === 'all') return rows
     return rows.filter((user) => user.empresa_id === empresaFilter)
   }, [data, empresaFilter])
+
+  if (isLoading) {
+    return <div className="rounded-lg border border-slate-800 bg-slate-900 p-4 text-sm">Carregando usuários...</div>
+  }
 
   const handleCreateUser = () => {
     if (!form.empresa_id || !form.nome.trim() || !form.email.trim() || !form.role.trim()) {

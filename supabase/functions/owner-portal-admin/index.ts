@@ -111,6 +111,11 @@ function normalizeSlug(text: string) {
     .slice(0, 48);
 }
 
+function isDuplicateKeyError(message?: string | null) {
+  const normalized = (message ?? "").toLowerCase();
+  return normalized.includes("duplicate key") || normalized.includes("unique constraint");
+}
+
 function contractTemplate(input: {
   empresaNome: string;
   cnpj?: string | null;
@@ -332,7 +337,34 @@ Deno.serve(async (req) => {
     }
 
     const companyName = body.company.nome.trim();
-    const slug = (body.company.slug?.trim() || normalizeSlug(companyName)) || `empresa-${Date.now()}`;
+    const requestedSlug = body.company.slug?.trim() || null;
+    let slug = (requestedSlug || normalizeSlug(companyName)) || `empresa-${Date.now()}`;
+
+    if (requestedSlug) {
+      const { data: sameSlug } = await admin
+        .from("empresas")
+        .select("id")
+        .eq("slug", requestedSlug)
+        .maybeSingle();
+
+      if (sameSlug?.id) {
+        return fail("Já existe uma empresa com esse slug. Informe outro slug.", 409, null, req);
+      }
+    } else {
+      for (let attempt = 0; attempt < 20; attempt++) {
+        const candidate = attempt === 0 ? slug : `${slug}-${attempt + 1}`;
+        const { data: sameSlug } = await admin
+          .from("empresas")
+          .select("id")
+          .eq("slug", candidate)
+          .maybeSingle();
+
+        if (!sameSlug?.id) {
+          slug = candidate;
+          break;
+        }
+      }
+    }
 
     const { data: company, error: companyError } = await admin
       .from("empresas")
@@ -346,16 +378,26 @@ Deno.serve(async (req) => {
       .select("id,nome,slug,status,created_at")
       .single();
 
-    if (companyError) return fail(companyError.message, 400, null, req);
+    if (companyError) {
+      if (isDuplicateKeyError(companyError.message)) {
+        return fail("Não foi possível criar a empresa por conflito de dados únicos (slug/código).", 409, { reason: companyError.message }, req);
+      }
+      return fail(companyError.message, 400, null, req);
+    }
 
-    await admin.from("dados_empresa").upsert({
+    const { error: companyDataError } = await admin.from("dados_empresa").upsert({
       empresa_id: company.id,
       razao_social: body.company.razao_social ?? companyName,
       nome_fantasia: body.company.nome_fantasia ?? companyName,
       cnpj: body.company.cnpj ?? null,
     }, { onConflict: "empresa_id" });
 
-    await admin.from("configuracoes_sistema").upsert({
+    if (companyDataError) {
+      await admin.from("empresas").delete().eq("id", company.id);
+      return fail("Falha ao salvar dados da empresa.", 400, { reason: companyDataError.message }, req);
+    }
+
+    const { error: configError } = await admin.from("configuracoes_sistema").upsert({
       empresa_id: company.id,
       chave: "owner.company_profile",
       valor: {
@@ -366,6 +408,11 @@ Deno.serve(async (req) => {
         segmento: body.company.segmento ?? null,
       },
     }, { onConflict: "empresa_id,chave" });
+
+    if (configError) {
+      await admin.from("empresas").delete().eq("id", company.id);
+      return fail("Falha ao salvar configurações iniciais da empresa.", 400, { reason: configError.message }, req);
+    }
 
     const password = body.user.password?.trim() || `Tmp#${Math.random().toString(36).slice(2, 10)}!`;
 
@@ -381,7 +428,11 @@ Deno.serve(async (req) => {
 
     if (authError || !createdAuth?.user?.id) {
       await admin.from("empresas").delete().eq("id", company.id);
-      return fail(authError?.message ?? "Failed to create company master user", 400, null, req);
+      const authMessage = authError?.message ?? "Failed to create company master user";
+      if (authMessage.toLowerCase().includes("already") || authMessage.toLowerCase().includes("registered")) {
+        return fail("O email do usuário MASTER já está cadastrado. Use outro email.", 409, { reason: authMessage }, req);
+      }
+      return fail(authMessage, 400, null, req);
     }
 
     const masterRole = body.user.role ?? "ADMIN";
