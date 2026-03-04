@@ -399,27 +399,36 @@ Deno.serve(async (req) => {
       role: masterRole,
     }, { onConflict: "user_id,empresa_id,role" });
 
-    if (body.subscription?.plan_id) {
-      const startsAt = body.subscription.starts_at ?? new Date().toISOString().slice(0, 10);
-      const { data: subscription, error: subscriptionError } = await admin
-        .from("subscriptions")
-        .upsert({
-          empresa_id: company.id,
-          plan_id: body.subscription.plan_id,
-          amount: body.subscription.amount ?? 0,
-          payment_method: body.subscription.payment_method ?? null,
-          period: body.subscription.period ?? "monthly",
-          starts_at: startsAt,
-          ends_at: body.subscription.ends_at ?? null,
-          renewal_at: body.subscription.renewal_at ?? body.subscription.ends_at ?? null,
-          status: body.subscription.status ?? "teste",
-          payment_status: body.subscription.payment_status ?? null,
-        }, { onConflict: "empresa_id" })
-        .select("*")
-        .single();
+    let subscriptionWarning: string | null = null;
 
-      if (subscriptionError) return fail(subscriptionError.message, 400, null, req);
-      await createContractFromSubscription(admin, auth.user.id, subscription);
+    if (body.subscription?.plan_id) {
+      try {
+        const startsAt = body.subscription.starts_at ?? new Date().toISOString().slice(0, 10);
+        const { data: subscription, error: subscriptionError } = await admin
+          .from("subscriptions")
+          .upsert({
+            empresa_id: company.id,
+            plan_id: body.subscription.plan_id,
+            amount: body.subscription.amount ?? 0,
+            payment_method: body.subscription.payment_method ?? null,
+            period: body.subscription.period ?? "monthly",
+            starts_at: startsAt,
+            ends_at: body.subscription.ends_at ?? null,
+            renewal_at: body.subscription.renewal_at ?? body.subscription.ends_at ?? null,
+            status: body.subscription.status ?? "teste",
+            payment_status: body.subscription.payment_status ?? null,
+          }, { onConflict: "empresa_id" })
+          .select("*")
+          .single();
+
+        if (subscriptionError) {
+          throw subscriptionError;
+        }
+
+        await createContractFromSubscription(admin, auth.user.id, subscription);
+      } catch (error: any) {
+        subscriptionWarning = error?.message ?? "Falha ao criar assinatura/contrato inicial";
+      }
     }
 
     await logPlatformAudit(admin, {
@@ -430,7 +439,15 @@ Deno.serve(async (req) => {
       details: { company_id: company.id, master_email: body.user.email },
     });
 
-    return ok({ company, master_user: { id: createdAuth.user.id, email: body.user.email, initial_password: password } }, 200, req);
+    return ok({
+      company,
+      master_user: {
+        id: createdAuth.user.id,
+        email: body.user.email,
+        initial_password: password,
+      },
+      warning: subscriptionWarning,
+    }, 200, req);
   }
 
   if (body.action === "update_company") {

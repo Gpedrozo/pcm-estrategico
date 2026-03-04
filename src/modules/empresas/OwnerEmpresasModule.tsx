@@ -48,6 +48,7 @@ export function OwnerEmpresasModule() {
   const [editCompanyId, setEditCompanyId] = useState<string | null>(null)
   const [formError, setFormError] = useState<string | null>(null)
   const [formSuccess, setFormSuccess] = useState<string | null>(null)
+  const [formWarning, setFormWarning] = useState<string | null>(null)
 
   const plans = useMemo(() => (plansData as Array<{ id: string; name?: string; code?: string; price_month?: number }> | undefined) ?? [], [plansData])
 
@@ -82,11 +83,13 @@ export function OwnerEmpresasModule() {
     })
     setFormError(null)
     setFormSuccess(null)
+    setFormWarning(null)
   }
 
   const handleCreate = () => {
     setFormError(null)
     setFormSuccess(null)
+    setFormWarning(null)
 
     if (!companyForm.nome || !companyForm.master_nome || !companyForm.master_email) {
       setFormError('Preencha Nome da empresa, Nome MASTER e Email MASTER.')
@@ -125,8 +128,11 @@ export function OwnerEmpresasModule() {
           }
         : undefined,
     }, {
-      onSuccess: () => {
+      onSuccess: (result: any) => {
         setFormSuccess('Empresa e usuário MASTER criados com sucesso.')
+        if (result?.warning) {
+          setFormWarning(`Aviso: ${result.warning}`)
+        }
         resetForm()
       },
       onError: (error: any) => {
@@ -236,6 +242,9 @@ export function OwnerEmpresasModule() {
         )}
         {formSuccess && (
           <p className="mt-2 text-sm text-emerald-300">{formSuccess}</p>
+        )}
+        {formWarning && (
+          <p className="mt-2 text-sm text-amber-300">{formWarning}</p>
         )}
       </div>
 
