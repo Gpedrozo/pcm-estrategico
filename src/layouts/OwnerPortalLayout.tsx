@@ -24,7 +24,7 @@ export function OwnerPortalLayout({
   onNavigate,
   children,
 }: OwnerPortalLayoutProps) {
-  const { user, logout } = useAuth()
+  const { user, logout, impersonation, stopImpersonationSession } = useAuth()
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100">
@@ -41,6 +41,19 @@ export function OwnerPortalLayout({
           </div>
 
           <div className="flex items-center gap-4">
+            {impersonation?.empresaId && (
+              <div className="rounded-md border border-amber-800 bg-amber-950/40 px-3 py-2 text-xs text-amber-200">
+                <p>
+                  Modo cliente ativo: {impersonation.empresaNome ?? impersonation.empresaId}
+                </p>
+                <button
+                  onClick={stopImpersonationSession}
+                  className="mt-1 rounded border border-amber-700 px-2 py-1 text-[11px] hover:bg-amber-900/40"
+                >
+                  Encerrar modo cliente
+                </button>
+              </div>
+            )}
             <div className="text-right">
               <p className="text-sm font-medium">{user?.nome}</p>
               <p className="text-xs text-slate-400">{user?.email}</p>

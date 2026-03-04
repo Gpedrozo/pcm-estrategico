@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
 import { useOwnerCompanies, useOwnerCompanyActions, useOwnerUsers } from '@/hooks/useOwnerPortal'
+import { MasterPermissionsManager } from '@/components/master-ti/MasterPermissionsManager'
 
 type User = {
   id: string
@@ -28,6 +29,7 @@ export function OwnerUsuariosModule() {
   })
   const [message, setMessage] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [showPermissionsManager, setShowPermissionsManager] = useState(false)
 
   const { data, isLoading } = useOwnerUsers()
 
@@ -84,6 +86,20 @@ export function OwnerUsuariosModule() {
 
   return (
     <div className="space-y-4">
+      <div className="rounded-lg border border-slate-800 bg-slate-900 p-4">
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+          <h2 className="text-sm font-semibold">RBAC granular</h2>
+          <button
+            onClick={() => setShowPermissionsManager((prev) => !prev)}
+            className="rounded-md border border-slate-700 px-3 py-1 text-xs hover:bg-slate-800"
+          >
+            {showPermissionsManager ? 'Ocultar RBAC granular' : 'Abrir RBAC granular'}
+          </button>
+        </div>
+
+        {showPermissionsManager && <MasterPermissionsManager />}
+      </div>
+
       <div className="rounded-lg border border-slate-800 bg-slate-900 p-4">
         <h2 className="mb-3 text-sm font-semibold">Criar usuário global</h2>
         <div className="grid gap-2 md:grid-cols-3 xl:grid-cols-6">

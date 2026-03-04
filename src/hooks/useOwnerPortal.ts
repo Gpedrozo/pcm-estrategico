@@ -20,6 +20,8 @@ import {
   setCompanyStatus,
   setSubscriptionStatus,
   setUserStatus,
+  stopImpersonation,
+  impersonateCompany,
   updateCompany,
   updateCompanySettings,
   updateContract,
@@ -144,6 +146,21 @@ export function useOwnerCompanyActions() {
     },
   })
 
+  const startImpersonationMutation = useMutation({
+    mutationFn: ({ empresaId }: { empresaId: string }) => impersonateCompany(empresaId),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['owner', 'audit-logs'] })
+    },
+  })
+
+  const stopImpersonationMutation = useMutation({
+    mutationFn: ({ empresaId, empresaNome, reason }: { empresaId?: string; empresaNome?: string; reason?: string }) =>
+      stopImpersonation({ empresa_id: empresaId, empresa_nome: empresaNome, reason }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['owner', 'audit-logs'] })
+    },
+  })
+
   const changePlan = useMutation({
     mutationFn: (params: { empresa_id: string; plano_codigo: string }) =>
       callOwnerAdmin({ action: 'change_plan', ...params }),
@@ -227,6 +244,8 @@ export function useOwnerCompanyActions() {
     createCompanyMutation,
     updateCompanyMutation,
     setCompanyLifecycle,
+    startImpersonationMutation,
+    stopImpersonationMutation,
     createPlanMutation,
     updatePlanMutation,
     createUserMutation,

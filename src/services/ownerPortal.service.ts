@@ -29,6 +29,8 @@ export type OwnerAction =
   | 'change_plan'
   | 'platform_stats'
   | 'create_system_admin'
+  | 'impersonate_company'
+  | 'stop_impersonation'
 
 export interface OwnerCompany {
   id: string
@@ -294,4 +296,26 @@ export async function updateCompanySettings(
   },
 ) {
   return callOwnerAdmin({ action: 'update_company_settings', empresa_id: empresaId, settings })
+}
+
+export async function impersonateCompany(empresaId: string) {
+  return callOwnerAdmin<{
+    success: boolean
+    impersonation?: {
+      empresa_id: string
+      empresa_nome?: string | null
+      company_status?: string | null
+      issued_at?: string
+      expires_at?: string
+    }
+  }>({ action: 'impersonate_company', empresa_id: empresaId })
+}
+
+export async function stopImpersonation(params?: { empresa_id?: string; empresa_nome?: string; reason?: string }) {
+  return callOwnerAdmin<{ success: boolean }>({
+    action: 'stop_impersonation',
+    empresa_id: params?.empresa_id,
+    empresa_nome: params?.empresa_nome,
+    reason: params?.reason,
+  })
 }

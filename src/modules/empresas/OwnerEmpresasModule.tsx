@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
 import { useOwnerAuditLogs, useOwnerCompanies, useOwnerCompanyActions, useOwnerPlans, useOwnerSubscriptions } from '@/hooks/useOwnerPortal'
+import { useAuth } from '@/contexts/AuthContext'
 
 type Company = {
   id: string
@@ -29,6 +30,7 @@ type AuditLog = {
 }
 
 export function OwnerEmpresasModule() {
+  const { impersonation, startImpersonationSession, stopImpersonationSession } = useAuth()
   const { data, isLoading } = useOwnerCompanies()
   const { data: plansData } = useOwnerPlans()
   const { data: subscriptionsData } = useOwnerSubscriptions()
@@ -38,6 +40,8 @@ export function OwnerEmpresasModule() {
     updateCompanyMutation,
     setCompanyLifecycle,
     changePlan,
+    startImpersonationMutation,
+    stopImpersonationMutation,
   } = useOwnerCompanyActions()
 
   const [companyForm, setCompanyForm] = useState({
@@ -227,6 +231,57 @@ export function OwnerEmpresasModule() {
     )
   }
 
+  const handleStartImpersonation = (company: Company) => {
+    const companyName = company.dados_empresa?.[0]?.nome_fantasia ?? company.dados_empresa?.[0]?.razao_social ?? company.nome ?? company.id
+
+    setFormError(null)
+    setFormSuccess(null)
+    setFormWarning(null)
+
+    startImpersonationMutation.mutate(
+      { empresaId: company.id },
+      {
+        onSuccess: (result: any) => {
+          const payload = result?.impersonation
+          startImpersonationSession({
+            empresaId: payload?.empresa_id ?? company.id,
+            empresaNome: payload?.empresa_nome ?? companyName,
+            startedAt: payload?.issued_at ?? new Date().toISOString(),
+            expiresAt: payload?.expires_at ?? null,
+          })
+          setFormSuccess(`Modo cliente ativo para ${companyName}.`)
+        },
+        onError: (err: any) => setFormError(err?.message ?? 'Falha ao iniciar modo cliente.'),
+      },
+    )
+  }
+
+  const handleStopImpersonation = () => {
+    if (!impersonation?.empresaId) {
+      stopImpersonationSession()
+      return
+    }
+
+    setFormError(null)
+    setFormSuccess(null)
+    setFormWarning(null)
+
+    stopImpersonationMutation.mutate(
+      {
+        empresaId: impersonation.empresaId,
+        empresaNome: impersonation.empresaNome ?? undefined,
+        reason: 'manual_exit',
+      },
+      {
+        onSuccess: () => {
+          stopImpersonationSession()
+          setFormSuccess('Modo cliente encerrado com sucesso.')
+        },
+        onError: (err: any) => setFormError(err?.message ?? 'Falha ao encerrar modo cliente.'),
+      },
+    )
+  }
+
   return (
     <div className="space-y-4">
       <div className="rounded-lg border border-slate-800 bg-slate-900 p-4">
@@ -343,6 +398,23 @@ export function OwnerEmpresasModule() {
                     >
                       {historyCompanyId === company.id ? 'Ocultar histórico' : 'Ver histórico'}
                     </button>
+                    {impersonation?.empresaId === company.id ? (
+                      <button
+                        onClick={handleStopImpersonation}
+                        className="rounded-md border border-amber-700 px-3 py-1 text-xs text-amber-300 hover:bg-amber-950"
+                        disabled={stopImpersonationMutation.isPending}
+                      >
+                        Encerrar acesso cliente
+                      </button>
+                    ) : (
+                      <button
+                        onClick={() => handleStartImpersonation(company)}
+                        className="rounded-md border border-indigo-800 px-3 py-1 text-xs text-indigo-300 hover:bg-indigo-950"
+                        disabled={startImpersonationMutation.isPending}
+                      >
+                        Entrar como cliente
+                      </button>
+                    )}
                   </div>
                 </div>
 

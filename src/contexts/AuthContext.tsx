@@ -21,6 +21,13 @@ export interface AuthUser {
   tenantId: string | null;
 }
 
+export interface ImpersonationSession {
+  empresaId: string;
+  empresaNome?: string | null;
+  startedAt: string;
+  expiresAt?: string | null;
+}
+
 export interface AuthContextType {
   user: AuthUser | null;
   session: Session | null;
@@ -34,14 +41,47 @@ export interface AuthContextType {
   isSystemOwner: boolean;
   effectiveRole: AppRole;
   tenantId: string | null;
+  impersonation: ImpersonationSession | null;
+  startImpersonationSession: (session: ImpersonationSession) => void;
+  stopImpersonationSession: () => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
+const IMPERSONATION_STORAGE_KEY = 'pcm.owner.impersonation.session';
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [impersonation, setImpersonation] = useState<ImpersonationSession | null>(null);
+
+  useEffect(() => {
+    try {
+      const raw = window.localStorage.getItem(IMPERSONATION_STORAGE_KEY);
+      if (!raw) return;
+      const parsed = JSON.parse(raw) as ImpersonationSession;
+      if (!parsed?.empresaId || !parsed?.startedAt) {
+        window.localStorage.removeItem(IMPERSONATION_STORAGE_KEY);
+        return;
+      }
+      if (parsed.expiresAt && new Date(parsed.expiresAt).getTime() <= Date.now()) {
+        window.localStorage.removeItem(IMPERSONATION_STORAGE_KEY);
+        return;
+      }
+      setImpersonation(parsed);
+    } catch {
+      window.localStorage.removeItem(IMPERSONATION_STORAGE_KEY);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!impersonation) {
+      window.localStorage.removeItem(IMPERSONATION_STORAGE_KEY);
+      return;
+    }
+
+    window.localStorage.setItem(IMPERSONATION_STORAGE_KEY, JSON.stringify(impersonation));
+  }, [impersonation]);
 
   const validateTenantDomainAccess = useCallback(async (): Promise<string | null> => {
     if (isOwnerDomain(window.location.hostname)) return null;
@@ -327,8 +367,34 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       });
     }
 
+    setImpersonation(null);
+    window.localStorage.removeItem(IMPERSONATION_STORAGE_KEY);
+
     await supabase.auth.signOut();
   }, [user]);
+
+  useEffect(() => {
+    if (!user) {
+      setImpersonation(null);
+      return;
+    }
+
+    const canImpersonate =
+      user.tipo === 'SYSTEM_OWNER' ||
+      user.tipo === 'SYSTEM_ADMIN';
+
+    if (!canImpersonate) {
+      setImpersonation(null);
+    }
+  }, [user]);
+
+  const startImpersonationSession = useCallback((sessionData: ImpersonationSession) => {
+    setImpersonation(sessionData);
+  }, []);
+
+  const stopImpersonationSession = useCallback(() => {
+    setImpersonation(null);
+  }, []);
 
   const effectiveRole: AppRole = user?.tipo || 'USUARIO';
   const isAdmin =
@@ -341,7 +407,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     effectiveRole === 'SYSTEM_OWNER' ||
     effectiveRole === 'SYSTEM_ADMIN';
   const isSystemOwner = effectiveRole === 'SYSTEM_OWNER' || effectiveRole === 'SYSTEM_ADMIN';
-  const tenantId = user?.tenantId || null;
+  const tenantId = impersonation?.empresaId || user?.tenantId || null;
 
   return (
     <AuthContext.Provider
@@ -358,6 +424,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         isSystemOwner,
         effectiveRole,
         tenantId,
+        impersonation,
+        startImpersonationSession,
+        stopImpersonationSession,
       }}
     >
       {children}

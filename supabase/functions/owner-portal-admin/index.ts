@@ -31,7 +31,9 @@ type Payload = {
     | "block_company"
     | "change_plan"
     | "platform_stats"
-    | "create_system_admin";
+    | "create_system_admin"
+    | "impersonate_company"
+    | "stop_impersonation";
   empresa_id?: string;
   company?: {
     nome: string;
@@ -99,6 +101,7 @@ type Payload = {
   plano_codigo?: string;
   reason?: string;
   user_id?: string;
+  empresa_nome?: string;
 };
 
 function normalizeSlug(text: string) {
@@ -934,6 +937,64 @@ Deno.serve(async (req) => {
     if (subscriptionError) return fail(subscriptionError.message, 400, null, req);
     const contract = await createContractFromSubscription(admin, auth.user.id, subscription);
     return ok({ success: true, contract_id: contract.id }, 200, req);
+  }
+
+  if (body.action === "impersonate_company") {
+    if (!body.empresa_id) return fail("empresa_id is required", 400, null, req);
+
+    const { data: company, error: companyError } = await admin
+      .from("empresas")
+      .select("id,nome,status")
+      .eq("id", body.empresa_id)
+      .maybeSingle();
+
+    if (companyError) return fail(companyError.message, 400, null, req);
+    if (!company?.id) return fail("Empresa não encontrada", 404, null, req);
+
+    const now = new Date();
+    const expiresAt = new Date(now.getTime() + (60 * 60 * 1000));
+
+    await logPlatformAudit(admin, {
+      actorId: auth.user.id,
+      actorEmail: auth.user.email,
+      empresaId: company.id,
+      actionType: "OWNER_IMPERSONATION_START",
+      details: {
+        company_id: company.id,
+        company_name: company.nome ?? null,
+        company_status: company.status ?? null,
+        issued_at: now.toISOString(),
+        expires_at: expiresAt.toISOString(),
+      },
+    });
+
+    return ok({
+      success: true,
+      impersonation: {
+        empresa_id: company.id,
+        empresa_nome: company.nome ?? null,
+        company_status: company.status ?? null,
+        issued_at: now.toISOString(),
+        expires_at: expiresAt.toISOString(),
+      },
+    }, 200, req);
+  }
+
+  if (body.action === "stop_impersonation") {
+    await logPlatformAudit(admin, {
+      actorId: auth.user.id,
+      actorEmail: auth.user.email,
+      empresaId: body.empresa_id ?? null,
+      actionType: "OWNER_IMPERSONATION_STOP",
+      details: {
+        company_id: body.empresa_id ?? null,
+        company_name: body.empresa_nome ?? null,
+        reason: body.reason ?? "manual",
+        stopped_at: new Date().toISOString(),
+      },
+    });
+
+    return ok({ success: true }, 200, req);
   }
 
   if (body.action === "create_system_admin") {
