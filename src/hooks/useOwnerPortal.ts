@@ -66,10 +66,16 @@ export function useOwnerSubscriptions() {
   })
 }
 
-export function useOwnerAuditLogs() {
+export function useOwnerAuditLogs(filters?: {
+  empresa_id?: string
+  user_id?: string
+  module?: string
+  from?: string
+  to?: string
+}) {
   return useQuery({
-    queryKey: ['owner', 'audit-logs'],
-    queryFn: () => listAuditLogs(300),
+    queryKey: ['owner', 'audit-logs', filters ?? null],
+    queryFn: () => listAuditLogs(filters),
     staleTime: 15_000,
   })
 }
