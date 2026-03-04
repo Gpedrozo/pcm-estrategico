@@ -6,11 +6,81 @@ import { Menu, Loader2 } from 'lucide-react';
 import { CommandPalette } from '@/components/command-palette/CommandPalette';
 import { NotificationCenter } from '@/components/notifications/NotificationCenter';
 import { GlobalSearch } from './GlobalSearch';
-import { useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { stopImpersonation } from '@/services/ownerPortal.service';
 
 export function AppLayout() {
-  const { isAuthenticated, isLoading } = useAuth();
+  const { isAuthenticated, isLoading, impersonation, stopImpersonationSession } = useAuth();
   const [commandOpen, setCommandOpen] = useState(false);
+  const [isStoppingImpersonation, setIsStoppingImpersonation] = useState(false);
+  const [countdownNow, setCountdownNow] = useState(Date.now());
+  const hasAutoStoppedRef = useRef(false);
+
+  const remainingMs = useMemo(() => {
+    if (!impersonation?.expiresAt) return null;
+    return Math.max(0, new Date(impersonation.expiresAt).getTime() - countdownNow);
+  }, [impersonation, countdownNow]);
+
+  const remainingLabel = useMemo(() => {
+    if (remainingMs === null) return null;
+    const totalSeconds = Math.ceil(remainingMs / 1000);
+    const minutes = Math.floor(totalSeconds / 60);
+    const seconds = totalSeconds % 60;
+    return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+  }, [remainingMs]);
+
+  useEffect(() => {
+    if (!impersonation?.expiresAt) {
+      hasAutoStoppedRef.current = false;
+      return;
+    }
+
+    const tick = window.setInterval(() => {
+      setCountdownNow(Date.now());
+    }, 1000);
+
+    return () => window.clearInterval(tick);
+  }, [impersonation]);
+
+  useEffect(() => {
+    if (!impersonation?.expiresAt || remainingMs === null) return;
+    if (remainingMs > 0 || hasAutoStoppedRef.current) return;
+
+    hasAutoStoppedRef.current = true;
+
+    void (async () => {
+      try {
+        await stopImpersonation({
+          empresa_id: impersonation.empresaId,
+          empresa_nome: impersonation.empresaNome ?? undefined,
+          reason: 'expired_auto',
+        });
+      } catch {
+      } finally {
+        stopImpersonationSession();
+      }
+    })();
+  }, [impersonation, remainingMs, stopImpersonationSession]);
+
+  const handleStopImpersonation = async () => {
+    if (!impersonation?.empresaId) {
+      stopImpersonationSession();
+      return;
+    }
+
+    setIsStoppingImpersonation(true);
+
+    try {
+      await stopImpersonation({
+        empresa_id: impersonation.empresaId,
+        empresa_nome: impersonation.empresaNome ?? undefined,
+        reason: 'manual_tenant_header',
+      });
+    } finally {
+      stopImpersonationSession();
+      setIsStoppingImpersonation(false);
+    }
+  };
 
   if (isLoading) {
     return (
@@ -53,6 +123,23 @@ export function AppLayout() {
               })}
             </span>
           </header>
+          {impersonation?.empresaId && (
+            <div className="border-b border-amber-300/40 bg-amber-100 px-4 py-2 text-amber-900">
+              <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
+                <p className="font-medium">
+                  Modo cliente ativo: {impersonation.empresaNome ?? impersonation.empresaId}
+                  {remainingLabel ? ` • expira em ${remainingLabel}` : ''}
+                </p>
+                <button
+                  onClick={handleStopImpersonation}
+                  disabled={isStoppingImpersonation}
+                  className="rounded border border-amber-500 px-2 py-1 hover:bg-amber-200 disabled:opacity-60"
+                >
+                  Encerrar modo cliente
+                </button>
+              </div>
+            </div>
+          )}
           <main className="flex-1 p-6 overflow-auto">
             <Outlet />
           </main>

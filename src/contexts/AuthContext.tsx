@@ -83,6 +83,30 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     window.localStorage.setItem(IMPERSONATION_STORAGE_KEY, JSON.stringify(impersonation));
   }, [impersonation]);
 
+  useEffect(() => {
+    if (!impersonation?.expiresAt) return;
+
+    const expiresAtMs = new Date(impersonation.expiresAt).getTime();
+    if (!Number.isFinite(expiresAtMs)) {
+      setImpersonation(null);
+      return;
+    }
+
+    if (expiresAtMs <= Date.now()) {
+      setImpersonation(null);
+      return;
+    }
+
+    const timer = window.setInterval(() => {
+      if (Date.now() >= expiresAtMs) {
+        setImpersonation(null);
+        window.clearInterval(timer);
+      }
+    }, 1000);
+
+    return () => window.clearInterval(timer);
+  }, [impersonation]);
+
   const validateTenantDomainAccess = useCallback(async (): Promise<string | null> => {
     if (isOwnerDomain(window.location.hostname)) return null;
 

@@ -47,6 +47,9 @@ export function createAuthContextValue(overrides: Partial<AuthContextType> = {})
     isSystemOwner: false,
     effectiveRole: 'USUARIO',
     tenantId: 'empresa-1',
+    impersonation: null,
+    startImpersonationSession: () => {},
+    stopImpersonationSession: () => {},
     ...overrides,
   };
 }

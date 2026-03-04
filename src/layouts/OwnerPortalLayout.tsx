@@ -1,6 +1,8 @@
 import { LogOut, Shield } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import type { ReactNode } from 'react'
+import { useState } from 'react'
+import { stopImpersonation } from '@/services/ownerPortal.service'
 
 export interface OwnerNavItem {
   key: string
@@ -25,6 +27,27 @@ export function OwnerPortalLayout({
   children,
 }: OwnerPortalLayoutProps) {
   const { user, logout, impersonation, stopImpersonationSession } = useAuth()
+  const [isStoppingImpersonation, setIsStoppingImpersonation] = useState(false)
+
+  const handleStopImpersonation = async () => {
+    if (!impersonation?.empresaId) {
+      stopImpersonationSession()
+      return
+    }
+
+    setIsStoppingImpersonation(true)
+
+    try {
+      await stopImpersonation({
+        empresa_id: impersonation.empresaId,
+        empresa_nome: impersonation.empresaNome ?? undefined,
+        reason: 'manual_owner_header',
+      })
+    } finally {
+      stopImpersonationSession()
+      setIsStoppingImpersonation(false)
+    }
+  }
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100">
@@ -47,8 +70,9 @@ export function OwnerPortalLayout({
                   Modo cliente ativo: {impersonation.empresaNome ?? impersonation.empresaId}
                 </p>
                 <button
-                  onClick={stopImpersonationSession}
-                  className="mt-1 rounded border border-amber-700 px-2 py-1 text-[11px] hover:bg-amber-900/40"
+                  onClick={handleStopImpersonation}
+                  disabled={isStoppingImpersonation}
+                  className="mt-1 rounded border border-amber-700 px-2 py-1 text-[11px] hover:bg-amber-900/40 disabled:opacity-60"
                 >
                   Encerrar modo cliente
                 </button>
