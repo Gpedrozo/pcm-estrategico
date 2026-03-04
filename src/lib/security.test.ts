@@ -29,4 +29,14 @@ describe('getEffectiveRole', () => {
 
     expect(role).toBe('ADMIN');
   });
+
+  it('does not elevate SYSTEM_OWNER from allowlisted email without role in DB', () => {
+    const role = getEffectiveRole({
+      roles: ['USUARIO'],
+      email: 'pedrozo@gppis.com.br',
+      hostname: 'tenant.gppis.com.br',
+    });
+
+    expect(role).toBe('USUARIO');
+  });
 });

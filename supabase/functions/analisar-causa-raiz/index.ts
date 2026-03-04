@@ -1,58 +1,56 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
-};
+import { adminClient, requireEmpresaScope, requireUser } from "../_shared/auth.ts";
+import { fail, ok, preflight, rejectIfOriginNotAllowed } from "../_shared/response.ts";
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
-    return new Response(null, { headers: corsHeaders });
+    return preflight(
+      req,
+      "POST, OPTIONS",
+      "x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
+    );
   }
 
+  const originDenied = rejectIfOriginNotAllowed(req);
+  if (originDenied) return originDenied;
+
+  if (req.method !== "POST") return fail("Method not allowed", 405, null, req);
+
   try {
-    const { tag } = await req.json();
-    if (!tag) {
-      return new Response(JSON.stringify({ error: "TAG é obrigatória" }), {
-        status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
+    const auth = await requireUser(req);
+    if ("error" in auth) return fail(auth.error ?? "Unauthorized", auth.status ?? 401, null, req);
+
+    const body = await req.json().catch(() => null) as { tag?: string; empresa_id?: string } | null;
+    const tag = body?.tag;
+    if (!tag) return fail("TAG é obrigatória", 400, null, req);
+
+    const supabase = adminClient();
+
+    const scope = await requireEmpresaScope(supabase, auth.user.id, body?.empresa_id ?? null);
+    if ("error" in scope) return fail(scope.error, scope.status, null, req);
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) {
       throw new Error("LOVABLE_API_KEY is not configured");
     }
 
-    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const supabase = createClient(supabaseUrl, supabaseKey);
-
-    // Fetch all work orders for this TAG
     const { data: ordensServico, error: osError } = await supabase
       .from("ordens_servico")
       .select("*")
+      .eq("empresa_id", scope.empresaId)
       .eq("tag", tag)
       .order("data_solicitacao", { ascending: false });
 
     if (osError) throw osError;
 
     if (!ordensServico || ordensServico.length === 0) {
-      return new Response(
-        JSON.stringify({ error: "Nenhuma O.S. encontrada para esta TAG" }),
-        {
-          status: 404,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        }
-      );
+      return fail("Nenhuma O.S. encontrada para esta TAG", 404, null, req);
     }
 
-    // Fetch equipment info
     const { data: equipamento } = await supabase
       .from("equipamentos")
       .select("*")
+      .eq("empresa_id", scope.empresaId)
       .eq("tag", tag)
       .single();
 
@@ -188,16 +186,10 @@ Identifique:
 
     if (!aiResponse.ok) {
       if (aiResponse.status === 429) {
-        return new Response(
-          JSON.stringify({ error: "Limite de requisições excedido. Tente novamente em alguns minutos." }),
-          { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
+        return fail("Limite de requisições excedido. Tente novamente em alguns minutos.", 429, null, req);
       }
       if (aiResponse.status === 402) {
-        return new Response(
-          JSON.stringify({ error: "Créditos insuficientes. Adicione créditos ao workspace." }),
-          { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
+        return fail("Créditos insuficientes. Adicione créditos ao workspace.", 402, null, req);
       }
       const errText = await aiResponse.text();
       console.error("AI gateway error:", aiResponse.status, errText);
@@ -251,20 +243,14 @@ Identifique:
       console.error("Save error:", saveError);
     }
 
-    return new Response(
-      JSON.stringify({
+    return ok({
         analysis: { ...analysis, id: saved?.id, generated_at: saved?.generated_at },
         os_count: totalOS,
         mtbf_days: intervaloMedio,
-      }),
-      { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
+      }, 200, req);
   } catch (error) {
     console.error("Error:", error);
     const msg = error instanceof Error ? error.message : "Erro desconhecido";
-    return new Response(JSON.stringify({ error: msg }), {
-      status: 500,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return fail(msg, 500, null, req);
   }
 });

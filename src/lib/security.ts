@@ -11,11 +11,6 @@ export type AppRole =
   | 'VIEWER';
 
 const OWNER_DOMAIN = (import.meta.env.VITE_OWNER_DOMAIN || 'owner.gppis.com.br').toLowerCase();
-const DEFAULT_SYSTEM_OWNER_EMAILS = ['pedrozo@gppis.com.br'];
-const SYSTEM_OWNER_EMAILS = (import.meta.env.VITE_SYSTEM_OWNER_EMAILS || '')
-  .split(',')
-  .map((email) => email.trim().toLowerCase())
-  .filter(Boolean);
 
 const TENANT_BASE_DOMAIN = (import.meta.env.VITE_TENANT_BASE_DOMAIN || 'gppis.com.br').toLowerCase();
 
@@ -32,15 +27,6 @@ export function resolveEmpresaSlug(hostname: string = window.location.hostname):
   const withoutBase = lowerHost.replace(`.${TENANT_BASE_DOMAIN}`, '');
   const [subdomain] = withoutBase.split('.');
   return subdomain || 'default';
-}
-
-export function isSystemOwnerEmail(email?: string | null): boolean {
-  if (!email) return false;
-
-  const normalizedEmail = email.toLowerCase();
-  const allowlist = SYSTEM_OWNER_EMAILS.length > 0 ? SYSTEM_OWNER_EMAILS : DEFAULT_SYSTEM_OWNER_EMAILS;
-
-  return allowlist.includes(normalizedEmail);
 }
 
 export function normalizeRole(role?: string | null): AppRole | null {
@@ -72,7 +58,7 @@ export function getEffectiveRole(options: {
   email?: string | null;
   hostname?: string;
 }): AppRole {
-  const { roles, email } = options;
+  const { roles } = options;
   const normalizedRoles = roles
     .map((role) => normalizeRole(role))
     .filter((role): role is AppRole => Boolean(role));
@@ -83,10 +69,6 @@ export function getEffectiveRole(options: {
 
   if (normalizedRoles.includes('SYSTEM_ADMIN')) {
     return 'SYSTEM_ADMIN';
-  }
-
-  if (isSystemOwnerEmail(email)) {
-    return 'SYSTEM_OWNER';
   }
 
   if (normalizedRoles.includes('MASTER_TI')) return 'MASTER_TI';

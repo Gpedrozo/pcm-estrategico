@@ -1,10 +1,6 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { createClient } from "jsr:@supabase/supabase-js@2";
-
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-};
+import { adminClient, requireEmpresaScope, requireUser } from "../_shared/auth.ts";
+import { fail, ok, preflight, rejectIfOriginNotAllowed } from "../_shared/response.ts";
 
 interface PlanoPreventivo {
   id: string;
@@ -26,7 +22,7 @@ interface Equipamento {
 }
 
 async function logOperationalEvent(
-  supabase: ReturnType<typeof createClient>,
+  supabase: ReturnType<typeof adminClient>,
   params: {
     empresaId: string | null;
     actionType: string;
@@ -44,20 +40,29 @@ async function logOperationalEvent(
 }
 
 Deno.serve(async (req) => {
-  // Handle CORS preflight
   if (req.method === "OPTIONS") {
-    return new Response(null, { headers: corsHeaders });
+    return preflight(req, "POST, OPTIONS");
   }
 
-  try {
-    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+  const originDenied = rejectIfOriginNotAllowed(req);
+  if (originDenied) return originDenied;
 
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+  if (req.method !== "POST") return fail("Method not allowed", 405, null, req);
+
+  try {
+    const auth = await requireUser(req);
+    if ("error" in auth) return fail(auth.error ?? "Unauthorized", auth.status ?? 401, null, req);
+
+    const body = await req.json().catch(() => null) as { empresa_id?: string } | null;
+    const empresaId = body?.empresa_id ?? null;
+
+    const supabase = adminClient();
+
+    const scope = await requireEmpresaScope(supabase, auth.user.id, empresaId);
+    if ("error" in scope) return fail(scope.error, scope.status, null, req);
 
     const today = new Date().toISOString().split("T")[0];
 
-    // Get all active preventive plans that are due today or overdue
     const { data: planosVencidos, error: planosError } = await supabase
       .from("planos_preventivos")
       .select(`
@@ -72,6 +77,7 @@ Deno.serve(async (req) => {
         tempo_estimado_min,
         ativo
       `)
+      .eq("empresa_id", scope.empresaId)
       .eq("ativo", true)
       .lte("proxima_execucao", today);
 
@@ -80,13 +86,10 @@ Deno.serve(async (req) => {
     }
 
     if (!planosVencidos || planosVencidos.length === 0) {
-      return new Response(
-        JSON.stringify({ 
+      return ok({
           message: "Nenhum plano preventivo vencido encontrado", 
           os_geradas: 0 
-        }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+        }, 200, req);
     }
 
     const osGeradas: string[] = [];
@@ -94,7 +97,6 @@ Deno.serve(async (req) => {
 
     for (const plano of planosVencidos as PlanoPreventivo[]) {
       try {
-        // Get equipment details
         let equipamentoNome = "Equipamento não identificado";
         let tag = plano.tag || "SEM-TAG";
 
@@ -102,6 +104,7 @@ Deno.serve(async (req) => {
           const { data: equipamento } = await supabase
             .from("equipamentos")
             .select("tag, nome")
+            .eq("empresa_id", scope.empresaId)
             .eq("id", plano.equipamento_id)
             .single();
 
@@ -111,7 +114,6 @@ Deno.serve(async (req) => {
           }
         }
 
-        // Create the preventive OS
         const { data: novaOS, error: osError } = await supabase
           .from("ordens_servico")
           .insert({
@@ -133,7 +135,6 @@ Deno.serve(async (req) => {
           continue;
         }
 
-        // Update the preventive plan with the next execution date
         if (plano.frequencia_dias) {
           const proximaExecucao = new Date();
           proximaExecucao.setDate(proximaExecucao.getDate() + plano.frequencia_dias);
@@ -144,6 +145,7 @@ Deno.serve(async (req) => {
               ultima_execucao: today,
               proxima_execucao: proximaExecucao.toISOString().split("T")[0],
             })
+            .eq("empresa_id", scope.empresaId)
             .eq("id", plano.id);
         }
 
@@ -166,24 +168,15 @@ Deno.serve(async (req) => {
       }
     }
 
-    return new Response(
-      JSON.stringify({
+    return ok({
         message: "Processamento de planos preventivos concluído",
         os_geradas: osGeradas.length,
         detalhes: osGeradas,
         erros: erros.length > 0 ? erros : undefined,
-      }),
-      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
+      }, 200, req);
 
   } catch (error: any) {
     console.error("Erro na função generate-preventive-os:", error);
-    return new Response(
-      JSON.stringify({ error: error.message }),
-      { 
-        status: 500, 
-        headers: { ...corsHeaders, "Content-Type": "application/json" } 
-      }
-    );
+    return fail(error.message, 500, null, req);
   }
 });

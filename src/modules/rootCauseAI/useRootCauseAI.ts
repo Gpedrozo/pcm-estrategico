@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/contexts/AuthContext';
 import type { AIRootCauseAnalysis, AnalysisResponse } from './types';
 
 export function useAIAnalysisHistory(tag?: string) {
@@ -26,11 +27,16 @@ export function useAIAnalysisHistory(tag?: string) {
 export function useGenerateAnalysis() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const { tenantId } = useAuth();
 
   return useMutation({
     mutationFn: async (tag: string): Promise<AnalysisResponse> => {
+      if (!tenantId) {
+        throw new Error('Tenant inválido para análise de causa raiz.');
+      }
+
       const { data, error } = await supabase.functions.invoke('analisar-causa-raiz', {
-        body: { tag },
+        body: { tag, empresa_id: tenantId },
       });
 
       if (error) throw error;

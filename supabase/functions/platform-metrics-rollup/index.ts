@@ -1,18 +1,22 @@
 // @ts-nocheck
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { adminClient, isSystemOperator, requireUser } from "../_shared/auth.ts";
-import { corsHeaders, fail, ok } from "../_shared/response.ts";
+import { fail, ok, preflight, rejectIfOriginNotAllowed } from "../_shared/response.ts";
 
 Deno.serve(async (req) => {
-  if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
-  if (req.method !== "POST") return fail("Method not allowed", 405);
+  if (req.method === "OPTIONS") return preflight(req, "POST, OPTIONS");
+
+  const originDenied = rejectIfOriginNotAllowed(req);
+  if (originDenied) return originDenied;
+
+  if (req.method !== "POST") return fail("Method not allowed", 405, null, req);
 
   const auth = await requireUser(req);
-  if ("error" in auth) return fail(auth.error ?? "Unauthorized", auth.status ?? 401);
+  if ("error" in auth) return fail(auth.error ?? "Unauthorized", auth.status ?? 401, null, req);
 
   const admin = adminClient();
   const allowed = await isSystemOperator(admin, auth.user.id);
-  if (!allowed) return fail("Forbidden", 403);
+  if (!allowed) return fail("Forbidden", 403, null, req);
 
   const today = new Date().toISOString().slice(0, 10);
 
@@ -40,7 +44,7 @@ Deno.serve(async (req) => {
     .from("platform_metrics")
     .upsert(payload, { onConflict: "metric_date" });
 
-  if (error) return fail(error.message, 400);
+  if (error) return fail(error.message, 400, null, req);
 
-  return ok({ success: true, metrics: payload });
+  return ok({ success: true, metrics: payload }, 200, req);
 });

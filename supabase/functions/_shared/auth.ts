@@ -56,13 +56,29 @@ export async function ensureEmpresaAccess(
   if (system) return true;
 
   const { data, error } = await admin
-    .from("membros_empresa")
-    .select("id,status")
+    .from("user_roles")
+    .select("user_id")
     .eq("empresa_id", empresaId)
     .eq("user_id", userId)
-    .eq("status", "active")
     .limit(1);
 
   if (error) return false;
   return Array.isArray(data) && data.length > 0;
+}
+
+export async function requireEmpresaScope(
+  admin: ReturnType<typeof adminClient>,
+  userId: string,
+  empresaId?: string | null,
+) {
+  if (!empresaId) {
+    return { error: "empresa_id is required", status: 400 } as const;
+  }
+
+  const allowed = await ensureEmpresaAccess(admin, userId, empresaId);
+  if (!allowed) {
+    return { error: "Forbidden for empresa", status: 403 } as const;
+  }
+
+  return { empresaId } as const;
 }

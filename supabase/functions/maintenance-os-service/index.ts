@@ -1,7 +1,7 @@
 // @ts-nocheck
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { adminClient, ensureEmpresaAccess, requireUser } from "../_shared/auth.ts";
-import { corsHeaders, fail, ok } from "../_shared/response.ts";
+import { fail, ok, preflight, rejectIfOriginNotAllowed } from "../_shared/response.ts";
 
 type Payload = {
   action: "open_os" | "start_execution" | "close_os";
@@ -19,18 +19,22 @@ type Payload = {
 };
 
 Deno.serve(async (req) => {
-  if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
-  if (req.method !== "POST") return fail("Method not allowed", 405);
+  if (req.method === "OPTIONS") return preflight(req, "POST, OPTIONS");
+
+  const originDenied = rejectIfOriginNotAllowed(req);
+  if (originDenied) return originDenied;
+
+  if (req.method !== "POST") return fail("Method not allowed", 405, null, req);
 
   const auth = await requireUser(req);
-  if ("error" in auth) return fail(auth.error ?? "Unauthorized", auth.status ?? 401);
+  if ("error" in auth) return fail(auth.error ?? "Unauthorized", auth.status ?? 401, null, req);
 
   const payload = (await req.json().catch(() => null)) as Payload | null;
-  if (!payload?.action || !payload.empresa_id) return fail("action and empresa_id are required", 400);
+  if (!payload?.action || !payload.empresa_id) return fail("action and empresa_id are required", 400, null, req);
 
   const admin = adminClient();
   const allowed = await ensureEmpresaAccess(admin, auth.user.id, payload.empresa_id);
-  if (!allowed) return fail("Forbidden for empresa", 403);
+  if (!allowed) return fail("Forbidden for empresa", 403, null, req);
 
   if (payload.action === "open_os") {
     const { data, error } = await admin
@@ -51,11 +55,11 @@ Deno.serve(async (req) => {
       .select("id,numero_os,status")
       .single();
 
-    if (error) return fail(error.message, 400);
-    return ok({ os: data });
+    if (error) return fail(error.message, 400, null, req);
+    return ok({ os: data }, 200, req);
   }
 
-  if (!payload.os_id) return fail("os_id is required", 400);
+  if (!payload.os_id) return fail("os_id is required", 400, null, req);
 
   if (payload.action === "start_execution") {
     const { data, error } = await admin
@@ -73,7 +77,7 @@ Deno.serve(async (req) => {
       .select("id,os_id")
       .single();
 
-    if (error) return fail(error.message, 400);
+    if (error) return fail(error.message, 400, null, req);
 
     await admin
       .from("ordens_servico")
@@ -81,7 +85,7 @@ Deno.serve(async (req) => {
       .eq("id", payload.os_id)
       .eq("empresa_id", payload.empresa_id);
 
-    return ok({ execution: data });
+    return ok({ execution: data }, 200, req);
   }
 
   if (payload.action === "close_os") {
@@ -93,7 +97,7 @@ Deno.serve(async (req) => {
       .eq("id", payload.os_id)
       .eq("empresa_id", payload.empresa_id);
 
-    if (osError) return fail(osError.message, 400);
+    if (osError) return fail(osError.message, 400, null, req);
 
     await admin.from("historico_manutencao").insert({
       empresa_id: payload.empresa_id,
@@ -104,8 +108,8 @@ Deno.serve(async (req) => {
       custo_total: payload.custo_total ?? 0,
     });
 
-    return ok({ success: true });
+    return ok({ success: true }, 200, req);
   }
 
-  return fail("Unsupported action", 400);
+  return fail("Unsupported action", 400, null, req);
 });

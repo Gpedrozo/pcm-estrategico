@@ -1,10 +1,6 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { createClient } from "jsr:@supabase/supabase-js@2";
-
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-};
+import { adminClient, requireEmpresaScope, requireUser } from "../_shared/auth.ts";
+import { fail, ok, preflight, rejectIfOriginNotAllowed } from "../_shared/response.ts";
 
 interface OrdemServico {
   id: string;
@@ -28,26 +24,28 @@ interface ExecucaoOS {
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
-    return new Response(null, { headers: corsHeaders });
+    return preflight(req, "GET, OPTIONS");
   }
 
-  try {
-    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+  const originDenied = rejectIfOriginNotAllowed(req);
+  if (originDenied) return originDenied;
 
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+  if (req.method !== "GET") return fail("Method not allowed", 405, null, req);
+
+  try {
+    const auth = await requireUser(req);
+    if ("error" in auth) return fail(auth.error ?? "Unauthorized", auth.status ?? 401, null, req);
+
+    const supabase = adminClient();
 
     const url = new URL(req.url);
     const period = url.searchParams.get("period") || "month"; // month, quarter, year
     const tag = url.searchParams.get("tag"); // optional filter by tag
     const empresaId = url.searchParams.get("empresa_id");
 
-    if (!empresaId) {
-      return new Response(
-        JSON.stringify({ error: "Parâmetro obrigatório ausente: empresa_id" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
+    const scope = await requireEmpresaScope(supabase, auth.user.id, empresaId);
+    if ("error" in scope) return fail(scope.error, scope.status, null, req);
+
     // Calculate date range
     const endDate = new Date();
     const startDate = new Date();
@@ -70,7 +68,7 @@ Deno.serve(async (req) => {
     let osQuery = supabase
       .from("ordens_servico")
       .select("*")
-      .eq("empresa_id", empresaId)
+      .eq("empresa_id", scope.empresaId)
       .gte("data_solicitacao", startDateStr)
       .lte("data_solicitacao", endDateStr);
 
@@ -156,9 +154,9 @@ Deno.serve(async (req) => {
 
     // Response
     const report = {
-      empresa_id: empresaId,
+      empresa_id: scope.empresaId,
       periodo: {
-        empresa_id: empresaId,
+        empresa_id: scope.empresaId,
         inicio: startDateStr,
         fim: endDateStr,
         tipo: period,
@@ -185,19 +183,10 @@ Deno.serve(async (req) => {
       gerado_em: new Date().toISOString(),
     };
 
-    return new Response(
-      JSON.stringify(report),
-      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
+    return ok(report, 200, req);
 
   } catch (error: any) {
     console.error("Erro na função kpi-report:", error);
-    return new Response(
-      JSON.stringify({ error: error.message }),
-      { 
-        status: 500, 
-        headers: { ...corsHeaders, "Content-Type": "application/json" } 
-      }
-    );
+    return fail(error.message, 500, null, req);
   }
 });

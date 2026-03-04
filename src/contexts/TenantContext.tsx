@@ -50,26 +50,12 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
         return;
       }
 
-      let empresaId = domainConfig?.empresa_id ?? null;
-
+      const empresaId = domainConfig?.empresa_id ?? null;
       if (!empresaId) {
-        const { data: defaultEmpresa, error: defaultError } = await supabase
-          .from('empresas')
-          .select('id')
-          .eq('status', 'active')
-          .limit(1)
-          .maybeSingle();
-
-        if (!isMounted) return;
-
-        if (defaultError || !defaultEmpresa?.id) {
-          setTenant(null);
-          setError(defaultError?.message || 'Empresa padrão não encontrada');
-          setIsLoading(false);
-          return;
-        }
-
-        empresaId = defaultEmpresa.id;
+        setTenant(null);
+        setError('Domínio tenant não autorizado');
+        setIsLoading(false);
+        return;
       }
 
       const { data, error: fetchError } = await supabase

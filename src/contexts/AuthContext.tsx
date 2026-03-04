@@ -4,6 +4,7 @@ import type { Session } from '@supabase/supabase-js';
 import {
   buildSecureSignupMetadata,
   getEffectiveRole,
+  isOwnerDomain,
   normalizeRole,
   resolveEmpresaSlug,
   type AppRole,
@@ -42,6 +43,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
+  const validateTenantDomainAccess = useCallback(async (): Promise<string | null> => {
+    if (isOwnerDomain(window.location.hostname)) return null;
+
+    const hostname = window.location.hostname;
+    const { data: domainConfig, error } = await supabase
+      .from('empresa_config')
+      .select('empresa_id')
+      .eq('dominio_custom', hostname)
+      .maybeSingle();
+
+    if (error) return 'Falha ao validar domínio da empresa.';
+    if (!domainConfig?.empresa_id) return 'Domínio não autorizado para login.';
+
+    return null;
+  }, []);
+
   const fetchUserProfile = async (
     userId: string,
     email?: string | null,
@@ -79,26 +96,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         .map((item: { role: string }) => normalizeRole(item.role))
         .filter((role): role is AppRole => Boolean(role));
 
-      const appRole = normalizeRole((metadata?.app_metadata?.role as string | undefined) ?? null);
-      const appRoles = Array.isArray(metadata?.app_metadata?.roles)
-        ? (metadata?.app_metadata?.roles as unknown[])
-            .map((role) => normalizeRole(String(role)))
-            .filter((role): role is AppRole => Boolean(role))
-        : [];
-      const userMetaRole = normalizeRole((metadata?.user_metadata?.role as string | undefined) ?? null);
-      const userMetaRoles = Array.isArray(metadata?.user_metadata?.roles)
-        ? (metadata?.user_metadata?.roles as unknown[])
-            .map((role) => normalizeRole(String(role)))
-            .filter((role): role is AppRole => Boolean(role))
-        : [];
-
-      const roles: AppRole[] = Array.from(new Set([
-        ...dbRoles,
-        ...appRoles,
-        ...userMetaRoles,
-        ...(appRole ? [appRole] : []),
-        ...(userMetaRole ? [userMetaRole] : []),
-      ]));
+      const roles: AppRole[] = Array.from(new Set(dbRoles));
 
       const tenantId: string | null = (roleData || [])[0]?.empresa_id || profile?.empresa_id || null;
 
@@ -202,6 +200,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const login = useCallback(async (email: string, password: string): Promise<{ error: string | null }> => {
+    const tenantDomainError = await validateTenantDomainAccess();
+    if (tenantDomainError) {
+      return { error: tenantDomainError };
+    }
+
     const { error } = await supabase.auth.signInWithPassword({
       email,
       password,
@@ -213,6 +216,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
 
       return { error: error.message };
+    }
+
+    const { data: { user: currentUser } } = await supabase.auth.getUser();
+    if (currentUser) {
+      const profileData = await fetchUserProfile(currentUser.id, currentUser.email, {
+        app_metadata: currentUser.app_metadata,
+        user_metadata: currentUser.user_metadata,
+      });
+
+      const isGlobalRole =
+        profileData.tipo === 'SYSTEM_OWNER' ||
+        profileData.tipo === 'SYSTEM_ADMIN' ||
+        profileData.tipo === 'MASTER_TI';
+
+      if (!isGlobalRole && !profileData.tenantId) {
+        await supabase.auth.signOut();
+        return { error: 'Usuário sem vínculo de empresa. Acesso bloqueado.' };
+      }
     }
 
     void Promise.resolve().then(async () => {
@@ -246,6 +267,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const empresaSlug = resolveEmpresaSlug(window.location.hostname);
     const hostname = window.location.hostname;
 
+    const tenantDomainError = await validateTenantDomainAccess();
+    if (tenantDomainError) {
+      return { error: tenantDomainError };
+    }
+
     const { data: domainConfig, error: domainConfigError } = await supabase
       .from('empresa_config')
       .select('empresa_id')
@@ -256,22 +282,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return { error: 'Falha ao validar domínio da empresa.' };
     }
 
-    let empresaId = domainConfig?.empresa_id ?? null;
-
-    if (!empresaId) {
-      const { data: defaultEmpresa, error: defaultEmpresaError } = await supabase
-        .from('empresas')
-        .select('id')
-        .eq('status', 'active')
-        .limit(1)
-        .maybeSingle();
-
-      if (defaultEmpresaError || !defaultEmpresa?.id) {
-        return { error: 'Empresa inválida. Contate o administrador.' };
-      }
-
-      empresaId = defaultEmpresa.id;
-    }
+    const empresaId = domainConfig?.empresa_id ?? null;
+    if (!empresaId) return { error: 'Domínio não autorizado para cadastro.' };
 
     const { error } = await supabase.auth.signUp({
       email,
@@ -298,7 +310,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
 
     return { error: null };
-  }, []);
+  }, [validateTenantDomainAccess]);
 
   const logout = useCallback(async () => {
     if (user) {
