@@ -24,10 +24,6 @@ export function OwnerSuporteModule() {
   const [message, setMessage] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
 
-  if (isLoading) {
-    return <div className="rounded-lg border border-slate-800 bg-slate-900 p-4 text-sm">Carregando chamados...</div>
-  }
-
   const allTickets = ((data as unknown as Ticket[] | undefined) ?? []).slice(0, 60)
   const tickets = useMemo(
     () =>
@@ -40,6 +36,10 @@ export function OwnerSuporteModule() {
   )
 
   const selectedTicket = tickets.find((ticket) => ticket.id === selectedTicketId) ?? null
+
+  if (isLoading) {
+    return <div className="rounded-lg border border-slate-800 bg-slate-900 p-4 text-sm">Carregando chamados...</div>
+  }
 
   const handleSelectTicket = (ticket: Ticket) => {
     setSelectedTicketId(ticket.id)
