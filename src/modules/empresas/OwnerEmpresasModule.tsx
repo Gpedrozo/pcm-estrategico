@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { useOwnerCompanies, useOwnerCompanyActions, useOwnerPlans } from '@/hooks/useOwnerPortal'
+import { useOwnerAuditLogs, useOwnerCompanies, useOwnerCompanyActions, useOwnerPlans, useOwnerSubscriptions } from '@/hooks/useOwnerPortal'
 
 type Company = {
   id: string
@@ -13,13 +13,31 @@ type Company = {
   }>
 }
 
+type Subscription = {
+  empresa_id?: string
+  status?: string
+  plans?: { name?: string; code?: string } | null
+  renewal_at?: string
+}
+
+type AuditLog = {
+  id: string
+  empresa_id?: string
+  action_type?: string
+  created_at?: string
+  actor_email?: string
+}
+
 export function OwnerEmpresasModule() {
   const { data, isLoading } = useOwnerCompanies()
   const { data: plansData } = useOwnerPlans()
+  const { data: subscriptionsData } = useOwnerSubscriptions()
+  const { data: logsData } = useOwnerAuditLogs()
   const {
     createCompanyMutation,
     updateCompanyMutation,
     setCompanyLifecycle,
+    changePlan,
   } = useOwnerCompanyActions()
 
   const [companyForm, setCompanyForm] = useState({
@@ -46,17 +64,26 @@ export function OwnerEmpresasModule() {
   })
 
   const [editCompanyId, setEditCompanyId] = useState<string | null>(null)
+  const [historyCompanyId, setHistoryCompanyId] = useState<string | null>(null)
   const [formError, setFormError] = useState<string | null>(null)
   const [formSuccess, setFormSuccess] = useState<string | null>(null)
   const [formWarning, setFormWarning] = useState<string | null>(null)
+  const [planCodeByCompany, setPlanCodeByCompany] = useState<Record<string, string>>({})
 
   const plans = useMemo(() => (plansData as Array<{ id: string; name?: string; code?: string; price_month?: number }> | undefined) ?? [], [plansData])
+  const subscriptions = useMemo(() => (subscriptionsData as Subscription[] | undefined) ?? [], [subscriptionsData])
+  const auditLogs = useMemo(() => ((logsData as AuditLog[] | undefined) ?? []).slice(0, 300), [logsData])
 
   if (isLoading) {
     return <div className="rounded-lg border border-slate-800 bg-slate-900 p-4 text-sm">Carregando empresas...</div>
   }
 
   const companies = ((data?.companies as Company[] | undefined) ?? []).slice(0, 20)
+
+  const currentHistoryLogs = useMemo(
+    () => auditLogs.filter((log) => log.empresa_id === historyCompanyId).slice(0, 12),
+    [auditLogs, historyCompanyId],
+  )
 
   const resetForm = () => {
     setCompanyForm({
@@ -180,6 +207,26 @@ export function OwnerEmpresasModule() {
     })
   }
 
+  const handleChangePlan = (empresaId: string) => {
+    const plano_codigo = planCodeByCompany[empresaId]
+    if (!plano_codigo) {
+      setFormError('Selecione um plano antes de trocar.')
+      return
+    }
+
+    setFormError(null)
+    setFormSuccess(null)
+    setFormWarning(null)
+
+    changePlan.mutate(
+      { empresa_id: empresaId, plano_codigo },
+      {
+        onSuccess: () => setFormSuccess('Plano da empresa atualizado com sucesso.'),
+        onError: (err: any) => setFormError(err?.message ?? 'Falha ao trocar plano da empresa.'),
+      },
+    )
+  }
+
   return (
     <div className="space-y-4">
       <div className="rounded-lg border border-slate-800 bg-slate-900 p-4">
@@ -253,6 +300,7 @@ export function OwnerEmpresasModule() {
         <div className="space-y-2">
           {companies.map((company) => {
             const companyData = company.dados_empresa?.[0]
+            const sub = subscriptions.find((item) => item.empresa_id === company.id)
 
             return (
               <div key={company.id} className="space-y-2 rounded-md border border-slate-800 p-3">
@@ -260,6 +308,9 @@ export function OwnerEmpresasModule() {
                   <div>
                     <p className="text-sm font-medium">{companyData?.nome_fantasia ?? companyData?.razao_social ?? company.nome ?? company.id}</p>
                     <p className="text-xs text-slate-400">CNPJ: {companyData?.cnpj ?? '-'} • Status: {company.status ?? 'active'}</p>
+                    <p className="text-xs text-slate-500">
+                      Assinatura: {sub?.plans?.name ?? sub?.plans?.code ?? '-'} • {sub?.status ?? '-'} • Renovação: {sub?.renewal_at ? new Date(sub.renewal_at).toLocaleDateString('pt-BR') : '-'}
+                    </p>
                   </div>
                   <div className="flex flex-wrap gap-2">
                     <button
@@ -286,8 +337,51 @@ export function OwnerEmpresasModule() {
                     >
                       Bloquear
                     </button>
+                    <button
+                      onClick={() => setHistoryCompanyId((prev) => (prev === company.id ? null : company.id))}
+                      className="rounded-md border border-slate-700 px-3 py-1 text-xs hover:bg-slate-800"
+                    >
+                      {historyCompanyId === company.id ? 'Ocultar histórico' : 'Ver histórico'}
+                    </button>
                   </div>
                 </div>
+
+                <div className="grid gap-2 md:grid-cols-[1fr_auto]">
+                  <select
+                    className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-xs"
+                    value={planCodeByCompany[company.id] ?? ''}
+                    onChange={(e) => setPlanCodeByCompany((prev) => ({ ...prev, [company.id]: e.target.value }))}
+                  >
+                    <option value="">Trocar plano</option>
+                    {plans.map((plan) => (
+                      <option key={plan.id} value={plan.code ?? ''}>{plan.name ?? plan.code}</option>
+                    ))}
+                  </select>
+                  <button
+                    onClick={() => handleChangePlan(company.id)}
+                    className="rounded-md border border-amber-800 px-3 py-2 text-xs text-amber-300 hover:bg-amber-950"
+                    disabled={changePlan.isPending}
+                  >
+                    Aplicar plano
+                  </button>
+                </div>
+
+                {historyCompanyId === company.id && (
+                  <div className="rounded border border-slate-800 bg-slate-950 p-2">
+                    <p className="mb-2 text-xs text-slate-400">Histórico recente da empresa</p>
+                    {currentHistoryLogs.length === 0 ? (
+                      <p className="text-xs text-slate-500">Sem eventos recentes.</p>
+                    ) : (
+                      <div className="space-y-1">
+                        {currentHistoryLogs.map((log) => (
+                          <div key={log.id} className="text-xs text-slate-300">
+                            {log.action_type ?? 'Evento'} • {log.actor_email ?? '-'} • {log.created_at ? new Date(log.created_at).toLocaleString('pt-BR') : '-'}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             )
           })}

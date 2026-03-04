@@ -284,22 +284,38 @@ Deno.serve(async (req) => {
   if (!body?.action) return fail("Missing action", 400, null, req);
 
   if (body.action === "dashboard" || body.action === "platform_stats") {
-    const [{ count: totalCompanies }, { count: blockedCompanies }, { count: totalUsers }, { count: activeSubscriptions }, { count: overdueSubscriptions }, { data: revenue }, { data: plans }] = await Promise.all([
+    const now = new Date();
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+    const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000).toISOString();
+
+    const [{ count: totalCompanies }, { count: blockedCompanies }, { count: totalUsers }, { count: activeSubscriptions }, { count: overdueSubscriptions }, { count: newCompaniesMonth }, { count: openTickets }, { data: revenue }, { data: plans }, { data: canceledSubscriptions }] = await Promise.all([
       admin.from("empresas").select("id", { count: "exact", head: true }),
       admin.from("empresas").select("id", { count: "exact", head: true }).eq("status", "blocked"),
       admin.from("profiles").select("id", { count: "exact", head: true }),
       admin.from("subscriptions").select("id", { count: "exact", head: true }).eq("status", "ativa"),
       admin.from("subscriptions").select("id", { count: "exact", head: true }).eq("status", "atrasada"),
+      admin.from("empresas").select("id", { count: "exact", head: true }).gte("created_at", monthStart),
+      admin.from("support_tickets").select("id", { count: "exact", head: true }).in("status", ["aberto", "em_andamento"]),
       admin.from("subscriptions").select("amount").eq("status", "ativa"),
       admin.from("subscriptions").select("plan_id, plans(name)").eq("status", "ativa"),
+      admin
+        .from("subscriptions")
+        .select("id")
+        .eq("status", "cancelada")
+        .gte("updated_at", thirtyDaysAgo),
     ]);
 
     const mrr = (revenue ?? []).reduce((acc, item: any) => acc + Number(item.amount ?? 0), 0);
+    const arr = mrr * 12;
     const usageByPlan = (plans ?? []).reduce((acc: Record<string, number>, item: any) => {
       const planName = item?.plans?.name ?? "Sem plano";
       acc[planName] = (acc[planName] ?? 0) + 1;
       return acc;
     }, {});
+    const canceledIn30Days = (canceledSubscriptions ?? []).length;
+    const churnRate = Number(activeSubscriptions ?? 0) + canceledIn30Days > 0
+      ? (canceledIn30Days / (Number(activeSubscriptions ?? 0) + canceledIn30Days)) * 100
+      : 0;
 
     const { data: alerts } = await admin
       .from("enterprise_audit_logs")
@@ -314,7 +330,11 @@ Deno.serve(async (req) => {
       total_users: totalUsers ?? 0,
       active_subscriptions: activeSubscriptions ?? 0,
       overdue_subscriptions: overdueSubscriptions ?? 0,
+      new_companies_month: newCompaniesMonth ?? 0,
+      open_tickets: openTickets ?? 0,
       mrr,
+      arr,
+      churn_rate: Number(churnRate.toFixed(2)),
       usage_by_plan: usageByPlan,
       system_alerts: alerts ?? [],
       generated_at: new Date().toISOString(),

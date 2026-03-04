@@ -12,6 +12,10 @@ import { OwnerAuditoriaModule } from '@/modules/auditoria/OwnerAuditoriaModule'
 import { OwnerSistemaModule } from '@/modules/sistema/OwnerSistemaModule'
 import { OwnerSuporteModule } from '@/modules/suporte/OwnerSuporteModule'
 import { OwnerConfiguracoesModule } from '@/modules/configuracoes/OwnerConfiguracoesModule'
+import { OwnerFinanceiroModule } from '@/modules/financeiro/OwnerFinanceiroModule'
+import { OwnerFeatureFlagsModule } from '@/modules/feature-flags/OwnerFeatureFlagsModule'
+import { OwnerMonitoramentoModule } from '@/modules/monitoramento/OwnerMonitoramentoModule'
+import { OwnerLogsModule } from '@/modules/logs/OwnerLogsModule'
 
 const navItems = [
   { key: 'dashboard', label: 'Dashboard' },
@@ -23,6 +27,10 @@ const navItems = [
   { key: 'auditoria', label: 'Auditoria' },
   { key: 'sistema', label: 'Sistema' },
   { key: 'suporte', label: 'Suporte' },
+  { key: 'financeiro', label: 'Financeiro' },
+  { key: 'feature-flags', label: 'Feature Flags' },
+  { key: 'monitoramento', label: 'Monitoramento' },
+  { key: 'logs', label: 'Logs' },
   { key: 'configuracoes', label: 'Configurações' },
 ]
 
@@ -50,6 +58,14 @@ export default function Owner() {
         return <OwnerSistemaModule />
       case 'suporte':
         return <OwnerSuporteModule />
+      case 'financeiro':
+        return <OwnerFinanceiroModule />
+      case 'feature-flags':
+        return <OwnerFeatureFlagsModule />
+      case 'monitoramento':
+        return <OwnerMonitoramentoModule />
+      case 'logs':
+        return <OwnerLogsModule />
       case 'configuracoes':
         return <OwnerConfiguracoesModule />
       default:

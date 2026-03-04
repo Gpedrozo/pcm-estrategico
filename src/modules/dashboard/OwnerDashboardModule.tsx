@@ -14,11 +14,15 @@ export function OwnerDashboardModule() {
 
   const cards = [
     { label: 'Empresas', value: formatNumber(data?.total_companies) },
+    { label: 'Novas empresas no mês', value: formatNumber(data?.new_companies_month) },
     { label: 'Empresas bloqueadas', value: formatNumber(data?.blocked_companies) },
     { label: 'Usuários', value: formatNumber(data?.total_users) },
     { label: 'Assinaturas ativas', value: formatNumber(data?.active_subscriptions) },
     { label: 'Assinaturas vencendo/atrasadas', value: formatNumber(data?.overdue_subscriptions) },
+    { label: 'Chamados abertos', value: formatNumber(data?.open_tickets) },
     { label: 'MRR', value: formatMoney(data?.mrr) },
+    { label: 'ARR', value: formatMoney(data?.arr) },
+    { label: 'Churn 30d', value: `${Number(data?.churn_rate ?? 0).toFixed(2)}%` },
   ]
 
   const usageByPlan = Object.entries((data?.usage_by_plan as Record<string, number> | undefined) ?? {})
@@ -26,7 +30,7 @@ export function OwnerDashboardModule() {
 
   return (
     <section className="space-y-4">
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         {cards.map((card) => (
           <article key={card.label} className="rounded-lg border border-slate-800 bg-slate-900 p-4">
             <p className="text-xs text-slate-400">{card.label}</p>
