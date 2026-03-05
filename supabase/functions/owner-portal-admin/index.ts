@@ -594,7 +594,7 @@ Deno.serve(async (req) => {
   if (body.action === "list_users") {
     let query = admin
       .from("profiles")
-      .select("id,nome,email,empresa_id,created_at,user_roles(role)")
+      .select("id,nome,email,empresa_id,created_at")
       .order("created_at", { ascending: false })
       .limit(1000);
 
@@ -602,7 +602,37 @@ Deno.serve(async (req) => {
 
     const { data, error } = await query;
     if (error) return fail(error.message, 400, null, req);
-    return ok({ users: data ?? [] }, 200, req);
+
+    const users = data ?? [];
+    if (users.length === 0) return ok({ users: [] }, 200, req);
+
+    const userIds = users
+      .map((item: any) => item.id)
+      .filter(Boolean);
+
+    const rolesQuery = admin
+      .from("user_roles")
+      .select("user_id,role,empresa_id")
+      .in("user_id", userIds);
+
+    if (body.empresa_id) rolesQuery.eq("empresa_id", body.empresa_id);
+
+    const { data: rolesData, error: rolesError } = await rolesQuery;
+    if (rolesError) return fail(rolesError.message, 400, null, req);
+
+    const rolesByUser = new Map<string, any[]>();
+    for (const row of (rolesData ?? [])) {
+      const bucket = rolesByUser.get(row.user_id) ?? [];
+      bucket.push({ role: row.role, empresa_id: row.empresa_id });
+      rolesByUser.set(row.user_id, bucket);
+    }
+
+    const merged = users.map((user: any) => ({
+      ...user,
+      user_roles: rolesByUser.get(user.id) ?? [],
+    }));
+
+    return ok({ users: merged }, 200, req);
   }
 
   if (body.action === "create_user") {
@@ -846,11 +876,60 @@ Deno.serve(async (req) => {
   if (body.action === "list_support_tickets") {
     const { data, error } = await admin
       .from("support_tickets")
-      .select("*, empresas(id,nome), profiles(id,nome,email)")
+      .select("*")
       .order("updated_at", { ascending: false })
       .limit(1000);
     if (error) return fail(error.message, 400, null, req);
-    return ok({ tickets: data ?? [] }, 200, req);
+
+    const tickets = data ?? [];
+    if (tickets.length === 0) return ok({ tickets: [] }, 200, req);
+
+    const empresaIds = Array.from(new Set(
+      tickets
+        .map((item: any) => item.empresa_id)
+        .filter(Boolean),
+    ));
+    const userIds = Array.from(new Set(
+      tickets
+        .map((item: any) => item.user_id)
+        .filter(Boolean),
+    ));
+
+    const [empresasResult, profilesResult] = await Promise.all([
+      empresaIds.length > 0
+        ? admin
+          .from("empresas")
+          .select("id,nome")
+          .in("id", empresaIds)
+        : Promise.resolve({ data: [], error: null } as any),
+      userIds.length > 0
+        ? admin
+          .from("profiles")
+          .select("id,nome,email")
+          .in("id", userIds)
+        : Promise.resolve({ data: [], error: null } as any),
+    ]);
+
+    if (empresasResult.error) return fail(empresasResult.error.message, 400, null, req);
+    if (profilesResult.error) return fail(profilesResult.error.message, 400, null, req);
+
+    const empresaById = new Map<string, any>();
+    for (const empresa of (empresasResult.data ?? [])) {
+      empresaById.set(empresa.id, empresa);
+    }
+
+    const profileById = new Map<string, any>();
+    for (const profile of (profilesResult.data ?? [])) {
+      profileById.set(profile.id, profile);
+    }
+
+    const merged = tickets.map((ticket: any) => ({
+      ...ticket,
+      empresas: ticket.empresa_id ? (empresaById.get(ticket.empresa_id) ?? null) : null,
+      profiles: ticket.user_id ? (profileById.get(ticket.user_id) ?? null) : null,
+    }));
+
+    return ok({ tickets: merged }, 200, req);
   }
 
   if (body.action === "respond_support_ticket") {

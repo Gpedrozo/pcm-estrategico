@@ -137,7 +137,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return null;
   }, []);
 
-  const fetchUserProfile = async (
+  const fetchUserProfile = useCallback(async (
     userId: string,
     email?: string | null,
     metadata?: { app_metadata?: Record<string, unknown>; user_metadata?: Record<string, unknown> }
@@ -209,7 +209,40 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         tenantId: null,
       };
     }
-  };
+  }, []);
+
+  const resolveUserProfile = useCallback(async (
+    userId: string,
+    email?: string | null,
+    metadata?: { app_metadata?: Record<string, unknown>; user_metadata?: Record<string, unknown> }
+  ) => {
+    let profileData = await fetchUserProfile(userId, email, metadata);
+
+    if (!isOwnerDomain(window.location.hostname)) {
+      return profileData;
+    }
+
+    const isGlobalRole =
+      profileData.tipo === 'SYSTEM_OWNER' ||
+      profileData.tipo === 'SYSTEM_ADMIN' ||
+      profileData.tipo === 'MASTER_TI';
+
+    if (isGlobalRole) return profileData;
+
+    for (let attempt = 0; attempt < 2; attempt += 1) {
+      await new Promise((resolve) => window.setTimeout(resolve, 250));
+      profileData = await fetchUserProfile(userId, email, metadata);
+
+      const recoveredGlobalRole =
+        profileData.tipo === 'SYSTEM_OWNER' ||
+        profileData.tipo === 'SYSTEM_ADMIN' ||
+        profileData.tipo === 'MASTER_TI';
+
+      if (recoveredGlobalRole) return profileData;
+    }
+
+    return profileData;
+  }, [fetchUserProfile]);
 
   useEffect(() => {
     let isActive = true;
@@ -222,7 +255,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
         if (nextSession?.user) {
           void (async () => {
-            const profileData = await fetchUserProfile(
+            const profileData = await resolveUserProfile(
               nextSession.user.id,
               nextSession.user.email,
               {
@@ -257,7 +290,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setSession(session);
 
       if (session?.user) {
-        fetchUserProfile(session.user.id, session.user.email, {
+        resolveUserProfile(session.user.id, session.user.email, {
           app_metadata: session.user.app_metadata,
           user_metadata: session.user.user_metadata,
         }).then(profileData => {
@@ -283,7 +316,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       isActive = false;
       subscription.unsubscribe();
     };
-  }, []);
+  }, [resolveUserProfile]);
 
   const login = useCallback(async (email: string, password: string): Promise<{ error: string | null }> => {
     const tenantDomainError = await validateTenantDomainAccess();
@@ -307,10 +340,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const { data: { session: currentSession } } = await supabase.auth.getSession();
     const { data: { user: currentUser } } = await supabase.auth.getUser();
     if (currentUser) {
-      const profileData = await fetchUserProfile(currentUser.id, currentUser.email, {
+      const profileData = await resolveUserProfile(currentUser.id, currentUser.email, {
         app_metadata: currentUser.app_metadata,
         user_metadata: currentUser.user_metadata,
       });
+
+      const isOwnerPortalAllowed =
+        profileData.tipo === 'SYSTEM_OWNER' ||
+        profileData.tipo === 'SYSTEM_ADMIN';
+
+      if (isOwnerDomain(window.location.hostname) && !isOwnerPortalAllowed) {
+        await supabase.auth.signOut();
+        return { error: 'Conta autenticada, mas sem permissão SYSTEM_OWNER para o Owner Portal.' };
+      }
 
       setSession(currentSession ?? null);
       setUser({
@@ -339,7 +381,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       if (!user) return;
 
-      const profileData = await fetchUserProfile(user.id, user.email, {
+      const profileData = await resolveUserProfile(user.id, user.email, {
         app_metadata: user.app_metadata,
         user_metadata: user.user_metadata,
       });
@@ -358,7 +400,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     });
 
     return { error: null };
-  }, []);
+  }, [resolveUserProfile, validateTenantDomainAccess]);
 
   const signup = useCallback(async (email: string, password: string, nome: string): Promise<{ error: string | null }> => {
     const redirectUrl = `${window.location.origin}/`;
