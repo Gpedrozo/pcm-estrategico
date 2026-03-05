@@ -139,6 +139,17 @@ export interface OwnerContract {
 export async function callOwnerAdmin<T = unknown>(payload: Record<string, unknown>) {
   const action = String(payload?.action ?? 'unknown_action')
 
+  const invokeOwnerAdmin = async (accessToken?: string | null) => {
+    return supabase.functions.invoke('owner-portal-admin', {
+      body: payload,
+      headers: accessToken
+        ? {
+            Authorization: `Bearer ${accessToken}`,
+          }
+        : undefined,
+    })
+  }
+
   const parseEdgeErrorMessage = async (error: unknown) => {
     const response = (error as any)?.context
 
@@ -179,20 +190,29 @@ export async function callOwnerAdmin<T = unknown>(payload: Record<string, unknow
   }
 
   const invoke = async (allowRetry: boolean): Promise<T> => {
-    const { data, error } = await supabase.functions.invoke('owner-portal-admin', {
-      body: payload,
-    })
+    const { data: sessionData } = await supabase.auth.getSession()
+    const currentToken = sessionData?.session?.access_token ?? null
+
+    const { data, error } = await invokeOwnerAdmin(currentToken)
 
     if (!error) return data as T
 
     const parsedMessage = await parseEdgeErrorMessage(error)
 
     if (allowRetry && isJwtError(parsedMessage)) {
-      const { data: sessionData } = await supabase.auth.getSession()
       if (sessionData?.session) {
         const { error: refreshError } = await supabase.auth.refreshSession()
         if (!refreshError) {
-          return invoke(false)
+          const { data: refreshedSessionData } = await supabase.auth.getSession()
+          const refreshedToken = refreshedSessionData?.session?.access_token ?? null
+          const retryResponse = await invokeOwnerAdmin(refreshedToken)
+
+          if (!retryResponse.error) {
+            return retryResponse.data as T
+          }
+
+          const retryMessage = await parseEdgeErrorMessage(retryResponse.error)
+          throw new Error(retryMessage || 'Sessão atualizada, mas a requisição ainda falhou.')
         }
       }
 
