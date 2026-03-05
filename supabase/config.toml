@@ -28,7 +28,7 @@ enabled = false
 verify_jwt = false
 
 [functions.owner-portal-admin]
-verify_jwt = true
+verify_jwt = false
 
 [functions.company-membership]
 verify_jwt = true
