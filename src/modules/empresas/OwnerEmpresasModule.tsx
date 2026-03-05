@@ -74,10 +74,16 @@ export function OwnerEmpresasModule() {
   const [formWarning, setFormWarning] = useState<string | null>(null)
   const [planCodeByCompany, setPlanCodeByCompany] = useState<Record<string, string>>({})
 
-  const plans = useMemo(() => (plansData as Array<{ id: string; name?: string; code?: string; price_month?: number }> | undefined) ?? [], [plansData])
-  const subscriptions = useMemo(() => (subscriptionsData as Subscription[] | undefined) ?? [], [subscriptionsData])
-  const auditLogs = useMemo(() => ((logsData as AuditLog[] | undefined) ?? []).slice(0, 300), [logsData])
-  const companies = useMemo(() => ((data?.companies as Company[] | undefined) ?? []).slice(0, 20), [data])
+  const plans = useMemo(
+    () => (Array.isArray(plansData) ? plansData : []) as Array<{ id: string; name?: string; code?: string; price_month?: number }>,
+    [plansData],
+  )
+  const subscriptions = useMemo(() => (Array.isArray(subscriptionsData) ? subscriptionsData : []) as Subscription[], [subscriptionsData])
+  const auditLogs = useMemo(() => (Array.isArray(logsData) ? logsData : []) as AuditLog[], [logsData])
+  const companies = useMemo(
+    () => (Array.isArray(data?.companies) ? data.companies : []) as Company[],
+    [data],
+  )
 
   const currentHistoryLogs = useMemo(
     () => auditLogs.filter((log) => log.empresa_id === historyCompanyId).slice(0, 12),
@@ -352,7 +358,7 @@ export function OwnerEmpresasModule() {
       <div className="rounded-lg border border-slate-800 bg-slate-900 p-4">
         <h2 className="mb-3 text-sm font-semibold">Empresas globais</h2>
         <div className="space-y-2">
-          {companies.map((company) => {
+          {companies.slice(0, 20).map((company) => {
             const companyData = company.dados_empresa?.[0]
             const sub = subscriptions.find((item) => item.empresa_id === company.id)
 
