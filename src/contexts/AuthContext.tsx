@@ -48,6 +48,12 @@ export interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 const IMPERSONATION_STORAGE_KEY = 'pcm.owner.impersonation.session';
+const TENANT_BASE_DOMAIN = (import.meta.env.VITE_TENANT_BASE_DOMAIN || 'gppis.com.br').toLowerCase();
+
+function isTenantBaseDomain(hostname: string) {
+  const normalized = hostname.toLowerCase();
+  return normalized === TENANT_BASE_DOMAIN || normalized === `www.${TENANT_BASE_DOMAIN}`;
+}
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
@@ -111,13 +117,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (isOwnerDomain(window.location.hostname)) return null;
 
     const hostname = window.location.hostname;
+    if (isTenantBaseDomain(hostname)) return null;
+
     const { data: domainConfig, error } = await supabase
       .from('empresa_config')
       .select('empresa_id')
       .eq('dominio_custom', hostname)
       .maybeSingle();
 
-    if (error) return 'Falha ao validar domínio da empresa.';
+    if (error) {
+      logger.warn('tenant_domain_validation_failed', {
+        hostname,
+        error: error.message,
+      });
+      return 'Falha ao validar domínio da empresa.';
+    }
     if (!domainConfig?.empresa_id) return 'Domínio não autorizado para login.';
 
     return null;
@@ -141,9 +155,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         .eq('user_id', userId)
         .order('created_at', { ascending: true });
 
-      let roleData = roleQuery.data;
+      let roleData = roleQuery.data || [];
 
-      if (roleQuery.error && /empresa_id|column/i.test(roleQuery.error.message)) {
+      if (roleQuery.error) {
         const fallbackRoleQuery = await supabase
           .from('user_roles')
           .select('role')
@@ -154,6 +168,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           role: item.role,
           empresa_id: null,
         }));
+
+        if (fallbackRoleQuery.error) {
+          logger.warn('fetch_user_roles_failed', {
+            userId,
+            primaryError: roleQuery.error.message,
+            fallbackError: fallbackRoleQuery.error.message,
+          });
+        }
       }
 
       const dbRoles: AppRole[] = (roleData || [])
