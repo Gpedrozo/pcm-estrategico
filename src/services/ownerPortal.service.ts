@@ -142,19 +142,46 @@ export async function callOwnerAdmin<T = unknown>(payload: Record<string, unknow
   })
 
   if (error) {
+    const action = String(payload?.action ?? 'unknown_action')
     const response = (error as any)?.context
-    if (response && typeof response.json === 'function') {
+
+    if (response) {
       try {
-        const parsed = await response.json()
-        const message = parsed?.error || parsed?.message
-        if (message) {
-          throw new Error(String(message))
+        if (typeof response.json === 'function') {
+          const parsed = await response.json()
+          const message = parsed?.error || parsed?.message || parsed?.details?.reason
+          if (message) {
+            throw new Error(String(message))
+          }
         }
-      } catch {
+
+        if (typeof response.text === 'function') {
+          const rawText = await response.text()
+          if (rawText) {
+            try {
+              const parsedText = JSON.parse(rawText)
+              const messageFromText = parsedText?.error || parsedText?.message || parsedText?.details?.reason
+              if (messageFromText) {
+                throw new Error(String(messageFromText))
+              }
+            } catch {
+              throw new Error(String(rawText))
+            }
+          }
+        }
+      } catch (parseError: any) {
+        if (parseError?.message) {
+          throw new Error(parseError.message)
+        }
       }
     }
 
-    throw new Error((error as any)?.message || 'Falha ao processar requisição no owner portal.')
+    const sdkMessage = String((error as any)?.message || '')
+    if (sdkMessage.includes('non-2xx')) {
+      throw new Error(`Falha na ação ${action}. O backend retornou erro sem detalhe; tente novamente e, se persistir, verifique logs da edge function owner-portal-admin.`)
+    }
+
+    throw new Error(sdkMessage || 'Falha ao processar requisição no owner portal.')
   }
   return data as T
 }

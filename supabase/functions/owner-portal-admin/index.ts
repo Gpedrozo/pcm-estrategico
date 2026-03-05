@@ -269,6 +269,7 @@ async function logPlatformAudit(
 }
 
 Deno.serve(async (req) => {
+  try {
   if (req.method === "OPTIONS") return preflight(req, "POST, OPTIONS");
 
   const originDenied = rejectIfOriginNotAllowed(req);
@@ -1021,4 +1022,8 @@ Deno.serve(async (req) => {
   }
 
   return fail("Unsupported action", 400, null, req);
+  } catch (error: any) {
+    const message = error?.message ? String(error.message) : "Unhandled owner-portal-admin error";
+    return fail("Falha inesperada no owner-portal-admin", 500, { reason: message }, req);
+  }
 });
