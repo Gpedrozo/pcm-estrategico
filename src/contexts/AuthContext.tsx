@@ -304,12 +304,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return { error: error.message };
     }
 
+    const { data: { session: currentSession } } = await supabase.auth.getSession();
     const { data: { user: currentUser } } = await supabase.auth.getUser();
     if (currentUser) {
       const profileData = await fetchUserProfile(currentUser.id, currentUser.email, {
         app_metadata: currentUser.app_metadata,
         user_metadata: currentUser.user_metadata,
       });
+
+      setSession(currentSession ?? null);
+      setUser({
+        id: currentUser.id,
+        email: currentUser.email || '',
+        nome: profileData.nome,
+        tipo: profileData.tipo,
+        roles: profileData.roles,
+        tenantId: profileData.tenantId,
+      });
+      setIsLoading(false);
 
       const isGlobalRole =
         profileData.tipo === 'SYSTEM_OWNER' ||
