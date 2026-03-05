@@ -2,35 +2,6 @@ import { createClient } from '@supabase/supabase-js'
 import type { Database } from './types'
 import { isOwnerDomain } from '@/lib/security'
 
-const isOwnerRuntime = typeof window !== 'undefined' && isOwnerDomain(window.location.hostname)
-
-const DEFAULT_SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL
-const DEFAULT_SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY
-const DEFAULT_SUPABASE_PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || DEFAULT_SUPABASE_ANON_KEY
-
-const OWNER_SUPABASE_URL = import.meta.env.VITE_OWNER_SUPABASE_URL
-const OWNER_SUPABASE_ANON_KEY = import.meta.env.VITE_OWNER_SUPABASE_ANON_KEY
-const OWNER_SUPABASE_PUBLISHABLE_KEY = import.meta.env.VITE_OWNER_SUPABASE_PUBLISHABLE_KEY || OWNER_SUPABASE_ANON_KEY
-
-const SUPABASE_URL = isOwnerRuntime ? (OWNER_SUPABASE_URL || DEFAULT_SUPABASE_URL) : DEFAULT_SUPABASE_URL
-const SUPABASE_KEY = isOwnerRuntime
-  ? (OWNER_SUPABASE_PUBLISHABLE_KEY || DEFAULT_SUPABASE_PUBLISHABLE_KEY)
-  : DEFAULT_SUPABASE_PUBLISHABLE_KEY
-
-const SUPABASE_PROJECT_ID = import.meta.env.VITE_SUPABASE_PROJECT_ID
-
-const isTestEnvironment =
-  import.meta.env.MODE === 'test' ||
-  (typeof process !== 'undefined' && typeof process.env !== 'undefined' && !!process.env.VITEST)
-
-const hasSupabaseEnv = Boolean(SUPABASE_URL && SUPABASE_KEY)
-
-if (!hasSupabaseEnv && !isTestEnvironment && !import.meta.env.DEV) {
-  throw new Error(
-    'Supabase environment is not configured. Define VITE_SUPABASE_URL with VITE_SUPABASE_PUBLISHABLE_KEY or VITE_SUPABASE_ANON_KEY.'
-  )
-}
-
 const extractProjectRefFromUrl = (url?: string) => {
   if (!url) return null
   try {
@@ -53,6 +24,52 @@ const decodeJwtPayload = (token?: string) => {
   } catch {
     return null
   }
+}
+
+const isOwnerRuntime = typeof window !== 'undefined' && isOwnerDomain(window.location.hostname)
+
+const DEFAULT_SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL
+const DEFAULT_SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY
+const DEFAULT_SUPABASE_PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || DEFAULT_SUPABASE_ANON_KEY
+
+const OWNER_SUPABASE_URL = import.meta.env.VITE_OWNER_SUPABASE_URL
+const OWNER_SUPABASE_ANON_KEY = import.meta.env.VITE_OWNER_SUPABASE_ANON_KEY
+const OWNER_SUPABASE_PUBLISHABLE_KEY = import.meta.env.VITE_OWNER_SUPABASE_PUBLISHABLE_KEY || OWNER_SUPABASE_ANON_KEY
+
+const defaultProjectRef =
+  extractProjectRefFromUrl(DEFAULT_SUPABASE_URL) ||
+  ((decodeJwtPayload(DEFAULT_SUPABASE_PUBLISHABLE_KEY)?.ref as string | undefined) ?? null)
+
+const ownerProjectRef =
+  extractProjectRefFromUrl(OWNER_SUPABASE_URL) ||
+  ((decodeJwtPayload(OWNER_SUPABASE_PUBLISHABLE_KEY)?.ref as string | undefined) ?? null)
+
+const canUseOwnerSupabaseConfig =
+  isOwnerRuntime &&
+  Boolean(OWNER_SUPABASE_URL && OWNER_SUPABASE_PUBLISHABLE_KEY) &&
+  Boolean(ownerProjectRef && defaultProjectRef && ownerProjectRef === defaultProjectRef)
+
+const SUPABASE_URL = canUseOwnerSupabaseConfig ? OWNER_SUPABASE_URL : DEFAULT_SUPABASE_URL
+const SUPABASE_KEY = canUseOwnerSupabaseConfig ? OWNER_SUPABASE_PUBLISHABLE_KEY : DEFAULT_SUPABASE_PUBLISHABLE_KEY
+
+const SUPABASE_PROJECT_ID = import.meta.env.VITE_SUPABASE_PROJECT_ID
+
+const isTestEnvironment =
+  import.meta.env.MODE === 'test' ||
+  (typeof process !== 'undefined' && typeof process.env !== 'undefined' && !!process.env.VITEST)
+
+const hasSupabaseEnv = Boolean(SUPABASE_URL && SUPABASE_KEY)
+
+if (!hasSupabaseEnv && !isTestEnvironment && !import.meta.env.DEV) {
+  throw new Error(
+    'Supabase environment is not configured. Define VITE_SUPABASE_URL with VITE_SUPABASE_PUBLISHABLE_KEY or VITE_SUPABASE_ANON_KEY.'
+  )
+}
+
+if (!isTestEnvironment && isOwnerRuntime && OWNER_SUPABASE_URL && OWNER_SUPABASE_PUBLISHABLE_KEY && !canUseOwnerSupabaseConfig) {
+  console.error(
+    '[owner-auth] Ignorando VITE_OWNER_SUPABASE_* por divergência de projeto. Usando VITE_SUPABASE_* para evitar Invalid JWT.'
+  )
 }
 
 const projectRefFromUrl = extractProjectRefFromUrl(SUPABASE_URL)
