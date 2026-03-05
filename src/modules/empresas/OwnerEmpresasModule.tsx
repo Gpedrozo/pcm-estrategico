@@ -293,7 +293,7 @@ export function OwnerEmpresasModule() {
         <h2 className="mb-3 text-sm font-semibold">Cadastro de Empresa + MASTER</h2>
         <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
           <input className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm" placeholder="Nome da empresa" value={companyForm.nome} onChange={(e) => setCompanyForm((prev) => ({ ...prev, nome: e.target.value }))} />
-          <input className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm" placeholder="Slug" value={companyForm.slug} onChange={(e) => setCompanyForm((prev) => ({ ...prev, slug: e.target.value }))} />
+          <input className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm" placeholder="Slug (opcional)" value={companyForm.slug} onChange={(e) => setCompanyForm((prev) => ({ ...prev, slug: e.target.value }))} />
           <input className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm" placeholder="Razão social" value={companyForm.razao_social} onChange={(e) => setCompanyForm((prev) => ({ ...prev, razao_social: e.target.value }))} />
           <input className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm" placeholder="Nome fantasia" value={companyForm.nome_fantasia} onChange={(e) => setCompanyForm((prev) => ({ ...prev, nome_fantasia: e.target.value }))} />
           <input className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm" placeholder="CNPJ" value={companyForm.cnpj} onChange={(e) => setCompanyForm((prev) => ({ ...prev, cnpj: e.target.value }))} />
@@ -334,6 +334,9 @@ export function OwnerEmpresasModule() {
           <input type="date" className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm" value={companyForm.inicio} onChange={(e) => setCompanyForm((prev) => ({ ...prev, inicio: e.target.value }))} />
           <input type="date" className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm" value={companyForm.fim} onChange={(e) => setCompanyForm((prev) => ({ ...prev, fim: e.target.value }))} />
         </div>
+        <p className="mt-2 text-xs text-slate-400">
+          Slug é um identificador curto da empresa (ex.: <span className="font-mono">codepa</span>) usado para URL/domínio e integrações. Se deixar em branco, o sistema gera automaticamente.
+        </p>
         <div className="mt-3 flex gap-2">
           <button onClick={handleCreate} className="rounded-md bg-emerald-500 px-4 py-2 text-sm font-semibold text-slate-900" disabled={createCompanyMutation.isPending}>
             Criar empresa + MASTER

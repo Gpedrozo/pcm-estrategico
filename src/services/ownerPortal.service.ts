@@ -137,12 +137,9 @@ export interface OwnerContract {
 }
 
 export async function callOwnerAdmin<T = unknown>(payload: Record<string, unknown>) {
-  const { data, error } = await supabase.functions.invoke('owner-portal-admin', {
-    body: payload,
-  })
+  const action = String(payload?.action ?? 'unknown_action')
 
-  if (error) {
-    const action = String(payload?.action ?? 'unknown_action')
+  const parseEdgeErrorMessage = async (error: unknown) => {
     const response = (error as any)?.context
 
     if (response) {
@@ -150,9 +147,7 @@ export async function callOwnerAdmin<T = unknown>(payload: Record<string, unknow
         if (typeof response.json === 'function') {
           const parsed = await response.json()
           const message = parsed?.error || parsed?.message || parsed?.details?.reason
-          if (message) {
-            throw new Error(String(message))
-          }
+          if (message) return String(message)
         }
 
         if (typeof response.text === 'function') {
@@ -161,29 +156,57 @@ export async function callOwnerAdmin<T = unknown>(payload: Record<string, unknow
             try {
               const parsedText = JSON.parse(rawText)
               const messageFromText = parsedText?.error || parsedText?.message || parsedText?.details?.reason
-              if (messageFromText) {
-                throw new Error(String(messageFromText))
-              }
+              if (messageFromText) return String(messageFromText)
             } catch {
-              throw new Error(String(rawText))
+              return String(rawText)
             }
           }
         }
-      } catch (parseError: any) {
-        if (parseError?.message) {
-          throw new Error(parseError.message)
-        }
+      } catch {
       }
     }
 
-    const sdkMessage = String((error as any)?.message || '')
-    if (sdkMessage.includes('non-2xx')) {
+    return String((error as any)?.message || '')
+  }
+
+  const isJwtError = (message: string) => {
+    const normalized = message.toLowerCase()
+    return normalized.includes('invalid jwt') ||
+      normalized.includes('invalid token') ||
+      normalized.includes('jwt expired') ||
+      normalized.includes('token has expired') ||
+      normalized.includes('missing bearer token')
+  }
+
+  const invoke = async (allowRetry: boolean): Promise<T> => {
+    const { data, error } = await supabase.functions.invoke('owner-portal-admin', {
+      body: payload,
+    })
+
+    if (!error) return data as T
+
+    const parsedMessage = await parseEdgeErrorMessage(error)
+
+    if (allowRetry && isJwtError(parsedMessage)) {
+      const { data: sessionData } = await supabase.auth.getSession()
+      if (sessionData?.session) {
+        const { error: refreshError } = await supabase.auth.refreshSession()
+        if (!refreshError) {
+          return invoke(false)
+        }
+      }
+
+      throw new Error('Sessão expirada ou inválida. Faça login novamente no Owner Portal.')
+    }
+
+    if (parsedMessage.includes('non-2xx')) {
       throw new Error(`Falha na ação ${action}. O backend retornou erro sem detalhe; tente novamente e, se persistir, verifique logs da edge function owner-portal-admin.`)
     }
 
-    throw new Error(sdkMessage || 'Falha ao processar requisição no owner portal.')
+    throw new Error(parsedMessage || 'Falha ao processar requisição no owner portal.')
   }
-  return data as T
+
+  return invoke(true)
 }
 
 export async function listPlatformCompanies() {
