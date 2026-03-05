@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { Component, type ErrorInfo, useMemo, useState } from 'react'
 import { ShieldCheck } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { OwnerPortalLayout } from '@/layouts/OwnerPortalLayout'
@@ -33,6 +33,33 @@ const navItems = [
   { key: 'logs', label: 'Logs' },
   { key: 'configuracoes', label: 'Configurações' },
 ]
+
+class OwnerModuleErrorBoundary extends Component<{ children: React.ReactNode }, { hasError: boolean }> {
+  constructor(props: { children: React.ReactNode }) {
+    super(props)
+    this.state = { hasError: false }
+  }
+
+  static getDerivedStateFromError() {
+    return { hasError: true }
+  }
+
+  componentDidCatch(_error: Error, _errorInfo: ErrorInfo) {
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="rounded-lg border border-rose-800 bg-slate-900 p-6">
+          <h3 className="text-sm font-semibold text-rose-300">Falha ao carregar módulo OWNER</h3>
+          <p className="mt-2 text-sm text-slate-300">Ocorreu um erro inesperado neste módulo. Recarregue a página para continuar.</p>
+        </div>
+      )
+    }
+
+    return this.props.children
+  }
+}
 
 export default function Owner() {
   const { isSystemOwner } = useAuth()
@@ -95,7 +122,9 @@ export default function Owner() {
       activeKey={active}
       onNavigate={setActive}
     >
-      {content}
+      <OwnerModuleErrorBoundary>
+        {content}
+      </OwnerModuleErrorBoundary>
     </OwnerPortalLayout>
   )
 }
