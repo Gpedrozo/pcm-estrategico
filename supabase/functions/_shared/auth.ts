@@ -14,6 +14,21 @@ export function adminClient() {
   return createClient(env("SUPABASE_URL"), env("SUPABASE_SERVICE_ROLE_KEY"));
 }
 
+export function userClient(token?: string | null) {
+  const anonKey = Deno.env.get("SUPABASE_ANON_KEY");
+  if (!anonKey) return null;
+
+  return createClient(env("SUPABASE_URL"), anonKey, {
+    global: token
+      ? {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      : undefined,
+  });
+}
+
 export function tokenFromRequest(req: Request): string | null {
   const auth = req.headers.get("authorization") ?? "";
   if (!auth.toLowerCase().startsWith("bearer ")) return null;
@@ -27,9 +42,19 @@ export async function requireUser(req: Request) {
   }
 
   const admin = adminClient();
+  const userScoped = userClient(token);
+
+  if (userScoped) {
+    const { data, error } = await userScoped.auth.getUser();
+    if (!error && data?.user) {
+      return { user: data.user, token, admin } as const;
+    }
+  }
+
   const { data, error } = await admin.auth.getUser(token);
   if (error || !data?.user) {
-    return { error: "Invalid token", status: 401 } as const;
+    const reason = error?.message ?? "Invalid token";
+    return { error: reason, status: 401 } as const;
   }
 
   return { user: data.user, token, admin } as const;
