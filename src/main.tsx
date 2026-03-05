@@ -7,6 +7,16 @@ import { writeAuditLog } from "@/lib/audit";
 const OWNER_DOMAIN = (import.meta.env.VITE_OWNER_DOMAIN || "owner.gppis.com.br").toLowerCase();
 const LEGACY_OWNER_PROJECT_REF = "cplowhoklcegnjvwmrsk";
 const OWNER_HARD_RESET_MARKER = "owner-runtime-hard-reset-v1";
+const ACTIVE_SUPABASE_PROJECT_REF = (() => {
+	const configuredUrl = import.meta.env.VITE_SUPABASE_URL;
+	if (!configuredUrl) return null;
+
+	try {
+		return new URL(configuredUrl).hostname.split(".")[0] || null;
+	} catch {
+		return null;
+	}
+})();
 
 async function reportCriticalClientIssue(action: string, metadata: Record<string, unknown>) {
 	await writeAuditLog({
@@ -54,7 +64,22 @@ async function hardenOwnerRuntime() {
 		for (const storageKey of Object.keys(window.localStorage)) {
 			if (storageKey.includes(LEGACY_OWNER_PROJECT_REF)) {
 				window.localStorage.removeItem(storageKey);
+				continue;
 			}
+
+			const isSupabaseAuthKey = /^sb-[a-z0-9]+-auth-token$/i.test(storageKey);
+			const isCurrentProjectKey =
+				ACTIVE_SUPABASE_PROJECT_REF
+					? storageKey.includes(`sb-${ACTIVE_SUPABASE_PROJECT_REF}-auth-token`)
+					: false;
+
+			if (isSupabaseAuthKey && !isCurrentProjectKey) {
+				window.localStorage.removeItem(storageKey);
+			}
+		}
+
+		if (!ACTIVE_SUPABASE_PROJECT_REF) {
+			window.localStorage.removeItem("supabase.auth.token");
 		}
 	} catch {
 	}

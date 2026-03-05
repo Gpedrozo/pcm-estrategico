@@ -139,6 +139,47 @@ export interface OwnerContract {
 export async function callOwnerAdmin<T = unknown>(payload: Record<string, unknown>) {
   const action = String(payload?.action ?? 'unknown_action')
 
+  const extractProjectRefFromUrl = (url?: string | null) => {
+    if (!url) return null
+    try {
+      return new URL(url).hostname.split('.')[0] || null
+    } catch {
+      return null
+    }
+  }
+
+  const decodeJwtRef = (token?: string | null) => {
+    if (!token) return null
+    const tokenParts = token.split('.')
+    if (tokenParts.length < 2) return null
+    try {
+      const base64 = tokenParts[1].replace(/-/g, '+').replace(/_/g, '/')
+      const padded = base64 + '='.repeat((4 - (base64.length % 4)) % 4)
+      const decoded = atob(padded)
+      const payload = JSON.parse(decoded) as Record<string, unknown>
+      return (payload?.ref as string | undefined) ?? null
+    } catch {
+      return null
+    }
+  }
+
+  const clearMismatchedAuthStorage = (expectedProjectRef?: string | null) => {
+    if (typeof window === 'undefined') return
+    try {
+      const authTokenKeyPattern = /^sb-[a-z0-9]+-auth-token$/i
+      for (const storageKey of Object.keys(window.localStorage)) {
+        if (!authTokenKeyPattern.test(storageKey)) continue
+        if (expectedProjectRef && storageKey.includes(`sb-${expectedProjectRef}-auth-token`)) continue
+        window.localStorage.removeItem(storageKey)
+      }
+
+      if (!expectedProjectRef) {
+        window.localStorage.removeItem('supabase.auth.token')
+      }
+    } catch {
+    }
+  }
+
   const invokeOwnerAdmin = async (accessToken?: string | null) => {
     return supabase.functions.invoke('owner-portal-admin', {
       body: payload,
@@ -190,8 +231,21 @@ export async function callOwnerAdmin<T = unknown>(payload: Record<string, unknow
   }
 
   const invoke = async (allowRetry: boolean): Promise<T> => {
+    const expectedProjectRef = extractProjectRefFromUrl((supabase as any)?.supabaseUrl as string | undefined)
     const { data: sessionData } = await supabase.auth.getSession()
     const currentToken = sessionData?.session?.access_token ?? null
+
+    if (!currentToken) {
+      clearMismatchedAuthStorage(expectedProjectRef)
+      throw new Error('Sessão expirada ou inválida. Faça login novamente no Owner Portal.')
+    }
+
+    const currentTokenRef = decodeJwtRef(currentToken)
+    if (!currentTokenRef || (expectedProjectRef && currentTokenRef !== expectedProjectRef)) {
+      clearMismatchedAuthStorage(expectedProjectRef)
+      await supabase.auth.signOut()
+      throw new Error('Sessão inválida para este ambiente. Faça login novamente no Owner Portal.')
+    }
 
     const { data, error } = await invokeOwnerAdmin(currentToken)
 
@@ -205,6 +259,20 @@ export async function callOwnerAdmin<T = unknown>(payload: Record<string, unknow
         if (!refreshError) {
           const { data: refreshedSessionData } = await supabase.auth.getSession()
           const refreshedToken = refreshedSessionData?.session?.access_token ?? null
+
+          if (!refreshedToken) {
+            clearMismatchedAuthStorage(expectedProjectRef)
+            await supabase.auth.signOut()
+            throw new Error('Sessão expirada ou inválida. Faça login novamente no Owner Portal.')
+          }
+
+          const refreshedTokenRef = decodeJwtRef(refreshedToken)
+          if (!refreshedTokenRef || (expectedProjectRef && refreshedTokenRef !== expectedProjectRef)) {
+            clearMismatchedAuthStorage(expectedProjectRef)
+            await supabase.auth.signOut()
+            throw new Error('Sessão inválida para este ambiente. Faça login novamente no Owner Portal.')
+          }
+
           const retryResponse = await invokeOwnerAdmin(refreshedToken)
 
           if (!retryResponse.error) {
@@ -216,6 +284,8 @@ export async function callOwnerAdmin<T = unknown>(payload: Record<string, unknow
         }
       }
 
+      clearMismatchedAuthStorage(expectedProjectRef)
+      await supabase.auth.signOut()
       throw new Error('Sessão expirada ou inválida. Faça login novamente no Owner Portal.')
     }
 
