@@ -81,6 +81,18 @@ const AdminOnlyRoute = ({ children }: { children: React.ReactNode }) => {
   return <>{children}</>;
 };
 
+const OwnerOnlyRoute = ({ children }: { children: React.ReactNode }) => {
+  const { isAuthenticated, isLoading, isSystemOwner } = useAuth();
+
+  if (isLoading) return <RouteLoading />;
+
+  if (!isAuthenticated || !isSystemOwner) {
+    return <Navigate to="/login" replace />;
+  }
+
+  return <>{children}</>;
+};
+
 function RouteLoading() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-background">
@@ -106,7 +118,9 @@ function OwnerRoutes() {
           path="/"
           element={
             <EnvironmentGuard allowOwner>
-              <Owner />
+              <OwnerOnlyRoute>
+                <Owner />
+              </OwnerOnlyRoute>
             </EnvironmentGuard>
           }
         />
