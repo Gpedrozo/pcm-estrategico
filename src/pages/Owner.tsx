@@ -1,5 +1,5 @@
 import { Component, type ErrorInfo, useMemo, useState } from 'react'
-import { ShieldCheck } from 'lucide-react'
+import { Loader2, ShieldCheck } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { OwnerPortalLayout } from '@/layouts/OwnerPortalLayout'
 import { OwnerDashboardModule } from '@/modules/dashboard/OwnerDashboardModule'
@@ -62,7 +62,7 @@ class OwnerModuleErrorBoundary extends Component<{ children: React.ReactNode }, 
 }
 
 export default function Owner() {
-  const { isSystemOwner } = useAuth()
+  const { isSystemOwner, isLoading } = useAuth()
   const [active, setActive] = useState('dashboard')
 
   const content = useMemo(() => {
@@ -99,6 +99,14 @@ export default function Owner() {
         return <OwnerDashboardModule />
     }
   }, [active])
+
+  if (isLoading) {
+    return (
+      <div className="flex h-[60vh] items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-emerald-400" />
+      </div>
+    )
+  }
 
   if (!isSystemOwner) {
     return (

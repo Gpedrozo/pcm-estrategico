@@ -137,6 +137,34 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return null;
   }, []);
 
+  const extractRolesFromMetadata = useCallback((metadata?: { app_metadata?: Record<string, unknown>; user_metadata?: Record<string, unknown> }) => {
+    const rawRoles: string[] = [];
+
+    const collect = (value: unknown) => {
+      if (!value) return;
+      if (Array.isArray(value)) {
+        value.forEach((entry) => {
+          if (typeof entry === 'string') rawRoles.push(entry);
+        });
+        return;
+      }
+      if (typeof value === 'string') {
+        rawRoles.push(value);
+      }
+    };
+
+    collect(metadata?.app_metadata?.role);
+    collect(metadata?.app_metadata?.roles);
+    collect(metadata?.user_metadata?.role);
+    collect(metadata?.user_metadata?.roles);
+
+    return Array.from(new Set(
+      rawRoles
+        .map((role) => normalizeRole(role))
+        .filter((role): role is AppRole => Boolean(role)),
+    ));
+  }, []);
+
   const fetchUserProfile = useCallback(async (
     userId: string,
     email?: string | null,
@@ -182,7 +210,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         .map((item: { role: string }) => normalizeRole(item.role))
         .filter((role): role is AppRole => Boolean(role));
 
-      const roles: AppRole[] = Array.from(new Set(dbRoles));
+      const metadataRoles = extractRolesFromMetadata(metadata);
+      const roles: AppRole[] = Array.from(new Set([...dbRoles, ...metadataRoles]));
 
       const tenantId: string | null = (roleData || [])[0]?.empresa_id || profile?.empresa_id || null;
 
@@ -209,7 +238,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         tenantId: null,
       };
     }
-  }, []);
+  }, [extractRolesFromMetadata]);
 
   const resolveUserProfile = useCallback(async (
     userId: string,
