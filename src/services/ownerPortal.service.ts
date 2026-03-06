@@ -148,7 +148,7 @@ export async function callOwnerAdmin<T = unknown>(payload: Record<string, unknow
     }
   }
 
-  const decodeJwtRef = (token?: string | null) => {
+  const decodeJwtProjectRef = (token?: string | null) => {
     if (!token) return null
     const tokenParts = token.split('.')
     if (tokenParts.length < 2) return null
@@ -157,7 +157,13 @@ export async function callOwnerAdmin<T = unknown>(payload: Record<string, unknow
       const padded = base64 + '='.repeat((4 - (base64.length % 4)) % 4)
       const decoded = atob(padded)
       const payload = JSON.parse(decoded) as Record<string, unknown>
-      return (payload?.ref as string | undefined) ?? null
+
+      const payloadRef = (payload?.ref as string | undefined) ?? null
+      if (payloadRef) return payloadRef
+
+      const issuer = (payload?.iss as string | undefined) ?? null
+      if (!issuer) return null
+      return extractProjectRefFromUrl(issuer)
     } catch {
       return null
     }
@@ -240,7 +246,7 @@ export async function callOwnerAdmin<T = unknown>(payload: Record<string, unknow
       throw new Error('Sessão expirada ou inválida. Faça login novamente no Owner Portal.')
     }
 
-    const currentTokenRef = decodeJwtRef(currentToken)
+    const currentTokenRef = decodeJwtProjectRef(currentToken)
     if (!currentTokenRef || (expectedProjectRef && currentTokenRef !== expectedProjectRef)) {
       clearMismatchedAuthStorage(expectedProjectRef)
       await supabase.auth.signOut()
@@ -266,7 +272,7 @@ export async function callOwnerAdmin<T = unknown>(payload: Record<string, unknow
             throw new Error('Sessão expirada ou inválida. Faça login novamente no Owner Portal.')
           }
 
-          const refreshedTokenRef = decodeJwtRef(refreshedToken)
+          const refreshedTokenRef = decodeJwtProjectRef(refreshedToken)
           if (!refreshedTokenRef || (expectedProjectRef && refreshedTokenRef !== expectedProjectRef)) {
             clearMismatchedAuthStorage(expectedProjectRef)
             await supabase.auth.signOut()
