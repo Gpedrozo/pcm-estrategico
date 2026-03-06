@@ -180,8 +180,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const roleQuery = await supabase
         .from('user_roles')
         .select('role, empresa_id')
-        .eq('user_id', userId)
-        .order('created_at', { ascending: true });
+        .eq('user_id', userId);
 
       let roleData = roleQuery.data || [];
 
@@ -189,8 +188,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const fallbackRoleQuery = await supabase
           .from('user_roles')
           .select('role')
-          .eq('user_id', userId)
-          .order('created_at', { ascending: true });
+          .eq('user_id', userId);
 
         roleData = (fallbackRoleQuery.data || []).map((item: { role: AppRole }) => ({
           role: item.role,
