@@ -31,6 +31,7 @@ export type OwnerAction =
   | 'create_system_admin'
   | 'impersonate_company'
   | 'stop_impersonation'
+  | 'update_subscription_billing'
 
 export interface OwnerCompany {
   id: string
@@ -157,13 +158,16 @@ export async function callOwnerAdmin<T = unknown>(payload: Record<string, unknow
       const padded = base64 + '='.repeat((4 - (base64.length % 4)) % 4)
       const decoded = atob(padded)
       const payload = JSON.parse(decoded) as Record<string, unknown>
+      const ref = (payload?.ref as string | undefined) ?? null
+      if (ref) return ref
 
-      const payloadRef = (payload?.ref as string | undefined) ?? null
-      if (payloadRef) return payloadRef
+      const iss = (payload?.iss as string | undefined) ?? ''
+      if (iss) {
+        const extractedFromIss = extractProjectRefFromUrl(iss)
+        if (extractedFromIss) return extractedFromIss
+      }
 
-      const issuer = (payload?.iss as string | undefined) ?? null
-      if (!issuer) return null
-      return extractProjectRefFromUrl(issuer)
+      return null
     } catch {
       return null
     }
@@ -374,8 +378,9 @@ export async function updatePlan(plan: Record<string, unknown>) {
   return callOwnerAdmin({ action: 'update_plan', plan })
 }
 
-export async function listSubscriptions(): Promise<OwnerSubscription[]> {
-  const data = await callOwnerAdmin<{ subscriptions: OwnerSubscription[] }>({ action: 'list_subscriptions' })
+export async function listSubscriptions(limit = 1000): Promise<OwnerSubscription[]> {
+  const safeLimit = Number.isFinite(Number(limit)) ? Math.max(1, Math.min(2000, Math.trunc(Number(limit)))) : 1000
+  const data = await callOwnerAdmin<{ subscriptions: OwnerSubscription[] }>({ action: 'list_subscriptions', limit: safeLimit })
   return data.subscriptions ?? []
 }
 
@@ -385,6 +390,28 @@ export async function createSubscription(subscription: Record<string, unknown>) 
 
 export async function setSubscriptionStatus(empresaId: string, status: string) {
   return callOwnerAdmin({ action: 'set_subscription_status', empresa_id: empresaId, status })
+}
+
+export async function updateSubscriptionBilling(params: {
+  subscriptionId?: string
+  empresaId?: string
+  billing: {
+    amount?: number
+    period?: 'monthly' | 'quarterly' | 'yearly' | 'custom'
+    payment_method?: string
+    payment_status?: string
+    status?: 'ativa' | 'atrasada' | 'cancelada' | 'teste'
+    renewal_at?: string | null
+    starts_at?: string | null
+    ends_at?: string | null
+  }
+}) {
+  return callOwnerAdmin({
+    action: 'update_subscription_billing',
+    subscription_id: params.subscriptionId,
+    empresa_id: params.empresaId,
+    billing: params.billing,
+  })
 }
 
 export async function createUser(user: Record<string, unknown>) {

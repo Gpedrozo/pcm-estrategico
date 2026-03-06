@@ -26,6 +26,7 @@ import {
   updateCompanySettings,
   updateContract,
   updatePlan,
+  updateSubscriptionBilling,
 } from '@/services/ownerPortal.service'
 
 export function useOwnerStats() {
@@ -208,6 +209,32 @@ export function useOwnerCompanyActions() {
     },
   })
 
+  const updateSubscriptionBillingMutation = useMutation({
+    mutationFn: ({
+      subscriptionId,
+      empresaId,
+      billing,
+    }: {
+      subscriptionId?: string
+      empresaId?: string
+      billing: {
+        amount?: number
+        period?: 'monthly' | 'quarterly' | 'yearly' | 'custom'
+        payment_method?: string
+        payment_status?: string
+        status?: 'ativa' | 'atrasada' | 'cancelada' | 'teste'
+        renewal_at?: string | null
+        starts_at?: string | null
+        ends_at?: string | null
+      }
+    }) => updateSubscriptionBilling({ subscriptionId, empresaId, billing }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['owner', 'subscriptions'] })
+      qc.invalidateQueries({ queryKey: ['owner', 'stats'] })
+      qc.invalidateQueries({ queryKey: ['owner', 'contracts'] })
+    },
+  })
+
   const respondSupportMutation = useMutation({
     mutationFn: ({ ticketId, response, status }: { ticketId: string; response: string; status?: string }) =>
       respondSupportTicket(ticketId, response, status),
@@ -252,6 +279,7 @@ export function useOwnerCompanyActions() {
     setUserStatusMutation,
     createSubscriptionMutation,
     setSubscriptionStatusMutation,
+    updateSubscriptionBillingMutation,
     respondSupportMutation,
     updateContractMutation,
     regenerateContractMutation,

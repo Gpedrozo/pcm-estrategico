@@ -33,7 +33,8 @@ type Payload = {
     | "platform_stats"
     | "create_system_admin"
     | "impersonate_company"
-    | "stop_impersonation";
+    | "stop_impersonation"
+    | "update_subscription_billing";
   empresa_id?: string;
   company?: {
     nome: string;
@@ -86,6 +87,18 @@ type Payload = {
   summary?: string;
   ticket_id?: string;
   response?: string;
+  subscription_id?: string;
+  billing?: {
+    amount?: number;
+    period?: "monthly" | "quarterly" | "yearly" | "custom";
+    payment_method?: string;
+    payment_status?: string;
+    status?: "ativa" | "atrasada" | "cancelada" | "teste";
+    renewal_at?: string | null;
+    starts_at?: string | null;
+    ends_at?: string | null;
+  };
+  limit?: number;
   filters?: {
     empresa_id?: string;
     user_id?: string;
@@ -745,13 +758,72 @@ Deno.serve(async (req) => {
   }
 
   if (body.action === "list_subscriptions") {
+    const requestLimit = Number(body.limit ?? 1000);
+    const safeLimit = Number.isFinite(requestLimit)
+      ? Math.max(1, Math.min(2000, Math.trunc(requestLimit)))
+      : 1000;
+
     const { data, error } = await admin
       .from("subscriptions")
       .select("*, plans(id,code,name,user_limit,module_flags), empresas(id,nome)")
       .order("updated_at", { ascending: false })
-      .limit(1000);
+      .limit(safeLimit);
     if (error) return fail(error.message, 400, null, req);
     return ok({ subscriptions: data ?? [] }, 200, req);
+  }
+
+  if (body.action === "update_subscription_billing") {
+    if (!body.subscription_id && !body.empresa_id) {
+      return fail("subscription_id or empresa_id is required", 400, null, req);
+    }
+
+    const billing = body.billing ?? {};
+    const updatePayload: Record<string, unknown> = {};
+
+    if (billing.amount !== undefined) updatePayload.amount = Number(billing.amount ?? 0);
+    if (billing.period !== undefined) updatePayload.period = billing.period ?? "monthly";
+    if (billing.payment_method !== undefined) updatePayload.payment_method = billing.payment_method ?? null;
+    if (billing.payment_status !== undefined) updatePayload.payment_status = billing.payment_status ?? null;
+    if (billing.status !== undefined) updatePayload.status = billing.status ?? "ativa";
+    if (billing.renewal_at !== undefined) updatePayload.renewal_at = billing.renewal_at ?? null;
+    if (billing.starts_at !== undefined) updatePayload.starts_at = billing.starts_at ?? null;
+    if (billing.ends_at !== undefined) updatePayload.ends_at = billing.ends_at ?? null;
+
+    if (Object.keys(updatePayload).length === 0) {
+      return fail("billing payload is required", 400, null, req);
+    }
+
+    let targetQuery = admin
+      .from("subscriptions")
+      .update(updatePayload)
+      .select("id,empresa_id")
+      .limit(1);
+
+    if (body.subscription_id) {
+      targetQuery = targetQuery.eq("id", body.subscription_id);
+    } else {
+      targetQuery = targetQuery.eq("empresa_id", body.empresa_id);
+    }
+
+    const { data: updatedRows, error } = await targetQuery;
+
+    if (error) return fail(error.message, 400, null, req);
+
+    const updated = (updatedRows ?? [])[0];
+    if (!updated?.id) return fail("Subscription not found", 404, null, req);
+
+    await logPlatformAudit(admin, {
+      actorId: auth.user.id,
+      actorEmail: auth.user.email,
+      empresaId: updated.empresa_id ?? body.empresa_id ?? null,
+      actionType: "OWNER_UPDATE_SUBSCRIPTION_BILLING",
+      details: {
+        subscription_id: updated.id,
+        fields: Object.keys(updatePayload),
+      },
+    });
+
+    return ok({ success: true, subscription_id: updated.id }, 200, req);
   }
 
   if (body.action === "create_subscription") {
