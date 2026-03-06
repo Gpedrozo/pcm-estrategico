@@ -19,14 +19,23 @@ export default function OwnerLogin() {
   const [loginError, setLoginError] = useState('');
   const [isLoginLoading, setIsLoginLoading] = useState(false);
 
-  const { login, isAuthenticated, isLoading, effectiveRole } = useAuth();
+  const { login, logout, isAuthenticated, isLoading, effectiveRole } = useAuth();
   const navigate = useNavigate();
 
+  const isOwnerRole = effectiveRole === 'SYSTEM_OWNER' || effectiveRole === 'SYSTEM_ADMIN';
+
   useEffect(() => {
-    if (!isLoading && isAuthenticated) {
+    if (!isLoading && isAuthenticated && isOwnerRole) {
       navigate(getPostLoginPath(effectiveRole));
     }
-  }, [isAuthenticated, isLoading, navigate, effectiveRole]);
+  }, [isAuthenticated, isLoading, isOwnerRole, navigate, effectiveRole]);
+
+  useEffect(() => {
+    if (isLoading || !isAuthenticated || isOwnerRole) return;
+
+    setLoginError('Sessão ativa sem permissão de Owner. Faça login com conta SYSTEM_OWNER.');
+    void logout();
+  }, [isLoading, isAuthenticated, isOwnerRole, logout]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();

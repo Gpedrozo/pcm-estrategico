@@ -1,4 +1,4 @@
-import { Component, type ErrorInfo, useMemo, useState } from 'react'
+import { Component, type ErrorInfo, useEffect, useMemo, useState } from 'react'
 import { Loader2, ShieldCheck } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { OwnerPortalLayout } from '@/layouts/OwnerPortalLayout'
@@ -62,8 +62,19 @@ class OwnerModuleErrorBoundary extends Component<{ children: React.ReactNode }, 
 }
 
 export default function Owner() {
-  const { isSystemOwner, isLoading } = useAuth()
+  const { isSystemOwner, isLoading, isAuthenticated, logout } = useAuth()
   const [active, setActive] = useState('dashboard')
+
+  useEffect(() => {
+    if (isLoading || !isAuthenticated || isSystemOwner) return
+
+    void (async () => {
+      await logout()
+      if (window.location.pathname !== '/login') {
+        window.location.replace('/login')
+      }
+    })()
+  }, [isLoading, isAuthenticated, isSystemOwner, logout])
 
   const content = useMemo(() => {
     switch (active) {
