@@ -16,23 +16,9 @@ import { OwnerFinanceiroModule } from '@/modules/financeiro/OwnerFinanceiroModul
 import { OwnerFeatureFlagsModule } from '@/modules/feature-flags/OwnerFeatureFlagsModule'
 import { OwnerMonitoramentoModule } from '@/modules/monitoramento/OwnerMonitoramentoModule'
 import { OwnerLogsModule } from '@/modules/logs/OwnerLogsModule'
+import { OwnerMasterModule } from '@/modules/owner-master/OwnerMasterModule'
 
-const navItems = [
-  { key: 'dashboard', label: 'Dashboard' },
-  { key: 'empresas', label: 'Empresas' },
-  { key: 'usuarios', label: 'Usuários' },
-  { key: 'planos', label: 'Planos' },
-  { key: 'assinaturas', label: 'Assinaturas' },
-  { key: 'contratos', label: 'Contratos' },
-  { key: 'auditoria', label: 'Auditoria' },
-  { key: 'sistema', label: 'Sistema' },
-  { key: 'suporte', label: 'Suporte' },
-  { key: 'financeiro', label: 'Financeiro' },
-  { key: 'feature-flags', label: 'Feature Flags' },
-  { key: 'monitoramento', label: 'Monitoramento' },
-  { key: 'logs', label: 'Logs' },
-  { key: 'configuracoes', label: 'Configurações' },
-]
+const OWNER_MASTER_EMAIL = (import.meta.env.VITE_OWNER_MASTER_EMAIL || 'pedrozo@gppis.com.br').toLowerCase()
 
 class OwnerModuleErrorBoundary extends Component<{ children: React.ReactNode }, { hasError: boolean }> {
   constructor(props: { children: React.ReactNode }) {
@@ -62,8 +48,31 @@ class OwnerModuleErrorBoundary extends Component<{ children: React.ReactNode }, 
 }
 
 export default function Owner() {
-  const { isSystemOwner, isLoading } = useAuth()
+  const { isSystemOwner, isLoading, user } = useAuth()
   const [active, setActive] = useState('dashboard')
+
+  const isOwnerMaster = (user?.email || '').toLowerCase() === OWNER_MASTER_EMAIL
+
+  const navItems = useMemo(
+    () => [
+      { key: 'dashboard', label: 'Dashboard' },
+      { key: 'empresas', label: 'Empresas' },
+      { key: 'usuarios', label: 'Usuários' },
+      { key: 'planos', label: 'Planos' },
+      { key: 'assinaturas', label: 'Assinaturas' },
+      { key: 'contratos', label: 'Contratos' },
+      { key: 'auditoria', label: 'Auditoria' },
+      { key: 'sistema', label: 'Sistema' },
+      { key: 'suporte', label: 'Suporte' },
+      { key: 'financeiro', label: 'Financeiro' },
+      { key: 'feature-flags', label: 'Feature Flags' },
+      { key: 'monitoramento', label: 'Monitoramento' },
+      { key: 'logs', label: 'Logs' },
+      { key: 'configuracoes', label: 'Configurações' },
+      ...(isOwnerMaster ? [{ key: 'owner-master', label: 'Owner Master' }] : []),
+    ],
+    [isOwnerMaster],
+  )
 
   const content = useMemo(() => {
     switch (active) {
@@ -95,10 +104,12 @@ export default function Owner() {
         return <OwnerLogsModule />
       case 'configuracoes':
         return <OwnerConfiguracoesModule />
+      case 'owner-master':
+        return isOwnerMaster ? <OwnerMasterModule /> : <OwnerDashboardModule />
       default:
         return <OwnerDashboardModule />
     }
-  }, [active])
+  }, [active, isOwnerMaster])
 
   if (isLoading) {
     return (

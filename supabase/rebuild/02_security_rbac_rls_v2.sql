@@ -5,7 +5,7 @@ BEGIN;
 -- Tipo app_role (caso não exista)
 DO $$
 BEGIN
-  CREATE TYPE public.app_role AS ENUM ('USUARIO', 'ADMIN', 'MASTER_TI', 'SYSTEM_OWNER');
+  CREATE TYPE public.app_role AS ENUM ('USUARIO', 'ADMIN', 'MASTER_TI', 'SYSTEM_OWNER', 'SYSTEM_ADMIN');
 EXCEPTION
   WHEN duplicate_object THEN NULL;
 END $$;
@@ -30,8 +30,7 @@ SET search_path TO public
 AS $$
   SELECT COALESCE(
     NULLIF(auth.jwt() ->> 'empresa_id', '')::uuid,
-    (SELECT p.empresa_id FROM public.profiles p WHERE p.id = auth.uid() LIMIT 1),
-    (SELECT id FROM public.empresas ORDER BY created_at LIMIT 1)
+    (SELECT p.empresa_id FROM public.profiles p WHERE p.id = auth.uid() LIMIT 1)
   );
 $$;
 
@@ -58,7 +57,8 @@ SECURITY DEFINER
 SET search_path TO public
 AS $$
   SELECT coalesce(public.has_role(auth.uid(), 'MASTER_TI'::public.app_role), false)
-      OR coalesce(public.has_role(auth.uid(), 'SYSTEM_OWNER'::public.app_role), false);
+  OR coalesce(public.has_role(auth.uid(), 'SYSTEM_OWNER'::public.app_role), false)
+  OR coalesce(public.has_role(auth.uid(), 'SYSTEM_ADMIN'::public.app_role), false);
 $$;
 
 -- RBAC tabelas
@@ -99,7 +99,8 @@ VALUES
   ('USUARIO', 'Usuário padrão do tenant', true),
   ('ADMIN', 'Administrador do tenant', true),
   ('MASTER_TI', 'Operador técnico global', true),
-  ('SYSTEM_OWNER', 'Control plane owner', true)
+  ('SYSTEM_OWNER', 'Control plane owner', true),
+  ('SYSTEM_ADMIN', 'Administrador global da plataforma', true)
 ON CONFLICT (code) DO NOTHING;
 
 INSERT INTO public.rbac_permissions (code, description)
@@ -120,6 +121,7 @@ JOIN public.rbac_permissions p ON (
   (r.code = 'USUARIO' AND p.code IN ('tenant.read')) OR
   (r.code = 'ADMIN' AND p.code IN ('tenant.read', 'tenant.write', 'tenant.admin')) OR
   (r.code = 'MASTER_TI' AND p.code IN ('tenant.read', 'tenant.write', 'control_plane.read', 'security.manage')) OR
+  (r.code = 'SYSTEM_ADMIN' AND p.code IN ('tenant.read', 'tenant.write', 'tenant.admin', 'control_plane.read', 'control_plane.write', 'security.manage', 'billing.manage')) OR
   (r.code = 'SYSTEM_OWNER' AND p.code IN ('tenant.read', 'tenant.write', 'tenant.admin', 'control_plane.read', 'control_plane.write', 'security.manage', 'billing.manage'))
 )
 ON CONFLICT DO NOTHING;

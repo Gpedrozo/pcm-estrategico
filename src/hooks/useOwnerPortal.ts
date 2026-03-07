@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   callOwnerAdmin,
   createCompany,
+  createPlatformOwner,
   createPlan,
   createSubscription,
   createUser,
@@ -12,6 +13,7 @@ import {
   listContracts,
   listGlobalUsers,
   listPlans,
+  listPlatformOwners,
   listPlatformCompanies,
   listSubscriptions,
   listSupportTickets,
@@ -106,6 +108,14 @@ export function useOwnerCompanySettings(empresaId?: string | null) {
       if (!empresaId) return { settings: [] }
       return getCompanySettings(empresaId)
     },
+    staleTime: 15_000,
+  })
+}
+
+export function useOwnerMasterOwners() {
+  return useQuery({
+    queryKey: ['owner', 'platform-owners'],
+    queryFn: listPlatformOwners,
     staleTime: 15_000,
   })
 }
@@ -265,6 +275,15 @@ export function useOwnerCompanyActions() {
     },
   })
 
+  const createPlatformOwnerMutation = useMutation({
+    mutationFn: createPlatformOwner,
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['owner', 'platform-owners'] })
+      qc.invalidateQueries({ queryKey: ['owner', 'users'] })
+      qc.invalidateQueries({ queryKey: ['owner', 'audit-logs'] })
+    },
+  })
+
   return {
     blockCompany,
     changePlan,
@@ -285,5 +304,6 @@ export function useOwnerCompanyActions() {
     regenerateContractMutation,
     deleteContractMutation,
     updateCompanySettingsMutation,
+    createPlatformOwnerMutation,
   }
 }

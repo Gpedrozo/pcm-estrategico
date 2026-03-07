@@ -34,7 +34,10 @@ type Payload = {
     | "create_system_admin"
     | "impersonate_company"
     | "stop_impersonation"
-    | "update_subscription_billing";
+    | "update_subscription_billing"
+    | "list_platform_owners"
+    | "create_platform_owner"
+    | "cleanup_owner_stress_data";
   empresa_id?: string;
   company?: {
     nome: string;
@@ -56,6 +59,12 @@ type Payload = {
     empresa_id: string;
     role: string;
     status?: string;
+  };
+  owner_user?: {
+    nome: string;
+    email: string;
+    password?: string;
+    role?: "SYSTEM_ADMIN";
   };
   plan?: {
     code: string;
@@ -281,6 +290,33 @@ async function logPlatformAudit(
   });
 }
 
+const OWNER_MASTER_EMAIL = (Deno.env.get("OWNER_MASTER_EMAIL") ?? "pedrozo@gppis.com.br").toLowerCase();
+
+function isOwnerMasterEmail(email?: string | null) {
+  return (email ?? "").toLowerCase() === OWNER_MASTER_EMAIL;
+}
+
+async function logOwnerMasterHiddenAudit(
+  admin: ReturnType<typeof adminClient>,
+  payload: {
+    actorId: string;
+    actorEmail?: string | null;
+    empresaId?: string | null;
+    actionType: string;
+    details?: Record<string, unknown>;
+  },
+) {
+  await admin.from("enterprise_audit_logs").insert({
+    actor_id: payload.actorId,
+    actor_email: payload.actorEmail ?? null,
+    empresa_id: payload.empresaId ?? null,
+    action_type: payload.actionType,
+    details: payload.details ?? {},
+    severity: "info",
+    source: "owner-master-shadow",
+  });
+}
+
 Deno.serve(async (req) => {
   try {
   if (req.method === "OPTIONS") return preflight(req, "POST, OPTIONS");
@@ -299,6 +335,30 @@ Deno.serve(async (req) => {
 
   const body = (await req.json().catch(() => null)) as Payload | null;
   if (!body?.action) return fail("Missing action", 400, null, req);
+
+  const isOwnerMaster = isOwnerMasterEmail(auth.user.email ?? null);
+  const ownerMasterOnlyActions = new Set<Payload["action"]>([
+    "list_platform_owners",
+    "create_platform_owner",
+    "cleanup_owner_stress_data",
+  ]);
+
+  if (ownerMasterOnlyActions.has(body.action) && !isOwnerMaster) {
+    return fail("Forbidden: owner master only", 403, null, req);
+  }
+
+  if (!isOwnerMaster && body.action !== "list_audit_logs") {
+    await logOwnerMasterHiddenAudit(admin, {
+      actorId: auth.user.id,
+      actorEmail: auth.user.email,
+      empresaId: body.empresa_id ?? null,
+      actionType: "OWNER_SHADOW_ACTION",
+      details: {
+        action: body.action,
+        at: new Date().toISOString(),
+      },
+    }).catch(() => null);
+  }
 
   if (body.action === "dashboard" || body.action === "platform_stats") {
     const now = new Date();
@@ -806,7 +866,6 @@ Deno.serve(async (req) => {
     }
 
     const { data: updatedRows, error } = await targetQuery;
-
     if (error) return fail(error.message, 400, null, req);
 
     const updated = (updatedRows ?? [])[0];
@@ -1027,6 +1086,8 @@ Deno.serve(async (req) => {
       .order("created_at", { ascending: false })
       .limit(1000);
 
+    if (!isOwnerMaster) query = query.neq("source", "owner-master-shadow");
+
     if (filters.empresa_id) query = query.eq("empresa_id", filters.empresa_id);
     if (filters.user_id) query = query.eq("actor_id", filters.user_id);
     if (filters.module) query = query.ilike("source", `%${filters.module}%`);
@@ -1170,6 +1231,220 @@ Deno.serve(async (req) => {
 
     if (error) return fail(error.message, 400, null, req);
     return ok({ success: true }, 200, req);
+  }
+
+  if (body.action === "list_platform_owners") {
+    const { data: roles, error: rolesError } = await admin
+      .from("user_roles")
+      .select("user_id, empresa_id, role")
+      .in("role", ["SYSTEM_OWNER", "SYSTEM_ADMIN"])
+      .order("role", { ascending: true })
+      .limit(500);
+
+    if (rolesError) return fail(rolesError.message, 400, null, req);
+
+    const userIds = Array.from(new Set((roles ?? []).map((row: any) => row.user_id).filter(Boolean)));
+    let profiles: any[] = [];
+    if (userIds.length > 0) {
+      const { data: profileRows, error: profileError } = await admin
+        .from("profiles")
+        .select("id,nome,email,empresa_id")
+        .in("id", userIds)
+        .limit(500);
+
+      if (profileError) return fail(profileError.message, 400, null, req);
+      profiles = profileRows ?? [];
+    }
+
+    const profileById = new Map((profiles ?? []).map((profile: any) => [profile.id, profile]));
+    const owners = (roles ?? []).map((row: any) => ({
+      user_id: row.user_id,
+      empresa_id: row.empresa_id,
+      role: row.role,
+      profile: profileById.get(row.user_id) ?? null,
+    }));
+
+    return ok({ owners }, 200, req);
+  }
+
+  if (body.action === "create_platform_owner") {
+    if (!body.owner_user?.nome || !body.owner_user?.email) {
+      return fail("owner_user nome and email are required", 400, null, req);
+    }
+
+    const normalizedEmail = body.owner_user.email.trim().toLowerCase();
+    const password = body.owner_user.password?.trim() || `Tmp#${Math.random().toString(36).slice(2, 10)}!`;
+
+    const { data: existingUsersPage, error: listError } = await admin.auth.admin.listUsers({ page: 1, perPage: 1000 });
+    if (listError) return fail(listError.message, 400, null, req);
+
+    const existingUser = (existingUsersPage?.users ?? []).find((user: any) => (user?.email ?? "").toLowerCase() === normalizedEmail);
+    let ownerUserId = existingUser?.id ?? null;
+
+    if (!ownerUserId) {
+      const { data: createdAuth, error: createAuthError } = await admin.auth.admin.createUser({
+        email: normalizedEmail,
+        password,
+        email_confirm: true,
+        user_metadata: { nome: body.owner_user.nome },
+      });
+
+      if (createAuthError || !createdAuth?.user?.id) {
+        return fail(createAuthError?.message ?? "Failed to create owner user", 400, null, req);
+      }
+
+      ownerUserId = createdAuth.user.id;
+    }
+
+    const { data: company } = await admin
+      .from("empresas")
+      .select("id")
+      .order("created_at", { ascending: true })
+      .limit(1)
+      .maybeSingle();
+
+    if (!company?.id) return fail("Nenhuma empresa disponível para vínculo do owner", 400, null, req);
+
+    const ownerRole = body.owner_user.role ?? "SYSTEM_ADMIN";
+
+    const { error: profileError } = await admin
+      .from("profiles")
+      .upsert({
+        id: ownerUserId,
+        empresa_id: company.id,
+        nome: body.owner_user.nome,
+        email: normalizedEmail,
+      }, { onConflict: "id" });
+
+    if (profileError) return fail(profileError.message, 400, null, req);
+
+    const { error: roleError } = await admin
+      .from("user_roles")
+      .upsert({
+        user_id: ownerUserId,
+        empresa_id: company.id,
+        role: ownerRole,
+      }, { onConflict: "user_id,empresa_id,role" });
+
+    if (roleError) return fail(roleError.message, 400, null, req);
+
+    await logOwnerMasterHiddenAudit(admin, {
+      actorId: auth.user.id,
+      actorEmail: auth.user.email,
+      empresaId: company.id,
+      actionType: "OWNER_MASTER_CREATE_OWNER",
+      details: {
+        owner_user_id: ownerUserId,
+        owner_email: normalizedEmail,
+        owner_role: ownerRole,
+      },
+    });
+
+    return ok({
+      success: true,
+      owner: {
+        user_id: ownerUserId,
+        email: normalizedEmail,
+        role: ownerRole,
+        temporary_password: existingUser ? null : password,
+      },
+    }, 200, req);
+  }
+
+  if (body.action === "cleanup_owner_stress_data") {
+    const summary = {
+      companies: 0,
+      plans: 0,
+      users: 0,
+      profiles: 0,
+      roles: 0,
+      contracts: 0,
+      contract_versions: 0,
+      company_settings: 0,
+      company_data: 0,
+      support_tickets: 0,
+    };
+
+    const { data: stressCompanies } = await admin
+      .from("empresas")
+      .select("id")
+      .or("slug.ilike.stress-company-%,nome.ilike.Stress Company %")
+      .limit(2000);
+
+    const companyIds = (stressCompanies ?? []).map((row: any) => row.id).filter(Boolean);
+    summary.companies = companyIds.length;
+
+    const { data: stressPlans } = await admin
+      .from("plans")
+      .select("id")
+      .ilike("code", "stress-plan-%")
+      .limit(2000);
+
+    const planIds = (stressPlans ?? []).map((row: any) => row.id).filter(Boolean);
+    summary.plans = planIds.length;
+
+    const { data: stressProfiles } = await admin
+      .from("profiles")
+      .select("id")
+      .or("email.ilike.master-%@gppis.com.br,email.ilike.user-%@gppis.com.br")
+      .limit(4000);
+
+    const stressUserIds = Array.from(new Set((stressProfiles ?? []).map((row: any) => row.id).filter(Boolean)));
+    summary.users = stressUserIds.length;
+
+    if (companyIds.length > 0) {
+      const { data: contractsRows } = await admin
+        .from("contracts")
+        .select("id")
+        .in("empresa_id", companyIds)
+        .limit(4000);
+
+      const contractIds = (contractsRows ?? []).map((row: any) => row.id).filter(Boolean);
+      summary.contracts = contractIds.length;
+
+      if (contractIds.length > 0) {
+        await admin.from("contract_versions").delete().in("contract_id", contractIds);
+        await admin.from("contracts").delete().in("id", contractIds);
+        summary.contract_versions = contractIds.length;
+      }
+
+      await admin.from("subscriptions").delete().in("empresa_id", companyIds);
+      await admin.from("configuracoes_sistema").delete().in("empresa_id", companyIds);
+      await admin.from("dados_empresa").delete().in("empresa_id", companyIds);
+      await admin.from("support_tickets").delete().in("empresa_id", companyIds);
+      await admin.from("user_roles").delete().in("empresa_id", companyIds);
+      await admin.from("profiles").delete().in("empresa_id", companyIds);
+      await admin.from("empresas").delete().in("id", companyIds);
+
+      summary.company_settings = companyIds.length;
+      summary.company_data = companyIds.length;
+      summary.support_tickets = companyIds.length;
+    }
+
+    if (planIds.length > 0) {
+      await admin.from("subscriptions").delete().in("plan_id", planIds);
+      await admin.from("plans").delete().in("id", planIds);
+    }
+
+    if (stressUserIds.length > 0) {
+      await admin.from("user_roles").delete().in("user_id", stressUserIds);
+      await admin.from("profiles").delete().in("id", stressUserIds);
+      for (const userId of stressUserIds) {
+        await admin.auth.admin.deleteUser(userId);
+      }
+      summary.roles = stressUserIds.length;
+      summary.profiles = stressUserIds.length;
+    }
+
+    await logOwnerMasterHiddenAudit(admin, {
+      actorId: auth.user.id,
+      actorEmail: auth.user.email,
+      empresaId: null,
+      actionType: "OWNER_MASTER_CLEANUP_STRESS_DATA",
+      details: summary,
+    });
+
+    return ok({ success: true, summary }, 200, req);
   }
 
   return fail("Unsupported action", 400, null, req);

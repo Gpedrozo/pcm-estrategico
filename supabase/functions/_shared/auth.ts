@@ -65,7 +65,7 @@ export async function isSystemOperator(admin: ReturnType<typeof adminClient>, us
     .from("user_roles")
     .select("role")
     .eq("user_id", userId)
-    .in("role", ["SYSTEM_OWNER", "MASTER_TI"])
+    .in("role", ["SYSTEM_OWNER", "SYSTEM_ADMIN", "MASTER_TI"])
     .limit(1);
 
   if (error) return false;

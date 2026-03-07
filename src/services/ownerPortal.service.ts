@@ -32,6 +32,20 @@ export type OwnerAction =
   | 'impersonate_company'
   | 'stop_impersonation'
   | 'update_subscription_billing'
+  | 'list_platform_owners'
+  | 'create_platform_owner'
+
+export interface PlatformOwnerRow {
+  user_id: string
+  empresa_id?: string | null
+  role: 'SYSTEM_OWNER' | 'SYSTEM_ADMIN'
+  profile?: {
+    id?: string
+    nome?: string
+    email?: string
+    empresa_id?: string
+  } | null
+}
 
 export interface OwnerCompany {
   id: string
@@ -490,5 +504,35 @@ export async function stopImpersonation(params?: { empresa_id?: string; empresa_
     empresa_id: params?.empresa_id,
     empresa_nome: params?.empresa_nome,
     reason: params?.reason,
+  })
+}
+
+export async function listPlatformOwners(): Promise<PlatformOwnerRow[]> {
+  const data = await callOwnerAdmin<{ owners: PlatformOwnerRow[] }>({ action: 'list_platform_owners' })
+  return data.owners ?? []
+}
+
+export async function createPlatformOwner(payload: {
+  nome: string
+  email: string
+  password?: string
+  role?: 'SYSTEM_ADMIN'
+}) {
+  return callOwnerAdmin<{
+    success: boolean
+    owner?: {
+      user_id: string
+      email: string
+      role: 'SYSTEM_OWNER' | 'SYSTEM_ADMIN'
+      temporary_password?: string | null
+    }
+  }>({
+    action: 'create_platform_owner',
+    owner_user: {
+      nome: payload.nome,
+      email: payload.email,
+      password: payload.password,
+      role: payload.role ?? 'SYSTEM_ADMIN',
+    },
   })
 }
