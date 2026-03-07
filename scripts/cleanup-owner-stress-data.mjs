@@ -10,7 +10,10 @@ const client = createClient(URL, PUB, {
 })
 
 async function main() {
-  const login = await client.auth.signInWithPassword({ email: OWNER_EMAIL, password: OWNER_PASSWORD })
+  const login = await client.auth.signInWithPassword({
+    email: OWNER_EMAIL,
+    password: OWNER_PASSWORD,
+  })
 
   if (login.error || !login.data.session?.access_token) {
     throw new Error(`Falha login owner master: ${login.error?.message || 'sem sessão'}`)

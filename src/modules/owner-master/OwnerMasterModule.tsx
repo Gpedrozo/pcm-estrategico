@@ -27,7 +27,11 @@ export function OwnerMasterModule() {
   const { data: ownersData, isLoading: isLoadingOwners } = useOwnerMasterOwners()
   const { data: hiddenLogsData, isLoading: isLoadingLogs } = useOwnerAuditLogs({ module: 'owner-master-shadow' })
 
-  const [form, setForm] = useState({ nome: '', email: '', password: '' })
+  const [form, setForm] = useState({
+    nome: '',
+    email: '',
+    password: '',
+  })
   const [message, setMessage] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
 
@@ -68,12 +72,31 @@ export function OwnerMasterModule() {
         <p className="mb-3 text-xs text-slate-400">Área restrita para governança da plataforma: criação de owners e auditoria oculta operacional.</p>
 
         <div className="grid gap-2 md:grid-cols-3">
-          <input className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm" placeholder="Nome do owner" value={form.nome} onChange={(e) => setForm((prev) => ({ ...prev, nome: e.target.value }))} />
-          <input className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm" placeholder="Email do owner" value={form.email} onChange={(e) => setForm((prev) => ({ ...prev, email: e.target.value }))} />
-          <input className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm" placeholder="Senha inicial (opcional)" value={form.password} onChange={(e) => setForm((prev) => ({ ...prev, password: e.target.value }))} />
+          <input
+            className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm"
+            placeholder="Nome do owner"
+            value={form.nome}
+            onChange={(e) => setForm((prev) => ({ ...prev, nome: e.target.value }))}
+          />
+          <input
+            className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm"
+            placeholder="Email do owner"
+            value={form.email}
+            onChange={(e) => setForm((prev) => ({ ...prev, email: e.target.value }))}
+          />
+          <input
+            className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm"
+            placeholder="Senha inicial (opcional)"
+            value={form.password}
+            onChange={(e) => setForm((prev) => ({ ...prev, password: e.target.value }))}
+          />
         </div>
 
-        <button onClick={handleCreateOwner} className="mt-3 rounded-md bg-emerald-500 px-4 py-2 text-sm font-semibold text-slate-900" disabled={createPlatformOwnerMutation.isPending}>
+        <button
+          onClick={handleCreateOwner}
+          className="mt-3 rounded-md bg-emerald-500 px-4 py-2 text-sm font-semibold text-slate-900"
+          disabled={createPlatformOwnerMutation.isPending}
+        >
           Criar owner
         </button>
 

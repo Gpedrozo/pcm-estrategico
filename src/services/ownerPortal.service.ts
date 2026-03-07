@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { supabase } from '@/integrations/supabase/client'
 
 export type OwnerAction =
@@ -201,6 +200,7 @@ export async function callOwnerAdmin<T = unknown>(payload: Record<string, unknow
         window.localStorage.removeItem('supabase.auth.token')
       }
     } catch {
+      return
     }
   }
 
@@ -239,6 +239,7 @@ export async function callOwnerAdmin<T = unknown>(payload: Record<string, unknow
           }
         }
       } catch {
+        return String((error as any)?.message || '')
       }
     }
 
