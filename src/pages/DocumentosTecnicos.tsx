@@ -48,26 +48,36 @@ interface DocumentoTecnico {
 }
 
 const useDocumentos = () => {
+  const { tenantId } = useAuth();
+
   return useQuery({
-    queryKey: ['documentos_tecnicos'],
+    queryKey: ['documentos_tecnicos', tenantId],
     queryFn: async () => {
+      if (!tenantId) return [];
+
       const { data, error } = await supabase
         .from('documentos_tecnicos')
         .select('*')
+        .eq('empresa_id', tenantId)
         .order('created_at', { ascending: false });
       if (error) throw error;
       return data as DocumentoTecnico[];
     },
+    enabled: Boolean(tenantId),
   });
 };
 
 const useCreateDocumento = () => {
+  const { tenantId } = useAuth();
   const queryClient = useQueryClient();
+
   return useMutation({
     mutationFn: async (data: { codigo: string; titulo: string; tipo: string; tag?: string; descricao?: string; versao?: string; status?: string }) => {
+      if (!tenantId) throw new Error('Tenant não identificado para cadastro do documento.');
+
       const { data: result, error } = await supabase
         .from('documentos_tecnicos')
-        .insert([data])
+        .insert([{ ...data, empresa_id: tenantId }])
         .select()
         .single();
       if (error) throw error;

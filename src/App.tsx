@@ -47,7 +47,6 @@ const DocumentosTecnicos = lazy(() => import('./pages/DocumentosTecnicos'))
 const Lubrificacao = lazy(() => import('./pages/Lubrificacao'))
 const NotFound = lazy(() => import('./pages/NotFound'))
 const Instalar = lazy(() => import('./pages/Instalar'))
-const MasterTI = lazy(() => import('./pages/MasterTI'))
 const ArquivosOwner = lazy(() => import('./pages/ArquivosOwner'))
 const RootCauseAIPage = lazy(() => import('./modules/rootCauseAI/RootCauseAIPage'))
 import { logger } from "@/lib/logger";
@@ -179,7 +178,7 @@ function TenantRoutes() {
                   }
                 />
 
-                <Route path="/master-ti" element={<MasterTI />} />
+                <Route path="/master-ti" element={<Navigate to="/dashboard" replace />} />
                 <Route path="/inteligencia-causa-raiz" element={<RootCauseAIPage />} />
               </Route>
 

@@ -26,7 +26,6 @@ import {
   DollarSign,
   BarChart3,
   FileArchive,
-  Crown,
   FolderTree,
   Droplet,
 } from 'lucide-react';
@@ -100,7 +99,7 @@ const adminMenuItems = [
 ];
 
 export function AppSidebar() {
-  const { user, logout, isAdmin, isMasterTI } = useAuth();
+  const { user, logout, isAdmin } = useAuth();
   const { branding } = useBranding();
   const location = useLocation();
 
@@ -240,20 +239,7 @@ export function AppSidebar() {
           </SidebarGroup>
         )}
 
-        {isMasterTI && (
-          <SidebarGroup className="mt-4">
-            <SidebarGroupLabel className="text-sidebar-foreground/50 uppercase text-xs font-semibold px-3 mb-2">
-              Master TI
-            </SidebarGroupLabel>
-            <SidebarGroupContent>
-              <SidebarMenu>
-                {renderMenuLink({ title: 'Painel Master', url: '/master-ti', icon: Crown })}
-              </SidebarMenu>
-            </SidebarGroupContent>
-          </SidebarGroup>
-        )}
 
-        
       </SidebarContent>
 
       <SidebarFooter className="p-4 border-t border-sidebar-border">

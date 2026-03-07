@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/contexts/AuthContext';
 
 export interface DocumentoTecnicoRow {
   id: string;
@@ -24,6 +25,7 @@ export interface DocumentoTecnicoRow {
 }
 
 export interface DocumentoTecnicoInsert {
+  empresa_id?: string;
   codigo: string;
   titulo: string;
   tipo?: string | null;
@@ -54,48 +56,62 @@ export interface DocumentoTecnicoUpdate {
 }
 
 export function useDocumentosTecnicos() {
+  const { tenantId } = useAuth();
+
   return useQuery({
-    queryKey: ['documentos_tecnicos'],
+    queryKey: ['documentos_tecnicos', tenantId],
     queryFn: async () => {
+      if (!tenantId) return [];
+
       const { data, error } = await supabase
         .from('documentos_tecnicos')
         .select('*')
+        .eq('empresa_id', tenantId)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
       return data as DocumentoTecnicoRow[];
     },
+    enabled: Boolean(tenantId),
   });
 }
 
 export function useDocumentoByTag(tag: string | undefined) {
+  const { tenantId } = useAuth();
+
   return useQuery({
-    queryKey: ['documentos_tecnicos', 'tag', tag],
+    queryKey: ['documentos_tecnicos', 'tag', tag, tenantId],
     queryFn: async () => {
-      if (!tag) return [];
+      if (!tag || !tenantId) return [];
       
       const { data, error } = await supabase
         .from('documentos_tecnicos')
         .select('*')
+        .eq('empresa_id', tenantId)
         .eq('tag', tag)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
       return data as DocumentoTecnicoRow[];
     },
-    enabled: !!tag,
+    enabled: !!tag && !!tenantId,
   });
 }
 
 export function useCreateDocumentoTecnico() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const { tenantId } = useAuth();
 
   return useMutation({
     mutationFn: async (documento: DocumentoTecnicoInsert) => {
+      if (!tenantId) {
+        throw new Error('Tenant não identificado para cadastro do documento.');
+      }
+
       const { data, error } = await supabase
         .from('documentos_tecnicos')
-        .insert(documento)
+        .insert({ ...documento, empresa_id: tenantId })
         .select()
         .single();
 

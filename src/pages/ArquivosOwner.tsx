@@ -2,8 +2,8 @@ import { FolderTree } from 'lucide-react';
 
 export const OWNER_FILES = [
   {
-    path: '/master-ti',
-    description: 'Tela principal do owner (Master TI), acessível para perfil administrativo apropriado.',
+    path: '/',
+    description: 'Portal principal do owner para governança global multiempresa.',
   },
   {
     path: '/usuarios',
