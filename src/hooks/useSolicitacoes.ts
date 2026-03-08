@@ -1,6 +1,73 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import {
+  insertWithColumnFallback,
+  isMissingTableError,
+  updateWithColumnFallback,
+} from '@/lib/supabaseCompat';
+
+const SOLICITACOES_TABLE_CANDIDATES = ['solicitacoes_manutencao', 'solicitacoes'] as const;
+type SolicitacoesTableName = (typeof SOLICITACOES_TABLE_CANDIDATES)[number];
+
+let cachedSolicitacoesTable: SolicitacoesTableName | null = null;
+
+async function getSolicitacoesTable(): Promise<SolicitacoesTableName> {
+  if (cachedSolicitacoesTable) return cachedSolicitacoesTable;
+
+  for (const table of SOLICITACOES_TABLE_CANDIDATES) {
+    const { error } = await supabase.from(table).select('id').limit(1);
+    if (!error) {
+      cachedSolicitacoesTable = table;
+      return table;
+    }
+
+    if (!isMissingTableError(error)) {
+      throw error;
+    }
+  }
+
+  throw new Error('Nenhuma tabela de solicitações compatível foi encontrada no banco.');
+}
+
+function normalizeSolicitacaoRow(row: any): SolicitacaoRow {
+  return {
+    id: row.id,
+    numero_solicitacao: Number(row.numero_solicitacao ?? row.numero ?? 0),
+    equipamento_id: row.equipamento_id ?? null,
+    tag: String(row.tag ?? ''),
+    solicitante_nome: String(row.solicitante_nome ?? row.solicitante ?? ''),
+    solicitante_setor: row.solicitante_setor ?? null,
+    descricao_falha: String(row.descricao_falha ?? row.descricao ?? ''),
+    impacto: (row.impacto ?? 'MEDIO') as SolicitacaoRow['impacto'],
+    classificacao: (row.classificacao ?? 'PROGRAMAVEL') as SolicitacaoRow['classificacao'],
+    status: (row.status ?? 'PENDENTE') as SolicitacaoRow['status'],
+    os_id: row.os_id ?? null,
+    sla_horas: Number(row.sla_horas ?? 72),
+    data_limite: row.data_limite ?? null,
+    observacoes: row.observacoes ?? null,
+    created_at: row.created_at,
+    updated_at: row.updated_at ?? row.created_at,
+  };
+}
+
+async function fetchSolicitacoes(statuses?: string[]) {
+  const table = await getSolicitacoesTable();
+
+  let query = supabase
+    .from(table)
+    .select('*')
+    .order('created_at', { ascending: false });
+
+  if (statuses && statuses.length > 0) {
+    query = query.in('status', statuses);
+  }
+
+  const { data, error } = await query;
+
+  if (error) throw error;
+  return (data || []).map(normalizeSolicitacaoRow);
+}
 
 export interface SolicitacaoRow {
   id: string;
@@ -35,31 +102,14 @@ export interface SolicitacaoInsert {
 export function useSolicitacoes() {
   return useQuery({
     queryKey: ['solicitacoes'],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('solicitacoes_manutencao')
-        .select('*')
-        .order('created_at', { ascending: false });
-
-      if (error) throw error;
-      return data as SolicitacaoRow[];
-    },
+    queryFn: () => fetchSolicitacoes(),
   });
 }
 
 export function useSolicitacoesPendentes() {
   return useQuery({
     queryKey: ['solicitacoes', 'pendentes'],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('solicitacoes_manutencao')
-        .select('*')
-        .in('status', ['PENDENTE', 'APROVADA'])
-        .order('created_at', { ascending: false });
-
-      if (error) throw error;
-      return data as SolicitacaoRow[];
-    },
+    queryFn: () => fetchSolicitacoes(['PENDENTE', 'APROVADA']),
   });
 }
 
@@ -69,24 +119,32 @@ export function useCreateSolicitacao() {
 
   return useMutation({
     mutationFn: async (solicitacao: SolicitacaoInsert) => {
-      // Calculate SLA based on classification
       const slaMap = { EMERGENCIAL: 2, URGENTE: 8, PROGRAMAVEL: 72 };
       const slaHoras = slaMap[solicitacao.classificacao || 'PROGRAMAVEL'];
       const dataLimite = new Date();
       dataLimite.setHours(dataLimite.getHours() + slaHoras);
 
-      const { data, error } = await supabase
-        .from('solicitacoes_manutencao')
-        .insert({
-          ...solicitacao,
-          sla_horas: slaHoras,
-          data_limite: dataLimite.toISOString(),
-        })
-        .select()
-        .single();
+      const table = await getSolicitacoesTable();
+      const payload = {
+        ...solicitacao,
+        status: 'PENDENTE',
+        impacto: solicitacao.impacto ?? 'MEDIO',
+        classificacao: solicitacao.classificacao ?? 'PROGRAMAVEL',
+        sla_horas: slaHoras,
+        data_limite: dataLimite.toISOString(),
+      };
 
-      if (error) throw error;
-      return data as SolicitacaoRow;
+      const data = await insertWithColumnFallback(
+        async (payloadToInsert) =>
+          supabase
+            .from(table)
+            .insert(payloadToInsert)
+            .select()
+            .single(),
+        payload as Record<string, unknown>,
+      );
+
+      return normalizeSolicitacaoRow(data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['solicitacoes'] });
@@ -111,15 +169,20 @@ export function useUpdateSolicitacao() {
 
   return useMutation({
     mutationFn: async ({ id, ...updates }: Partial<SolicitacaoRow> & { id: string }) => {
-      const { data, error } = await supabase
-        .from('solicitacoes_manutencao')
-        .update(updates)
-        .eq('id', id)
-        .select()
-        .single();
+      const table = await getSolicitacoesTable();
 
-      if (error) throw error;
-      return data as SolicitacaoRow;
+      const data = await updateWithColumnFallback(
+        async (payloadToUpdate) =>
+          supabase
+            .from(table)
+            .update(payloadToUpdate)
+            .eq('id', id)
+            .select()
+            .single(),
+        updates as Record<string, unknown>,
+      );
+
+      return normalizeSolicitacaoRow(data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['solicitacoes'] });

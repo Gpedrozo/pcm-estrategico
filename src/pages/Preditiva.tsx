@@ -16,6 +16,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import { upsertMaintenanceSchedule } from '@/services/maintenanceSchedule';
+import { getSupabaseErrorMessage } from '@/lib/supabaseCompat';
 
 interface MedicaoPreditiva {
   id: string;
@@ -48,7 +49,7 @@ const useMedicoesPreditivas = () => {
 const useCreateMedicao = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (data: { tag: string; tipo_medicao: string; valor: number; unidade: string; status: string; limite_alerta?: number; limite_critico?: number; observacoes?: string; responsavel_nome?: string }) => {
+    mutationFn: async (data: { tag: string; tipo_medicao: string; valor: number; unidade: string; status: string; limite_alerta?: number; limite_critico?: number; observacoes?: string; responsavel_nome?: string; equipamento_id?: string | null }) => {
       const { data: result, error } = await supabase
         .from('medicoes_preditivas')
         .insert([data])
@@ -73,8 +74,12 @@ const useCreateMedicao = () => {
       queryClient.invalidateQueries({ queryKey: ['medicoes_preditivas'] });
       toast({ title: 'Medição registrada com sucesso' });
     },
-    onError: () => {
-      toast({ title: 'Erro ao registrar medição', variant: 'destructive' });
+    onError: (error) => {
+      toast({
+        title: 'Erro ao registrar medição',
+        description: getSupabaseErrorMessage(error) || 'Falha ao gravar medição no banco de dados.',
+        variant: 'destructive',
+      });
     },
   });
 };
@@ -107,6 +112,8 @@ export default function Preditiva() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    const equipamento = equipamentos?.find((item) => item.tag === formData.tag);
     
     // Determine status based on value and limits
     let status = 'NORMAL';
@@ -120,6 +127,7 @@ export default function Preditiva() {
       ...formData,
       status,
       responsavel_nome: user?.nome,
+      equipamento_id: equipamento?.id ?? null,
     });
     setIsModalOpen(false);
     setFormData({

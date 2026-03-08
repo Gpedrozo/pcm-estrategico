@@ -22,6 +22,7 @@ export default function PlanoFormDialog({ open, onOpenChange, equipamentos }: Pr
     codigo: '',
     nome: '',
     descricao: '',
+    equipamento_id: '',
     tag: '',
     tipo_gatilho: 'TEMPO' as 'TEMPO' | 'CICLO' | 'CONDICAO',
     frequencia_dias: 30,
@@ -32,9 +33,16 @@ export default function PlanoFormDialog({ open, onOpenChange, equipamentos }: Pr
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    await createMutation.mutateAsync(form);
+
+    const equipamentoSelecionado = equipamentos.find((e) => e.id === form.equipamento_id);
+    await createMutation.mutateAsync({
+      ...form,
+      equipamento_id: equipamentoSelecionado?.id || null,
+      tag: equipamentoSelecionado?.tag || form.tag || null,
+    });
+
     onOpenChange(false);
-    setForm({ codigo: '', nome: '', descricao: '', tag: '', tipo_gatilho: 'TEMPO', frequencia_dias: 30, tempo_estimado_min: 60, especialidade: '', instrucoes: '' });
+    setForm({ codigo: '', nome: '', descricao: '', equipamento_id: '', tag: '', tipo_gatilho: 'TEMPO', frequencia_dias: 30, tempo_estimado_min: 60, especialidade: '', instrucoes: '' });
   };
 
   const set = (k: string, v: any) => setForm(prev => ({ ...prev, [k]: v }));
@@ -50,12 +58,19 @@ export default function PlanoFormDialog({ open, onOpenChange, equipamentos }: Pr
               <Input value={form.codigo} onChange={e => set('codigo', e.target.value.toUpperCase())} required placeholder="PP-001" />
             </div>
             <div className="space-y-2">
-              <Label>TAG Equipamento</Label>
-              <Select value={form.tag} onValueChange={v => set('tag', v)}>
+              <Label>Equipamento *</Label>
+              <Select
+                value={form.equipamento_id}
+                onValueChange={value => {
+                  const equipamento = equipamentos.find((item) => item.id === value);
+                  set('equipamento_id', value);
+                  set('tag', equipamento?.tag || '');
+                }}
+              >
                 <SelectTrigger><SelectValue placeholder="Selecionar" /></SelectTrigger>
                 <SelectContent>
                   {equipamentos.filter(e => e.ativo).map(e => (
-                    <SelectItem key={e.id} value={e.tag}>{e.tag} - {e.nome}</SelectItem>
+                    <SelectItem key={e.id} value={e.id}>{e.tag} - {e.nome}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -95,7 +110,7 @@ export default function PlanoFormDialog({ open, onOpenChange, equipamentos }: Pr
             <Textarea value={form.instrucoes} onChange={e => set('instrucoes', e.target.value)} rows={3} placeholder="Instruções detalhadas para execução..." />
           </div>
           <div className="flex gap-3 pt-2">
-            <Button type="submit" className="flex-1" disabled={createMutation.isPending}>
+            <Button type="submit" className="flex-1" disabled={createMutation.isPending || !form.equipamento_id}>
               {createMutation.isPending ? 'Criando...' : 'Criar Plano'}
             </Button>
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>

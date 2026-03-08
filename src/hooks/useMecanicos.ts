@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { insertWithColumnFallback, updateWithColumnFallback } from '@/lib/supabaseCompat';
 
 export interface MecanicoRow {
   id: string;
@@ -69,14 +70,15 @@ export function useCreateMecanico() {
 
   return useMutation({
     mutationFn: async (mecanico: MecanicoInsert) => {
-      const { data, error } = await supabase
-        .from('mecanicos')
-        .insert(mecanico)
-        .select()
-        .single();
-
-      if (error) throw error;
-      return data;
+      return insertWithColumnFallback(
+        async (payload) =>
+          supabase
+            .from('mecanicos')
+            .insert(payload)
+            .select()
+            .single(),
+        mecanico as Record<string, unknown>,
+      );
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['mecanicos'] });
@@ -102,15 +104,16 @@ export function useUpdateMecanico() {
 
   return useMutation({
     mutationFn: async ({ id, ...updates }: MecanicoUpdate & { id: string }) => {
-      const { data, error } = await supabase
-        .from('mecanicos')
-        .update(updates)
-        .eq('id', id)
-        .select()
-        .single();
-
-      if (error) throw error;
-      return data;
+      return updateWithColumnFallback(
+        async (payload) =>
+          supabase
+            .from('mecanicos')
+            .update(payload)
+            .eq('id', id)
+            .select()
+            .single(),
+        updates as Record<string, unknown>,
+      );
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['mecanicos'] });

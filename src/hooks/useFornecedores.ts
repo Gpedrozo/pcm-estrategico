@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { insertWithColumnFallback, updateWithColumnFallback } from '@/lib/supabaseCompat';
 
 export interface FornecedorRow {
   id: string;
@@ -96,14 +97,15 @@ export function useCreateFornecedor() {
 
   return useMutation({
     mutationFn: async (fornecedor: FornecedorInsert) => {
-      const { data, error } = await supabase
-        .from('fornecedores')
-        .insert(fornecedor)
-        .select()
-        .single();
-
-      if (error) throw error;
-      return data as FornecedorRow;
+      return insertWithColumnFallback(
+        async (payload) =>
+          supabase
+            .from('fornecedores')
+            .insert(payload)
+            .select()
+            .single(),
+        fornecedor as Record<string, unknown>,
+      ) as Promise<FornecedorRow>;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['fornecedores'] });
@@ -128,15 +130,16 @@ export function useUpdateFornecedor() {
 
   return useMutation({
     mutationFn: async ({ id, ...updates }: Partial<FornecedorRow> & { id: string }) => {
-      const { data, error } = await supabase
-        .from('fornecedores')
-        .update(updates)
-        .eq('id', id)
-        .select()
-        .single();
-
-      if (error) throw error;
-      return data as FornecedorRow;
+      return updateWithColumnFallback(
+        async (payload) =>
+          supabase
+            .from('fornecedores')
+            .update(payload)
+            .eq('id', id)
+            .select()
+            .single(),
+        updates as Record<string, unknown>,
+      ) as Promise<FornecedorRow>;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['fornecedores'] });

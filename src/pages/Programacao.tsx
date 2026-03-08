@@ -130,10 +130,20 @@ export default function Programacao() {
     setCurrentWeekStart(startOfWeek(new Date(), { weekStartsOn: 1 }));
   };
 
+  const resolveEquipamentoByEvent = (event: { equipamento_id: string | null; titulo: string }) => {
+    const byId = equipamentos?.find((item) => item.id === event.equipamento_id);
+    if (byId) return byId;
+
+    const possibleTag = event.titulo.split('•')[0]?.trim();
+    if (!possibleTag) return undefined;
+
+    return equipamentos?.find((item) => item.tag === possibleTag);
+  };
+
   const handleEmitirOS = async () => {
     if (!selectedEvent) return;
 
-    const equipamento = equipamentos?.find((item) => item.id === selectedEvent.equipamento_id);
+    const equipamento = resolveEquipamentoByEvent(selectedEvent);
     const tag = equipamento?.tag || '';
 
     if (!tag) {

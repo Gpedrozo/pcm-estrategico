@@ -33,6 +33,14 @@ export default function Preventiva() {
   const { data: planos, isLoading, isError, error } = usePlanosPreventivos();
   const { data: equipamentos } = useEquipamentos();
 
+  const equipmentTagById = useMemo(() => {
+    const map = new Map<string, string>();
+    (equipamentos || []).forEach((equipamento) => {
+      map.set(equipamento.id, equipamento.tag);
+    });
+    return map;
+  }, [equipamentos]);
+
   const filteredPlanos = useMemo(() => {
     if (!planos) return [];
     return planos.filter(p => {
@@ -41,10 +49,10 @@ export default function Preventiva() {
       const s = search.toLowerCase();
       const codigo = (p.codigo || '').toLowerCase();
       const nome = (p.nome || '').toLowerCase();
-      const tag = (p.tag || '').toLowerCase();
+      const tag = (p.tag || equipmentTagById.get(p.equipamento_id || '') || '').toLowerCase();
       return codigo.includes(s) || nome.includes(s) || tag.includes(s);
     });
-  }, [planos, search, filterAtivo]);
+  }, [planos, search, filterAtivo, equipmentTagById]);
 
   const selectedPlano = planos?.find(p => p.id === selectedPlanoId) || null;
 
@@ -117,7 +125,10 @@ export default function Preventiva() {
                 Nenhum plano encontrado
               </div>
             ) : (
-              filteredPlanos.map((plano) => (
+              filteredPlanos.map((plano) => {
+                const displayTag = plano.tag || equipmentTagById.get(plano.equipamento_id || '') || null;
+
+                return (
                 <button
                   key={plano.id}
                   onClick={() => setSelectedPlanoId(plano.id)}
@@ -132,7 +143,7 @@ export default function Preventiva() {
                     </Badge>
                   </div>
                   <p className="text-sm font-medium truncate">{plano.nome}</p>
-                  {plano.tag && <p className="text-xs text-muted-foreground">TAG: {plano.tag}</p>}
+                  {displayTag && <p className="text-xs text-muted-foreground">TAG: {displayTag}</p>}
                   <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground">
                     <span className="flex items-center gap-1"><Calendar className="h-3 w-3" />{plano.frequencia_dias ?? 0}d</span>
                     <span className="flex items-center gap-1"><Clock className="h-3 w-3" />{formatMinutes(plano.tempo_estimado_min ?? 0)}</span>
@@ -143,7 +154,8 @@ export default function Preventiva() {
                     </p>
                   )}
                 </button>
-              ))
+                );
+              })
             )}
           </div>
         </div>

@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { insertWithColumnFallback, updateWithColumnFallback } from '@/lib/supabaseCompat';
 
 // ==================== INTERFACES ====================
 
@@ -145,14 +146,15 @@ export function useCreateMaterial() {
 
   return useMutation({
     mutationFn: async (material: MaterialInsert) => {
-      const { data, error } = await supabase
-        .from('materiais')
-        .insert(material)
-        .select()
-        .single();
-      
-      if (error) throw error;
-      return data;
+      return insertWithColumnFallback(
+        async (payload) =>
+          supabase
+            .from('materiais')
+            .insert(payload)
+            .select()
+            .single(),
+        material as Record<string, unknown>,
+      );
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['materiais'] });
@@ -177,12 +179,16 @@ export function useUpdateMaterial() {
 
   return useMutation({
     mutationFn: async ({ id, ...data }: MaterialUpdate & { id: string }) => {
-      const { error } = await supabase
-        .from('materiais')
-        .update(data)
-        .eq('id', id);
-      
-      if (error) throw error;
+      await updateWithColumnFallback(
+        async (payload) =>
+          supabase
+            .from('materiais')
+            .update(payload)
+            .eq('id', id)
+            .select()
+            .single(),
+        data as Record<string, unknown>,
+      );
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['materiais'] });
