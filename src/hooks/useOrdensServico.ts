@@ -15,7 +15,6 @@ export interface OrdemServicoRow {
   status: string;
   data_fechamento: string | null;
   tempo_estimado: number | null;
-  custo_estimado: number | null;
   modo_falha: string | null;
   causa_raiz: string | null;
   acao_corretiva: string | null;
@@ -34,7 +33,6 @@ export interface OrdemServicoInsert {
   solicitante: string;
   problema: string;
   tempo_estimado?: number | null;
-  custo_estimado?: number | null;
   usuario_abertura?: string | null;
 }
 
@@ -103,9 +101,20 @@ export function useCreateOrdemServico() {
 
   return useMutation({
     mutationFn: async (os: OrdemServicoInsert) => {
+      const payload = {
+        tipo: os.tipo,
+        prioridade: os.prioridade,
+        tag: os.tag,
+        equipamento: os.equipamento,
+        solicitante: os.solicitante,
+        problema: os.problema,
+        tempo_estimado: os.tempo_estimado,
+        usuario_abertura: os.usuario_abertura,
+      };
+
       const { data, error } = await supabase
         .from('ordens_servico')
-        .insert(os)
+        .insert(payload)
         .select()
         .single();
 

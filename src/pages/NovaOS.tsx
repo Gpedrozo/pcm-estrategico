@@ -99,7 +99,6 @@ export default function NovaOS() {
       solicitante: formData.solicitante,
       problema: formData.problema,
       tempo_estimado: formData.tempoEstimado ? parseInt(formData.tempoEstimado) : null,
-      custo_estimado: formData.custoEstimado ? parseFloat(formData.custoEstimado) : null,
       usuario_abertura: user?.id || null,
     });
 
