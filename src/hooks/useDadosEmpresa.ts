@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useTenant } from '@/contexts/TenantContext';
+import { useAuth } from '@/contexts/AuthContext';
 
 export interface DadosEmpresa {
   id: string;
@@ -56,13 +57,18 @@ export function useDadosEmpresa() {
 export function useUpdateDadosEmpresa() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const { isSystemOwner, isMasterTI } = useAuth();
 
   return useMutation({
-    mutationFn: async (payload: Partial<DadosEmpresa> & { id: string }) => {
-      const { id, ...updates } = payload;
+    mutationFn: async (updates: Partial<DadosEmpresa> & { id: string }) => {
+      if (!isSystemOwner && !isMasterTI) {
+        throw new Error('Edição de dados legais permitida somente no OWNER (MASTER_TI).');
+      }
+
+      const { id, ...rest } = updates;
       const { data, error } = await supabase
         .from('dados_empresa')
-        .update(updates)
+        .update(rest)
         .eq('id', id)
         .select()
         .single();
@@ -77,12 +83,9 @@ export function useUpdateDadosEmpresa() {
         description: 'Dados da empresa atualizados.',
       });
     },
-    onError: (error: Error) => {
-      toast({
-        title: 'Erro ao atualizar',
-        description: error.message,
-        variant: 'destructive',
-      });
+    onError: (error: unknown) => {
+      const message = error instanceof Error ? error.message : 'Falha ao atualizar dados da empresa.';
+      toast({ title: 'Erro', description: message, variant: 'destructive' });
     },
   });
 }

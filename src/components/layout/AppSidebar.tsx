@@ -93,6 +93,7 @@ const ssmaMenuItems = [
 ];
 
 const adminMenuItems = [
+  { title: 'Config. Empresa', url: '/empresa/configuracoes', icon: Settings },
   { title: 'Usuários', url: '/usuarios', icon: Users },
   { title: 'Auditoria', url: '/auditoria', icon: ClipboardList },
   { title: 'Arquivos Owner', url: '/admin/arquivos-owner', icon: FolderTree },
@@ -238,8 +239,6 @@ export function AppSidebar() {
             </SidebarGroupContent>
           </SidebarGroup>
         )}
-
-
       </SidebarContent>
 
       <SidebarFooter className="p-4 border-t border-sidebar-border">
