@@ -13,9 +13,16 @@ function getCreateOrdemServicoErrorMessage(error: unknown) {
     normalized.includes('schema cache') ||
     normalized.includes('could not find') ||
     normalized.includes('column');
+  const isMissingRequiredField =
+    normalized.includes('violates not-null constraint') ||
+    normalized.includes('null value in column');
 
   if (isSchemaMismatch) {
     return 'Não foi possível emitir a O.S por incompatibilidade de estrutura de dados. Atualize a página e tente novamente.';
+  }
+
+  if (isMissingRequiredField) {
+    return 'Não foi possível emitir a O.S porque um campo obrigatório não foi preenchido corretamente. Atualize a página e tente novamente.';
   }
 
   return message || 'Ocorreu um erro ao criar a ordem de serviço.';
@@ -122,7 +129,8 @@ export function useCreateOrdemServico() {
     mutationFn: async (os: OrdemServicoInsert) => {
       const payload = {
         tipo: os.tipo,
-        prioridade: os.prioridade,
+        prioridade: os.prioridade ?? 'MEDIA',
+        status: 'ABERTA',
         tag: os.tag,
         equipamento: os.equipamento,
         solicitante: os.solicitante,

@@ -227,6 +227,7 @@ export function useGenerateExecucoesNow() {
         const osPayloads = planosTyped.map(p => ({
           tipo: 'LUBRIFICACAO',
           prioridade: 'NORMAL',
+          status: 'ABERTA',
           tag: p.tag || '',
           equipamento: p.equipamento_id || p.nome || '',
           solicitante: 'Sistema Automático',
