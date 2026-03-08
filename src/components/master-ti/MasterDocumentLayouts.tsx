@@ -159,7 +159,6 @@ export function MasterDocumentLayouts() {
       nome: editingLayout.nome,
       configuracao: editConfig,
       ativo: true,
-      autor_nome: 'Master TI',
     });
 
     await updateLayout.mutateAsync({ id: editingLayout.id, ativo: false });
@@ -214,13 +213,13 @@ export function MasterDocumentLayouts() {
                       </div>
                       <div className="text-center my-4">
                         <p className="text-3xl font-mono font-black text-primary">
-                          {seq.prefixo}-{String(seq.ultimo_numero).padStart(6, '0')}
+                          {seq.prefixo}-{String(Math.max((seq.proximo_numero || 1) - 1, 0)).padStart(6, '0')}
                         </p>
                         <p className="text-xs text-muted-foreground mt-1">Último número emitido</p>
                       </div>
                       <Separator className="my-3" />
                       <div className="flex items-center justify-between">
-                        <span className="text-xs text-muted-foreground">Próximo: {seq.prefixo}-{String(seq.ultimo_numero + 1).padStart(6, '0')}</span>
+                        <span className="text-xs text-muted-foreground">Próximo: {seq.prefixo}-{String(seq.proximo_numero || 1).padStart(6, '0')}</span>
                         <Button size="sm" variant="ghost" className="h-7 text-xs text-destructive gap-1" onClick={() => setConfirmReset(seq.tipo_documento)}>
                           <RotateCcw className="h-3 w-3" /> Reiniciar
                         </Button>
@@ -286,7 +285,7 @@ export function MasterDocumentLayouts() {
         {/* HISTÓRICO */}
         <TabsContent value="versions" className="space-y-4">
           <p className="text-sm text-muted-foreground">
-            Histórico completo de todas as versões de layout criadas, com autor e data.
+            Histórico completo de todas as versões de layout criadas, com status e data.
           </p>
           {(layouts || []).sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()).map(layout => {
             const docType = DOCUMENT_TYPES.find(d => d.key === layout.tipo_documento);
@@ -298,7 +297,6 @@ export function MasterDocumentLayouts() {
                 <Badge variant={layout.ativo ? 'default' : 'outline'} className="text-[10px]">
                   {layout.ativo ? 'Ativo' : 'Inativo'}
                 </Badge>
-                {layout.autor_nome && <span className="text-xs text-muted-foreground">por {layout.autor_nome}</span>}
                 <span className="text-xs text-muted-foreground ml-auto">
                   {new Date(layout.created_at).toLocaleDateString('pt-BR')}
                 </span>

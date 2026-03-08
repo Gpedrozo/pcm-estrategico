@@ -1,21 +1,20 @@
-import { useEffect, useMemo, useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import { Button } from '@/components/ui/button';
-import { Skeleton } from '@/components/ui/skeleton';
-import { Building2, Lock, Save } from 'lucide-react';
-import { useDadosEmpresa } from '@/hooks/useDadosEmpresa';
+import { useEffect, useMemo, useState } from 'react'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Textarea } from '@/components/ui/textarea'
+import { Skeleton } from '@/components/ui/skeleton'
+import { Building2, Lock, Save } from 'lucide-react'
+import { useDadosEmpresa } from '@/hooks/useDadosEmpresa'
 import {
   useConfiguracoesOperacionaisEmpresa,
   useSalvarConfiguracoesOperacionaisEmpresa,
   type ConfiguracoesOperacionaisEmpresa,
-} from '@/hooks/useConfiguracoesOperacionaisEmpresa';
-import { useAuth } from '@/contexts/AuthContext';
-import { toast } from '@/hooks/use-toast';
+} from '@/hooks/useConfiguracoesOperacionaisEmpresa'
+import { toast } from '@/hooks/use-toast'
 
-const initialForm: ConfiguracoesOperacionaisEmpresa = {
+const emptyForm: ConfiguracoesOperacionaisEmpresa = {
   endereco: '',
   telefone: '',
   email: '',
@@ -23,20 +22,19 @@ const initialForm: ConfiguracoesOperacionaisEmpresa = {
   responsavel_nome: '',
   responsavel_cargo: '',
   observacoes: '',
-};
+}
 
 export default function ConfiguracoesEmpresa() {
-  const { isAdmin } = useAuth();
-  const { data: empresa, isLoading: loadingEmpresa } = useDadosEmpresa();
-  const { data: operacionais, isLoading: loadingOperacionais } = useConfiguracoesOperacionaisEmpresa();
-  const salvar = useSalvarConfiguracoesOperacionaisEmpresa();
+  const { data: dadosEmpresa, isLoading: loadingEmpresa } = useDadosEmpresa()
+  const { data: operacionais, isLoading: loadingOperacionais } = useConfiguracoesOperacionaisEmpresa()
+  const salvarOperacionais = useSalvarConfiguracoesOperacionaisEmpresa()
 
-  const [form, setForm] = useState<ConfiguracoesOperacionaisEmpresa>(initialForm);
+  const [form, setForm] = useState<ConfiguracoesOperacionaisEmpresa>(emptyForm)
 
   useEffect(() => {
     if (!operacionais?.valor) {
-      setForm(initialForm);
-      return;
+      setForm(emptyForm)
+      return
     }
 
     setForm({
@@ -47,80 +45,77 @@ export default function ConfiguracoesEmpresa() {
       responsavel_nome: operacionais.valor.responsavel_nome ?? '',
       responsavel_cargo: operacionais.valor.responsavel_cargo ?? '',
       observacoes: operacionais.valor.observacoes ?? '',
-    });
-  }, [operacionais]);
+    })
+  }, [operacionais])
 
-  const legalData = useMemo(
+  const dadosLegais = useMemo(
     () => ({
-      razao_social: empresa?.razao_social ?? '-',
-      nome_fantasia: empresa?.nome_fantasia ?? '-',
-      cnpj: empresa?.cnpj ?? '-',
+      razao_social: dadosEmpresa?.razao_social ?? '-',
+      nome_fantasia: dadosEmpresa?.nome_fantasia ?? '-',
+      cnpj: dadosEmpresa?.cnpj ?? '-',
     }),
-    [empresa],
-  );
+    [dadosEmpresa],
+  )
 
   const handleSubmit = async (event: React.FormEvent) => {
-    event.preventDefault();
+    event.preventDefault()
 
-    await salvar.mutateAsync(form, {
+    await salvarOperacionais.mutateAsync(form, {
       onSuccess: () => {
-        toast({ title: 'Configurações salvas', description: 'Dados operacionais atualizados com sucesso.' });
+        toast({
+          title: 'Configurações salvas',
+          description: 'Dados operacionais atualizados com sucesso.',
+        })
       },
       onError: (error: unknown) => {
-        const message = error instanceof Error ? error.message : 'Falha ao salvar configurações operacionais.';
+        const message = error instanceof Error ? error.message : 'Falha ao salvar configurações operacionais.'
         toast({
           title: 'Erro ao salvar',
           description: message,
           variant: 'destructive',
-        });
+        })
       },
-    });
-  };
-
-  if (!isAdmin) {
-    return (
-      <div className="space-y-2">
-        <h1 className="text-2xl font-bold text-foreground">Configurações da Empresa</h1>
-        <p className="text-muted-foreground">Somente administradores podem editar configurações operacionais.</p>
-      </div>
-    );
+    })
   }
 
-  if (loadingEmpresa || loadingOperacionais) {
+  const isLoading = loadingEmpresa || loadingOperacionais
+
+  if (isLoading) {
     return (
       <div className="space-y-6">
         <Skeleton className="h-8 w-64" />
         <Skeleton className="h-48 w-full" />
-        <Skeleton className="h-56 w-full" />
+        <Skeleton className="h-64 w-full" />
       </div>
-    );
+    )
   }
 
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold text-foreground">Configurações da Empresa</h1>
-        <p className="text-muted-foreground">Dados legais ficam somente leitura no tenant. Edite apenas dados operacionais.</p>
+        <p className="text-muted-foreground">Dados legais são somente leitura no tenant. Ajuste aqui apenas dados operacionais.</p>
       </div>
 
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-base">
-            <Lock className="h-4 w-4" /> Dados Legais (somente leitura)
+            <Lock className="h-4 w-4" />
+            Dados Legais (somente leitura)
           </CardTitle>
         </CardHeader>
         <CardContent className="grid grid-cols-1 gap-3 md:grid-cols-3">
           <div>
             <Label>Razão Social</Label>
-            <Input value={legalData.razao_social} readOnly disabled />
+            <Input value={dadosLegais.razao_social} readOnly disabled />
           </div>
           <div>
             <Label>Nome Fantasia</Label>
-            <Input value={legalData.nome_fantasia} readOnly disabled />
+            <Input value={dadosLegais.nome_fantasia} readOnly disabled />
           </div>
           <div>
             <Label>CNPJ</Label>
-            <Input value={legalData.cnpj} readOnly disabled />
+            <Input value={dadosLegais.cnpj} readOnly disabled />
           </div>
         </CardContent>
       </Card>
@@ -128,7 +123,8 @@ export default function ConfiguracoesEmpresa() {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-base">
-            <Building2 className="h-4 w-4" /> Configurações Operacionais
+            <Building2 className="h-4 w-4" />
+            Configurações Operacionais (editável no tenant)
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -166,13 +162,14 @@ export default function ConfiguracoesEmpresa() {
             </div>
 
             <div className="flex justify-end">
-              <Button type="submit" disabled={salvar.isPending} className="gap-2">
-                <Save className="h-4 w-4" /> Salvar Configurações
+              <Button type="submit" disabled={salvarOperacionais.isPending} className="gap-2">
+                <Save className="h-4 w-4" />
+                Salvar Configurações
               </Button>
             </div>
           </form>
         </CardContent>
       </Card>
     </div>
-  );
+  )
 }

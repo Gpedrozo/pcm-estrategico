@@ -317,6 +317,41 @@ async function logOwnerMasterHiddenAudit(
   });
 }
 
+async function getAuthStatusByUserId(
+  admin: ReturnType<typeof adminClient>,
+  userIds: string[],
+) {
+  const statusByUser = new Map<string, "ativo" | "inativo">();
+  if (!userIds.length) return statusByUser;
+
+  const target = new Set(userIds);
+  const now = Date.now();
+  let page = 1;
+
+  while (true) {
+    const { data, error } = await admin.auth.admin.listUsers({ page, perPage: 1000 });
+    if (error) break;
+
+    const users = data?.users ?? [];
+    for (const authUser of users) {
+      const id = authUser?.id;
+      if (!id || !target.has(id)) continue;
+
+      const bannedUntil = (authUser as any)?.banned_until as string | null | undefined;
+      const isInactive = Boolean(bannedUntil && new Date(bannedUntil).getTime() > now);
+      statusByUser.set(id, isInactive ? "inativo" : "ativo");
+    }
+
+    if (users.length < 1000 || statusByUser.size >= target.size) {
+      break;
+    }
+
+    page += 1;
+  }
+
+  return statusByUser;
+}
+
 Deno.serve(async (req) => {
   try {
   if (req.method === "OPTIONS") return preflight(req, "POST, OPTIONS");
@@ -700,8 +735,11 @@ Deno.serve(async (req) => {
       rolesByUser.set(row.user_id, bucket);
     }
 
+    const authStatusByUser = await getAuthStatusByUserId(admin, userIds);
+
     const merged = users.map((user: any) => ({
       ...user,
+      status: authStatusByUser.get(user.id) ?? "ativo",
       user_roles: rolesByUser.get(user.id) ?? [],
     }));
 
@@ -763,6 +801,24 @@ Deno.serve(async (req) => {
     });
 
     if (error) return fail(error.message, 400, null, req);
+
+    const { data: profileData } = await admin
+      .from("profiles")
+      .select("empresa_id")
+      .eq("id", body.user_id)
+      .maybeSingle();
+
+    await logPlatformAudit(admin, {
+      actorId: auth.user.id,
+      actorEmail: auth.user.email,
+      empresaId: profileData?.empresa_id ?? null,
+      actionType: "OWNER_SET_USER_STATUS",
+      details: {
+        user_id: body.user_id,
+        status: body.status,
+      },
+    });
+
     return ok({ success: true }, 200, req);
   }
 

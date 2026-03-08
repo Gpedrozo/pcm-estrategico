@@ -57,18 +57,18 @@ export function useDadosEmpresa() {
 export function useUpdateDadosEmpresa() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
-  const { isSystemOwner, isMasterTI } = useAuth();
+  const { isSystemOwner } = useAuth();
 
   return useMutation({
-    mutationFn: async (updates: Partial<DadosEmpresa> & { id: string }) => {
-      if (!isSystemOwner && !isMasterTI) {
-        throw new Error('Edição de dados legais permitida somente no OWNER (MASTER_TI).');
+    mutationFn: async (payload: Partial<DadosEmpresa> & { id: string }) => {
+      if (!isSystemOwner) {
+        throw new Error('Edição de dados legais da empresa permitida somente no portal OWNER.');
       }
 
-      const { id, ...rest } = updates;
+      const { id, ...updates } = payload;
       const { data, error } = await supabase
         .from('dados_empresa')
-        .update(rest)
+        .update(updates)
         .eq('id', id)
         .select()
         .single();

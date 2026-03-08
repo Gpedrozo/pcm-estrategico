@@ -1,74 +1,72 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { supabase } from '@/integrations/supabase/client'
+import { useAuth } from '@/contexts/AuthContext'
 
-const CONFIG_KEY = 'tenant.operational_profile';
+const CONFIG_KEY = 'tenant.operational_profile'
 
 export interface ConfiguracoesOperacionaisEmpresa {
-  endereco?: string;
-  telefone?: string;
-  email?: string;
-  site?: string;
-  responsavel_nome?: string;
-  responsavel_cargo?: string;
-  observacoes?: string;
+  endereco?: string
+  telefone?: string
+  email?: string
+  site?: string
+  responsavel_nome?: string
+  responsavel_cargo?: string
+  observacoes?: string
 }
 
 export function useConfiguracoesOperacionaisEmpresa() {
+  const { tenantId } = useAuth()
+
   return useQuery({
-    queryKey: ['configuracoes_operacionais_empresa'],
+    queryKey: ['tenant-operational-settings', tenantId],
     queryFn: async () => {
+      if (!tenantId) return null
+
       const { data, error } = await supabase
         .from('configuracoes_sistema')
         .select('id,valor')
+        .eq('empresa_id', tenantId)
         .eq('chave', CONFIG_KEY)
-        .maybeSingle();
+        .maybeSingle()
 
-      if (error) throw error;
-
-      let valor: ConfiguracoesOperacionaisEmpresa | null = null;
-
-      if (data?.valor) {
-        try {
-          valor = JSON.parse(data.valor) as ConfiguracoesOperacionaisEmpresa;
-        } catch {
-          valor = null;
-        }
-      }
+      if (error) throw error
 
       return {
         id: data?.id ?? null,
-        valor,
-      };
+        valor: (data?.valor as ConfiguracoesOperacionaisEmpresa | null) ?? null,
+      }
     },
-  });
+    enabled: Boolean(tenantId),
+  })
 }
 
 export function useSalvarConfiguracoesOperacionaisEmpresa() {
-  const queryClient = useQueryClient();
+  const { tenantId } = useAuth()
+  const queryClient = useQueryClient()
 
   return useMutation({
     mutationFn: async (valor: ConfiguracoesOperacionaisEmpresa) => {
-      const payload = {
-        chave: CONFIG_KEY,
-        categoria: 'tenant',
-        tipo: 'json',
-        descricao: 'Configurações operacionais editáveis no tenant',
-        editavel: true,
-        valor: JSON.stringify(valor ?? {}),
-        updated_at: new Date().toISOString(),
-      };
+      if (!tenantId) throw new Error('Tenant não identificado.')
 
       const { data, error } = await supabase
         .from('configuracoes_sistema')
-        .upsert(payload, { onConflict: 'chave' })
+        .upsert(
+          {
+            empresa_id: tenantId,
+            chave: CONFIG_KEY,
+            valor,
+            updated_at: new Date().toISOString(),
+          },
+          { onConflict: 'empresa_id,chave' },
+        )
         .select('id,valor')
-        .single();
+        .single()
 
-      if (error) throw error;
-      return data;
+      if (error) throw error
+      return data
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['configuracoes_operacionais_empresa'] });
+      queryClient.invalidateQueries({ queryKey: ['tenant-operational-settings', tenantId] })
     },
-  });
+  })
 }

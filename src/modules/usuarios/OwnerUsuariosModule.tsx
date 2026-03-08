@@ -7,6 +7,7 @@ type User = {
   nome?: string
   email?: string
   empresa_id?: string
+  status?: 'ativo' | 'inativo'
   user_roles?: Array<{ role?: string }>
 }
 
@@ -152,14 +153,22 @@ export function OwnerUsuariosModule() {
               <div>
                 <p className="text-sm font-medium">{user.nome ?? 'Sem nome'}</p>
                 <p className="text-xs text-slate-400">{user.email}</p>
-                <p className="text-xs text-slate-500">Empresa: {user.empresa_id ?? '-'} • Role: {user.user_roles?.[0]?.role ?? '-'}</p>
+                <p className="text-xs text-slate-500">Empresa: {user.empresa_id ?? '-'} • Role: {user.user_roles?.[0]?.role ?? '-'} • Status: {user.status ?? 'ativo'}</p>
               </div>
               <div className="flex gap-2">
-                <button onClick={() => setStatus(user.id, 'ativo')} className="rounded border border-emerald-800 px-3 py-1 text-xs text-emerald-300 hover:bg-emerald-950">
-                  Ativar
+                <button
+                  onClick={() => setStatus(user.id, 'ativo')}
+                  className="rounded border border-emerald-800 px-3 py-1 text-xs text-emerald-300 hover:bg-emerald-950"
+                  disabled={user.status === 'ativo'}
+                >
+                  Restaurar
                 </button>
-                <button onClick={() => setStatus(user.id, 'inativo')} className="rounded border border-rose-800 px-3 py-1 text-xs text-rose-300 hover:bg-rose-950">
-                  Inativar
+                <button
+                  onClick={() => setStatus(user.id, 'inativo')}
+                  className="rounded border border-rose-800 px-3 py-1 text-xs text-rose-300 hover:bg-rose-950"
+                  disabled={user.status === 'inativo'}
+                >
+                  Exclusão lógica
                 </button>
               </div>
             </div>

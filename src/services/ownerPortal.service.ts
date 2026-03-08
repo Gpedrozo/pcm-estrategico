@@ -65,6 +65,7 @@ export interface OwnerUser {
   nome?: string
   email?: string
   empresa_id?: string
+  status?: 'ativo' | 'inativo'
   user_roles?: Array<{ role: string }>
   created_at?: string
 }
