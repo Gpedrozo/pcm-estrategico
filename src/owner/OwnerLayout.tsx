@@ -1,9 +1,16 @@
 import React from 'react';
 import { LogOut, Shield } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
+import { useNavigate } from 'react-router-dom';
 
 export function OwnerLayout({ children }: { children: React.ReactNode }) {
   const { user, logout } = useAuth();
+  const navigate = useNavigate();
+
+  const handleLogout = async () => {
+    await logout();
+    navigate('/login', { replace: true });
+  };
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100">
@@ -24,7 +31,7 @@ export function OwnerLayout({ children }: { children: React.ReactNode }) {
               <p className="text-xs text-slate-400">{user?.email}</p>
             </div>
             <button
-              onClick={logout}
+              onClick={() => { void handleLogout(); }}
               className="rounded-md border border-slate-700 px-3 py-2 text-xs font-medium hover:bg-slate-800"
             >
               <LogOut className="mr-2 inline-block h-4 w-4" />

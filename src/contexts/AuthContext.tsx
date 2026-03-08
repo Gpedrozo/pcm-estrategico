@@ -499,7 +499,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } finally {
       setImpersonation(null);
       window.localStorage.removeItem(IMPERSONATION_STORAGE_KEY);
-      await supabase.auth.signOut();
+      setUser(null);
+      setSession(null);
+
+      const { error: localSignOutError } = await supabase.auth.signOut({ scope: 'local' });
+      if (localSignOutError) {
+        const { error: globalSignOutError } = await supabase.auth.signOut();
+        if (globalSignOutError) {
+          logger.warn('logout_signout_failed', {
+            localError: localSignOutError.message,
+            globalError: globalSignOutError.message,
+          });
+        }
+      }
     }
   }, [user]);
 
