@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { useToast } from '@/hooks/use-toast';
 import { 
   Calendar,
   ChevronLeft, 
@@ -13,20 +14,31 @@ import {
   Clock,
   CheckCircle2,
   AlertTriangle,
-  Wrench,
+  Loader2,
+  Printer,
   ExternalLink,
   Edit
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useEquipamentos } from '@/hooks/useEquipamentos';
 import { useMaintenanceSchedule, useUpdateMaintenanceStatus } from '@/hooks/useMaintenanceSchedule';
+import { useCreateOrdemServico } from '@/hooks/useOrdensServico';
 import { format, addDays, startOfWeek, isSameDay, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
 type EventTone = 'executado' | 'vencido' | 'proximo' | 'futuro';
 
+function mapMaintenanceTipoToOsTipo(tipo: string) {
+  if (tipo === 'preventiva') return 'PREVENTIVA';
+  if (tipo === 'lubrificacao') return 'LUBRIFICACAO';
+  if (tipo === 'inspecao') return 'INSPECAO';
+  if (tipo === 'preditiva') return 'PREDITIVA';
+  return 'PREVENTIVA';
+}
+
 export default function Programacao() {
   const navigate = useNavigate();
+  const { toast } = useToast();
   const [currentWeekStart, setCurrentWeekStart] = useState(() => 
     startOfWeek(new Date(), { weekStartsOn: 1 })
   );
@@ -39,6 +51,7 @@ export default function Programacao() {
   const { data: eventos, isLoading } = useMaintenanceSchedule(weekStartIso, weekEndIso);
   const { data: equipamentos } = useEquipamentos();
   const updateSchedule = useUpdateMaintenanceStatus();
+  const createOSMutation = useCreateOrdemServico();
 
   const weekDays = useMemo(() => {
     return Array.from({ length: 7 }, (_, i) => addDays(currentWeekStart, i));
@@ -115,6 +128,88 @@ export default function Programacao() {
 
   const goToToday = () => {
     setCurrentWeekStart(startOfWeek(new Date(), { weekStartsOn: 1 }));
+  };
+
+  const handleEmitirOS = async () => {
+    if (!selectedEvent) return;
+
+    const equipamento = equipamentos?.find((item) => item.id === selectedEvent.equipamento_id);
+    const tag = equipamento?.tag || '';
+
+    if (!tag) {
+      toast({
+        title: 'Não foi possível emitir O.S',
+        description: 'Este item não possui TAG de equipamento vinculada.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    const novaOS = await createOSMutation.mutateAsync({
+      tipo: mapMaintenanceTipoToOsTipo(selectedEvent.tipo),
+      prioridade: 'MEDIA',
+      tag,
+      equipamento: equipamento?.nome || selectedEvent.titulo,
+      solicitante: 'Programação de Manutenção',
+      problema: selectedEvent.descricao || `Execução programada: ${selectedEvent.titulo}`,
+      tempo_estimado: null,
+      usuario_abertura: null,
+    });
+
+    await updateSchedule.mutateAsync({ id: selectedEvent.id, status: 'emitido' });
+
+    toast({
+      title: 'O.S emitida com sucesso',
+      description: `Ordem de Serviço nº ${novaOS.numero_os} gerada a partir da programação.`,
+    });
+  };
+
+  const handlePrintFicha = () => {
+    if (!selectedEvent) return;
+
+    const equipamento = equipamentos?.find((item) => item.id === selectedEvent.equipamento_id);
+    const printWindow = window.open('', '_blank', 'width=900,height=700');
+    if (!printWindow) return;
+
+    const tipoLabel = selectedEvent.tipo === 'lubrificacao' ? 'Lubrificação' : 'Preventiva';
+
+    printWindow.document.write(`
+      <html>
+        <head>
+          <title>Ficha ${tipoLabel}</title>
+          <style>
+            body { font-family: Arial, sans-serif; margin: 24px; color: #111; }
+            h1 { font-size: 20px; margin-bottom: 12px; }
+            .line { margin: 8px 0; }
+            .label { font-weight: bold; }
+            .box { border: 1px solid #ccc; border-radius: 6px; padding: 12px; margin-top: 14px; }
+            .sign { margin-top: 32px; display: flex; justify-content: space-between; gap: 24px; }
+            .sign div { width: 45%; border-top: 1px solid #999; padding-top: 8px; text-align: center; }
+          </style>
+        </head>
+        <body>
+          <h1>Ficha de Execução - ${tipoLabel}</h1>
+          <div class="line"><span class="label">Título:</span> ${selectedEvent.titulo}</div>
+          <div class="line"><span class="label">Equipamento:</span> ${equipamento?.nome || 'Não informado'}</div>
+          <div class="line"><span class="label">TAG:</span> ${equipamento?.tag || 'Não informado'}</div>
+          <div class="line"><span class="label">Data programada:</span> ${new Date(selectedEvent.data_programada).toLocaleString('pt-BR')}</div>
+          <div class="line"><span class="label">Responsável:</span> ${selectedEvent.responsavel || '—'}</div>
+          <div class="box">
+            <div class="label">Descrição da atividade:</div>
+            <div>${selectedEvent.descricao || '—'}</div>
+          </div>
+          <div class="box" style="min-height: 140px;">
+            <div class="label">Anotações de execução:</div>
+          </div>
+          <div class="sign">
+            <div>Mecânico responsável</div>
+            <div>Supervisor / Aprovação</div>
+          </div>
+          <script>window.onload = () => window.print();</script>
+        </body>
+      </html>
+    `);
+    printWindow.document.close();
   };
 
   if (isLoading) {
@@ -290,6 +385,15 @@ export default function Programacao() {
                 </Button>
 
                 <Button
+                  className="gap-2"
+                  onClick={() => void handleEmitirOS()}
+                  disabled={createOSMutation.isPending || ['emitido', 'executado', 'concluido', 'concluida'].includes((selectedEvent.status || '').toLowerCase())}
+                >
+                  {createOSMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Calendar className="h-4 w-4" />}
+                  Emitir O.S
+                </Button>
+
+                <Button
                   variant="outline"
                   className="gap-2"
                   onClick={() => {
@@ -319,6 +423,16 @@ export default function Programacao() {
                 >
                   <ExternalLink className="h-4 w-4" /> Abrir item original
                 </Button>
+
+                {['preventiva', 'lubrificacao'].includes(selectedEvent.tipo) && (
+                  <Button
+                    variant="outline"
+                    className="gap-2 sm:col-span-2"
+                    onClick={handlePrintFicha}
+                  >
+                    <Printer className="h-4 w-4" /> Imprimir ficha para execução
+                  </Button>
+                )}
               </div>
             </div>
           )}

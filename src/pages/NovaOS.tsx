@@ -46,7 +46,6 @@ export default function NovaOS() {
     tipo: '' as TipoOS | '',
     prioridade: 'MEDIA' as PrioridadeOS,
     tempoEstimado: '',
-    custoEstimado: '',
   });
 
   const [createdOS, setCreatedOS] = useState<{
@@ -59,7 +58,6 @@ export default function NovaOS() {
     tipo: string;
     prioridade: string;
     tempo_estimado?: number | null;
-    custo_estimado?: number | null;
   } | null>(null);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [nomeEmpresa, setNomeEmpresa] = useState('MANUTENÇÃO INDUSTRIAL');
@@ -115,7 +113,6 @@ export default function NovaOS() {
       tipo: formData.tipo,
       prioridade: formData.prioridade,
       tempo_estimado: formData.tempoEstimado ? parseInt(formData.tempoEstimado) : null,
-      custo_estimado: formData.custoEstimado ? parseFloat(formData.custoEstimado) : null,
     });
     setShowSuccessModal(true);
   };
@@ -262,30 +259,16 @@ export default function NovaOS() {
           </div>
 
           {/* Estimates */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="tempoEstimado">Tempo Estimado (min)</Label>
-              <Input
-                id="tempoEstimado"
-                type="number"
-                min="0"
-                value={formData.tempoEstimado}
-                onChange={(e) => setFormData({ ...formData, tempoEstimado: e.target.value })}
-                placeholder="Ex: 120"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="custoEstimado">Custo Estimado (R$)</Label>
-              <Input
-                id="custoEstimado"
-                type="number"
-                min="0"
-                step="0.01"
-                value={formData.custoEstimado}
-                onChange={(e) => setFormData({ ...formData, custoEstimado: e.target.value })}
-                placeholder="Ex: 500.00"
-              />
-            </div>
+          <div className="space-y-2">
+            <Label htmlFor="tempoEstimado">Tempo Estimado (min)</Label>
+            <Input
+              id="tempoEstimado"
+              type="number"
+              min="0"
+              value={formData.tempoEstimado}
+              onChange={(e) => setFormData({ ...formData, tempoEstimado: e.target.value })}
+              placeholder="Ex: 120"
+            />
           </div>
 
           {/* User Info */}
