@@ -480,24 +480,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [validateTenantDomainAccess]);
 
   const logout = useCallback(async () => {
-    if (user) {
-      await writeAuditLog({
-        action: 'LOGOUT',
-        table: 'auth',
-        recordId: user.id,
-        empresaId: user.tenantId,
-        source: 'auth_context',
-        metadata: {
-          email: user.email,
-          event: 'logout',
-        },
-      });
+    try {
+      if (user) {
+        await writeAuditLog({
+          action: 'LOGOUT',
+          table: 'auth',
+          recordId: user.id,
+          empresaId: user.tenantId,
+          source: 'auth_context',
+          metadata: {
+            email: user.email,
+            event: 'logout',
+          },
+        });
+      }
+    } catch (error) {
+      void error;
+    } finally {
+      setImpersonation(null);
+      window.localStorage.removeItem(IMPERSONATION_STORAGE_KEY);
+      await supabase.auth.signOut();
     }
-
-    setImpersonation(null);
-    window.localStorage.removeItem(IMPERSONATION_STORAGE_KEY);
-
-    await supabase.auth.signOut();
   }, [user]);
 
   useEffect(() => {
