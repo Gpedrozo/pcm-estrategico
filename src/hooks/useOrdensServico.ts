@@ -2,6 +2,25 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 
+function getCreateOrdemServicoErrorMessage(error: unknown) {
+  const message =
+    typeof error === 'object' && error !== null && 'message' in error
+      ? String((error as { message?: unknown }).message ?? '')
+      : '';
+
+  const normalized = message.toLowerCase();
+  const isSchemaMismatch =
+    normalized.includes('schema cache') ||
+    normalized.includes('could not find') ||
+    normalized.includes('column');
+
+  if (isSchemaMismatch) {
+    return 'Não foi possível emitir a O.S por incompatibilidade de estrutura de dados. Atualize a página e tente novamente.';
+  }
+
+  return message || 'Ocorreu um erro ao criar a ordem de serviço.';
+}
+
 export interface OrdemServicoRow {
   id: string;
   numero_os: number;
@@ -132,10 +151,10 @@ export function useCreateOrdemServico() {
         description: `Ordem de Serviço nº ${data.numero_os} foi registrada.`,
       });
     },
-    onError: (error: any) => {
+    onError: (error: unknown) => {
       toast({
         title: 'Erro ao criar O.S',
-        description: error.message || 'Ocorreu um erro ao criar a ordem de serviço.',
+        description: getCreateOrdemServicoErrorMessage(error),
         variant: 'destructive',
       });
     },
