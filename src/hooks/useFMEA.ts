@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { insertWithColumnFallback, updateWithColumnFallback } from '@/lib/supabaseCompat';
 
 export interface FMEARow {
   id: string;
@@ -78,14 +79,15 @@ export function useCreateFMEA() {
 
   return useMutation({
     mutationFn: async (fmea: FMEAInsert) => {
-      const { data, error } = await supabase
-        .from('fmea')
-        .insert(fmea)
-        .select()
-        .single();
-
-      if (error) throw error;
-      return data as FMEARow;
+      return insertWithColumnFallback(
+        async (payload) =>
+          supabase
+            .from('fmea')
+            .insert(payload)
+            .select()
+            .single(),
+        fmea as Record<string, unknown>,
+      ) as Promise<FMEARow>;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['fmea'] });
@@ -110,15 +112,16 @@ export function useUpdateFMEA() {
 
   return useMutation({
     mutationFn: async ({ id, ...updates }: Partial<FMEARow> & { id: string }) => {
-      const { data, error } = await supabase
-        .from('fmea')
-        .update(updates)
-        .eq('id', id)
-        .select()
-        .single();
-
-      if (error) throw error;
-      return data as FMEARow;
+      return updateWithColumnFallback(
+        async (payload) =>
+          supabase
+            .from('fmea')
+            .update(payload)
+            .eq('id', id)
+            .select()
+            .single(),
+        updates as Record<string, unknown>,
+      ) as Promise<FMEARow>;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['fmea'] });

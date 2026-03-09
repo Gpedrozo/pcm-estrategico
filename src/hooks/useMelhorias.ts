@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { insertWithColumnFallback, updateWithColumnFallback } from '@/lib/supabaseCompat';
 
 export interface MelhoriaRow {
   id: string;
@@ -88,17 +89,18 @@ export function useCreateMelhoria() {
         roi_meses = Math.round((melhoria.custo_implementacao / melhoria.economia_anual) * 12);
       }
 
-      const { data, error } = await supabase
-        .from('melhorias')
-        .insert({
+      return insertWithColumnFallback(
+        async (payload) =>
+          supabase
+            .from('melhorias')
+            .insert(payload)
+            .select()
+            .single(),
+        {
           ...melhoria,
           roi_meses,
-        })
-        .select()
-        .single();
-
-      if (error) throw error;
-      return data as MelhoriaRow;
+        } as Record<string, unknown>,
+      ) as Promise<MelhoriaRow>;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['melhorias'] });
@@ -123,15 +125,16 @@ export function useUpdateMelhoria() {
 
   return useMutation({
     mutationFn: async ({ id, ...updates }: Partial<MelhoriaRow> & { id: string }) => {
-      const { data, error } = await supabase
-        .from('melhorias')
-        .update(updates)
-        .eq('id', id)
-        .select()
-        .single();
-
-      if (error) throw error;
-      return data as MelhoriaRow;
+      return updateWithColumnFallback(
+        async (payload) =>
+          supabase
+            .from('melhorias')
+            .update(payload)
+            .eq('id', id)
+            .select()
+            .single(),
+        updates as Record<string, unknown>,
+      ) as Promise<MelhoriaRow>;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['melhorias'] });

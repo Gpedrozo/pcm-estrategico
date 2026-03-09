@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { insertWithColumnFallback, updateWithColumnFallback } from '@/lib/supabaseCompat';
 
 // ==================== INTERFACES ====================
 
@@ -129,14 +130,15 @@ export function useCreatePlanta() {
 
   return useMutation({
     mutationFn: async (planta: PlantaInsert) => {
-      const { data, error } = await supabase
-        .from('plantas')
-        .insert(planta)
-        .select()
-        .single();
-      
-      if (error) throw error;
-      return data;
+      return insertWithColumnFallback(
+        async (payload) =>
+          supabase
+            .from('plantas')
+            .insert(payload)
+            .select()
+            .single(),
+        planta as Record<string, unknown>,
+      );
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['plantas'] });
@@ -161,12 +163,16 @@ export function useUpdatePlanta() {
 
   return useMutation({
     mutationFn: async ({ id, ...data }: PlantaUpdate & { id: string }) => {
-      const { error } = await supabase
-        .from('plantas')
-        .update(data)
-        .eq('id', id);
-      
-      if (error) throw error;
+      await updateWithColumnFallback(
+        async (payload) =>
+          supabase
+            .from('plantas')
+            .update(payload)
+            .eq('id', id)
+            .select()
+            .single(),
+        data as Record<string, unknown>,
+      );
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['plantas'] });
@@ -262,14 +268,15 @@ export function useCreateArea() {
 
   return useMutation({
     mutationFn: async (area: AreaInsert) => {
-      const { data, error } = await supabase
-        .from('areas')
-        .insert(area)
-        .select()
-        .single();
-      
-      if (error) throw error;
-      return data;
+      return insertWithColumnFallback(
+        async (payload) =>
+          supabase
+            .from('areas')
+            .insert(payload)
+            .select()
+            .single(),
+        area as Record<string, unknown>,
+      );
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['areas'] });
@@ -294,12 +301,16 @@ export function useUpdateArea() {
 
   return useMutation({
     mutationFn: async ({ id, ...data }: AreaUpdate & { id: string }) => {
-      const { error } = await supabase
-        .from('areas')
-        .update(data)
-        .eq('id', id);
-      
-      if (error) throw error;
+      await updateWithColumnFallback(
+        async (payload) =>
+          supabase
+            .from('areas')
+            .update(payload)
+            .eq('id', id)
+            .select()
+            .single(),
+        data as Record<string, unknown>,
+      );
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['areas'] });
@@ -395,14 +406,15 @@ export function useCreateSistema() {
 
   return useMutation({
     mutationFn: async (sistema: SistemaInsert) => {
-      const { data, error } = await supabase
-        .from('sistemas')
-        .insert(sistema)
-        .select()
-        .single();
-      
-      if (error) throw error;
-      return data;
+      return insertWithColumnFallback(
+        async (payload) =>
+          supabase
+            .from('sistemas')
+            .insert(payload)
+            .select()
+            .single(),
+        sistema as Record<string, unknown>,
+      );
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['sistemas'] });
@@ -427,12 +439,16 @@ export function useUpdateSistema() {
 
   return useMutation({
     mutationFn: async ({ id, ...data }: SistemaUpdate & { id: string }) => {
-      const { error } = await supabase
-        .from('sistemas')
-        .update(data)
-        .eq('id', id);
-      
-      if (error) throw error;
+      await updateWithColumnFallback(
+        async (payload) =>
+          supabase
+            .from('sistemas')
+            .update(payload)
+            .eq('id', id)
+            .select()
+            .single(),
+        data as Record<string, unknown>,
+      );
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['sistemas'] });

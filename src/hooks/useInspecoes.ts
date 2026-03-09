@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { upsertMaintenanceSchedule } from '@/services/maintenanceSchedule';
+import { insertWithColumnFallback, updateWithColumnFallback } from '@/lib/supabaseCompat';
 
 export interface InspecaoRow {
   id: string;
@@ -83,16 +84,18 @@ export function useCreateInspecao() {
 
   return useMutation({
     mutationFn: async (inspecao: InspecaoInsert) => {
-      const { data, error } = await supabase
-        .from('inspecoes')
-        .insert({
+      const data = await insertWithColumnFallback(
+        async (payload) =>
+          supabase
+            .from('inspecoes')
+            .insert(payload)
+            .select()
+            .single(),
+        {
           ...inspecao,
           status: 'EM_ANDAMENTO',
-        })
-        .select()
-        .single();
-
-      if (error) throw error;
+        } as Record<string, unknown>,
+      );
 
       await upsertMaintenanceSchedule({
         tipo: 'inspecao',
@@ -130,14 +133,16 @@ export function useUpdateInspecao() {
 
   return useMutation({
     mutationFn: async ({ id, ...updates }: Partial<InspecaoRow> & { id: string }) => {
-      const { data, error } = await supabase
-        .from('inspecoes')
-        .update(updates)
-        .eq('id', id)
-        .select()
-        .single();
-
-      if (error) throw error;
+      const data = await updateWithColumnFallback(
+        async (payload) =>
+          supabase
+            .from('inspecoes')
+            .update(payload)
+            .eq('id', id)
+            .select()
+            .single(),
+        updates as Record<string, unknown>,
+      );
 
       await upsertMaintenanceSchedule({
         tipo: 'inspecao',
@@ -193,14 +198,15 @@ export function useCreateAnomalia() {
 
   return useMutation({
     mutationFn: async (anomalia: Omit<AnomaliaRow, 'id' | 'created_at' | 'os_gerada_id' | 'status'>) => {
-      const { data, error } = await supabase
-        .from('anomalias_inspecao')
-        .insert(anomalia)
-        .select()
-        .single();
-
-      if (error) throw error;
-      return data as AnomaliaRow;
+      return insertWithColumnFallback(
+        async (payload) =>
+          supabase
+            .from('anomalias_inspecao')
+            .insert(payload)
+            .select()
+            .single(),
+        anomalia as Record<string, unknown>,
+      ) as Promise<AnomaliaRow>;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['anomalias'] });

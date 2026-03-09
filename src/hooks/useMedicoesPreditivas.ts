@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { deleteMaintenanceSchedule, upsertMaintenanceSchedule } from '@/services/maintenanceSchedule';
+import { insertWithColumnFallback, updateWithColumnFallback } from '@/lib/supabaseCompat';
 
 export interface MedicaoPreditivaRow {
   id: string;
@@ -101,13 +102,15 @@ export function useCreateMedicaoPreditiva() {
 
   return useMutation({
     mutationFn: async (medicao: MedicaoPreditivaInsert) => {
-      const { data, error } = await supabase
-        .from('medicoes_preditivas')
-        .insert(medicao)
-        .select()
-        .single();
-
-      if (error) throw error;
+      const data = await insertWithColumnFallback(
+        async (payload) =>
+          supabase
+            .from('medicoes_preditivas')
+            .insert(payload)
+            .select()
+            .single(),
+        medicao as Record<string, unknown>,
+      );
 
       await upsertMaintenanceSchedule({
         tipo: 'preditiva',
@@ -145,14 +148,16 @@ export function useUpdateMedicaoPreditiva() {
 
   return useMutation({
     mutationFn: async ({ id, ...updates }: MedicaoPreditivaUpdate & { id: string }) => {
-      const { data, error } = await supabase
-        .from('medicoes_preditivas')
-        .update(updates)
-        .eq('id', id)
-        .select()
-        .single();
-
-      if (error) throw error;
+      const data = await updateWithColumnFallback(
+        async (payload) =>
+          supabase
+            .from('medicoes_preditivas')
+            .update(payload)
+            .eq('id', id)
+            .select()
+            .single(),
+        updates as Record<string, unknown>,
+      );
 
       await upsertMaintenanceSchedule({
         tipo: 'preditiva',

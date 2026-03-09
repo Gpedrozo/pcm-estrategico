@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { deleteMaintenanceSchedule, upsertMaintenanceSchedule } from '@/services/maintenanceSchedule';
+import { insertWithColumnFallback, updateWithColumnFallback } from '@/lib/supabaseCompat';
 
 export interface PlanoPreventivo {
   id: string;
@@ -83,16 +84,19 @@ export function useCreatePlanoPreventivo() {
         proximaExecucao.setDate(proximaExecucao.getDate() + plano.frequencia_dias);
       }
 
-      const { data, error } = await supabase
-        .from('planos_preventivos')
-        .insert({
+      const data = await insertWithColumnFallback(
+        async (payload) =>
+          supabase
+            .from('planos_preventivos')
+            .insert(payload)
+            .select()
+            .single(),
+        {
           ...plano,
           proxima_execucao: proximaExecucao.toISOString(),
-        })
-        .select()
-        .single();
+        } as Record<string, unknown>,
+      );
 
-      if (error) throw error;
       await upsertMaintenanceSchedule({
         tipo: 'preventiva',
         origemId: data.id,
@@ -129,14 +133,16 @@ export function useUpdatePlanoPreventivo() {
 
   return useMutation({
     mutationFn: async ({ id, ...updates }: Partial<PlanoPreventivo> & { id: string }) => {
-      const { data, error } = await supabase
-        .from('planos_preventivos')
-        .update(updates)
-        .eq('id', id)
-        .select()
-        .single();
-
-      if (error) throw error;
+      const data = await updateWithColumnFallback(
+        async (payload) =>
+          supabase
+            .from('planos_preventivos')
+            .update(payload)
+            .eq('id', id)
+            .select()
+            .single(),
+        updates as Record<string, unknown>,
+      );
 
       await upsertMaintenanceSchedule({
         tipo: 'preventiva',

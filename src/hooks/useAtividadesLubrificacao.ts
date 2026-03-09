@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import type { AtividadeLubrificacao } from '@/types/lubrificacao';
+import { insertWithColumnFallback, updateWithColumnFallback } from '@/lib/supabaseCompat';
 
 export function useAtividadesByPlano(planoId: string | null) {
   return useQuery({
@@ -25,13 +26,15 @@ export function useCreateAtividade() {
 
   return useMutation({
     mutationFn: async (input: Partial<AtividadeLubrificacao> & { plano_id: string }) => {
-      const { data, error } = await supabase
-        .from('atividades_lubrificacao')
-        .insert(input)
-        .select()
-        .single();
-      if (error) throw error;
-      return data as AtividadeLubrificacao;
+      return insertWithColumnFallback(
+        async (payload) =>
+          supabase
+            .from('atividades_lubrificacao')
+            .insert(payload)
+            .select()
+            .single(),
+        input as Record<string, unknown>,
+      ) as Promise<AtividadeLubrificacao>;
     },
     onSuccess: (_d, vars) => {
       qc.invalidateQueries({ queryKey: ['atividades-lubrificacao', vars.plano_id] });
@@ -47,14 +50,16 @@ export function useUpdateAtividade() {
 
   return useMutation({
     mutationFn: async ({ id, plano_id, ...updates }: Partial<AtividadeLubrificacao> & { id: string; plano_id: string }) => {
-      const { data, error } = await supabase
-        .from('atividades_lubrificacao')
-        .update(updates)
-        .eq('id', id)
-        .select()
-        .single();
-      if (error) throw error;
-      return data as AtividadeLubrificacao;
+      return updateWithColumnFallback(
+        async (payload) =>
+          supabase
+            .from('atividades_lubrificacao')
+            .update(payload)
+            .eq('id', id)
+            .select()
+            .single(),
+        updates as Record<string, unknown>,
+      ) as Promise<AtividadeLubrificacao>;
     },
     onSuccess: (_d, vars) => {
       qc.invalidateQueries({ queryKey: ['atividades-lubrificacao', vars.plano_id] });

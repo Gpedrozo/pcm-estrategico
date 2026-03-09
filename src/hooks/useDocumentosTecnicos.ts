@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
+import { insertWithColumnFallback, updateWithColumnFallback } from '@/lib/supabaseCompat';
 
 export interface DocumentoTecnicoRow {
   id: string;
@@ -109,14 +110,15 @@ export function useCreateDocumentoTecnico() {
         throw new Error('Tenant não identificado para cadastro do documento.');
       }
 
-      const { data, error } = await supabase
-        .from('documentos_tecnicos')
-        .insert({ ...documento, empresa_id: tenantId })
-        .select()
-        .single();
-
-      if (error) throw error;
-      return data as DocumentoTecnicoRow;
+      return insertWithColumnFallback(
+        async (payload) =>
+          supabase
+            .from('documentos_tecnicos')
+            .insert(payload)
+            .select()
+            .single(),
+        { ...documento, empresa_id: tenantId } as Record<string, unknown>,
+      ) as Promise<DocumentoTecnicoRow>;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['documentos_tecnicos'] });
@@ -141,15 +143,16 @@ export function useUpdateDocumentoTecnico() {
 
   return useMutation({
     mutationFn: async ({ id, ...updates }: DocumentoTecnicoUpdate & { id: string }) => {
-      const { data, error } = await supabase
-        .from('documentos_tecnicos')
-        .update(updates)
-        .eq('id', id)
-        .select()
-        .single();
-
-      if (error) throw error;
-      return data as DocumentoTecnicoRow;
+      return updateWithColumnFallback(
+        async (payload) =>
+          supabase
+            .from('documentos_tecnicos')
+            .update(payload)
+            .eq('id', id)
+            .select()
+            .single(),
+        updates as Record<string, unknown>,
+      ) as Promise<DocumentoTecnicoRow>;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['documentos_tecnicos'] });

@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { insertWithColumnFallback, updateWithColumnFallback } from '@/lib/supabaseCompat';
 
 export interface EquipamentoRow {
   id: string;
@@ -91,14 +92,15 @@ export function useCreateEquipamento() {
 
   return useMutation({
     mutationFn: async (equipamento: EquipamentoInsert) => {
-      const { data, error } = await supabase
-        .from('equipamentos')
-        .insert(equipamento)
-        .select()
-        .single();
-
-      if (error) throw error;
-      return data;
+      return insertWithColumnFallback(
+        async (payload) =>
+          supabase
+            .from('equipamentos')
+            .insert(payload)
+            .select()
+            .single(),
+        equipamento as Record<string, unknown>,
+      );
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['equipamentos'] });
@@ -123,15 +125,16 @@ export function useUpdateEquipamento() {
 
   return useMutation({
     mutationFn: async ({ id, ...updates }: EquipamentoUpdate & { id: string }) => {
-      const { data, error } = await supabase
-        .from('equipamentos')
-        .update(updates)
-        .eq('id', id)
-        .select()
-        .single();
-
-      if (error) throw error;
-      return data;
+      return updateWithColumnFallback(
+        async (payload) =>
+          supabase
+            .from('equipamentos')
+            .update(payload)
+            .eq('id', id)
+            .select()
+            .single(),
+        updates as Record<string, unknown>,
+      );
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['equipamentos'] });

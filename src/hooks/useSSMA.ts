@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { insertWithColumnFallback, updateWithColumnFallback } from '@/lib/supabaseCompat';
 
 export interface PermissaoTrabalhoRow {
   id: string;
@@ -104,14 +105,15 @@ export function useCreatePermissaoTrabalho() {
 
   return useMutation({
     mutationFn: async (permissao: PermissaoInsert) => {
-      const { data, error } = await supabase
-        .from('permissoes_trabalho')
-        .insert(permissao)
-        .select()
-        .single();
-
-      if (error) throw error;
-      return data as PermissaoTrabalhoRow;
+      return insertWithColumnFallback(
+        async (payload) =>
+          supabase
+            .from('permissoes_trabalho')
+            .insert(payload)
+            .select()
+            .single(),
+        permissao as Record<string, unknown>,
+      ) as Promise<PermissaoTrabalhoRow>;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['permissoes-trabalho'] });
@@ -136,15 +138,16 @@ export function useUpdatePermissaoTrabalho() {
 
   return useMutation({
     mutationFn: async ({ id, ...updates }: Partial<PermissaoTrabalhoRow> & { id: string }) => {
-      const { data, error } = await supabase
-        .from('permissoes_trabalho')
-        .update(updates)
-        .eq('id', id)
-        .select()
-        .single();
-
-      if (error) throw error;
-      return data as PermissaoTrabalhoRow;
+      return updateWithColumnFallback(
+        async (payload) =>
+          supabase
+            .from('permissoes_trabalho')
+            .update(payload)
+            .eq('id', id)
+            .select()
+            .single(),
+        updates as Record<string, unknown>,
+      ) as Promise<PermissaoTrabalhoRow>;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['permissoes-trabalho'] });
@@ -184,14 +187,15 @@ export function useCreateIncidenteSSMA() {
 
   return useMutation({
     mutationFn: async (incidente: Omit<IncidenteSSMARow, 'id' | 'numero_incidente' | 'created_at' | 'updated_at' | 'rca_id'>) => {
-      const { data, error } = await supabase
-        .from('incidentes_ssma')
-        .insert(incidente)
-        .select()
-        .single();
-
-      if (error) throw error;
-      return data as IncidenteSSMARow;
+      return insertWithColumnFallback(
+        async (payload) =>
+          supabase
+            .from('incidentes_ssma')
+            .insert(payload)
+            .select()
+            .single(),
+        incidente as Record<string, unknown>,
+      ) as Promise<IncidenteSSMARow>;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['incidentes-ssma'] });
@@ -216,15 +220,16 @@ export function useUpdateIncidenteSSMA() {
 
   return useMutation({
     mutationFn: async ({ id, ...updates }: Partial<IncidenteSSMARow> & { id: string }) => {
-      const { data, error } = await supabase
-        .from('incidentes_ssma')
-        .update(updates)
-        .eq('id', id)
-        .select()
-        .single();
-
-      if (error) throw error;
-      return data as IncidenteSSMARow;
+      return updateWithColumnFallback(
+        async (payload) =>
+          supabase
+            .from('incidentes_ssma')
+            .update(payload)
+            .eq('id', id)
+            .select()
+            .single(),
+        updates as Record<string, unknown>,
+      ) as Promise<IncidenteSSMARow>;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['incidentes-ssma'] });

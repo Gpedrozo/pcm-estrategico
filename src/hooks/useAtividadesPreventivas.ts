@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { insertWithColumnFallback, updateWithColumnFallback } from '@/lib/supabaseCompat';
 
 export interface AtividadePreventiva {
   id: string;
@@ -58,13 +59,15 @@ export function useCreateAtividade() {
 
   return useMutation({
     mutationFn: async (input: { plano_id: string; nome: string; responsavel?: string; ordem?: number }) => {
-      const { data, error } = await supabase
-        .from('atividades_preventivas')
-        .insert(input)
-        .select()
-        .single();
-      if (error) throw error;
-      return data;
+      return insertWithColumnFallback(
+        async (payload) =>
+          supabase
+            .from('atividades_preventivas')
+            .insert(payload)
+            .select()
+            .single(),
+        input as Record<string, unknown>,
+      );
     },
     onSuccess: (d) => {
       qc.invalidateQueries({ queryKey: ['atividades-preventivas', d.plano_id] });
@@ -78,8 +81,16 @@ export function useUpdateAtividade() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async ({ id, plano_id, ...updates }: Partial<AtividadePreventiva> & { id: string; plano_id: string }) => {
-      const { error } = await supabase.from('atividades_preventivas').update(updates).eq('id', id);
-      if (error) throw error;
+      await updateWithColumnFallback(
+        async (payload) =>
+          supabase
+            .from('atividades_preventivas')
+            .update(payload)
+            .eq('id', id)
+            .select()
+            .single(),
+        updates as Record<string, unknown>,
+      );
       return plano_id;
     },
     onSuccess: (planoId) => qc.invalidateQueries({ queryKey: ['atividades-preventivas', planoId] }),
@@ -111,8 +122,15 @@ export function useCreateServico() {
   return useMutation({
     mutationFn: async (input: { atividade_id: string; descricao: string; tempo_estimado_min: number; ordem?: number; _plano_id: string }) => {
       const { _plano_id, ...rest } = input;
-      const { data, error } = await supabase.from('servicos_preventivos').insert(rest).select().single();
-      if (error) throw error;
+      await insertWithColumnFallback(
+        async (payload) =>
+          supabase
+            .from('servicos_preventivos')
+            .insert(payload)
+            .select()
+            .single(),
+        rest as Record<string, unknown>,
+      );
       // Recalc atividade tempo
       await recalcAtividadeTempo(input.atividade_id);
       return _plano_id;
@@ -125,8 +143,16 @@ export function useUpdateServico() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async ({ id, _plano_id, _atividade_id, ...updates }: Partial<ServicoPreventivo> & { id: string; _plano_id: string; _atividade_id: string }) => {
-      const { error } = await supabase.from('servicos_preventivos').update(updates).eq('id', id);
-      if (error) throw error;
+      await updateWithColumnFallback(
+        async (payload) =>
+          supabase
+            .from('servicos_preventivos')
+            .update(payload)
+            .eq('id', id)
+            .select()
+            .single(),
+        updates as Record<string, unknown>,
+      );
       await recalcAtividadeTempo(_atividade_id);
       return _plano_id;
     },
@@ -154,5 +180,14 @@ async function recalcAtividadeTempo(atividadeId: string) {
     .eq('atividade_id', atividadeId);
 
   const total = (data || []).reduce((sum, s) => sum + (s.tempo_estimado_min || 0), 0);
-  await supabase.from('atividades_preventivas').update({ tempo_total_min: total }).eq('id', atividadeId);
+  await updateWithColumnFallback(
+    async (payload) =>
+      supabase
+        .from('atividades_preventivas')
+        .update(payload)
+        .eq('id', atividadeId)
+        .select()
+        .single(),
+    { tempo_total_min: total },
+  );
 }

@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { insertWithColumnFallback, updateWithColumnFallback } from '@/lib/supabaseCompat';
 
 export interface RCARow {
   id: string;
@@ -92,14 +93,15 @@ export function useCreateRCA() {
 
   return useMutation({
     mutationFn: async (rca: RCAInsert) => {
-      const { data, error } = await supabase
-        .from('analise_causa_raiz')
-        .insert(rca)
-        .select()
-        .single();
-
-      if (error) throw error;
-      return data as RCARow;
+      return insertWithColumnFallback(
+        async (payload) =>
+          supabase
+            .from('analise_causa_raiz')
+            .insert(payload)
+            .select()
+            .single(),
+        rca as Record<string, unknown>,
+      ) as Promise<RCARow>;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['rca'] });
@@ -124,15 +126,16 @@ export function useUpdateRCA() {
 
   return useMutation({
     mutationFn: async ({ id, ...updates }: Partial<RCARow> & { id: string }) => {
-      const { data, error } = await supabase
-        .from('analise_causa_raiz')
-        .update(updates)
-        .eq('id', id)
-        .select()
-        .single();
-
-      if (error) throw error;
-      return data as RCARow;
+      return updateWithColumnFallback(
+        async (payload) =>
+          supabase
+            .from('analise_causa_raiz')
+            .update(payload)
+            .eq('id', id)
+            .select()
+            .single(),
+        updates as Record<string, unknown>,
+      ) as Promise<RCARow>;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['rca'] });
@@ -174,14 +177,15 @@ export function useCreateAcaoCorretiva() {
 
   return useMutation({
     mutationFn: async (acao: Omit<AcaoCorretivaRow, 'id' | 'created_at' | 'updated_at' | 'data_conclusao' | 'evidencias' | 'observacoes'>) => {
-      const { data, error } = await supabase
-        .from('acoes_corretivas')
-        .insert(acao)
-        .select()
-        .single();
-
-      if (error) throw error;
-      return data as AcaoCorretivaRow;
+      return insertWithColumnFallback(
+        async (payload) =>
+          supabase
+            .from('acoes_corretivas')
+            .insert(payload)
+            .select()
+            .single(),
+        acao as Record<string, unknown>,
+      ) as Promise<AcaoCorretivaRow>;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['acoes-corretivas'] });
@@ -206,15 +210,16 @@ export function useUpdateAcaoCorretiva() {
 
   return useMutation({
     mutationFn: async ({ id, ...updates }: Partial<AcaoCorretivaRow> & { id: string }) => {
-      const { data, error } = await supabase
-        .from('acoes_corretivas')
-        .update(updates)
-        .eq('id', id)
-        .select()
-        .single();
-
-      if (error) throw error;
-      return data as AcaoCorretivaRow;
+      return updateWithColumnFallback(
+        async (payload) =>
+          supabase
+            .from('acoes_corretivas')
+            .update(payload)
+            .eq('id', id)
+            .select()
+            .single(),
+        updates as Record<string, unknown>,
+      ) as Promise<AcaoCorretivaRow>;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['acoes-corretivas'] });
