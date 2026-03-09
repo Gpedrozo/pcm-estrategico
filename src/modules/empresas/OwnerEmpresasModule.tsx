@@ -12,6 +12,10 @@ type Company = {
     nome_fantasia?: string
     cnpj?: string
   }>
+  configuracoes_sistema?: Array<{
+    chave?: string
+    valor?: Record<string, unknown> | null
+  }>
 }
 
 type Subscription = {
@@ -65,6 +69,7 @@ export function OwnerEmpresasModule() {
     periodo: 'monthly',
     inicio: '',
     fim: '',
+    inactivity_timeout_minutes: '',
   })
 
   const [editCompanyId, setEditCompanyId] = useState<string | null>(null)
@@ -116,6 +121,7 @@ export function OwnerEmpresasModule() {
       periodo: 'monthly',
       inicio: '',
       fim: '',
+      inactivity_timeout_minutes: '',
     })
     setFormError(null)
     setFormSuccess(null)
@@ -145,6 +151,9 @@ export function OwnerEmpresasModule() {
         responsavel: companyForm.responsavel || undefined,
         segmento: companyForm.segmento || undefined,
         status: companyForm.status,
+        inactivity_timeout_minutes: companyForm.inactivity_timeout_minutes
+          ? Number(companyForm.inactivity_timeout_minutes)
+          : null,
       },
       user: {
         nome: companyForm.master_nome,
@@ -179,6 +188,11 @@ export function OwnerEmpresasModule() {
 
   const populateForEdit = (company: Company) => {
     const dataRow = company.dados_empresa?.[0]
+    const securityConfig = company.configuracoes_sistema?.find((row) => row.chave === 'owner.security_policy')
+    const inactivityTimeoutMinutes =
+      typeof securityConfig?.valor?.inactivity_timeout_minutes === 'number'
+        ? String(securityConfig.valor.inactivity_timeout_minutes)
+        : ''
     setEditCompanyId(company.id)
     setCompanyForm((prev) => ({
       ...prev,
@@ -188,6 +202,7 @@ export function OwnerEmpresasModule() {
       nome_fantasia: dataRow?.nome_fantasia ?? '',
       cnpj: dataRow?.cnpj ?? '',
       status: company.status ?? 'active',
+      inactivity_timeout_minutes: inactivityTimeoutMinutes,
     }))
   }
 
@@ -207,6 +222,9 @@ export function OwnerEmpresasModule() {
         responsavel: companyForm.responsavel,
         segmento: companyForm.segmento,
         status: companyForm.status,
+        inactivity_timeout_minutes: companyForm.inactivity_timeout_minutes
+          ? Number(companyForm.inactivity_timeout_minutes)
+          : null,
       },
     }, {
       onSuccess: () => {
@@ -333,6 +351,14 @@ export function OwnerEmpresasModule() {
           </select>
           <input type="date" className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm" value={companyForm.inicio} onChange={(e) => setCompanyForm((prev) => ({ ...prev, inicio: e.target.value }))} />
           <input type="date" className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm" value={companyForm.fim} onChange={(e) => setCompanyForm((prev) => ({ ...prev, fim: e.target.value }))} />
+          <input
+            type="number"
+            min={0}
+            className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm"
+            placeholder="Timeout inatividade (min)"
+            value={companyForm.inactivity_timeout_minutes}
+            onChange={(e) => setCompanyForm((prev) => ({ ...prev, inactivity_timeout_minutes: e.target.value }))}
+          />
         </div>
         <p className="mt-2 text-xs text-slate-400">
           Slug é um identificador curto da empresa (ex.: <span className="font-mono">codepa</span>) usado para URL/domínio e integrações. Se deixar em branco, o sistema gera automaticamente.
@@ -364,6 +390,11 @@ export function OwnerEmpresasModule() {
           {companies.slice(0, 20).map((company) => {
             const companyData = company.dados_empresa?.[0]
             const sub = subscriptions.find((item) => item.empresa_id === company.id)
+            const securityConfig = company.configuracoes_sistema?.find((row) => row.chave === 'owner.security_policy')
+            const inactivityTimeoutMinutes =
+              typeof securityConfig?.valor?.inactivity_timeout_minutes === 'number'
+                ? securityConfig.valor.inactivity_timeout_minutes
+                : null
 
             return (
               <div key={company.id} className="space-y-2 rounded-md border border-slate-800 p-3">
@@ -373,6 +404,9 @@ export function OwnerEmpresasModule() {
                     <p className="text-xs text-slate-400">CNPJ: {companyData?.cnpj ?? '-'} • Status: {company.status ?? 'active'}</p>
                     <p className="text-xs text-slate-500">
                       Assinatura: {sub?.plans?.name ?? sub?.plans?.code ?? '-'} • {sub?.status ?? '-'} • Renovação: {sub?.renewal_at ? new Date(sub.renewal_at).toLocaleDateString('pt-BR') : '-'}
+                    </p>
+                    <p className="text-xs text-slate-500">
+                      Logout automático por inatividade: {inactivityTimeoutMinutes && inactivityTimeoutMinutes > 0 ? `${inactivityTimeoutMinutes} min` : 'desativado'}
                     </p>
                   </div>
                   <div className="flex flex-wrap gap-2">

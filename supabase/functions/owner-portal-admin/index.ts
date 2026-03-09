@@ -51,6 +51,7 @@ type Payload = {
     responsavel?: string;
     segmento?: string;
     status?: string;
+    inactivity_timeout_minutes?: number | null;
   };
   user?: {
     nome: string;
@@ -456,7 +457,7 @@ Deno.serve(async (req) => {
   if (body.action === "list_companies") {
     const { data, error } = await admin
       .from("empresas")
-      .select("id,nome,slug,status,plano,created_at,updated_at,dados_empresa(razao_social,nome_fantasia,cnpj)")
+      .select("id,nome,slug,status,plano,created_at,updated_at,dados_empresa(razao_social,nome_fantasia,cnpj),configuracoes_sistema(chave,valor)")
       .order("created_at", { ascending: false })
       .limit(1000);
     if (error) return fail(error.message, 400, null, req);
@@ -541,9 +542,27 @@ Deno.serve(async (req) => {
       },
     }, { onConflict: "empresa_id,chave" });
 
-    if (configError) {
+    const inactivityMinutes =
+      typeof body.company.inactivity_timeout_minutes === "number" && Number.isFinite(body.company.inactivity_timeout_minutes)
+        ? Math.max(0, Math.trunc(body.company.inactivity_timeout_minutes))
+        : null;
+
+    const { error: securityPolicyError } = await admin.from("configuracoes_sistema").upsert({
+      empresa_id: company.id,
+      chave: "owner.security_policy",
+      valor: {
+        inactivity_timeout_minutes: inactivityMinutes,
+      },
+    }, { onConflict: "empresa_id,chave" });
+
+    if (configError || securityPolicyError) {
       await admin.from("empresas").delete().eq("id", company.id);
-      return fail("Falha ao salvar configurações iniciais da empresa.", 400, { reason: configError.message }, req);
+      return fail(
+        "Falha ao salvar configurações iniciais da empresa.",
+        400,
+        { reason: configError?.message ?? securityPolicyError?.message ?? "unknown" },
+        req,
+      );
     }
 
     const password = body.user.password?.trim() || `Tmp#${Math.random().toString(36).slice(2, 10)}!`;
@@ -664,6 +683,19 @@ Deno.serve(async (req) => {
         email: body.company.email ?? null,
         responsavel: body.company.responsavel ?? null,
         segmento: body.company.segmento ?? null,
+      },
+    }, { onConflict: "empresa_id,chave" });
+
+    const inactivityMinutes =
+      typeof body.company.inactivity_timeout_minutes === "number" && Number.isFinite(body.company.inactivity_timeout_minutes)
+        ? Math.max(0, Math.trunc(body.company.inactivity_timeout_minutes))
+        : null;
+
+    await admin.from("configuracoes_sistema").upsert({
+      empresa_id: body.empresa_id,
+      chave: "owner.security_policy",
+      valor: {
+        inactivity_timeout_minutes: inactivityMinutes,
       },
     }, { onConflict: "empresa_id,chave" });
 

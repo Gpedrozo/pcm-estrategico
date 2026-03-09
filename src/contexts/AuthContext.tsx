@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
+import React, { createContext, useContext, useState, useCallback, useEffect, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import type { Session } from '@supabase/supabase-js';
 import {
@@ -60,6 +60,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [impersonation, setImpersonation] = useState<ImpersonationSession | null>(null);
+  const [inactivityTimeoutMs, setInactivityTimeoutMs] = useState<number | null>(null);
+  const lastActivityAtRef = useRef<number>(Date.now());
+  const isAutoLogoutRunningRef = useRef(false);
 
   useEffect(() => {
     try {
@@ -515,6 +518,100 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, [user]);
 
+  const currentTenantId = impersonation?.empresaId || user?.tenantId || null;
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const loadInactivityPolicy = async () => {
+      if (!session || !user || !currentTenantId) {
+        if (isMounted) setInactivityTimeoutMs(null);
+        return;
+      }
+
+      const { data, error } = await supabase
+        .from('configuracoes_sistema')
+        .select('valor')
+        .eq('empresa_id', currentTenantId)
+        .eq('chave', 'owner.security_policy')
+        .maybeSingle();
+
+      if (!isMounted) return;
+
+      if (error) {
+        logger.warn('inactivity_policy_load_failed', {
+          empresaId: currentTenantId,
+          error: error.message,
+        });
+        setInactivityTimeoutMs(null);
+        return;
+      }
+
+      const minutesValue = Number((data?.valor as Record<string, unknown> | null)?.inactivity_timeout_minutes ?? 0);
+      if (!Number.isFinite(minutesValue) || minutesValue <= 0) {
+        setInactivityTimeoutMs(null);
+        return;
+      }
+
+      setInactivityTimeoutMs(Math.trunc(minutesValue) * 60 * 1000);
+    };
+
+    void loadInactivityPolicy();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [currentTenantId, session, user]);
+
+  useEffect(() => {
+    if (!session || !user || !inactivityTimeoutMs) {
+      return;
+    }
+
+    lastActivityAtRef.current = Date.now();
+    isAutoLogoutRunningRef.current = false;
+
+    const markActivity = () => {
+      lastActivityAtRef.current = Date.now();
+    };
+
+    const activityEvents: Array<keyof WindowEventMap> = [
+      'mousemove',
+      'mousedown',
+      'keydown',
+      'scroll',
+      'touchstart',
+      'click',
+    ];
+
+    activityEvents.forEach((eventName) => {
+      window.addEventListener(eventName, markActivity, { passive: true });
+    });
+
+    const timer = window.setInterval(() => {
+      if (isAutoLogoutRunningRef.current) return;
+
+      const inactiveForMs = Date.now() - lastActivityAtRef.current;
+      if (inactiveForMs < inactivityTimeoutMs) return;
+
+      isAutoLogoutRunningRef.current = true;
+      logger.info('auto_logout_by_inactivity', {
+        userId: user.id,
+        empresaId: currentTenantId,
+        inactivityTimeoutMs,
+      });
+
+      void logout();
+    }, 15_000);
+
+    return () => {
+      window.clearInterval(timer);
+      activityEvents.forEach((eventName) => {
+        window.removeEventListener(eventName, markActivity);
+      });
+    };
+  }, [currentTenantId, inactivityTimeoutMs, logout, session, user]);
+
   useEffect(() => {
     if (!user) {
       setImpersonation(null);
@@ -549,7 +646,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     effectiveRole === 'SYSTEM_OWNER' ||
     effectiveRole === 'SYSTEM_ADMIN';
   const isSystemOwner = effectiveRole === 'SYSTEM_OWNER' || effectiveRole === 'SYSTEM_ADMIN';
-  const tenantId = impersonation?.empresaId || user?.tenantId || null;
+  const tenantId = currentTenantId;
 
   return (
     <AuthContext.Provider

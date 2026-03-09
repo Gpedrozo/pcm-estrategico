@@ -58,6 +58,10 @@ export interface OwnerCompany {
     nome_fantasia?: string
     cnpj?: string
   }[]
+  configuracoes_sistema?: {
+    chave?: string
+    valor?: Record<string, unknown> | null
+  }[]
 }
 
 export interface OwnerUser {
@@ -346,6 +350,7 @@ export async function createCompany(payload: {
     responsavel?: string
     segmento?: string
     status?: string
+    inactivity_timeout_minutes?: number | null
   }
   user: {
     nome: string
