@@ -60,7 +60,7 @@ A tela **Dashboard** apresenta indicadores e atalhos:
 - distribuição de O.S por tipo e por status;
 - ação rápida para abrir nova O.S.
 
-### Boas práticas
+### Boas práticas do dashboard
 
 - Use o dashboard no início do turno para priorização.
 - Monitore backlog semanal para evitar acúmulo de pendências.
@@ -77,7 +77,7 @@ Menu: **Administração > Usuários** (somente ADMIN).
 - editar **nome**;
 - alterar **perfil** (Usuário/Administrador/Master TI).
 
-### Limitação atual
+### Limitação atual na Gestão de usuários
 
 - Não há criação direta de usuário nessa tela do tenant.
 - Não há troca de senha nessa tela.
@@ -117,7 +117,7 @@ Menu: **Cadastros > Materiais**.
 - histórico de movimentações;
 - alerta visual para baixo estoque.
 
-### Boas práticas
+### Boas práticas de estoque
 
 - mantenha estoque mínimo realista por criticidade de item;
 - registre motivo em movimentações para rastreabilidade.
@@ -187,7 +187,7 @@ Inclui:
 
 Menu: **Planejamento > Preventiva**.
 
-### Recursos disponíveis
+### Recursos disponíveis na Preventiva
 
 - cadastro de planos preventivos;
 - lista por status (ativos/inativos) e busca;
@@ -207,7 +207,7 @@ As atividades preventivas alimentam a programação semanal no módulo de **Prog
 
 Menu: **Planejamento > Lubrificação**.
 
-### Recursos disponíveis
+### Recursos disponíveis na Lubrificação
 
 - cadastro de planos de lubrificação;
 - filtros por equipamento e status;
@@ -224,7 +224,7 @@ Se a tabela de lubrificação não existir no banco do ambiente, o sistema exibe
 
 Menu: **Planejamento > Preditiva**.
 
-### Recursos disponíveis
+### Recursos disponíveis na Preditiva
 
 - registro de medições por TAG e tipo (vibração, temperatura, pressão etc.);
 - definição de limites de alerta e crítico;
@@ -386,7 +386,7 @@ Menu: **Ordens de Serviço > Backlog**.
 2. alinhar prioridade com a liderança da área;
 3. direcionar para emissão/fechamento conforme status operacional.
 
-### Limitação atual
+### Limitação atual do Backlog
 
 - fluxo focado em análise e priorização (não é tela principal de cadastro/edição).
 
@@ -413,7 +413,7 @@ Estruturar análise de falhas potenciais por ativo, com cálculo de risco para a
 - o índice de risco usa a lógica $RPN = Severidade \times Ocorrência \times Detecção$;
 - use RPN mais alto para priorizar ações preventivas de curto prazo.
 
-### Limitações atuais
+### Limitações atuais no FMEA/RCM
 
 - criação e consulta estão disponíveis, mas o fluxo de edição completa pode variar por permissão/perfil;
 - representações avançadas (ex.: diagramas específicos) podem estar parciais conforme ambiente.
@@ -442,13 +442,13 @@ Usa histórico operacional por TAG para sugerir:
 - ações preventivas propostas;
 - criticidade e nível de confiança.
 
-### Boas práticas
+### Boas práticas de RCA e IA
 
 1. use IA para triagem e priorização técnica;
 2. formalize no RCA quando houver decisão de engenharia;
 3. vincule ação resultante ao plano preventivo/melhoria.
 
-### Limitação atual
+### Limitação atual do RCA com IA
 
 - integração automática entre resultado da IA e fechamento formal do RCA pode exigir etapa manual do usuário.
 
@@ -458,7 +458,7 @@ Usa histórico operacional por TAG para sugerir:
 
 Menu: **Análises > Melhorias**.
 
-### Aplicação prática
+### Aplicação prática em Melhorias
 
 - cadastrar iniciativas (kaizen, projeto, lição aprendida, sugestão);
 - descrever cenário antes/depois;
@@ -473,7 +473,7 @@ $$
 ROI\ (meses) \approx \frac{Custo\ de\ Implementação}{Economia\ Mensal\ Estimada}
 $$
 
-### Limitações atuais
+### Limitações atuais em Melhorias
 
 - anexos e aprovações podem demandar fluxo complementar, conforme configuração do ambiente.
 
@@ -557,7 +557,7 @@ Menu: **Relatórios > Custos**.
 2. identificar concentração de gasto recorrente;
 3. abrir RCA/melhoria para ativos com custo crônico.
 
-### Limitação atual
+### Limitação atual em Custos
 
 - algumas opções de exportação podem aparecer no layout, mas depender de evolução/parametrização adicional por ambiente.
 
@@ -580,7 +580,7 @@ Registre tipo, severidade, local, envolvidos, ações imediatas e causas.
 
 Registre descrição do serviço, período, riscos, medidas de controle, responsáveis e EPIs.
 
-### Limitações atuais
+### Limitações atuais em SSMA
 
 - aprovações e integrações automáticas com outros módulos podem depender do nível de maturidade do ambiente.
 
@@ -597,7 +597,7 @@ Menu: **Administração > Auditoria** (perfil ADMIN).
 - geração de relatórios;
 - alterações operacionais rastreadas no tenant.
 
-### Aplicação prática
+### Aplicação prática da Auditoria
 
 1. usar em investigação de divergências;
 2. validar trilha de ações críticas;
@@ -820,9 +820,9 @@ Instrução: imprimir ou copiar para rotina local e marcar cada item como **OK**
 
 ### 37.4 Modelo rápido para impressão
 
-Data: ____/____/______  
+Data: DD/MM/AAAA  
 Turno: ( ) A ( ) B ( ) C  
-Responsável: _________________________
+Responsável: NOME COMPLETO
 
 - Pendência crítica 1: ______________________________________
 - Pendência crítica 2: ______________________________________
@@ -849,7 +849,7 @@ Perfis considerados:
 - **ADM**: Administrador tenant.
 
 | Módulo | OP | TEC | PCM | GEST | ADM |
-|---|---|---|---|---|---|
+| --- | --- | --- | --- | --- | --- |
 | Solicitações | R | I | C | A | C |
 | Backlog | I | C | R | A | I |
 | Emitir O.S | I | C | R | A | I |

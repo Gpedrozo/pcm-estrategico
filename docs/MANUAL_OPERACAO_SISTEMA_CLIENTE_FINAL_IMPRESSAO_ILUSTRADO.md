@@ -150,7 +150,7 @@ Imagem do fluxo inicial:
 ## 5) Matriz RACI resumida
 
 | Modulo | OP | TEC | PCM | GEST | ADM |
-|---|---|---|---|---|---|
+| --- | --- | --- | --- | --- | --- |
 | Solicitacoes | R | I | C | A | C |
 | O.S (emitir/fechar) | I | R | C | A | I |
 | Programacao | I | C | R | A | I |
