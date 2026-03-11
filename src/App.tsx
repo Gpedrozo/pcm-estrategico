@@ -191,6 +191,9 @@ function TenantRoutes() {
                 <Route path="/master-ti" element={<Navigate to="/dashboard" replace />} />
                 <Route path="/inteligencia-causa-raiz" element={<RootCauseAIPage />} />
                 <Route path="/manuais-operacao" element={<ManualOperacao />} />
+                <Route path="/manuais-operacao/usuario" element={<ManualOperacao />} />
+                <Route path="/manuais-operacao/admin" element={<ManualOperacao />} />
+                <Route path="/manuais-operacao/master-ti" element={<ManualOperacao />} />
               </Route>
 
               <Route path="*" element={<NotFound />} />

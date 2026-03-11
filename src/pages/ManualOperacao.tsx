@@ -1,9 +1,9 @@
-import { useMemo, useState } from 'react';
-import { BookOpen, CheckCircle2 } from 'lucide-react';
+import { useEffect, useMemo } from 'react';
+import { BookOpen, CheckCircle2, Printer } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
+import { useNavigate, useParams } from 'react-router-dom';
 
 type RoleManual = 'USUARIO' | 'ADMIN' | 'MASTER_TI';
-type FiltroManual = 'MEU_PERFIL' | 'USUARIO' | 'ADMIN' | 'MASTER_TI' | 'COMPLETO';
 
 interface OperacaoManual {
   id: string;
@@ -372,13 +372,25 @@ const operacoes: OperacaoManual[] = [
   }
 ];
 
-const filtros: { id: FiltroManual; label: string }[] = [
-  { id: 'MEU_PERFIL', label: 'Meu Perfil' },
+const perfisTreinamento: { id: RoleManual; label: string; slug: string }[] = [
   { id: 'USUARIO', label: 'Usuario' },
   { id: 'ADMIN', label: 'Admin' },
-  { id: 'MASTER_TI', label: 'Master TI' },
-  { id: 'COMPLETO', label: 'Manual Completo' }
+  { id: 'MASTER_TI', label: 'Master TI' }
 ];
+
+function mapSlugToRole(slug?: string): RoleManual | null {
+  if (!slug) return null;
+  if (slug === 'usuario') return 'USUARIO';
+  if (slug === 'admin') return 'ADMIN';
+  if (slug === 'master-ti') return 'MASTER_TI';
+  return null;
+}
+
+function mapRoleToSlug(role: RoleManual): string {
+  if (role === 'USUARIO') return 'usuario';
+  if (role === 'ADMIN') return 'admin';
+  return 'master-ti';
+}
 
 function mapToRoleManual(role?: string): RoleManual {
   if (role === 'MASTER_TI' || role === 'SYSTEM_OWNER' || role === 'SYSTEM_ADMIN') return 'MASTER_TI';
@@ -388,21 +400,38 @@ function mapToRoleManual(role?: string): RoleManual {
 
 export default function ManualOperacao() {
   const { user } = useAuth();
-  const [filtro, setFiltro] = useState<FiltroManual>('MEU_PERFIL');
+  const { perfil } = useParams();
+  const navigate = useNavigate();
 
   const roleAtual = mapToRoleManual(user?.tipo);
+  const rolePorRota = mapSlugToRole(perfil);
+  const podeAcessarTreinamento = roleAtual === 'ADMIN' || roleAtual === 'MASTER_TI';
+  const roleEfetivo = rolePorRota || roleAtual;
+
+  useEffect(() => {
+    if (!perfil) {
+      navigate(`/manuais-operacao/${mapRoleToSlug(roleAtual)}`, { replace: true });
+      return;
+    }
+
+    if (!rolePorRota) {
+      navigate(`/manuais-operacao/${mapRoleToSlug(roleAtual)}`, { replace: true });
+      return;
+    }
+
+    // Usuario comum sempre visualiza apenas o proprio manual.
+    if (!podeAcessarTreinamento && rolePorRota !== roleAtual) {
+      navigate(`/manuais-operacao/${mapRoleToSlug(roleAtual)}`, { replace: true });
+    }
+  }, [perfil, roleAtual, rolePorRota, navigate, podeAcessarTreinamento]);
 
   const tituloManual = useMemo(() => {
-    if (filtro === 'COMPLETO') return 'Manual completo do sistema';
-    if (filtro === 'MEU_PERFIL') return `Manual do perfil atual (${roleAtual})`;
-    return `Manual do perfil ${filtro}`;
-  }, [filtro, roleAtual]);
+    return `Manual do perfil ${roleEfetivo}`;
+  }, [roleEfetivo]);
 
   const operacoesFiltradas = useMemo(() => {
-    if (filtro === 'COMPLETO') return operacoes;
-    const perfil = filtro === 'MEU_PERFIL' ? roleAtual : filtro;
-    return operacoes.filter((op) => op.perfis.includes(perfil));
-  }, [filtro, roleAtual]);
+    return operacoes.filter((op) => op.perfis.includes(roleEfetivo));
+  }, [roleEfetivo]);
 
   return (
     <div className="min-h-screen bg-background">
@@ -415,29 +444,44 @@ export default function ManualOperacao() {
           <h1 className="text-3xl font-bold text-foreground">{tituloManual}</h1>
           <p className="mt-2 max-w-4xl text-sm text-muted-foreground">
             Pagina operacional completa com imagens estampadas na tela, passo a passo, criterios de validacao
-            e erros comuns por processo. Use os filtros para exibir o manual por tipo de usuario ou o manual completo.
+            e erros comuns por processo.
           </p>
+          <div className="mt-4 flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={() => window.print()}
+              className="inline-flex items-center gap-2 rounded-md border bg-background px-3 py-2 text-sm text-foreground hover:bg-muted"
+            >
+              <Printer className="h-4 w-4" />
+              Imprimir este manual
+            </button>
+          </div>
         </header>
 
-        <section className="mb-8 rounded-xl border bg-card p-4">
-          <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">Selecionar manual</h2>
-          <div className="flex flex-wrap gap-2">
-            {filtros.map((opcao) => (
-              <button
-                key={opcao.id}
-                onClick={() => setFiltro(opcao.id)}
-                className={`rounded-md border px-3 py-2 text-sm transition-colors ${
-                  filtro === opcao.id
-                    ? 'border-primary bg-primary text-primary-foreground'
-                    : 'bg-background text-foreground hover:bg-muted'
-                }`}
-                type="button"
-              >
-                {opcao.label}
-              </button>
-            ))}
-          </div>
-        </section>
+        {podeAcessarTreinamento && (
+          <section className="mb-8 rounded-xl border bg-card p-4">
+            <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">Acesso de treinamento</h2>
+            <p className="mb-3 text-sm text-muted-foreground">
+              Admin e Master TI podem acessar os manuais de todos os perfis para suporte e treinamento de equipes.
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {perfisTreinamento.map((opcao) => (
+                <button
+                  key={opcao.id}
+                  onClick={() => navigate(`/manuais-operacao/${mapRoleToSlug(opcao.id)}`)}
+                  className={`rounded-md border px-3 py-2 text-sm transition-colors ${
+                    roleEfetivo === opcao.id
+                      ? 'border-primary bg-primary text-primary-foreground'
+                      : 'bg-background text-foreground hover:bg-muted'
+                  }`}
+                  type="button"
+                >
+                  {opcao.label}
+                </button>
+              ))}
+            </div>
+          </section>
+        )}
 
         <main className="space-y-8">
           {operacoesFiltradas.map((op) => (
