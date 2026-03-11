@@ -426,20 +426,24 @@ export default function FecharOS() {
   }
 
   return (
-    <div className="max-w-3xl mx-auto space-y-6">
+    <div className="max-w-6xl mx-auto space-y-6 pb-8">
       {/* Header */}
-      <div className="flex items-center gap-4">
-        <Button variant="ghost" size="icon" onClick={() => navigate(-1)}>
-          <ArrowLeft className="h-5 w-5" />
-        </Button>
-        <div>
-          <h1 className="text-2xl font-bold text-foreground">Fechar Ordem de Serviço</h1>
-          <p className="text-muted-foreground">Registre a execução, materiais usados e encerre a O.S</p>
+      <div className="relative overflow-hidden rounded-2xl border border-primary/20 bg-gradient-to-br from-primary/10 via-background to-success/10 p-5 md:p-7">
+        <div className="pointer-events-none absolute -top-10 -right-10 h-32 w-32 rounded-full bg-primary/20 blur-2xl" />
+        <div className="pointer-events-none absolute -bottom-10 -left-10 h-32 w-32 rounded-full bg-success/20 blur-2xl" />
+        <div className="relative flex items-start gap-4">
+          <Button variant="outline" size="icon" className="shrink-0 bg-background/70" onClick={() => navigate(-1)}>
+            <ArrowLeft className="h-5 w-5" />
+          </Button>
+          <div className="space-y-1.5">
+            <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-foreground">Fechamento de Ordem de Servico</h1>
+            <p className="text-sm md:text-base text-muted-foreground max-w-3xl">Consolide execucao, pausas, materiais e RCA para encerrar a O.S com rastreabilidade tecnica e custo apurado.</p>
+          </div>
         </div>
       </div>
 
       {/* Select OS */}
-      <div className="bg-card border border-border rounded-lg p-6 shadow-industrial">
+      <div className="bg-card border border-border rounded-2xl p-5 md:p-6 shadow-industrial">
         <Label className="text-base font-semibold">Selecione a O.S para fechar</Label>
         <div className="mt-4 space-y-2 max-h-64 overflow-y-auto">
           {!pendingOS || pendingOS.length === 0 ? (
@@ -452,10 +456,10 @@ export default function FecharOS() {
                 key={os.id}
                 type="button"
                 onClick={() => handleSelectOS(os)}
-                className={`w-full p-4 rounded-lg border text-left transition-all ${
+                className={`w-full p-4 rounded-xl border text-left transition-all ${
                   selectedOS?.id === os.id
-                    ? 'border-primary bg-primary/5'
-                    : 'border-border hover:border-muted-foreground/30'
+                    ? 'border-primary bg-gradient-to-r from-primary/10 to-info/10'
+                    : 'border-border hover:border-muted-foreground/30 hover:bg-muted/30'
                 }`}
               >
                 <div className="flex items-center justify-between">
@@ -480,7 +484,7 @@ export default function FecharOS() {
 
       {/* Execution Form */}
       {selectedOS && (
-        <div className="bg-card border border-border rounded-lg p-6 shadow-industrial animate-slide-in">
+        <div className="bg-card border border-border rounded-2xl p-5 md:p-7 shadow-industrial animate-slide-in">
           <div className="flex items-center gap-2 mb-6">
             <FileCheck className="h-5 w-5 text-primary" />
             <h2 className="text-lg font-semibold">Dados da Execução</h2>
@@ -488,7 +492,7 @@ export default function FecharOS() {
 
           <form onSubmit={handleSubmit} className="space-y-6">
             {/* OS Details */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 p-4 bg-muted/50 rounded-lg">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 p-4 bg-gradient-to-r from-muted/70 to-muted/40 rounded-xl border border-border/60">
               <div>
                 <Label className="text-xs text-muted-foreground">O.S</Label>
                 <p className="font-mono font-bold">{selectedOS.numero_os}</p>
@@ -509,7 +513,7 @@ export default function FecharOS() {
 
             {/* Mechanic and Time */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="space-y-2">
+              <div className="space-y-2 rounded-xl border border-border/70 p-4 bg-background/70">
                 <Label htmlFor="mecanico">Mecânico *</Label>
                 <Select 
                   value={formData.mecanicoId} 
@@ -528,7 +532,7 @@ export default function FecharOS() {
                 </Select>
               </div>
 
-              <div className="space-y-2">
+              <div className="space-y-2 rounded-xl border border-border/70 p-4 bg-background/70">
                 <Label htmlFor="horaInicio">Hora Início *</Label>
                 <Input
                   id="horaInicio"
@@ -539,7 +543,7 @@ export default function FecharOS() {
                 />
               </div>
 
-              <div className="space-y-2">
+              <div className="space-y-2 rounded-xl border border-border/70 p-4 bg-background/70">
                 <Label htmlFor="horaFim">Hora Fim *</Label>
                 <Input
                   id="horaFim"
@@ -578,13 +582,13 @@ export default function FecharOS() {
             )}
 
             {/* Breaks / Intervals */}
-            <div className="space-y-4 border-t pt-4">
+            <div className="space-y-4 border-t pt-5">
               <div className="flex items-center gap-2">
                 <Clock className="h-5 w-5 text-primary" />
                 <Label className="text-base font-semibold">Pausas durante a execução</Label>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-3 rounded-xl border border-border/70 p-4 bg-background/70">
                 <Input type="time" value={pausaInicio} onChange={(e) => setPausaInicio(e.target.value)} placeholder="Início pausa" />
                 <Input type="time" value={pausaFim} onChange={(e) => setPausaFim(e.target.value)} placeholder="Fim pausa" />
                 <Input value={pausaMotivo} onChange={(e) => setPausaMotivo(e.target.value)} placeholder="Motivo (ex.: almoço)" />
@@ -597,7 +601,7 @@ export default function FecharOS() {
               {pausasExecucao.length > 0 && (
                 <div className="space-y-2">
                   {pausasExecucao.map((pausa) => (
-                    <div key={pausa.id} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
+                    <div key={pausa.id} className="flex items-center justify-between p-3 bg-muted/50 rounded-xl border border-border/60">
                       <div className="flex items-center gap-2">
                         <Badge variant="outline">{pausa.inicio} - {pausa.fim}</Badge>
                         <span className="text-sm text-muted-foreground">{pausa.motivo}</span>
@@ -618,7 +622,7 @@ export default function FecharOS() {
             </div>
 
             {/* Service Description */}
-            <div className="space-y-2">
+            <div className="space-y-2 rounded-xl border border-border/70 p-4 bg-background/70">
               <Label htmlFor="servico">Serviço Executado *</Label>
               <Textarea
                 id="servico"
@@ -631,13 +635,13 @@ export default function FecharOS() {
             </div>
 
             {/* Materials Used Section */}
-            <div className="space-y-4 border-t pt-4">
+            <div className="space-y-4 border-t pt-5">
               <div className="flex items-center gap-2">
                 <Package className="h-5 w-5 text-primary" />
                 <Label className="text-base font-semibold">Materiais Utilizados</Label>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3 rounded-xl border border-border/70 p-4 bg-background/70">
                 <div className="md:col-span-1">
                   <Select
                     value={materialSelecionado}
@@ -679,7 +683,7 @@ export default function FecharOS() {
               {materiaisUsados.length > 0 && (
                 <div className="space-y-2">
                   {materiaisUsados.map((item, index) => (
-                    <div key={index} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
+                    <div key={index} className="flex items-center justify-between p-3 bg-muted/50 rounded-xl border border-border/60">
                       <div className="flex items-center gap-3">
                         <Badge variant="outline">{item.material.codigo}</Badge>
                         <span className="text-sm">{item.material.nome}</span>
@@ -701,7 +705,7 @@ export default function FecharOS() {
                       </div>
                     </div>
                   ))}
-                  <div className="flex justify-end p-3 bg-primary/10 rounded-lg">
+                  <div className="flex justify-end p-3 bg-primary/10 rounded-xl border border-primary/20">
                     <span className="text-sm text-muted-foreground mr-2">Total Materiais:</span>
                     <span className="font-mono font-bold text-primary">{formatCurrency(custoMateriais)}</span>
                   </div>
@@ -710,7 +714,7 @@ export default function FecharOS() {
             </div>
 
             {/* Other Costs */}
-            <div className="space-y-2">
+            <div className="space-y-2 rounded-xl border border-border/70 p-4 bg-background/70">
               <Label htmlFor="custoTerceiros">Custo Terceiros (R$)</Label>
               <Input
                 id="custoTerceiros"
@@ -724,7 +728,7 @@ export default function FecharOS() {
             </div>
 
             {/* User Info */}
-            <div className="p-3 bg-muted/50 rounded-lg text-sm">
+            <div className="p-3 bg-muted/50 rounded-xl text-sm border border-border/60">
               <span className="text-muted-foreground">Usuário de fechamento: </span>
               <span className="font-medium">{user?.nome}</span>
             </div>
@@ -732,7 +736,7 @@ export default function FecharOS() {
             {/* Submit */}
             <Button 
               type="submit" 
-              className="w-full gap-2"
+              className="w-full gap-2 h-11"
               disabled={isSubmitting || !formData.mecanicoId || !formData.horaInicio || !formData.horaFim || !formData.servicoExecutado}
             >
               {isSubmitting ? (

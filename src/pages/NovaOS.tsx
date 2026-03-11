@@ -171,19 +171,24 @@ export default function NovaOS() {
   }
 
   return (
-    <div className="max-w-3xl mx-auto space-y-6">
+    <div className="max-w-5xl mx-auto space-y-6 pb-6">
       {/* Header */}
-      <div className="flex items-center gap-4">
-        <Button variant="ghost" size="icon" onClick={() => navigate(-1)}>
-          <ArrowLeft className="h-5 w-5" />
-        </Button>
-        <div>
-          <h1 className="text-2xl font-bold text-foreground">Emitir Ordem de Serviço</h1>
-          <p className="text-muted-foreground">
-            {solicitacaoOrigem
-              ? `Conversão da solicitação #${solicitacaoOrigem.numero_solicitacao} em O.S`
-              : 'Preencha os dados para criar uma nova O.S'}
-          </p>
+      <div className="relative overflow-hidden rounded-2xl border border-primary/20 bg-gradient-to-br from-primary/10 via-background to-info/10 p-5 md:p-7">
+        <div className="pointer-events-none absolute -top-10 -right-10 h-32 w-32 rounded-full bg-primary/20 blur-2xl" />
+        <div className="pointer-events-none absolute -bottom-10 -left-10 h-32 w-32 rounded-full bg-info/20 blur-2xl" />
+
+        <div className="relative flex items-start gap-4">
+          <Button variant="outline" size="icon" className="shrink-0 bg-background/70" onClick={() => navigate(-1)}>
+            <ArrowLeft className="h-5 w-5" />
+          </Button>
+          <div className="space-y-1.5">
+            <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-foreground">Emitir Ordem de Servico</h1>
+            <p className="text-sm md:text-base text-muted-foreground max-w-3xl">
+              {solicitacaoOrigem
+                ? `Conversao da solicitacao #${solicitacaoOrigem.numero_solicitacao} em O.S com preenchimento automatico.`
+                : 'Preencha os dados operacionais para criar uma nova O.S com rastreabilidade completa.'}
+            </p>
+          </div>
         </div>
       </div>
 
@@ -194,10 +199,10 @@ export default function NovaOS() {
       )}
 
       {/* Form Card */}
-      <div className="bg-card border border-border rounded-lg p-6 shadow-industrial">
+      <div className="bg-card border border-border rounded-2xl p-5 md:p-7 shadow-industrial">
         <form onSubmit={handleSubmit} className="space-y-6">
           {/* Date */}
-          <div className="grid grid-cols-2 gap-4 p-4 bg-muted/50 rounded-lg">
+          <div className="grid grid-cols-2 gap-4 p-4 bg-gradient-to-r from-muted/70 to-muted/40 rounded-xl border border-border/60">
             <div>
               <Label className="text-xs text-muted-foreground">Nº da O.S</Label>
               <p className="text-2xl font-bold font-mono text-primary">(Auto)</p>
@@ -212,7 +217,7 @@ export default function NovaOS() {
 
           {/* TAG and Equipment */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2">
+            <div className="space-y-2 rounded-xl border border-border/70 p-4 bg-background/70">
               <Label htmlFor="tag">TAG do Equipamento *</Label>
               <Select 
                 value={formData.tag} 
@@ -231,7 +236,7 @@ export default function NovaOS() {
               </Select>
             </div>
 
-            <div className="space-y-2">
+            <div className="space-y-2 rounded-xl border border-border/70 p-4 bg-background/70">
               <Label>Equipamento</Label>
               <Input
                 value={selectedEquipamento?.nome || ''}
@@ -244,7 +249,7 @@ export default function NovaOS() {
 
           {/* Type and Priority */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2">
+            <div className="space-y-2 rounded-xl border border-border/70 p-4 bg-background/70">
               <Label htmlFor="tipo">Tipo de Manutenção *</Label>
               <Select 
                 value={formData.tipo} 
@@ -263,7 +268,7 @@ export default function NovaOS() {
               </Select>
             </div>
 
-            <div className="space-y-2">
+            <div className="space-y-2 rounded-xl border border-border/70 p-4 bg-background/70">
               <Label htmlFor="prioridade">Prioridade</Label>
               <Select 
                 value={formData.prioridade} 
@@ -283,7 +288,7 @@ export default function NovaOS() {
           </div>
 
           {/* Requester */}
-          <div className="space-y-2">
+          <div className="space-y-2 rounded-xl border border-border/70 p-4 bg-background/70">
             <Label htmlFor="solicitante">Solicitante *</Label>
             <Input
               id="solicitante"
@@ -295,7 +300,7 @@ export default function NovaOS() {
           </div>
 
           {/* Problem Description */}
-          <div className="space-y-2">
+          <div className="space-y-2 rounded-xl border border-border/70 p-4 bg-background/70">
             <Label htmlFor="problema">Problema Apresentado *</Label>
             <Textarea
               id="problema"
@@ -308,7 +313,7 @@ export default function NovaOS() {
           </div>
 
           {/* Estimates */}
-          <div className="space-y-2">
+          <div className="space-y-2 rounded-xl border border-border/70 p-4 bg-background/70">
             <Label htmlFor="tempoEstimado">Tempo Estimado (min)</Label>
             <Input
               id="tempoEstimado"
@@ -321,7 +326,7 @@ export default function NovaOS() {
           </div>
 
           {/* User Info */}
-          <div className="p-3 bg-muted/50 rounded-lg text-sm">
+          <div className="p-3 bg-muted/50 rounded-xl text-sm border border-border/60">
             <span className="text-muted-foreground">Usuário de abertura: </span>
             <span className="font-medium">{user?.nome}</span>
           </div>
@@ -330,7 +335,7 @@ export default function NovaOS() {
           <div className="flex flex-col sm:flex-row gap-3 pt-4 border-t border-border">
             <Button 
               type="submit" 
-              className="flex-1 gap-2"
+              className="flex-1 gap-2 h-11"
               disabled={createOSMutation.isPending || !formData.tag || !formData.tipo || !formData.solicitante || !formData.problema}
             >
               {createOSMutation.isPending ? (
@@ -345,7 +350,7 @@ export default function NovaOS() {
                 </>
               )}
             </Button>
-            <Button type="button" variant="outline" onClick={() => navigate(-1)}>
+            <Button type="button" variant="outline" className="h-11" onClick={() => navigate(-1)}>
               Cancelar
             </Button>
           </div>
