@@ -29,6 +29,10 @@ import {
   updateContract,
   updatePlan,
   updateSubscriptionBilling,
+  listDatabaseTables,
+  cleanupCompanyData,
+  purgeTableData,
+  deleteCompanyByOwner,
 } from '@/services/ownerPortal.service'
 
 export function useOwnerStats() {
@@ -117,6 +121,14 @@ export function useOwnerMasterOwners() {
     queryKey: ['owner', 'platform-owners'],
     queryFn: listPlatformOwners,
     staleTime: 15_000,
+  })
+}
+
+export function useOwnerDatabaseTables() {
+  return useQuery({
+    queryKey: ['owner', 'database', 'tables'],
+    queryFn: listDatabaseTables,
+    staleTime: 10_000,
   })
 }
 
@@ -284,6 +296,41 @@ export function useOwnerCompanyActions() {
     },
   })
 
+  const cleanupCompanyDataMutation = useMutation({
+    mutationFn: cleanupCompanyData,
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['owner', 'database', 'tables'] })
+      qc.invalidateQueries({ queryKey: ['owner', 'companies'] })
+      qc.invalidateQueries({ queryKey: ['owner', 'users'] })
+      qc.invalidateQueries({ queryKey: ['owner', 'stats'] })
+      qc.invalidateQueries({ queryKey: ['owner', 'audit-logs'] })
+    },
+  })
+
+  const purgeTableDataMutation = useMutation({
+    mutationFn: purgeTableData,
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['owner', 'database', 'tables'] })
+      qc.invalidateQueries({ queryKey: ['owner', 'companies'] })
+      qc.invalidateQueries({ queryKey: ['owner', 'users'] })
+      qc.invalidateQueries({ queryKey: ['owner', 'stats'] })
+      qc.invalidateQueries({ queryKey: ['owner', 'audit-logs'] })
+    },
+  })
+
+  const deleteCompanyByOwnerMutation = useMutation({
+    mutationFn: deleteCompanyByOwner,
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['owner', 'database', 'tables'] })
+      qc.invalidateQueries({ queryKey: ['owner', 'companies'] })
+      qc.invalidateQueries({ queryKey: ['owner', 'users'] })
+      qc.invalidateQueries({ queryKey: ['owner', 'subscriptions'] })
+      qc.invalidateQueries({ queryKey: ['owner', 'contracts'] })
+      qc.invalidateQueries({ queryKey: ['owner', 'stats'] })
+      qc.invalidateQueries({ queryKey: ['owner', 'audit-logs'] })
+    },
+  })
+
   return {
     blockCompany,
     changePlan,
@@ -305,5 +352,8 @@ export function useOwnerCompanyActions() {
     deleteContractMutation,
     updateCompanySettingsMutation,
     createPlatformOwnerMutation,
+    cleanupCompanyDataMutation,
+    purgeTableDataMutation,
+    deleteCompanyByOwnerMutation,
   }
 }

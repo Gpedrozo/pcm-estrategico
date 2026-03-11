@@ -40,7 +40,8 @@ type Payload = {
     | "cleanup_owner_stress_data"
     | "list_database_tables"
     | "cleanup_company_data"
-    | "delete_company";
+    | "delete_company"
+    | "purge_table_data";
   empresa_id?: string;
   company?: {
     nome: string;
@@ -129,6 +130,11 @@ type Payload = {
   user_id?: string;
   empresa_nome?: string;
   confirmation_name?: string;
+  confirmation_phrase?: string;
+  table_name?: string;
+  keep_company_core?: boolean;
+  keep_billing_data?: boolean;
+  include_auth_users?: boolean;
 };
 
 function normalizeSlug(text: string) {
@@ -426,6 +432,11 @@ const TENANT_BILLING_TABLES = new Set([
   "contract_versions",
 ]);
 
+const PROTECTED_PLATFORM_TABLES = new Set([
+  "user_roles",
+  "profiles",
+]);
+
 async function listDatabaseTables(admin: ReturnType<typeof adminClient>) {
   const rows: Array<{ table_name: string; total_rows: number; has_empresa_id: boolean }> = [];
 
@@ -579,6 +590,10 @@ Deno.serve(async (req) => {
     "list_platform_owners",
     "create_platform_owner",
     "cleanup_owner_stress_data",
+    "list_database_tables",
+    "cleanup_company_data",
+    "delete_company",
+    "purge_table_data",
   ]);
 
   if (ownerMasterOnlyActions.has(body.action) && !isOwnerMaster) {
@@ -1642,6 +1657,195 @@ Deno.serve(async (req) => {
         email: normalizedEmail,
         role: ownerRole,
         temporary_password: existingUser ? null : password,
+      },
+    }, 200, req);
+  }
+
+  if (body.action === "list_database_tables") {
+    const tables = await listDatabaseTables(admin);
+    return ok({ tables }, 200, req);
+  }
+
+  if (body.action === "cleanup_company_data") {
+    if (!body.empresa_id) return fail("empresa_id is required", 400, null, req);
+    if ((body.confirmation_phrase ?? "").trim().toUpperCase() !== "LIMPAR EMPRESA") {
+      return fail("Confirmação inválida. Digite LIMPAR EMPRESA para continuar.", 400, null, req);
+    }
+
+    const keepCompanyCore = Boolean(body.keep_company_core);
+    const keepBillingData = Boolean(body.keep_billing_data);
+    const includeAuthUsers = Boolean(body.include_auth_users);
+
+    const cleanupResult = await cleanupCompanyTenantRows(admin, body.empresa_id, {
+      keepCompanyCore,
+      keepBillingData,
+    });
+
+    if ((cleanupResult as any)?.error) {
+      return fail(String((cleanupResult as any).error), 400, null, req);
+    }
+
+    const deletedByTable = (cleanupResult as any).deletedByTable ?? {};
+    const userIds = ((cleanupResult as any).userIds ?? []) as string[];
+
+    let deletedAuthUsers = 0;
+    if (includeAuthUsers && userIds.length > 0) {
+      deletedAuthUsers = await deleteAuthUsers(admin, userIds);
+    }
+
+    const totalDeleted = Object.values(deletedByTable).reduce((acc: number, value: any) => acc + Number(value ?? 0), 0);
+
+    await logOwnerMasterHiddenAudit(admin, {
+      actorId: auth.user.id,
+      actorEmail: auth.user.email,
+      empresaId: body.empresa_id,
+      actionType: "OWNER_MASTER_CLEANUP_COMPANY_DATA",
+      details: {
+        keep_company_core: keepCompanyCore,
+        keep_billing_data: keepBillingData,
+        include_auth_users: includeAuthUsers,
+        deleted_auth_users: deletedAuthUsers,
+        deleted_by_table: deletedByTable,
+      },
+    });
+
+    return ok({
+      success: true,
+      summary: {
+        empresa_id: body.empresa_id,
+        keep_company_core: keepCompanyCore,
+        keep_billing_data: keepBillingData,
+        include_auth_users: includeAuthUsers,
+        deleted_auth_users: deletedAuthUsers,
+        deleted_by_table: deletedByTable,
+        total_deleted: totalDeleted,
+      },
+    }, 200, req);
+  }
+
+  if (body.action === "purge_table_data") {
+    const tableName = (body.table_name ?? "").trim();
+    if (!tableName) return fail("table_name is required", 400, null, req);
+    if (!PLATFORM_TABLES.includes(tableName)) {
+      return fail("Tabela não permitida para purge", 400, null, req);
+    }
+
+    if (PROTECTED_PLATFORM_TABLES.has(tableName)) {
+      return fail("Tabela protegida. Utilize limpeza por empresa para remover usuários.", 400, null, req);
+    }
+
+    if ((body.confirmation_phrase ?? "").trim().toUpperCase() !== "LIMPAR TABELA") {
+      return fail("Confirmação inválida. Digite LIMPAR TABELA para continuar.", 400, null, req);
+    }
+
+    let hasEmpresaId = false;
+    const empresaIdProbe = await admin
+      .from(tableName)
+      .select("empresa_id", { count: "exact", head: true })
+      .limit(1);
+    hasEmpresaId = !empresaIdProbe.error;
+
+    let query = admin.from(tableName).delete({ count: "exact" });
+
+    if (body.empresa_id) {
+      if (!hasEmpresaId) {
+        return fail("Tabela sem empresa_id; remova o filtro de empresa para purge global.", 400, null, req);
+      }
+      query = query.eq("empresa_id", body.empresa_id);
+    }
+
+    const { count, error } = await query;
+    if (error) return fail(`Falha ao limpar tabela ${tableName}: ${error.message}`, 400, null, req);
+
+    await logOwnerMasterHiddenAudit(admin, {
+      actorId: auth.user.id,
+      actorEmail: auth.user.email,
+      empresaId: body.empresa_id ?? null,
+      actionType: "OWNER_MASTER_PURGE_TABLE_DATA",
+      details: {
+        table_name: tableName,
+        empresa_id: body.empresa_id ?? null,
+        deleted_rows: Number(count ?? 0),
+      },
+    });
+
+    return ok({
+      success: true,
+      summary: {
+        table_name: tableName,
+        empresa_id: body.empresa_id ?? null,
+        deleted_rows: Number(count ?? 0),
+      },
+    }, 200, req);
+  }
+
+  if (body.action === "delete_company") {
+    if (!body.empresa_id) return fail("empresa_id is required", 400, null, req);
+
+    const { data: company, error: companyError } = await admin
+      .from("empresas")
+      .select("id,nome,slug")
+      .eq("id", body.empresa_id)
+      .maybeSingle();
+
+    if (companyError) return fail(companyError.message, 400, null, req);
+    if (!company?.id) return fail("Empresa não encontrada", 404, null, req);
+
+    const expectedName = company.nome ?? company.slug ?? "";
+    if ((body.confirmation_name ?? "").trim() !== expectedName) {
+      return fail("Confirmação inválida. Informe exatamente o nome da empresa para excluir.", 400, null, req);
+    }
+
+    const includeAuthUsers = Boolean(body.include_auth_users);
+
+    const cleanupResult = await cleanupCompanyTenantRows(admin, body.empresa_id, {
+      keepCompanyCore: false,
+      keepBillingData: false,
+    });
+
+    if ((cleanupResult as any)?.error) {
+      return fail(String((cleanupResult as any).error), 400, null, req);
+    }
+
+    const userIds = ((cleanupResult as any).userIds ?? []) as string[];
+    let deletedAuthUsers = 0;
+    if (includeAuthUsers && userIds.length > 0) {
+      deletedAuthUsers = await deleteAuthUsers(admin, userIds);
+    }
+
+    await admin.from("configuracoes_sistema").delete().eq("empresa_id", body.empresa_id);
+    await admin.from("dados_empresa").delete().eq("empresa_id", body.empresa_id);
+    await admin.from("contracts").delete().eq("empresa_id", body.empresa_id);
+    await admin.from("subscriptions").delete().eq("empresa_id", body.empresa_id);
+
+    const { error: deleteCompanyError } = await admin
+      .from("empresas")
+      .delete()
+      .eq("id", body.empresa_id);
+
+    if (deleteCompanyError) {
+      return fail(`Falha ao excluir empresa: ${deleteCompanyError.message}`, 400, null, req);
+    }
+
+    await logOwnerMasterHiddenAudit(admin, {
+      actorId: auth.user.id,
+      actorEmail: auth.user.email,
+      empresaId: body.empresa_id,
+      actionType: "OWNER_MASTER_DELETE_COMPANY",
+      details: {
+        empresa_id: body.empresa_id,
+        company_name: expectedName,
+        include_auth_users: includeAuthUsers,
+        deleted_auth_users: deletedAuthUsers,
+      },
+    });
+
+    return ok({
+      success: true,
+      summary: {
+        empresa_id: body.empresa_id,
+        company_name: expectedName,
+        deleted_auth_users: deletedAuthUsers,
       },
     }, 200, req);
   }

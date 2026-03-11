@@ -33,6 +33,10 @@ export type OwnerAction =
   | 'update_subscription_billing'
   | 'list_platform_owners'
   | 'create_platform_owner'
+  | 'list_database_tables'
+  | 'cleanup_company_data'
+  | 'delete_company'
+  | 'purge_table_data'
 
 export interface PlatformOwnerRow {
   user_id: string
@@ -117,6 +121,12 @@ export interface OwnerAuditLog {
   severity?: string
   empresa_id?: string
   created_at?: string
+}
+
+export interface OwnerDatabaseTable {
+  table_name: string
+  total_rows: number
+  has_empresa_id: boolean
 }
 
 export interface OwnerSupportTicket {
@@ -541,5 +551,45 @@ export async function createPlatformOwner(payload: {
       password: payload.password,
       role: payload.role ?? 'SYSTEM_ADMIN',
     },
+  })
+}
+
+export async function listDatabaseTables(): Promise<OwnerDatabaseTable[]> {
+  const data = await callOwnerAdmin<{ tables: OwnerDatabaseTable[] }>({ action: 'list_database_tables' })
+  return data.tables ?? []
+}
+
+export async function cleanupCompanyData(payload: {
+  empresa_id: string
+  keep_company_core?: boolean
+  keep_billing_data?: boolean
+  include_auth_users?: boolean
+  confirmation_phrase: string
+}) {
+  return callOwnerAdmin({
+    action: 'cleanup_company_data',
+    ...payload,
+  })
+}
+
+export async function purgeTableData(payload: {
+  table_name: string
+  empresa_id?: string
+  confirmation_phrase: string
+}) {
+  return callOwnerAdmin({
+    action: 'purge_table_data',
+    ...payload,
+  })
+}
+
+export async function deleteCompanyByOwner(payload: {
+  empresa_id: string
+  confirmation_name: string
+  include_auth_users?: boolean
+}) {
+  return callOwnerAdmin({
+    action: 'delete_company',
+    ...payload,
   })
 }
