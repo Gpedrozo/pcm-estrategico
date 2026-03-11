@@ -5,6 +5,10 @@ import { logger } from "@/lib/logger";
 import { writeAuditLog } from "@/lib/audit";
 
 const OWNER_DOMAIN = (import.meta.env.VITE_OWNER_DOMAIN || "owner.gppis.com.br").toLowerCase();
+const OWNER_DOMAIN_ALIASES = new Set([
+	OWNER_DOMAIN,
+	OWNER_DOMAIN.startsWith("www.") ? OWNER_DOMAIN.slice(4) : `www.${OWNER_DOMAIN}`,
+]);
 const LEGACY_OWNER_PROJECT_REF = "cplowhoklcegnjvwmrsk";
 const OWNER_HARD_RESET_MARKER = "owner-runtime-hard-reset-v1";
 const ACTIVE_SUPABASE_PROJECT_REF = (() => {
@@ -58,7 +62,7 @@ async function hardenOwnerRuntime() {
 	if (typeof window === "undefined") return;
 
 	const hostname = window.location.hostname.toLowerCase();
-	if (hostname !== OWNER_DOMAIN) return;
+	if (!OWNER_DOMAIN_ALIASES.has(hostname)) return;
 
 	try {
 		for (const storageKey of Object.keys(window.localStorage)) {

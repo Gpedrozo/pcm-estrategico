@@ -74,6 +74,28 @@ export default function Owner() {
     [isOwnerMaster],
   )
 
+  const moduleSubtitle = useMemo(() => {
+    const map: Record<string, string> = {
+      dashboard: 'Visao executiva do ecossistema multiempresa.',
+      empresas: 'Cadastro, operacao e governanca de tenants.',
+      usuarios: 'Gestao de usuarios globais e RBAC.',
+      planos: 'Catalogo comercial de planos e limites.',
+      assinaturas: 'Ciclo de vida de assinaturas e cobranca.',
+      contratos: 'Contratos, versoes e compliance comercial.',
+      auditoria: 'Trilha de auditoria e rastreabilidade.',
+      sistema: 'Operacoes sensiveis e controles de plataforma.',
+      suporte: 'Atendimento de chamados e respostas owner.',
+      financeiro: 'Receita recorrente, churn e faturamento.',
+      'feature-flags': 'Ativacao progressiva de funcionalidades.',
+      monitoramento: 'Saude operacional e alertas do ambiente.',
+      logs: 'Logs tecnicos e eventos de integracao.',
+      configuracoes: 'Parametros por empresa e controles globais.',
+      'owner-master': 'Governanca critica de superusuarios da plataforma.',
+    }
+
+    return map[active] ?? 'Controle global multiempresa.'
+  }, [active])
+
   const content = useMemo(() => {
     switch (active) {
       case 'dashboard':
@@ -136,7 +158,7 @@ export default function Owner() {
   return (
     <OwnerPortalLayout
       title="Owner Portal"
-      subtitle="Controle global multiempresa"
+      subtitle={moduleSubtitle}
       navItems={navItems}
       activeKey={active}
       onNavigate={setActive}
