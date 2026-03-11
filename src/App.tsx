@@ -50,6 +50,7 @@ const NotFound = lazy(() => import('./pages/NotFound'))
 const Instalar = lazy(() => import('./pages/Instalar'))
 const ArquivosOwner = lazy(() => import('./pages/ArquivosOwner'))
 const RootCauseAIPage = lazy(() => import('./modules/rootCauseAI/RootCauseAIPage'))
+const ManualOperacao = lazy(() => import('./pages/ManualOperacao'))
 import { logger } from "@/lib/logger";
 
 const queryClient = new QueryClient({
@@ -189,6 +190,7 @@ function TenantRoutes() {
 
                 <Route path="/master-ti" element={<Navigate to="/dashboard" replace />} />
                 <Route path="/inteligencia-causa-raiz" element={<RootCauseAIPage />} />
+                <Route path="/manuais-operacao" element={<ManualOperacao />} />
               </Route>
 
               <Route path="*" element={<NotFound />} />

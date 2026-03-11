@@ -92,6 +92,10 @@ const ssmaMenuItems = [
   { title: 'SSMA', url: '/ssma', icon: Shield },
 ];
 
+const ajudaMenuItems = [
+  { title: 'Manuais de Operação', url: '/manuais-operacao', icon: FileText },
+];
+
 const adminMenuItems = [
   { title: 'Config. Empresa', url: '/empresa/configuracoes', icon: Settings },
   { title: 'Usuários', url: '/usuarios', icon: Users },
@@ -223,6 +227,17 @@ export function AppSidebar() {
           <SidebarGroupContent>
             <SidebarMenu>
               {ssmaMenuItems.map(renderMenuLink)}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+
+        <SidebarGroup className="mt-4">
+          <SidebarGroupLabel className="text-sidebar-foreground/50 uppercase text-xs font-semibold px-3 mb-2">
+            Ajuda
+          </SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {ajudaMenuItems.map(renderMenuLink)}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
