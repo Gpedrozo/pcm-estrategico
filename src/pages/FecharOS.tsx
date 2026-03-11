@@ -18,7 +18,7 @@ import {
 import { usePendingOrdensServico, useUpdateOrdemServico, type OrdemServicoRow } from '@/hooks/useOrdensServico';
 import { useMecanicosAtivos } from '@/hooks/useMecanicos';
 import { useMateriaisAtivos, useAddMaterialOS, type MaterialRow } from '@/hooks/useMateriais';
-import { useCreateExecucaoOS } from '@/hooks/useExecucoesOS';
+import { useCreateExecucaoOS, useCloseOSAtomic } from '@/hooks/useExecucoesOS';
 import { useLogAuditoria } from '@/hooks/useAuditoria';
 import { useAuth } from '@/contexts/AuthContext';
 import { 
@@ -90,6 +90,7 @@ export default function FecharOS() {
   const { data: materiaisDisponiveis } = useMateriaisAtivos();
   const updateOSMutation = useUpdateOrdemServico();
   const createExecucaoMutation = useCreateExecucaoOS();
+  const closeOSAtomicMutation = useCloseOSAtomic();
   const addMaterialOSMutation = useAddMaterialOS();
   
   const [selectedOS, setSelectedOS] = useState<OrdemServicoRow | null>(null);
@@ -189,43 +190,75 @@ export default function FecharOS() {
       const custoTerceiros = formData.custoTerceiros ? parseFloat(formData.custoTerceiros) : 0;
       const custoTotal = custoMaoObra + custoMateriais + custoTerceiros;
 
-      // Create execution record
-      await createExecucaoMutation.mutateAsync({
-        os_id: selectedOS.id,
-        mecanico_id: formData.mecanicoId,
-        mecanico_nome: selectedMecanico.nome,
-        hora_inicio: formData.horaInicio,
-        hora_fim: formData.horaFim,
-        tempo_execucao: tempoExecucao,
-        servico_executado: formData.servicoExecutado,
-        custo_mao_obra: custoMaoObra,
-        custo_materiais: custoMateriais,
-        custo_terceiros: custoTerceiros,
-        custo_total: custoTotal,
-      });
-
-      // Add materials used to OS
-      for (const item of materiaisUsados) {
-        await addMaterialOSMutation.mutateAsync({
+      try {
+        await closeOSAtomicMutation.mutateAsync({
           os_id: selectedOS.id,
-          material_id: item.material.id,
-          quantidade: item.quantidade,
-          custo_unitario: item.material.custo_unitario,
-          custo_total: item.quantidade * item.material.custo_unitario,
+          mecanico_id: formData.mecanicoId || null,
+          mecanico_nome: selectedMecanico.nome,
+          hora_inicio: formData.horaInicio,
+          hora_fim: formData.horaFim,
+          tempo_execucao: tempoExecucao,
+          servico_executado: formData.servicoExecutado,
+          custo_mao_obra: custoMaoObra,
+          custo_materiais: custoMateriais,
+          custo_terceiros: custoTerceiros,
+          custo_total: custoTotal,
+          materiais: materiaisUsados.map((item) => ({
+            material_id: item.material.id,
+            quantidade: item.quantidade,
+            custo_unitario: item.material.custo_unitario,
+            custo_total: item.quantidade * item.material.custo_unitario,
+          })),
+          usuario_fechamento: user?.id || null,
+          modo_falha: rcaData.requireRCA && isCorretiva ? rcaData.modoFalha : null,
+          causa_raiz: rcaData.requireRCA && isCorretiva ? rcaData.causaRaiz : null,
+          acao_corretiva: rcaData.requireRCA && isCorretiva ? rcaData.acaoCorretiva : null,
+          licoes_aprendidas: rcaData.requireRCA && isCorretiva ? rcaData.licoesAprendidas : null,
+        });
+      } catch (atomicError: any) {
+        const message = String(atomicError?.message || '').toLowerCase();
+        const functionMissing = message.includes('close_os_with_execution_atomic') && message.includes('does not exist');
+
+        if (!functionMissing) {
+          throw atomicError;
+        }
+
+        // Backward compatibility fallback when migration is not applied yet.
+        await createExecucaoMutation.mutateAsync({
+          os_id: selectedOS.id,
+          mecanico_id: formData.mecanicoId,
+          mecanico_nome: selectedMecanico.nome,
+          hora_inicio: formData.horaInicio,
+          hora_fim: formData.horaFim,
+          tempo_execucao: tempoExecucao,
+          servico_executado: formData.servicoExecutado,
+          custo_mao_obra: custoMaoObra,
+          custo_materiais: custoMateriais,
+          custo_terceiros: custoTerceiros,
+          custo_total: custoTotal,
+        });
+
+        for (const item of materiaisUsados) {
+          await addMaterialOSMutation.mutateAsync({
+            os_id: selectedOS.id,
+            material_id: item.material.id,
+            quantidade: item.quantidade,
+            custo_unitario: item.material.custo_unitario,
+            custo_total: item.quantidade * item.material.custo_unitario,
+          });
+        }
+
+        await updateOSMutation.mutateAsync({
+          id: selectedOS.id,
+          status: 'FECHADA',
+          data_fechamento: new Date().toISOString(),
+          usuario_fechamento: user?.id || null,
+          modo_falha: rcaData.requireRCA && isCorretiva ? rcaData.modoFalha : null,
+          causa_raiz: rcaData.requireRCA && isCorretiva ? rcaData.causaRaiz : null,
+          acao_corretiva: rcaData.requireRCA && isCorretiva ? rcaData.acaoCorretiva : null,
+          licoes_aprendidas: rcaData.requireRCA && isCorretiva ? rcaData.licoesAprendidas : null,
         });
       }
-
-      // Update OS status to closed with RCA data if applicable
-      await updateOSMutation.mutateAsync({
-        id: selectedOS.id,
-        status: 'FECHADA',
-        data_fechamento: new Date().toISOString(),
-        usuario_fechamento: user?.id || null,
-        modo_falha: rcaData.requireRCA && isCorretiva ? rcaData.modoFalha : null,
-        causa_raiz: rcaData.requireRCA && isCorretiva ? rcaData.causaRaiz : null,
-        acao_corretiva: rcaData.requireRCA && isCorretiva ? rcaData.acaoCorretiva : null,
-        licoes_aprendidas: rcaData.requireRCA && isCorretiva ? rcaData.licoesAprendidas : null,
-      });
 
       await log('FECHAR_OS', `Fechamento da O.S ${selectedOS.numero_os} - Custo total: ${formatCurrency(custoTotal)}${rcaData.requireRCA ? ' (com RCA)' : ''}`, selectedOS.tag);
 

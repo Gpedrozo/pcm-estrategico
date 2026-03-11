@@ -26,10 +26,40 @@ interface RecentActivity {
   tag?: string;
 }
 
+interface DashboardKpiRow {
+  empresa_id: string;
+  snapshot_at: string;
+  os_abertas: number;
+  os_fechadas_30d: number;
+  urgentes_abertas: number;
+  backlog_atrasado: number;
+  custo_30d: number;
+  mttr_horas_30d: number;
+  mtbf_horas_30d: number;
+  disponibilidade_estim: number;
+  aderencia_preventiva_90d: number;
+}
+
 export function useDashboardData() {
   const { data: indicadores, isLoading: loadingIndicadores } = useIndicadores();
   const { data: ordensServico, isLoading: loadingOS } = useOrdensServico();
   const { data: execucoes, isLoading: loadingExec } = useExecucoesOS();
+  const { data: dashboardKpis, isLoading: loadingDbKpis } = useQuery({
+    queryKey: ['dashboard-kpis-db'],
+    queryFn: async () => {
+      const { data, error } = await (supabase as any)
+        .from('v_dashboard_kpis')
+        .select('*')
+        .limit(1)
+        .maybeSingle();
+
+      if (error && error.code !== 'PGRST116' && !String(error.message || '').includes('relation')) {
+        throw error;
+      }
+
+      return (data ?? null) as DashboardKpiRow | null;
+    },
+  });
 
   // OS distribution by type
   const osDistribuicaoPorTipo = useMemo(() => {
@@ -92,6 +122,13 @@ export function useDashboardData() {
 
   // Backlog statistics
   const backlogStats = useMemo(() => {
+    if (dashboardKpis) {
+      return {
+        urgentes: dashboardKpis.urgentes_abertas || 0,
+        atrasadas: dashboardKpis.backlog_atrasado || 0,
+      };
+    }
+
     if (!ordensServico) return { urgentes: 0, atrasadas: 0 };
     
     const now = new Date();
@@ -118,6 +155,10 @@ export function useDashboardData() {
 
   // Calculate preventive compliance rate
   const aderenciaPreventiva = useMemo(() => {
+    if (dashboardKpis) {
+      return Number(dashboardKpis.aderencia_preventiva_90d || 0);
+    }
+
     if (!ordensServico) return 0;
     
     const preventivas = ordensServico.filter(os => os.tipo === 'PREVENTIVA');
@@ -222,6 +263,23 @@ export function useDashboardData() {
 
   // Calculate advanced KPIs
   const advancedKPIs = useMemo(() => {
+    if (dashboardKpis) {
+      const mtbf = Number(dashboardKpis.mtbf_horas_30d || 720);
+      const mttr = Number(dashboardKpis.mttr_horas_30d || 2);
+      const disponibilidade = Number(dashboardKpis.disponibilidade_estim || 100);
+      const t = 168;
+      const lambda = 1 / Math.max(mtbf, 1);
+      const confiabilidade = Math.exp(-lambda * t) * 100;
+
+      return {
+        mtbf: Math.max(mtbf, 1),
+        mttr: Math.max(mttr, 0.1),
+        disponibilidade: Math.min(disponibilidade, 100),
+        confiabilidade: Math.min(confiabilidade, 100),
+        oee: Math.min(disponibilidade * 0.95, 100),
+      };
+    }
+
     if (!ordensServico || !execucoes) {
       return {
         mtbf: 720,
@@ -288,6 +346,6 @@ export function useDashboardData() {
     topEquipamentos,
     recentActivities,
     advancedKPIs,
-    isLoading: loadingIndicadores || loadingOS || loadingExec,
+    isLoading: loadingIndicadores || loadingOS || loadingExec || loadingDbKpis,
   };
 }

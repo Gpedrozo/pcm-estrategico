@@ -22,15 +22,39 @@ export interface AuditoriaInsert {
   usuario_id?: string | null;
 }
 
-export function useAuditoria() {
+export interface AuditoriaFilters {
+  limit?: number;
+  offset?: number;
+  dateFrom?: string;
+  dateTo?: string;
+}
+
+export function useAuditoria(filters?: AuditoriaFilters) {
   return useQuery({
-    queryKey: ['auditoria'],
+    queryKey: ['auditoria', filters?.limit ?? null, filters?.offset ?? null, filters?.dateFrom ?? null, filters?.dateTo ?? null],
     queryFn: async () => {
-      const { data, error } = await supabase
+      let query = supabase
         .from('audit_logs')
         .select('*')
-        .order('created_at', { ascending: false })
-        .limit(200);
+        .order('created_at', { ascending: false });
+
+      if (filters?.dateFrom) {
+        query = query.gte('created_at', filters.dateFrom);
+      }
+
+      if (filters?.dateTo) {
+        query = query.lte('created_at', filters.dateTo);
+      }
+
+      if (typeof filters?.offset === 'number') {
+        const from = Math.max(0, filters.offset);
+        const to = from + Math.max(1, filters.limit ?? 200) - 1;
+        query = query.range(from, to);
+      } else {
+        query = query.limit(filters?.limit ?? 500);
+      }
+
+      const { data, error } = await query;
 
       if (error) throw error;
       return (data || []).map((row: any) => ({

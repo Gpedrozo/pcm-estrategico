@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -7,12 +8,13 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Plus, Search, MessageSquare, Clock, AlertTriangle } from 'lucide-react';
-import { useSolicitacoes, useCreateSolicitacao, useUpdateSolicitacao, type SolicitacaoRow } from '@/hooks/useSolicitacoes';
+import { Plus, Search, Clock, GitBranch } from 'lucide-react';
+import { useSolicitacoes, useCreateSolicitacao, type SolicitacaoRow } from '@/hooks/useSolicitacoes';
 import { useEquipamentos } from '@/hooks/useEquipamentos';
 import { useAuth } from '@/contexts/AuthContext';
 
 export default function Solicitacoes() {
+  const navigate = useNavigate();
   const { user } = useAuth();
   const [search, setSearch] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -28,6 +30,18 @@ export default function Solicitacoes() {
   const { data: solicitacoes, isLoading } = useSolicitacoes();
   const { data: equipamentos } = useEquipamentos();
   const createMutation = useCreateSolicitacao();
+
+  const canConvertToOS = (solicitacao: SolicitacaoRow) => {
+    return (solicitacao.status === 'PENDENTE' || solicitacao.status === 'APROVADA') && !solicitacao.os_id;
+  };
+
+  const handleConverterParaOS = (solicitacao: SolicitacaoRow) => {
+    navigate('/os/nova', {
+      state: {
+        solicitacao,
+      },
+    });
+  };
 
   const filteredSolicitacoes = solicitacoes?.filter(s => {
     if (!search) return true;
@@ -104,11 +118,12 @@ export default function Solicitacoes() {
               <th>Status</th>
               <th>SLA</th>
               <th>Data</th>
+              <th className="text-right">Ações</th>
             </tr>
           </thead>
           <tbody>
             {filteredSolicitacoes.length === 0 ? (
-              <tr><td colSpan={7} className="text-center py-8 text-muted-foreground">Nenhuma solicitação encontrada</td></tr>
+              <tr><td colSpan={8} className="text-center py-8 text-muted-foreground">Nenhuma solicitação encontrada</td></tr>
             ) : (
               filteredSolicitacoes.map((sol) => (
                 <tr key={sol.id}>
@@ -119,6 +134,23 @@ export default function Solicitacoes() {
                   <td><Badge className={getStatusBadge(sol.status)}>{sol.status}</Badge></td>
                   <td className="flex items-center gap-1"><Clock className="h-3 w-3" />{sol.sla_horas}h</td>
                   <td>{new Date(sol.created_at).toLocaleDateString('pt-BR')}</td>
+                  <td className="text-right">
+                    {canConvertToOS(sol) ? (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="gap-1"
+                        onClick={() => handleConverterParaOS(sol)}
+                      >
+                        <GitBranch className="h-3 w-3" />
+                        Converter em O.S
+                      </Button>
+                    ) : (
+                      <span className="text-xs text-muted-foreground">
+                        {sol.os_id ? 'Vinculada' : 'Sem ação'}
+                      </span>
+                    )}
+                  </td>
                 </tr>
               ))
             )}

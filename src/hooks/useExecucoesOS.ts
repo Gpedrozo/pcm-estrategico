@@ -34,6 +34,33 @@ export interface ExecucaoOSInsert {
   custo_total?: number | null;
 }
 
+export interface MaterialFechamentoAtomic {
+  material_id: string;
+  quantidade: number;
+  custo_unitario: number;
+  custo_total: number;
+}
+
+export interface CloseOSAtomicParams {
+  os_id: string;
+  mecanico_id: string | null;
+  mecanico_nome: string;
+  hora_inicio: string;
+  hora_fim: string;
+  tempo_execucao: number;
+  servico_executado: string;
+  custo_mao_obra: number;
+  custo_materiais: number;
+  custo_terceiros: number;
+  custo_total: number;
+  materiais: MaterialFechamentoAtomic[];
+  usuario_fechamento: string | null;
+  modo_falha?: string | null;
+  causa_raiz?: string | null;
+  acao_corretiva?: string | null;
+  licoes_aprendidas?: string | null;
+}
+
 export function useExecucoesOS() {
   return useQuery({
     queryKey: ['execucoes-os'],
@@ -92,6 +119,54 @@ export function useCreateExecucaoOS() {
       toast({
         title: 'Erro ao registrar execução',
         description: error.message || 'Ocorreu um erro ao registrar a execução.',
+        variant: 'destructive',
+      });
+    },
+  });
+}
+
+export function useCloseOSAtomic() {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: async (params: CloseOSAtomicParams) => {
+      const rpcClient = supabase as any;
+      const { data, error } = await rpcClient.rpc('close_os_with_execution_atomic', {
+        p_os_id: params.os_id,
+        p_mecanico_id: params.mecanico_id,
+        p_mecanico_nome: params.mecanico_nome,
+        p_hora_inicio: params.hora_inicio,
+        p_hora_fim: params.hora_fim,
+        p_tempo_execucao: params.tempo_execucao,
+        p_servico_executado: params.servico_executado,
+        p_custo_mao_obra: params.custo_mao_obra,
+        p_custo_materiais: params.custo_materiais,
+        p_custo_terceiros: params.custo_terceiros,
+        p_custo_total: params.custo_total,
+        p_materiais: params.materiais,
+        p_usuario_fechamento: params.usuario_fechamento,
+        p_modo_falha: params.modo_falha ?? null,
+        p_causa_raiz: params.causa_raiz ?? null,
+        p_acao_corretiva: params.acao_corretiva ?? null,
+        p_licoes_aprendidas: params.licoes_aprendidas ?? null,
+      });
+
+      if (error) throw error;
+      return Array.isArray(data) ? data[0] : data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['ordens-servico'] });
+      queryClient.invalidateQueries({ queryKey: ['ordens-servico-pending'] });
+      queryClient.invalidateQueries({ queryKey: ['ordens-servico-recent'] });
+      queryClient.invalidateQueries({ queryKey: ['execucoes-os'] });
+      queryClient.invalidateQueries({ queryKey: ['indicadores'] });
+      queryClient.invalidateQueries({ queryKey: ['materiais'] });
+    },
+    onError: (error: any) => {
+      toast({
+        title: 'Erro ao fechar O.S (modo atômico)',
+        description: error?.message || 'Falha no fechamento atômico da O.S.',
         variant: 'destructive',
       });
     },

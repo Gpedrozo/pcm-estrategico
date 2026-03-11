@@ -1,5 +1,6 @@
 import { useState, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useEffect } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useReactToPrint } from 'react-to-print';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -22,6 +23,7 @@ import {
 import { useEquipamentos } from '@/hooks/useEquipamentos';
 import { useCreateOrdemServico } from '@/hooks/useOrdensServico';
 import { useLogAuditoria } from '@/hooks/useAuditoria';
+import { useUpdateSolicitacao, type SolicitacaoRow } from '@/hooks/useSolicitacoes';
 import { useAuth } from '@/contexts/AuthContext';
 import { ArrowLeft, Check, Loader2, Printer, CheckCircle } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -32,12 +34,16 @@ type PrioridadeOS = 'URGENTE' | 'ALTA' | 'MEDIA' | 'BAIXA';
 
 export default function NovaOS() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { user } = useAuth();
   const { log } = useLogAuditoria();
   const printRef = useRef<HTMLDivElement>(null);
   
   const { data: equipamentos, isLoading: loadingEquipamentos } = useEquipamentos();
   const createOSMutation = useCreateOrdemServico();
+  const updateSolicitacaoMutation = useUpdateSolicitacao();
+
+  const solicitacaoOrigem = (location.state as { solicitacao?: SolicitacaoRow } | null)?.solicitacao ?? null;
   
   const [formData, setFormData] = useState({
     tag: '',
@@ -61,6 +67,26 @@ export default function NovaOS() {
   } | null>(null);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [nomeEmpresa, setNomeEmpresa] = useState('MANUTENÇÃO INDUSTRIAL');
+
+  useEffect(() => {
+    if (!solicitacaoOrigem) {
+      return;
+    }
+
+    setFormData((prev) => ({
+      ...prev,
+      tag: solicitacaoOrigem.tag || prev.tag,
+      solicitante: solicitacaoOrigem.solicitante_nome || prev.solicitante,
+      problema: solicitacaoOrigem.descricao_falha || prev.problema,
+      prioridade:
+        solicitacaoOrigem.classificacao === 'EMERGENCIAL'
+          ? 'URGENTE'
+          : solicitacaoOrigem.classificacao === 'URGENTE'
+          ? 'ALTA'
+          : prev.prioridade,
+      tipo: prev.tipo || 'CORRETIVA',
+    }));
+  }, [solicitacaoOrigem]);
 
   const selectedEquipamento = equipamentos?.find(eq => eq.tag === formData.tag);
   const equipamentosAtivos = equipamentos?.filter(eq => eq.ativo) || [];
@@ -99,6 +125,14 @@ export default function NovaOS() {
       tempo_estimado: formData.tempoEstimado ? parseInt(formData.tempoEstimado) : null,
       usuario_abertura: user?.id || null,
     });
+
+    if (solicitacaoOrigem) {
+      await updateSolicitacaoMutation.mutateAsync({
+        id: solicitacaoOrigem.id,
+        status: 'CONVERTIDA',
+        os_id: result.id,
+      });
+    }
 
     await log('CRIAR_OS', `Criação da O.S ${result.numero_os}`, formData.tag);
     
@@ -140,9 +174,19 @@ export default function NovaOS() {
         </Button>
         <div>
           <h1 className="text-2xl font-bold text-foreground">Emitir Ordem de Serviço</h1>
-          <p className="text-muted-foreground">Preencha os dados para criar uma nova O.S</p>
+          <p className="text-muted-foreground">
+            {solicitacaoOrigem
+              ? `Conversão da solicitação #${solicitacaoOrigem.numero_solicitacao} em O.S`
+              : 'Preencha os dados para criar uma nova O.S'}
+          </p>
         </div>
       </div>
+
+      {solicitacaoOrigem && (
+        <div className="rounded-lg border border-info/30 bg-info/5 p-3 text-sm text-info">
+          Solicitação vinculada: #{solicitacaoOrigem.numero_solicitacao} • TAG {solicitacaoOrigem.tag}. Ao salvar, a solicitação será marcada como CONVERTIDA automaticamente.
+        </div>
+      )}
 
       {/* Form Card */}
       <div className="bg-card border border-border rounded-lg p-6 shadow-industrial">
