@@ -366,3 +366,513 @@ Não há menu dedicado de “Suporte” para o usuário final no ambiente tenant
 ## 20) Observação final
 
 Este manual foi estruturado com base nas funcionalidades efetivamente presentes no sistema atual, priorizando o uso do cliente final e identificando explicitamente os pontos ainda em desenvolvimento.
+
+---
+
+## 21) Backlog (priorização de pendências)
+
+Menu: **Ordens de Serviço > Backlog**.
+
+### O que o painel entrega
+
+- visão consolidada das O.S pendentes;
+- agrupamento por semana e atrasos;
+- leitura rápida por prioridade;
+- filtro de busca por TAG/equipamento/problema.
+
+### Uso recomendado
+
+1. iniciar o turno pela coluna de itens atrasados;
+2. alinhar prioridade com a liderança da área;
+3. direcionar para emissão/fechamento conforme status operacional.
+
+### Limitação atual
+
+- fluxo focado em análise e priorização (não é tela principal de cadastro/edição).
+
+---
+
+## 22) FMEA/RCM (análise de criticidade)
+
+Menu: **Análises > FMEA/RCM**.
+
+### Objetivo
+
+Estruturar análise de falhas potenciais por ativo, com cálculo de risco para apoiar plano preventivo.
+
+### Campos-chave
+
+- função do ativo;
+- falha funcional e modo de falha;
+- efeito e causa da falha;
+- severidade, ocorrência e detecção;
+- ação recomendada, responsável e prazo.
+
+### Interpretação operacional
+
+- o índice de risco usa a lógica $RPN = Severidade \times Ocorrência \times Detecção$;
+- use RPN mais alto para priorizar ações preventivas de curto prazo.
+
+### Limitações atuais
+
+- criação e consulta estão disponíveis, mas o fluxo de edição completa pode variar por permissão/perfil;
+- representações avançadas (ex.: diagramas específicos) podem estar parciais conforme ambiente.
+
+---
+
+## 23) Causa raiz (RCA) e Inteligência IA
+
+Menu: **Análises > Causa Raiz** e **Análises > Inteligência IA**.
+
+### RCA (módulo estruturado)
+
+Permite registrar análises formais com métodos como:
+
+- 5 Porquês;
+- Ishikawa;
+- Árvore de Falhas.
+
+No processo, registre problema, hipótese de causa, causa confirmada, ação corretiva e status da eficácia.
+
+### Inteligência IA de causa raiz
+
+Usa histórico operacional por TAG para sugerir:
+
+- hipóteses prováveis de causa;
+- ações preventivas propostas;
+- criticidade e nível de confiança.
+
+### Boas práticas
+
+1. use IA para triagem e priorização técnica;
+2. formalize no RCA quando houver decisão de engenharia;
+3. vincule ação resultante ao plano preventivo/melhoria.
+
+### Limitação atual
+
+- integração automática entre resultado da IA e fechamento formal do RCA pode exigir etapa manual do usuário.
+
+---
+
+## 24) Melhorias contínuas
+
+Menu: **Análises > Melhorias**.
+
+### Aplicação prática
+
+- cadastrar iniciativas (kaizen, projeto, lição aprendida, sugestão);
+- descrever cenário antes/depois;
+- acompanhar status de avaliação e implantação;
+- registrar custo de implementação e economia esperada.
+
+### Indicador prático
+
+ROI estimado pode ser acompanhado pela lógica:
+
+$$
+ROI\ (meses) \approx \frac{Custo\ de\ Implementação}{Economia\ Mensal\ Estimada}
+$$
+
+### Limitações atuais
+
+- anexos e aprovações podem demandar fluxo complementar, conforme configuração do ambiente.
+
+---
+
+## 25) Hierarquia de ativos
+
+Menu: **Cadastros > Hierarquia**.
+
+### Estrutura recomendada
+
+- Planta;
+- Área;
+- Sistema.
+
+### Regras operacionais
+
+1. criar primeiro níveis superiores (Planta/Área);
+2. depois cadastrar Sistemas vinculados;
+3. usar códigos padronizados para facilitar buscas e relatórios.
+
+### Atenção
+
+- antes de excluir um item, valide impactos em estruturas filhas e vínculos com equipamentos.
+
+---
+
+## 26) Mecânicos e equipes executantes
+
+Menu: **Cadastros > Mecânicos**.
+
+### Finalidade
+
+- manter base de executantes próprios e terceiros;
+- registrar especialidade e custo-hora;
+- apoiar fechamento de O.S com rastreabilidade de mão de obra.
+
+### Recomendação
+
+- mantenha especialidades padronizadas (ex.: elétrica, instrumentação, mecânica) para análises de produtividade.
+
+---
+
+## 27) Fornecedores e contratos
+
+Menus: **Cadastros > Fornecedores** e **Cadastros > Contratos**.
+
+### Fornecedores
+
+- cadastro de dados cadastrais e especialidade;
+- consulta por tipo (prestador, fornecedor, ambos);
+- suporte a avaliação de desempenho quando aplicável.
+
+### Contratos
+
+- cadastro de número, vigência, tipo e status;
+- vínculo com fornecedor;
+- controle de SLA e valores;
+- monitoramento de contratos ativos e próximos do vencimento.
+
+### Boa prática
+
+- revisar semanalmente contratos com vencimento próximo para evitar ruptura de atendimento.
+
+---
+
+## 28) Custos de manutenção
+
+Menu: **Relatórios > Custos**.
+
+### Visões disponíveis
+
+- total consolidado por período;
+- composição por mão de obra, materiais e terceiros;
+- tendência mensal;
+- ranking por equipamento.
+
+### Uso gerencial
+
+1. comparar custo por TAG com criticidade do ativo;
+2. identificar concentração de gasto recorrente;
+3. abrir RCA/melhoria para ativos com custo crônico.
+
+### Limitação atual
+
+- algumas opções de exportação podem aparecer no layout, mas depender de evolução/parametrização adicional por ambiente.
+
+---
+
+## 29) SSMA (segurança, saúde e meio ambiente)
+
+Menu: **Segurança > SSMA**.
+
+### Blocos funcionais
+
+- registro de incidentes;
+- gestão de Permissão de Trabalho (PT).
+
+### Em incidentes
+
+Registre tipo, severidade, local, envolvidos, ações imediatas e causas.
+
+### Em PT
+
+Registre descrição do serviço, período, riscos, medidas de controle, responsáveis e EPIs.
+
+### Limitações atuais
+
+- aprovações e integrações automáticas com outros módulos podem depender do nível de maturidade do ambiente.
+
+---
+
+## 30) Auditoria operacional
+
+Menu: **Administração > Auditoria** (perfil ADMIN).
+
+### O que monitorar
+
+- login/logout;
+- criação/fechamento/impressão de O.S;
+- geração de relatórios;
+- alterações operacionais rastreadas no tenant.
+
+### Aplicação prática
+
+1. usar em investigação de divergências;
+2. validar trilha de ações críticas;
+3. apoiar compliance interno e auditorias externas.
+
+---
+
+## 31) Configurações da empresa
+
+Menu: **Administração > Config. Empresa** (perfil ADMIN).
+
+### Escopo de uso
+
+- atualização de dados operacionais de contato e responsável;
+- manutenção de informações administrativas do tenant.
+
+### Observação
+
+- dados legais estruturais da empresa podem ter governança específica e não ficar disponíveis para edição direta no tenant.
+
+---
+
+## 32) Rotina recomendada de operação
+
+### Rotina diária (início e fim de turno)
+
+1. abrir dashboard e backlog para priorização;
+2. validar programação do dia;
+3. tratar alertas de preditiva e estoque;
+4. garantir fechamento correto das O.S concluídas;
+5. registrar desvios críticos (SSMA/RCA quando aplicável).
+
+### Rotina semanal
+
+1. revisar backlog vencido;
+2. revisar aderência das preventivas;
+3. revisar contratos críticos e SLAs;
+4. consolidar custos por ativo crítico;
+5. atualizar plano de melhorias.
+
+### Rotina mensal
+
+1. emitir relatório executivo;
+2. revisar KPIs (MTBF, MTTR, disponibilidade, custos);
+3. validar plano de ação para top 10 equipamentos críticos;
+4. registrar lições aprendidas do período.
+
+---
+
+## 33) Problemas comuns e ação imediata
+
+### Não consigo acessar módulo administrativo
+
+- verificar se o usuário está no perfil correto (ADMIN);
+- confirmar se sessão não expirou por inatividade;
+- solicitar validação ao administrador da empresa.
+
+### Tela sem dados
+
+- validar filtros ativos (período, status, TAG);
+- confirmar existência de dados cadastrados no módulo;
+- atualizar a tela e repetir consulta.
+
+### O.S não aparece no histórico esperado
+
+- revisar status aplicado (aberta, andamento, fechada);
+- conferir período e filtros de busca;
+- conferir se o fechamento foi salvo com sucesso.
+
+### Divergência de custo
+
+- conferir custos lançados no fechamento da O.S;
+- validar materiais movimentados e custo unitário;
+- revisar apontamento de mão de obra e terceiros.
+
+---
+
+## 34) Glossário rápido
+
+- **TAG**: identificador único do equipamento.
+- **O.S**: Ordem de Serviço.
+- **RCA**: Root Cause Analysis (análise de causa raiz).
+- **FMEA**: Failure Mode and Effects Analysis.
+- **MTBF**: Mean Time Between Failures.
+- **MTTR**: Mean Time To Repair.
+- **SLA**: prazo acordado para atendimento/resolução.
+- **PT**: Permissão de Trabalho.
+
+---
+
+## 35) Controle de revisão do manual
+
+- versão atual: **1.2**;
+- data de atualização: **11/03/2026**;
+- escopo desta revisão: inclusão da versão de treinamento com trilhas por perfil, checklists por turno e matriz RACI por módulo.
+
+---
+
+## 36) Trilha de treinamento por perfil
+
+### 36.1 Operador / Solicitante
+
+Objetivo: registrar demandas corretamente e acompanhar execução.
+
+Passo a passo:
+
+1. acessar **Solicitações** e abrir chamado completo (TAG, impacto e descrição objetiva);
+2. consultar **Backlog** para priorização e visibilidade do atendimento;
+3. acompanhar a O.S emitida em **Histórico**;
+4. em caso de risco, registrar evento em **SSMA**.
+
+Critério de conclusão do treinamento:
+
+- abrir solicitação com dados completos sem retrabalho;
+- localizar status de atendimento em menos de 2 minutos;
+- diferenciar corretamente urgência (Emergencial/Urgente/Programável).
+
+### 36.2 Técnico / Mecânico
+
+Objetivo: executar e fechar O.S com rastreabilidade técnica e de custos.
+
+Passo a passo:
+
+1. receber demanda em **Programação** ou **O.S**;
+2. executar atividade conforme procedimento técnico;
+3. fechar em **Fechar O.S** com tempos, serviço executado e materiais;
+4. quando aplicável, registrar causa e ação em **RCA**;
+5. validar impactos em segurança no módulo **SSMA**.
+
+Critério de conclusão do treinamento:
+
+- fechar O.S sem pendências de preenchimento;
+- apontar materiais e custos corretamente;
+- registrar causa raiz com qualidade mínima (problema, causa, ação).
+
+### 36.3 Planejador PCM
+
+Objetivo: organizar carteira de manutenção e reduzir backlog vencido.
+
+Passo a passo:
+
+1. revisar **Backlog** e definir priorização semanal;
+2. estruturar agenda em **Programação**;
+3. atualizar planos em **Preventiva**, **Preditiva** e **Lubrificação**;
+4. revisar criticidade e ações em **FMEA/RCM**;
+5. monitorar aderência via **Dashboard** e **Relatórios**.
+
+Critério de conclusão do treinamento:
+
+- publicar programação semanal completa;
+- reduzir pendências vencidas;
+- manter planos preventivos ativos e consistentes.
+
+### 36.4 Gestor / Coordenador
+
+Objetivo: conduzir performance, custo e conformidade operacional.
+
+Passo a passo:
+
+1. revisar indicadores no **Dashboard** (MTBF, MTTR, disponibilidade, backlog);
+2. validar orçamento e desvios em **Custos**;
+3. acompanhar contratos e SLA em **Contratos**;
+4. validar trilha de conformidade em **Auditoria** e **SSMA**;
+5. aprovar direcionamentos de **Melhorias**.
+
+Critério de conclusão do treinamento:
+
+- analisar KPI e definir plano de ação mensal;
+- identificar top ativos críticos por custo/falha;
+- conduzir reunião de resultados com evidências do sistema.
+
+### 36.5 ADMIN do tenant
+
+Objetivo: garantir governança de acesso e parâmetros operacionais.
+
+Passo a passo:
+
+1. manter perfis e permissões em **Usuários**;
+2. atualizar dados operacionais em **Config. Empresa**;
+3. validar consistência cadastral (equipamentos, materiais, fornecedores);
+4. monitorar ações críticas em **Auditoria**;
+5. acionar Owner quando houver necessidade estrutural.
+
+Critério de conclusão do treinamento:
+
+- manter perfis de acesso alinhados à função;
+- resolver bloqueios operacionais de acesso;
+- manter qualidade de cadastros críticos.
+
+---
+
+## 37) Checklists imprimíveis por turno
+
+Instrução: imprimir ou copiar para rotina local e marcar cada item como **OK**, **N/A** ou **Pendente**.
+
+### 37.1 Checklist de início de turno
+
+1. [ ] dashboard revisado (indicadores críticos);
+2. [ ] backlog revisado (itens vencidos e urgentes);
+3. [ ] programação do dia validada com equipe;
+4. [ ] materiais críticos verificados (baixo estoque);
+5. [ ] alertas preditivos revisados;
+6. [ ] riscos SSMA comunicados à equipe.
+
+### 37.2 Checklist de meio de turno
+
+1. [ ] O.S prioritárias em andamento sem bloqueios;
+2. [ ] desvios de prazo reprogramados;
+3. [ ] consumo de materiais apontado corretamente;
+4. [ ] incidentes/anomalias registrados quando aplicável;
+5. [ ] escalonamentos feitos para pendências críticas.
+
+### 37.3 Checklist de fim de turno
+
+1. [ ] O.S concluídas com fechamento completo;
+2. [ ] pendências transferidas para próximo turno;
+3. [ ] custos e horas apontados;
+4. [ ] lições aprendidas registradas (quando houver);
+5. [ ] relatório/resumo de turno emitido.
+
+### 37.4 Modelo rápido para impressão
+
+Data: ____/____/______  
+Turno: ( ) A ( ) B ( ) C  
+Responsável: _________________________
+
+- Pendência crítica 1: ______________________________________
+- Pendência crítica 2: ______________________________________
+- Ação imediata definida: ___________________________________
+- Escalonado para: _________________________________________
+
+---
+
+## 38) Matriz RACI por módulo
+
+Legenda:
+
+- **R (Responsible)**: executa a atividade;
+- **A (Accountable)**: responde pelo resultado final;
+- **C (Consulted)**: consultado para decisão;
+- **I (Informed)**: informado do andamento.
+
+Perfis considerados:
+
+- **OP**: Operador/Solicitante;
+- **TEC**: Técnico/Mecânico;
+- **PCM**: Planejador;
+- **GEST**: Gestor;
+- **ADM**: Administrador tenant.
+
+| Módulo | OP | TEC | PCM | GEST | ADM |
+|---|---|---|---|---|---|
+| Solicitações | R | I | C | A | C |
+| Backlog | I | C | R | A | I |
+| Emitir O.S | I | C | R | A | I |
+| Fechar O.S | I | R | C | A | I |
+| Histórico O.S | C | C | R | A | I |
+| Programação | I | C | R | A | I |
+| Preventiva | I | C | R | A | C |
+| Preditiva | I | C | R | A | C |
+| Lubrificação | I | R | A | C | I |
+| FMEA/RCM | I | C | R | A | I |
+| RCA | I | R | C | A | I |
+| Melhorias | C | C | R | A | I |
+| Materiais | I | R | C | A | C |
+| Fornecedores | I | I | C | A | R |
+| Contratos | I | I | C | A | R |
+| Custos | I | C | R | A | C |
+| SSMA | R | R | C | A | I |
+| Usuários | I | I | I | A | R |
+| Auditoria | I | I | C | A | R |
+| Config. Empresa | I | I | C | A | R |
+
+### Uso da matriz
+
+1. alinhar responsabilidades na implantação do tenant;
+2. reduzir retrabalho por dúvida de papel;
+3. usar em integração de novos colaboradores.

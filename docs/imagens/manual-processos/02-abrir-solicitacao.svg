@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="620" viewBox="0 0 1400 620">
+  <defs>
+    <style>.title{font:700 28px Arial}.s{fill:#fff7ed;stroke:#ea580c;stroke-width:2}.t{font:600 16px Arial}.d{font:400 14px Arial}.a{stroke:#ea580c;stroke-width:3;marker-end:url(#m)}</style>
+    <marker id="m" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto"><path d="M0,0 L10,3 L0,6 Z" fill="#ea580c"/></marker>
+  </defs>
+  <rect width="1400" height="620" fill="#fff"/>
+  <text x="40" y="50" class="title">Processo 02 - Abertura de solicitacao</text>
+  <rect x="40" y="110" width="260" height="180" rx="12" class="s"/><text x="58" y="145" class="t">1. Acessar Solicitacoes</text><text x="58" y="175" class="d">Menu: OS > Solicitacoes</text>
+  <rect x="330" y="110" width="260" height="180" rx="12" class="s"/><text x="348" y="145" class="t">2. Selecionar TAG</text><text x="348" y="175" class="d">Ativo correto e localizacao</text>
+  <rect x="620" y="110" width="260" height="180" rx="12" class="s"/><text x="638" y="145" class="t">3. Descrever falha</text><text x="638" y="175" class="d">Sintoma, impacto e contexto</text>
+  <rect x="910" y="110" width="260" height="180" rx="12" class="s"/><text x="928" y="145" class="t">4. Classificar urgencia</text><text x="928" y="175" class="d">Emergencial/Urgente/Programavel</text>
+  <rect x="1140" y="350" width="220" height="180" rx="12" class="s"/><text x="1160" y="385" class="t">5. Salvar</text><text x="1160" y="415" class="d">Gerar numero e SLA</text>
+  <rect x="830" y="350" width="260" height="180" rx="12" class="s"/><text x="848" y="385" class="t">6. Conferir no Backlog</text><text x="848" y="415" class="d">Validar prioridade e fila</text>
+  <line x1="300" y1="200" x2="330" y2="200" class="a"/><line x1="590" y1="200" x2="620" y2="200" class="a"/><line x1="880" y1="200" x2="910" y2="200" class="a"/>
+  <line x1="1060" y1="290" x2="1230" y2="350" class="a"/><line x1="1140" y1="440" x2="1090" y2="440" class="a"/>
+  <text x="40" y="585" class="d">Evidencia de tela sugerida: formulario preenchido, prioridade selecionada e numero da solicitacao criada.</text>
+</svg>
