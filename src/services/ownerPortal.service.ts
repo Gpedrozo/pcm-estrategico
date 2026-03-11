@@ -564,7 +564,7 @@ export async function cleanupCompanyData(payload: {
   keep_company_core?: boolean
   keep_billing_data?: boolean
   include_auth_users?: boolean
-  confirmation_phrase: string
+  auth_password: string
 }) {
   return callOwnerAdmin({
     action: 'cleanup_company_data',
@@ -575,7 +575,7 @@ export async function cleanupCompanyData(payload: {
 export async function purgeTableData(payload: {
   table_name: string
   empresa_id?: string
-  confirmation_phrase: string
+  auth_password: string
 }) {
   return callOwnerAdmin({
     action: 'purge_table_data',
@@ -585,8 +585,8 @@ export async function purgeTableData(payload: {
 
 export async function deleteCompanyByOwner(payload: {
   empresa_id: string
-  confirmation_name: string
   include_auth_users?: boolean
+  auth_password: string
 }) {
   return callOwnerAdmin({
     action: 'delete_company',

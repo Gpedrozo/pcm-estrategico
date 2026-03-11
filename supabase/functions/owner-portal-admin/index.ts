@@ -131,11 +131,41 @@ type Payload = {
   empresa_nome?: string;
   confirmation_name?: string;
   confirmation_phrase?: string;
+  auth_password?: string;
   table_name?: string;
   keep_company_core?: boolean;
   keep_billing_data?: boolean;
   include_auth_users?: boolean;
 };
+
+async function verifyActorPassword(input: {
+  email?: string | null;
+  password?: string | null;
+  expectedUserId: string;
+}) {
+  const email = (input.email ?? "").trim().toLowerCase();
+  const password = input.password ?? "";
+  if (!email || !password) return false;
+
+  const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
+  const anonKey = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
+  if (!supabaseUrl || !anonKey) return false;
+
+  const response = await fetch(`${supabaseUrl}/auth/v1/token?grant_type=password`, {
+    method: "POST",
+    headers: {
+      apikey: anonKey,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ email, password }),
+  });
+
+  if (!response.ok) return false;
+
+  const payload = await response.json().catch(() => null);
+  const authenticatedUserId = payload?.user?.id ?? null;
+  return authenticatedUserId === input.expectedUserId;
+}
 
 function normalizeSlug(text: string) {
   return text
@@ -1668,8 +1698,15 @@ Deno.serve(async (req) => {
 
   if (body.action === "cleanup_company_data") {
     if (!body.empresa_id) return fail("empresa_id is required", 400, null, req);
-    if ((body.confirmation_phrase ?? "").trim().toUpperCase() !== "LIMPAR EMPRESA") {
-      return fail("Confirmação inválida. Digite LIMPAR EMPRESA para continuar.", 400, null, req);
+
+    const passwordOk = await verifyActorPassword({
+      email: auth.user.email,
+      password: body.auth_password ?? null,
+      expectedUserId: auth.user.id,
+    });
+
+    if (!passwordOk) {
+      return fail("Senha inválida para confirmar a operação.", 401, null, req);
     }
 
     const keepCompanyCore = Boolean(body.keep_company_core);
@@ -1734,8 +1771,14 @@ Deno.serve(async (req) => {
       return fail("Tabela protegida. Utilize limpeza por empresa para remover usuários.", 400, null, req);
     }
 
-    if ((body.confirmation_phrase ?? "").trim().toUpperCase() !== "LIMPAR TABELA") {
-      return fail("Confirmação inválida. Digite LIMPAR TABELA para continuar.", 400, null, req);
+    const passwordOk = await verifyActorPassword({
+      email: auth.user.email,
+      password: body.auth_password ?? null,
+      expectedUserId: auth.user.id,
+    });
+
+    if (!passwordOk) {
+      return fail("Senha inválida para confirmar a operação.", 401, null, req);
     }
 
     let hasEmpresaId = false;
@@ -1782,6 +1825,16 @@ Deno.serve(async (req) => {
   if (body.action === "delete_company") {
     if (!body.empresa_id) return fail("empresa_id is required", 400, null, req);
 
+    const passwordOk = await verifyActorPassword({
+      email: auth.user.email,
+      password: body.auth_password ?? null,
+      expectedUserId: auth.user.id,
+    });
+
+    if (!passwordOk) {
+      return fail("Senha inválida para confirmar a operação.", 401, null, req);
+    }
+
     const { data: company, error: companyError } = await admin
       .from("empresas")
       .select("id,nome,slug")
@@ -1792,9 +1845,6 @@ Deno.serve(async (req) => {
     if (!company?.id) return fail("Empresa não encontrada", 404, null, req);
 
     const expectedName = company.nome ?? company.slug ?? "";
-    if ((body.confirmation_name ?? "").trim() !== expectedName) {
-      return fail("Confirmação inválida. Informe exatamente o nome da empresa para excluir.", 400, null, req);
-    }
 
     const includeAuthUsers = Boolean(body.include_auth_users);
 

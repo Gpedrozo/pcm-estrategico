@@ -16,9 +16,7 @@ export function OwnerSistemaModule() {
   const [userId, setUserId] = useState('')
   const [empresaId, setEmpresaId] = useState('')
   const [tableName, setTableName] = useState('')
-  const [cleanupPhrase, setCleanupPhrase] = useState('')
-  const [purgePhrase, setPurgePhrase] = useState('')
-  const [deleteCompanyName, setDeleteCompanyName] = useState('')
+  const [authPassword, setAuthPassword] = useState('')
   const [keepCompanyCore, setKeepCompanyCore] = useState(false)
   const [keepBillingData, setKeepBillingData] = useState(false)
   const [includeAuthUsers, setIncludeAuthUsers] = useState(false)
@@ -64,8 +62,8 @@ export function OwnerSistemaModule() {
       return
     }
 
-    if (cleanupPhrase.trim().toUpperCase() !== 'LIMPAR EMPRESA') {
-      setError('Confirmação inválida. Digite exatamente LIMPAR EMPRESA.')
+    if (!authPassword.trim()) {
+      setError('Informe sua senha para confirmar a operação.')
       return
     }
 
@@ -78,13 +76,13 @@ export function OwnerSistemaModule() {
         keep_company_core: keepCompanyCore,
         keep_billing_data: keepBillingData,
         include_auth_users: includeAuthUsers,
-        confirmation_phrase: cleanupPhrase.trim(),
+        auth_password: authPassword,
       },
       {
         onSuccess: (result: any) => {
           const totalDeleted = Number(result?.summary?.total_deleted ?? 0)
           setMessage(`Limpeza da empresa concluída. Registros removidos: ${totalDeleted}.`)
-          setCleanupPhrase('')
+          setAuthPassword('')
         },
         onError: (err: any) => setError(err?.message ?? 'Falha ao limpar dados da empresa.'),
       },
@@ -97,8 +95,8 @@ export function OwnerSistemaModule() {
       return
     }
 
-    if (purgePhrase.trim().toUpperCase() !== 'LIMPAR TABELA') {
-      setError('Confirmação inválida. Digite exatamente LIMPAR TABELA.')
+    if (!authPassword.trim()) {
+      setError('Informe sua senha para confirmar a operação.')
       return
     }
 
@@ -109,13 +107,13 @@ export function OwnerSistemaModule() {
       {
         table_name: tableName,
         empresa_id: empresaId || undefined,
-        confirmation_phrase: purgePhrase.trim(),
+        auth_password: authPassword,
       },
       {
         onSuccess: (result: any) => {
           const deleted = Number(result?.summary?.deleted_rows ?? 0)
           setMessage(`Tabela ${tableName} limpa com sucesso. Registros removidos: ${deleted}.`)
-          setPurgePhrase('')
+          setAuthPassword('')
         },
         onError: (err: any) => setError(err?.message ?? 'Falha ao limpar tabela.'),
       },
@@ -128,8 +126,8 @@ export function OwnerSistemaModule() {
       return
     }
 
-    if (deleteCompanyName.trim() !== (selectedCompany.nome || selectedCompany.slug || '')) {
-      setError('Confirmação inválida. Digite exatamente o nome da empresa selecionada.')
+    if (!authPassword.trim()) {
+      setError('Informe sua senha para confirmar a operação.')
       return
     }
 
@@ -139,14 +137,14 @@ export function OwnerSistemaModule() {
     deleteCompanyByOwnerMutation.mutate(
       {
         empresa_id: empresaId,
-        confirmation_name: deleteCompanyName.trim(),
         include_auth_users: includeAuthUsers,
+        auth_password: authPassword,
       },
       {
         onSuccess: () => {
           setMessage('Empresa excluída com sucesso (banco mantido; dados removidos).')
           setEmpresaId('')
-          setDeleteCompanyName('')
+          setAuthPassword('')
         },
         onError: (err: any) => setError(err?.message ?? 'Falha ao excluir empresa.'),
       },
@@ -201,6 +199,17 @@ export function OwnerSistemaModule() {
           </select>
         </div>
 
+        <div className="mt-3 grid gap-2 md:grid-cols-2">
+          <label className="text-xs text-slate-300">Senha do seu usuário (confirmação de segurança)</label>
+          <input
+            className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm"
+            type="password"
+            placeholder="Informe sua senha"
+            value={authPassword}
+            onChange={(e) => setAuthPassword(e.target.value)}
+          />
+        </div>
+
         <div className="mt-3 grid gap-2 md:grid-cols-3">
           <label className="flex items-center gap-2 text-xs text-slate-300">
             <input type="checkbox" checked={keepCompanyCore} onChange={(e) => setKeepCompanyCore(e.target.checked)} />
@@ -219,16 +228,10 @@ export function OwnerSistemaModule() {
         <div className="mt-4 rounded border border-slate-800 p-3">
           <h4 className="text-xs font-semibold text-slate-200">Limpar dados da empresa (sem excluir banco)</h4>
           <div className="mt-2 flex flex-col gap-2 md:flex-row">
-            <input
-              className="w-full rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm"
-              placeholder="Digite LIMPAR EMPRESA"
-              value={cleanupPhrase}
-              onChange={(e) => setCleanupPhrase(e.target.value)}
-            />
             <button
               onClick={handleCleanupCompanyData}
               className="rounded-md border border-amber-500 px-4 py-2 text-sm font-semibold text-amber-200"
-              disabled={cleanupCompanyDataMutation.isPending}
+              disabled={cleanupCompanyDataMutation.isPending || !authPassword.trim()}
             >
               Limpar empresa
             </button>
@@ -251,16 +254,10 @@ export function OwnerSistemaModule() {
                 </option>
               ))}
             </select>
-            <input
-              className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm"
-              placeholder="Digite LIMPAR TABELA"
-              value={purgePhrase}
-              onChange={(e) => setPurgePhrase(e.target.value)}
-            />
             <button
               onClick={handlePurgeTable}
               className="rounded-md border border-amber-500 px-4 py-2 text-sm font-semibold text-amber-200"
-              disabled={purgeTableDataMutation.isPending}
+              disabled={purgeTableDataMutation.isPending || !authPassword.trim()}
             >
               Limpar tabela
             </button>
@@ -271,16 +268,10 @@ export function OwnerSistemaModule() {
           <h4 className="text-xs font-semibold text-rose-200">Excluir empresa (remoção completa dos dados do tenant)</h4>
           <p className="mt-1 text-xs text-rose-200/80">Não apaga banco físico, mas remove empresa e dados relacionados do tenant.</p>
           <div className="mt-2 flex flex-col gap-2 md:flex-row">
-            <input
-              className="w-full rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm"
-              placeholder={`Digite exatamente: ${selectedCompany?.nome || selectedCompany?.slug || 'nome da empresa'}`}
-              value={deleteCompanyName}
-              onChange={(e) => setDeleteCompanyName(e.target.value)}
-            />
             <button
               onClick={handleDeleteCompany}
               className="rounded-md bg-rose-600 px-4 py-2 text-sm font-semibold text-white"
-              disabled={deleteCompanyByOwnerMutation.isPending}
+              disabled={deleteCompanyByOwnerMutation.isPending || !authPassword.trim()}
             >
               Excluir empresa
             </button>
