@@ -37,7 +37,10 @@ type Payload = {
     | "update_subscription_billing"
     | "list_platform_owners"
     | "create_platform_owner"
-    | "cleanup_owner_stress_data";
+    | "cleanup_owner_stress_data"
+    | "list_database_tables"
+    | "cleanup_company_data"
+    | "delete_company";
   empresa_id?: string;
   company?: {
     nome: string;
@@ -125,6 +128,7 @@ type Payload = {
   reason?: string;
   user_id?: string;
   empresa_nome?: string;
+  confirmation_name?: string;
 };
 
 function normalizeSlug(text: string) {
@@ -351,6 +355,204 @@ async function getAuthStatusByUserId(
   }
 
   return statusByUser;
+}
+
+const PLATFORM_TABLES = [
+  "acoes_corretivas",
+  "ai_root_cause_analysis",
+  "analise_causa_raiz",
+  "anomalias_inspecao",
+  "areas",
+  "atividades_lubrificacao",
+  "atividades_preventivas",
+  "avaliacoes_fornecedores",
+  "componentes_equipamento",
+  "configuracoes_sistema",
+  "contract_versions",
+  "contracts",
+  "dados_empresa",
+  "document_layouts",
+  "document_sequences",
+  "documentos_tecnicos",
+  "equipamentos",
+  "execucoes_lubrificacao",
+  "execucoes_os",
+  "execucoes_preventivas",
+  "fmea",
+  "fornecedores",
+  "incidentes_ssma",
+  "inspecoes",
+  "materiais",
+  "materiais_os",
+  "mecanicos",
+  "medicoes_preditivas",
+  "melhorias",
+  "movimentacoes_materiais",
+  "notificacoes",
+  "ordens_servico",
+  "permissoes_granulares",
+  "permissoes_trabalho",
+  "planos_lubrificacao",
+  "planos_preventivos",
+  "plantas",
+  "profiles",
+  "security_logs",
+  "servicos_preventivos",
+  "sistemas",
+  "solicitacoes",
+  "solicitacoes_manutencao",
+  "subscriptions",
+  "support_tickets",
+  "templates_preventivos",
+  "user_roles",
+  "enterprise_audit_logs",
+  "empresas",
+];
+
+const COMPANY_CORE_TABLES = new Set([
+  "empresas",
+  "dados_empresa",
+  "configuracoes_sistema",
+]);
+
+const TENANT_AUTH_TABLES = new Set([
+  "profiles",
+  "user_roles",
+]);
+
+const TENANT_BILLING_TABLES = new Set([
+  "subscriptions",
+  "contracts",
+  "contract_versions",
+]);
+
+async function listDatabaseTables(admin: ReturnType<typeof adminClient>) {
+  const rows: Array<{ table_name: string; total_rows: number; has_empresa_id: boolean }> = [];
+
+  for (const tableName of PLATFORM_TABLES) {
+    let totalRows = 0;
+    let hasEmpresaId = false;
+
+    const countResult = await admin
+      .from(tableName)
+      .select("*", { count: "exact", head: true });
+
+    if (!countResult.error) {
+      totalRows = Number(countResult.count ?? 0);
+    }
+
+    const empresaIdProbe = await admin
+      .from(tableName)
+      .select("empresa_id", { count: "exact", head: true })
+      .limit(1);
+
+    hasEmpresaId = !empresaIdProbe.error;
+
+    rows.push({
+      table_name: tableName,
+      total_rows: totalRows,
+      has_empresa_id: hasEmpresaId,
+    });
+  }
+
+  rows.sort((a, b) => a.table_name.localeCompare(b.table_name));
+  return rows;
+}
+
+async function collectCompanyUserIds(admin: ReturnType<typeof adminClient>, empresaId: string) {
+  const companyUserIds = new Set<string>();
+
+  const [profilesResult, rolesResult] = await Promise.all([
+    admin.from("profiles").select("id").eq("empresa_id", empresaId).limit(5000),
+    admin.from("user_roles").select("user_id").eq("empresa_id", empresaId).limit(5000),
+  ]);
+
+  for (const row of (profilesResult.data ?? [])) {
+    if (row?.id) companyUserIds.add(row.id);
+  }
+
+  for (const row of (rolesResult.data ?? [])) {
+    if (row?.user_id) companyUserIds.add(row.user_id);
+  }
+
+  return Array.from(companyUserIds);
+}
+
+async function cleanupCompanyTenantRows(
+  admin: ReturnType<typeof adminClient>,
+  empresaId: string,
+  options: {
+    keepCompanyCore: boolean;
+    keepBillingData: boolean;
+  },
+) {
+  const allTables = await listDatabaseTables(admin);
+  const tenantTables = allTables
+    .filter((table) => table.has_empresa_id)
+    .map((table) => table.table_name)
+    .filter((tableName) => {
+      if (options.keepCompanyCore && COMPANY_CORE_TABLES.has(tableName)) return false;
+      if (options.keepBillingData && TENANT_BILLING_TABLES.has(tableName)) return false;
+      return true;
+    });
+
+  const deletedByTable: Record<string, number> = {};
+
+  // Repeating passes reduces FK ordering sensitivity because dependent rows are removed first.
+  for (let pass = 0; pass < 6; pass += 1) {
+    let passDeleted = 0;
+
+    for (const tableName of tenantTables) {
+      const { count, error } = await admin
+        .from(tableName)
+        .delete({ count: "exact" })
+        .eq("empresa_id", empresaId);
+
+      if (error) {
+        return { error: `Falha ao limpar tabela ${tableName}: ${error.message}` };
+      }
+
+      const removed = Number(count ?? 0);
+      if (removed > 0) {
+        deletedByTable[tableName] = (deletedByTable[tableName] ?? 0) + removed;
+        passDeleted += removed;
+      }
+    }
+
+    if (passDeleted === 0) break;
+  }
+
+  const userIds = await collectCompanyUserIds(admin, empresaId);
+
+  if (userIds.length > 0) {
+    const roleDelete = await admin.from("user_roles").delete({ count: "exact" }).in("user_id", userIds);
+    if (roleDelete.error) {
+      return { error: `Falha ao limpar perfis de acesso da empresa: ${roleDelete.error.message}` };
+    }
+    deletedByTable.user_roles = (deletedByTable.user_roles ?? 0) + Number(roleDelete.count ?? 0);
+
+    const profileDelete = await admin.from("profiles").delete({ count: "exact" }).in("id", userIds);
+    if (profileDelete.error) {
+      return { error: `Falha ao limpar usuários da empresa: ${profileDelete.error.message}` };
+    }
+    deletedByTable.profiles = (deletedByTable.profiles ?? 0) + Number(profileDelete.count ?? 0);
+  }
+
+  return {
+    deletedByTable,
+    userIds,
+  };
+}
+
+async function deleteAuthUsers(admin: ReturnType<typeof adminClient>, userIds: string[]) {
+  let removed = 0;
+
+  for (const userId of userIds) {
+    const { error } = await admin.auth.admin.deleteUser(userId);
+    if (!error) removed += 1;
+  }
+
+  return removed;
 }
 
 Deno.serve(async (req) => {
