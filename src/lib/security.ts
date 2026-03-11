@@ -1,5 +1,6 @@
 export type AppRole =
   | 'USUARIO'
+  | 'SOLICITANTE'
   | 'ADMIN'
   | 'MASTER_TI'
   | 'SYSTEM_OWNER'
@@ -39,6 +40,7 @@ export function normalizeRole(role?: string | null): AppRole | null {
 
   const allowed: AppRole[] = [
     'USUARIO',
+    'SOLICITANTE',
     'ADMIN',
     'MASTER_TI',
     'SYSTEM_OWNER',
@@ -76,6 +78,7 @@ export function getEffectiveRole(options: {
   if (normalizedRoles.includes('MANAGER')) return 'MANAGER';
   if (normalizedRoles.includes('PLANNER')) return 'PLANNER';
   if (normalizedRoles.includes('TECHNICIAN')) return 'TECHNICIAN';
+  if (normalizedRoles.includes('SOLICITANTE')) return 'SOLICITANTE';
   if (normalizedRoles.includes('VIEWER')) return 'VIEWER';
   if (normalizedRoles.includes('ADMIN')) return 'ADMIN';
   return 'USUARIO';

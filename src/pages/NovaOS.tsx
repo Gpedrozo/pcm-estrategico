@@ -73,6 +73,11 @@ export default function NovaOS() {
       return;
     }
 
+    if (solicitacaoOrigem.status !== 'APROVADA') {
+      navigate('/solicitacoes', { replace: true });
+      return;
+    }
+
     setFormData((prev) => ({
       ...prev,
       tag: solicitacaoOrigem.tag || prev.tag,
@@ -86,7 +91,7 @@ export default function NovaOS() {
           : prev.prioridade,
       tipo: prev.tipo || 'CORRETIVA',
     }));
-  }, [solicitacaoOrigem]);
+  }, [solicitacaoOrigem, navigate]);
 
   const selectedEquipamento = equipamentos?.find(eq => eq.tag === formData.tag);
   const equipamentosAtivos = equipamentos?.filter(eq => eq.ativo) || [];

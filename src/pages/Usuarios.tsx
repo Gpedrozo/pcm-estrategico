@@ -20,11 +20,12 @@ import { Search, Edit, Shield, User as UserIcon, AlertTriangle, Loader2, Users }
 import { Skeleton } from '@/components/ui/skeleton';
 import { useAuth } from '@/contexts/AuthContext';
 
-type UserRole = 'ADMIN' | 'USUARIO' | 'MASTER_TI';
+type UserRole = 'ADMIN' | 'USUARIO' | 'MASTER_TI' | 'SOLICITANTE';
 
 const ROLE_LABELS: Record<UserRole, string> = {
   MASTER_TI: 'Master TI',
   ADMIN: 'Administrador',
+  SOLICITANTE: 'Solicitante',
   USUARIO: 'Usuário',
 };
 
@@ -188,6 +189,8 @@ export default function Usuarios() {
                           <Shield className="h-4 w-4 text-destructive" />
                         ) : user.role === 'ADMIN' ? (
                           <Shield className="h-4 w-4 text-primary" />
+                        ) : user.role === 'SOLICITANTE' ? (
+                          <UserIcon className="h-4 w-4 text-info" />
                         ) : (
                           <UserIcon className="h-4 w-4 text-muted-foreground" />
                         )}
@@ -201,6 +204,8 @@ export default function Usuarios() {
                         ? 'bg-destructive/10 text-destructive border border-destructive/20'
                         : user.role === 'ADMIN'
                         ? 'bg-primary/10 text-primary border border-primary/20'
+                        : user.role === 'SOLICITANTE'
+                        ? 'bg-info/10 text-info border border-info/20'
                         : 'bg-secondary text-secondary-foreground'
                     }`}>
                       {ROLE_LABELS[user.role] || user.role}
@@ -249,6 +254,7 @@ export default function Usuarios() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="USUARIO">Usuário</SelectItem>
+                  <SelectItem value="SOLICITANTE">Solicitante (somente solicitações)</SelectItem>
                   <SelectItem value="ADMIN">Administrador</SelectItem>
                   <SelectItem value="MASTER_TI">Master TI</SelectItem>
                 </SelectContent>

@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Plus, Search, Clock, GitBranch } from 'lucide-react';
-import { useSolicitacoes, useCreateSolicitacao, type SolicitacaoRow } from '@/hooks/useSolicitacoes';
+import { useSolicitacoes, useCreateSolicitacao, useUpdateSolicitacao, type SolicitacaoRow } from '@/hooks/useSolicitacoes';
 import { useEquipamentos } from '@/hooks/useEquipamentos';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -30,9 +30,30 @@ export default function Solicitacoes() {
   const { data: solicitacoes, isLoading } = useSolicitacoes();
   const { data: equipamentos } = useEquipamentos();
   const createMutation = useCreateSolicitacao();
+  const updateMutation = useUpdateSolicitacao();
+
+  const canReviewSolicitacao = user?.tipo !== 'SOLICITANTE';
 
   const canConvertToOS = (solicitacao: SolicitacaoRow) => {
-    return (solicitacao.status === 'PENDENTE' || solicitacao.status === 'APROVADA') && !solicitacao.os_id;
+    return solicitacao.status === 'APROVADA' && !solicitacao.os_id;
+  };
+
+  const canApproveOrReject = (solicitacao: SolicitacaoRow) => {
+    return canReviewSolicitacao && solicitacao.status === 'PENDENTE';
+  };
+
+  const handleAprovar = async (solicitacao: SolicitacaoRow) => {
+    await updateMutation.mutateAsync({
+      id: solicitacao.id,
+      status: 'APROVADA',
+    });
+  };
+
+  const handleRejeitar = async (solicitacao: SolicitacaoRow) => {
+    await updateMutation.mutateAsync({
+      id: solicitacao.id,
+      status: 'REJEITADA',
+    });
   };
 
   const handleConverterParaOS = (solicitacao: SolicitacaoRow) => {
@@ -135,21 +156,43 @@ export default function Solicitacoes() {
                   <td className="flex items-center gap-1"><Clock className="h-3 w-3" />{sol.sla_horas}h</td>
                   <td>{new Date(sol.created_at).toLocaleDateString('pt-BR')}</td>
                   <td className="text-right">
-                    {canConvertToOS(sol) ? (
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="gap-1"
-                        onClick={() => handleConverterParaOS(sol)}
-                      >
-                        <GitBranch className="h-3 w-3" />
-                        Converter em O.S
-                      </Button>
-                    ) : (
-                      <span className="text-xs text-muted-foreground">
-                        {sol.os_id ? 'Vinculada' : 'Sem ação'}
-                      </span>
-                    )}
+                    <div className="flex items-center justify-end gap-2">
+                      {canApproveOrReject(sol) && (
+                        <>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => handleRejeitar(sol)}
+                            disabled={updateMutation.isPending}
+                          >
+                            Rejeitar
+                          </Button>
+                          <Button
+                            size="sm"
+                            onClick={() => handleAprovar(sol)}
+                            disabled={updateMutation.isPending}
+                          >
+                            Aprovar
+                          </Button>
+                        </>
+                      )}
+
+                      {canConvertToOS(sol) ? (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="gap-1"
+                          onClick={() => handleConverterParaOS(sol)}
+                        >
+                          <GitBranch className="h-3 w-3" />
+                          Converter em O.S
+                        </Button>
+                      ) : (
+                        <span className="text-xs text-muted-foreground">
+                          {sol.os_id ? 'Vinculada' : sol.status === 'PENDENTE' ? 'Aguardando aprovação' : 'Sem ação'}
+                        </span>
+                      )}
+                    </div>
                   </td>
                 </tr>
               ))

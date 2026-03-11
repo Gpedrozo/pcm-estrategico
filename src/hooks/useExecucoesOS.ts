@@ -12,6 +12,9 @@ export interface ExecucaoOSRow {
   hora_inicio: string;
   hora_fim: string;
   tempo_execucao: number;
+  tempo_execucao_bruto?: number | null;
+  tempo_pausas?: number | null;
+  tempo_execucao_liquido?: number | null;
   servico_executado: string;
   custo_mao_obra: number | null;
   custo_materiais: number | null;
@@ -27,6 +30,9 @@ export interface ExecucaoOSInsert {
   hora_inicio: string;
   hora_fim: string;
   tempo_execucao: number;
+  tempo_execucao_bruto?: number;
+  tempo_pausas?: number;
+  tempo_execucao_liquido?: number;
   servico_executado: string;
   custo_mao_obra?: number | null;
   custo_materiais?: number | null;
@@ -39,6 +45,12 @@ export interface MaterialFechamentoAtomic {
   quantidade: number;
   custo_unitario: number;
   custo_total: number;
+}
+
+export interface PausaFechamentoAtomic {
+  inicio: string;
+  fim: string;
+  motivo?: string;
 }
 
 export interface CloseOSAtomicParams {
@@ -54,6 +66,7 @@ export interface CloseOSAtomicParams {
   custo_terceiros: number;
   custo_total: number;
   materiais: MaterialFechamentoAtomic[];
+  pausas: PausaFechamentoAtomic[];
   usuario_fechamento: string | null;
   modo_falha?: string | null;
   causa_raiz?: string | null;
@@ -145,6 +158,7 @@ export function useCloseOSAtomic() {
         p_custo_terceiros: params.custo_terceiros,
         p_custo_total: params.custo_total,
         p_materiais: params.materiais,
+        p_pausas: params.pausas,
         p_usuario_fechamento: params.usuario_fechamento,
         p_modo_falha: params.modo_falha ?? null,
         p_causa_raiz: params.causa_raiz ?? null,

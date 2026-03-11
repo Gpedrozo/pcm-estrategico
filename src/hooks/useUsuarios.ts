@@ -10,7 +10,7 @@ export interface ProfileRow {
   updated_at: string;
 }
 
-export type AppRole = 'ADMIN' | 'USUARIO' | 'MASTER_TI';
+export type AppRole = 'ADMIN' | 'USUARIO' | 'MASTER_TI' | 'SOLICITANTE';
 
 export interface UserRoleRow {
   id: string;

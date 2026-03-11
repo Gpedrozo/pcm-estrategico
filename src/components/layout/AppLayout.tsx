@@ -1,4 +1,4 @@
-import { Outlet, Navigate } from 'react-router-dom';
+import { Outlet, Navigate, useLocation } from 'react-router-dom';
 import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
 import { AppSidebar } from './AppSidebar';
 import { useAuth } from '@/contexts/AuthContext';
@@ -10,7 +10,8 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { stopImpersonation } from '@/services/ownerPortal.service';
 
 export function AppLayout() {
-  const { isAuthenticated, isLoading, impersonation, stopImpersonationSession } = useAuth();
+  const { isAuthenticated, isLoading, effectiveRole, impersonation, stopImpersonationSession } = useAuth();
+  const location = useLocation();
   const [commandOpen, setCommandOpen] = useState(false);
   const [isStoppingImpersonation, setIsStoppingImpersonation] = useState(false);
   const [countdownNow, setCountdownNow] = useState(Date.now());
@@ -92,6 +93,17 @@ export function AppLayout() {
 
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />;
+  }
+
+  const solicitanteAllowedPaths = new Set([
+    '/dashboard',
+    '/solicitacoes',
+    '/manuais-operacao',
+    '/manuais-operacao/usuario',
+  ]);
+
+  if (effectiveRole === 'SOLICITANTE' && !solicitanteAllowedPaths.has(location.pathname)) {
+    return <Navigate to="/solicitacoes" replace />;
   }
 
   return (

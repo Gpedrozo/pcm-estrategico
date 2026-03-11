@@ -71,6 +71,13 @@ interface MaterialUsado {
   quantidade: number;
 }
 
+interface PausaExecucao {
+  id: string;
+  inicio: string;
+  fim: string;
+  motivo: string;
+}
+
 interface RCAFormData {
   modoFalha: string;
   causaRaiz: string;
@@ -112,6 +119,10 @@ export default function FecharOS() {
   const [materiaisUsados, setMateriaisUsados] = useState<MaterialUsado[]>([]);
   const [materialSelecionado, setMaterialSelecionado] = useState('');
   const [quantidadeMaterial, setQuantidadeMaterial] = useState('');
+  const [pausaInicio, setPausaInicio] = useState('');
+  const [pausaFim, setPausaFim] = useState('');
+  const [pausaMotivo, setPausaMotivo] = useState('Intervalo');
+  const [pausasExecucao, setPausasExecucao] = useState<PausaExecucao[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const selectedMecanico = mecanicos?.find(m => m.id === formData.mecanicoId);
@@ -129,6 +140,92 @@ export default function FecharOS() {
     if (minutes <= 0) return null;
 
     return minutes;
+  };
+
+  const timeToMinutes = (time: string) => {
+    const [h, m] = time.split(':').map(Number);
+    return h * 60 + m;
+  };
+
+  const calculatePauseMinutes = () => {
+    const total = pausasExecucao.reduce((acc, pausa) => {
+      const inicio = timeToMinutes(pausa.inicio);
+      const fim = timeToMinutes(pausa.fim);
+      if (!Number.isFinite(inicio) || !Number.isFinite(fim) || fim <= inicio) {
+        return acc;
+      }
+      return acc + (fim - inicio);
+    }, 0);
+
+    return total;
+  };
+
+  const calculateNetDuration = () => {
+    const bruto = calculateDuration();
+    if (!bruto) return null;
+    const liquido = bruto - calculatePauseMinutes();
+    return Math.max(liquido, 0);
+  };
+
+  const handleAddPausa = () => {
+    if (!pausaInicio || !pausaFim) return;
+
+    const inicio = timeToMinutes(pausaInicio);
+    const fim = timeToMinutes(pausaFim);
+    if (!Number.isFinite(inicio) || !Number.isFinite(fim) || fim <= inicio) {
+      toast({
+        title: 'Pausa inválida',
+        description: 'A hora final da pausa deve ser maior que a hora inicial.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    if (formData.horaInicio && formData.horaFim) {
+      const inicioExec = timeToMinutes(formData.horaInicio);
+      const fimExec = timeToMinutes(formData.horaFim);
+      if (inicio < inicioExec || fim > fimExec) {
+        toast({
+          title: 'Pausa fora da execução',
+          description: 'A pausa deve estar dentro do horário de início/fim da execução.',
+          variant: 'destructive',
+        });
+        return;
+      }
+    }
+
+    const intersectsExisting = pausasExecucao.some((p) => {
+      const pInicio = timeToMinutes(p.inicio);
+      const pFim = timeToMinutes(p.fim);
+      return !(fim <= pInicio || inicio >= pFim);
+    });
+
+    if (intersectsExisting) {
+      toast({
+        title: 'Pausa sobreposta',
+        description: 'Já existe uma pausa neste intervalo de horário.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setPausasExecucao((prev) => [
+      ...prev,
+      {
+        id: `${Date.now()}-${prev.length}`,
+        inicio: pausaInicio,
+        fim: pausaFim,
+        motivo: pausaMotivo || 'Intervalo',
+      },
+    ]);
+
+    setPausaInicio('');
+    setPausaFim('');
+    setPausaMotivo('Intervalo');
+  };
+
+  const handleRemovePausa = (id: string) => {
+    setPausasExecucao((prev) => prev.filter((p) => p.id !== id));
   };
 
   const formatDuration = (minutes: number | null) => {
@@ -183,12 +280,22 @@ export default function FecharOS() {
     setIsSubmitting(true);
 
     try {
-      const tempoExecucao = calculateDuration() || 0;
+      const tempoExecucaoBruto = calculateDuration() || 0;
+      const tempoPausas = calculatePauseMinutes();
+      const tempoExecucao = Math.max(0, tempoExecucaoBruto - tempoPausas);
       const custoMaoObra = selectedMecanico.custo_hora 
         ? (tempoExecucao / 60) * Number(selectedMecanico.custo_hora) 
         : 0;
       const custoTerceiros = formData.custoTerceiros ? parseFloat(formData.custoTerceiros) : 0;
       const custoTotal = custoMaoObra + custoMateriais + custoTerceiros;
+
+      const pausaResumo = pausasExecucao
+        .map((p) => `${p.inicio}-${p.fim} (${p.motivo})`)
+        .join(', ');
+
+      const servicoExecutadoComPausas = pausaResumo
+        ? `${formData.servicoExecutado}\n\n[Pausas apontadas] ${pausaResumo}. Total pausas: ${tempoPausas} min. Tempo bruto: ${tempoExecucaoBruto} min. Tempo liquido: ${tempoExecucao} min.`
+        : formData.servicoExecutado;
 
       try {
         await closeOSAtomicMutation.mutateAsync({
@@ -197,8 +304,8 @@ export default function FecharOS() {
           mecanico_nome: selectedMecanico.nome,
           hora_inicio: formData.horaInicio,
           hora_fim: formData.horaFim,
-          tempo_execucao: tempoExecucao,
-          servico_executado: formData.servicoExecutado,
+          tempo_execucao: tempoExecucaoBruto,
+          servico_executado: servicoExecutadoComPausas,
           custo_mao_obra: custoMaoObra,
           custo_materiais: custoMateriais,
           custo_terceiros: custoTerceiros,
@@ -208,6 +315,11 @@ export default function FecharOS() {
             quantidade: item.quantidade,
             custo_unitario: item.material.custo_unitario,
             custo_total: item.quantidade * item.material.custo_unitario,
+          })),
+          pausas: pausasExecucao.map((p) => ({
+            inicio: p.inicio,
+            fim: p.fim,
+            motivo: p.motivo,
           })),
           usuario_fechamento: user?.id || null,
           modo_falha: rcaData.requireRCA && isCorretiva ? rcaData.modoFalha : null,
@@ -231,7 +343,10 @@ export default function FecharOS() {
           hora_inicio: formData.horaInicio,
           hora_fim: formData.horaFim,
           tempo_execucao: tempoExecucao,
-          servico_executado: formData.servicoExecutado,
+          tempo_execucao_bruto: tempoExecucaoBruto,
+          tempo_pausas: tempoPausas,
+          tempo_execucao_liquido: tempoExecucao,
+          servico_executado: servicoExecutadoComPausas,
           custo_mao_obra: custoMaoObra,
           custo_materiais: custoMateriais,
           custo_terceiros: custoTerceiros,
@@ -260,7 +375,7 @@ export default function FecharOS() {
         });
       }
 
-      await log('FECHAR_OS', `Fechamento da O.S ${selectedOS.numero_os} - Custo total: ${formatCurrency(custoTotal)}${rcaData.requireRCA ? ' (com RCA)' : ''}`, selectedOS.tag);
+      await log('FECHAR_OS', `Fechamento da O.S ${selectedOS.numero_os} - Custo total: ${formatCurrency(custoTotal)} - Tempo bruto: ${tempoExecucaoBruto} min - Pausas: ${tempoPausas} min - Tempo líquido: ${tempoExecucao} min${rcaData.requireRCA ? ' (com RCA)' : ''}`, selectedOS.tag);
 
       toast({
         title: 'O.S Fechada com Sucesso!',
@@ -293,6 +408,10 @@ export default function FecharOS() {
       requireRCA: os.tipo === 'CORRETIVA',
     });
     setMateriaisUsados([]);
+    setPausasExecucao([]);
+    setPausaInicio('');
+    setPausaFim('');
+    setPausaMotivo('Intervalo');
   };
 
   const isLoading = loadingOS || loadingMecanicos;
@@ -434,21 +553,69 @@ export default function FecharOS() {
 
             {/* Duration and Cost Display */}
             {calculateDuration() && (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="p-3 bg-success/10 border border-success/20 rounded-lg">
-                  <span className="text-sm text-muted-foreground">Tempo de execução: </span>
+                  <span className="text-sm text-muted-foreground">Tempo bruto: </span>
                   <span className="font-bold text-success">{formatDuration(calculateDuration())}</span>
+                </div>
+                <div className="p-3 bg-warning/10 border border-warning/20 rounded-lg">
+                  <span className="text-sm text-muted-foreground">Pausas: </span>
+                  <span className="font-bold text-warning">{formatDuration(calculatePauseMinutes()) || '0min'}</span>
+                </div>
+                <div className="p-3 bg-primary/10 border border-primary/20 rounded-lg">
+                  <span className="text-sm text-muted-foreground">Tempo líquido: </span>
+                  <span className="font-bold text-primary">{formatDuration(calculateNetDuration()) || '0min'}</span>
                 </div>
                 {selectedMecanico?.custo_hora && (
                   <div className="p-3 bg-info/10 border border-info/20 rounded-lg">
                     <span className="text-sm text-muted-foreground">Custo mão de obra: </span>
                     <span className="font-bold text-info">
-                      {formatCurrency((calculateDuration()! / 60) * Number(selectedMecanico.custo_hora))}
+                      {formatCurrency(((calculateNetDuration() || 0) / 60) * Number(selectedMecanico.custo_hora))}
                     </span>
                   </div>
                 )}
               </div>
             )}
+
+            {/* Breaks / Intervals */}
+            <div className="space-y-4 border-t pt-4">
+              <div className="flex items-center gap-2">
+                <Clock className="h-5 w-5 text-primary" />
+                <Label className="text-base font-semibold">Pausas durante a execução</Label>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+                <Input type="time" value={pausaInicio} onChange={(e) => setPausaInicio(e.target.value)} placeholder="Início pausa" />
+                <Input type="time" value={pausaFim} onChange={(e) => setPausaFim(e.target.value)} placeholder="Fim pausa" />
+                <Input value={pausaMotivo} onChange={(e) => setPausaMotivo(e.target.value)} placeholder="Motivo (ex.: almoço)" />
+                <Button type="button" variant="outline" onClick={handleAddPausa} disabled={!pausaInicio || !pausaFim}>
+                  <Plus className="h-4 w-4 mr-1" />
+                  Adicionar pausa
+                </Button>
+              </div>
+
+              {pausasExecucao.length > 0 && (
+                <div className="space-y-2">
+                  {pausasExecucao.map((pausa) => (
+                    <div key={pausa.id} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
+                      <div className="flex items-center gap-2">
+                        <Badge variant="outline">{pausa.inicio} - {pausa.fim}</Badge>
+                        <span className="text-sm text-muted-foreground">{pausa.motivo}</span>
+                      </div>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="text-destructive hover:text-destructive"
+                        onClick={() => handleRemovePausa(pausa.id)}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
 
             {/* Service Description */}
             <div className="space-y-2">
