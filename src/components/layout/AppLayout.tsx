@@ -112,7 +112,7 @@ export function AppLayout() {
       <div className="flex min-h-screen w-full">
         <AppSidebar />
         <div className="flex-1 flex flex-col">
-          <header className="h-14 border-b border-border bg-card flex items-center px-4 gap-4">
+          <header className="h-14 border-b border-border/80 bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/85 flex items-center px-4 gap-4">
             <SidebarTrigger className="p-2 hover:bg-muted rounded-md">
               <Menu className="h-5 w-5" />
             </SidebarTrigger>
@@ -152,8 +152,10 @@ export function AppLayout() {
               </div>
             </div>
           )}
-          <main className="flex-1 p-6 overflow-auto">
-            <Outlet />
+          <main className="flex-1 overflow-auto bg-gradient-to-b from-background via-background to-muted/20">
+            <div className="mx-auto w-full max-w-[1400px] px-4 py-6 md:px-6 md:py-7">
+              <Outlet />
+            </div>
           </main>
         </div>
       </div>

@@ -36,9 +36,9 @@ class OwnerModuleErrorBoundary extends Component<{ children: React.ReactNode }, 
   render() {
     if (this.state.hasError) {
       return (
-        <div className="rounded-lg border border-rose-800 bg-slate-900 p-6">
-          <h3 className="text-sm font-semibold text-rose-300">Falha ao carregar módulo OWNER</h3>
-          <p className="mt-2 text-sm text-slate-300">Ocorreu um erro inesperado neste módulo. Recarregue a página para continuar.</p>
+        <div className="rounded-xl border border-destructive/40 bg-destructive/5 p-6">
+          <h3 className="text-sm font-semibold text-destructive">Falha ao carregar modulo OWNER</h3>
+          <p className="mt-2 text-sm text-muted-foreground">Ocorreu um erro inesperado neste modulo. Recarregue a pagina para continuar.</p>
         </div>
       )
     }
@@ -114,7 +114,7 @@ export default function Owner() {
   if (isLoading) {
     return (
       <div className="flex h-[60vh] items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-emerald-400" />
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
       </div>
     )
   }
@@ -122,12 +122,12 @@ export default function Owner() {
   if (!isSystemOwner) {
     return (
       <div className="flex h-[60vh] items-center justify-center">
-        <div className="max-w-md rounded-lg border border-rose-800 bg-slate-900 p-6 text-center">
-          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-rose-950">
-            <ShieldCheck className="h-6 w-6 text-rose-300" />
+        <div className="max-w-md rounded-xl border border-destructive/40 bg-card p-6 text-center shadow-sm">
+          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-destructive/10">
+            <ShieldCheck className="h-6 w-6 text-destructive" />
           </div>
           <h2 className="mt-4 text-lg font-semibold">Acesso Negado</h2>
-          <p className="mt-2 text-sm text-slate-400">Este portal global é exclusivo para o perfil SYSTEM_OWNER.</p>
+          <p className="mt-2 text-sm text-muted-foreground">Este portal global e exclusivo para o perfil SYSTEM_OWNER.</p>
         </div>
       </div>
     )

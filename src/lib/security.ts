@@ -12,11 +12,16 @@ export type AppRole =
   | 'VIEWER';
 
 const OWNER_DOMAIN = (import.meta.env.VITE_OWNER_DOMAIN || 'owner.gppis.com.br').toLowerCase();
+const OWNER_DOMAIN_ALIASES = new Set(
+  [OWNER_DOMAIN, OWNER_DOMAIN.startsWith('www.') ? OWNER_DOMAIN.slice(4) : `www.${OWNER_DOMAIN}`]
+    .map((domain) => domain.toLowerCase())
+    .filter(Boolean),
+);
 
 const TENANT_BASE_DOMAIN = (import.meta.env.VITE_TENANT_BASE_DOMAIN || 'gppis.com.br').toLowerCase();
 
 export function isOwnerDomain(hostname: string = window.location.hostname): boolean {
-  return hostname.toLowerCase() === OWNER_DOMAIN;
+  return OWNER_DOMAIN_ALIASES.has(hostname.toLowerCase());
 }
 
 export function resolveEmpresaSlug(hostname: string = window.location.hostname): string {
