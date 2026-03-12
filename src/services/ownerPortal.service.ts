@@ -569,16 +569,93 @@ export async function listDatabaseTables(): Promise<OwnerDatabaseTable[]> {
 }
 
 export async function getOwnerBackendHealth() {
+  const isUnsupportedActionError = (message: string) => {
+    const normalized = String(message || '').toLowerCase()
+    return normalized.includes('unsupported action') || normalized.includes('missing action')
+  }
+
+  const isAuthError = (message: string) => {
+    const normalized = String(message || '').toLowerCase()
+    return (
+      normalized.includes('sessao') ||
+      normalized.includes('session') ||
+      normalized.includes('invalid jwt') ||
+      normalized.includes('invalid token') ||
+      normalized.includes('jwt expired')
+    )
+  }
+
+  const probeAction = async (action: OwnerAction, payload?: Record<string, unknown>) => {
+    try {
+      await callOwnerAdmin({ action, ...(payload ?? {}) })
+      return true
+    } catch (err: any) {
+      const msg = String(err?.message ?? err ?? '')
+      if (isUnsupportedActionError(msg)) return false
+      if (isAuthError(msg)) throw err
+      // Any non-unsupported error still means the action exists on backend.
+      return true
+    }
+  }
+
   try {
     return await callOwnerAdmin<OwnerBackendHealth>({ action: 'health_check' })
   } catch (err: any) {
     const msg = String(err?.message ?? err ?? '').toLowerCase()
     if (msg.includes('unsupported action')) {
+      const legacyBaseActions: OwnerAction[] = [
+        'dashboard',
+        'platform_stats',
+        'list_companies',
+        'create_company',
+        'update_company',
+        'set_company_status',
+        'block_company',
+        'list_users',
+        'create_user',
+        'set_user_status',
+        'list_plans',
+        'create_plan',
+        'update_plan',
+        'list_subscriptions',
+        'create_subscription',
+        'set_subscription_status',
+        'update_subscription_billing',
+        'list_contracts',
+        'update_contract',
+        'regenerate_contract',
+        'delete_contract',
+        'list_support_tickets',
+        'respond_support_ticket',
+        'list_audit_logs',
+        'get_company_settings',
+        'update_company_settings',
+        'change_plan',
+        'impersonate_company',
+        'stop_impersonation',
+        'create_system_admin',
+      ]
+
+      const probedCapabilities = await Promise.all([
+        probeAction('list_database_tables'),
+        probeAction('cleanup_company_data', { empresa_id: '__probe__', auth_password: '__probe__' }),
+        probeAction('purge_table_data', { table_name: '__probe__', auth_password: '__probe__' }),
+        probeAction('delete_company', { empresa_id: '__probe__', auth_password: '__probe__' }),
+        probeAction('list_platform_owners'),
+      ])
+
+      const detectedActions: OwnerAction[] = [...legacyBaseActions]
+      if (probedCapabilities[0]) detectedActions.push('list_database_tables')
+      if (probedCapabilities[1]) detectedActions.push('cleanup_company_data')
+      if (probedCapabilities[2]) detectedActions.push('purge_table_data')
+      if (probedCapabilities[3]) detectedActions.push('delete_company')
+      if (probedCapabilities[4]) detectedActions.push('list_platform_owners')
+
       return {
         service: 'owner-portal-admin',
         status: 'ok',
-        version: 'legacy-without-health-check',
-        supported_actions: ['dashboard', 'list_companies'] as OwnerAction[],
+        version: 'legacy-without-health-check-probed',
+        supported_actions: Array.from(new Set(detectedActions)) as OwnerAction[],
         timestamp: new Date().toISOString(),
       }
     }

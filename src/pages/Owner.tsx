@@ -167,9 +167,22 @@ export default function Owner() {
   }
 
   const backendCompatibility = useMemo(() => {
-    const requiredActions = ['list_database_tables', 'cleanup_company_data', 'purge_table_data', 'delete_company']
+    const coreActions = [
+      'dashboard',
+      'list_companies',
+      'list_users',
+      'list_plans',
+      'list_subscriptions',
+      'list_contracts',
+      'list_support_tickets',
+      'list_audit_logs',
+      'get_company_settings',
+      'update_company_settings',
+    ]
+    const dataControlActions = ['list_database_tables', 'cleanup_company_data', 'purge_table_data', 'delete_company']
     const supportedActions = backendHealth?.supported_actions ?? []
-    const allRequiredSupported = requiredActions.every((action) => supportedActions.includes(action as any))
+    const missingCore = coreActions.filter((action) => !supportedActions.includes(action as any))
+    const missingDataControl = dataControlActions.filter((action) => !supportedActions.includes(action as any))
 
     if (backendHealthError) {
       return {
@@ -181,14 +194,21 @@ export default function Owner() {
     if (!backendHealth) {
       return {
         healthy: true,
-        message: null,
+        message: 'Compatibilidade do backend owner ainda em verificacao.',
       }
     }
 
-    if (!allRequiredSupported) {
+    if (missingCore.length > 0) {
       return {
         healthy: false,
-        message: 'Backend owner publicado sem todas as ações críticas necessárias. Atualize a edge function owner-portal-admin.',
+        message: `Backend owner sem acoes core: ${missingCore.join(', ')}. Atualize a edge function owner-portal-admin.`,
+      }
+    }
+
+    if (missingDataControl.length > 0) {
+      return {
+        healthy: true,
+        message: `Versao backend: ${backendHealth.version}. Data Control parcial (faltando: ${missingDataControl.join(', ')}).`,
       }
     }
 

@@ -6,11 +6,31 @@ import { useOwnerBackendHealth, useOwnerCompanies, useOwnerCompanyActions, useOw
 export function OwnerSistemaModule() {
   const queryClient = useQueryClient()
   const { data: companiesData, isLoading: loadingCompanies, error: companiesError } = useOwnerCompanies()
-  const { data: backendHealth, error: backendHealthError } = useOwnerBackendHealth()
+  const { data: backendHealth, error: backendHealthError, isFetching: checkingBackendHealth } = useOwnerBackendHealth()
+
+  const supportedActionSet = useMemo(
+    () => new Set<unknown>(Array.isArray(backendHealth?.supported_actions) ? backendHealth.supported_actions : []),
+    [backendHealth],
+  )
+
+  const canCreateSystemAdmin = supportedActionSet.has('create_system_admin')
+  const canListDatabaseTables = supportedActionSet.has('list_database_tables')
+  const canCleanupCompanyData = supportedActionSet.has('cleanup_company_data')
+  const canPurgeTableData = supportedActionSet.has('purge_table_data')
+  const canDeleteCompanyData = supportedActionSet.has('delete_company')
+  const hasAnyDataControl = canCleanupCompanyData || canPurgeTableData || canDeleteCompanyData
+  const missingDataControlActions = useMemo(() => {
+    const missing: string[] = []
+    if (!canListDatabaseTables) missing.push('list_database_tables')
+    if (!canCleanupCompanyData) missing.push('cleanup_company_data')
+    if (!canPurgeTableData) missing.push('purge_table_data')
+    if (!canDeleteCompanyData) missing.push('delete_company')
+    return missing
+  }, [canCleanupCompanyData, canDeleteCompanyData, canListDatabaseTables, canPurgeTableData])
 
   const supportsListDatabaseTables = useMemo(
-    () => Boolean(backendHealth?.supported_actions?.includes('list_database_tables' as any)),
-    [backendHealth],
+    () => canListDatabaseTables,
+    [canListDatabaseTables],
   )
 
   const {
@@ -45,6 +65,10 @@ export function OwnerSistemaModule() {
 
   const applyOwnerActionError = (err: any, fallback: string) => {
     const normalized = normalizeOwnerError(err)
+    if (/forbidden|owner master only/i.test(normalized)) {
+      setError('Seu usuario nao possui permissao owner master para esta acao.')
+      return
+    }
     if (/desatualizado|unsupported action/i.test(normalized)) {
       setError(null)
       setMessage('Ação indisponível nesta publicação do backend owner. Publique a versão mais recente para liberar o Data Control.')
@@ -52,13 +76,6 @@ export function OwnerSistemaModule() {
     }
     setError(normalized || fallback)
   }
-
-  const canRunDataControl = useMemo(() => {
-    if (backendHealthError) return false
-    if (!backendHealth?.supported_actions) return false
-    const required = ['list_database_tables', 'cleanup_company_data', 'purge_table_data', 'delete_company']
-    return required.every((action) => backendHealth.supported_actions.includes(action as any))
-  }, [backendHealth, backendHealthError])
 
   useEffect(() => {
     if (companiesError) {
@@ -71,12 +88,6 @@ export function OwnerSistemaModule() {
       setError(normalizeOwnerError(databaseTablesError))
     }
   }, [databaseTablesError, supportsListDatabaseTables])
-
-  useEffect(() => {
-    if (!canRunDataControl) {
-      setError(null)
-    }
-  }, [canRunDataControl])
 
   const companies = useMemo(
     () => (Array.isArray(companiesData?.companies) ? (companiesData.companies as Array<{ id: string; nome?: string; slug?: string }>) : []),
@@ -92,6 +103,12 @@ export function OwnerSistemaModule() {
   )
 
   const handleCreateSystemAdmin = async () => {
+    if (!canCreateSystemAdmin) {
+      setError(null)
+      setMessage('create_system_admin indisponivel nesta publicacao do backend owner.')
+      return
+    }
+
     if (!userId.trim()) {
       setError('Informe o ID do usuário para promover para SYSTEM_ADMIN.')
       return
@@ -113,10 +130,17 @@ export function OwnerSistemaModule() {
     }
   }
 
+  const handleRefreshCompatibility = () => {
+    queryClient.invalidateQueries({ queryKey: ['owner', 'backend-health'] })
+    queryClient.invalidateQueries({ queryKey: ['owner', 'database', 'tables'] })
+    setMessage('Compatibilidade do backend em atualizacao. Aguarde alguns segundos.')
+    setError(null)
+  }
+
   const handleCleanupCompanyData = async () => {
-    if (!canRunDataControl) {
+    if (!canCleanupCompanyData) {
       setError(null)
-      setMessage('Data Control indisponível enquanto o backend owner publicado não for atualizado.')
+      setMessage('cleanup_company_data indisponivel nesta publicacao do backend owner.')
       return
     }
 
@@ -153,14 +177,14 @@ export function OwnerSistemaModule() {
   }
 
   const handlePurgeTable = async () => {
-    if (!canRunDataControl) {
+    if (!canPurgeTableData) {
       setError(null)
-      setMessage('Data Control indisponível enquanto o backend owner publicado não for atualizado.')
+      setMessage('purge_table_data indisponivel nesta publicacao do backend owner.')
       return
     }
 
     if (!tableName.trim()) {
-      setError('Selecione uma tabela para limpeza.')
+      setError('Informe uma tabela para limpeza.')
       return
     }
 
@@ -190,9 +214,9 @@ export function OwnerSistemaModule() {
   }
 
   const handleDeleteCompany = async () => {
-    if (!canRunDataControl) {
+    if (!canDeleteCompanyData) {
       setError(null)
-      setMessage('Data Control indisponível enquanto o backend owner publicado não for atualizado.')
+      setMessage('delete_company indisponivel nesta publicacao do backend owner.')
       return
     }
 
@@ -244,11 +268,14 @@ export function OwnerSistemaModule() {
           <button
             onClick={handleCreateSystemAdmin}
             className="rounded-md bg-emerald-500 px-4 py-2 text-sm font-semibold text-slate-900"
-            disabled={isSubmitting}
+            disabled={isSubmitting || !canCreateSystemAdmin}
           >
             Conceder SYSTEM_ADMIN
           </button>
         </div>
+        {!canCreateSystemAdmin && (
+          <p className="mt-2 text-xs text-amber-300">Acao create_system_admin indisponivel no backend atual.</p>
+        )}
       </div>
 
       <div className="mt-4 rounded-md border border-amber-700/40 bg-amber-950/20 p-3">
@@ -257,11 +284,30 @@ export function OwnerSistemaModule() {
           Acesso direto para limpar dados de tenant e tabelas da plataforma. O banco nunca e apagado, apenas os registros.
         </p>
 
-        {!canRunDataControl && (
+        {backendHealthError && (
           <div className="mt-3 rounded border border-rose-600/60 bg-rose-950/40 px-3 py-2 text-xs text-rose-200">
-            Backend owner sem compatibilidade total para Data Control nesta publicacao. Publique a versao mais recente da edge function owner-portal-admin e do frontend owner.
+            Falha ao validar compatibilidade do backend owner: {normalizeOwnerError(backendHealthError)}
           </div>
         )}
+
+        {!backendHealthError && missingDataControlActions.length > 0 && (
+          <div className="mt-3 rounded border border-amber-600/60 bg-amber-950/30 px-3 py-2 text-xs text-amber-100">
+            Data Control parcial. Acoes indisponiveis: {missingDataControlActions.join(', ')}.
+          </div>
+        )}
+
+        <div className="mt-3 flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+          <p className="text-xs text-slate-300">
+            Versao backend: {backendHealth?.version ?? 'desconhecida'}
+          </p>
+          <button
+            onClick={handleRefreshCompatibility}
+            className="rounded-md border border-slate-600 px-3 py-1.5 text-xs text-slate-200 hover:bg-slate-800"
+            disabled={checkingBackendHealth}
+          >
+            {checkingBackendHealth ? 'Atualizando...' : 'Atualizar compatibilidade'}
+          </button>
+        </div>
 
         <div className="mt-3 grid gap-2 md:grid-cols-2">
           <label className="text-xs text-slate-300">Empresa alvo</label>
@@ -269,7 +315,7 @@ export function OwnerSistemaModule() {
             className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm"
             value={empresaId}
             onChange={(e) => setEmpresaId(e.target.value)}
-              disabled={loadingCompanies || !canRunDataControl}
+            disabled={loadingCompanies || !hasAnyDataControl}
           >
             <option value="">Selecione empresa</option>
             {companies.map((company) => (
@@ -288,7 +334,7 @@ export function OwnerSistemaModule() {
             placeholder="Informe sua senha"
             value={authPassword}
             onChange={(e) => setAuthPassword(e.target.value)}
-            disabled={!canRunDataControl}
+            disabled={!hasAnyDataControl}
           />
         </div>
 
@@ -313,7 +359,7 @@ export function OwnerSistemaModule() {
             <button
               onClick={handleCleanupCompanyData}
               className="rounded-md border border-amber-500 px-4 py-2 text-sm font-semibold text-amber-200"
-              disabled={cleanupCompanyDataMutation.isPending || !authPassword.trim() || !canRunDataControl}
+              disabled={cleanupCompanyDataMutation.isPending || !authPassword.trim() || !canCleanupCompanyData}
             >
               Limpar empresa
             </button>
@@ -323,23 +369,33 @@ export function OwnerSistemaModule() {
         <div className="mt-3 rounded border border-slate-800 p-3">
           <h4 className="text-xs font-semibold text-slate-200">Limpar tabela específica</h4>
           <div className="mt-2 grid gap-2 md:grid-cols-3">
-            <select
-              className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm"
-              value={tableName}
-              onChange={(e) => setTableName(e.target.value)}
-              disabled={loadingTables || !canRunDataControl}
-            >
-              <option value="">Selecione tabela</option>
-              {sortedTables.map((table) => (
-                <option key={table.table_name} value={table.table_name}>
-                  {table.table_name} ({table.total_rows})
-                </option>
-              ))}
-            </select>
+            {supportsListDatabaseTables ? (
+              <select
+                className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm"
+                value={tableName}
+                onChange={(e) => setTableName(e.target.value)}
+                disabled={loadingTables || !canPurgeTableData}
+              >
+                <option value="">Selecione tabela</option>
+                {sortedTables.map((table) => (
+                  <option key={table.table_name} value={table.table_name}>
+                    {table.table_name} ({table.total_rows})
+                  </option>
+                ))}
+              </select>
+            ) : (
+              <input
+                className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm"
+                placeholder="Digite o nome da tabela"
+                value={tableName}
+                onChange={(e) => setTableName(e.target.value)}
+                disabled={!canPurgeTableData}
+              />
+            )}
             <button
               onClick={handlePurgeTable}
               className="rounded-md border border-amber-500 px-4 py-2 text-sm font-semibold text-amber-200"
-              disabled={purgeTableDataMutation.isPending || !authPassword.trim() || !canRunDataControl}
+              disabled={purgeTableDataMutation.isPending || !authPassword.trim() || !canPurgeTableData}
             >
               Limpar tabela
             </button>
@@ -353,7 +409,7 @@ export function OwnerSistemaModule() {
             <button
               onClick={handleDeleteCompany}
               className="rounded-md bg-rose-600 px-4 py-2 text-sm font-semibold text-white"
-              disabled={deleteCompanyByOwnerMutation.isPending || !authPassword.trim() || !canRunDataControl}
+              disabled={deleteCompanyByOwnerMutation.isPending || !authPassword.trim() || !canDeleteCompanyData}
             >
               Excluir empresa
             </button>
@@ -380,7 +436,7 @@ export function OwnerSistemaModule() {
               {!supportsListDatabaseTables && (
                 <tr className="border-t border-slate-800">
                   <td className="px-3 py-3 text-slate-400" colSpan={3}>
-                    Backend legado: listagem de tabelas indisponível nesta versão publicada.
+                    Listagem indisponivel nesta versao. Digite manualmente o nome da tabela para usar a limpeza.
                   </td>
                 </tr>
               )}
