@@ -436,15 +436,23 @@ export async function deleteCompanyByOwner(payload: {
       throw err
     }
 
-    // Backend legado: tenta limpeza por empresa para evitar violações de FK antes da exclusão física do cadastro.
-    await callOwnerAdmin({
-      action: 'cleanup_company_data',
-      empresa_id: payload.empresa_id,
-      keep_company_core: false,
-      keep_billing_data: false,
-      include_auth_users: payload.include_auth_users ?? false,
-      auth_password: payload.auth_password,
-    })
+    // Backend legado: tenta limpeza por empresa antes da exclusão física.
+    // Se a ação também for unsupported, seguimos para tentativa direta de DELETE nas tabelas de cadastro.
+    try {
+      await callOwnerAdmin({
+        action: 'cleanup_company_data',
+        empresa_id: payload.empresa_id,
+        keep_company_core: false,
+        keep_billing_data: false,
+        include_auth_users: payload.include_auth_users ?? false,
+        auth_password: payload.auth_password,
+      })
+    } catch (cleanupErr: any) {
+      const cleanupMessage = String(cleanupErr?.message ?? cleanupErr ?? '')
+      if (!isUnsupportedActionMessage(cleanupMessage)) {
+        throw cleanupErr
+      }
+    }
 
     const deleteFromCompanyTable = async (tableName: 'enterprise_companies' | 'empresas') => {
       const { count, error } = await (supabase.from(tableName as any) as any)
