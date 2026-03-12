@@ -912,7 +912,7 @@ export default function Owner() {
             </div>
 
             {tablesUnsupported && (
-              <p className="mt-3 text-xs text-amber-300">Backend atual nao suporta listagem de bases/tabelas (acao list_database_tables indisponivel).</p>
+              <p className="mt-3 text-xs text-amber-300">Backend atual nao suporta listagem de bases/tabelas (acao list_database_tables indisponivel). Publique a edge function owner-portal-admin mais recente.</p>
             )}
 
             <div className="mt-3 max-h-80 overflow-auto rounded border border-slate-800">
@@ -1010,7 +1010,7 @@ export default function Owner() {
             )}
 
             {tablesUnsupported && (
-              <p className="mt-3 text-xs text-amber-300">Backend legado: listagem de tabelas indisponivel nesta versao. Use o campo de tabela manual.</p>
+              <p className="mt-3 text-xs text-amber-300">Backend legado: listagem de tabelas indisponivel nesta versao. Publique a edge function owner-portal-admin para habilitar a carga da grade.</p>
             )}
 
             <div className="mt-4 max-h-72 overflow-auto rounded border border-slate-800">
