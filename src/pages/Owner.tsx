@@ -78,14 +78,16 @@ export default function Owner() {
   const { data: supportData, isLoading: isLoadingSupport } = useOwnerSupportTickets()
   const { data: ownersData, isLoading: isLoadingOwners } = useOwnerMasterOwners()
   const monitoringLive = active === 'monitoramento'
-  const supportsTables = Boolean(backendHealth?.supported_actions?.includes('list_database_tables' as any))
+  const tablesLive = active === 'monitoramento' || active === 'sistema'
   const {
     data: tablesData,
     isLoading: isLoadingTables,
     isFetching: isFetchingTables,
     error: tablesError,
     dataUpdatedAt: tablesUpdatedAt,
-  } = useOwnerDatabaseTables(supportsTables && monitoringLive, monitoringLive ? 250 : false)
+  } = useOwnerDatabaseTables(tablesLive, monitoringLive ? 250 : false)
+  const tablesErrorMessage = String((tablesError as any)?.message ?? '')
+  const tablesUnsupported = /unsupported action|missing action/i.test(tablesErrorMessage)
 
   const companies = useMemo(
     () => toArray<{ id: string; nome?: string; slug?: string; status?: string }>((companiesData as any)?.companies),
@@ -909,50 +911,48 @@ export default function Owner() {
               </p>
             </div>
 
-            {!supportsTables && (
+            {tablesUnsupported && (
               <p className="mt-3 text-xs text-amber-300">Backend atual nao suporta listagem de bases/tabelas (acao list_database_tables indisponivel).</p>
             )}
 
-            {supportsTables && (
-              <div className="mt-3 max-h-80 overflow-auto rounded border border-slate-800">
-                <table className="w-full text-xs">
-                  <thead className="bg-slate-900">
-                    <tr>
-                      <th className="px-3 py-2 text-left">Base/Tabela</th>
-                      <th className="px-3 py-2 text-left">Status</th>
-                      <th className="px-3 py-2 text-right">Registros</th>
-                      <th className="px-3 py-2 text-center">Escopo</th>
+            <div className="mt-3 max-h-80 overflow-auto rounded border border-slate-800">
+              <table className="w-full text-xs">
+                <thead className="bg-slate-900">
+                  <tr>
+                    <th className="px-3 py-2 text-left">Base/Tabela</th>
+                    <th className="px-3 py-2 text-left">Status</th>
+                    <th className="px-3 py-2 text-right">Registros</th>
+                    <th className="px-3 py-2 text-center">Escopo</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {monitoredDatabases.map((db) => (
+                    <tr key={db.table_name} className="border-t border-slate-800">
+                      <td className="px-3 py-2">{db.table_name}</td>
+                      <td className="px-3 py-2">
+                        <span
+                          className={db.status === 'online' ? 'rounded border border-emerald-600/50 bg-emerald-950/40 px-2 py-0.5 text-[11px] text-emerald-300' : 'rounded border border-rose-600/50 bg-rose-950/40 px-2 py-0.5 text-[11px] text-rose-300'}
+                        >
+                          {db.status}
+                        </span>
+                      </td>
+                      <td className="px-3 py-2 text-right">{db.total_rows}</td>
+                      <td className="px-3 py-2 text-center">{db.has_empresa_id ? 'tenant' : 'global'}</td>
                     </tr>
-                  </thead>
-                  <tbody>
-                    {monitoredDatabases.map((db) => (
-                      <tr key={db.table_name} className="border-t border-slate-800">
-                        <td className="px-3 py-2">{db.table_name}</td>
-                        <td className="px-3 py-2">
-                          <span
-                            className={db.status === 'online' ? 'rounded border border-emerald-600/50 bg-emerald-950/40 px-2 py-0.5 text-[11px] text-emerald-300' : 'rounded border border-rose-600/50 bg-rose-950/40 px-2 py-0.5 text-[11px] text-rose-300'}
-                          >
-                            {db.status}
-                          </span>
-                        </td>
-                        <td className="px-3 py-2 text-right">{db.total_rows}</td>
-                        <td className="px-3 py-2 text-center">{db.has_empresa_id ? 'tenant' : 'global'}</td>
-                      </tr>
-                    ))}
-                    {isLoadingTables && (
-                      <tr>
-                        <td className="px-3 py-3 text-slate-400" colSpan={4}>Carregando status das bases/tabelas...</td>
-                      </tr>
-                    )}
-                    {!isLoadingTables && monitoredDatabases.length === 0 && (
-                      <tr>
-                        <td className="px-3 py-3 text-slate-400" colSpan={4}>Nenhuma base/tabela retornada pelo backend.</td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            )}
+                  ))}
+                  {isLoadingTables && (
+                    <tr>
+                      <td className="px-3 py-3 text-slate-400" colSpan={4}>Carregando status das bases/tabelas...</td>
+                    </tr>
+                  )}
+                  {!isLoadingTables && monitoredDatabases.length === 0 && (
+                    <tr>
+                      <td className="px-3 py-3 text-slate-400" colSpan={4}>Nenhuma base/tabela retornada pelo backend.</td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
 
             {tablesError && (
               <p className="mt-3 text-xs text-rose-300">Falha ao atualizar status das bases/tabelas: {String((tablesError as any)?.message ?? tablesError)}</p>
@@ -1009,7 +1009,7 @@ export default function Owner() {
               <p className="mt-3 text-xs text-rose-300">Acoes destrutivas liberadas somente para pedrozo@gppis.com.br (owner master).</p>
             )}
 
-            {!supportsTables && (
+            {tablesUnsupported && (
               <p className="mt-3 text-xs text-amber-300">Backend legado: listagem de tabelas indisponivel nesta versao. Use o campo de tabela manual.</p>
             )}
 
