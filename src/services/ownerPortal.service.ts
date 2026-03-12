@@ -382,8 +382,29 @@ export async function createPlatformOwner(payload: {
 }
 
 export async function listDatabaseTables(): Promise<OwnerDatabaseTable[]> {
-  const data = await callOwnerAdmin<{ tables: OwnerDatabaseTable[] }>({ action: 'list_database_tables' })
-  return Array.isArray(data?.tables) ? data.tables : []
+  try {
+    const data = await callOwnerAdmin<{ tables: OwnerDatabaseTable[] }>({ action: 'list_database_tables' })
+    return Array.isArray(data?.tables) ? data.tables : []
+  } catch (err: any) {
+    const msg = String(err?.message ?? err ?? '')
+    if (!isUnsupportedActionMessage(msg)) {
+      throw err
+    }
+
+    // Fallback para ambientes com edge function legada sem a action list_database_tables.
+    const { data: rows, error } = await supabase.rpc('owner_list_database_tables' as any)
+    if (error) {
+      throw new Error(`Falha ao listar tabelas via fallback RPC: ${error.message}`)
+    }
+
+    const parsed = (Array.isArray(rows) ? rows : []).map((row: any) => ({
+      table_name: String(row?.table_name ?? ''),
+      total_rows: Number(row?.total_rows ?? 0),
+      has_empresa_id: Boolean(row?.has_empresa_id),
+    })).filter((row) => row.table_name)
+
+    return parsed
+  }
 }
 
 export async function getOwnerBackendHealth(): Promise<OwnerBackendHealth> {
