@@ -142,6 +142,16 @@ const isUnsupportedActionMessage = (value: unknown) => {
   return msg.includes('unsupported action') || msg.includes('missing action')
 }
 
+const isMissingTableMessage = (value: unknown) => {
+  const msg = String(value ?? '').toLowerCase()
+  return msg.includes('could not find the table') || msg.includes('does not exist') || msg.includes('schema cache')
+}
+
+const isEmpresaForeignKeyMessage = (value: unknown) => {
+  const msg = String(value ?? '').toLowerCase()
+  return msg.includes('violates foreign key constraint') && msg.includes('empresa')
+}
+
 const parseErrorMessage = async (error: any) => {
   if (!error) return 'Falha desconhecida ao executar operação Owner.'
   const context = error?.context
@@ -466,12 +476,25 @@ export async function deleteCompanyByOwner(payload: {
       if (!isUnsupportedActionMessage(cleanupMessage)) {
         throw cleanupErr
       }
+
+      // Fallback extra: remove vinculos diretos de usuario por empresa para reduzir falhas de FK ao excluir a empresa.
+      await supabase.from('user_roles').delete().eq('empresa_id', payload.empresa_id)
+      await supabase.from('rbac_user_roles').delete().eq('empresa_id', payload.empresa_id)
+      await supabase.from('profiles').delete().eq('empresa_id', payload.empresa_id)
     }
 
     const deleteFromCompanyTable = async (tableName: 'enterprise_companies' | 'empresas') => {
       const { count, error } = await (supabase.from(tableName as any) as any)
         .delete({ count: 'exact' })
         .eq('id', payload.empresa_id)
+
+      if (error && isMissingTableMessage(error?.message ?? error)) {
+        return {
+          tableName,
+          deletedRows: 0,
+          error: null,
+        }
+      }
 
       return {
         tableName,
@@ -498,6 +521,13 @@ export async function deleteCompanyByOwner(payload: {
 
     const hasPrimaryError = Boolean(primaryDelete.error)
     const hasLegacyError = Boolean(legacyDelete.error)
+
+    if (hasLegacyError && isEmpresaForeignKeyMessage(legacyDelete.error?.message ?? legacyDelete.error)) {
+      throw new Error(
+        'Falha ao excluir empresa por dependencias de FK (empresa_id). Execute cleanup_company_data/delete_company no backend atualizado para remover dependencias tenant antes da exclusao fisica.',
+      )
+    }
+
     if (hasPrimaryError || hasLegacyError) {
       const primaryMessage = primaryDelete.error ? String(primaryDelete.error.message ?? primaryDelete.error) : ''
       const legacyMessage = legacyDelete.error ? String(legacyDelete.error.message ?? legacyDelete.error) : ''
