@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   callOwnerAdmin,
-  changePlan,
+  changePlan as changePlanRequest,
   cleanupCompanyData,
   createCompany,
   createPlatformOwner,
@@ -209,7 +209,7 @@ export function useOwnerCompanyActions() {
   })
 
   const changePlan = useMutation({
-    mutationFn: changePlan,
+    mutationFn: changePlanRequest,
     onSuccess: () => invalidateOwnerReads(qc),
   })
 
