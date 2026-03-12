@@ -63,6 +63,7 @@ export default function Owner() {
   const [active, setActive] = useState<OwnerTab>('dashboard')
   const [feedback, setFeedback] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [hiddenCompanyIds, setHiddenCompanyIds] = useState<string[]>([])
 
   const isOwnerMaster = (user?.email || '').toLowerCase() === OWNER_MASTER_EMAIL
 
@@ -76,12 +77,22 @@ export default function Owner() {
   const { data: auditData, isLoading: isLoadingAudit } = useOwnerAuditLogs()
   const { data: supportData, isLoading: isLoadingSupport } = useOwnerSupportTickets()
   const { data: ownersData, isLoading: isLoadingOwners } = useOwnerMasterOwners()
+  const monitoringLive = active === 'monitoramento'
   const supportsTables = Boolean(backendHealth?.supported_actions?.includes('list_database_tables' as any))
-  const { data: tablesData, isLoading: isLoadingTables } = useOwnerDatabaseTables(supportsTables)
+  const {
+    data: tablesData,
+    isLoading: isLoadingTables,
+    isFetching: isFetchingTables,
+    error: tablesError,
+    dataUpdatedAt: tablesUpdatedAt,
+  } = useOwnerDatabaseTables(supportsTables && monitoringLive, monitoringLive ? 250 : false)
 
   const companies = useMemo(
-    () => toArray<{ id: string; nome?: string; slug?: string; status?: string }>((companiesData as any)?.companies),
-    [companiesData],
+    () =>
+      toArray<{ id: string; nome?: string; slug?: string; status?: string }>((companiesData as any)?.companies).filter(
+        (company) => !hiddenCompanyIds.includes(company.id),
+      ),
+    [companiesData, hiddenCompanyIds],
   )
   const users = useMemo(() => toArray<{ id: string; nome?: string; email?: string; status?: string }>(usersData), [usersData])
   const plans = useMemo(() => toArray<{ id: string; name?: string; code?: string; price_month?: number }>(plansData), [plansData])
@@ -99,6 +110,15 @@ export default function Owner() {
         .slice()
         .sort((a, b) => b.total_rows - a.total_rows),
     [tablesData],
+  )
+
+  const monitoredDatabases = useMemo(
+    () =>
+      tables.map((table) => ({
+        ...table,
+        status: table.total_rows >= 0 ? 'online' : 'indisponivel',
+      })),
+    [tables],
   )
 
   const {
@@ -183,6 +203,24 @@ export default function Owner() {
     }
 
     await runAction(fn, success)
+  }
+
+  const runDeleteCompanyAction = async () => {
+    const empresaId = systemForm.empresa_id
+    if (!empresaId) return
+
+    await runOwnerMasterAction(
+      () =>
+        deleteCompanyByOwnerMutation.mutateAsync({
+          empresa_id: empresaId,
+          include_auth_users: systemForm.include_auth_users,
+          auth_password: systemForm.auth_password,
+        }),
+      'Operacao de exclusao concluida com sucesso.',
+    )
+
+    setHiddenCompanyIds((current) => (current.includes(empresaId) ? current : [...current, empresaId]))
+    setSystemForm((current) => ({ ...current, empresa_id: '' }))
   }
 
   const navItems = useMemo(
@@ -833,6 +871,65 @@ export default function Owner() {
               ))}
             </div>
           </div>
+
+          <div className="mt-4 rounded border border-slate-800 bg-slate-950 p-3">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <p className="text-xs text-slate-400">Status dos bancos/tabelas (refresh: 0,25s)</p>
+              <p className="text-[11px] text-slate-500">
+                {isFetchingTables ? 'Atualizando...' : 'Atualizacao concluida'}
+                {tablesUpdatedAt ? ` • ${new Date(tablesUpdatedAt).toLocaleTimeString('pt-BR')}` : ''}
+              </p>
+            </div>
+
+            {!supportsTables && (
+              <p className="mt-3 text-xs text-amber-300">Backend atual nao suporta listagem de bases/tabelas (acao list_database_tables indisponivel).</p>
+            )}
+
+            {supportsTables && (
+              <div className="mt-3 max-h-80 overflow-auto rounded border border-slate-800">
+                <table className="w-full text-xs">
+                  <thead className="bg-slate-900">
+                    <tr>
+                      <th className="px-3 py-2 text-left">Base/Tabela</th>
+                      <th className="px-3 py-2 text-left">Status</th>
+                      <th className="px-3 py-2 text-right">Registros</th>
+                      <th className="px-3 py-2 text-center">Escopo</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {monitoredDatabases.map((db) => (
+                      <tr key={db.table_name} className="border-t border-slate-800">
+                        <td className="px-3 py-2">{db.table_name}</td>
+                        <td className="px-3 py-2">
+                          <span
+                            className={db.status === 'online' ? 'rounded border border-emerald-600/50 bg-emerald-950/40 px-2 py-0.5 text-[11px] text-emerald-300' : 'rounded border border-rose-600/50 bg-rose-950/40 px-2 py-0.5 text-[11px] text-rose-300'}
+                          >
+                            {db.status}
+                          </span>
+                        </td>
+                        <td className="px-3 py-2 text-right">{db.total_rows}</td>
+                        <td className="px-3 py-2 text-center">{db.has_empresa_id ? 'tenant' : 'global'}</td>
+                      </tr>
+                    ))}
+                    {isLoadingTables && (
+                      <tr>
+                        <td className="px-3 py-3 text-slate-400" colSpan={4}>Carregando status das bases/tabelas...</td>
+                      </tr>
+                    )}
+                    {!isLoadingTables && monitoredDatabases.length === 0 && (
+                      <tr>
+                        <td className="px-3 py-3 text-slate-400" colSpan={4}>Nenhuma base/tabela retornada pelo backend.</td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            )}
+
+            {tablesError && (
+              <p className="mt-3 text-xs text-rose-300">Falha ao atualizar status das bases/tabelas: {String((tablesError as any)?.message ?? tablesError)}</p>
+            )}
+          </div>
         </Card>
       )}
 
@@ -877,7 +974,7 @@ export default function Owner() {
             <div className="mt-3 grid gap-2 md:grid-cols-3">
               <button className="rounded border border-amber-500 px-3 py-2 text-sm text-amber-300" disabled={!isOwnerMaster || !systemForm.empresa_id || !systemForm.auth_password || cleanupCompanyDataMutation.isPending} onClick={() => runOwnerMasterAction(() => cleanupCompanyDataMutation.mutateAsync({ empresa_id: systemForm.empresa_id, keep_company_core: systemForm.keep_core, keep_billing_data: systemForm.keep_billing, include_auth_users: systemForm.include_auth_users, auth_password: systemForm.auth_password }), 'Limpeza da empresa concluida com sucesso.')}>Limpar empresa</button>
               <button className="rounded border border-amber-500 px-3 py-2 text-sm text-amber-300" disabled={!isOwnerMaster || !systemForm.table_name || !systemForm.auth_password || purgeTableDataMutation.isPending} onClick={() => runOwnerMasterAction(() => purgeTableDataMutation.mutateAsync({ table_name: systemForm.table_name, empresa_id: systemForm.empresa_id || undefined, auth_password: systemForm.auth_password }), 'Limpeza da tabela concluida com sucesso.')}>Limpar tabela</button>
-              <button className="rounded border border-rose-600 px-3 py-2 text-sm text-rose-300" disabled={!isOwnerMaster || !systemForm.empresa_id || !systemForm.auth_password || deleteCompanyByOwnerMutation.isPending} onClick={() => runOwnerMasterAction(() => deleteCompanyByOwnerMutation.mutateAsync({ empresa_id: systemForm.empresa_id, include_auth_users: systemForm.include_auth_users, auth_password: systemForm.auth_password }), 'Operacao de exclusao concluida com sucesso.')}>Excluir empresa</button>
+              <button className="rounded border border-rose-600 px-3 py-2 text-sm text-rose-300" disabled={!isOwnerMaster || !systemForm.empresa_id || !systemForm.auth_password || deleteCompanyByOwnerMutation.isPending} onClick={runDeleteCompanyAction}>Excluir empresa</button>
             </div>
 
             {!isOwnerMaster && (
