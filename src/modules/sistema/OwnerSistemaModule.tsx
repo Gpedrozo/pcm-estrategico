@@ -53,6 +53,13 @@ export function OwnerSistemaModule() {
     setError(normalized || fallback)
   }
 
+  const canRunDataControl = useMemo(() => {
+    if (backendHealthError) return false
+    if (!backendHealth?.supported_actions) return false
+    const required = ['list_database_tables', 'cleanup_company_data', 'purge_table_data', 'delete_company']
+    return required.every((action) => backendHealth.supported_actions.includes(action as any))
+  }, [backendHealth, backendHealthError])
+
   useEffect(() => {
     if (companiesError) {
       setError(normalizeOwnerError(companiesError))
@@ -71,22 +78,18 @@ export function OwnerSistemaModule() {
     }
   }, [canRunDataControl])
 
-  const companies = useMemo(() => (companiesData?.companies ?? []) as Array<{ id: string; nome?: string; slug?: string }>, [companiesData])
+  const companies = useMemo(
+    () => (Array.isArray(companiesData?.companies) ? (companiesData.companies as Array<{ id: string; nome?: string; slug?: string }>) : []),
+    [companiesData],
+  )
   const selectedCompany = companies.find((c) => c.id === empresaId)
 
   const sortedTables = useMemo(
-    () => ((databaseTables ?? []) as Array<{ table_name: string; total_rows: number; has_empresa_id: boolean }>)
+    () => (Array.isArray(databaseTables) ? (databaseTables as Array<{ table_name: string; total_rows: number; has_empresa_id: boolean }>) : [])
       .slice()
       .sort((a, b) => b.total_rows - a.total_rows),
     [databaseTables],
   )
-
-  const canRunDataControl = useMemo(() => {
-    if (backendHealthError) return false
-    if (!backendHealth?.supported_actions) return false
-    const required = ['list_database_tables', 'cleanup_company_data', 'purge_table_data', 'delete_company']
-    return required.every((action) => backendHealth.supported_actions.includes(action as any))
-  }, [backendHealth, backendHealthError])
 
   const handleCreateSystemAdmin = async () => {
     if (!userId.trim()) {
