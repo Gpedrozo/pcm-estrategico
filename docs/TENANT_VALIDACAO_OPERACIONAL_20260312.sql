@@ -138,6 +138,7 @@ ORDER BY tablename, policyname;
 DROP TABLE IF EXISTS tmp_weekly_tenant_integrity;
 
 DO $$
+
 BEGIN
   IF to_regprocedure('public.weekly_tenant_integrity_check()') IS NOT NULL THEN
     EXECUTE 'CREATE TEMP TABLE tmp_weekly_tenant_integrity AS SELECT * FROM public.weekly_tenant_integrity_check()';

@@ -176,7 +176,7 @@ export default function Owner() {
   const [contractOnlyId, setContractOnlyId] = useState('')
   const [supportForm, setSupportForm] = useState({ ticket_id: '', response: '', status: 'resolvido' })
   const [settingsForm, setSettingsForm] = useState({ empresa_id: '', modules: '{}', limits: '{}', features: '{}' })
-  const [systemForm, setSystemForm] = useState({ user_id: '', empresa_id: '', table_name: '', auth_password: '', keep_core: false, keep_billing: false, include_auth_users: false })
+  const [systemForm, setSystemForm] = useState({ user_id: '', empresa_id: '', table_name: '', auth_password: '', keep_core: false, keep_billing: false, include_auth_users: true })
   const [ownerMasterForm, setOwnerMasterForm] = useState({ nome: '', email: '', password: '' })
 
   const selectedSettingsQuery = useOwnerCompanySettings(settingsForm.empresa_id || null)
@@ -970,7 +970,7 @@ export default function Owner() {
             </div>
           </Card>
 
-          <Card title="Data Control (Owner Master)" subtitle="Limpeza de dados por empresa e por tabela">
+          <Card title="Data Control (Owner Master)" subtitle="Limpeza total por empresa_id (todas as tabelas com empresa_id) e limpeza manual por tabela">
             <div className="grid gap-2 md:grid-cols-2">
               <select className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm" value={systemForm.empresa_id} onChange={(e) => setSystemForm((s) => ({ ...s, empresa_id: e.target.value }))}>
                 <option value="">Empresa alvo</option>
@@ -995,12 +995,12 @@ export default function Owner() {
               </label>
               <label className="flex items-center gap-2 text-xs text-slate-300">
                 <input type="checkbox" checked={systemForm.include_auth_users} onChange={(e) => setSystemForm((s) => ({ ...s, include_auth_users: e.target.checked }))} />
-                Incluir usuarios auth
+                Incluir usuarios auth (recomendado para limpeza total)
               </label>
             </div>
 
             <div className="mt-3 grid gap-2 md:grid-cols-3">
-              <button className="rounded border border-amber-500 px-3 py-2 text-sm text-amber-300" disabled={!isOwnerMaster || !systemForm.empresa_id || !systemForm.auth_password || cleanupCompanyDataMutation.isPending} onClick={() => runOwnerMasterAction(() => cleanupCompanyDataMutation.mutateAsync({ empresa_id: systemForm.empresa_id, keep_company_core: systemForm.keep_core, keep_billing_data: systemForm.keep_billing, include_auth_users: systemForm.include_auth_users, auth_password: systemForm.auth_password }), 'Limpeza da empresa concluida com sucesso.')}>Limpar empresa</button>
+              <button className="rounded border border-amber-500 px-3 py-2 text-sm text-amber-300" disabled={!isOwnerMaster || !systemForm.empresa_id || !systemForm.auth_password || cleanupCompanyDataMutation.isPending} onClick={() => runOwnerMasterAction(() => cleanupCompanyDataMutation.mutateAsync({ empresa_id: systemForm.empresa_id, keep_company_core: systemForm.keep_core, keep_billing_data: systemForm.keep_billing, include_auth_users: systemForm.include_auth_users, auth_password: systemForm.auth_password }), 'Limpeza total da empresa concluida com sucesso.')}>Limpar empresa (tudo)</button>
               <button className="rounded border border-amber-500 px-3 py-2 text-sm text-amber-300" disabled={!isOwnerMaster || !systemForm.table_name || !systemForm.auth_password || purgeTableDataMutation.isPending} onClick={() => runOwnerMasterAction(() => purgeTableDataMutation.mutateAsync({ table_name: systemForm.table_name, empresa_id: systemForm.empresa_id || undefined, auth_password: systemForm.auth_password }), 'Limpeza da tabela concluida com sucesso.')}>Limpar tabela</button>
               <button className="rounded border border-rose-600 px-3 py-2 text-sm text-rose-300" disabled={!isOwnerMaster || !systemForm.empresa_id || !systemForm.auth_password || deleteCompanyByOwnerMutation.isPending} onClick={() => runOwnerMasterAction(() => deleteCompanyByOwnerMutation.mutateAsync({ empresa_id: systemForm.empresa_id, include_auth_users: systemForm.include_auth_users, auth_password: systemForm.auth_password }), 'Empresa excluida definitivamente com sucesso.')}>Excluir empresa</button>
             </div>
