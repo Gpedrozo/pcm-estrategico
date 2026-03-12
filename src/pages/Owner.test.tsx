@@ -29,6 +29,7 @@ vi.mock("@/hooks/useOwnerPortal", () => ({
     setUserStatusMutation: { mutateAsync: vi.fn(), isPending: false },
     createPlanMutation: { mutateAsync: vi.fn(), isPending: false },
     updatePlanMutation: { mutateAsync: vi.fn(), isPending: false },
+    changePlan: { mutateAsync: vi.fn(), isPending: false },
     createSubscriptionMutation: { mutateAsync: vi.fn(), isPending: false },
     setSubscriptionStatusMutation: { mutateAsync: vi.fn(), isPending: false },
     updateSubscriptionBillingMutation: { mutateAsync: vi.fn(), isPending: false },
@@ -89,7 +90,7 @@ describe("Owner page access", () => {
     }));
 
     renderWithQuery(<Owner />);
-    expect(screen.getByText("Owner Portal v1.0")).toBeInTheDocument();
-    expect(screen.getByText("Visao executiva do ecossistema.")).toBeInTheDocument();
+    expect(screen.getByText("Owner Portal")).toBeInTheDocument();
+    expect(screen.getByText("Visao executiva do ecossistema multiempresa.")).toBeInTheDocument();
   });
 });

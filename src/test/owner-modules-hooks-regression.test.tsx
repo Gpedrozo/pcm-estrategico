@@ -36,6 +36,7 @@ vi.mock('@/hooks/useOwnerPortal', () => ({
     setUserStatusMutation: { mutateAsync: vi.fn(), isPending: false },
     createPlanMutation: { mutateAsync: vi.fn(), isPending: false },
     updatePlanMutation: { mutateAsync: vi.fn(), isPending: false },
+    changePlan: { mutateAsync: vi.fn(), isPending: false },
     createSubscriptionMutation: { mutateAsync: vi.fn(), isPending: false },
     setSubscriptionStatusMutation: { mutateAsync: vi.fn(), isPending: false },
     updateSubscriptionBillingMutation: { mutateAsync: vi.fn(), isPending: false },
@@ -71,7 +72,7 @@ describe('owner v1 page stability', () => {
   it('renders dashboard shell and core metrics', () => {
     renderOwner()
 
-    expect(screen.getByText('Owner Portal v1.0')).toBeInTheDocument()
+    expect(screen.getByText('Owner Portal')).toBeInTheDocument()
     expect(screen.getByText('Dashboard')).toBeInTheDocument()
     expect(screen.getByText('Empresas')).toBeInTheDocument()
     expect(screen.getByText('MRR')).toBeInTheDocument()

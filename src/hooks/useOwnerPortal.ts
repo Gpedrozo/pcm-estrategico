@@ -208,7 +208,7 @@ export function useOwnerCompanyActions() {
     onSuccess: () => invalidateOwnerReads(qc),
   })
 
-  const changePlanMutation = useMutation({
+  const changePlan = useMutation({
     mutationFn: changePlan,
     onSuccess: () => invalidateOwnerReads(qc),
   })
@@ -306,7 +306,7 @@ export function useOwnerCompanyActions() {
     setUserStatusMutation,
     createPlanMutation,
     updatePlanMutation,
-    changePlanMutation,
+    changePlan,
     createSubscriptionMutation,
     setSubscriptionStatusMutation,
     updateSubscriptionBillingMutation,
