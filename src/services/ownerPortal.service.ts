@@ -435,42 +435,6 @@ export async function deleteCompanyByOwner(payload: {
     if (!isUnsupportedActionMessage(msg)) {
       throw err
     }
-
-    let cleanup: unknown = null
-    let cleanupUnsupported = false
-
-    try {
-      cleanup = await callOwnerAdmin({
-        action: 'cleanup_company_data',
-        empresa_id: payload.empresa_id,
-        keep_company_core: false,
-        keep_billing_data: false,
-        include_auth_users: payload.include_auth_users ?? false,
-        auth_password: payload.auth_password,
-      })
-    } catch (cleanupErr: any) {
-      const cleanupMessage = String(cleanupErr?.message ?? cleanupErr ?? '')
-      if (!isUnsupportedActionMessage(cleanupMessage)) {
-        throw cleanupErr
-      }
-      cleanupUnsupported = true
-    }
-
-    await callOwnerAdmin({
-      action: 'set_company_status',
-      empresa_id: payload.empresa_id,
-      status: 'blocked',
-      reason: 'legacy-delete-fallback: backend sem acao delete_company',
-    })
-
-    return {
-      success: true,
-      legacy_fallback: true,
-      message: cleanupUnsupported
-        ? 'Exclusao definitiva e limpeza completa nao sao suportadas no backend atual. Foi aplicado bloqueio da empresa como fallback de seguranca.'
-        : 'Exclusao definitiva nao suportada no backend atual. Foi aplicada limpeza completa e bloqueio da empresa.',
-      cleanup,
-      cleanup_unsupported: cleanupUnsupported,
-    }
+    throw new Error('Backend atual nao suporta exclusao fisica de empresa (acao delete_company indisponivel). Publique a edge function owner-portal-admin atualizada para eliminar dados de forma definitiva.')
   }
 }

@@ -63,7 +63,6 @@ export default function Owner() {
   const [active, setActive] = useState<OwnerTab>('dashboard')
   const [feedback, setFeedback] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
-  const [hiddenCompanyIds, setHiddenCompanyIds] = useState<string[]>([])
 
   const isOwnerMaster = (user?.email || '').toLowerCase() === OWNER_MASTER_EMAIL
 
@@ -88,11 +87,8 @@ export default function Owner() {
   } = useOwnerDatabaseTables(supportsTables && monitoringLive, monitoringLive ? 250 : false)
 
   const companies = useMemo(
-    () =>
-      toArray<{ id: string; nome?: string; slug?: string; status?: string }>((companiesData as any)?.companies).filter(
-        (company) => !hiddenCompanyIds.includes(company.id),
-      ),
-    [companiesData, hiddenCompanyIds],
+    () => toArray<{ id: string; nome?: string; slug?: string; status?: string }>((companiesData as any)?.companies),
+    [companiesData],
   )
   const users = useMemo(() => toArray<{ id: string; nome?: string; email?: string; status?: string }>(usersData), [usersData])
   const plans = useMemo(() => toArray<{ id: string; name?: string; code?: string; price_month?: number }>(plansData), [plansData])
@@ -203,24 +199,6 @@ export default function Owner() {
     }
 
     await runAction(fn, success)
-  }
-
-  const runDeleteCompanyAction = async () => {
-    const empresaId = systemForm.empresa_id
-    if (!empresaId) return
-
-    await runOwnerMasterAction(
-      () =>
-        deleteCompanyByOwnerMutation.mutateAsync({
-          empresa_id: empresaId,
-          include_auth_users: systemForm.include_auth_users,
-          auth_password: systemForm.auth_password,
-        }),
-      'Operacao de exclusao concluida com sucesso.',
-    )
-
-    setHiddenCompanyIds((current) => (current.includes(empresaId) ? current : [...current, empresaId]))
-    setSystemForm((current) => ({ ...current, empresa_id: '' }))
   }
 
   const navItems = useMemo(
@@ -974,7 +952,7 @@ export default function Owner() {
             <div className="mt-3 grid gap-2 md:grid-cols-3">
               <button className="rounded border border-amber-500 px-3 py-2 text-sm text-amber-300" disabled={!isOwnerMaster || !systemForm.empresa_id || !systemForm.auth_password || cleanupCompanyDataMutation.isPending} onClick={() => runOwnerMasterAction(() => cleanupCompanyDataMutation.mutateAsync({ empresa_id: systemForm.empresa_id, keep_company_core: systemForm.keep_core, keep_billing_data: systemForm.keep_billing, include_auth_users: systemForm.include_auth_users, auth_password: systemForm.auth_password }), 'Limpeza da empresa concluida com sucesso.')}>Limpar empresa</button>
               <button className="rounded border border-amber-500 px-3 py-2 text-sm text-amber-300" disabled={!isOwnerMaster || !systemForm.table_name || !systemForm.auth_password || purgeTableDataMutation.isPending} onClick={() => runOwnerMasterAction(() => purgeTableDataMutation.mutateAsync({ table_name: systemForm.table_name, empresa_id: systemForm.empresa_id || undefined, auth_password: systemForm.auth_password }), 'Limpeza da tabela concluida com sucesso.')}>Limpar tabela</button>
-              <button className="rounded border border-rose-600 px-3 py-2 text-sm text-rose-300" disabled={!isOwnerMaster || !systemForm.empresa_id || !systemForm.auth_password || deleteCompanyByOwnerMutation.isPending} onClick={runDeleteCompanyAction}>Excluir empresa</button>
+              <button className="rounded border border-rose-600 px-3 py-2 text-sm text-rose-300" disabled={!isOwnerMaster || !systemForm.empresa_id || !systemForm.auth_password || deleteCompanyByOwnerMutation.isPending} onClick={() => runOwnerMasterAction(() => deleteCompanyByOwnerMutation.mutateAsync({ empresa_id: systemForm.empresa_id, include_auth_users: systemForm.include_auth_users, auth_password: systemForm.auth_password }), 'Empresa excluida definitivamente com sucesso.')}>Excluir empresa</button>
             </div>
 
             {!isOwnerMaster && (
