@@ -10,13 +10,39 @@ vi.mock("@/contexts/AuthContext", () => ({
 
 vi.mock("@/hooks/useOwnerPortal", () => ({
   useOwnerStats: () => ({ data: { total_companies: 1, total_users: 1, active_subscriptions: 1, mrr: 0 }, isLoading: false }),
+  useOwnerBackendHealth: () => ({ data: { service: 'owner-portal-admin', status: 'ok', version: 'test', supported_actions: [], timestamp: new Date().toISOString() }, isLoading: false, isFetching: false }),
   useOwnerCompanies: () => ({ data: { companies: [] }, isLoading: false }),
   useOwnerUsers: () => ({ data: [], isLoading: false }),
   useOwnerPlans: () => ({ data: [], isLoading: false }),
   useOwnerSubscriptions: () => ({ data: [], isLoading: false }),
+  useOwnerContracts: () => ({ data: [], isLoading: false }),
   useOwnerAuditLogs: () => ({ data: [], isLoading: false }),
   useOwnerSupportTickets: () => ({ data: [], isLoading: false }),
-  useOwnerCompanyActions: () => ({ blockCompany: { mutate: vi.fn(), isPending: false }, changePlan: { mutate: vi.fn(), isPending: false } }),
+  useOwnerMasterOwners: () => ({ data: [], isLoading: false }),
+  useOwnerDatabaseTables: () => ({ data: [], isLoading: false }),
+  useOwnerCompanySettings: () => ({ data: { settings: [] }, isLoading: false }),
+  useOwnerCompanyActions: () => ({
+    createCompanyMutation: { mutateAsync: vi.fn(), isPending: false },
+    updateCompanyMutation: { mutateAsync: vi.fn(), isPending: false },
+    setCompanyLifecycle: { mutateAsync: vi.fn(), isPending: false },
+    createUserMutation: { mutateAsync: vi.fn(), isPending: false },
+    setUserStatusMutation: { mutateAsync: vi.fn(), isPending: false },
+    createPlanMutation: { mutateAsync: vi.fn(), isPending: false },
+    updatePlanMutation: { mutateAsync: vi.fn(), isPending: false },
+    createSubscriptionMutation: { mutateAsync: vi.fn(), isPending: false },
+    setSubscriptionStatusMutation: { mutateAsync: vi.fn(), isPending: false },
+    updateSubscriptionBillingMutation: { mutateAsync: vi.fn(), isPending: false },
+    updateContractMutation: { mutateAsync: vi.fn(), isPending: false },
+    regenerateContractMutation: { mutateAsync: vi.fn(), isPending: false },
+    deleteContractMutation: { mutateAsync: vi.fn(), isPending: false },
+    respondSupportMutation: { mutateAsync: vi.fn(), isPending: false },
+    updateCompanySettingsMutation: { mutateAsync: vi.fn(), isPending: false },
+    createPlatformOwnerMutation: { mutateAsync: vi.fn(), isPending: false },
+    createSystemAdminMutation: { mutateAsync: vi.fn(), isPending: false },
+    cleanupCompanyDataMutation: { mutateAsync: vi.fn(), isPending: false },
+    purgeTableDataMutation: { mutateAsync: vi.fn(), isPending: false },
+    deleteCompanyByOwnerMutation: { mutateAsync: vi.fn(), isPending: false },
+  }),
 }));
 
 import { useAuth } from "@/contexts/AuthContext";
@@ -45,7 +71,7 @@ describe("Owner page access", () => {
     }));
 
     renderWithQuery(<Owner />);
-    expect(screen.getByText("Acesso Negado")).toBeInTheDocument();
+    expect(screen.getByText("Acesso negado")).toBeInTheDocument();
   });
 
   it("blocks MASTER_TI users", () => {
@@ -54,7 +80,7 @@ describe("Owner page access", () => {
     }));
 
     renderWithQuery(<Owner />);
-    expect(screen.getByText(/exclusivo para o perfil SYSTEM_OWNER/i)).toBeInTheDocument();
+    expect(screen.getByText(/exclusivo para SYSTEM_OWNER/i)).toBeInTheDocument();
   });
 
   it("allows SYSTEM_OWNER users", () => {
@@ -63,7 +89,7 @@ describe("Owner page access", () => {
     }));
 
     renderWithQuery(<Owner />);
-    expect(screen.getByText("Owner Portal")).toBeInTheDocument();
-    expect(screen.getByText("Controle global multiempresa")).toBeInTheDocument();
+    expect(screen.getByText("Owner Portal v1.0")).toBeInTheDocument();
+    expect(screen.getByText("Visao executiva do ecossistema.")).toBeInTheDocument();
   });
 });

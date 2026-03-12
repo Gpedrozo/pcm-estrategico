@@ -1,36 +1,8 @@
-import { describe, expect, it, vi, beforeEach } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
-import { OwnerEmpresasModule } from '@/modules/empresas/OwnerEmpresasModule'
-import { OwnerSuporteModule } from '@/modules/suporte/OwnerSuporteModule'
-import { OwnerConfiguracoesModule } from '@/modules/configuracoes/OwnerConfiguracoesModule'
-import { OwnerFeatureFlagsModule } from '@/modules/feature-flags/OwnerFeatureFlagsModule'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import Owner from '@/pages/Owner'
 import { createAuthContextValue } from '@/test/auth-context-mock'
-
-const empresasState = {
-  isLoading: true,
-  companies: [] as Array<{ id: string; nome?: string; dados_empresa?: Array<{ nome_fantasia?: string; razao_social?: string }> }>,
-}
-
-const suporteState = {
-  isLoading: true,
-  tickets: [] as Array<{ id: string; subject?: string; status?: string; priority?: string; updated_at?: string }>,
-}
-
-const settingsState = {
-  isLoading: false,
-  settings: {} as unknown,
-}
-
-const ownerActionsMock = {
-  createCompanyMutation: { mutate: vi.fn(), isPending: false },
-  updateCompanyMutation: { mutate: vi.fn(), isPending: false },
-  setCompanyLifecycle: { mutate: vi.fn(), isPending: false },
-  changePlan: { mutate: vi.fn(), isPending: false },
-  startImpersonationMutation: { mutate: vi.fn(), isPending: false },
-  stopImpersonationMutation: { mutate: vi.fn(), isPending: false },
-  respondSupportMutation: { mutate: vi.fn(), isPending: false },
-  updateCompanySettingsMutation: { mutate: vi.fn(), isPending: false },
-}
 
 vi.mock('@/contexts/AuthContext', () => ({
   useAuth: vi.fn(() =>
@@ -44,83 +16,77 @@ vi.mock('@/contexts/AuthContext', () => ({
 }))
 
 vi.mock('@/hooks/useOwnerPortal', () => ({
-  useOwnerCompanies: () => ({
-    data: { companies: empresasState.companies },
-    isLoading: empresasState.isLoading,
-  }),
-  useOwnerPlans: () => ({ data: [], isLoading: false }),
-  useOwnerSubscriptions: () => ({ data: [], isLoading: false }),
+  useOwnerStats: () => ({ data: { total_companies: 3, total_users: 11, active_subscriptions: 2, mrr: 3000 }, isLoading: false }),
+  useOwnerBackendHealth: () => ({ data: { service: 'owner-portal-admin', status: 'ok', version: '1.0-test', supported_actions: ['dashboard', 'list_companies'], timestamp: new Date().toISOString() }, isFetching: false }),
+  useOwnerCompanies: () => ({ data: { companies: [{ id: 'e-1', nome: 'Empresa A' }] }, isLoading: false }),
+  useOwnerUsers: () => ({ data: [{ id: 'u-1', nome: 'User A', email: 'a@x.com', status: 'ativo' }], isLoading: false }),
+  useOwnerPlans: () => ({ data: [{ id: 'p-1', name: 'Plano Base', code: 'BASE' }], isLoading: false }),
+  useOwnerSubscriptions: () => ({ data: [{ id: 's-1', empresa_id: 'e-1', plan_id: 'p-1', status: 'ativa' }], isLoading: false }),
+  useOwnerContracts: () => ({ data: [], isLoading: false }),
+  useOwnerSupportTickets: () => ({ data: [], isLoading: false }),
   useOwnerAuditLogs: () => ({ data: [], isLoading: false }),
-  useOwnerSupportTickets: () => ({ data: suporteState.tickets, isLoading: suporteState.isLoading }),
-  useOwnerCompanySettings: () => ({ data: { settings: settingsState.settings }, isLoading: settingsState.isLoading }),
-  useOwnerCompanyActions: () => ownerActionsMock,
+  useOwnerMasterOwners: () => ({ data: [], isLoading: false }),
+  useOwnerDatabaseTables: () => ({ data: [], isLoading: false }),
+  useOwnerCompanySettings: () => ({ data: { settings: [] }, isLoading: false }),
+  useOwnerCompanyActions: () => ({
+    createCompanyMutation: { mutateAsync: vi.fn(), isPending: false },
+    updateCompanyMutation: { mutateAsync: vi.fn(), isPending: false },
+    setCompanyLifecycle: { mutateAsync: vi.fn(), isPending: false },
+    createUserMutation: { mutateAsync: vi.fn(), isPending: false },
+    setUserStatusMutation: { mutateAsync: vi.fn(), isPending: false },
+    createPlanMutation: { mutateAsync: vi.fn(), isPending: false },
+    updatePlanMutation: { mutateAsync: vi.fn(), isPending: false },
+    createSubscriptionMutation: { mutateAsync: vi.fn(), isPending: false },
+    setSubscriptionStatusMutation: { mutateAsync: vi.fn(), isPending: false },
+    updateSubscriptionBillingMutation: { mutateAsync: vi.fn(), isPending: false },
+    updateContractMutation: { mutateAsync: vi.fn(), isPending: false },
+    regenerateContractMutation: { mutateAsync: vi.fn(), isPending: false },
+    deleteContractMutation: { mutateAsync: vi.fn(), isPending: false },
+    respondSupportMutation: { mutateAsync: vi.fn(), isPending: false },
+    updateCompanySettingsMutation: { mutateAsync: vi.fn(), isPending: false },
+    createPlatformOwnerMutation: { mutateAsync: vi.fn(), isPending: false },
+    createSystemAdminMutation: { mutateAsync: vi.fn(), isPending: false },
+    cleanupCompanyDataMutation: { mutateAsync: vi.fn(), isPending: false },
+    purgeTableDataMutation: { mutateAsync: vi.fn(), isPending: false },
+    deleteCompanyByOwnerMutation: { mutateAsync: vi.fn(), isPending: false },
+  }),
 }))
 
-describe('owner modules hook-order regressions', () => {
-  beforeEach(() => {
-    empresasState.isLoading = true
-    empresasState.companies = []
-    suporteState.isLoading = true
-    suporteState.tickets = []
-    settingsState.isLoading = false
-    settingsState.settings = {}
+function renderOwner() {
+  const queryClient = new QueryClient({
+    defaultOptions: {
+      queries: { retry: false },
+      mutations: { retry: false },
+    },
   })
 
-  it('keeps hook order stable in OwnerEmpresasModule when loading flips to data', () => {
-    const { rerender } = render(<OwnerEmpresasModule />)
+  return render(
+    <QueryClientProvider client={queryClient}>
+      <Owner />
+    </QueryClientProvider>,
+  )
+}
 
-    expect(screen.getByText(/carregando empresas/i)).toBeInTheDocument()
+describe('owner v1 page stability', () => {
+  it('renders dashboard shell and core metrics', () => {
+    renderOwner()
 
-    empresasState.isLoading = false
-    empresasState.companies = [
-      {
-        id: 'empresa-1',
-        nome: 'Empresa Alpha',
-        dados_empresa: [{ nome_fantasia: 'Alpha' }],
-      },
-    ]
-
-    rerender(<OwnerEmpresasModule />)
-
-    expect(screen.getByText(/empresas globais/i)).toBeInTheDocument()
-    expect(screen.getByText(/alpha/i)).toBeInTheDocument()
+    expect(screen.getByText('Owner Portal v1.0')).toBeInTheDocument()
+    expect(screen.getByText('Dashboard')).toBeInTheDocument()
+    expect(screen.getByText('Empresas')).toBeInTheDocument()
+    expect(screen.getByText('MRR')).toBeInTheDocument()
   })
 
-  it('keeps hook order stable in OwnerSuporteModule when loading flips to data', () => {
-    const { rerender } = render(<OwnerSuporteModule />)
+  it('switches tab without crashing', async () => {
+    renderOwner()
 
-    expect(screen.getByText(/carregando chamados/i)).toBeInTheDocument()
+    screen.getByRole('button', { name: 'Empresas' }).click()
+    expect(screen.getByText('Criar empresa')).toBeInTheDocument()
 
-    suporteState.isLoading = false
-    suporteState.tickets = [
-      {
-        id: 'ticket-1',
-        subject: 'Falha no login',
-        status: 'aberto',
-        priority: 'alta',
-        updated_at: new Date().toISOString(),
-      },
-    ]
+    screen.getByRole('button', { name: 'Usuarios' }).click()
+    expect(screen.getByText('Criar usuario')).toBeInTheDocument()
 
-    rerender(<OwnerSuporteModule />)
-
-    expect(screen.getByText(/^suporte$/i)).toBeInTheDocument()
-    expect(screen.getByText(/falha no login/i)).toBeInTheDocument()
-  })
-
-  it('does not crash OwnerConfiguracoesModule with malformed settings payload', () => {
-    settingsState.settings = { invalid: true }
-
-    render(<OwnerConfiguracoesModule />)
-
-    expect(screen.getByText(/configurações por empresa/i)).toBeInTheDocument()
-  })
-
-  it('does not crash OwnerFeatureFlagsModule with malformed settings payload', () => {
-    settingsState.settings = { invalid: true }
-
-    render(<OwnerFeatureFlagsModule />)
-
-    expect(screen.getByText(/feature flags/i)).toBeInTheDocument()
+    screen.getByRole('button', { name: 'Planos' }).click()
+    expect(screen.getByText('Criar plano')).toBeInTheDocument()
   })
 })

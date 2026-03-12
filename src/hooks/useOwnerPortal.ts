@@ -1,87 +1,124 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   callOwnerAdmin,
+  changePlan,
+  cleanupCompanyData,
   createCompany,
   createPlatformOwner,
   createPlan,
   createSubscription,
+  createSystemAdmin,
   createUser,
+  deleteCompanyByOwner,
   deleteContract,
   getCompanySettings,
-  getPlatformStats,
   getOwnerBackendHealth,
+  getPlatformStats,
+  impersonateCompany,
   listAuditLogs,
   listContracts,
+  listDatabaseTables,
   listGlobalUsers,
   listPlans,
-  listPlatformOwners,
   listPlatformCompanies,
+  listPlatformOwners,
   listSubscriptions,
   listSupportTickets,
+  purgeTableData,
   regenerateContract,
   respondSupportTicket,
   setCompanyStatus,
   setSubscriptionStatus,
   setUserStatus,
   stopImpersonation,
-  impersonateCompany,
   updateCompany,
   updateCompanySettings,
   updateContract,
   updatePlan,
   updateSubscriptionBilling,
-  listDatabaseTables,
-  cleanupCompanyData,
-  purgeTableData,
-  deleteCompanyByOwner,
 } from '@/services/ownerPortal.service'
+
+export const ownerQueryKeys = {
+  stats: ['owner', 'stats'] as const,
+  health: ['owner', 'backend-health'] as const,
+  companies: ['owner', 'companies'] as const,
+  users: (empresaId?: string | null) => ['owner', 'users', empresaId ?? null] as const,
+  plans: ['owner', 'plans'] as const,
+  subscriptions: ['owner', 'subscriptions'] as const,
+  contracts: ['owner', 'contracts'] as const,
+  support: ['owner', 'support-tickets'] as const,
+  audit: (filters?: unknown) => ['owner', 'audit-logs', filters ?? null] as const,
+  settings: (empresaId?: string | null) => ['owner', 'settings', empresaId ?? null] as const,
+  platformOwners: ['owner', 'platform-owners'] as const,
+  databaseTables: ['owner', 'database', 'tables'] as const,
+}
+
+const invalidateOwnerReads = (qc: ReturnType<typeof useQueryClient>) => {
+  qc.invalidateQueries({ queryKey: ['owner'] })
+}
 
 export function useOwnerStats() {
   return useQuery({
-    queryKey: ['owner', 'stats'],
+    queryKey: ownerQueryKeys.stats,
     queryFn: getPlatformStats,
-    staleTime: 30_000,
+    staleTime: 20_000,
   })
 }
 
 export function useOwnerBackendHealth() {
   return useQuery({
-    queryKey: ['owner', 'backend-health'],
+    queryKey: ownerQueryKeys.health,
     queryFn: getOwnerBackendHealth,
-    staleTime: 20_000,
+    staleTime: 15_000,
     retry: 1,
   })
 }
 
 export function useOwnerCompanies() {
   return useQuery({
-    queryKey: ['owner', 'companies'],
+    queryKey: ownerQueryKeys.companies,
     queryFn: listPlatformCompanies,
-    staleTime: 30_000,
+    staleTime: 20_000,
   })
 }
 
 export function useOwnerUsers(empresaId?: string) {
   return useQuery({
-    queryKey: ['owner', 'users', empresaId ?? null],
+    queryKey: ownerQueryKeys.users(empresaId ?? null),
     queryFn: () => listGlobalUsers(empresaId),
-    staleTime: 30_000,
+    staleTime: 20_000,
   })
 }
 
 export function useOwnerPlans() {
   return useQuery({
-    queryKey: ['owner', 'plans'],
+    queryKey: ownerQueryKeys.plans,
     queryFn: listPlans,
-    staleTime: 30_000,
+    staleTime: 20_000,
   })
 }
 
 export function useOwnerSubscriptions() {
   return useQuery({
-    queryKey: ['owner', 'subscriptions'],
+    queryKey: ownerQueryKeys.subscriptions,
     queryFn: () => listSubscriptions(500),
-    staleTime: 30_000,
+    staleTime: 20_000,
+  })
+}
+
+export function useOwnerContracts() {
+  return useQuery({
+    queryKey: ownerQueryKeys.contracts,
+    queryFn: listContracts,
+    staleTime: 20_000,
+  })
+}
+
+export function useOwnerSupportTickets() {
+  return useQuery({
+    queryKey: ownerQueryKeys.support,
+    queryFn: listSupportTickets,
+    staleTime: 15_000,
   })
 }
 
@@ -93,33 +130,17 @@ export function useOwnerAuditLogs(filters?: {
   to?: string
 }) {
   return useQuery({
-    queryKey: ['owner', 'audit-logs', filters ?? null],
+    queryKey: ownerQueryKeys.audit(filters),
     queryFn: () => listAuditLogs(filters),
-    staleTime: 15_000,
-  })
-}
-
-export function useOwnerSupportTickets() {
-  return useQuery({
-    queryKey: ['owner', 'support-tickets'],
-    queryFn: () => listSupportTickets(),
-    staleTime: 15_000,
-  })
-}
-
-export function useOwnerContracts() {
-  return useQuery({
-    queryKey: ['owner', 'contracts'],
-    queryFn: listContracts,
     staleTime: 15_000,
   })
 }
 
 export function useOwnerCompanySettings(empresaId?: string | null) {
   return useQuery({
-    queryKey: ['owner', 'company-settings', empresaId ?? null],
-    queryFn: async () => {
-      if (!empresaId) return { settings: [] }
+    queryKey: ownerQueryKeys.settings(empresaId),
+    queryFn: () => {
+      if (!empresaId) return Promise.resolve({ settings: [] as Array<{ chave: string; valor: Record<string, unknown> }> })
       return getCompanySettings(empresaId)
     },
     staleTime: 15_000,
@@ -128,7 +149,7 @@ export function useOwnerCompanySettings(empresaId?: string | null) {
 
 export function useOwnerMasterOwners() {
   return useQuery({
-    queryKey: ['owner', 'platform-owners'],
+    queryKey: ownerQueryKeys.platformOwners,
     queryFn: listPlatformOwners,
     staleTime: 15_000,
   })
@@ -136,10 +157,10 @@ export function useOwnerMasterOwners() {
 
 export function useOwnerDatabaseTables(enabled = true) {
   return useQuery({
-    queryKey: ['owner', 'database', 'tables'],
+    queryKey: ownerQueryKeys.databaseTables,
     queryFn: listDatabaseTables,
-    staleTime: 10_000,
     enabled,
+    staleTime: 10_000,
   })
 }
 
@@ -148,223 +169,159 @@ export function useOwnerCompanyActions() {
 
   const createCompanyMutation = useMutation({
     mutationFn: createCompany,
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['owner', 'companies'] })
-      qc.invalidateQueries({ queryKey: ['owner', 'stats'] })
-      qc.invalidateQueries({ queryKey: ['owner', 'subscriptions'] })
-      qc.invalidateQueries({ queryKey: ['owner', 'contracts'] })
-      qc.invalidateQueries({ queryKey: ['owner', 'users'] })
-    },
+    onSuccess: () => invalidateOwnerReads(qc),
   })
 
   const updateCompanyMutation = useMutation({
     mutationFn: ({ empresaId, company }: { empresaId: string; company: Record<string, unknown> }) => updateCompany(empresaId, company),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['owner', 'companies'] }),
+    onSuccess: () => invalidateOwnerReads(qc),
   })
 
   const blockCompany = useMutation({
-    mutationFn: ({ empresaId, reason }: { empresaId: string; reason?: string }) =>
-      setCompanyStatus(empresaId, 'blocked', reason),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['owner', 'companies'] })
-      qc.invalidateQueries({ queryKey: ['owner', 'stats'] })
-    },
+    mutationFn: ({ empresaId, reason }: { empresaId: string; reason?: string }) => setCompanyStatus(empresaId, 'blocked', reason),
+    onSuccess: () => invalidateOwnerReads(qc),
   })
 
   const setCompanyLifecycle = useMutation({
     mutationFn: ({ empresaId, status, reason }: { empresaId: string; status: string; reason?: string }) =>
       setCompanyStatus(empresaId, status, reason),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['owner', 'companies'] })
-      qc.invalidateQueries({ queryKey: ['owner', 'stats'] })
-    },
-  })
-
-  const startImpersonationMutation = useMutation({
-    mutationFn: ({ empresaId }: { empresaId: string }) => impersonateCompany(empresaId),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['owner', 'audit-logs'] })
-    },
-  })
-
-  const stopImpersonationMutation = useMutation({
-    mutationFn: ({ empresaId, empresaNome, reason }: { empresaId?: string; empresaNome?: string; reason?: string }) =>
-      stopImpersonation({ empresa_id: empresaId, empresa_nome: empresaNome, reason }),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['owner', 'audit-logs'] })
-    },
-  })
-
-  const changePlan = useMutation({
-    mutationFn: (params: { empresa_id: string; plano_codigo: string }) =>
-      callOwnerAdmin({ action: 'change_plan', ...params }),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['owner', 'companies'] })
-      qc.invalidateQueries({ queryKey: ['owner', 'subscriptions'] })
-      qc.invalidateQueries({ queryKey: ['owner', 'contracts'] })
-    },
-  })
-
-  const createPlanMutation = useMutation({
-    mutationFn: createPlan,
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['owner', 'plans'] }),
-  })
-
-  const updatePlanMutation = useMutation({
-    mutationFn: updatePlan,
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['owner', 'plans'] }),
+    onSuccess: () => invalidateOwnerReads(qc),
   })
 
   const createUserMutation = useMutation({
     mutationFn: createUser,
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['owner', 'users'] }),
+    onSuccess: () => invalidateOwnerReads(qc),
   })
 
   const setUserStatusMutation = useMutation({
     mutationFn: ({ userId, status }: { userId: string; status: string }) => setUserStatus(userId, status),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['owner', 'users'] }),
+    onSuccess: () => invalidateOwnerReads(qc),
+  })
+
+  const createPlanMutation = useMutation({
+    mutationFn: createPlan,
+    onSuccess: () => invalidateOwnerReads(qc),
+  })
+
+  const updatePlanMutation = useMutation({
+    mutationFn: updatePlan,
+    onSuccess: () => invalidateOwnerReads(qc),
+  })
+
+  const changePlanMutation = useMutation({
+    mutationFn: changePlan,
+    onSuccess: () => invalidateOwnerReads(qc),
   })
 
   const createSubscriptionMutation = useMutation({
     mutationFn: createSubscription,
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['owner', 'subscriptions'] })
-      qc.invalidateQueries({ queryKey: ['owner', 'contracts'] })
-      qc.invalidateQueries({ queryKey: ['owner', 'stats'] })
-    },
+    onSuccess: () => invalidateOwnerReads(qc),
   })
 
   const setSubscriptionStatusMutation = useMutation({
     mutationFn: ({ empresaId, status }: { empresaId: string; status: string }) => setSubscriptionStatus(empresaId, status),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['owner', 'subscriptions'] })
-      qc.invalidateQueries({ queryKey: ['owner', 'stats'] })
-    },
+    onSuccess: () => invalidateOwnerReads(qc),
   })
 
   const updateSubscriptionBillingMutation = useMutation({
-    mutationFn: ({
-      subscriptionId,
-      empresaId,
-      billing,
-    }: {
-      subscriptionId?: string
-      empresaId?: string
-      billing: {
-        amount?: number
-        period?: 'monthly' | 'quarterly' | 'yearly' | 'custom'
-        payment_method?: string
-        payment_status?: string
-        status?: 'ativa' | 'atrasada' | 'cancelada' | 'teste'
-        renewal_at?: string | null
-        starts_at?: string | null
-        ends_at?: string | null
-      }
-    }) => updateSubscriptionBilling({ subscriptionId, empresaId, billing }),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['owner', 'subscriptions'] })
-      qc.invalidateQueries({ queryKey: ['owner', 'stats'] })
-      qc.invalidateQueries({ queryKey: ['owner', 'contracts'] })
-    },
-  })
-
-  const respondSupportMutation = useMutation({
-    mutationFn: ({ ticketId, response, status }: { ticketId: string; response: string; status?: string }) =>
-      respondSupportTicket(ticketId, response, status),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['owner', 'support-tickets'] }),
+    mutationFn: updateSubscriptionBilling,
+    onSuccess: () => invalidateOwnerReads(qc),
   })
 
   const updateContractMutation = useMutation({
     mutationFn: ({ contractId, content, summary, status }: { contractId: string; content: string; summary?: string; status?: string }) =>
       updateContract(contractId, content, summary, status),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['owner', 'contracts'] }),
+    onSuccess: () => invalidateOwnerReads(qc),
   })
 
   const regenerateContractMutation = useMutation({
-    mutationFn: (contractId: string) => regenerateContract(contractId),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['owner', 'contracts'] }),
+    mutationFn: regenerateContract,
+    onSuccess: () => invalidateOwnerReads(qc),
   })
 
   const deleteContractMutation = useMutation({
-    mutationFn: (contractId: string) => deleteContract(contractId),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['owner', 'contracts'] }),
+    mutationFn: deleteContract,
+    onSuccess: () => invalidateOwnerReads(qc),
+  })
+
+  const respondSupportMutation = useMutation({
+    mutationFn: ({ ticketId, response, status }: { ticketId: string; response: string; status?: string }) =>
+      respondSupportTicket(ticketId, response, status),
+    onSuccess: () => invalidateOwnerReads(qc),
   })
 
   const updateCompanySettingsMutation = useMutation({
-    mutationFn: ({ empresaId, settings }: { empresaId: string; settings: { modules?: Record<string, boolean>; limits?: Record<string, number>; features?: Record<string, boolean> } }) =>
+    mutationFn: ({ empresaId, settings }: { empresaId: string; settings: Record<string, unknown> }) =>
       updateCompanySettings(empresaId, settings),
-    onSuccess: (_, variables) => {
-      qc.invalidateQueries({ queryKey: ['owner', 'company-settings', variables.empresaId] })
-    },
+    onSuccess: () => invalidateOwnerReads(qc),
+  })
+
+  const startImpersonationMutation = useMutation({
+    mutationFn: ({ empresaId }: { empresaId: string }) => impersonateCompany(empresaId),
+    onSuccess: () => invalidateOwnerReads(qc),
+  })
+
+  const stopImpersonationMutation = useMutation({
+    mutationFn: ({ empresaId, empresaNome, reason }: { empresaId?: string; empresaNome?: string; reason?: string }) =>
+      stopImpersonation({ empresa_id: empresaId, empresa_nome: empresaNome, reason }),
+    onSuccess: () => invalidateOwnerReads(qc),
+  })
+
+  const createSystemAdminMutation = useMutation({
+    mutationFn: ({ userId }: { userId: string }) => createSystemAdmin(userId),
+    onSuccess: () => invalidateOwnerReads(qc),
   })
 
   const createPlatformOwnerMutation = useMutation({
     mutationFn: createPlatformOwner,
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['owner', 'platform-owners'] })
-      qc.invalidateQueries({ queryKey: ['owner', 'users'] })
-      qc.invalidateQueries({ queryKey: ['owner', 'audit-logs'] })
-    },
+    onSuccess: () => invalidateOwnerReads(qc),
   })
 
   const cleanupCompanyDataMutation = useMutation({
     mutationFn: cleanupCompanyData,
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['owner', 'database', 'tables'] })
-      qc.invalidateQueries({ queryKey: ['owner', 'companies'] })
-      qc.invalidateQueries({ queryKey: ['owner', 'users'] })
-      qc.invalidateQueries({ queryKey: ['owner', 'stats'] })
-      qc.invalidateQueries({ queryKey: ['owner', 'audit-logs'] })
-    },
+    onSuccess: () => invalidateOwnerReads(qc),
   })
 
   const purgeTableDataMutation = useMutation({
     mutationFn: purgeTableData,
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['owner', 'database', 'tables'] })
-      qc.invalidateQueries({ queryKey: ['owner', 'companies'] })
-      qc.invalidateQueries({ queryKey: ['owner', 'users'] })
-      qc.invalidateQueries({ queryKey: ['owner', 'stats'] })
-      qc.invalidateQueries({ queryKey: ['owner', 'audit-logs'] })
-    },
+    onSuccess: () => invalidateOwnerReads(qc),
   })
 
   const deleteCompanyByOwnerMutation = useMutation({
     mutationFn: deleteCompanyByOwner,
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['owner', 'database', 'tables'] })
-      qc.invalidateQueries({ queryKey: ['owner', 'companies'] })
-      qc.invalidateQueries({ queryKey: ['owner', 'users'] })
-      qc.invalidateQueries({ queryKey: ['owner', 'subscriptions'] })
-      qc.invalidateQueries({ queryKey: ['owner', 'contracts'] })
-      qc.invalidateQueries({ queryKey: ['owner', 'stats'] })
-      qc.invalidateQueries({ queryKey: ['owner', 'audit-logs'] })
-    },
+    onSuccess: () => invalidateOwnerReads(qc),
+  })
+
+  const customOwnerActionMutation = useMutation({
+    mutationFn: (payload: Record<string, unknown>) => callOwnerAdmin(payload),
+    onSuccess: () => invalidateOwnerReads(qc),
   })
 
   return {
     blockCompany,
-    changePlan,
+    setCompanyLifecycle,
     createCompanyMutation,
     updateCompanyMutation,
-    setCompanyLifecycle,
-    startImpersonationMutation,
-    stopImpersonationMutation,
-    createPlanMutation,
-    updatePlanMutation,
     createUserMutation,
     setUserStatusMutation,
+    createPlanMutation,
+    updatePlanMutation,
+    changePlanMutation,
     createSubscriptionMutation,
     setSubscriptionStatusMutation,
     updateSubscriptionBillingMutation,
-    respondSupportMutation,
     updateContractMutation,
     regenerateContractMutation,
     deleteContractMutation,
+    respondSupportMutation,
     updateCompanySettingsMutation,
+    startImpersonationMutation,
+    stopImpersonationMutation,
+    createSystemAdminMutation,
     createPlatformOwnerMutation,
     cleanupCompanyDataMutation,
     purgeTableDataMutation,
     deleteCompanyByOwnerMutation,
+    customOwnerActionMutation,
   }
 }
