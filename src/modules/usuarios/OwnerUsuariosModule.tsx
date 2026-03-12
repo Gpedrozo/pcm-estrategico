@@ -18,7 +18,7 @@ type Company = {
 
 export function OwnerUsuariosModule() {
   const { createUserMutation, setUserStatusMutation } = useOwnerCompanyActions()
-  const { data: companiesData } = useOwnerCompanies()
+  const { data: companiesData, error: companiesError } = useOwnerCompanies()
   const [empresaFilter, setEmpresaFilter] = useState('all')
   const [form, setForm] = useState({
     empresa_id: '',
@@ -32,17 +32,25 @@ export function OwnerUsuariosModule() {
   const [error, setError] = useState<string | null>(null)
   const [showPermissionsManager, setShowPermissionsManager] = useState(false)
 
-  const { data, isLoading } = useOwnerUsers()
+  const { data, isLoading, error: usersError } = useOwnerUsers()
 
-  const companies = useMemo(() => ((companiesData?.companies as Company[] | undefined) ?? []).slice(0, 500), [companiesData])
+  const companies = useMemo(() => (Array.isArray(companiesData?.companies) ? (companiesData.companies as Company[]) : []).slice(0, 500), [companiesData])
   const users = useMemo(() => {
-    const rows = ((data as unknown as User[] | undefined) ?? []).slice(0, 300)
+    const rows = (Array.isArray(data) ? (data as User[]) : []).slice(0, 300)
     if (empresaFilter === 'all') return rows
     return rows.filter((user) => user.empresa_id === empresaFilter)
   }, [data, empresaFilter])
 
   if (isLoading) {
     return <div className="rounded-lg border border-slate-800 bg-slate-900 p-4 text-sm">Carregando usuários...</div>
+  }
+
+  if (companiesError || usersError) {
+    return (
+      <div className="rounded-lg border border-rose-700/50 bg-rose-950/20 p-4 text-sm text-rose-200">
+        Falha ao carregar usuários/empresas: {String((usersError as any)?.message ?? (companiesError as any)?.message ?? 'erro desconhecido')}
+      </div>
+    )
   }
 
   const handleCreateUser = () => {

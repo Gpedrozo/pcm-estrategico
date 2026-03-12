@@ -13,6 +13,8 @@ type Audit = {
   created_at?: string
 }
 
+const toArray = <T,>(value: unknown): T[] => (Array.isArray(value) ? (value as T[]) : [])
+
 export function OwnerAuditoriaModule() {
   const [filters, setFilters] = useState({
     empresa_id: '',
@@ -30,7 +32,7 @@ export function OwnerAuditoriaModule() {
     to: '',
   })
 
-  const { data, isLoading, isFetching } = useOwnerAuditLogs({
+  const { data, isLoading, isFetching, error } = useOwnerAuditLogs({
     empresa_id: appliedFilters.empresa_id || undefined,
     user_id: appliedFilters.user_id || undefined,
     module: appliedFilters.module || undefined,
@@ -42,7 +44,15 @@ export function OwnerAuditoriaModule() {
     return <div className="rounded-lg border border-slate-800 bg-slate-900 p-4 text-sm">Carregando auditoria...</div>
   }
 
-  const logs = ((data as Audit[] | undefined) ?? []).slice(0, 50)
+  if (error) {
+    return (
+      <div className="rounded-lg border border-rose-700/50 bg-rose-950/20 p-4 text-sm text-rose-200">
+        Falha ao carregar auditoria: {String((error as any)?.message ?? 'erro desconhecido')}
+      </div>
+    )
+  }
+
+  const logs = toArray<Audit>(data).slice(0, 50)
 
   return (
     <div className="rounded-lg border border-slate-800 bg-slate-900 p-4">

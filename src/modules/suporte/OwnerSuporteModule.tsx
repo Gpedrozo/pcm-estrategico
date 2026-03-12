@@ -14,7 +14,7 @@ type Ticket = {
 
 export function OwnerSuporteModule() {
   const { respondSupportMutation } = useOwnerCompanyActions()
-  const { data, isLoading } = useOwnerSupportTickets()
+  const { data, isLoading, error: queryError } = useOwnerSupportTickets()
 
   const [statusFilter, setStatusFilter] = useState('all')
   const [priorityFilter, setPriorityFilter] = useState('all')
@@ -24,7 +24,7 @@ export function OwnerSuporteModule() {
   const [message, setMessage] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
 
-  const allTickets = ((data as unknown as Ticket[] | undefined) ?? []).slice(0, 60)
+  const allTickets = (Array.isArray(data) ? (data as Ticket[]) : []).slice(0, 60)
   const tickets = useMemo(
     () =>
       allTickets.filter((ticket) => {
@@ -39,6 +39,14 @@ export function OwnerSuporteModule() {
 
   if (isLoading) {
     return <div className="rounded-lg border border-slate-800 bg-slate-900 p-4 text-sm">Carregando chamados...</div>
+  }
+
+  if (queryError) {
+    return (
+      <div className="rounded-lg border border-rose-700/50 bg-rose-950/20 p-4 text-sm text-rose-200">
+        Falha ao carregar chamados de suporte: {String((queryError as any)?.message ?? 'erro desconhecido')}
+      </div>
+    )
   }
 
   const handleSelectTicket = (ticket: Ticket) => {

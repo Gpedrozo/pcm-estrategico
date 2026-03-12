@@ -9,12 +9,20 @@ type Alert = {
 }
 
 export function OwnerMonitoramentoModule() {
-  const { data, isLoading } = useOwnerStats()
+  const { data, isLoading, error } = useOwnerStats()
 
-  const alerts = useMemo(() => ((data?.system_alerts as Alert[] | undefined) ?? []).slice(0, 20), [data])
+  const alerts = useMemo(() => (Array.isArray(data?.system_alerts) ? (data?.system_alerts as Alert[]) : []).slice(0, 20), [data])
 
   if (isLoading) {
     return <div className="rounded-lg border border-slate-800 bg-slate-900 p-4 text-sm">Carregando monitoramento...</div>
+  }
+
+  if (error) {
+    return (
+      <div className="rounded-lg border border-rose-700/50 bg-rose-950/20 p-4 text-sm text-rose-200">
+        Falha ao carregar monitoramento: {String((error as any)?.message ?? 'erro desconhecido')}
+      </div>
+    )
   }
 
   return (

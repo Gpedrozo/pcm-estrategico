@@ -10,11 +10,13 @@ type Plan = {
   active?: boolean
 }
 
+const toArray = <T,>(value: unknown): T[] => (Array.isArray(value) ? (value as T[]) : [])
+
 const money = (value: unknown) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(Number(value ?? 0))
 
 export function OwnerPlanosModule() {
   const { createPlanMutation, updatePlanMutation } = useOwnerCompanyActions()
-  const { data, isLoading } = useOwnerPlans()
+  const { data, isLoading, error: queryError } = useOwnerPlans()
 
   const [form, setForm] = useState({
     code: '',
@@ -31,7 +33,15 @@ export function OwnerPlanosModule() {
     return <div className="rounded-lg border border-slate-800 bg-slate-900 p-4 text-sm">Carregando planos...</div>
   }
 
-  const plans = (data as unknown as Plan[] | undefined) ?? []
+  if (queryError) {
+    return (
+      <div className="rounded-lg border border-rose-700/50 bg-rose-950/20 p-4 text-sm text-rose-200">
+        Falha ao carregar planos: {String((queryError as any)?.message ?? 'erro desconhecido')}
+      </div>
+    )
+  }
+
+  const plans = toArray<Plan>(data)
 
   const resetForm = () => {
     setForm({ code: '', name: '', user_limit: '10', price_month: '0', active: true })

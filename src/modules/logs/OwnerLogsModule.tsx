@@ -10,20 +10,30 @@ type LogRow = {
   created_at?: string
 }
 
+const toArray = <T,>(value: unknown): T[] => (Array.isArray(value) ? (value as T[]) : [])
+
 export function OwnerLogsModule() {
   const [sourceFilter, setSourceFilter] = useState('')
   const [severityFilter, setSeverityFilter] = useState('all')
 
-  const { data, isLoading } = useOwnerAuditLogs({ module: sourceFilter || undefined })
+  const { data, isLoading, error } = useOwnerAuditLogs({ module: sourceFilter || undefined })
 
   const logs = useMemo(() => {
-    const rows = ((data as LogRow[] | undefined) ?? []).slice(0, 250)
+    const rows = toArray<LogRow>(data).slice(0, 250)
     if (severityFilter === 'all') return rows
     return rows.filter((row) => row.severity === severityFilter)
   }, [data, severityFilter])
 
   if (isLoading) {
     return <div className="rounded-lg border border-slate-800 bg-slate-900 p-4 text-sm">Carregando logs...</div>
+  }
+
+  if (error) {
+    return (
+      <div className="rounded-lg border border-rose-700/50 bg-rose-950/20 p-4 text-sm text-rose-200">
+        Falha ao carregar logs: {String((error as any)?.message ?? 'erro desconhecido')}
+      </div>
+    )
   }
 
   return (

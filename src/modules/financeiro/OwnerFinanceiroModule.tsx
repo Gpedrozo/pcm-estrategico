@@ -12,15 +12,19 @@ type Subscription = {
   status?: string
   payment_status?: string
   renewal_at?: string
+  starts_at?: string
+  ends_at?: string
 }
+
+const toArray = <T,>(value: unknown): T[] => (Array.isArray(value) ? (value as T[]) : [])
 
 const money = (value: unknown) =>
   new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(Number(value ?? 0))
 
 export function OwnerFinanceiroModule() {
   const { updateSubscriptionBillingMutation } = useOwnerCompanyActions()
-  const { data: stats, isLoading: isLoadingStats } = useOwnerStats()
-  const { data: subscriptionsData, isLoading: isLoadingSubs } = useOwnerSubscriptions()
+  const { data: stats, isLoading: isLoadingStats, error: statsError } = useOwnerStats()
+  const { data: subscriptionsData, isLoading: isLoadingSubs, error: subscriptionsError } = useOwnerSubscriptions()
 
   const [statusFilter, setStatusFilter] = useState('all')
   const [paymentFilter, setPaymentFilter] = useState('all')
@@ -38,7 +42,7 @@ export function OwnerFinanceiroModule() {
     ends_at: '',
   })
 
-  const allSubscriptions = useMemo(() => ((subscriptionsData as Subscription[] | undefined) ?? []).slice(0, 120), [subscriptionsData])
+  const allSubscriptions = useMemo(() => toArray<Subscription>(subscriptionsData).slice(0, 120), [subscriptionsData])
 
   const subscriptions = useMemo(
     () =>
@@ -54,6 +58,14 @@ export function OwnerFinanceiroModule() {
 
   if (isLoadingStats || isLoadingSubs) {
     return <div className="rounded-lg border border-slate-800 bg-slate-900 p-4 text-sm">Carregando central financeira...</div>
+  }
+
+  if (statsError || subscriptionsError) {
+    return (
+      <div className="rounded-lg border border-rose-700/50 bg-rose-950/20 p-4 text-sm text-rose-200">
+        Falha ao carregar financeiro: {String((statsError as any)?.message || (subscriptionsError as any)?.message || 'erro desconhecido')}
+      </div>
+    )
   }
 
   const selectSubscription = (subscription: Subscription) => {

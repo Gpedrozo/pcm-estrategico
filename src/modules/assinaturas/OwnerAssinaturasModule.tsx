@@ -18,13 +18,15 @@ type Subscription = {
 type Company = { id: string; nome?: string }
 type Plan = { id: string; name?: string; code?: string; price_month?: number }
 
+const toArray = <T,>(value: unknown): T[] => (Array.isArray(value) ? (value as T[]) : [])
+
 export function OwnerAssinaturasModule() {
   const { createSubscriptionMutation, setSubscriptionStatusMutation } = useOwnerCompanyActions()
-  const { data: companiesData } = useOwnerCompanies()
-  const { data: plansData } = useOwnerPlans()
+  const { data: companiesData, error: companiesError } = useOwnerCompanies()
+  const { data: plansData, error: plansError } = useOwnerPlans()
 
-  const companies = useMemo(() => ((companiesData?.companies as Company[] | undefined) ?? []).slice(0, 500), [companiesData])
-  const plans = useMemo(() => ((plansData as Plan[] | undefined) ?? []).slice(0, 500), [plansData])
+  const companies = useMemo(() => toArray<Company>(companiesData?.companies).slice(0, 500), [companiesData])
+  const plans = useMemo(() => toArray<Plan>(plansData).slice(0, 500), [plansData])
 
   const [form, setForm] = useState({
     empresa_id: '',
@@ -39,13 +41,21 @@ export function OwnerAssinaturasModule() {
   const [message, setMessage] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
 
-  const { data, isLoading } = useOwnerSubscriptions()
+  const { data, isLoading, error: subscriptionsError } = useOwnerSubscriptions()
 
   if (isLoading) {
     return <div className="rounded-lg border border-slate-800 bg-slate-900 p-4 text-sm">Carregando assinaturas...</div>
   }
 
-  const subscriptions = ((data as unknown as Subscription[] | undefined) ?? []).slice(0, 30)
+  const subscriptions = toArray<Subscription>(data).slice(0, 30)
+
+  if (companiesError || plansError || subscriptionsError) {
+    return (
+      <div className="rounded-lg border border-rose-700/50 bg-rose-950/20 p-4 text-sm text-rose-200">
+        Falha ao carregar assinaturas: {String((companiesError as any)?.message || (plansError as any)?.message || (subscriptionsError as any)?.message || 'erro desconhecido')}
+      </div>
+    )
+  }
 
   const handleCreateSubscription = () => {
     if (!form.empresa_id || !form.plan_id) {

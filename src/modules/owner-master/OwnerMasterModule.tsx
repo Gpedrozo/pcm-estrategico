@@ -24,8 +24,8 @@ type HiddenAuditLog = {
 
 export function OwnerMasterModule() {
   const { createPlatformOwnerMutation } = useOwnerCompanyActions()
-  const { data: ownersData, isLoading: isLoadingOwners } = useOwnerMasterOwners()
-  const { data: hiddenLogsData, isLoading: isLoadingLogs } = useOwnerAuditLogs({ module: 'owner-master-shadow' })
+  const { data: ownersData, isLoading: isLoadingOwners, error: ownersError } = useOwnerMasterOwners()
+  const { data: hiddenLogsData, isLoading: isLoadingLogs, error: hiddenLogsError } = useOwnerAuditLogs({ module: 'owner-master-shadow' })
 
   const [form, setForm] = useState({
     nome: '',
@@ -35,8 +35,8 @@ export function OwnerMasterModule() {
   const [message, setMessage] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
 
-  const owners = useMemo(() => ((ownersData as PlatformOwner[] | undefined) ?? []).slice(0, 200), [ownersData])
-  const hiddenLogs = useMemo(() => ((hiddenLogsData as HiddenAuditLog[] | undefined) ?? []).slice(0, 200), [hiddenLogsData])
+  const owners = useMemo(() => (Array.isArray(ownersData) ? (ownersData as PlatformOwner[]) : []).slice(0, 200), [ownersData])
+  const hiddenLogs = useMemo(() => (Array.isArray(hiddenLogsData) ? (hiddenLogsData as HiddenAuditLog[]) : []).slice(0, 200), [hiddenLogsData])
 
   const handleCreateOwner = () => {
     if (!form.nome.trim() || !form.email.trim()) {
@@ -109,6 +109,8 @@ export function OwnerMasterModule() {
           <h3 className="mb-3 text-sm font-semibold">Owners da plataforma</h3>
           {isLoadingOwners ? (
             <p className="text-sm text-slate-400">Carregando owners...</p>
+          ) : ownersError ? (
+            <p className="text-sm text-rose-300">Falha ao carregar owners: {String((ownersError as any)?.message ?? 'erro desconhecido')}</p>
           ) : (
             <div className="space-y-2">
               {owners.length === 0 ? (
@@ -130,6 +132,8 @@ export function OwnerMasterModule() {
           <h3 className="mb-3 text-sm font-semibold">Auditoria oculta de owners</h3>
           {isLoadingLogs ? (
             <p className="text-sm text-slate-400">Carregando logs ocultos...</p>
+          ) : hiddenLogsError ? (
+            <p className="text-sm text-rose-300">Falha ao carregar logs ocultos: {String((hiddenLogsError as any)?.message ?? 'erro desconhecido')}</p>
           ) : (
             <div className="space-y-2">
               {hiddenLogs.length === 0 ? (

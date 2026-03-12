@@ -11,15 +11,17 @@ type Contract = {
   plans?: { name?: string; code?: string } | null
 }
 
+const toArray = <T,>(value: unknown): T[] => (Array.isArray(value) ? (value as T[]) : [])
+
 export function OwnerContratosModule() {
-  const { data, isLoading } = useOwnerContracts()
+  const { data, isLoading, error: queryError } = useOwnerContracts()
   const {
     updateContractMutation,
     regenerateContractMutation,
     deleteContractMutation,
   } = useOwnerCompanyActions()
 
-  const contracts = useMemo(() => ((data as Contract[] | undefined) ?? []).slice(0, 80), [data])
+  const contracts = useMemo(() => toArray<Contract>(data).slice(0, 80), [data])
 
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [content, setContent] = useState('')
@@ -82,6 +84,14 @@ export function OwnerContratosModule() {
 
   if (isLoading) {
     return <div className="rounded-lg border border-slate-800 bg-slate-900 p-4 text-sm">Carregando contratos...</div>
+  }
+
+  if (queryError) {
+    return (
+      <div className="rounded-lg border border-rose-700/50 bg-rose-950/20 p-4 text-sm text-rose-200">
+        Falha ao carregar contratos: {String((queryError as any)?.message ?? 'erro desconhecido')}
+      </div>
+    )
   }
 
   return (

@@ -6,10 +6,18 @@ const formatMoney = (value: unknown) =>
   new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(Number(value ?? 0))
 
 export function OwnerDashboardModule() {
-  const { data, isLoading } = useOwnerStats()
+  const { data, isLoading, error } = useOwnerStats()
 
   if (isLoading) {
     return <div className="rounded-lg border border-slate-800 bg-slate-900 p-4 text-sm">Carregando indicadores...</div>
+  }
+
+  if (error) {
+    return (
+      <div className="rounded-lg border border-rose-700/50 bg-rose-950/20 p-4 text-sm text-rose-200">
+        Falha ao carregar dashboard owner: {String((error as any)?.message ?? 'erro desconhecido')}
+      </div>
+    )
   }
 
   const cards = [
@@ -25,8 +33,11 @@ export function OwnerDashboardModule() {
     { label: 'Churn 30d', value: `${Number(data?.churn_rate ?? 0).toFixed(2)}%` },
   ]
 
-  const usageByPlan = Object.entries((data?.usage_by_plan as Record<string, number> | undefined) ?? {})
-  const alerts = (data?.system_alerts as Array<{ id: string; action_type?: string; severity?: string; created_at?: string }> | undefined) ?? []
+  const usageByPlan = Object.entries((data?.usage_by_plan && typeof data.usage_by_plan === 'object' ? data.usage_by_plan : {}) as Record<string, number>)
+  const alertsRaw = data?.system_alerts
+  const alerts = Array.isArray(alertsRaw)
+    ? alertsRaw as Array<{ id: string; action_type?: string; severity?: string; created_at?: string }>
+    : []
 
   return (
     <section className="space-y-4">
