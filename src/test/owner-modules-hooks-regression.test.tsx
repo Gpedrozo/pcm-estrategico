@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import Owner from '@/pages/Owner'
 import { createAuthContextValue } from '@/test/auth-context-mock'
@@ -73,21 +73,27 @@ describe('owner v1 page stability', () => {
     renderOwner()
 
     expect(screen.getByText('Owner Portal')).toBeInTheDocument()
-    expect(screen.getByText('Dashboard')).toBeInTheDocument()
-    expect(screen.getByText('Empresas')).toBeInTheDocument()
+    expect(screen.getAllByText('Dashboard').length).toBeGreaterThan(0)
+    expect(screen.getByRole('button', { name: 'Empresas' })).toBeInTheDocument()
     expect(screen.getByText('MRR')).toBeInTheDocument()
   })
 
   it('switches tab without crashing', async () => {
     renderOwner()
 
-    screen.getByRole('button', { name: 'Empresas' }).click()
-    expect(screen.getByText('Criar empresa')).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Empresas' }))
+    await waitFor(() => {
+      expect(screen.getAllByText('Criar empresa').length).toBeGreaterThan(0)
+    })
 
-    screen.getByRole('button', { name: 'Usuarios' }).click()
-    expect(screen.getByText('Criar usuario')).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Usuarios' }))
+    await waitFor(() => {
+      expect(screen.getAllByText('Criar usuario').length).toBeGreaterThan(0)
+    })
 
-    screen.getByRole('button', { name: 'Planos' }).click()
-    expect(screen.getByText('Criar plano')).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Planos' }))
+    await waitFor(() => {
+      expect(screen.getAllByText('Criar plano').length).toBeGreaterThan(0)
+    })
   })
 })

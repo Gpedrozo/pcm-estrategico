@@ -428,7 +428,21 @@ export async function deleteCompanyByOwner(payload: {
   include_auth_users?: boolean
   auth_password: string
 }) {
+  let supportsDeleteCompanyAction = true
   try {
+    const health = await getOwnerBackendHealth()
+    const supported = new Set(Array.isArray(health?.supported_actions) ? health.supported_actions : [])
+    supportsDeleteCompanyAction = supported.has('delete_company' as OwnerAction)
+  } catch {
+    // If health check fails, keep optimistic path and try delete_company once.
+    supportsDeleteCompanyAction = true
+  }
+
+  try {
+    if (!supportsDeleteCompanyAction) {
+      throw new Error('Unsupported action: delete_company')
+    }
+
     return await callOwnerAdmin({ action: 'delete_company', ...payload })
   } catch (err: any) {
     const msg = String(err?.message ?? err ?? '')

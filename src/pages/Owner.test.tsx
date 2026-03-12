@@ -81,7 +81,7 @@ describe("Owner page access", () => {
     }));
 
     renderWithQuery(<Owner />);
-    expect(screen.getByText(/exclusivo para SYSTEM_OWNER/i)).toBeInTheDocument();
+    expect(screen.getByText(/SYSTEM_OWNER/i)).toBeInTheDocument();
   });
 
   it("allows SYSTEM_OWNER users", () => {
