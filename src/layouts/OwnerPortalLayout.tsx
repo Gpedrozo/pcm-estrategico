@@ -50,8 +50,8 @@ export function OwnerPortalLayout({
   }
 
   return (
-    <div className="owner-modern-skin min-h-screen bg-gradient-to-b from-background via-background to-muted/20 text-foreground">
-      <header className="border-b border-border/80 bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/85">
+    <div className="owner-modern-skin min-h-screen bg-gradient-to-b from-background via-background to-primary/5 text-foreground">
+      <header className="border-b border-border/80 bg-gradient-to-r from-card via-card to-primary/5 backdrop-blur supports-[backdrop-filter]:bg-card/90">
         <div className="mx-auto flex max-w-[1400px] items-center justify-between px-6 py-4">
           <div className="flex items-center gap-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/15 border border-primary/30">
@@ -112,7 +112,7 @@ export function OwnerPortalLayout({
           </nav>
         </aside>
 
-        <main className="space-y-4 rounded-xl border border-border/70 bg-card/40 p-4 md:p-5">{children}</main>
+        <main className="space-y-4 rounded-xl border border-border/70 bg-background p-4 md:p-5 shadow-industrial">{children}</main>
       </div>
     </div>
   )

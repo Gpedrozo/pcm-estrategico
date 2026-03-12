@@ -1,12 +1,12 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { callOwnerAdmin } from '@/services/ownerPortal.service'
 import { useOwnerCompanies, useOwnerCompanyActions, useOwnerDatabaseTables } from '@/hooks/useOwnerPortal'
 
 export function OwnerSistemaModule() {
   const queryClient = useQueryClient()
-  const { data: companiesData, isLoading: loadingCompanies } = useOwnerCompanies()
-  const { data: databaseTables, isLoading: loadingTables } = useOwnerDatabaseTables()
+  const { data: companiesData, isLoading: loadingCompanies, error: companiesError } = useOwnerCompanies()
+  const { data: databaseTables, isLoading: loadingTables, error: databaseTablesError } = useOwnerDatabaseTables()
   const {
     cleanupCompanyDataMutation,
     purgeTableDataMutation,
@@ -23,6 +23,26 @@ export function OwnerSistemaModule() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [message, setMessage] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+
+  const normalizeOwnerError = (err: any) => {
+    const msg = String(err?.message ?? err ?? 'Falha na operação.').trim()
+    if (/unsupported action/i.test(msg)) {
+      return 'Owner backend desatualizado para esta ação. Publique a versão mais recente da edge function owner-portal-admin.'
+    }
+    return msg
+  }
+
+  useEffect(() => {
+    if (companiesError) {
+      setError(normalizeOwnerError(companiesError))
+    }
+  }, [companiesError])
+
+  useEffect(() => {
+    if (databaseTablesError) {
+      setError(normalizeOwnerError(databaseTablesError))
+    }
+  }, [databaseTablesError])
 
   const companies = useMemo(() => (companiesData?.companies ?? []) as Array<{ id: string; nome?: string; slug?: string }>, [companiesData])
   const selectedCompany = companies.find((c) => c.id === empresaId)
@@ -50,7 +70,7 @@ export function OwnerSistemaModule() {
       setUserId('')
       queryClient.invalidateQueries({ queryKey: ['owner', 'users'] })
     } catch (err: any) {
-      setError(err?.message ?? 'Falha ao promover usuário para SYSTEM_ADMIN.')
+      setError(normalizeOwnerError(err) || 'Falha ao promover usuário para SYSTEM_ADMIN.')
     } finally {
       setIsSubmitting(false)
     }
@@ -84,7 +104,7 @@ export function OwnerSistemaModule() {
           setMessage(`Limpeza da empresa concluída. Registros removidos: ${totalDeleted}.`)
           setAuthPassword('')
         },
-        onError: (err: any) => setError(err?.message ?? 'Falha ao limpar dados da empresa.'),
+        onError: (err: any) => setError(normalizeOwnerError(err) || 'Falha ao limpar dados da empresa.'),
       },
     )
   }
@@ -115,7 +135,7 @@ export function OwnerSistemaModule() {
           setMessage(`Tabela ${tableName} limpa com sucesso. Registros removidos: ${deleted}.`)
           setAuthPassword('')
         },
-        onError: (err: any) => setError(err?.message ?? 'Falha ao limpar tabela.'),
+        onError: (err: any) => setError(normalizeOwnerError(err) || 'Falha ao limpar tabela.'),
       },
     )
   }
@@ -146,7 +166,7 @@ export function OwnerSistemaModule() {
           setEmpresaId('')
           setAuthPassword('')
         },
-        onError: (err: any) => setError(err?.message ?? 'Falha ao excluir empresa.'),
+        onError: (err: any) => setError(normalizeOwnerError(err) || 'Falha ao excluir empresa.'),
       },
     )
   }
