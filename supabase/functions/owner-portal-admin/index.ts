@@ -679,7 +679,12 @@ Deno.serve(async (req) => {
   ]);
 
   if (ownerMasterOnlyActions.has(body.action) && !isOwnerMaster) {
-    return fail("Forbidden: owner master only", 403, null, req);
+    return fail(
+      `Forbidden: owner master only. Required email: ${OWNER_MASTER_EMAIL}. Current user: ${auth.user.email ?? "unknown"}`,
+      403,
+      null,
+      req,
+    );
   }
 
   if (!isOwnerMaster && body.action !== "list_audit_logs") {

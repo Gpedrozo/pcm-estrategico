@@ -156,8 +156,33 @@ export default function Owner() {
       await fn()
       setFeedback(success)
     } catch (err: any) {
-      setError(String(err?.message ?? err ?? 'Falha na operacao.'))
+      const rawMessage = String(err?.message ?? err ?? 'Falha na operacao.')
+      const normalized = rawMessage.toLowerCase()
+
+      if (normalized.includes('non-2xx')) {
+        setError(
+          'A edge function owner-portal-admin retornou erro sem detalhe (non-2xx). Verifique permissao de owner master, senha de confirmacao e logs da edge function para o action executado.',
+        )
+        return
+      }
+
+      if (normalized.includes('forbidden: owner master only') || normalized.includes('owner master only')) {
+        setError('Operacao restrita ao owner master (pedrozo@gppis.com.br).')
+        return
+      }
+
+      setError(rawMessage)
     }
+  }
+
+  const runOwnerMasterAction = async (fn: () => Promise<unknown>, success: string) => {
+    if (!isOwnerMaster) {
+      setFeedback(null)
+      setError('Operacao restrita ao owner master (pedrozo@gppis.com.br).')
+      return
+    }
+
+    await runAction(fn, success)
   }
 
   const navItems = useMemo(
@@ -850,10 +875,14 @@ export default function Owner() {
             </div>
 
             <div className="mt-3 grid gap-2 md:grid-cols-3">
-              <button className="rounded border border-amber-500 px-3 py-2 text-sm text-amber-300" disabled={!systemForm.empresa_id || !systemForm.auth_password || cleanupCompanyDataMutation.isPending} onClick={() => runAction(() => cleanupCompanyDataMutation.mutateAsync({ empresa_id: systemForm.empresa_id, keep_company_core: systemForm.keep_core, keep_billing_data: systemForm.keep_billing, include_auth_users: systemForm.include_auth_users, auth_password: systemForm.auth_password }), 'Limpeza da empresa concluida com sucesso.')}>Limpar empresa</button>
-              <button className="rounded border border-amber-500 px-3 py-2 text-sm text-amber-300" disabled={!systemForm.table_name || !systemForm.auth_password || purgeTableDataMutation.isPending} onClick={() => runAction(() => purgeTableDataMutation.mutateAsync({ table_name: systemForm.table_name, empresa_id: systemForm.empresa_id || undefined, auth_password: systemForm.auth_password }), 'Limpeza da tabela concluida com sucesso.')}>Limpar tabela</button>
-              <button className="rounded border border-rose-600 px-3 py-2 text-sm text-rose-300" disabled={!systemForm.empresa_id || !systemForm.auth_password || deleteCompanyByOwnerMutation.isPending} onClick={() => runAction(() => deleteCompanyByOwnerMutation.mutateAsync({ empresa_id: systemForm.empresa_id, include_auth_users: systemForm.include_auth_users, auth_password: systemForm.auth_password }), 'Empresa excluida com sucesso.')}>Excluir empresa</button>
+              <button className="rounded border border-amber-500 px-3 py-2 text-sm text-amber-300" disabled={!isOwnerMaster || !systemForm.empresa_id || !systemForm.auth_password || cleanupCompanyDataMutation.isPending} onClick={() => runOwnerMasterAction(() => cleanupCompanyDataMutation.mutateAsync({ empresa_id: systemForm.empresa_id, keep_company_core: systemForm.keep_core, keep_billing_data: systemForm.keep_billing, include_auth_users: systemForm.include_auth_users, auth_password: systemForm.auth_password }), 'Limpeza da empresa concluida com sucesso.')}>Limpar empresa</button>
+              <button className="rounded border border-amber-500 px-3 py-2 text-sm text-amber-300" disabled={!isOwnerMaster || !systemForm.table_name || !systemForm.auth_password || purgeTableDataMutation.isPending} onClick={() => runOwnerMasterAction(() => purgeTableDataMutation.mutateAsync({ table_name: systemForm.table_name, empresa_id: systemForm.empresa_id || undefined, auth_password: systemForm.auth_password }), 'Limpeza da tabela concluida com sucesso.')}>Limpar tabela</button>
+              <button className="rounded border border-rose-600 px-3 py-2 text-sm text-rose-300" disabled={!isOwnerMaster || !systemForm.empresa_id || !systemForm.auth_password || deleteCompanyByOwnerMutation.isPending} onClick={() => runOwnerMasterAction(() => deleteCompanyByOwnerMutation.mutateAsync({ empresa_id: systemForm.empresa_id, include_auth_users: systemForm.include_auth_users, auth_password: systemForm.auth_password }), 'Empresa excluida com sucesso.')}>Excluir empresa</button>
             </div>
+
+            {!isOwnerMaster && (
+              <p className="mt-3 text-xs text-rose-300">Acoes destrutivas liberadas somente para pedrozo@gppis.com.br (owner master).</p>
+            )}
 
             {!supportsTables && (
               <p className="mt-3 text-xs text-amber-300">Backend legado: listagem de tabelas indisponivel nesta versao. Use o campo de tabela manual.</p>
