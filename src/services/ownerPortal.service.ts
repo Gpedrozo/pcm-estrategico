@@ -137,6 +137,11 @@ export interface OwnerBackendHealth {
   timestamp: string
 }
 
+const isUnsupportedActionMessage = (value: unknown) => {
+  const msg = String(value ?? '').toLowerCase()
+  return msg.includes('unsupported action') || msg.includes('missing action')
+}
+
 const parseErrorMessage = async (error: any) => {
   if (!error) return 'Falha desconhecida ao executar operação Owner.'
   const context = error?.context
@@ -376,7 +381,7 @@ export async function getOwnerBackendHealth(): Promise<OwnerBackendHealth> {
     return await callOwnerAdmin<OwnerBackendHealth>({ action: 'health_check' })
   } catch (err: any) {
     const msg = String(err?.message ?? err ?? '').toLowerCase()
-    if (msg.includes('unsupported action') || msg.includes('missing action')) {
+    if (isUnsupportedActionMessage(msg)) {
       return {
         service: 'owner-portal-admin',
         status: 'ok',
@@ -423,5 +428,35 @@ export async function deleteCompanyByOwner(payload: {
   include_auth_users?: boolean
   auth_password: string
 }) {
-  return callOwnerAdmin({ action: 'delete_company', ...payload })
+  try {
+    return await callOwnerAdmin({ action: 'delete_company', ...payload })
+  } catch (err: any) {
+    const msg = String(err?.message ?? err ?? '')
+    if (!isUnsupportedActionMessage(msg)) {
+      throw err
+    }
+
+    const cleanup = await callOwnerAdmin({
+      action: 'cleanup_company_data',
+      empresa_id: payload.empresa_id,
+      keep_company_core: false,
+      keep_billing_data: false,
+      include_auth_users: payload.include_auth_users ?? false,
+      auth_password: payload.auth_password,
+    })
+
+    await callOwnerAdmin({
+      action: 'set_company_status',
+      empresa_id: payload.empresa_id,
+      status: 'blocked',
+      reason: 'legacy-delete-fallback: backend sem acao delete_company',
+    })
+
+    return {
+      success: true,
+      legacy_fallback: true,
+      message: 'Exclusao definitiva nao suportada no backend atual. Foi aplicada limpeza completa e bloqueio da empresa.',
+      cleanup,
+    }
+  }
 }
