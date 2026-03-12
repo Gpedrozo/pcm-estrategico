@@ -64,6 +64,7 @@ export default function Owner() {
   const [active, setActive] = useState<OwnerTab>('dashboard')
   const [feedback, setFeedback] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [systemForm, setSystemForm] = useState({ user_id: '', empresa_id: '', table_name: '', auth_password: '', keep_core: false, keep_billing: false, include_auth_users: true })
 
   const isOwnerMaster = (user?.email || '').toLowerCase() === OWNER_MASTER_EMAIL
 
@@ -85,7 +86,7 @@ export default function Owner() {
     isFetching: isFetchingTables,
     error: tablesError,
     dataUpdatedAt: tablesUpdatedAt,
-  } = useOwnerDatabaseTables(tablesLive, monitoringLive ? 250 : false)
+  } = useOwnerDatabaseTables(tablesLive, monitoringLive ? 250 : false, systemForm.empresa_id || null)
   const tablesErrorMessage = String((tablesError as any)?.message ?? '')
   const tablesUnsupported = /unsupported action|missing action/i.test(tablesErrorMessage)
 
@@ -178,7 +179,6 @@ export default function Owner() {
   const [contractOnlyId, setContractOnlyId] = useState('')
   const [supportForm, setSupportForm] = useState({ ticket_id: '', response: '', status: 'resolvido' })
   const [settingsForm, setSettingsForm] = useState({ empresa_id: '', modules: '{}', limits: '{}', features: '{}' })
-  const [systemForm, setSystemForm] = useState({ user_id: '', empresa_id: '', table_name: '', auth_password: '', keep_core: false, keep_billing: false, include_auth_users: true })
   const [ownerMasterForm, setOwnerMasterForm] = useState({ nome: '', email: '', password: '' })
 
   const selectedSettingsQuery = useOwnerCompanySettings(settingsForm.empresa_id || null)
@@ -1014,6 +1014,9 @@ export default function Owner() {
             )}
 
             <div className="mt-4 max-h-72 overflow-auto rounded border border-slate-800">
+              <p className="px-3 py-2 text-[11px] text-slate-400">
+                {systemForm.empresa_id ? 'Contagem filtrada pela empresa selecionada.' : 'Contagem global (selecione uma empresa para filtrar por empresa_id).'}
+              </p>
               <table className="w-full text-xs">
                 <thead className="bg-slate-950">
                   <tr>

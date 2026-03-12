@@ -381,9 +381,9 @@ export async function createPlatformOwner(payload: {
   })
 }
 
-export async function listDatabaseTables(): Promise<OwnerDatabaseTable[]> {
+export async function listDatabaseTables(empresaId?: string | null): Promise<OwnerDatabaseTable[]> {
   try {
-    const data = await callOwnerAdmin<{ tables: OwnerDatabaseTable[] }>({ action: 'list_database_tables' })
+    const data = await callOwnerAdmin<{ tables: OwnerDatabaseTable[] }>({ action: 'list_database_tables', empresa_id: empresaId ?? null })
     return Array.isArray(data?.tables) ? data.tables : []
   } catch (err: any) {
     const msg = String(err?.message ?? err ?? '')
@@ -392,7 +392,9 @@ export async function listDatabaseTables(): Promise<OwnerDatabaseTable[]> {
     }
 
     // Fallback para ambientes com edge function legada sem a action list_database_tables.
-    const { data: rows, error } = await supabase.rpc('owner_list_database_tables' as any)
+    const { data: rows, error } = await supabase.rpc('owner_list_database_tables' as any, {
+      p_empresa_id: empresaId ?? null,
+    })
     if (error) {
       throw new Error(`Falha ao listar tabelas via fallback RPC: ${error.message}`)
     }

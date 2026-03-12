@@ -522,20 +522,12 @@ const PROTECTED_PLATFORM_TABLES = new Set([
   "profiles",
 ]);
 
-async function listDatabaseTables(admin: ReturnType<typeof adminClient>) {
+async function listDatabaseTables(admin: ReturnType<typeof adminClient>, empresaId?: string | null) {
   const rows: Array<{ table_name: string; total_rows: number; has_empresa_id: boolean }> = [];
 
   for (const tableName of PLATFORM_TABLES) {
     let totalRows = 0;
     let hasEmpresaId = false;
-
-    const countResult = await admin
-      .from(tableName)
-      .select("*", { count: "exact", head: true });
-
-    if (!countResult.error) {
-      totalRows = Number(countResult.count ?? 0);
-    }
 
     const empresaIdProbe = await admin
       .from(tableName)
@@ -543,6 +535,19 @@ async function listDatabaseTables(admin: ReturnType<typeof adminClient>) {
       .limit(1);
 
     hasEmpresaId = !empresaIdProbe.error;
+
+    let countQuery = admin
+      .from(tableName)
+      .select("*", { count: "exact", head: true });
+
+    if (empresaId && hasEmpresaId) {
+      countQuery = countQuery.eq("empresa_id", empresaId);
+    }
+
+    const countResult = await countQuery;
+    if (!countResult.error) {
+      totalRows = Number(countResult.count ?? 0);
+    }
 
     rows.push({
       table_name: tableName,
@@ -1762,7 +1767,7 @@ Deno.serve(async (req) => {
   }
 
   if (body.action === "list_database_tables") {
-    const tables = await listDatabaseTables(admin);
+    const tables = await listDatabaseTables(admin, body.empresa_id ?? null);
     return ok({ tables }, 200, req);
   }
 

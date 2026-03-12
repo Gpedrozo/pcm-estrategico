@@ -155,10 +155,10 @@ export function useOwnerMasterOwners() {
   })
 }
 
-export function useOwnerDatabaseTables(enabled = true, refetchInterval: number | false = false) {
+export function useOwnerDatabaseTables(enabled = true, refetchInterval: number | false = false, empresaId?: string | null) {
   return useQuery({
-    queryKey: ownerQueryKeys.databaseTables,
-    queryFn: listDatabaseTables,
+    queryKey: [...ownerQueryKeys.databaseTables, empresaId ?? null],
+    queryFn: () => listDatabaseTables(empresaId ?? null),
     enabled,
     staleTime: 10_000,
     refetchInterval,

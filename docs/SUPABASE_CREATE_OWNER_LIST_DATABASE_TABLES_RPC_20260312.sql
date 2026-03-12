@@ -3,7 +3,7 @@
 
 BEGIN;
 
-CREATE OR REPLACE FUNCTION public.owner_list_database_tables()
+CREATE OR REPLACE FUNCTION public.owner_list_database_tables(p_empresa_id uuid DEFAULT NULL)
 RETURNS TABLE (
   table_name text,
   total_rows bigint,
@@ -40,7 +40,17 @@ BEGIN
       AND it.table_type = 'BASE TABLE'
     ORDER BY it.table_name
   LOOP
-    EXECUTE format('SELECT count(*)::bigint FROM public.%I', t.table_name) INTO v_total;
+    IF p_empresa_id IS NOT NULL AND EXISTS (
+      SELECT 1
+      FROM information_schema.columns c
+      WHERE c.table_schema = 'public'
+        AND c.table_name = t.table_name
+        AND c.column_name = 'empresa_id'
+    ) THEN
+      EXECUTE format('SELECT count(*)::bigint FROM public.%I WHERE empresa_id = %L::uuid', t.table_name, p_empresa_id::text) INTO v_total;
+    ELSE
+      EXECUTE format('SELECT count(*)::bigint FROM public.%I', t.table_name) INTO v_total;
+    END IF;
 
     SELECT EXISTS (
       SELECT 1
@@ -58,8 +68,8 @@ BEGIN
 END;
 $$;
 
-REVOKE ALL ON FUNCTION public.owner_list_database_tables() FROM PUBLIC;
-GRANT EXECUTE ON FUNCTION public.owner_list_database_tables() TO authenticated;
-GRANT EXECUTE ON FUNCTION public.owner_list_database_tables() TO service_role;
+REVOKE ALL ON FUNCTION public.owner_list_database_tables(uuid) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.owner_list_database_tables(uuid) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.owner_list_database_tables(uuid) TO service_role;
 
 COMMIT;
