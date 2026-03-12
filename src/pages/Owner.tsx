@@ -21,8 +21,16 @@ import { useOwnerBackendHealth } from '@/hooks/useOwnerPortal'
 
 const OWNER_MASTER_EMAIL = (import.meta.env.VITE_OWNER_MASTER_EMAIL || 'pedrozo@gppis.com.br').toLowerCase()
 
-class OwnerModuleErrorBoundary extends Component<{ children: React.ReactNode }, { hasError: boolean }> {
-  constructor(props: { children: React.ReactNode }) {
+class OwnerModuleErrorBoundary extends Component<{
+  children: React.ReactNode
+  resetKey: string
+  onRetry: () => void
+}, { hasError: boolean }> {
+  constructor(props: {
+    children: React.ReactNode
+    resetKey: string
+    onRetry: () => void
+  }) {
     super(props)
     this.state = { hasError: false }
   }
@@ -34,12 +42,24 @@ class OwnerModuleErrorBoundary extends Component<{ children: React.ReactNode }, 
   componentDidCatch(_error: Error, _errorInfo: ErrorInfo) {
   }
 
+  componentDidUpdate(prevProps: Readonly<{ children: React.ReactNode; resetKey: string; onRetry: () => void }>) {
+    if (prevProps.resetKey !== this.props.resetKey && this.state.hasError) {
+      this.setState({ hasError: false })
+    }
+  }
+
   render() {
     if (this.state.hasError) {
       return (
         <div className="rounded-xl border border-destructive/40 bg-destructive/5 p-6">
           <h3 className="text-sm font-semibold text-destructive">Falha ao carregar modulo OWNER</h3>
           <p className="mt-2 text-sm text-muted-foreground">Ocorreu um erro inesperado neste modulo. Recarregue a pagina para continuar.</p>
+          <button
+            onClick={this.props.onRetry}
+            className="mt-4 rounded-md border border-destructive/50 px-3 py-2 text-xs font-medium text-destructive hover:bg-destructive/10"
+          >
+            Tentar novamente
+          </button>
         </div>
       )
     }
@@ -52,6 +72,7 @@ export default function Owner() {
   const { isSystemOwner, isLoading, user } = useAuth()
   const { data: backendHealth, error: backendHealthError } = useOwnerBackendHealth()
   const [active, setActive] = useState('dashboard')
+  const [retryNonce, setRetryNonce] = useState(0)
 
   const isOwnerMaster = (user?.email || '').toLowerCase() === OWNER_MASTER_EMAIL
 
@@ -135,6 +156,10 @@ export default function Owner() {
     }
   }, [active, isOwnerMaster])
 
+  const handleRetryModule = () => {
+    setRetryNonce((prev) => prev + 1)
+  }
+
   const backendCompatibility = useMemo(() => {
     const requiredActions = ['list_database_tables', 'cleanup_company_data', 'purge_table_data', 'delete_company']
     const supportedActions = backendHealth?.supported_actions ?? []
@@ -199,8 +224,10 @@ export default function Owner() {
       backendHealthy={backendCompatibility.healthy}
       backendStatusMessage={backendCompatibility.message}
     >
-      <OwnerModuleErrorBoundary>
-        {content}
+      <OwnerModuleErrorBoundary resetKey={`${active}-${retryNonce}`} onRetry={handleRetryModule}>
+        <div key={`${active}-${retryNonce}`}>
+          {content}
+        </div>
       </OwnerModuleErrorBoundary>
     </OwnerPortalLayout>
   )
