@@ -1,4 +1,4 @@
-﻿import { chromium } from 'playwright'
+import { chromium } from 'playwright'
 import { writeFileSync, mkdirSync } from 'node:fs'
 import { spawnSync } from 'node:child_process'
 
