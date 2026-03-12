@@ -436,14 +436,25 @@ export async function deleteCompanyByOwner(payload: {
       throw err
     }
 
-    const cleanup = await callOwnerAdmin({
-      action: 'cleanup_company_data',
-      empresa_id: payload.empresa_id,
-      keep_company_core: false,
-      keep_billing_data: false,
-      include_auth_users: payload.include_auth_users ?? false,
-      auth_password: payload.auth_password,
-    })
+    let cleanup: unknown = null
+    let cleanupUnsupported = false
+
+    try {
+      cleanup = await callOwnerAdmin({
+        action: 'cleanup_company_data',
+        empresa_id: payload.empresa_id,
+        keep_company_core: false,
+        keep_billing_data: false,
+        include_auth_users: payload.include_auth_users ?? false,
+        auth_password: payload.auth_password,
+      })
+    } catch (cleanupErr: any) {
+      const cleanupMessage = String(cleanupErr?.message ?? cleanupErr ?? '')
+      if (!isUnsupportedActionMessage(cleanupMessage)) {
+        throw cleanupErr
+      }
+      cleanupUnsupported = true
+    }
 
     await callOwnerAdmin({
       action: 'set_company_status',
@@ -455,8 +466,11 @@ export async function deleteCompanyByOwner(payload: {
     return {
       success: true,
       legacy_fallback: true,
-      message: 'Exclusao definitiva nao suportada no backend atual. Foi aplicada limpeza completa e bloqueio da empresa.',
+      message: cleanupUnsupported
+        ? 'Exclusao definitiva e limpeza completa nao sao suportadas no backend atual. Foi aplicado bloqueio da empresa como fallback de seguranca.'
+        : 'Exclusao definitiva nao suportada no backend atual. Foi aplicada limpeza completa e bloqueio da empresa.',
       cleanup,
+      cleanup_unsupported: cleanupUnsupported,
     }
   }
 }
