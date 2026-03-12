@@ -6,12 +6,12 @@ type Company = { id: string; nome?: string }
 type FeatureMap = Record<string, boolean>
 
 export function OwnerFeatureFlagsModule() {
-  const { data: companiesData, isLoading: isLoadingCompanies } = useOwnerCompanies()
+  const { data: companiesData, isLoading: isLoadingCompanies, error: companiesError } = useOwnerCompanies()
   const { updateCompanySettingsMutation } = useOwnerCompanyActions()
-  const companies = useMemo(() => ((companiesData?.companies as Company[] | undefined) ?? []).slice(0, 500), [companiesData])
+  const companies = useMemo(() => (Array.isArray(companiesData?.companies) ? (companiesData.companies as Company[]) : []).slice(0, 500), [companiesData])
 
   const [selectedCompanyId, setSelectedCompanyId] = useState('')
-  const { data: settingsData, isLoading: isLoadingSettings } = useOwnerCompanySettings(selectedCompanyId || null)
+  const { data: settingsData, isLoading: isLoadingSettings, error: settingsError } = useOwnerCompanySettings(selectedCompanyId || null)
 
   const [features, setFeatures] = useState<FeatureMap>({})
   const [newFeatureName, setNewFeatureName] = useState('')
@@ -19,7 +19,7 @@ export function OwnerFeatureFlagsModule() {
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    const rows = settingsData?.settings ?? []
+    const rows = Array.isArray(settingsData?.settings) ? settingsData.settings : []
     const featureRow = rows.find((row) => row.chave === 'owner.features')
     const value = featureRow?.valor
     if (value && typeof value === 'object' && !Array.isArray(value)) {
@@ -64,6 +64,12 @@ export function OwnerFeatureFlagsModule() {
   return (
     <div className="rounded-lg border border-slate-800 bg-slate-900 p-4">
       <h2 className="mb-3 text-sm font-semibold">Feature Flags</h2>
+
+      {(companiesError || settingsError) && (
+        <div className="mb-3 rounded border border-rose-700/50 bg-rose-950/20 p-3 text-sm text-rose-200">
+          Falha ao carregar feature flags: {String((settingsError as any)?.message ?? (companiesError as any)?.message ?? 'erro desconhecido')}
+        </div>
+      )}
 
       {isLoadingCompanies ? (
         <p className="text-sm text-slate-400">Carregando empresas...</p>

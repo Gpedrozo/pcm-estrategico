@@ -2,6 +2,8 @@ import { describe, expect, it, vi, beforeEach } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import { OwnerEmpresasModule } from '@/modules/empresas/OwnerEmpresasModule'
 import { OwnerSuporteModule } from '@/modules/suporte/OwnerSuporteModule'
+import { OwnerConfiguracoesModule } from '@/modules/configuracoes/OwnerConfiguracoesModule'
+import { OwnerFeatureFlagsModule } from '@/modules/feature-flags/OwnerFeatureFlagsModule'
 import { createAuthContextValue } from '@/test/auth-context-mock'
 
 const empresasState = {
@@ -14,6 +16,11 @@ const suporteState = {
   tickets: [] as Array<{ id: string; subject?: string; status?: string; priority?: string; updated_at?: string }>,
 }
 
+const settingsState = {
+  isLoading: false,
+  settings: {} as unknown,
+}
+
 const ownerActionsMock = {
   createCompanyMutation: { mutate: vi.fn(), isPending: false },
   updateCompanyMutation: { mutate: vi.fn(), isPending: false },
@@ -22,6 +29,7 @@ const ownerActionsMock = {
   startImpersonationMutation: { mutate: vi.fn(), isPending: false },
   stopImpersonationMutation: { mutate: vi.fn(), isPending: false },
   respondSupportMutation: { mutate: vi.fn(), isPending: false },
+  updateCompanySettingsMutation: { mutate: vi.fn(), isPending: false },
 }
 
 vi.mock('@/contexts/AuthContext', () => ({
@@ -44,6 +52,7 @@ vi.mock('@/hooks/useOwnerPortal', () => ({
   useOwnerSubscriptions: () => ({ data: [], isLoading: false }),
   useOwnerAuditLogs: () => ({ data: [], isLoading: false }),
   useOwnerSupportTickets: () => ({ data: suporteState.tickets, isLoading: suporteState.isLoading }),
+  useOwnerCompanySettings: () => ({ data: { settings: settingsState.settings }, isLoading: settingsState.isLoading }),
   useOwnerCompanyActions: () => ownerActionsMock,
 }))
 
@@ -53,6 +62,8 @@ describe('owner modules hook-order regressions', () => {
     empresasState.companies = []
     suporteState.isLoading = true
     suporteState.tickets = []
+    settingsState.isLoading = false
+    settingsState.settings = {}
   })
 
   it('keeps hook order stable in OwnerEmpresasModule when loading flips to data', () => {
@@ -95,5 +106,21 @@ describe('owner modules hook-order regressions', () => {
 
     expect(screen.getByText(/^suporte$/i)).toBeInTheDocument()
     expect(screen.getByText(/falha no login/i)).toBeInTheDocument()
+  })
+
+  it('does not crash OwnerConfiguracoesModule with malformed settings payload', () => {
+    settingsState.settings = { invalid: true }
+
+    render(<OwnerConfiguracoesModule />)
+
+    expect(screen.getByText(/configurações por empresa/i)).toBeInTheDocument()
+  })
+
+  it('does not crash OwnerFeatureFlagsModule with malformed settings payload', () => {
+    settingsState.settings = { invalid: true }
+
+    render(<OwnerFeatureFlagsModule />)
+
+    expect(screen.getByText(/feature flags/i)).toBeInTheDocument()
   })
 })

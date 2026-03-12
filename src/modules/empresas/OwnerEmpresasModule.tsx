@@ -33,12 +33,14 @@ type AuditLog = {
   actor_email?: string
 }
 
+const toArray = <T,>(value: unknown): T[] => (Array.isArray(value) ? (value as T[]) : [])
+
 export function OwnerEmpresasModule() {
   const { impersonation, startImpersonationSession, stopImpersonationSession } = useAuth()
-  const { data, isLoading } = useOwnerCompanies()
-  const { data: plansData } = useOwnerPlans()
-  const { data: subscriptionsData } = useOwnerSubscriptions()
-  const { data: logsData } = useOwnerAuditLogs()
+  const { data, isLoading, error: companiesError } = useOwnerCompanies()
+  const { data: plansData, error: plansError } = useOwnerPlans()
+  const { data: subscriptionsData, error: subscriptionsError } = useOwnerSubscriptions()
+  const { data: logsData, error: logsError } = useOwnerAuditLogs()
   const {
     createCompanyMutation,
     updateCompanyMutation,
@@ -80,13 +82,13 @@ export function OwnerEmpresasModule() {
   const [planCodeByCompany, setPlanCodeByCompany] = useState<Record<string, string>>({})
 
   const plans = useMemo(
-    () => (Array.isArray(plansData) ? plansData : []) as Array<{ id: string; name?: string; code?: string; price_month?: number }>,
+    () => toArray<{ id: string; name?: string; code?: string; price_month?: number }>(plansData),
     [plansData],
   )
-  const subscriptions = useMemo(() => (Array.isArray(subscriptionsData) ? subscriptionsData : []) as Subscription[], [subscriptionsData])
-  const auditLogs = useMemo(() => (Array.isArray(logsData) ? logsData : []) as AuditLog[], [logsData])
+  const subscriptions = useMemo(() => toArray<Subscription>(subscriptionsData), [subscriptionsData])
+  const auditLogs = useMemo(() => toArray<AuditLog>(logsData), [logsData])
   const companies = useMemo(
-    () => (Array.isArray(data?.companies) ? data.companies : []) as Company[],
+    () => toArray<Company>(data?.companies),
     [data],
   )
 
@@ -97,6 +99,14 @@ export function OwnerEmpresasModule() {
 
   if (isLoading) {
     return <div className="rounded-lg border border-slate-800 bg-slate-900 p-4 text-sm">Carregando empresas...</div>
+  }
+
+  if (companiesError || plansError || subscriptionsError || logsError) {
+    return (
+      <div className="rounded-lg border border-rose-700/50 bg-rose-950/20 p-4 text-sm text-rose-200">
+        Falha ao carregar dados de empresas: {String((companiesError as any)?.message ?? (plansError as any)?.message ?? (subscriptionsError as any)?.message ?? (logsError as any)?.message ?? 'erro desconhecido')}
+      </div>
+    )
   }
 
   const resetForm = () => {
@@ -187,8 +197,10 @@ export function OwnerEmpresasModule() {
   }
 
   const populateForEdit = (company: Company) => {
-    const dataRow = company.dados_empresa?.[0]
-    const securityConfig = company.configuracoes_sistema?.find((row) => row.chave === 'owner.security_policy')
+    const dataRows = toArray<NonNullable<Company['dados_empresa']>[number]>(company.dados_empresa)
+    const settingsRows = toArray<NonNullable<Company['configuracoes_sistema']>[number]>(company.configuracoes_sistema)
+    const dataRow = dataRows[0]
+    const securityConfig = settingsRows.find((row) => row.chave === 'owner.security_policy')
     const inactivityTimeoutMinutes =
       typeof securityConfig?.valor?.inactivity_timeout_minutes === 'number'
         ? String(securityConfig.valor.inactivity_timeout_minutes)
@@ -255,7 +267,9 @@ export function OwnerEmpresasModule() {
   }
 
   const handleStartImpersonation = (company: Company) => {
-    const companyName = company.dados_empresa?.[0]?.nome_fantasia ?? company.dados_empresa?.[0]?.razao_social ?? company.nome ?? company.id
+    const companyDataRows = toArray<NonNullable<Company['dados_empresa']>[number]>(company.dados_empresa)
+    const companyData = companyDataRows[0]
+    const companyName = companyData?.nome_fantasia ?? companyData?.razao_social ?? company.nome ?? company.id
 
     setFormError(null)
     setFormSuccess(null)
@@ -388,9 +402,11 @@ export function OwnerEmpresasModule() {
         <h2 className="mb-3 text-sm font-semibold">Empresas globais</h2>
         <div className="space-y-2">
           {companies.slice(0, 20).map((company) => {
-            const companyData = company.dados_empresa?.[0]
+            const companyDataRows = toArray<NonNullable<Company['dados_empresa']>[number]>(company.dados_empresa)
+            const settingsRows = toArray<NonNullable<Company['configuracoes_sistema']>[number]>(company.configuracoes_sistema)
+            const companyData = companyDataRows[0]
             const sub = subscriptions.find((item) => item.empresa_id === company.id)
-            const securityConfig = company.configuracoes_sistema?.find((row) => row.chave === 'owner.security_policy')
+            const securityConfig = settingsRows.find((row) => row.chave === 'owner.security_policy')
             const inactivityTimeoutMinutes =
               typeof securityConfig?.valor?.inactivity_timeout_minutes === 'number'
                 ? securityConfig.valor.inactivity_timeout_minutes

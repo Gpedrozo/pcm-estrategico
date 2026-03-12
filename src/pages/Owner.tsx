@@ -25,26 +25,29 @@ class OwnerModuleErrorBoundary extends Component<{
   children: React.ReactNode
   resetKey: string
   onRetry: () => void
-}, { hasError: boolean }> {
+}, { hasError: boolean; errorMessage: string | null }> {
   constructor(props: {
     children: React.ReactNode
     resetKey: string
     onRetry: () => void
   }) {
     super(props)
-    this.state = { hasError: false }
+    this.state = { hasError: false, errorMessage: null }
   }
 
   static getDerivedStateFromError() {
     return { hasError: true }
   }
 
-  componentDidCatch(_error: Error, _errorInfo: ErrorInfo) {
+  componentDidCatch(error: Error, _errorInfo: ErrorInfo) {
+    this.setState({ errorMessage: error?.message ?? 'Erro desconhecido no modulo owner.' })
+    // Keep console trace for production diagnostics.
+    console.error('Owner module crash:', error)
   }
 
   componentDidUpdate(prevProps: Readonly<{ children: React.ReactNode; resetKey: string; onRetry: () => void }>) {
     if (prevProps.resetKey !== this.props.resetKey && this.state.hasError) {
-      this.setState({ hasError: false })
+      this.setState({ hasError: false, errorMessage: null })
     }
   }
 
@@ -54,6 +57,9 @@ class OwnerModuleErrorBoundary extends Component<{
         <div className="rounded-xl border border-destructive/40 bg-destructive/5 p-6">
           <h3 className="text-sm font-semibold text-destructive">Falha ao carregar modulo OWNER</h3>
           <p className="mt-2 text-sm text-muted-foreground">Ocorreu um erro inesperado neste modulo. Recarregue a pagina para continuar.</p>
+          {this.state.errorMessage && (
+            <p className="mt-2 text-xs text-rose-300/90">Detalhe tecnico: {this.state.errorMessage}</p>
+          )}
           <button
             onClick={this.props.onRetry}
             className="mt-4 rounded-md border border-destructive/50 px-3 py-2 text-xs font-medium text-destructive hover:bg-destructive/10"

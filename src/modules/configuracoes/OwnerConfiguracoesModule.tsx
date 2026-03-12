@@ -12,13 +12,13 @@ function safeParseObject(input: string) {
 }
 
 export function OwnerConfiguracoesModule() {
-  const { data: companiesData, isLoading: isLoadingCompanies } = useOwnerCompanies()
+  const { data: companiesData, isLoading: isLoadingCompanies, error: companiesError } = useOwnerCompanies()
   const { updateCompanySettingsMutation } = useOwnerCompanyActions()
 
-  const companies = useMemo(() => ((companiesData?.companies as Company[] | undefined) ?? []).slice(0, 500), [companiesData])
+  const companies = useMemo(() => (Array.isArray(companiesData?.companies) ? (companiesData.companies as Company[]) : []).slice(0, 500), [companiesData])
   const [selectedCompanyId, setSelectedCompanyId] = useState<string>('')
 
-  const { data: settingsData, isLoading: isLoadingSettings } = useOwnerCompanySettings(selectedCompanyId || null)
+  const { data: settingsData, isLoading: isLoadingSettings, error: settingsError } = useOwnerCompanySettings(selectedCompanyId || null)
 
   const [modulesJson, setModulesJson] = useState('{}')
   const [limitsJson, setLimitsJson] = useState('{}')
@@ -28,7 +28,8 @@ export function OwnerConfiguracoesModule() {
 
   useEffect(() => {
     const map = new Map<string, unknown>()
-    for (const row of settingsData?.settings ?? []) {
+    const rows = Array.isArray(settingsData?.settings) ? settingsData.settings : []
+    for (const row of rows) {
       map.set(row.chave, row.valor ?? {})
     }
 
@@ -66,6 +67,12 @@ export function OwnerConfiguracoesModule() {
   return (
     <div className="rounded-lg border border-slate-800 bg-slate-900 p-4">
       <h2 className="mb-3 text-sm font-semibold">Configurações por empresa</h2>
+
+      {(companiesError || settingsError) && (
+        <div className="mb-3 rounded border border-rose-700/50 bg-rose-950/20 p-3 text-sm text-rose-200">
+          Falha ao carregar configurações: {String((settingsError as any)?.message ?? (companiesError as any)?.message ?? 'erro desconhecido')}
+        </div>
+      )}
 
       {isLoadingCompanies ? (
         <p className="text-sm text-slate-400">Carregando empresas...</p>
