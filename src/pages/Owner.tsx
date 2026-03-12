@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
 import { Loader2, ShieldCheck } from 'lucide-react'
+import { Bar, BarChart, CartesianGrid, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import { useAuth } from '@/contexts/AuthContext'
 import { OwnerPortalLayout } from '@/layouts/OwnerPortalLayout'
 import {
@@ -116,6 +117,26 @@ export default function Owner() {
       })),
     [tables],
   )
+
+  const companyStatusChartData = useMemo(() => {
+    const grouped = companies.reduce<Record<string, number>>((acc, company) => {
+      const status = String(company.status || 'desconhecido')
+      acc[status] = (acc[status] || 0) + 1
+      return acc
+    }, {})
+
+    return Object.entries(grouped).map(([name, value]) => ({ name, value }))
+  }, [companies])
+
+  const subscriptionStatusChartData = useMemo(() => {
+    const grouped = subscriptions.reduce<Record<string, number>>((acc, sub) => {
+      const status = String(sub.status || 'desconhecido')
+      acc[status] = (acc[status] || 0) + 1
+      return acc
+    }, {})
+
+    return Object.entries(grouped).map(([name, value]) => ({ name, value }))
+  }, [subscriptions])
 
   const {
     createCompanyMutation,
@@ -322,14 +343,43 @@ export default function Owner() {
       backendStatusMessage={backendCompatibility.message}
     >
       {active === 'dashboard' && (
-        <Card title="Dashboard" subtitle="Visao geral da plataforma">
-          <div className="grid gap-3 md:grid-cols-4">
-            <Metric label="Empresas" value={Number((statsData as any)?.total_companies ?? companies.length)} />
-            <Metric label="Usuarios" value={Number((statsData as any)?.total_users ?? users.length)} />
-            <Metric label="Assinaturas ativas" value={Number((statsData as any)?.active_subscriptions ?? subscriptions.filter((s) => s.status === 'ativa').length)} />
-            <Metric label="MRR" value={Number((statsData as any)?.mrr ?? 0)} />
-          </div>
-        </Card>
+        <div className="space-y-4">
+          <Card title="Dashboard" subtitle="Visao geral da plataforma">
+            <div className="grid gap-3 md:grid-cols-4">
+              <Metric label="Empresas" value={Number((statsData as any)?.total_companies ?? companies.length)} />
+              <Metric label="Usuarios" value={Number((statsData as any)?.total_users ?? users.length)} />
+              <Metric label="Assinaturas ativas" value={Number((statsData as any)?.active_subscriptions ?? subscriptions.filter((s) => s.status === 'ativa').length)} />
+              <Metric label="MRR" value={Number((statsData as any)?.mrr ?? 0)} />
+            </div>
+          </Card>
+
+          <Card title="Analitico" subtitle="Distribuicao operacional de empresas e assinaturas">
+            <div className="grid gap-4 lg:grid-cols-2">
+              <div className="h-64 rounded border border-slate-800 bg-slate-950 p-2">
+                <p className="px-2 pt-1 text-xs text-slate-400">Empresas por status</p>
+                <ResponsiveContainer width="100%" height="92%">
+                  <BarChart data={companyStatusChartData} margin={{ top: 20, right: 10, left: 0, bottom: 0 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
+                    <XAxis dataKey="name" stroke="#94a3b8" tick={{ fontSize: 11 }} />
+                    <YAxis stroke="#94a3b8" tick={{ fontSize: 11 }} allowDecimals={false} />
+                    <Tooltip />
+                    <Bar dataKey="value" fill="#22c55e" radius={[4, 4, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+
+              <div className="h-64 rounded border border-slate-800 bg-slate-950 p-2">
+                <p className="px-2 pt-1 text-xs text-slate-400">Assinaturas por status</p>
+                <ResponsiveContainer width="100%" height="92%">
+                  <PieChart>
+                    <Tooltip />
+                    <Pie data={subscriptionStatusChartData} dataKey="value" nameKey="name" outerRadius={90} fill="#3b82f6" label />
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+          </Card>
+        </div>
       )}
 
       {active === 'empresas' && (
