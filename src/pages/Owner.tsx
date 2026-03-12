@@ -17,6 +17,7 @@ import { OwnerFeatureFlagsModule } from '@/modules/feature-flags/OwnerFeatureFla
 import { OwnerMonitoramentoModule } from '@/modules/monitoramento/OwnerMonitoramentoModule'
 import { OwnerLogsModule } from '@/modules/logs/OwnerLogsModule'
 import { OwnerMasterModule } from '@/modules/owner-master/OwnerMasterModule'
+import { useOwnerBackendHealth } from '@/hooks/useOwnerPortal'
 
 const OWNER_MASTER_EMAIL = (import.meta.env.VITE_OWNER_MASTER_EMAIL || 'pedrozo@gppis.com.br').toLowerCase()
 
@@ -49,6 +50,7 @@ class OwnerModuleErrorBoundary extends Component<{ children: React.ReactNode }, 
 
 export default function Owner() {
   const { isSystemOwner, isLoading, user } = useAuth()
+  const { data: backendHealth, error: backendHealthError } = useOwnerBackendHealth()
   const [active, setActive] = useState('dashboard')
 
   const isOwnerMaster = (user?.email || '').toLowerCase() === OWNER_MASTER_EMAIL
@@ -133,6 +135,38 @@ export default function Owner() {
     }
   }, [active, isOwnerMaster])
 
+  const backendCompatibility = useMemo(() => {
+    const requiredActions = ['list_database_tables', 'cleanup_company_data', 'purge_table_data', 'delete_company']
+    const supportedActions = backendHealth?.supported_actions ?? []
+    const allRequiredSupported = requiredActions.every((action) => supportedActions.includes(action as any))
+
+    if (backendHealthError) {
+      return {
+        healthy: false,
+        message: String((backendHealthError as any)?.message ?? 'Falha ao validar backend owner.'),
+      }
+    }
+
+    if (!backendHealth) {
+      return {
+        healthy: true,
+        message: null,
+      }
+    }
+
+    if (!allRequiredSupported) {
+      return {
+        healthy: false,
+        message: 'Backend owner publicado sem todas as ações críticas necessárias. Atualize a edge function owner-portal-admin.',
+      }
+    }
+
+    return {
+      healthy: true,
+      message: `Versao backend: ${backendHealth.version}`,
+    }
+  }, [backendHealth, backendHealthError])
+
   if (isLoading) {
     return (
       <div className="flex h-[60vh] items-center justify-center">
@@ -162,6 +196,8 @@ export default function Owner() {
       navItems={navItems}
       activeKey={active}
       onNavigate={setActive}
+      backendHealthy={backendCompatibility.healthy}
+      backendStatusMessage={backendCompatibility.message}
     >
       <OwnerModuleErrorBoundary>
         {content}

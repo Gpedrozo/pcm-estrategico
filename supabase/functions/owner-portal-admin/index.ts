@@ -5,6 +5,7 @@ import { fail, ok, preflight, rejectIfOriginNotAllowed } from "../_shared/respon
 
 type Payload = {
   action:
+    | "health_check"
     | "dashboard"
     | "list_companies"
     | "create_company"
@@ -137,6 +138,47 @@ type Payload = {
   keep_billing_data?: boolean;
   include_auth_users?: boolean;
 };
+
+const SUPPORTED_OWNER_ACTIONS: Payload["action"][] = [
+  "health_check",
+  "dashboard",
+  "list_companies",
+  "create_company",
+  "update_company",
+  "set_company_status",
+  "list_users",
+  "create_user",
+  "set_user_status",
+  "list_plans",
+  "create_plan",
+  "update_plan",
+  "list_subscriptions",
+  "create_subscription",
+  "set_subscription_status",
+  "list_contracts",
+  "update_contract",
+  "regenerate_contract",
+  "delete_contract",
+  "list_support_tickets",
+  "respond_support_ticket",
+  "list_audit_logs",
+  "get_company_settings",
+  "update_company_settings",
+  "block_company",
+  "change_plan",
+  "platform_stats",
+  "create_system_admin",
+  "impersonate_company",
+  "stop_impersonation",
+  "update_subscription_billing",
+  "list_platform_owners",
+  "create_platform_owner",
+  "cleanup_owner_stress_data",
+  "list_database_tables",
+  "cleanup_company_data",
+  "delete_company",
+  "purge_table_data",
+];
 
 async function verifyActorPassword(input: {
   email?: string | null;
@@ -614,6 +656,16 @@ Deno.serve(async (req) => {
 
   const body = (await req.json().catch(() => null)) as Payload | null;
   if (!body?.action) return fail("Missing action", 400, null, req);
+
+  if (body.action === "health_check") {
+    return ok({
+      service: "owner-portal-admin",
+      status: "ok",
+      version: "2026-03-11-owner-health-v1",
+      supported_actions: SUPPORTED_OWNER_ACTIONS,
+      timestamp: new Date().toISOString(),
+    }, 200, req);
+  }
 
   const isOwnerMaster = isOwnerMasterEmail(auth.user.email ?? null);
   const ownerMasterOnlyActions = new Set<Payload["action"]>([

@@ -1,4 +1,4 @@
-import { LogOut, Shield } from 'lucide-react'
+import { AlertTriangle, CheckCircle2, LogOut, Shield } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import type { ReactNode } from 'react'
 import { useState } from 'react'
@@ -15,6 +15,8 @@ interface OwnerPortalLayoutProps {
   navItems: OwnerNavItem[]
   activeKey: string
   onNavigate: (key: string) => void
+  backendHealthy?: boolean
+  backendStatusMessage?: string | null
   children: ReactNode
 }
 
@@ -24,6 +26,8 @@ export function OwnerPortalLayout({
   navItems,
   activeKey,
   onNavigate,
+  backendHealthy,
+  backendStatusMessage,
   children,
 }: OwnerPortalLayoutProps) {
   const { user, logout, impersonation, stopImpersonationSession } = useAuth()
@@ -64,6 +68,21 @@ export function OwnerPortalLayout({
           </div>
 
           <div className="flex items-center gap-4">
+            {typeof backendHealthy === 'boolean' && (
+              <div
+                className={`hidden rounded-md border px-3 py-2 text-xs lg:block ${
+                  backendHealthy
+                    ? 'border-emerald-300/60 bg-emerald-100 text-emerald-900'
+                    : 'border-rose-300/70 bg-rose-100 text-rose-900'
+                }`}
+                title={backendStatusMessage ?? undefined}
+              >
+                <p className="flex items-center gap-2">
+                  {backendHealthy ? <CheckCircle2 className="h-3.5 w-3.5" /> : <AlertTriangle className="h-3.5 w-3.5" />}
+                  {backendHealthy ? 'Backend owner conectado' : 'Backend owner com incompatibilidade'}
+                </p>
+              </div>
+            )}
             {impersonation?.empresaId && (
               <div className="rounded-md border border-amber-300/60 bg-amber-100 px-3 py-2 text-xs text-amber-900">
                 <p>

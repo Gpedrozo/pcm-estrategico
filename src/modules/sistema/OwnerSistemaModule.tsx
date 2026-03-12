@@ -2,11 +2,13 @@ import { useEffect, useMemo, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { callOwnerAdmin } from '@/services/ownerPortal.service'
 import { useOwnerCompanies, useOwnerCompanyActions, useOwnerDatabaseTables } from '@/hooks/useOwnerPortal'
+import { useOwnerBackendHealth } from '@/hooks/useOwnerPortal'
 
 export function OwnerSistemaModule() {
   const queryClient = useQueryClient()
   const { data: companiesData, isLoading: loadingCompanies, error: companiesError } = useOwnerCompanies()
   const { data: databaseTables, isLoading: loadingTables, error: databaseTablesError } = useOwnerDatabaseTables()
+  const { data: backendHealth, error: backendHealthError } = useOwnerBackendHealth()
   const {
     cleanupCompanyDataMutation,
     purgeTableDataMutation,
@@ -53,6 +55,13 @@ export function OwnerSistemaModule() {
       .sort((a, b) => b.total_rows - a.total_rows),
     [databaseTables],
   )
+
+  const canRunDataControl = useMemo(() => {
+    if (backendHealthError) return false
+    if (!backendHealth?.supported_actions) return true
+    const required = ['list_database_tables', 'cleanup_company_data', 'purge_table_data', 'delete_company']
+    return required.every((action) => backendHealth.supported_actions.includes(action as any))
+  }, [backendHealth, backendHealthError])
 
   const handleCreateSystemAdmin = async () => {
     if (!userId.trim()) {
@@ -202,13 +211,19 @@ export function OwnerSistemaModule() {
           Acesso direto para limpar dados de tenant e tabelas da plataforma. O banco nunca e apagado, apenas os registros.
         </p>
 
+        {!canRunDataControl && (
+          <div className="mt-3 rounded border border-rose-600/60 bg-rose-950/40 px-3 py-2 text-xs text-rose-200">
+            Backend owner sem compatibilidade total para Data Control nesta publicacao. Publique a versao mais recente da edge function owner-portal-admin e do frontend owner.
+          </div>
+        )}
+
         <div className="mt-3 grid gap-2 md:grid-cols-2">
           <label className="text-xs text-slate-300">Empresa alvo</label>
           <select
             className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm"
             value={empresaId}
             onChange={(e) => setEmpresaId(e.target.value)}
-            disabled={loadingCompanies}
+              disabled={loadingCompanies || !canRunDataControl}
           >
             <option value="">Selecione empresa</option>
             {companies.map((company) => (
@@ -227,6 +242,7 @@ export function OwnerSistemaModule() {
             placeholder="Informe sua senha"
             value={authPassword}
             onChange={(e) => setAuthPassword(e.target.value)}
+            disabled={!canRunDataControl}
           />
         </div>
 
@@ -251,7 +267,7 @@ export function OwnerSistemaModule() {
             <button
               onClick={handleCleanupCompanyData}
               className="rounded-md border border-amber-500 px-4 py-2 text-sm font-semibold text-amber-200"
-              disabled={cleanupCompanyDataMutation.isPending || !authPassword.trim()}
+              disabled={cleanupCompanyDataMutation.isPending || !authPassword.trim() || !canRunDataControl}
             >
               Limpar empresa
             </button>
@@ -265,7 +281,7 @@ export function OwnerSistemaModule() {
               className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm"
               value={tableName}
               onChange={(e) => setTableName(e.target.value)}
-              disabled={loadingTables}
+              disabled={loadingTables || !canRunDataControl}
             >
               <option value="">Selecione tabela</option>
               {sortedTables.map((table) => (
@@ -277,7 +293,7 @@ export function OwnerSistemaModule() {
             <button
               onClick={handlePurgeTable}
               className="rounded-md border border-amber-500 px-4 py-2 text-sm font-semibold text-amber-200"
-              disabled={purgeTableDataMutation.isPending || !authPassword.trim()}
+              disabled={purgeTableDataMutation.isPending || !authPassword.trim() || !canRunDataControl}
             >
               Limpar tabela
             </button>
@@ -291,7 +307,7 @@ export function OwnerSistemaModule() {
             <button
               onClick={handleDeleteCompany}
               className="rounded-md bg-rose-600 px-4 py-2 text-sm font-semibold text-white"
-              disabled={deleteCompanyByOwnerMutation.isPending || !authPassword.trim()}
+              disabled={deleteCompanyByOwnerMutation.isPending || !authPassword.trim() || !canRunDataControl}
             >
               Excluir empresa
             </button>

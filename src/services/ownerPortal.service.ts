@@ -1,6 +1,7 @@
 import { supabase } from '@/integrations/supabase/client'
 
 export type OwnerAction =
+  | 'health_check'
   | 'dashboard'
   | 'list_companies'
   | 'create_company'
@@ -127,6 +128,14 @@ export interface OwnerDatabaseTable {
   table_name: string
   total_rows: number
   has_empresa_id: boolean
+}
+
+export interface OwnerBackendHealth {
+  service: string
+  status: 'ok'
+  version: string
+  supported_actions: OwnerAction[]
+  timestamp: string
 }
 
 export interface OwnerSupportTicket {
@@ -557,6 +566,10 @@ export async function createPlatformOwner(payload: {
 export async function listDatabaseTables(): Promise<OwnerDatabaseTable[]> {
   const data = await callOwnerAdmin<{ tables: OwnerDatabaseTable[] }>({ action: 'list_database_tables' })
   return data.tables ?? []
+}
+
+export async function getOwnerBackendHealth() {
+  return callOwnerAdmin<OwnerBackendHealth>({ action: 'health_check' })
 }
 
 export async function cleanupCompanyData(payload: {

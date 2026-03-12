@@ -9,6 +9,7 @@ import {
   deleteContract,
   getCompanySettings,
   getPlatformStats,
+  getOwnerBackendHealth,
   listAuditLogs,
   listContracts,
   listGlobalUsers,
@@ -40,6 +41,15 @@ export function useOwnerStats() {
     queryKey: ['owner', 'stats'],
     queryFn: getPlatformStats,
     staleTime: 30_000,
+  })
+}
+
+export function useOwnerBackendHealth() {
+  return useQuery({
+    queryKey: ['owner', 'backend-health'],
+    queryFn: getOwnerBackendHealth,
+    staleTime: 20_000,
+    retry: 1,
   })
 }
 
