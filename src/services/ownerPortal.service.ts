@@ -569,7 +569,22 @@ export async function listDatabaseTables(): Promise<OwnerDatabaseTable[]> {
 }
 
 export async function getOwnerBackendHealth() {
-  return callOwnerAdmin<OwnerBackendHealth>({ action: 'health_check' })
+  try {
+    return await callOwnerAdmin<OwnerBackendHealth>({ action: 'health_check' })
+  } catch (err: any) {
+    const msg = String(err?.message ?? err ?? '').toLowerCase()
+    if (msg.includes('unsupported action')) {
+      return {
+        service: 'owner-portal-admin',
+        status: 'ok',
+        version: 'legacy-without-health-check',
+        supported_actions: ['dashboard', 'list_companies'] as OwnerAction[],
+        timestamp: new Date().toISOString(),
+      }
+    }
+
+    throw err
+  }
 }
 
 export async function cleanupCompanyData(payload: {

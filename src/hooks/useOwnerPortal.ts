@@ -134,11 +134,12 @@ export function useOwnerMasterOwners() {
   })
 }
 
-export function useOwnerDatabaseTables() {
+export function useOwnerDatabaseTables(enabled = true) {
   return useQuery({
     queryKey: ['owner', 'database', 'tables'],
     queryFn: listDatabaseTables,
     staleTime: 10_000,
+    enabled,
   })
 }
 

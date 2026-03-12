@@ -1,14 +1,24 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { callOwnerAdmin } from '@/services/ownerPortal.service'
-import { useOwnerCompanies, useOwnerCompanyActions, useOwnerDatabaseTables } from '@/hooks/useOwnerPortal'
+import { useOwnerBackendHealth, useOwnerCompanies, useOwnerCompanyActions, useOwnerDatabaseTables } from '@/hooks/useOwnerPortal'
 import { useOwnerBackendHealth } from '@/hooks/useOwnerPortal'
 
 export function OwnerSistemaModule() {
   const queryClient = useQueryClient()
   const { data: companiesData, isLoading: loadingCompanies, error: companiesError } = useOwnerCompanies()
-  const { data: databaseTables, isLoading: loadingTables, error: databaseTablesError } = useOwnerDatabaseTables()
   const { data: backendHealth, error: backendHealthError } = useOwnerBackendHealth()
+
+  const supportsListDatabaseTables = useMemo(
+    () => Boolean(backendHealth?.supported_actions?.includes('list_database_tables' as any)),
+    [backendHealth],
+  )
+
+  const {
+    data: databaseTables,
+    isLoading: loadingTables,
+    error: databaseTablesError,
+  } = useOwnerDatabaseTables(supportsListDatabaseTables)
   const {
     cleanupCompanyDataMutation,
     purgeTableDataMutation,
@@ -41,10 +51,10 @@ export function OwnerSistemaModule() {
   }, [companiesError])
 
   useEffect(() => {
-    if (databaseTablesError) {
+    if (supportsListDatabaseTables && databaseTablesError) {
       setError(normalizeOwnerError(databaseTablesError))
     }
-  }, [databaseTablesError])
+  }, [databaseTablesError, supportsListDatabaseTables])
 
   const companies = useMemo(() => (companiesData?.companies ?? []) as Array<{ id: string; nome?: string; slug?: string }>, [companiesData])
   const selectedCompany = companies.find((c) => c.id === empresaId)
@@ -58,7 +68,7 @@ export function OwnerSistemaModule() {
 
   const canRunDataControl = useMemo(() => {
     if (backendHealthError) return false
-    if (!backendHealth?.supported_actions) return true
+    if (!backendHealth?.supported_actions) return false
     const required = ['list_database_tables', 'cleanup_company_data', 'purge_table_data', 'delete_company']
     return required.every((action) => backendHealth.supported_actions.includes(action as any))
   }, [backendHealth, backendHealthError])
@@ -331,6 +341,13 @@ export function OwnerSistemaModule() {
                   <td className="px-3 py-2 text-center">{table.has_empresa_id ? 'sim' : 'nao'}</td>
                 </tr>
               ))}
+              {!supportsListDatabaseTables && (
+                <tr className="border-t border-slate-800">
+                  <td className="px-3 py-3 text-slate-400" colSpan={3}>
+                    Backend legado: listagem de tabelas indisponível nesta versão publicada.
+                  </td>
+                </tr>
+              )}
             </tbody>
           </table>
         </div>
