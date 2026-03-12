@@ -2,7 +2,6 @@ import { useEffect, useMemo, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { callOwnerAdmin } from '@/services/ownerPortal.service'
 import { useOwnerBackendHealth, useOwnerCompanies, useOwnerCompanyActions, useOwnerDatabaseTables } from '@/hooks/useOwnerPortal'
-import { useOwnerBackendHealth } from '@/hooks/useOwnerPortal'
 
 export function OwnerSistemaModule() {
   const queryClient = useQueryClient()
@@ -44,6 +43,16 @@ export function OwnerSistemaModule() {
     return msg
   }
 
+  const applyOwnerActionError = (err: any, fallback: string) => {
+    const normalized = normalizeOwnerError(err)
+    if (/desatualizado|unsupported action/i.test(normalized)) {
+      setError(null)
+      setMessage('Ação indisponível nesta publicação do backend owner. Publique a versão mais recente para liberar o Data Control.')
+      return
+    }
+    setError(normalized || fallback)
+  }
+
   useEffect(() => {
     if (companiesError) {
       setError(normalizeOwnerError(companiesError))
@@ -55,6 +64,12 @@ export function OwnerSistemaModule() {
       setError(normalizeOwnerError(databaseTablesError))
     }
   }, [databaseTablesError, supportsListDatabaseTables])
+
+  useEffect(() => {
+    if (!canRunDataControl) {
+      setError(null)
+    }
+  }, [canRunDataControl])
 
   const companies = useMemo(() => (companiesData?.companies ?? []) as Array<{ id: string; nome?: string; slug?: string }>, [companiesData])
   const selectedCompany = companies.find((c) => c.id === empresaId)
@@ -96,6 +111,12 @@ export function OwnerSistemaModule() {
   }
 
   const handleCleanupCompanyData = async () => {
+    if (!canRunDataControl) {
+      setError(null)
+      setMessage('Data Control indisponível enquanto o backend owner publicado não for atualizado.')
+      return
+    }
+
     if (!empresaId) {
       setError('Selecione a empresa que deseja limpar.')
       return
@@ -123,12 +144,18 @@ export function OwnerSistemaModule() {
           setMessage(`Limpeza da empresa concluída. Registros removidos: ${totalDeleted}.`)
           setAuthPassword('')
         },
-        onError: (err: any) => setError(normalizeOwnerError(err) || 'Falha ao limpar dados da empresa.'),
+        onError: (err: any) => applyOwnerActionError(err, 'Falha ao limpar dados da empresa.'),
       },
     )
   }
 
   const handlePurgeTable = async () => {
+    if (!canRunDataControl) {
+      setError(null)
+      setMessage('Data Control indisponível enquanto o backend owner publicado não for atualizado.')
+      return
+    }
+
     if (!tableName.trim()) {
       setError('Selecione uma tabela para limpeza.')
       return
@@ -154,12 +181,18 @@ export function OwnerSistemaModule() {
           setMessage(`Tabela ${tableName} limpa com sucesso. Registros removidos: ${deleted}.`)
           setAuthPassword('')
         },
-        onError: (err: any) => setError(normalizeOwnerError(err) || 'Falha ao limpar tabela.'),
+        onError: (err: any) => applyOwnerActionError(err, 'Falha ao limpar tabela.'),
       },
     )
   }
 
   const handleDeleteCompany = async () => {
+    if (!canRunDataControl) {
+      setError(null)
+      setMessage('Data Control indisponível enquanto o backend owner publicado não for atualizado.')
+      return
+    }
+
     if (!empresaId || !selectedCompany) {
       setError('Selecione a empresa que deseja excluir.')
       return
@@ -185,7 +218,7 @@ export function OwnerSistemaModule() {
           setEmpresaId('')
           setAuthPassword('')
         },
-        onError: (err: any) => setError(normalizeOwnerError(err) || 'Falha ao excluir empresa.'),
+        onError: (err: any) => applyOwnerActionError(err, 'Falha ao excluir empresa.'),
       },
     )
   }
