@@ -1,5 +1,6 @@
 ﻿import { chromium } from 'playwright'
 import { writeFileSync, mkdirSync } from 'node:fs'
+import { spawnSync } from 'node:child_process'
 
 const OWNER_BASE_URL = process.env.OWNER_BASE_URL || 'https://owner.gppis.com.br'
 const OWNER_EMAIL = process.env.OWNER_EMAIL || 'pedrozo@gppis.com.br'
@@ -8,6 +9,7 @@ const OWNER_E2E_RUNS = Number(process.env.OWNER_E2E_RUNS || 5)
 const HEADLESS = String(process.env.OWNER_E2E_HEADLESS || 'true').toLowerCase() !== 'false'
 const AUTO_RELOGIN_ON_CRASH = String(process.env.OWNER_E2E_AUTO_RELOGIN || 'true').toLowerCase() !== 'false'
 const OWNER_E2E_CHANNEL = process.env.OWNER_E2E_CHANNEL || ''
+const OWNER_E2E_AUTO_REPAIR = String(process.env.OWNER_E2E_AUTO_REPAIR || 'true').toLowerCase() !== 'false'
 
 const report = {
   startedAt: new Date().toISOString(),
@@ -237,7 +239,41 @@ async function main() {
   })
 
   try {
-    await login(page)
+    try {
+      await login(page)
+    } catch (loginErr) {
+      const loginMessage = String(loginErr?.message || loginErr || '')
+      if (
+        OWNER_E2E_AUTO_REPAIR &&
+        (loginMessage.toLowerCase().includes('sem permissao') || loginMessage.toLowerCase().includes('falha de login'))
+      ) {
+        report.events.push({ at: new Date().toISOString(), type: 'auto_repair_attempt', details: { loginMessage } })
+        const repair = spawnSync('node', ['scripts/repair-and-verify-owner-login.mjs'], {
+          cwd: process.cwd(),
+          encoding: 'utf8',
+          stdio: 'pipe',
+          env: process.env,
+        })
+
+        report.events.push({
+          at: new Date().toISOString(),
+          type: 'auto_repair_result',
+          details: {
+            status: repair.status,
+            stdout: String(repair.stdout || '').slice(-2000),
+            stderr: String(repair.stderr || '').slice(-2000),
+          },
+        })
+
+        if (repair.status === 0) {
+          await login(page)
+        } else {
+          throw new Error(`Auto-repair falhou antes do E2E: ${String(repair.stderr || repair.stdout || 'sem detalhe')}`)
+        }
+      } else {
+        throw loginErr
+      }
+    }
 
     for (let i = 1; i <= OWNER_E2E_RUNS; i += 1) {
       try {
