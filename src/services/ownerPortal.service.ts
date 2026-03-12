@@ -435,6 +435,55 @@ export async function deleteCompanyByOwner(payload: {
     if (!isUnsupportedActionMessage(msg)) {
       throw err
     }
-    throw new Error('Backend atual nao suporta exclusao fisica de empresa (acao delete_company indisponivel). Publique a edge function owner-portal-admin atualizada para eliminar dados de forma definitiva.')
+
+    // Backend legado: tenta limpeza por empresa para evitar violações de FK antes da exclusão física do cadastro.
+    await callOwnerAdmin({
+      action: 'cleanup_company_data',
+      empresa_id: payload.empresa_id,
+      keep_company_core: false,
+      keep_billing_data: false,
+      include_auth_users: payload.include_auth_users ?? false,
+      auth_password: payload.auth_password,
+    })
+
+    const deleteFromCompanyTable = async (tableName: 'enterprise_companies' | 'empresas') => {
+      const { count, error } = await (supabase.from(tableName as any) as any)
+        .delete({ count: 'exact' })
+        .eq('id', payload.empresa_id)
+
+      return {
+        tableName,
+        deletedRows: Number(count ?? 0),
+        error,
+      }
+    }
+
+    const primaryDelete = await deleteFromCompanyTable('enterprise_companies')
+    const legacyDelete = await deleteFromCompanyTable('empresas')
+
+    const deletedRowsTotal = primaryDelete.deletedRows + legacyDelete.deletedRows
+    if (deletedRowsTotal > 0) {
+      return {
+        success: true,
+        legacy_physical_delete: true,
+        deleted_rows_total: deletedRowsTotal,
+        deleted_rows_by_table: {
+          enterprise_companies: primaryDelete.deletedRows,
+          empresas: legacyDelete.deletedRows,
+        },
+      }
+    }
+
+    const hasPrimaryError = Boolean(primaryDelete.error)
+    const hasLegacyError = Boolean(legacyDelete.error)
+    if (hasPrimaryError || hasLegacyError) {
+      const primaryMessage = primaryDelete.error ? String(primaryDelete.error.message ?? primaryDelete.error) : ''
+      const legacyMessage = legacyDelete.error ? String(legacyDelete.error.message ?? legacyDelete.error) : ''
+      throw new Error(
+        `Falha na exclusao fisica da empresa no fallback legado. enterprise_companies: ${primaryMessage || 'sem erro'}, empresas: ${legacyMessage || 'sem erro'}`,
+      )
+    }
+
+    throw new Error('Nenhum registro de empresa foi removido no fallback legado. Verifique se a empresa existe em enterprise_companies/empresas e se o usuario atual possui permissao de DELETE (RLS).')
   }
 }
