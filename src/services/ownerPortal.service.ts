@@ -139,33 +139,51 @@ export interface OwnerBackendHealth {
 
 const parseErrorMessage = async (error: any) => {
   if (!error) return 'Falha desconhecida ao executar operação Owner.'
+  const context = error?.context
+
+  const status = Number((context as any)?.status)
+  const statusText = String((context as any)?.statusText ?? '').trim()
+  const withStatus = (message: string) => {
+    if (!Number.isFinite(status) || status <= 0) return message
+    const prefix = statusText ? `HTTP ${status} ${statusText}` : `HTTP ${status}`
+    return message ? `${prefix}: ${message}` : prefix
+  }
+
+  if (context) {
+    try {
+      const jsonReader = typeof context.clone === 'function' ? context.clone() : context
+      if (typeof jsonReader.json === 'function') {
+        const json = await jsonReader.json()
+        const msg = String(json?.error ?? json?.message ?? json?.details?.reason ?? '').trim()
+        if (msg) return withStatus(msg)
+      }
+    } catch {
+      // Ignore parse error and continue fallback.
+    }
+
+    try {
+      const textReader = typeof context.clone === 'function' ? context.clone() : context
+      if (typeof textReader.text === 'function') {
+        const txt = String(await textReader.text()).trim()
+        if (txt) {
+          try {
+            const parsed = JSON.parse(txt)
+            const parsedMsg = String(parsed?.error ?? parsed?.message ?? parsed?.details?.reason ?? '').trim()
+            if (parsedMsg) return withStatus(parsedMsg)
+          } catch {
+            return withStatus(txt)
+          }
+        }
+      }
+    } catch {
+      // Ignore parse error and continue fallback.
+    }
+  }
 
   const direct = String(error?.message ?? '').trim()
-  if (direct) return direct
+  if (direct) return withStatus(direct)
 
-  const context = error?.context
-  if (!context) return 'Falha desconhecida ao executar operação Owner.'
-
-  try {
-    if (typeof context.json === 'function') {
-      const json = await context.json()
-      const msg = String(json?.error ?? json?.message ?? '').trim()
-      if (msg) return msg
-    }
-  } catch {
-    // Ignore parse error and continue fallback.
-  }
-
-  try {
-    if (typeof context.text === 'function') {
-      const txt = String(await context.text()).trim()
-      if (txt) return txt
-    }
-  } catch {
-    // Ignore parse error and continue fallback.
-  }
-
-  return 'Falha desconhecida ao executar operação Owner.'
+  return withStatus('Falha desconhecida ao executar operação Owner.')
 }
 
 export async function callOwnerAdmin<T = unknown>(payload: Record<string, unknown>) {
