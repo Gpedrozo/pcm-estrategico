@@ -478,6 +478,7 @@ const PLATFORM_TABLES = [
   "equipamentos",
   "execucoes_lubrificacao",
   "execucoes_os",
+  "execucoes_os_pausas",
   "execucoes_preventivas",
   "fmea",
   "fornecedores",
@@ -485,6 +486,7 @@ const PLATFORM_TABLES = [
   "inspecoes",
   "legacy_tenant_rollback_snapshot",
   "maintenance_schedule",
+  "maintenance_action_suggestions",
   "materiais",
   "materiais_os",
   "mecanicos",
@@ -492,6 +494,7 @@ const PLATFORM_TABLES = [
   "melhorias",
   "movimentacoes_materiais",
   "notificacoes",
+  "orcamentos_manutencao",
   "ordens_servico",
   "permissoes_granulares",
   "permissoes_trabalho",
@@ -507,7 +510,9 @@ const PLATFORM_TABLES = [
   "solicitacoes",
   "solicitacoes_manutencao",
   "subscriptions",
+  "subscription_payments",
   "support_tickets",
+  "system_notifications",
   "templates_preventivos",
   "user_roles",
   "empresas",
@@ -534,6 +539,19 @@ const PROTECTED_PLATFORM_TABLES = new Set([
   "user_roles",
   "profiles",
 ]);
+
+function extractReferencedTableFromFkError(message?: string | null) {
+  const text = message ?? "";
+  const onTable = text.match(/on table\s+"([a-zA-Z0-9_]+)"/i);
+  if (onTable?.[1]) return onTable[1];
+
+  const allQuoted = Array.from(text.matchAll(/"([a-zA-Z0-9_]+)"/g)).map((m) => m[1]);
+  if (allQuoted.length > 1) {
+    return allQuoted[allQuoted.length - 1];
+  }
+
+  return null;
+}
 
 async function listDatabaseTables(admin: ReturnType<typeof adminClient>, empresaId?: string | null) {
   const rows: Array<{ table_name: string; total_rows: number; has_empresa_id: boolean }> = [];
@@ -613,8 +631,9 @@ async function cleanupCompanyTenantRows(
   const deletedByTable: Record<string, number> = {};
 
   // Repeating passes reduces FK ordering sensitivity because dependent rows are removed first.
-  for (let pass = 0; pass < 6; pass += 1) {
+  for (let pass = 0; pass < 12; pass += 1) {
     let passDeleted = 0;
+    const pendingFkTables = new Set<string>();
 
     for (const tableName of tenantTables) {
       const { count, error } = await admin
@@ -623,6 +642,15 @@ async function cleanupCompanyTenantRows(
         .eq("empresa_id", empresaId);
 
       if (error) {
+        const isFkOrderingError =
+          (error as any)?.code === "23503" ||
+          String((error as any)?.message ?? "").toLowerCase().includes("foreign key");
+
+        if (isFkOrderingError) {
+          pendingFkTables.add(tableName);
+          continue;
+        }
+
         return { error: `Falha ao limpar tabela ${tableName}: ${error.message}` };
       }
 
@@ -633,7 +661,14 @@ async function cleanupCompanyTenantRows(
       }
     }
 
-    if (passDeleted === 0) break;
+    if (passDeleted === 0) {
+      if (pendingFkTables.size > 0) {
+        return {
+          error: `Falha ao limpar dependências de FK por empresa_id. Tabelas pendentes: ${Array.from(pendingFkTables).join(", ")}`,
+        };
+      }
+      break;
+    }
   }
 
   const userIds = await collectCompanyUserIds(admin, empresaId);
@@ -2026,13 +2061,53 @@ Deno.serve(async (req) => {
     await admin.from("contracts").delete().eq("empresa_id", body.empresa_id);
     await admin.from("subscriptions").delete().eq("empresa_id", body.empresa_id);
 
-    const { error: deleteCompanyError } = await admin
-      .from("empresas")
-      .delete()
-      .eq("id", body.empresa_id);
+    let lastDeleteCompanyError: any = null;
+    for (let attempt = 0; attempt < 8; attempt += 1) {
+      const { error: deleteCompanyError } = await admin
+        .from("empresas")
+        .delete()
+        .eq("id", body.empresa_id);
 
-    if (deleteCompanyError) {
-      return fail(`Falha ao excluir empresa: ${deleteCompanyError.message}`, 400, null, req);
+      if (!deleteCompanyError) {
+        lastDeleteCompanyError = null;
+        break;
+      }
+
+      lastDeleteCompanyError = deleteCompanyError;
+      const isFkError =
+        (deleteCompanyError as any)?.code === "23503" ||
+        String(deleteCompanyError.message ?? "").toLowerCase().includes("foreign key");
+
+      if (!isFkError) {
+        break;
+      }
+
+      const referencedTable = extractReferencedTableFromFkError(deleteCompanyError.message);
+      if (!referencedTable) {
+        break;
+      }
+
+      const fallbackDelete = await admin
+        .from(referencedTable)
+        .delete({ count: "exact" })
+        .eq("empresa_id", body.empresa_id);
+
+      if (fallbackDelete.error) {
+        break;
+      }
+    }
+
+    if (lastDeleteCompanyError) {
+      const referencedTable = extractReferencedTableFromFkError(lastDeleteCompanyError.message);
+      return fail(
+        `Falha ao excluir empresa por dependências de FK (${referencedTable ?? "empresa_id"}). Execute cleanup_company_data/delete_company no backend atualizado para remover dependências tenant antes da exclusão física. Detalhe: ${lastDeleteCompanyError.message}`,
+        400,
+        {
+          fk_table: referencedTable,
+          reason: lastDeleteCompanyError.message,
+        },
+        req,
+      );
     }
 
     await logOwnerMasterHiddenAudit(admin, {
