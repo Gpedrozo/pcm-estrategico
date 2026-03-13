@@ -250,3 +250,13 @@ SELECT
 FROM pg_stat_user_tables
 WHERE schemaname = 'public'
 ORDER BY n_live_tup DESC, relname;
+
+-- 6) Validacao exata (nao estimada)
+SELECT count(*)::int AS total_empresas_exato FROM public.empresas;
+
+SELECT
+  (SELECT count(*)::int FROM public.solicitacoes) AS solicitacoes_exato,
+  (SELECT count(*)::int FROM public.solicitacoes_manutencao) AS solicitacoes_manutencao_exato,
+  (SELECT count(*)::int FROM public.subscription_payments) AS subscription_payments_exato,
+  (SELECT count(*)::int FROM public.contract_versions) AS contract_versions_exato,
+  (SELECT count(*)::int FROM public.enterprise_audit_logs) AS enterprise_audit_logs_exato;
