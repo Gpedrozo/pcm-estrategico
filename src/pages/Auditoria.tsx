@@ -33,9 +33,14 @@ export default function Auditoria() {
     usuario: '',
     acao: '',
     search: '',
+    dateFrom: '',
+    dateTo: '',
   });
 
-  const { data: auditoria, isLoading, error } = useAuditoria();
+  const { data: auditoria, isLoading, error } = useAuditoria({
+    dateFrom: filters.dateFrom || undefined,
+    dateTo: filters.dateTo || undefined,
+  });
 
   const formatDateTime = (date: string) => {
     return new Date(date).toLocaleString('pt-BR');
@@ -153,10 +158,28 @@ export default function Auditoria() {
             </Select>
           </div>
 
+          <div className="space-y-2">
+            <Label>Data inicial</Label>
+            <Input
+              type="datetime-local"
+              value={filters.dateFrom}
+              onChange={(e) => setFilters({ ...filters, dateFrom: e.target.value })}
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label>Data final</Label>
+            <Input
+              type="datetime-local"
+              value={filters.dateTo}
+              onChange={(e) => setFilters({ ...filters, dateTo: e.target.value })}
+            />
+          </div>
+
           <div className="flex items-end">
             <Button
               variant="outline"
-              onClick={() => setFilters({ usuario: '', acao: '', search: '' })}
+              onClick={() => setFilters({ usuario: '', acao: '', search: '', dateFrom: '', dateTo: '' })}
               className="w-full"
             >
               Limpar Filtros

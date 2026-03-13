@@ -93,6 +93,7 @@ const ssmaMenuItems = [
 ];
 
 const ajudaMenuItems = [
+  { title: 'Suporte', url: '/suporte', icon: MessageSquare },
   { title: 'Manuais de Operação', url: '/manuais-operacao', icon: FileText },
 ];
 

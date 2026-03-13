@@ -73,6 +73,7 @@ type Payload = {
     role?: "SYSTEM_ADMIN";
   };
   plan?: {
+    id?: string;
     code: string;
     name: string;
     description?: string;
@@ -1362,21 +1363,29 @@ Deno.serve(async (req) => {
   }
 
   if (body.action === "update_plan") {
-    if (!body.plan?.code) return fail("plan code is required", 400, null, req);
-    const { error } = await admin
+    const planId = body.plan?.id?.trim();
+    const planCode = body.plan?.code?.trim();
+    if (!planId && !planCode) return fail("plan id or code is required", 400, null, req);
+
+    const updatePayload = {
+      name: body.plan?.name,
+      description: body.plan?.description,
+      user_limit: body.plan?.user_limit,
+      module_flags: body.plan?.module_flags,
+      data_limit_mb: body.plan?.data_limit_mb,
+      premium_features: body.plan?.premium_features,
+      company_limit: body.plan?.company_limit,
+      price_month: body.plan?.price_month,
+      active: body.plan?.active,
+    };
+
+    let query = admin
       .from("plans")
-      .update({
-        name: body.plan.name,
-        description: body.plan.description,
-        user_limit: body.plan.user_limit,
-        module_flags: body.plan.module_flags,
-        data_limit_mb: body.plan.data_limit_mb,
-        premium_features: body.plan.premium_features,
-        company_limit: body.plan.company_limit,
-        price_month: body.plan.price_month,
-        active: body.plan.active,
-      })
-      .eq("code", body.plan.code);
+      .update(updatePayload);
+
+    query = planId ? query.eq("id", planId) : query.eq("code", planCode);
+
+    const { error } = await query;
     if (error) return fail(error.message, 400, null, req);
     return ok({ success: true }, 200, req);
   }

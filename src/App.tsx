@@ -28,6 +28,7 @@ const Equipamentos = lazy(() => import('./pages/Equipamentos'))
 const Mecanicos = lazy(() => import('./pages/Mecanicos'))
 const Usuarios = lazy(() => import('./pages/Usuarios'))
 const Auditoria = lazy(() => import('./pages/Auditoria'))
+const Suporte = lazy(() => import('./pages/Suporte'))
 const Hierarquia = lazy(() => import('./pages/Hierarquia'))
 const Materiais = lazy(() => import('./pages/Materiais'))
 const Solicitacoes = lazy(() => import('./pages/Solicitacoes'))
@@ -171,6 +172,7 @@ function TenantRoutes() {
                 <Route path="/ssma" element={<SSMA />} />
                 <Route path="/usuarios" element={<Usuarios />} />
                 <Route path="/auditoria" element={<Auditoria />} />
+                <Route path="/suporte" element={<Suporte />} />
                 <Route
                   path="/empresa/configuracoes"
                   element={

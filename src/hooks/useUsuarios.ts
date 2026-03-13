@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { writeAuditLog } from '@/lib/audit';
+import { useAuth } from '@/contexts/AuthContext';
 
 export interface ProfileRow {
   id: string;
@@ -28,13 +29,18 @@ export interface UsuarioCompleto {
 }
 
 export function useUsuarios() {
+  const { tenantId } = useAuth();
+
   return useQuery({
-    queryKey: ['usuarios'],
+    queryKey: ['usuarios', tenantId],
     queryFn: async () => {
+      if (!tenantId) return [];
+
       // Get profiles
       const { data: profiles, error: profilesError } = await supabase
         .from('profiles')
         .select('*')
+        .eq('empresa_id', tenantId)
         .order('nome', { ascending: true });
 
       if (profilesError) throw profilesError;
@@ -42,7 +48,8 @@ export function useUsuarios() {
       // Get roles
       const { data: roles, error: rolesError } = await supabase
         .from('user_roles')
-        .select('*');
+        .select('*')
+        .eq('empresa_id', tenantId);
 
       if (rolesError) throw rolesError;
 
@@ -60,19 +67,24 @@ export function useUsuarios() {
 
       return usuarios;
     },
+    enabled: Boolean(tenantId),
   });
 }
 
 export function useUpdateUsuarioRole() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const { tenantId } = useAuth();
 
   return useMutation({
     mutationFn: async ({ userId, role }: { userId: string; role: AppRole }) => {
+      if (!tenantId) throw new Error('Tenant não identificado para atualização de usuário.');
+
       const { error } = await supabase
         .from('user_roles')
         .update({ role })
-        .eq('user_id', userId);
+        .eq('user_id', userId)
+        .eq('empresa_id', tenantId);
 
       if (error) throw error;
 
@@ -85,7 +97,7 @@ export function useUpdateUsuarioRole() {
       });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['usuarios'] });
+      queryClient.invalidateQueries({ queryKey: ['usuarios', tenantId] });
       toast({
         title: 'Perfil Atualizado',
         description: 'O perfil do usuário foi atualizado com sucesso.',
@@ -104,6 +116,7 @@ export function useUpdateUsuarioRole() {
 export function useUpdateUsuarioNome() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const { tenantId } = useAuth();
 
   return useMutation({
     mutationFn: async ({ userId, nome }: { userId: string; nome: string }) => {
@@ -123,7 +136,7 @@ export function useUpdateUsuarioNome() {
       });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['usuarios'] });
+      queryClient.invalidateQueries({ queryKey: ['usuarios', tenantId] });
       toast({
         title: 'Nome Atualizado',
         description: 'O nome do usuário foi atualizado com sucesso.',

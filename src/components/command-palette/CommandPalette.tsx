@@ -115,6 +115,9 @@ export function CommandPalette() {
     
     // Segurança
     { id: 'ssma', label: 'SSMA', description: 'Segurança, Saúde e Meio Ambiente', icon: Shield, action: () => navigateTo('/ssma'), keywords: ['seguranca', 'incidentes', 'epi', 'permissao'], group: 'SSMA' },
+
+    // Ajuda
+    { id: 'suporte', label: 'Suporte', description: 'Abrir chamados para problemas no sistema', icon: MessageSquare, action: () => navigateTo('/suporte'), keywords: ['helpdesk', 'ticket', 'erro', 'ajuda'], group: 'Ajuda' },
   ];
 
   const adminItems: CommandItem[] = [

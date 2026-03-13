@@ -64,7 +64,9 @@ export default function Owner() {
   const [active, setActive] = useState<OwnerTab>('dashboard')
   const [feedback, setFeedback] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [systemActionOutput, setSystemActionOutput] = useState<unknown>(null)
   const [systemForm, setSystemForm] = useState({ user_id: '', empresa_id: '', table_name: '', auth_password: '', keep_core: false, keep_billing: false, include_auth_users: true })
+  const [auditFilters, setAuditFilters] = useState({ empresa_id: '', user_id: '', module: '', from: '', to: '', action_type: '', severity: '' })
 
   const isOwnerMaster = (user?.email || '').toLowerCase() === OWNER_MASTER_EMAIL
 
@@ -75,7 +77,13 @@ export default function Owner() {
   const { data: plansData, isLoading: isLoadingPlans } = useOwnerPlans()
   const { data: subscriptionsData, isLoading: isLoadingSubscriptions } = useOwnerSubscriptions()
   const { data: contractsData, isLoading: isLoadingContracts } = useOwnerContracts()
-  const { data: auditData, isLoading: isLoadingAudit } = useOwnerAuditLogs()
+  const { data: auditData, isLoading: isLoadingAudit } = useOwnerAuditLogs({
+    empresa_id: auditFilters.empresa_id || undefined,
+    user_id: auditFilters.user_id || undefined,
+    module: auditFilters.module || undefined,
+    from: auditFilters.from || undefined,
+    to: auditFilters.to || undefined,
+  })
   const { data: supportData, isLoading: isLoadingSupport } = useOwnerSupportTickets()
   const { data: ownersData, isLoading: isLoadingOwners } = useOwnerMasterOwners()
   const monitoringLive = active === 'monitoramento'
@@ -94,14 +102,17 @@ export default function Owner() {
     () => toArray<{ id: string; nome?: string; slug?: string; status?: string }>((companiesData as any)?.companies),
     [companiesData],
   )
-  const users = useMemo(() => toArray<{ id: string; nome?: string; email?: string; status?: string }>(usersData), [usersData])
+  const users = useMemo(() => toArray<{ id: string; nome?: string; email?: string; status?: string; empresa_id?: string; user_roles?: Array<{ role?: string; empresa_id?: string }> }>(usersData), [usersData])
   const plans = useMemo(() => toArray<{ id: string; name?: string; code?: string; price_month?: number }>(plansData), [plansData])
   const subscriptions = useMemo(
-    () => toArray<{ id: string; empresa_id?: string; plan_id?: string; status?: string; amount?: number }>(subscriptionsData),
+    () => toArray<{ id: string; empresa_id?: string; plan_id?: string; status?: string; amount?: number; payment_status?: string; updated_at?: string }>(subscriptionsData),
     [subscriptionsData],
   )
   const contracts = useMemo(() => toArray<{ id: string; empresa_id?: string; status?: string; updated_at?: string }>(contractsData), [contractsData])
-  const logs = useMemo(() => toArray<{ id: string; action_type?: string; source?: string; created_at?: string }>(auditData), [auditData])
+  const logs = useMemo(
+    () => toArray<{ id: string; action_type?: string; source?: string; created_at?: string; severity?: string; actor_email?: string; actor_id?: string }>(auditData),
+    [auditData],
+  )
   const tickets = useMemo(() => toArray<{ id: string; subject?: string; status?: string; priority?: string }>(supportData), [supportData])
   const owners = useMemo(() => toArray<{ user_id: string; role?: string; profile?: { nome?: string; email?: string } }>(ownersData), [ownersData])
   const tables = useMemo(
@@ -120,6 +131,37 @@ export default function Owner() {
       })),
     [tables],
   )
+
+  const filteredLogs = useMemo(() => {
+    return logs.filter((log) => {
+      if (auditFilters.action_type && log.action_type !== auditFilters.action_type) return false
+      if (auditFilters.severity && (log.severity || '') !== auditFilters.severity) return false
+      return true
+    })
+  }, [logs, auditFilters.action_type, auditFilters.severity])
+
+  const financeiroResumo = useMemo(() => {
+    const activeSubs = subscriptions.filter((sub) => sub.status === 'ativa')
+    const paidSubs = subscriptions.filter((sub) => sub.payment_status === 'paid')
+    const lateSubs = subscriptions.filter((sub) => sub.status === 'atrasada' || sub.payment_status === 'late')
+    const mrr = activeSubs.reduce((acc, sub) => acc + Number(sub.amount ?? 0), 0)
+    return {
+      totalAssinaturas: subscriptions.length,
+      ativas: activeSubs.length,
+      pagas: paidSubs.length,
+      atrasadas: lateSubs.length,
+      mrr,
+    }
+  }, [subscriptions])
+
+  const supportResumo = useMemo(() => {
+    return {
+      total: tickets.length,
+      aberto: tickets.filter((ticket) => ticket.status === 'aberto').length,
+      andamento: tickets.filter((ticket) => ticket.status === 'em_andamento').length,
+      resolvido: tickets.filter((ticket) => ticket.status === 'resolvido').length,
+    }
+  }, [tickets])
 
   const companyStatusChartData = useMemo(() => {
     const grouped = companies.reduce<Record<string, number>>((acc, company) => {
@@ -165,7 +207,20 @@ export default function Owner() {
     deleteCompanyByOwnerMutation,
   } = useOwnerCompanyActions()
 
-  const [createCompanyForm, setCreateCompanyForm] = useState({ nome: '', slug: '', admin_nome: '', admin_email: '' })
+  const [createCompanyForm, setCreateCompanyForm] = useState({
+    nome: '',
+    slug: '',
+    admin_nome: '',
+    admin_email: '',
+    razao_social: '',
+    nome_fantasia: '',
+    cnpj: '',
+    endereco: '',
+    telefone: '',
+    email: '',
+    responsavel: '',
+    segmento: '',
+  })
   const [updateCompanyForm, setUpdateCompanyForm] = useState({ empresa_id: '', nome: '', status: 'active' })
   const [createUserForm, setCreateUserForm] = useState({ nome: '', email: '', password: '', role: 'ADMIN', empresa_id: '' })
   const [userStatusForm, setUserStatusForm] = useState({ user_id: '', status: 'ativo' })
@@ -386,21 +441,40 @@ export default function Owner() {
 
       {active === 'empresas' && (
         <div className="space-y-4">
-          <Card title="Criar empresa">
+          <Card title="Criar empresa" subtitle="Fluxo completo de onboarding: empresa, dados base e administrador inicial.">
             <div className="grid gap-2 md:grid-cols-4">
               <input className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm" placeholder="Nome" value={createCompanyForm.nome} onChange={(e) => setCreateCompanyForm((s) => ({ ...s, nome: e.target.value }))} />
               <input className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm" placeholder="Slug" value={createCompanyForm.slug} onChange={(e) => setCreateCompanyForm((s) => ({ ...s, slug: e.target.value }))} />
               <input className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm" placeholder="Nome admin" value={createCompanyForm.admin_nome} onChange={(e) => setCreateCompanyForm((s) => ({ ...s, admin_nome: e.target.value }))} />
               <input className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm" placeholder="Email admin" value={createCompanyForm.admin_email} onChange={(e) => setCreateCompanyForm((s) => ({ ...s, admin_email: e.target.value }))} />
+              <input className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm" placeholder="Razao social" value={createCompanyForm.razao_social} onChange={(e) => setCreateCompanyForm((s) => ({ ...s, razao_social: e.target.value }))} />
+              <input className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm" placeholder="Nome fantasia" value={createCompanyForm.nome_fantasia} onChange={(e) => setCreateCompanyForm((s) => ({ ...s, nome_fantasia: e.target.value }))} />
+              <input className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm" placeholder="CNPJ" value={createCompanyForm.cnpj} onChange={(e) => setCreateCompanyForm((s) => ({ ...s, cnpj: e.target.value }))} />
+              <input className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm" placeholder="Telefone" value={createCompanyForm.telefone} onChange={(e) => setCreateCompanyForm((s) => ({ ...s, telefone: e.target.value }))} />
+              <input className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm md:col-span-2" placeholder="Endereco" value={createCompanyForm.endereco} onChange={(e) => setCreateCompanyForm((s) => ({ ...s, endereco: e.target.value }))} />
+              <input className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm" placeholder="Email operacional" value={createCompanyForm.email} onChange={(e) => setCreateCompanyForm((s) => ({ ...s, email: e.target.value }))} />
+              <input className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm" placeholder="Responsavel" value={createCompanyForm.responsavel} onChange={(e) => setCreateCompanyForm((s) => ({ ...s, responsavel: e.target.value }))} />
+              <input className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm" placeholder="Segmento" value={createCompanyForm.segmento} onChange={(e) => setCreateCompanyForm((s) => ({ ...s, segmento: e.target.value }))} />
             </div>
             <button
               className="mt-3 rounded bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground"
-              disabled={createCompanyMutation.isPending || !createCompanyForm.nome || !createCompanyForm.admin_email}
+              disabled={createCompanyMutation.isPending || !createCompanyForm.nome || !createCompanyForm.admin_nome || !createCompanyForm.admin_email}
               onClick={() =>
                 runAction(
                   () =>
                     createCompanyMutation.mutateAsync({
-                      company: { nome: createCompanyForm.nome, slug: createCompanyForm.slug || undefined },
+                      company: {
+                        nome: createCompanyForm.nome,
+                        slug: createCompanyForm.slug || undefined,
+                        razao_social: createCompanyForm.razao_social || undefined,
+                        nome_fantasia: createCompanyForm.nome_fantasia || undefined,
+                        cnpj: createCompanyForm.cnpj || undefined,
+                        endereco: createCompanyForm.endereco || undefined,
+                        telefone: createCompanyForm.telefone || undefined,
+                        email: createCompanyForm.email || undefined,
+                        responsavel: createCompanyForm.responsavel || undefined,
+                        segmento: createCompanyForm.segmento || undefined,
+                      },
                       user: { nome: createCompanyForm.admin_nome || 'Administrador', email: createCompanyForm.admin_email, role: 'ADMIN' },
                     }),
                   'Empresa criada com sucesso.',
@@ -475,6 +549,8 @@ export default function Owner() {
                 <option value="ADMIN">ADMIN</option>
                 <option value="GESTOR">GESTOR</option>
                 <option value="TECNICO">TECNICO</option>
+                <option value="USUARIO">USUARIO</option>
+                <option value="SOLICITANTE">SOLICITANTE</option>
               </select>
               <select className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm" value={createUserForm.empresa_id} onChange={(e) => setCreateUserForm((s) => ({ ...s, empresa_id: e.target.value }))}>
                 <option value="">Empresa</option>
@@ -487,7 +563,7 @@ export default function Owner() {
             </div>
             <button
               className="mt-3 rounded bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground"
-              disabled={createUserMutation.isPending || !createUserForm.email}
+              disabled={createUserMutation.isPending || !createUserForm.nome || !createUserForm.email || !createUserForm.empresa_id}
               onClick={() =>
                 runAction(
                   () =>
@@ -531,6 +607,8 @@ export default function Owner() {
                   <tr>
                     <th className="px-3 py-2 text-left">Nome</th>
                     <th className="px-3 py-2 text-left">Email</th>
+                    <th className="px-3 py-2 text-left">Empresa</th>
+                    <th className="px-3 py-2 text-left">Papeis</th>
                     <th className="px-3 py-2 text-left">Status</th>
                   </tr>
                 </thead>
@@ -539,12 +617,14 @@ export default function Owner() {
                     <tr key={u.id} className="border-t border-slate-800">
                       <td className="px-3 py-2">{u.nome || '-'}</td>
                       <td className="px-3 py-2">{u.email || '-'}</td>
+                      <td className="px-3 py-2">{companies.find((company) => company.id === u.empresa_id)?.nome || u.empresa_id || '-'}</td>
+                      <td className="px-3 py-2">{(u.user_roles || []).map((roleItem) => roleItem.role).join(', ') || '-'}</td>
                       <td className="px-3 py-2">{u.status || '-'}</td>
                     </tr>
                   ))}
                   {isLoadingUsers && (
                     <tr>
-                      <td className="px-3 py-3 text-slate-400" colSpan={3}>Carregando usuarios...</td>
+                      <td className="px-3 py-3 text-slate-400" colSpan={5}>Carregando usuarios...</td>
                     </tr>
                   )}
                 </tbody>
@@ -567,7 +647,21 @@ export default function Owner() {
 
           <Card title="Atualizar plano">
             <div className="grid gap-2 md:grid-cols-4">
-              <select className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm" value={updatePlanForm.id} onChange={(e) => setUpdatePlanForm((s) => ({ ...s, id: e.target.value }))}>
+              <select
+                className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm"
+                value={updatePlanForm.id}
+                onChange={(e) => {
+                  const selectedId = e.target.value
+                  const selectedPlan = plans.find((plan) => plan.id === selectedId)
+                  setUpdatePlanForm((s) => ({
+                    ...s,
+                    id: selectedId,
+                    code: selectedPlan?.code || s.code,
+                    name: selectedPlan?.name || s.name,
+                    price_month: selectedPlan?.price_month !== undefined ? String(selectedPlan.price_month) : s.price_month,
+                  }))
+                }}
+              >
                 <option value="">Selecione plano</option>
                 {plans.map((p) => (
                   <option key={p.id} value={p.id}>
@@ -578,6 +672,10 @@ export default function Owner() {
               <input className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm" placeholder="Novo codigo" value={updatePlanForm.code} onChange={(e) => setUpdatePlanForm((s) => ({ ...s, code: e.target.value }))} />
               <input className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm" placeholder="Novo nome" value={updatePlanForm.name} onChange={(e) => setUpdatePlanForm((s) => ({ ...s, name: e.target.value }))} />
               <button className="rounded border border-slate-600 px-3 py-2 text-sm" disabled={!updatePlanForm.id || updatePlanMutation.isPending} onClick={() => runAction(() => updatePlanMutation.mutateAsync({ id: updatePlanForm.id, code: updatePlanForm.code || undefined, name: updatePlanForm.name || undefined, price_month: updatePlanForm.price_month ? Number(updatePlanForm.price_month) : undefined }), 'Plano atualizado com sucesso.')}>Salvar</button>
+            </div>
+            <div className="mt-2 grid gap-2 md:grid-cols-2">
+              <input className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm" placeholder="Preco mensal" value={updatePlanForm.price_month} onChange={(e) => setUpdatePlanForm((s) => ({ ...s, price_month: e.target.value }))} />
+              <p className="self-center text-xs text-slate-400">Ao selecionar um plano, codigo/nome/preco sao preenchidos automaticamente para evitar inconsistencias.</p>
             </div>
           </Card>
 
@@ -704,18 +802,62 @@ export default function Owner() {
       )}
 
       {active === 'financeiro' && (
-        <Card title="Financeiro" subtitle="Atualizacao de cobranca da assinatura">
-          <div className="grid gap-2 md:grid-cols-4">
-            <input className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm" placeholder="Subscription ID" value={billingForm.subscription_id} onChange={(e) => setBillingForm((s) => ({ ...s, subscription_id: e.target.value }))} />
-            <input className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm" placeholder="Novo valor" value={billingForm.amount} onChange={(e) => setBillingForm((s) => ({ ...s, amount: e.target.value }))} />
-            <select className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm" value={billingForm.payment_status} onChange={(e) => setBillingForm((s) => ({ ...s, payment_status: e.target.value }))}>
-              <option value="paid">Pago</option>
-              <option value="pending">Pendente</option>
-              <option value="late">Atrasado</option>
-            </select>
-            <button className="rounded border border-slate-600 px-3 py-2 text-sm" disabled={!billingForm.subscription_id || updateSubscriptionBillingMutation.isPending} onClick={() => runAction(() => updateSubscriptionBillingMutation.mutateAsync({ subscriptionId: billingForm.subscription_id, billing: { amount: billingForm.amount ? Number(billingForm.amount) : undefined, payment_status: billingForm.payment_status } }), 'Cobranca atualizada com sucesso.')}>Atualizar cobranca</button>
-          </div>
-        </Card>
+        <div className="space-y-4">
+          <Card title="Financeiro" subtitle="Visao consolidada de receita, adimplencia e ajuste de cobranca.">
+            <div className="grid gap-3 md:grid-cols-5">
+              <Metric label="Total assinaturas" value={financeiroResumo.totalAssinaturas} />
+              <Metric label="Ativas" value={financeiroResumo.ativas} />
+              <Metric label="Pagas" value={financeiroResumo.pagas} />
+              <Metric label="Atrasadas" value={financeiroResumo.atrasadas} />
+              <Metric label="MRR" value={`R$ ${financeiroResumo.mrr.toLocaleString('pt-BR')}`} />
+            </div>
+          </Card>
+
+          <Card title="Atualizacao de cobranca por assinatura">
+            <div className="grid gap-2 md:grid-cols-4">
+              <input className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm" placeholder="Subscription ID" value={billingForm.subscription_id} onChange={(e) => setBillingForm((s) => ({ ...s, subscription_id: e.target.value }))} />
+              <input className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm" placeholder="Novo valor" value={billingForm.amount} onChange={(e) => setBillingForm((s) => ({ ...s, amount: e.target.value }))} />
+              <select className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm" value={billingForm.payment_status} onChange={(e) => setBillingForm((s) => ({ ...s, payment_status: e.target.value }))}>
+                <option value="paid">Pago</option>
+                <option value="pending">Pendente</option>
+                <option value="late">Atrasado</option>
+              </select>
+              <button className="rounded border border-slate-600 px-3 py-2 text-sm" disabled={!billingForm.subscription_id || updateSubscriptionBillingMutation.isPending} onClick={() => runAction(() => updateSubscriptionBillingMutation.mutateAsync({ subscriptionId: billingForm.subscription_id, billing: { amount: billingForm.amount ? Number(billingForm.amount) : undefined, payment_status: billingForm.payment_status } }), 'Cobranca atualizada com sucesso.')}>Atualizar cobranca</button>
+            </div>
+          </Card>
+
+          <Card title="Assinaturas para acompanhamento financeiro">
+            <div className="max-h-80 overflow-auto rounded border border-slate-800">
+              <table className="w-full text-xs">
+                <thead className="bg-slate-950">
+                  <tr>
+                    <th className="px-3 py-2 text-left">Assinatura</th>
+                    <th className="px-3 py-2 text-left">Empresa</th>
+                    <th className="px-3 py-2 text-left">Status</th>
+                    <th className="px-3 py-2 text-left">Pagamento</th>
+                    <th className="px-3 py-2 text-right">Valor</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {subscriptions.map((sub) => (
+                    <tr key={sub.id} className="border-t border-slate-800">
+                      <td className="px-3 py-2">{sub.id}</td>
+                      <td className="px-3 py-2">{companies.find((company) => company.id === sub.empresa_id)?.nome || sub.empresa_id || '-'}</td>
+                      <td className="px-3 py-2">{sub.status || '-'}</td>
+                      <td className="px-3 py-2">{sub.payment_status || '-'}</td>
+                      <td className="px-3 py-2 text-right">{Number(sub.amount || 0).toLocaleString('pt-BR')}</td>
+                    </tr>
+                  ))}
+                  {isLoadingSubscriptions && (
+                    <tr>
+                      <td className="px-3 py-3 text-slate-400" colSpan={5}>Carregando assinaturas...</td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </Card>
+        </div>
       )}
 
       {active === 'contratos' && (
@@ -826,26 +968,65 @@ export default function Owner() {
 
       {(active === 'auditoria' || active === 'logs') && (
         <Card title={active === 'auditoria' ? 'Auditoria' : 'Logs'} subtitle="Eventos e trilha tecnica da plataforma">
+          <div className="mb-4 grid gap-2 md:grid-cols-4">
+            <select className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm" value={auditFilters.empresa_id} onChange={(e) => setAuditFilters((s) => ({ ...s, empresa_id: e.target.value }))}>
+              <option value="">Empresa (todas)</option>
+              {companies.map((company) => (
+                <option key={company.id} value={company.id}>{company.nome || company.slug || company.id}</option>
+              ))}
+            </select>
+
+            <select className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm" value={auditFilters.user_id} onChange={(e) => setAuditFilters((s) => ({ ...s, user_id: e.target.value }))}>
+              <option value="">Usuario (todos)</option>
+              {users.map((u) => (
+                <option key={u.id} value={u.id}>{u.nome || u.email || u.id}</option>
+              ))}
+            </select>
+
+            <input className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm" placeholder="Modulo/origem (ex: owner)" value={auditFilters.module} onChange={(e) => setAuditFilters((s) => ({ ...s, module: e.target.value }))} />
+            <select className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm" value={auditFilters.severity} onChange={(e) => setAuditFilters((s) => ({ ...s, severity: e.target.value }))}>
+              <option value="">Severidade (todas)</option>
+              <option value="info">info</option>
+              <option value="warning">warning</option>
+              <option value="error">error</option>
+              <option value="critical">critical</option>
+            </select>
+
+            <input type="datetime-local" className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm" value={auditFilters.from} onChange={(e) => setAuditFilters((s) => ({ ...s, from: e.target.value }))} />
+            <input type="datetime-local" className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm" value={auditFilters.to} onChange={(e) => setAuditFilters((s) => ({ ...s, to: e.target.value }))} />
+            <input className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm" placeholder="Acao exata (opcional)" value={auditFilters.action_type} onChange={(e) => setAuditFilters((s) => ({ ...s, action_type: e.target.value }))} />
+            <button className="rounded border border-slate-600 px-3 py-2 text-sm" onClick={() => setAuditFilters({ empresa_id: '', user_id: '', module: '', from: '', to: '', action_type: '', severity: '' })}>Limpar filtros</button>
+          </div>
+
           <div className="max-h-80 overflow-auto rounded border border-slate-800">
             <table className="w-full text-xs">
               <thead className="bg-slate-950">
                 <tr>
+                  <th className="px-3 py-2 text-left">Severidade</th>
                   <th className="px-3 py-2 text-left">Acao</th>
                   <th className="px-3 py-2 text-left">Origem</th>
+                  <th className="px-3 py-2 text-left">Usuario</th>
                   <th className="px-3 py-2 text-left">Data</th>
                 </tr>
               </thead>
               <tbody>
-                {logs.map((l) => (
+                {filteredLogs.map((l) => (
                   <tr key={l.id} className="border-t border-slate-800">
+                    <td className="px-3 py-2">{l.severity || '-'}</td>
                     <td className="px-3 py-2">{l.action_type || '-'}</td>
                     <td className="px-3 py-2">{l.source || '-'}</td>
+                    <td className="px-3 py-2">{l.actor_email || l.actor_id || '-'}</td>
                     <td className="px-3 py-2">{l.created_at || '-'}</td>
                   </tr>
                 ))}
                 {isLoadingAudit && (
                   <tr>
-                    <td className="px-3 py-3 text-slate-400" colSpan={3}>Carregando eventos...</td>
+                    <td className="px-3 py-3 text-slate-400" colSpan={5}>Carregando eventos...</td>
+                  </tr>
+                )}
+                {!isLoadingAudit && filteredLogs.length === 0 && (
+                  <tr>
+                    <td className="px-3 py-3 text-slate-400" colSpan={5}>Nenhum registro encontrado para os filtros aplicados.</td>
                   </tr>
                 )}
               </tbody>
@@ -886,10 +1067,18 @@ export default function Owner() {
 
       {active === 'monitoramento' && (
         <Card title="Monitoramento" subtitle="Saude do backend e cobertura de acoes">
-          <div className="grid gap-3 md:grid-cols-3">
+          <div className="grid gap-3 md:grid-cols-4">
             <Metric label="Service" value={backendHealth?.service || 'owner-portal-admin'} />
             <Metric label="Status" value={backendHealth?.status || 'desconhecido'} />
             <Metric label="Versao" value={backendHealth?.version || 'n/a'} />
+            <Metric label="Tabelas monitoradas" value={tables.length} />
+          </div>
+
+          <div className="mt-4 grid gap-3 md:grid-cols-4">
+            <Metric label="Registros globais" value={tables.filter((t) => !t.has_empresa_id).reduce((acc, t) => acc + t.total_rows, 0)} />
+            <Metric label="Registros tenant" value={tables.filter((t) => t.has_empresa_id).reduce((acc, t) => acc + t.total_rows, 0)} />
+            <Metric label="Tickets abertos" value={supportResumo.aberto} />
+            <Metric label="Assinaturas atrasadas" value={financeiroResumo.atrasadas} />
           </div>
           <div className="mt-4 rounded border border-slate-800 bg-slate-950 p-3">
             <p className="text-xs text-slate-400">Acoes suportadas</p>
@@ -1000,9 +1189,21 @@ export default function Owner() {
             </div>
 
             <div className="mt-3 grid gap-2 md:grid-cols-3">
-              <button className="rounded border border-amber-500 px-3 py-2 text-sm text-amber-300" disabled={!isOwnerMaster || !systemForm.empresa_id || !systemForm.auth_password || cleanupCompanyDataMutation.isPending} onClick={() => runOwnerMasterAction(() => cleanupCompanyDataMutation.mutateAsync({ empresa_id: systemForm.empresa_id, keep_company_core: systemForm.keep_core, keep_billing_data: systemForm.keep_billing, include_auth_users: systemForm.include_auth_users, auth_password: systemForm.auth_password }), 'Limpeza total da empresa concluida com sucesso.')}>Limpar empresa (tudo)</button>
-              <button className="rounded border border-amber-500 px-3 py-2 text-sm text-amber-300" disabled={!isOwnerMaster || !systemForm.table_name || !systemForm.auth_password || purgeTableDataMutation.isPending} onClick={() => runOwnerMasterAction(() => purgeTableDataMutation.mutateAsync({ table_name: systemForm.table_name, empresa_id: systemForm.empresa_id || undefined, auth_password: systemForm.auth_password }), 'Limpeza da tabela concluida com sucesso.')}>Limpar tabela</button>
-              <button className="rounded border border-rose-600 px-3 py-2 text-sm text-rose-300" disabled={!isOwnerMaster || !systemForm.empresa_id || !systemForm.auth_password || deleteCompanyByOwnerMutation.isPending} onClick={() => runOwnerMasterAction(() => deleteCompanyByOwnerMutation.mutateAsync({ empresa_id: systemForm.empresa_id, include_auth_users: systemForm.include_auth_users, auth_password: systemForm.auth_password }), 'Empresa excluida definitivamente com sucesso.')}>Excluir empresa</button>
+              <button className="rounded border border-amber-500 px-3 py-2 text-sm text-amber-300" disabled={!isOwnerMaster || !systemForm.empresa_id || !systemForm.auth_password || cleanupCompanyDataMutation.isPending} onClick={() => runOwnerMasterAction(async () => {
+                const output = await cleanupCompanyDataMutation.mutateAsync({ empresa_id: systemForm.empresa_id, keep_company_core: systemForm.keep_core, keep_billing_data: systemForm.keep_billing, include_auth_users: systemForm.include_auth_users, auth_password: systemForm.auth_password })
+                setSystemActionOutput(output)
+                return output
+              }, 'Limpeza total da empresa concluida com sucesso.')}>Limpar empresa (tudo)</button>
+              <button className="rounded border border-amber-500 px-3 py-2 text-sm text-amber-300" disabled={!isOwnerMaster || !systemForm.table_name || !systemForm.auth_password || purgeTableDataMutation.isPending} onClick={() => runOwnerMasterAction(async () => {
+                const output = await purgeTableDataMutation.mutateAsync({ table_name: systemForm.table_name, empresa_id: systemForm.empresa_id || undefined, auth_password: systemForm.auth_password })
+                setSystemActionOutput(output)
+                return output
+              }, 'Limpeza da tabela concluida com sucesso.')}>Limpar tabela</button>
+              <button className="rounded border border-rose-600 px-3 py-2 text-sm text-rose-300" disabled={!isOwnerMaster || !systemForm.empresa_id || !systemForm.auth_password || deleteCompanyByOwnerMutation.isPending} onClick={() => runOwnerMasterAction(async () => {
+                const output = await deleteCompanyByOwnerMutation.mutateAsync({ empresa_id: systemForm.empresa_id, include_auth_users: systemForm.include_auth_users, auth_password: systemForm.auth_password })
+                setSystemActionOutput(output)
+                return output
+              }, 'Empresa excluida definitivamente com sucesso.')}>Excluir empresa</button>
             </div>
 
             {!isOwnerMaster && (
@@ -1041,6 +1242,13 @@ export default function Owner() {
                 </tbody>
               </table>
             </div>
+
+            {systemActionOutput && (
+              <div className="mt-4 rounded border border-emerald-700/40 bg-emerald-950/20 p-3">
+                <p className="text-xs text-emerald-300">Saida do ultimo comando executado:</p>
+                <pre className="mt-2 max-h-60 overflow-auto rounded bg-slate-950 p-2 text-xs text-slate-300">{JSON.stringify(systemActionOutput, null, 2)}</pre>
+              </div>
+            )}
           </Card>
         </div>
       )}
