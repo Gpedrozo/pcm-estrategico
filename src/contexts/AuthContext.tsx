@@ -305,6 +305,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     let profileData = await fetchUserProfile(userId, email, metadata, domainEmpresaId);
 
     if (!isOwnerDomain(window.location.hostname)) {
+      const hostname = window.location.hostname.toLowerCase();
       const isGlobalRole =
         profileData.tipo === 'SYSTEM_OWNER' ||
         profileData.tipo === 'SYSTEM_ADMIN' ||
@@ -314,6 +315,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return {
           ...profileData,
           tenantId: domainEmpresaId || profileData.tenantId,
+        };
+      }
+
+      if (isTenantBaseDomain(hostname)) {
+        return {
+          ...profileData,
+          tenantId: profileData.tenantId,
         };
       }
 
