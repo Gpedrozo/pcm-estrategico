@@ -85,6 +85,31 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return domainConfig?.empresa_id ?? null;
   }, []);
 
+  const resolveTenantRedirectHost = useCallback(async (tenantId: string): Promise<string | null> => {
+    const { data: configData } = await supabase
+      .from('empresa_config')
+      .select('dominio_custom')
+      .eq('empresa_id', tenantId)
+      .not('dominio_custom', 'is', null)
+      .order('updated_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    const configuredHost = (configData?.dominio_custom ?? '').trim().toLowerCase();
+    if (configuredHost) return configuredHost;
+
+    const { data: companyData } = await supabase
+      .from('empresas')
+      .select('slug')
+      .eq('id', tenantId)
+      .maybeSingle();
+
+    const slug = (companyData?.slug ?? '').trim().toLowerCase();
+    if (!slug) return null;
+
+    return `${slug}.${TENANT_BASE_DOMAIN}`;
+  }, []);
+
   useEffect(() => {
     try {
       const raw = window.localStorage.getItem(IMPERSONATION_STORAGE_KEY);
@@ -137,10 +162,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => window.clearInterval(timer);
   }, [impersonation]);
 
-  const validateTenantDomainAccess = useCallback(async (): Promise<string | null> => {
+  const validateTenantDomainAccess = useCallback(async (options?: { allowBaseDomain?: boolean }): Promise<string | null> => {
     if (isOwnerDomain(window.location.hostname)) return null;
 
     const hostname = window.location.hostname.toLowerCase();
+    const allowBaseDomain = Boolean(options?.allowBaseDomain);
+
+    if (allowBaseDomain && isTenantBaseDomain(hostname)) {
+      return null;
+    }
+
     const domainEmpresaId = await resolveDomainEmpresaId();
     if (!domainEmpresaId) {
       if (isTenantBaseDomain(hostname)) {
@@ -402,7 +433,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [resolveUserProfile]);
 
   const login = useCallback(async (email: string, password: string): Promise<{ error: string | null }> => {
-    const tenantDomainError = await validateTenantDomainAccess();
+    const tenantDomainError = await validateTenantDomainAccess({ allowBaseDomain: true });
     if (tenantDomainError) {
       return { error: tenantDomainError };
     }
@@ -453,6 +484,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         profileData.tipo === 'SYSTEM_ADMIN' ||
         profileData.tipo === 'MASTER_TI';
 
+      const isBaseTenantHost = isTenantBaseDomain(window.location.hostname);
+
+      if (!isOwnerDomain(window.location.hostname) && isBaseTenantHost && !isGlobalRole && profileData.tenantId) {
+        const targetHost = await resolveTenantRedirectHost(profileData.tenantId);
+        if (targetHost && targetHost !== window.location.hostname.toLowerCase()) {
+          const targetUrl = `${window.location.protocol}//${targetHost}/dashboard`;
+          window.location.assign(targetUrl);
+          return { error: null };
+        }
+      }
+
       if (!isGlobalRole && !profileData.tenantId) {
         await supabase.auth.signOut();
         return { error: 'Usuário sem vínculo de empresa. Acesso bloqueado.' };
@@ -483,7 +525,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     });
 
     return { error: null };
-  }, [resolveUserProfile, validateTenantDomainAccess]);
+  }, [resolveTenantRedirectHost, resolveUserProfile, validateTenantDomainAccess]);
 
   const signup = useCallback(async (email: string, password: string, nome: string): Promise<{ error: string | null }> => {
     const redirectUrl = `${window.location.origin}/`;
