@@ -219,6 +219,19 @@ function normalizeSlug(text: string) {
     .slice(0, 48);
 }
 
+const TENANT_BASE_DOMAIN = (Deno.env.get("TENANT_BASE_DOMAIN")
+  ?? Deno.env.get("VITE_TENANT_BASE_DOMAIN")
+  ?? "gppis.com.br")
+  .trim()
+  .toLowerCase()
+  .replace(/^https?:\/\//, "")
+  .replace(/\/.*$/, "");
+
+function buildManagedTenantDomain(slug: string) {
+  if (!TENANT_BASE_DOMAIN) return null;
+  return `${slug}.${TENANT_BASE_DOMAIN}`;
+}
+
 function isDuplicateKeyError(message?: string | null) {
   const normalized = (message ?? "").toLowerCase();
   return normalized.includes("duplicate key") || normalized.includes("unique constraint");
@@ -792,7 +805,12 @@ Deno.serve(async (req) => {
     }
 
     const companyName = body.company.nome.trim();
-    const requestedSlug = body.company.slug?.trim() || null;
+    const requestedSlugRaw = body.company.slug?.trim() || null;
+    const requestedSlug = requestedSlugRaw ? normalizeSlug(requestedSlugRaw) : null;
+    if (requestedSlugRaw && !requestedSlug) {
+      return fail("Slug inválido. Use apenas letras, números e hífen.", 400, null, req);
+    }
+
     let slug = (requestedSlug || normalizeSlug(companyName)) || `empresa-${Date.now()}`;
 
     if (requestedSlug) {
@@ -887,6 +905,20 @@ Deno.serve(async (req) => {
       );
     }
 
+    const managedDomain = buildManagedTenantDomain(slug);
+    if (managedDomain) {
+      const { error: domainError } = await admin.from("empresa_config").upsert({
+        empresa_id: company.id,
+        dominio_custom: managedDomain,
+        nome_exibicao: body.company.nome_fantasia ?? companyName,
+      }, { onConflict: "empresa_id" });
+
+      if (domainError) {
+        await admin.from("empresas").delete().eq("id", company.id);
+        return fail("Falha ao configurar domínio automático da empresa.", 400, { reason: domainError.message }, req);
+      }
+    }
+
     const password = body.user.password?.trim() || `Tmp#${Math.random().toString(36).slice(2, 10)}!`;
 
     const { data: createdAuth, error: authError } = await admin.auth.admin.createUser({
@@ -978,8 +1010,26 @@ Deno.serve(async (req) => {
     if (!body.empresa_id || !body.company) return fail("empresa_id and company are required", 400, null, req);
 
     const updatePayload: Record<string, unknown> = {};
+    let previousSlug: string | null = null;
+    let nextSlug: string | null = null;
+
+    if (body.company.slug) {
+      const { data: currentCompany } = await admin
+        .from("empresas")
+        .select("slug")
+        .eq("id", body.empresa_id)
+        .maybeSingle();
+
+      previousSlug = currentCompany?.slug ?? null;
+      nextSlug = normalizeSlug(body.company.slug);
+
+      if (!nextSlug) {
+        return fail("Slug inválido. Use apenas letras, números e hífen.", 400, null, req);
+      }
+    }
+
     if (body.company.nome) updatePayload.nome = body.company.nome;
-    if (body.company.slug) updatePayload.slug = body.company.slug;
+    if (nextSlug) updatePayload.slug = nextSlug;
     if (body.company.status) updatePayload.status = body.company.status;
     if (body.company.cnpj !== undefined) updatePayload.cnpj = body.company.cnpj;
 
@@ -987,7 +1037,12 @@ Deno.serve(async (req) => {
       .from("empresas")
       .update(updatePayload)
       .eq("id", body.empresa_id);
-    if (empresaError) return fail(empresaError.message, 400, null, req);
+    if (empresaError) {
+      if (isDuplicateKeyError(empresaError.message)) {
+        return fail("Já existe uma empresa com esse slug. Informe outro slug.", 409, { reason: empresaError.message }, req);
+      }
+      return fail(empresaError.message, 400, null, req);
+    }
 
     await admin.from("dados_empresa").upsert({
       empresa_id: body.empresa_id,
@@ -1020,6 +1075,34 @@ Deno.serve(async (req) => {
         inactivity_timeout_minutes: inactivityMinutes,
       },
     }, { onConflict: "empresa_id,chave" });
+
+    if (nextSlug) {
+      const nextManagedDomain = buildManagedTenantDomain(nextSlug);
+      const previousManagedDomain = previousSlug ? buildManagedTenantDomain(previousSlug) : null;
+
+      if (nextManagedDomain) {
+        const { data: currentDomainConfig } = await admin
+          .from("empresa_config")
+          .select("dominio_custom")
+          .eq("empresa_id", body.empresa_id)
+          .maybeSingle();
+
+        const currentDomain = currentDomainConfig?.dominio_custom ?? null;
+        const shouldUpdateManagedDomain = !currentDomain || currentDomain === previousManagedDomain;
+
+        if (shouldUpdateManagedDomain) {
+          const { error: domainUpdateError } = await admin.from("empresa_config").upsert({
+            empresa_id: body.empresa_id,
+            dominio_custom: nextManagedDomain,
+            nome_exibicao: body.company.nome_fantasia ?? body.company.nome ?? null,
+          }, { onConflict: "empresa_id" });
+
+          if (domainUpdateError) {
+            return fail("Falha ao atualizar domínio automático da empresa.", 400, { reason: domainUpdateError.message }, req);
+          }
+        }
+      }
+    }
 
     await logPlatformAudit(admin, {
       actorId: auth.user.id,
