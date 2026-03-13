@@ -8,6 +8,7 @@ import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { usePermission } from "@/hooks/usePermission";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { EnvironmentGuard } from "@/components/guards/EnvironmentGuard";
+import { TenantQueryIsolationGuard } from '@/components/guards/TenantQueryIsolationGuard';
 import { SpeedInsights } from "@vercel/speed-insights/react";
 import { TenantProvider } from "@/contexts/TenantContext";
 import { BrandingProvider } from "@/contexts/BrandingContext";
@@ -208,6 +209,7 @@ function TenantRoutes() {
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <AuthProvider>
+      <TenantQueryIsolationGuard />
       <TooltipProvider>
         <Toaster />
         <Sonner />

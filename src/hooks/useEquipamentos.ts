@@ -96,6 +96,7 @@ export function useEquipamentos() {
 export function useCreateEquipamento() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const { tenantId } = useAuth();
 
   return useMutation({
     mutationFn: async (equipamento: EquipamentoInsert) => {
@@ -110,7 +111,7 @@ export function useCreateEquipamento() {
       );
     },
     onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ['equipamentos'] });
+      queryClient.invalidateQueries({ queryKey: ['equipamentos', tenantId] });
       toast({
         title: 'Equipamento Cadastrado',
         description: `TAG ${data.tag} foi cadastrado com sucesso.`,
@@ -129,6 +130,7 @@ export function useCreateEquipamento() {
 export function useUpdateEquipamento() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const { tenantId } = useAuth();
 
   return useMutation({
     mutationFn: async ({ id, ...updates }: EquipamentoUpdate & { id: string }) => {
@@ -144,7 +146,7 @@ export function useUpdateEquipamento() {
       );
     },
     onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ['equipamentos'] });
+      queryClient.invalidateQueries({ queryKey: ['equipamentos', tenantId] });
       toast({
         title: 'Equipamento Atualizado',
         description: `TAG ${data.tag} foi atualizado com sucesso.`,
@@ -163,18 +165,20 @@ export function useUpdateEquipamento() {
 export function useDeleteEquipamento() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const { tenantId } = useAuth();
 
   return useMutation({
     mutationFn: async (id: string) => {
       const { error } = await supabase
         .from('equipamentos')
         .delete()
+        .eq('empresa_id', tenantId)
         .eq('id', id);
 
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['equipamentos'] });
+      queryClient.invalidateQueries({ queryKey: ['equipamentos', tenantId] });
       toast({
         title: 'Equipamento Excluído',
         description: 'O equipamento foi removido com sucesso.',
