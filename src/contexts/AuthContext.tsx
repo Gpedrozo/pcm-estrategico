@@ -296,10 +296,54 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, [extractRolesFromMetadata]);
 
+  const elevateToSystemOwner = useCallback((profileData: {
+    nome: string;
+    tipo: AppRole;
+    roles: AppRole[];
+    tenantId: string | null;
+  }) => {
+    const roles = Array.from(new Set([
+      ...(profileData.roles || []),
+      'SYSTEM_OWNER' as AppRole,
+      'SYSTEM_ADMIN' as AppRole,
+    ]));
+
+    return {
+      ...profileData,
+      tipo: 'SYSTEM_OWNER' as AppRole,
+      roles,
+    };
+  }, []);
+
+  const verifyOwnerBackendAccess = useCallback(async (token?: string | null): Promise<boolean> => {
+    try {
+      let accessToken = token ?? null;
+      if (!accessToken) {
+        const { data: { session: activeSession } } = await supabase.auth.getSession();
+        accessToken = activeSession?.access_token ?? null;
+      }
+
+      if (!accessToken) return false;
+
+      const { data, error } = await supabase.functions.invoke('owner-portal-admin', {
+        body: { action: 'health_check' },
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      });
+
+      if (error) return false;
+      return Boolean((data as { status?: string } | null)?.status === 'ok');
+    } catch {
+      return false;
+    }
+  }, []);
+
   const resolveUserProfile = useCallback(async (
     userId: string,
     email?: string | null,
-    metadata?: { app_metadata?: Record<string, unknown>; user_metadata?: Record<string, unknown> }
+    metadata?: { app_metadata?: Record<string, unknown>; user_metadata?: Record<string, unknown> },
+    token?: string | null,
   ) => {
     const domainEmpresaId = await resolveDomainEmpresaId();
     let profileData = await fetchUserProfile(userId, email, metadata, domainEmpresaId);
@@ -350,8 +394,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (recoveredGlobalRole) return profileData;
     }
 
+    const ownerBackendAllowed = await verifyOwnerBackendAccess(token);
+    if (ownerBackendAllowed) {
+      logger.warn('owner_role_fallback_applied', {
+        userId,
+        email,
+      });
+      return elevateToSystemOwner(profileData);
+    }
+
     return profileData;
-  }, [fetchUserProfile, resolveDomainEmpresaId]);
+  }, [elevateToSystemOwner, fetchUserProfile, resolveDomainEmpresaId, verifyOwnerBackendAccess]);
 
   useEffect(() => {
     let isActive = true;
@@ -370,7 +423,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               {
                 app_metadata: nextSession.user.app_metadata,
                 user_metadata: nextSession.user.user_metadata,
-              }
+              },
+              nextSession.access_token,
             );
 
             if (!isActive) return;
@@ -415,7 +469,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         resolveUserProfile(session.user.id, session.user.email, {
           app_metadata: session.user.app_metadata,
           user_metadata: session.user.user_metadata,
-        }).then(profileData => {
+        }, session.access_token).then(profileData => {
           if (!isActive) return;
 
           setUser({
@@ -465,7 +519,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const profileData = await resolveUserProfile(currentUser.id, currentUser.email, {
         app_metadata: currentUser.app_metadata,
         user_metadata: currentUser.user_metadata,
-      });
+      }, currentSession?.access_token ?? null);
 
       const isOwnerPortalAllowed =
         profileData.tipo === 'SYSTEM_OWNER' ||

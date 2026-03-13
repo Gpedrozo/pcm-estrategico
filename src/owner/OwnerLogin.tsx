@@ -25,7 +25,7 @@ export default function OwnerLogin() {
   const [companies, setCompanies] = useState<OwnerCompany[]>([]);
   const [selectedCompanyId, setSelectedCompanyId] = useState('');
 
-  const { login, logout, isAuthenticated, isLoading, effectiveRole, startImpersonationSession } = useAuth();
+  const { login, logout, user, session, isAuthenticated, isLoading, effectiveRole, startImpersonationSession } = useAuth();
   const navigate = useNavigate();
 
   const isOwnerRole = effectiveRole === 'SYSTEM_OWNER' || effectiveRole === 'SYSTEM_ADMIN';
@@ -99,11 +99,13 @@ export default function OwnerLogin() {
   };
 
   useEffect(() => {
-    if (isLoading || !isAuthenticated || isOwnerRole) return;
+    // Wait until auth context fully hydrates user/profile before enforcing owner-only logout.
+    if (isLoading || !isAuthenticated || !session || !user) return;
+    if (isOwnerRole) return;
 
     setLoginError('Sessão ativa sem permissão de Owner. Faça login com conta SYSTEM_OWNER.');
     void logout();
-  }, [isLoading, isAuthenticated, isOwnerRole, logout]);
+  }, [isLoading, isAuthenticated, isOwnerRole, logout, session, user]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
