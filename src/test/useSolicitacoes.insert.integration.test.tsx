@@ -3,16 +3,34 @@ import { renderHook, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { useCreateSolicitacao } from '@/hooks/useSolicitacoes';
 
-const invalidateQueriesSpy = vi.fn();
-const toastSpy = vi.fn();
-const singleSpy = vi.fn();
-const selectSpy = vi.fn(() => ({ single: singleSpy }));
-const insertSpy = vi.fn(() => ({ select: selectSpy }));
-const fromSpy = vi.fn(() => ({ insert: insertSpy }));
+const mocks = vi.hoisted(() => {
+  const invalidateQueriesSpy = vi.fn();
+  const toastSpy = vi.fn();
+  const singleSpy = vi.fn();
+  const limitSpy = vi.fn();
+  const probeSelectSpy = vi.fn(() => ({ limit: limitSpy }));
+  const selectSpy = vi.fn(() => ({ single: singleSpy }));
+  const insertSpy = vi.fn(() => ({ select: selectSpy }));
+  const fromSpy = vi.fn(() => ({
+    insert: insertSpy,
+    select: probeSelectSpy,
+  }));
+
+  return {
+    invalidateQueriesSpy,
+    toastSpy,
+    singleSpy,
+    limitSpy,
+    probeSelectSpy,
+    selectSpy,
+    insertSpy,
+    fromSpy,
+  };
+});
 
 vi.mock('@/integrations/supabase/client', () => ({
   supabase: {
-    from: fromSpy,
+    from: mocks.fromSpy,
   },
 }));
 
@@ -21,14 +39,14 @@ vi.mock('@tanstack/react-query', async () => {
   return {
     ...actual,
     useQueryClient: () => ({
-      invalidateQueries: invalidateQueriesSpy,
+      invalidateQueries: mocks.invalidateQueriesSpy,
     }),
   };
 });
 
 vi.mock('@/hooks/use-toast', () => ({
   useToast: () => ({
-    toast: toastSpy,
+    toast: mocks.toastSpy,
   }),
 }));
 
@@ -49,7 +67,9 @@ describe('useCreateSolicitacao integration', () => {
   beforeEach(() => {
     vi.clearAllMocks();
 
-    singleSpy.mockResolvedValue({
+    mocks.limitSpy.mockResolvedValue({ data: [], error: null });
+
+    mocks.singleSpy.mockResolvedValue({
       data: {
         id: 'sol-1',
         numero_solicitacao: 1001,
@@ -90,16 +110,16 @@ describe('useCreateSolicitacao integration', () => {
       expect(result.current.isSuccess).toBe(true);
     });
 
-    expect(fromSpy).toHaveBeenCalledWith('solicitacoes_manutencao');
+    expect(mocks.fromSpy).toHaveBeenCalledWith('solicitacoes_manutencao');
 
-    const insertPayload = insertSpy.mock.calls[0][0];
+    const insertPayload = mocks.insertSpy.mock.calls[0][0];
     expect(insertPayload.tag).toBe('BOMBA-01');
     expect(insertPayload.classificacao).toBe('URGENTE');
     expect(insertPayload.sla_horas).toBe(8);
     expect(typeof insertPayload.data_limite).toBe('string');
 
-    expect(invalidateQueriesSpy).toHaveBeenCalledWith({ queryKey: ['solicitacoes'] });
-    expect(toastSpy).toHaveBeenCalledWith(
+    expect(mocks.invalidateQueriesSpy).toHaveBeenCalledWith({ queryKey: ['solicitacoes'] });
+    expect(mocks.toastSpy).toHaveBeenCalledWith(
       expect.objectContaining({ title: 'Solicitação criada' }),
     );
   });
