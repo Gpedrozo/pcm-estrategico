@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { getPostLoginPath } from '@/lib/security';
+import { getPostLoginPath, isOwnerDomain } from '@/lib/security';
 import { useBranding } from '@/contexts/BrandingContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -31,10 +31,16 @@ export default function Login() {
   const [loginPassword, setLoginPassword] = useState('');
   const [loginError, setLoginError] = useState('');
   const [isLoginLoading, setIsLoginLoading] = useState(false);
+  const [isRedirecting, setIsRedirecting] = useState(false);
 
   const { login, isAuthenticated, isLoading, effectiveRole } = useAuth();
   const navigate = useNavigate();
   const { branding } = useBranding();
+  const tenantBaseDomain = (import.meta.env.VITE_TENANT_BASE_DOMAIN || 'gppis.com.br').toLowerCase();
+  const currentHost = window.location.hostname.toLowerCase();
+  const isTenantBaseHost =
+    currentHost === tenantBaseDomain ||
+    currentHost === `www.${tenantBaseDomain}`;
 
   const activeBranding = branding || {
     nome_fantasia: 'PCM ESTRATÉGICO',
@@ -46,14 +52,19 @@ export default function Login() {
   // Redireciona para dashboard se já estiver logado
   useEffect(() => {
     if (!isLoading && isAuthenticated) {
+      if (isTenantBaseHost && !isOwnerDomain(currentHost)) {
+        setIsRedirecting(true);
+        return;
+      }
       navigate(getPostLoginPath(effectiveRole));
     }
-  }, [isAuthenticated, isLoading, navigate, effectiveRole]);
+  }, [isAuthenticated, isLoading, navigate, effectiveRole, isTenantBaseHost, currentHost]);
 
   // Função de login
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoginError('');
+    setIsRedirecting(false);
     setIsLoginLoading(true);
 
     try {
@@ -68,9 +79,13 @@ export default function Login() {
 
       if (error) {
         setLoginError(error);
+        setIsRedirecting(false);
+      } else if (isTenantBaseHost) {
+        setIsRedirecting(true);
       }
     } catch (err) {
       setLoginError('Erro ao fazer login. Tente novamente.');
+      setIsRedirecting(false);
     } finally {
       setIsLoginLoading(false);
     }
@@ -147,7 +162,7 @@ export default function Login() {
             <Button 
               type="submit" 
               className="w-full h-11 font-medium"
-              disabled={isLoginLoading}
+              disabled={isLoginLoading || isRedirecting}
               style={{ backgroundColor: '#111827', color: getContrastTextColor('#111827') }}
             >
               {isLoginLoading ? (
@@ -155,10 +170,26 @@ export default function Login() {
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   Entrando...
                 </>
+              ) : isRedirecting ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Redirecionando para sua empresa...
+                </>
               ) : (
                 'Entrar'
               )}
             </Button>
+
+            {isRedirecting && (
+              <div className="space-y-2 pt-1">
+                <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
+                  <div className="h-full w-1/2 animate-pulse rounded-full bg-primary" />
+                </div>
+                <p className="text-center text-xs text-muted-foreground">
+                  Preparando seu ambiente seguro e levando voce para o subdominio da empresa.
+                </p>
+              </div>
+            )}
           </form>
         </div>
 
