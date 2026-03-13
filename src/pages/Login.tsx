@@ -32,6 +32,13 @@ export default function Login() {
   const [loginError, setLoginError] = useState('');
   const [isLoginLoading, setIsLoginLoading] = useState(false);
   const [isRedirecting, setIsRedirecting] = useState(false);
+  const [redirectStep, setRedirectStep] = useState(0);
+
+  const redirectSteps = [
+    'Autenticando identidade...',
+    'Validando contexto da empresa...',
+    'Abrindo ambiente seguro...',
+  ];
 
   const { login, isAuthenticated, isLoading, effectiveRole } = useAuth();
   const navigate = useNavigate();
@@ -54,17 +61,32 @@ export default function Login() {
     if (!isLoading && isAuthenticated) {
       if (isTenantBaseHost && !isOwnerDomain(currentHost)) {
         setIsRedirecting(true);
+        setRedirectStep(0);
         return;
       }
       navigate(getPostLoginPath(effectiveRole));
     }
   }, [isAuthenticated, isLoading, navigate, effectiveRole, isTenantBaseHost, currentHost]);
 
+  useEffect(() => {
+    if (!isRedirecting) {
+      setRedirectStep(0);
+      return;
+    }
+
+    const timer = window.setInterval(() => {
+      setRedirectStep((prev) => (prev + 1) % redirectSteps.length);
+    }, 900);
+
+    return () => window.clearInterval(timer);
+  }, [isRedirecting]);
+
   // Função de login
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoginError('');
     setIsRedirecting(false);
+    setRedirectStep(0);
     setIsLoginLoading(true);
 
     try {
@@ -80,12 +102,15 @@ export default function Login() {
       if (error) {
         setLoginError(error);
         setIsRedirecting(false);
+        setRedirectStep(0);
       } else if (isTenantBaseHost) {
         setIsRedirecting(true);
+        setRedirectStep(0);
       }
     } catch (err) {
       setLoginError('Erro ao fazer login. Tente novamente.');
       setIsRedirecting(false);
+      setRedirectStep(0);
     } finally {
       setIsLoginLoading(false);
     }
@@ -173,7 +198,7 @@ export default function Login() {
               ) : isRedirecting ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Redirecionando para sua empresa...
+                  Redirecionando...
                 </>
               ) : (
                 'Entrar'
@@ -183,11 +208,13 @@ export default function Login() {
             {isRedirecting && (
               <div className="space-y-2 pt-1">
                 <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
-                  <div className="h-full w-1/2 animate-pulse rounded-full bg-primary" />
+                  <div
+                    className="h-full rounded-full bg-primary transition-all duration-700"
+                    style={{ width: `${((redirectStep + 1) / redirectSteps.length) * 100}%` }}
+                  />
                 </div>
-                <p className="text-center text-xs text-muted-foreground">
-                  Preparando seu ambiente seguro e levando voce para o subdominio da empresa.
-                </p>
+                <p className="text-center text-xs font-medium text-foreground/90">{redirectSteps[redirectStep]}</p>
+                <p className="text-center text-xs text-muted-foreground">Voce sera direcionado automaticamente para o subdominio da sua empresa.</p>
               </div>
             )}
           </form>

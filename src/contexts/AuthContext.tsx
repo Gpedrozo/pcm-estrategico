@@ -493,6 +493,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           window.location.assign(targetUrl);
           return { error: null };
         }
+
+        return {
+          error: 'Nao foi possivel localizar o dominio da sua empresa. Contate o suporte para revisar o slug/dominio_custom.',
+        };
       }
 
       if (!isGlobalRole && !profileData.tenantId) {
