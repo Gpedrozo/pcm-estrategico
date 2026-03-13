@@ -66,6 +66,7 @@ export default function Owner() {
   const [error, setError] = useState<string | null>(null)
   const [systemActionOutput, setSystemActionOutput] = useState<unknown>(null)
   const [systemForm, setSystemForm] = useState({ user_id: '', empresa_id: '', table_name: '', auth_password: '', keep_core: false, keep_billing: false, include_auth_users: true })
+  const [selectedTenantTables, setSelectedTenantTables] = useState<string[]>([])
   const [auditFilters, setAuditFilters] = useState({ empresa_id: '', user_id: '', module: '', from: '', to: '', action_type: '', severity: '' })
 
   const isOwnerMaster = (user?.email || '').toLowerCase() === OWNER_MASTER_EMAIL
@@ -131,6 +132,17 @@ export default function Owner() {
       })),
     [tables],
   )
+
+  const tenantScopedTables = useMemo(
+    () => tables.filter((table) => table.has_empresa_id),
+    [tables],
+  )
+
+  const toggleTenantTableSelection = (tableName: string) => {
+    setSelectedTenantTables((current) =>
+      current.includes(tableName) ? current.filter((name) => name !== tableName) : [...current, tableName],
+    )
+  }
 
   const filteredLogs = useMemo(() => {
     return logs.filter((log) => {
@@ -1159,7 +1171,7 @@ export default function Owner() {
             </div>
           </Card>
 
-          <Card title="Data Control (Owner Master)" subtitle="Limpeza total por empresa_id (todas as tabelas com empresa_id) e limpeza manual por tabela">
+          <Card title="Data Control (Owner Master)" subtitle="Visualize tabelas por tenant e exclua somente os dados desejados da empresa selecionada.">
             <div className="grid gap-2 md:grid-cols-2">
               <select className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm" value={systemForm.empresa_id} onChange={(e) => setSystemForm((s) => ({ ...s, empresa_id: e.target.value }))}>
                 <option value="">Empresa alvo</option>
@@ -1169,7 +1181,14 @@ export default function Owner() {
                   </option>
                 ))}
               </select>
-              <input className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm" placeholder="Tabela (manual)" value={systemForm.table_name} onChange={(e) => setSystemForm((s) => ({ ...s, table_name: e.target.value }))} />
+              <select className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm" value={systemForm.table_name} onChange={(e) => setSystemForm((s) => ({ ...s, table_name: e.target.value }))}>
+                <option value="">Tabela (manual)</option>
+                {tenantScopedTables.map((table) => (
+                  <option key={table.table_name} value={table.table_name}>
+                    {table.table_name}
+                  </option>
+                ))}
+              </select>
               <input className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm md:col-span-2" type="password" placeholder="Senha de confirmacao" value={systemForm.auth_password} onChange={(e) => setSystemForm((s) => ({ ...s, auth_password: e.target.value }))} />
             </div>
 
@@ -1188,12 +1207,23 @@ export default function Owner() {
               </label>
             </div>
 
-            <div className="mt-3 grid gap-2 md:grid-cols-3">
+            <div className="mt-3 grid gap-2 md:grid-cols-4">
               <button className="rounded border border-amber-500 px-3 py-2 text-sm text-amber-300" disabled={!isOwnerMaster || !systemForm.empresa_id || !systemForm.auth_password || cleanupCompanyDataMutation.isPending} onClick={() => runOwnerMasterAction(async () => {
                 const output = await cleanupCompanyDataMutation.mutateAsync({ empresa_id: systemForm.empresa_id, keep_company_core: systemForm.keep_core, keep_billing_data: systemForm.keep_billing, include_auth_users: systemForm.include_auth_users, auth_password: systemForm.auth_password })
                 setSystemActionOutput(output)
                 return output
               }, 'Limpeza total da empresa concluida com sucesso.')}>Limpar empresa (tudo)</button>
+              <button className="rounded border border-amber-500 px-3 py-2 text-sm text-amber-300" disabled={!isOwnerMaster || !systemForm.empresa_id || !systemForm.auth_password || selectedTenantTables.length === 0 || purgeTableDataMutation.isPending} onClick={() => runOwnerMasterAction(async () => {
+                const outputs: Array<{ table_name: string; result: unknown }> = []
+
+                for (const tableName of selectedTenantTables) {
+                  const result = await purgeTableDataMutation.mutateAsync({ table_name: tableName, empresa_id: systemForm.empresa_id, auth_password: systemForm.auth_password })
+                  outputs.push({ table_name: tableName, result })
+                }
+
+                setSystemActionOutput({ selected_tables: outputs })
+                return outputs
+              }, `Limpeza concluida em ${selectedTenantTables.length} tabela(s) da empresa selecionada.`)}>Excluir dados selecionados</button>
               <button className="rounded border border-amber-500 px-3 py-2 text-sm text-amber-300" disabled={!isOwnerMaster || !systemForm.table_name || !systemForm.auth_password || purgeTableDataMutation.isPending} onClick={() => runOwnerMasterAction(async () => {
                 const output = await purgeTableDataMutation.mutateAsync({ table_name: systemForm.table_name, empresa_id: systemForm.empresa_id || undefined, auth_password: systemForm.auth_password })
                 setSystemActionOutput(output)
@@ -1218,9 +1248,13 @@ export default function Owner() {
               <p className="px-3 py-2 text-[11px] text-slate-400">
                 {systemForm.empresa_id ? 'Contagem filtrada pela empresa selecionada.' : 'Contagem global (selecione uma empresa para filtrar por empresa_id).'}
               </p>
+              <p className="px-3 pb-2 text-[11px] text-slate-500">
+                Marque as tabelas tenant para excluir somente os dados desejados da empresa selecionada.
+              </p>
               <table className="w-full text-xs">
                 <thead className="bg-slate-950">
                   <tr>
+                    <th className="px-3 py-2 text-center">Selecionar</th>
                     <th className="px-3 py-2 text-left">Tabela</th>
                     <th className="px-3 py-2 text-right">Registros</th>
                     <th className="px-3 py-2 text-center">empresa_id</th>
@@ -1229,6 +1263,14 @@ export default function Owner() {
                 <tbody>
                   {tables.map((t) => (
                     <tr key={t.table_name} className="border-t border-slate-800">
+                      <td className="px-3 py-2 text-center">
+                        <input
+                          type="checkbox"
+                          checked={selectedTenantTables.includes(t.table_name)}
+                          disabled={!t.has_empresa_id}
+                          onChange={() => toggleTenantTableSelection(t.table_name)}
+                        />
+                      </td>
                       <td className="px-3 py-2">{t.table_name}</td>
                       <td className="px-3 py-2 text-right">{t.total_rows}</td>
                       <td className="px-3 py-2 text-center">{t.has_empresa_id ? 'sim' : 'nao'}</td>
@@ -1236,7 +1278,7 @@ export default function Owner() {
                   ))}
                   {isLoadingTables && (
                     <tr>
-                      <td className="px-3 py-3 text-slate-400" colSpan={3}>Carregando tabelas...</td>
+                      <td className="px-3 py-3 text-slate-400" colSpan={4}>Carregando tabelas...</td>
                     </tr>
                   )}
                 </tbody>
