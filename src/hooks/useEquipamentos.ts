@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { insertWithColumnFallback, updateWithColumnFallback } from '@/lib/supabaseCompat';
+import { useAuth } from '@/contexts/AuthContext';
 
 export interface EquipamentoRow {
   id: string;
@@ -63,9 +64,14 @@ export interface EquipamentoUpdate {
 }
 
 export function useEquipamentos() {
+  const { tenantId } = useAuth();
+
   return useQuery({
-    queryKey: ['equipamentos'],
+    queryKey: ['equipamentos', tenantId],
+    enabled: Boolean(tenantId),
     queryFn: async () => {
+      if (!tenantId) return [] as EquipamentoRow[];
+
       const { data, error } = await supabase
         .from('equipamentos')
         .select(`
@@ -78,6 +84,7 @@ export function useEquipamentos() {
             )
           )
         `)
+        .eq('empresa_id', tenantId)
         .order('tag', { ascending: true });
 
       if (error) throw error;

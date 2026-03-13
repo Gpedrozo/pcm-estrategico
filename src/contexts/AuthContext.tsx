@@ -64,6 +64,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const lastActivityAtRef = useRef<number>(Date.now());
   const isAutoLogoutRunningRef = useRef(false);
 
+  const resolveDomainEmpresaId = useCallback(async (): Promise<string | null> => {
+    if (isOwnerDomain(window.location.hostname)) return null;
+
+    const hostname = window.location.hostname.toLowerCase();
+    const { data: domainConfig, error } = await supabase
+      .from('empresa_config')
+      .select('empresa_id')
+      .eq('dominio_custom', hostname)
+      .maybeSingle();
+
+    if (error) {
+      logger.warn('tenant_domain_resolve_failed', {
+        hostname,
+        error: error.message,
+      });
+      return null;
+    }
+
+    return domainConfig?.empresa_id ?? null;
+  }, []);
+
   useEffect(() => {
     try {
       const raw = window.localStorage.getItem(IMPERSONATION_STORAGE_KEY);
@@ -119,26 +140,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const validateTenantDomainAccess = useCallback(async (): Promise<string | null> => {
     if (isOwnerDomain(window.location.hostname)) return null;
 
-    const hostname = window.location.hostname;
-    if (isTenantBaseDomain(hostname)) return null;
-
-    const { data: domainConfig, error } = await supabase
-      .from('empresa_config')
-      .select('empresa_id')
-      .eq('dominio_custom', hostname)
-      .maybeSingle();
-
-    if (error) {
-      logger.warn('tenant_domain_validation_failed', {
-        hostname,
-        error: error.message,
-      });
-      return 'Falha ao validar domínio da empresa.';
+    const hostname = window.location.hostname.toLowerCase();
+    const domainEmpresaId = await resolveDomainEmpresaId();
+    if (!domainEmpresaId) {
+      if (isTenantBaseDomain(hostname)) {
+        return 'Acesso pelo domínio base está bloqueado. Use o subdomínio da sua empresa.';
+      }
+      return 'Domínio não autorizado para login.';
     }
-    if (!domainConfig?.empresa_id) return 'Domínio não autorizado para login.';
 
     return null;
-  }, []);
+  }, [resolveDomainEmpresaId]);
 
   const extractRolesFromMetadata = useCallback((metadata?: { app_metadata?: Record<string, unknown>; user_metadata?: Record<string, unknown> }) => {
     const rawRoles: string[] = [];
@@ -171,7 +183,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const fetchUserProfile = useCallback(async (
     userId: string,
     email?: string | null,
-    metadata?: { app_metadata?: Record<string, unknown>; user_metadata?: Record<string, unknown> }
+    metadata?: { app_metadata?: Record<string, unknown>; user_metadata?: Record<string, unknown> },
+    expectedEmpresaId?: string | null,
   ) => {
     try {
       const { data: profile } = await supabase
@@ -214,7 +227,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const metadataRoles = extractRolesFromMetadata(metadata);
       const roles: AppRole[] = Array.from(new Set([...dbRoles, ...metadataRoles]));
 
-      const tenantId: string | null = (roleData || [])[0]?.empresa_id || profile?.empresa_id || null;
+      const availableTenantIds = new Set<string>();
+      (roleData || []).forEach((item: { empresa_id?: string | null }) => {
+        if (item.empresa_id) availableTenantIds.add(item.empresa_id);
+      });
+      if (profile?.empresa_id) availableTenantIds.add(profile.empresa_id);
+
+      let tenantId: string | null = null;
+      if (expectedEmpresaId) {
+        tenantId = availableTenantIds.has(expectedEmpresaId) ? expectedEmpresaId : null;
+      } else {
+        tenantId = (roleData || [])[0]?.empresa_id || profile?.empresa_id || null;
+      }
 
       const effectiveRole = getEffectiveRole({ roles, email });
 
@@ -246,10 +270,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     email?: string | null,
     metadata?: { app_metadata?: Record<string, unknown>; user_metadata?: Record<string, unknown> }
   ) => {
-    let profileData = await fetchUserProfile(userId, email, metadata);
+    const domainEmpresaId = await resolveDomainEmpresaId();
+    let profileData = await fetchUserProfile(userId, email, metadata, domainEmpresaId);
 
     if (!isOwnerDomain(window.location.hostname)) {
-      return profileData;
+      const isGlobalRole =
+        profileData.tipo === 'SYSTEM_OWNER' ||
+        profileData.tipo === 'SYSTEM_ADMIN' ||
+        profileData.tipo === 'MASTER_TI';
+
+      if (isGlobalRole) {
+        return {
+          ...profileData,
+          tenantId: domainEmpresaId || profileData.tenantId,
+        };
+      }
+
+      return {
+        ...profileData,
+        tenantId: domainEmpresaId && profileData.tenantId === domainEmpresaId ? domainEmpresaId : null,
+      };
     }
 
     const isGlobalRole =
@@ -261,7 +301,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     for (let attempt = 0; attempt < 2; attempt += 1) {
       await new Promise((resolve) => window.setTimeout(resolve, 250));
-      profileData = await fetchUserProfile(userId, email, metadata);
+      profileData = await fetchUserProfile(userId, email, metadata, domainEmpresaId);
 
       const recoveredGlobalRole =
         profileData.tipo === 'SYSTEM_OWNER' ||
@@ -272,7 +312,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
 
     return profileData;
-  }, [fetchUserProfile]);
+  }, [fetchUserProfile, resolveDomainEmpresaId]);
 
   useEffect(() => {
     let isActive = true;
@@ -295,6 +335,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             );
 
             if (!isActive) return;
+
+            const isGlobalRole =
+              profileData.tipo === 'SYSTEM_OWNER' ||
+              profileData.tipo === 'SYSTEM_ADMIN' ||
+              profileData.tipo === 'MASTER_TI';
+
+            if (!isGlobalRole && !profileData.tenantId) {
+              await supabase.auth.signOut();
+              setUser(null);
+              setSession(null);
+              setIsLoading(false);
+              return;
+            }
 
             setUser({
               id: nextSession.user.id,
