@@ -292,10 +292,10 @@ export function AppSidebar() {
             </div>
             <div className="flex flex-col">
               <span className="text-sm font-medium text-sidebar-foreground">{user?.nome}</span>
-              <span className="text-xs text-sidebar-foreground/60">{user?.tipo}</span>
               {activeCompanyName && (
-                <span className="text-[11px] text-sidebar-foreground/50">{activeCompanyName}</span>
+                <span className="text-xs text-sidebar-foreground/70">{activeCompanyName}</span>
               )}
+              <span className="text-[11px] text-sidebar-foreground/50">{user?.tipo}</span>
             </div>
           </div>
           <button
