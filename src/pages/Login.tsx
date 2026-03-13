@@ -33,6 +33,7 @@ export default function Login() {
   const [isLoginLoading, setIsLoginLoading] = useState(false);
   const [isRedirecting, setIsRedirecting] = useState(false);
   const [redirectStep, setRedirectStep] = useState(0);
+  const [redirectTimeoutMs, setRedirectTimeoutMs] = useState<number | null>(null);
 
   const redirectSteps = [
     'Autenticando identidade...',
@@ -48,6 +49,10 @@ export default function Login() {
   const isTenantBaseHost =
     currentHost === tenantBaseDomain ||
     currentHost === `www.${tenantBaseDomain}`;
+  const isGlobalRole =
+    effectiveRole === 'SYSTEM_OWNER' ||
+    effectiveRole === 'SYSTEM_ADMIN' ||
+    effectiveRole === 'MASTER_TI';
 
   const activeBranding = branding || {
     nome_fantasia: 'PCM ESTRATÉGICO',
@@ -59,14 +64,18 @@ export default function Login() {
   // Redireciona para dashboard se já estiver logado
   useEffect(() => {
     if (!isLoading && isAuthenticated) {
-      if (isTenantBaseHost && !isOwnerDomain(currentHost)) {
+      if (isTenantBaseHost && !isOwnerDomain(currentHost) && !isGlobalRole) {
         setIsRedirecting(true);
         setRedirectStep(0);
+        setRedirectTimeoutMs(Date.now() + 15000);
         return;
       }
+
+      setIsRedirecting(false);
+      setRedirectTimeoutMs(null);
       navigate(getPostLoginPath(effectiveRole));
     }
-  }, [isAuthenticated, isLoading, navigate, effectiveRole, isTenantBaseHost, currentHost]);
+  }, [isAuthenticated, isLoading, navigate, effectiveRole, isTenantBaseHost, currentHost, isGlobalRole]);
 
   useEffect(() => {
     if (!isRedirecting) {
@@ -80,6 +89,20 @@ export default function Login() {
 
     return () => window.clearInterval(timer);
   }, [isRedirecting]);
+
+  useEffect(() => {
+    if (!isRedirecting || !redirectTimeoutMs) return;
+
+    const timer = window.setInterval(() => {
+      if (Date.now() < redirectTimeoutMs) return;
+      setIsRedirecting(false);
+      setRedirectTimeoutMs(null);
+      setLoginError('Redirecionamento demorou mais que o esperado. Tente novamente em alguns segundos.');
+      window.clearInterval(timer);
+    }, 1000);
+
+    return () => window.clearInterval(timer);
+  }, [isRedirecting, redirectTimeoutMs]);
 
   // Função de login
   const handleLogin = async (e: React.FormEvent) => {
@@ -103,14 +126,17 @@ export default function Login() {
         setLoginError(error);
         setIsRedirecting(false);
         setRedirectStep(0);
+        setRedirectTimeoutMs(null);
       } else if (isTenantBaseHost) {
         setIsRedirecting(true);
         setRedirectStep(0);
+        setRedirectTimeoutMs(Date.now() + 15000);
       }
     } catch (err) {
       setLoginError('Erro ao fazer login. Tente novamente.');
       setIsRedirecting(false);
       setRedirectStep(0);
+      setRedirectTimeoutMs(null);
     } finally {
       setIsLoginLoading(false);
     }
