@@ -977,18 +977,31 @@ Deno.serve(async (req) => {
 
     const masterRole = body.user.role ?? "ADMIN";
 
-    await admin.from("profiles").upsert({
+    const { error: profileUpsertError } = await admin.from("profiles").upsert({
       id: createdAuth.user.id,
       empresa_id: company.id,
       nome: body.user.nome,
       email: body.user.email.trim().toLowerCase(),
     }, { onConflict: "id" });
 
-    await admin.from("user_roles").upsert({
+    if (profileUpsertError) {
+      await admin.auth.admin.deleteUser(createdAuth.user.id).catch(() => null);
+      await admin.from("empresas").delete().eq("id", company.id);
+      return fail("Falha ao vincular usuário master na empresa (profiles).", 400, { reason: profileUpsertError.message }, req);
+    }
+
+    const { error: roleUpsertError } = await admin.from("user_roles").upsert({
       user_id: createdAuth.user.id,
       empresa_id: company.id,
       role: masterRole,
     }, { onConflict: "user_id,empresa_id,role" });
+
+    if (roleUpsertError) {
+      await admin.auth.admin.deleteUser(createdAuth.user.id).catch(() => null);
+      await admin.from("profiles").delete().eq("id", createdAuth.user.id).catch(() => null);
+      await admin.from("empresas").delete().eq("id", company.id);
+      return fail("Falha ao vincular papel do usuário master na empresa (user_roles).", 400, { reason: roleUpsertError.message }, req);
+    }
 
     let subscriptionWarning: string | null = null;
 
@@ -1223,10 +1236,22 @@ Deno.serve(async (req) => {
       return fail("user payload is required", 400, null, req);
     }
 
+    const normalizedUserEmail = body.user.email.trim().toLowerCase();
+    const normalizedRole = String(body.user.role).trim().toUpperCase();
+
+    const { data: targetCompany, error: targetCompanyError } = await admin
+      .from("empresas")
+      .select("id")
+      .eq("id", body.user.empresa_id)
+      .maybeSingle();
+
+    if (targetCompanyError) return fail(targetCompanyError.message, 400, null, req);
+    if (!targetCompany?.id) return fail("Empresa do usuário não encontrada.", 404, null, req);
+
     const password = body.user.password?.trim() || `Tmp#${Math.random().toString(36).slice(2, 10)}!`;
 
     const { data: createdAuth, error: createError } = await admin.auth.admin.createUser({
-      email: body.user.email.trim().toLowerCase(),
+      email: normalizedUserEmail,
       password,
       email_confirm: true,
       user_metadata: {
@@ -1237,18 +1262,29 @@ Deno.serve(async (req) => {
 
     if (createError || !createdAuth?.user?.id) return fail(createError?.message ?? "Failed to create user", 400, null, req);
 
-    await admin.from("profiles").upsert({
+    const { error: profileError } = await admin.from("profiles").upsert({
       id: createdAuth.user.id,
       empresa_id: body.user.empresa_id,
       nome: body.user.nome,
-      email: body.user.email.trim().toLowerCase(),
+      email: normalizedUserEmail,
     }, { onConflict: "id" });
 
-    await admin.from("user_roles").insert({
+    if (profileError) {
+      await admin.auth.admin.deleteUser(createdAuth.user.id).catch(() => null);
+      return fail("Falha ao vincular usuário à empresa (profiles).", 400, { reason: profileError.message }, req);
+    }
+
+    const { error: roleError } = await admin.from("user_roles").upsert({
       user_id: createdAuth.user.id,
       empresa_id: body.user.empresa_id,
-      role: body.user.role,
-    });
+      role: normalizedRole,
+    }, { onConflict: "user_id,empresa_id,role" });
+
+    if (roleError) {
+      await admin.from("profiles").delete().eq("id", createdAuth.user.id).catch(() => null);
+      await admin.auth.admin.deleteUser(createdAuth.user.id).catch(() => null);
+      return fail("Falha ao vincular papel do usuário na empresa (user_roles).", 400, { reason: roleError.message }, req);
+    }
 
     if (body.user.status && body.user.status !== "ativo") {
       await admin.auth.admin.updateUserById(createdAuth.user.id, { ban_duration: "876000h" });
@@ -1259,7 +1295,7 @@ Deno.serve(async (req) => {
       actorEmail: auth.user.email,
       empresaId: body.user.empresa_id,
       actionType: "OWNER_CREATE_USER",
-      details: { user_id: createdAuth.user.id, role: body.user.role },
+      details: { user_id: createdAuth.user.id, role: normalizedRole },
     });
 
     return ok({ success: true, user_id: createdAuth.user.id, initial_password: password }, 200, req);
