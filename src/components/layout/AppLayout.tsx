@@ -22,11 +22,26 @@ export function AppLayout() {
   const [isEnteringCompany, setIsEnteringCompany] = useState(false);
   const [companies, setCompanies] = useState<OwnerCompany[]>([]);
   const [selectedCompanyId, setSelectedCompanyId] = useState('');
+  const [companySearch, setCompanySearch] = useState('');
 
   const canSwitchCompany =
     effectiveRole === 'SYSTEM_OWNER'
     || effectiveRole === 'SYSTEM_ADMIN'
     || effectiveRole === 'MASTER_TI';
+
+  const activeCompanyId = impersonation?.empresaId ?? '';
+
+  const filteredCompanies = useMemo(() => {
+    const term = companySearch.trim().toLowerCase();
+    if (!term) return companies;
+
+    return companies.filter((company) => {
+      const name = (company.nome ?? '').toLowerCase();
+      const slug = (company.slug ?? '').toLowerCase();
+      const id = String(company.id ?? '').toLowerCase();
+      return name.includes(term) || slug.includes(term) || id.includes(term);
+    });
+  }, [companies, companySearch]);
 
   const remainingMs = useMemo(() => {
     if (!impersonation?.expiresAt) return null;
@@ -99,6 +114,7 @@ export function AppLayout() {
 
     setIsCompanyChooserOpen(true);
     setIsLoadingCompanies(true);
+    setCompanySearch('');
 
     try {
       const data = await listPlatformCompanies();
@@ -106,7 +122,8 @@ export function AppLayout() {
       setCompanies(rows);
 
       if (rows.length > 0) {
-        setSelectedCompanyId((prev) => prev || rows[0].id);
+        const hasActiveInList = !!activeCompanyId && rows.some((item) => item.id === activeCompanyId);
+        setSelectedCompanyId(hasActiveInList ? activeCompanyId : rows[0].id);
       }
     } finally {
       setIsLoadingCompanies(false);
@@ -229,20 +246,44 @@ export function AppLayout() {
                 </p>
 
                 <div className="mt-3 space-y-2">
-                  <label htmlFor="company-context-picker" className="text-xs font-medium text-slate-700">Empresa</label>
-                  <select
-                    id="company-context-picker"
+                  <label htmlFor="company-context-search" className="text-xs font-medium text-slate-700">Buscar empresa</label>
+                  <input
+                    id="company-context-search"
                     className="h-10 w-full rounded border border-slate-300 px-2 text-sm"
-                    value={selectedCompanyId}
-                    onChange={(e) => setSelectedCompanyId(e.target.value)}
-                    disabled={isLoadingCompanies || isEnteringCompany || companies.length === 0}
-                  >
-                    {companies.map((company) => (
-                      <option key={company.id} value={company.id}>
-                        {company.nome || company.slug || company.id}
-                      </option>
-                    ))}
-                  </select>
+                    placeholder="Digite nome, slug ou id"
+                    value={companySearch}
+                    onChange={(e) => setCompanySearch(e.target.value)}
+                    disabled={isLoadingCompanies || isEnteringCompany}
+                  />
+
+                  <div className="max-h-56 overflow-auto rounded border border-slate-200">
+                    {filteredCompanies.map((company) => {
+                      const isActive = activeCompanyId === company.id;
+                      const isSelected = selectedCompanyId === company.id;
+
+                      return (
+                        <button
+                          key={company.id}
+                          type="button"
+                          onClick={() => setSelectedCompanyId(company.id)}
+                          className={`flex w-full items-center justify-between px-3 py-2 text-left text-xs ${isSelected ? 'bg-emerald-50' : 'bg-white hover:bg-slate-50'} ${isActive ? 'border-l-4 border-amber-500' : 'border-l-4 border-transparent'}`}
+                          disabled={isEnteringCompany}
+                        >
+                          <span className="font-medium text-slate-800">{company.nome || company.slug || company.id}</span>
+                          <span className="text-slate-500">{company.slug || company.id}</span>
+                        </button>
+                      );
+                    })}
+                    {!isLoadingCompanies && filteredCompanies.length === 0 && (
+                      <p className="px-3 py-3 text-xs text-slate-500">Nenhuma empresa encontrada para o filtro informado.</p>
+                    )}
+                  </div>
+
+                  {activeCompanyId && (
+                    <p className="text-xs text-amber-700">
+                      Empresa ativa no contexto atual destacada em amarelo.
+                    </p>
+                  )}
                   {isLoadingCompanies && <p className="text-xs text-slate-500">Carregando empresas...</p>}
                 </div>
 

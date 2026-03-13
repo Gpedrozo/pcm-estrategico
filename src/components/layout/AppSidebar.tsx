@@ -108,6 +108,11 @@ export function AppSidebar() {
   const { branding } = useBranding();
   const location = useLocation();
 
+  const activeCompanyName =
+    branding?.nome_fantasia
+    || branding?.razao_social
+    || null;
+
   const isActive = (path: string) => location.pathname === path;
 
   const isSolicitanteOnly = effectiveRole === 'SOLICITANTE';
@@ -287,6 +292,9 @@ export function AppSidebar() {
             <div className="flex flex-col">
               <span className="text-sm font-medium text-sidebar-foreground">{user?.nome}</span>
               <span className="text-xs text-sidebar-foreground/60">{user?.tipo}</span>
+              {activeCompanyName && (
+                <span className="text-[11px] text-sidebar-foreground/50">{activeCompanyName}</span>
+              )}
             </div>
           </div>
           <button
