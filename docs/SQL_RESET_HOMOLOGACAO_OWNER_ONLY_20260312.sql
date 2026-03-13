@@ -66,6 +66,53 @@ BEGIN
   END LOOP;
 END $$;
 
+-- 1.1) Excluir empresas de teste e manter apenas a empresa do owner
+DO $$
+DECLARE
+  v_owner_id uuid;
+  v_owner_empresa_id uuid;
+BEGIN
+  SELECT id
+  INTO v_owner_id
+  FROM auth.users
+  WHERE lower(email) = lower('pedrozo@gppis.com.br')
+  LIMIT 1;
+
+  IF to_regclass('public.profiles') IS NOT NULL THEN
+    SELECT p.empresa_id
+    INTO v_owner_empresa_id
+    FROM public.profiles p
+    WHERE p.id = v_owner_id
+    LIMIT 1;
+  END IF;
+
+  IF v_owner_empresa_id IS NULL AND to_regclass('public.empresas') IS NOT NULL THEN
+    SELECT e.id
+    INTO v_owner_empresa_id
+    FROM public.empresas e
+    ORDER BY e.created_at NULLS LAST
+    LIMIT 1;
+  END IF;
+
+  IF v_owner_empresa_id IS NULL THEN
+    RAISE EXCEPTION 'Nao foi possivel resolver empresa_id do owner para limpeza de empresas.';
+  END IF;
+
+  -- Garante profile do owner apontando para empresa valida
+  IF to_regclass('public.profiles') IS NOT NULL THEN
+    UPDATE public.profiles
+    SET empresa_id = v_owner_empresa_id
+    WHERE id = v_owner_id
+      AND (empresa_id IS NULL OR empresa_id <> v_owner_empresa_id);
+  END IF;
+
+  -- Remove todas as demais empresas (teste)
+  IF to_regclass('public.empresas') IS NOT NULL THEN
+    DELETE FROM public.empresas
+    WHERE id <> v_owner_empresa_id;
+  END IF;
+END $$;
+
 -- 2) Manter apenas profile/roles do owner
 DO $$
 DECLARE
