@@ -65,7 +65,14 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
         const baseDomain = (import.meta.env.VITE_TENANT_BASE_DOMAIN || 'gppis.com.br').toLowerCase();
         const isBaseDomainHost = hostname === baseDomain || hostname === `www.${baseDomain}`;
 
-        if (!isBaseDomainHost && hostname.endsWith(`.${baseDomain}`)) {
+        if (isBaseDomainHost) {
+          setTenant(null);
+          setError(null);
+          setIsLoading(false);
+          return;
+        }
+
+        if (hostname.endsWith(`.${baseDomain}`)) {
           const slug = hostname.replace(`.${baseDomain}`, '').split('.')[0]?.trim().toLowerCase();
           if (slug && slug !== 'www') {
             const { data: companyBySlug } = await supabase

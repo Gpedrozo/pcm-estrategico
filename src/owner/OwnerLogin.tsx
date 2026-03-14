@@ -104,7 +104,25 @@ export default function OwnerLogin() {
       });
 
       if (tenantBaseDomain) {
-        const targetHost = selected.slug ? `${selected.slug}.${tenantBaseDomain}` : tenantBaseDomain;
+        let targetHost = selected.slug ? `${selected.slug}.${tenantBaseDomain}` : '';
+
+        if (!targetHost) {
+          const { data: configData } = await supabase
+            .from('empresa_config')
+            .select('dominio_custom')
+            .eq('empresa_id', selected.id)
+            .not('dominio_custom', 'is', null)
+            .order('updated_at', { ascending: false })
+            .limit(1)
+            .maybeSingle();
+
+          targetHost = (configData?.dominio_custom ?? '').trim().toLowerCase();
+        }
+
+        if (!targetHost) {
+          targetHost = tenantBaseDomain;
+        }
+
         const { data: { session: activeSession } } = await supabase.auth.getSession();
         const transferHash = buildSessionTransferHash(
           activeSession?.access_token ?? session?.access_token ?? null,

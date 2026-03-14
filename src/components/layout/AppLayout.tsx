@@ -9,9 +9,10 @@ import { NotificationCenter } from '@/components/notifications/NotificationCente
 import { GlobalSearch } from './GlobalSearch';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { impersonateCompany, listPlatformCompanies, stopImpersonation } from '@/services/ownerPortal.service';
+import { supabase } from '@/integrations/supabase/client';
 
 export function AppLayout() {
-  const { isAuthenticated, isLoading, effectiveRole, impersonation, startImpersonationSession, stopImpersonationSession } = useAuth();
+  const { isAuthenticated, isLoading, effectiveRole, tenantId, session, impersonation, startImpersonationSession, stopImpersonationSession } = useAuth();
   const location = useLocation();
   const [commandOpen, setCommandOpen] = useState(false);
   const [isStoppingImpersonation, setIsStoppingImpersonation] = useState(false);
@@ -23,6 +24,7 @@ export function AppLayout() {
   const [companies, setCompanies] = useState<OwnerCompany[]>([]);
   const [selectedCompanyId, setSelectedCompanyId] = useState('');
   const [companySearch, setCompanySearch] = useState('');
+  const [isDomainRedirectRunning, setIsDomainRedirectRunning] = useState(false);
 
   const canSwitchCompany =
     effectiveRole === 'SYSTEM_OWNER'
@@ -154,6 +156,95 @@ export function AppLayout() {
     }
   };
 
+  useEffect(() => {
+    let isActive = true;
+
+    const redirectTenantFromBaseDomain = async () => {
+      if (isLoading || !isAuthenticated || !tenantId || !session) return;
+
+      const isGlobalRole =
+        effectiveRole === 'SYSTEM_OWNER'
+        || effectiveRole === 'SYSTEM_ADMIN'
+        || effectiveRole === 'MASTER_TI';
+
+      if (isGlobalRole) return;
+
+      const tenantBaseDomain = (import.meta.env.VITE_TENANT_BASE_DOMAIN || 'gppis.com.br').toLowerCase();
+      const currentHost = window.location.hostname.toLowerCase();
+      const isBaseDomainHost = currentHost === tenantBaseDomain || currentHost === `www.${tenantBaseDomain}`;
+
+      if (!isBaseDomainHost) return;
+
+      setIsDomainRedirectRunning(true);
+
+      const { data: configData } = await supabase
+        .from('empresa_config')
+        .select('dominio_custom')
+        .eq('empresa_id', tenantId)
+        .not('dominio_custom', 'is', null)
+        .order('updated_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      let targetHost = (configData?.dominio_custom ?? '').trim().toLowerCase();
+
+      if (!targetHost) {
+        const { data: companyData } = await supabase
+          .from('empresas')
+          .select('slug')
+          .eq('id', tenantId)
+          .maybeSingle();
+
+        const slug = (companyData?.slug ?? '').trim().toLowerCase();
+        if (slug) {
+          targetHost = `${slug}.${tenantBaseDomain}`;
+        }
+      }
+
+      if (!targetHost) {
+        const metadataSlug = String(
+          session.user.app_metadata?.empresa_slug
+          ?? session.user.user_metadata?.empresa_slug
+          ?? '',
+        ).trim().toLowerCase();
+
+        if (metadataSlug) {
+          targetHost = `${metadataSlug}.${tenantBaseDomain}`;
+        }
+      }
+
+      if (!isActive) return;
+
+      if (!targetHost || targetHost === currentHost) {
+        setIsDomainRedirectRunning(false);
+        return;
+      }
+
+      let transferHash = '';
+      if (session.access_token && session.refresh_token) {
+        try {
+          const payload = {
+            access_token: session.access_token,
+            refresh_token: session.refresh_token,
+          };
+          transferHash = `#session_transfer=${encodeURIComponent(window.btoa(JSON.stringify(payload)))}`;
+        } catch {
+          transferHash = '';
+        }
+      }
+
+      const currentPath = `${location.pathname}${location.search}`;
+      const nextParam = encodeURIComponent(currentPath || '/dashboard');
+      window.location.assign(`${window.location.protocol}//${targetHost}/login?next=${nextParam}${transferHash}`);
+    };
+
+    void redirectTenantFromBaseDomain();
+
+    return () => {
+      isActive = false;
+    };
+  }, [effectiveRole, isAuthenticated, isLoading, location.pathname, location.search, session, tenantId]);
+
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
@@ -164,6 +255,14 @@ export function AppLayout() {
 
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />;
+  }
+
+  if (isDomainRedirectRunning) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
   }
 
   const solicitanteAllowedPaths = new Set([

@@ -27,12 +27,13 @@ export function isOwnerDomain(hostname: string = window.location.hostname): bool
 export function resolveEmpresaSlug(hostname: string = window.location.hostname): string {
   const lowerHost = hostname.toLowerCase();
 
-  if (lowerHost === TENANT_BASE_DOMAIN) return 'default';
-  if (!lowerHost.endsWith(TENANT_BASE_DOMAIN)) return 'default';
+  if (lowerHost === TENANT_BASE_DOMAIN || lowerHost === `www.${TENANT_BASE_DOMAIN}`) return 'default';
+  if (!lowerHost.endsWith(`.${TENANT_BASE_DOMAIN}`)) return 'default';
 
   const withoutBase = lowerHost.replace(`.${TENANT_BASE_DOMAIN}`, '');
   const [subdomain] = withoutBase.split('.');
-  return subdomain || 'default';
+  if (!subdomain || subdomain === 'www') return 'default';
+  return subdomain;
 }
 
 export function normalizeRole(role?: string | null): AppRole | null {

@@ -45,6 +45,13 @@ export default function Login() {
   const tenantBaseDomain = (import.meta.env.VITE_TENANT_BASE_DOMAIN || 'gppis.com.br').toLowerCase();
   const currentHost = window.location.hostname.toLowerCase();
 
+  const resolveSafeNextPath = () => {
+    const nextParam = new URLSearchParams(window.location.search).get('next');
+    if (!nextParam) return null;
+    if (!nextParam.startsWith('/') || nextParam.startsWith('//')) return null;
+    return nextParam;
+  };
+
   const activeBranding = branding || {
     nome_fantasia: 'PCM ESTRATÉGICO',
     razao_social: 'PCM ESTRATÉGICO',
@@ -125,7 +132,8 @@ export default function Login() {
         if (targetHost === currentHost) {
           if (!isActive) return;
           setIsRedirectingTenantDomain(false);
-          navigate(getPostLoginPath(effectiveRole));
+          const nextPath = resolveSafeNextPath();
+          navigate(nextPath || getPostLoginPath(effectiveRole), { replace: true });
           return;
         }
 
@@ -150,7 +158,8 @@ export default function Login() {
       }
 
       setIsRedirectingTenantDomain(false);
-      navigate(getPostLoginPath(effectiveRole));
+      const nextPath = resolveSafeNextPath();
+      navigate(nextPath || getPostLoginPath(effectiveRole), { replace: true });
     };
 
     void redirectAuthenticatedUser();
