@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { getPostLoginPath } from '@/lib/security';
+import { supabase } from '@/integrations/supabase/client';
 import { useBranding } from '@/contexts/BrandingContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -36,10 +37,13 @@ export default function Login() {
   const [loginPassword, setLoginPassword] = useState('');
   const [loginError, setLoginError] = useState('');
   const [isLoginLoading, setIsLoginLoading] = useState(false);
+  const [isRedirectingTenantDomain, setIsRedirectingTenantDomain] = useState(false);
 
-  const { login, isAuthenticated, isLoading, effectiveRole } = useAuth();
+  const { login, isAuthenticated, isLoading, effectiveRole, tenantId } = useAuth();
   const navigate = useNavigate();
   const { branding } = useBranding();
+  const tenantBaseDomain = (import.meta.env.VITE_TENANT_BASE_DOMAIN || 'gppis.com.br').toLowerCase();
+  const currentHost = window.location.hostname.toLowerCase();
 
   const activeBranding = branding || {
     nome_fantasia: 'PCM ESTRATÉGICO',
@@ -50,15 +54,125 @@ export default function Login() {
 
   // Redireciona para dashboard se já estiver logado
   useEffect(() => {
-    if (!isLoading && isAuthenticated) {
+    let isActive = true;
+
+    const redirectAuthenticatedUser = async () => {
+      if (isLoading || !isAuthenticated) return;
+
+      const isGlobalRole =
+        effectiveRole === 'SYSTEM_OWNER' ||
+        effectiveRole === 'SYSTEM_ADMIN' ||
+        effectiveRole === 'MASTER_TI';
+
+      const isTenantBaseHost =
+        currentHost === tenantBaseDomain ||
+        currentHost === `www.${tenantBaseDomain}`;
+
+      if (!isGlobalRole && isTenantBaseHost) {
+        if (!tenantId) {
+          return;
+        }
+
+        setIsRedirectingTenantDomain(true);
+        setLoginError('');
+
+        const { data: configData } = await supabase
+          .from('empresa_config')
+          .select('dominio_custom')
+          .eq('empresa_id', tenantId)
+          .not('dominio_custom', 'is', null)
+          .order('updated_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        let targetHost = (configData?.dominio_custom ?? '').trim().toLowerCase();
+
+        if (!targetHost) {
+          const { data: companyData } = await supabase
+            .from('empresas')
+            .select('slug')
+            .eq('id', tenantId)
+            .maybeSingle();
+
+          const slug = (companyData?.slug ?? '').trim().toLowerCase();
+          if (slug) {
+            targetHost = `${slug}.${tenantBaseDomain}`;
+          }
+        }
+
+        if (!targetHost) {
+          const { data: userResult } = await supabase.auth.getUser();
+          const rawMetadataSlug =
+            userResult?.user?.app_metadata?.empresa_slug ??
+            userResult?.user?.user_metadata?.empresa_slug;
+
+          const metadataSlug = typeof rawMetadataSlug === 'string'
+            ? rawMetadataSlug.trim().toLowerCase()
+            : '';
+
+          if (metadataSlug) {
+            targetHost = `${metadataSlug}.${tenantBaseDomain}`;
+          }
+        }
+
+        if (!targetHost) {
+          if (!isActive) return;
+          setIsRedirectingTenantDomain(false);
+          setLoginError('Empresa sem slug/dominio configurado. Contate o suporte para ajustar o tenant.');
+          return;
+        }
+
+        if (targetHost === currentHost) {
+          if (!isActive) return;
+          setIsRedirectingTenantDomain(false);
+          navigate(getPostLoginPath(effectiveRole));
+          return;
+        }
+
+        const { data: sessionData } = await supabase.auth.getSession();
+        const activeSession = sessionData?.session;
+
+        let transferHash = '';
+        if (activeSession?.access_token && activeSession?.refresh_token) {
+          try {
+            const payload = {
+              access_token: activeSession.access_token,
+              refresh_token: activeSession.refresh_token,
+            };
+            transferHash = `#session_transfer=${encodeURIComponent(window.btoa(JSON.stringify(payload)))}`;
+          } catch {
+            transferHash = '';
+          }
+        }
+
+        window.location.assign(`${window.location.protocol}//${targetHost}/login${transferHash}`);
+        return;
+      }
+
+      setIsRedirectingTenantDomain(false);
       navigate(getPostLoginPath(effectiveRole));
-    }
-  }, [isAuthenticated, isLoading, navigate, effectiveRole]);
+    };
+
+    void redirectAuthenticatedUser();
+
+    return () => {
+      isActive = false;
+    };
+  }, [
+    isAuthenticated,
+    isLoading,
+    navigate,
+    effectiveRole,
+    tenantId,
+    tenantBaseDomain,
+    currentHost,
+  ]);
 
   // Função de login
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoginError('');
+    setIsRedirectingTenantDomain(false);
     setIsLoginLoading(true);
 
     try {
@@ -153,13 +267,18 @@ export default function Login() {
             <Button 
               type="submit" 
               className="w-full h-11 font-medium"
-              disabled={isLoginLoading}
+              disabled={isLoginLoading || isRedirectingTenantDomain}
               style={{ backgroundColor: '#111827', color: getContrastTextColor('#111827') }}
             >
               {isLoginLoading ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   Entrando...
+                </>
+              ) : isRedirectingTenantDomain ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Redirecionando para sua empresa...
                 </>
               ) : (
                 'Entrar'

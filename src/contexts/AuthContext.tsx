@@ -305,6 +305,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return normalized || null;
   }, []);
 
+  const extractEmpresaSlugFromMetadata = useCallback((metadata?: {
+    app_metadata?: Record<string, unknown>;
+    user_metadata?: Record<string, unknown>;
+  }) => {
+    const candidate = metadata?.app_metadata?.empresa_slug ?? metadata?.user_metadata?.empresa_slug;
+    if (typeof candidate !== 'string') return null;
+    const normalized = candidate.trim().toLowerCase();
+    return normalized || null;
+  }, []);
+
   const fetchUserProfile = useCallback(async (
     userId: string,
     email?: string | null,
@@ -646,7 +656,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             return { error: 'Usuário sem vínculo de empresa. Acesso bloqueado.' };
           }
 
-          const targetHost = await resolveTenantRedirectHost(profileData.tenantId);
+          let targetHost = await resolveTenantRedirectHost(profileData.tenantId);
+          if (!targetHost) {
+            const slugFromMetadata = extractEmpresaSlugFromMetadata({
+              app_metadata: currentUser.app_metadata,
+              user_metadata: currentUser.user_metadata,
+            });
+
+            if (slugFromMetadata) {
+              targetHost = `${slugFromMetadata}.${TENANT_BASE_DOMAIN}`;
+            }
+          }
+
           if (!targetHost) {
             await supabase.auth.signOut();
             return {
@@ -710,7 +731,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     });
 
     return { error: null };
-  }, [buildSessionTransferHash, resolveDomainEmpresaId, resolveTenantRedirectHost, resolveUserProfile]);
+  }, [buildSessionTransferHash, extractEmpresaSlugFromMetadata, resolveDomainEmpresaId, resolveTenantRedirectHost, resolveUserProfile]);
 
   const signup = useCallback(async (email: string, password: string, nome: string): Promise<{ error: string | null }> => {
     const redirectUrl = `${window.location.origin}/`;
