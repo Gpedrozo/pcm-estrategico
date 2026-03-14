@@ -65,7 +65,22 @@ async function waitFeedback(page) {
 }
 
 async function login(page) {
-  await page.goto(OWNER_BASE_URL, { waitUntil: 'domcontentloaded', timeout: 60000 })
+  const normalizedBase = OWNER_BASE_URL.replace(/\/$/, '')
+  await page.goto(`${normalizedBase}/login`, { waitUntil: 'domcontentloaded', timeout: 60000 })
+
+  const dashboardNav = page.getByRole('button', { name: 'Dashboard' }).first()
+  const enterOwnerPortalButton = page.getByRole('button', { name: 'Entrar no Owner Portal' }).first()
+
+  if (await dashboardNav.isVisible().catch(() => false)) {
+    return
+  }
+
+  if (await enterOwnerPortalButton.isVisible().catch(() => false)) {
+    await enterOwnerPortalButton.click({ timeout: 10000 })
+    await dashboardNav.waitFor({ state: 'visible', timeout: 30000 })
+    return
+  }
+
   const email = page.locator('#owner-login-email')
   const password = page.locator('#owner-login-password')
 
@@ -89,7 +104,6 @@ async function login(page) {
 
   await page.getByRole('button', { name: 'Entrar' }).click()
 
-  const dashboardNav = page.getByRole('button', { name: 'Dashboard' }).first()
   const loginFormStillVisible = page.locator('#owner-login-email')
   const accessDenied = page.locator('text=Acesso negado').first()
   const loginError = page.locator('.text-red-400, .text-rose-300').first()

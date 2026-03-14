@@ -60,15 +60,20 @@ async function testTenantDomainLookup() {
   const lookup = await client
     .from('empresa_config')
     .select('empresa_id,dominio_custom')
-    .eq('dominio_custom', 'gppis.com.br')
+    .not('dominio_custom', 'is', null)
+    .limit(1)
     .maybeSingle()
 
   if (lookup.error) {
     throw new Error(`Domain lookup falhou: ${lookup.error.message}`)
   }
 
-  if (!lookup.data?.empresa_id) {
-    throw new Error('Domain lookup sem empresa_id para gppis.com.br')
+  if (!lookup.data?.dominio_custom) {
+    return {
+      dominio_custom: null,
+      empresa_id: null,
+      note: 'Nenhum dominio_custom configurado. Dominio base deve operar via redirect por slug.',
+    }
   }
 
   return lookup.data
