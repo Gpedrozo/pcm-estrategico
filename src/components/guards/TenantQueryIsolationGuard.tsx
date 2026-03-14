@@ -11,17 +11,35 @@ export function TenantQueryIsolationGuard() {
     const previousTenantId = previousTenantRef.current;
     const currentTenantId = tenantId ?? null;
 
+    const isolateCache = async () => {
+      await queryClient.cancelQueries();
+
+      if (previousTenantId !== null) {
+        queryClient.resetQueries({
+          predicate: (query) =>
+            Array.isArray(query.queryKey) && query.queryKey.some((keyPart) => keyPart === previousTenantId),
+        });
+
+        queryClient.removeQueries({
+          predicate: (query) =>
+            Array.isArray(query.queryKey) && query.queryKey.some((keyPart) => keyPart === previousTenantId),
+        });
+      }
+
+      queryClient.clear();
+    };
+
     if (!isAuthenticated) {
       if (previousTenantId !== null) {
-        queryClient.clear();
+        void isolateCache();
       }
       previousTenantRef.current = null;
       return;
     }
 
     if (previousTenantId !== null && previousTenantId !== currentTenantId) {
-      // Tenant switched (impersonation/domain change): drop cached data to prevent cross-tenant bleed.
-      queryClient.clear();
+      // Tenant switched (impersonation/domain change): drop and reset cached data to prevent cross-tenant bleed.
+      void isolateCache();
     }
 
     previousTenantRef.current = currentTenantId;

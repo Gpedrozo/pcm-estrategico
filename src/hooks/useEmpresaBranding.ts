@@ -34,9 +34,11 @@ export function resolveEmpresaBranding(input: Partial<EmpresaBranding> | null | 
 
 export function useEmpresaBranding() {
   const tenantContext = useOptionalTenant();
+  const tenantId = tenantContext?.tenant?.id ?? null;
+  const hostKey = typeof window === 'undefined' ? 'server' : window.location.hostname.toLowerCase();
 
   const query = useQuery({
-    queryKey: ['empresa-branding', tenantContext?.tenant?.id ?? window.location.hostname.toLowerCase()],
+    queryKey: ['empresa-branding', tenantId, hostKey],
     queryFn: async () => {
       const hostname = typeof window === 'undefined' ? null : window.location.hostname;
 
@@ -66,6 +68,7 @@ export function useEmpresaBranding() {
       const rawBranding = (domainResult.data ?? fallbackResult.data) as Partial<EmpresaBranding> | null;
       return resolveEmpresaBranding(rawBranding);
     },
+    enabled: !tenantContext || !tenantContext.isLoading,
   });
 
   useEffect(() => {

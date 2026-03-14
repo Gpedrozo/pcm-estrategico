@@ -89,6 +89,7 @@ export function useExecucoesOS() {
       if (error) throw error;
       return data as ExecucaoOSRow[];
     },
+    enabled: !!tenantId,
   });
 }
 
@@ -109,7 +110,7 @@ export function useExecucaoByOSId(osId: string | undefined) {
       if (error) throw error;
       return data as ExecucaoOSRow | null;
     },
-    enabled: !!osId,
+    enabled: !!tenantId && !!osId,
   });
 }
 
@@ -182,7 +183,7 @@ export function useCloseOSAtomic() {
       queryClient.invalidateQueries({ queryKey: ['ordens-servico-recent', tenantId] });
       queryClient.invalidateQueries({ queryKey: ['execucoes-os', tenantId] });
       queryClient.invalidateQueries({ queryKey: ['indicadores', tenantId] });
-      queryClient.invalidateQueries({ queryKey: ['materiais'] });
+      queryClient.invalidateQueries({ queryKey: ['materiais', tenantId] });
     },
     onError: (error: any) => {
       toast({

@@ -43,6 +43,7 @@ export function useContratos() {
       const data = await contratosService.listar();
       return data as ContratoRow[];
     },
+    enabled: !!tenantId,
   });
 }
 
@@ -55,6 +56,7 @@ export function useContratosAtivos() {
       const data = await contratosService.listarAtivos();
       return data as ContratoRow[];
     },
+    enabled: !!tenantId,
   });
 }
 
@@ -68,7 +70,7 @@ export function useContratosByFornecedor(fornecedorId: string | undefined) {
       const data = await contratosService.listarPorFornecedor(fornecedorId);
       return data as ContratoRow[];
     },
-    enabled: !!fornecedorId,
+    enabled: !!tenantId && !!fornecedorId,
   });
 }
 

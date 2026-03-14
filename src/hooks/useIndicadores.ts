@@ -97,5 +97,6 @@ export function useIndicadores() {
 
       return indicadores;
     },
+    enabled: !!tenantId,
   });
 }

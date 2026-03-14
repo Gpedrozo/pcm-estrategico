@@ -61,6 +61,7 @@ export function useDashboardData() {
 
       return (data ?? null) as DashboardKpiRow | null;
     },
+    enabled: !!tenantId,
   });
 
   // OS distribution by type

@@ -87,6 +87,7 @@ export function useOrdensServico() {
       if (error) throw error;
       return data as OrdemServicoRow[];
     },
+    enabled: !!tenantId,
   });
 }
 
@@ -105,6 +106,7 @@ export function useRecentOrdensServico(limit = 5) {
       if (error) throw error;
       return data as OrdemServicoRow[];
     },
+    enabled: !!tenantId,
   });
 }
 
@@ -125,6 +127,7 @@ export function usePendingOrdensServico() {
       if (error) throw error;
       return data as OrdemServicoRow[];
     },
+    enabled: !!tenantId,
   });
 }
 

@@ -1,4 +1,5 @@
-import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
+import React, { createContext, useContext, useEffect, useMemo, useRef, useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { resolveEmpresaSlug } from '@/lib/security';
 
@@ -22,9 +23,11 @@ const TenantContext = createContext<TenantContextValue | undefined>(undefined);
 
 
 export function TenantProvider({ children }: { children: React.ReactNode }) {
+  const queryClient = useQueryClient();
   const [tenant, setTenant] = useState<Tenant | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const previousTenantRef = useRef<string | null>(null);
 
   const tenantSlug = useMemo(() => resolveEmpresaSlug(window.location.hostname), []);
 
@@ -130,6 +133,36 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
       isMounted = false;
     };
   }, [tenantSlug]);
+
+  useEffect(() => {
+    const previousTenantId = previousTenantRef.current;
+    const currentTenantId = tenant?.id ?? null;
+
+    if (previousTenantId === currentTenantId) {
+      return;
+    }
+
+    const isolateTenantCache = async () => {
+      await queryClient.cancelQueries();
+
+      if (previousTenantId) {
+        queryClient.resetQueries({
+          predicate: (query) =>
+            Array.isArray(query.queryKey) && query.queryKey.some((keyPart) => keyPart === previousTenantId),
+        });
+
+        queryClient.removeQueries({
+          predicate: (query) =>
+            Array.isArray(query.queryKey) && query.queryKey.some((keyPart) => keyPart === previousTenantId),
+        });
+      }
+
+      queryClient.clear();
+      previousTenantRef.current = currentTenantId;
+    };
+
+    void isolateTenantCache();
+  }, [queryClient, tenant?.id]);
 
   return (
     <TenantContext.Provider value={{ tenant, tenantSlug, isLoading, error }}>

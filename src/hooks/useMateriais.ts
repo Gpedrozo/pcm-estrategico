@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { insertWithColumnFallback, updateWithColumnFallback } from '@/lib/supabaseCompat';
+import { useAuth } from '@/contexts/AuthContext';
 
 // ==================== INTERFACES ====================
 
@@ -90,8 +91,10 @@ export interface MaterialOSInsert {
 // ==================== MATERIAIS ====================
 
 export function useMateriais() {
+  const { tenantId } = useAuth();
+
   return useQuery({
-    queryKey: ['materiais'],
+    queryKey: ['materiais', tenantId],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('materiais')
@@ -101,12 +104,15 @@ export function useMateriais() {
       if (error) throw error;
       return data as MaterialRow[];
     },
+    enabled: !!tenantId,
   });
 }
 
 export function useMateriaisAtivos() {
+  const { tenantId } = useAuth();
+
   return useQuery({
-    queryKey: ['materiais', 'ativos'],
+    queryKey: ['materiais', tenantId, 'ativos'],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('materiais')
@@ -117,12 +123,15 @@ export function useMateriaisAtivos() {
       if (error) throw error;
       return data as MaterialRow[];
     },
+    enabled: !!tenantId,
   });
 }
 
 export function useMateriaisBaixoEstoque() {
+  const { tenantId } = useAuth();
+
   return useQuery({
-    queryKey: ['materiais', 'baixo-estoque'],
+    queryKey: ['materiais', tenantId, 'baixo-estoque'],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('materiais')
@@ -137,12 +146,14 @@ export function useMateriaisBaixoEstoque() {
         (m) => m.estoque_atual <= m.estoque_minimo
       );
     },
+    enabled: !!tenantId,
   });
 }
 
 export function useCreateMaterial() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const { tenantId } = useAuth();
 
   return useMutation({
     mutationFn: async (material: MaterialInsert) => {
@@ -157,7 +168,7 @@ export function useCreateMaterial() {
       );
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['materiais'] });
+      queryClient.invalidateQueries({ queryKey: ['materiais', tenantId] });
       toast({
         title: 'Material criado',
         description: 'O material foi cadastrado com sucesso.',
@@ -176,6 +187,7 @@ export function useCreateMaterial() {
 export function useUpdateMaterial() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const { tenantId } = useAuth();
 
   return useMutation({
     mutationFn: async ({ id, ...data }: MaterialUpdate & { id: string }) => {
@@ -191,7 +203,7 @@ export function useUpdateMaterial() {
       );
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['materiais'] });
+      queryClient.invalidateQueries({ queryKey: ['materiais', tenantId] });
       toast({
         title: 'Material atualizado',
         description: 'Os dados foram salvos com sucesso.',
@@ -210,6 +222,7 @@ export function useUpdateMaterial() {
 export function useDeleteMaterial() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const { tenantId } = useAuth();
 
   return useMutation({
     mutationFn: async (id: string) => {
@@ -221,7 +234,7 @@ export function useDeleteMaterial() {
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['materiais'] });
+      queryClient.invalidateQueries({ queryKey: ['materiais', tenantId] });
       toast({
         title: 'Material excluído',
         description: 'O material foi removido com sucesso.',
@@ -240,8 +253,10 @@ export function useDeleteMaterial() {
 // ==================== MOVIMENTAÇÕES ====================
 
 export function useMovimentacoes(materialId?: string) {
+  const { tenantId } = useAuth();
+
   return useQuery({
-    queryKey: ['movimentacoes', materialId],
+    queryKey: ['movimentacoes', tenantId, materialId],
     queryFn: async () => {
       let query = supabase
         .from('movimentacoes_materiais')
@@ -260,12 +275,14 @@ export function useMovimentacoes(materialId?: string) {
       if (error) throw error;
       return data as MovimentacaoRow[];
     },
+    enabled: !!tenantId,
   });
 }
 
 export function useCreateMovimentacao() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const { tenantId } = useAuth();
 
   return useMutation({
     mutationFn: async (movimentacao: MovimentacaoInsert) => {
@@ -279,8 +296,8 @@ export function useCreateMovimentacao() {
       return data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['movimentacoes'] });
-      queryClient.invalidateQueries({ queryKey: ['materiais'] });
+      queryClient.invalidateQueries({ queryKey: ['movimentacoes', tenantId] });
+      queryClient.invalidateQueries({ queryKey: ['materiais', tenantId] });
       toast({
         title: 'Movimentação registrada',
         description: 'O estoque foi atualizado com sucesso.',
@@ -299,8 +316,10 @@ export function useCreateMovimentacao() {
 // ==================== MATERIAIS POR O.S. ====================
 
 export function useMateriaisOS(osId: string) {
+  const { tenantId } = useAuth();
+
   return useQuery({
-    queryKey: ['materiais-os', osId],
+    queryKey: ['materiais-os', tenantId, osId],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('materiais_os')
@@ -313,13 +332,14 @@ export function useMateriaisOS(osId: string) {
       if (error) throw error;
       return data as MaterialOSRow[];
     },
-    enabled: !!osId,
+    enabled: !!tenantId && !!osId,
   });
 }
 
 export function useAddMaterialOS() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const { tenantId } = useAuth();
 
   return useMutation({
     mutationFn: async (materialOS: MaterialOSInsert) => {
@@ -333,8 +353,8 @@ export function useAddMaterialOS() {
       return data;
     },
     onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['materiais-os', variables.os_id] });
-      queryClient.invalidateQueries({ queryKey: ['materiais'] });
+      queryClient.invalidateQueries({ queryKey: ['materiais-os', tenantId, variables.os_id] });
+      queryClient.invalidateQueries({ queryKey: ['materiais', tenantId] });
       toast({
         title: 'Material adicionado',
         description: 'O material foi adicionado à O.S.',
@@ -353,6 +373,7 @@ export function useAddMaterialOS() {
 export function useRemoveMaterialOS() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const { tenantId } = useAuth();
 
   return useMutation({
     mutationFn: async ({ id, osId }: { id: string; osId: string }) => {
@@ -365,7 +386,7 @@ export function useRemoveMaterialOS() {
       return { osId };
     },
     onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ['materiais-os', data.osId] });
+      queryClient.invalidateQueries({ queryKey: ['materiais-os', tenantId, data.osId] });
       toast({
         title: 'Material removido',
         description: 'O material foi removido da O.S.',
