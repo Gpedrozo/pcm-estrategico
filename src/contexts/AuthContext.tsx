@@ -295,6 +295,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     ));
   }, []);
 
+  const extractEmpresaIdFromMetadata = useCallback((metadata?: {
+    app_metadata?: Record<string, unknown>;
+    user_metadata?: Record<string, unknown>;
+  }) => {
+    const candidate = metadata?.app_metadata?.empresa_id ?? metadata?.user_metadata?.empresa_id;
+    if (typeof candidate !== 'string') return null;
+    const normalized = candidate.trim();
+    return normalized || null;
+  }, []);
+
   const fetchUserProfile = useCallback(async (
     userId: string,
     email?: string | null,
@@ -340,6 +350,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         .filter((role): role is AppRole => Boolean(role));
 
       const metadataRoles = extractRolesFromMetadata(metadata);
+      const metadataEmpresaId = extractEmpresaIdFromMetadata(metadata);
       const roles: AppRole[] = Array.from(new Set([...dbRoles, ...metadataRoles]));
 
       const availableTenantIds = new Set<string>();
@@ -347,12 +358,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (item.empresa_id) availableTenantIds.add(item.empresa_id);
       });
       if (profile?.empresa_id) availableTenantIds.add(profile.empresa_id);
+      if (metadataEmpresaId) availableTenantIds.add(metadataEmpresaId);
 
       let tenantId: string | null = null;
       if (expectedEmpresaId) {
         tenantId = availableTenantIds.has(expectedEmpresaId) ? expectedEmpresaId : null;
       } else {
-        tenantId = (roleData || [])[0]?.empresa_id || profile?.empresa_id || null;
+        tenantId = (roleData || [])[0]?.empresa_id || profile?.empresa_id || metadataEmpresaId || null;
       }
 
       const effectiveRole = getEffectiveRole({ roles, email });
@@ -378,7 +390,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         tenantId: null,
       };
     }
-  }, [extractRolesFromMetadata]);
+  }, [extractEmpresaIdFromMetadata, extractRolesFromMetadata]);
 
   const elevateToSystemOwner = useCallback((profileData: {
     nome: string;

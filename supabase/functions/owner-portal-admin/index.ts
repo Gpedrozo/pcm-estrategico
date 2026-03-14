@@ -1255,6 +1255,11 @@ Deno.serve(async (req) => {
       email: normalizedUserEmail,
       password,
       email_confirm: true,
+      app_metadata: {
+        empresa_id: body.user.empresa_id,
+        role: normalizedRole,
+        roles: [normalizedRole],
+      },
       user_metadata: {
         nome: body.user.nome,
         empresa_id: body.user.empresa_id,
