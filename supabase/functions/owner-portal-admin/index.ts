@@ -888,7 +888,7 @@ Deno.serve(async (req) => {
       }
     }
 
-    const { data: company, error: companyError } = await admin
+    const { data: insertedCompany, error: companyError } = await admin
       .from("empresas")
       .insert({
         nome: companyName,
@@ -905,6 +905,45 @@ Deno.serve(async (req) => {
         return fail("Não foi possível criar a empresa por conflito de dados únicos (slug/código).", 409, { reason: companyError.message }, req);
       }
       return fail(companyError.message, 400, null, req);
+    }
+
+    let company = insertedCompany;
+    let ensuredSlug = (company?.slug ?? "").trim().toLowerCase();
+
+    if (!ensuredSlug) {
+      const fallbackBase = normalizeSlug(companyName) || `empresa-${String(company.id || "").slice(0, 8) || Date.now()}`;
+      let fallbackSlug = fallbackBase;
+
+      for (let attempt = 0; attempt < 20; attempt++) {
+        const candidate = attempt === 0 ? fallbackBase : `${fallbackBase}-${attempt + 1}`;
+        const { data: sameSlugCompany } = await admin
+          .from("empresas")
+          .select("id")
+          .eq("slug", candidate)
+          .neq("id", company.id)
+          .maybeSingle();
+
+        if (!sameSlugCompany?.id) {
+          fallbackSlug = candidate;
+          break;
+        }
+      }
+
+      const { data: updatedCompany, error: slugRepairError } = await admin
+        .from("empresas")
+        .update({ slug: fallbackSlug })
+        .eq("id", company.id)
+        .select("id,nome,slug,status,created_at")
+        .single();
+
+      if (slugRepairError || !updatedCompany?.slug) {
+        await admin.from("empresas").delete().eq("id", company.id);
+        return fail("Falha ao garantir slug da empresa recém-criada.", 400, { reason: slugRepairError?.message ?? "missing slug" }, req);
+      }
+
+      company = updatedCompany;
+      ensuredSlug = (updatedCompany.slug ?? "").trim().toLowerCase();
+      slug = ensuredSlug;
     }
 
     const { error: companyDataError } = await admin.from("dados_empresa").upsert({
@@ -977,12 +1016,14 @@ Deno.serve(async (req) => {
       email_confirm: true,
       app_metadata: {
         empresa_id: company.id,
+        empresa_slug: slug,
         role: masterRole,
         roles: [masterRole],
       },
       user_metadata: {
         nome: body.user.nome,
         empresa_id: company.id,
+        empresa_slug: slug,
       },
     });
 
@@ -1259,14 +1300,14 @@ Deno.serve(async (req) => {
 
     const { data: targetCompany, error: targetCompanyError } = await admin
       .from("empresas")
-      .select("id")
+      .select("id,slug")
       .eq("id", body.user.empresa_id)
       .maybeSingle();
 
     if (targetCompanyError) return fail(targetCompanyError.message, 400, null, req);
     if (!targetCompany?.id) return fail("Empresa do usuário não encontrada.", 404, null, req);
 
-    const password = body.user.password?.trim() || `Tmp#${Math.random().toString(36).slice(2, 10)}!`;
+    const password = body.user.password?.trim() || generateTemporaryPassword();
 
     const { data: createdAuth, error: createError } = await admin.auth.admin.createUser({
       email: normalizedUserEmail,
@@ -1274,12 +1315,14 @@ Deno.serve(async (req) => {
       email_confirm: true,
       app_metadata: {
         empresa_id: body.user.empresa_id,
+        empresa_slug: targetCompany.slug ?? null,
         role: normalizedRole,
         roles: [normalizedRole],
       },
       user_metadata: {
         nome: body.user.nome,
         empresa_id: body.user.empresa_id,
+        empresa_slug: targetCompany.slug ?? null,
       },
     });
 
