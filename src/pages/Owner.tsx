@@ -586,13 +586,13 @@ export default function Owner() {
             </button>
 
             {companyCredentialNote && (
-              <div className="mt-4 rounded-lg border border-amber-500/40 bg-amber-950/20 p-3">
-                <p className="text-xs font-semibold uppercase tracking-wide text-amber-200">Credenciais iniciais do cliente</p>
-                <p className="mt-1 text-xs text-amber-100/80">Essa informacao e exibida apenas agora. Copie e envie para o cliente em canal seguro.</p>
-                <pre className="mt-3 overflow-x-auto rounded border border-amber-600/40 bg-slate-950 p-3 text-xs text-amber-100 whitespace-pre-wrap">{companyCredentialNote.noteText}</pre>
+              <div className="mt-4 rounded-lg border border-amber-400/70 bg-slate-900 p-4 shadow-sm">
+                <p className="text-xs font-semibold uppercase tracking-wide text-amber-100">Credenciais iniciais do cliente</p>
+                <p className="mt-1 text-xs leading-relaxed text-slate-100">Essa informacao e exibida apenas agora. Copie e envie para o cliente em canal seguro.</p>
+                <pre className="mt-3 overflow-x-auto rounded border border-amber-300/60 bg-slate-950 p-3 text-xs leading-relaxed text-amber-100 whitespace-pre-wrap">{companyCredentialNote.noteText}</pre>
                 <div className="mt-3 flex flex-wrap gap-2">
-                  <button className="rounded border border-amber-400 px-3 py-2 text-xs font-semibold text-amber-200" onClick={copyCompanyCredentialNote}>Copiar nota</button>
-                  <a className="rounded border border-slate-600 px-3 py-2 text-xs font-semibold text-slate-200" href={companyCredentialNote.loginUrl} target="_blank" rel="noreferrer">Abrir login do cliente</a>
+                  <button className="rounded border border-amber-300 bg-amber-300/10 px-3 py-2 text-xs font-semibold text-amber-100 hover:bg-amber-300/20" onClick={copyCompanyCredentialNote}>Copiar nota</button>
+                  <a className="rounded border border-slate-400 bg-slate-800 px-3 py-2 text-xs font-semibold text-slate-100 hover:bg-slate-700" href={companyCredentialNote.loginUrl} target="_blank" rel="noreferrer">Abrir login do cliente</a>
                 </div>
               </div>
             )}
