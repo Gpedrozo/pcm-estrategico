@@ -702,7 +702,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               userId: currentUser.id,
               tenantId: profileData.tenantId,
             });
-            return { error: null };
+            await supabase.auth.signOut();
+            return { error: 'Nao foi possivel localizar o subdominio da sua empresa. Contate o suporte.' };
           }
 
           const currentHostname = window.location.hostname.toLowerCase();

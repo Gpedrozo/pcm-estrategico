@@ -53,6 +53,27 @@ export default function Login() {
     return nextParam;
   };
 
+  const hasSessionTransferHash = () => {
+    const rawHash = window.location.hash.startsWith('#') ? window.location.hash.slice(1) : '';
+    if (!rawHash) return false;
+    const hashParams = new URLSearchParams(rawHash);
+    return Boolean(hashParams.get('session_transfer'));
+  };
+
+  useEffect(() => {
+    if (isLoading || isAuthenticated) return;
+
+    const isBaseHost = currentHost === tenantBaseDomain || currentHost === `www.${tenantBaseDomain}`;
+    const isTenantSubdomain = !isBaseHost && currentHost.endsWith(`.${tenantBaseDomain}`);
+
+    if (!isTenantSubdomain) return;
+    if (hasSessionTransferHash()) return;
+
+    const currentPath = `${window.location.pathname}${window.location.search}`;
+    const baseLoginUrl = `https://${tenantBaseDomain}/login?next=${encodeURIComponent(currentPath || '/dashboard')}`;
+    window.location.assign(baseLoginUrl);
+  }, [currentHost, isAuthenticated, isLoading, tenantBaseDomain]);
+
   const activeBranding = branding || {
     nome_fantasia: 'PCM ESTRATÉGICO',
     razao_social: 'PCM ESTRATÉGICO',

@@ -2,6 +2,8 @@ import React, { createContext, useContext, useEffect, useMemo, useState } from '
 import { supabase } from '@/integrations/supabase/client';
 import { resolveEmpresaSlug } from '@/lib/security';
 
+const TENANT_SLUG_REGEX = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+
 export interface Tenant {
   id: string;
   slug: string;
@@ -34,6 +36,15 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
       setError(null);
 
       const hostname = window.location.hostname.toLowerCase();
+      const baseDomain = (import.meta.env.VITE_TENANT_BASE_DOMAIN || 'gppis.com.br').toLowerCase();
+      const isBaseDomainHost = hostname === baseDomain || hostname === `www.${baseDomain}`;
+
+      if (!isBaseDomainHost && hostname.endsWith(`.${baseDomain}`) && (tenantSlug === 'default' || !TENANT_SLUG_REGEX.test(tenantSlug))) {
+        setTenant(null);
+        setError('Subdominio invalido para tenant.');
+        setIsLoading(false);
+        return;
+      }
 
       const { data: domainConfig, error: domainError } = await supabase
         .from('empresa_config')
@@ -62,9 +73,6 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
       }
 
       if (!empresaId) {
-        const baseDomain = (import.meta.env.VITE_TENANT_BASE_DOMAIN || 'gppis.com.br').toLowerCase();
-        const isBaseDomainHost = hostname === baseDomain || hostname === `www.${baseDomain}`;
-
         if (isBaseDomainHost) {
           setTenant(null);
           setError(null);
@@ -74,7 +82,7 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
 
         if (hostname.endsWith(`.${baseDomain}`)) {
           const slug = hostname.replace(`.${baseDomain}`, '').split('.')[0]?.trim().toLowerCase();
-          if (slug && slug !== 'www') {
+          if (slug && slug !== 'www' && TENANT_SLUG_REGEX.test(slug)) {
             const { data: companyBySlug } = await supabase
               .from('empresas')
               .select('id')

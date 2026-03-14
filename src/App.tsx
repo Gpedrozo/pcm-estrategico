@@ -8,6 +8,7 @@ import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { usePermission } from "@/hooks/usePermission";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { EnvironmentGuard } from "@/components/guards/EnvironmentGuard";
+import { TenantDomainMiddleware } from '@/components/guards/TenantDomainMiddleware';
 import { TenantQueryIsolationGuard } from '@/components/guards/TenantQueryIsolationGuard';
 import { SpeedInsights } from "@vercel/speed-insights/react";
 import { TenantProvider } from "@/contexts/TenantContext";
@@ -138,12 +139,13 @@ function TenantRoutes() {
   return (
     <EnvironmentGuard>
       <TenantProvider>
-        <BrandingProvider>
-          <Suspense fallback={<RouteLoading />}>
-            <Routes>
-              <Route path="/" element={<Index />} />
-              <Route path="/login" element={<Login />} />
-              <Route path="/instalar" element={<Instalar />} />
+        <TenantDomainMiddleware>
+          <BrandingProvider>
+            <Suspense fallback={<RouteLoading />}>
+              <Routes>
+                <Route path="/" element={<Index />} />
+                <Route path="/login" element={<Login />} />
+                <Route path="/instalar" element={<Instalar />} />
 
               <Route element={<AppLayout />}>
                 <Route path="/dashboard" element={<Dashboard />} />
@@ -199,10 +201,11 @@ function TenantRoutes() {
                 <Route path="/manuais-operacao/master-ti" element={<ManualOperacao />} />
               </Route>
 
-              <Route path="*" element={<NotFound />} />
-            </Routes>
-          </Suspense>
-        </BrandingProvider>
+                <Route path="*" element={<NotFound />} />
+              </Routes>
+            </Suspense>
+          </BrandingProvider>
+        </TenantDomainMiddleware>
       </TenantProvider>
     </EnvironmentGuard>
   );
