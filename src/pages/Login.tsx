@@ -133,10 +133,6 @@ export default function Login() {
         setIsRedirecting(false);
         setRedirectStep(0);
         setRedirectTimeoutMs(null);
-      } else if (isTenantBaseHost) {
-        setIsRedirecting(true);
-        setRedirectStep(0);
-        setRedirectTimeoutMs(Date.now() + 15000);
       }
     } catch (err) {
       setLoginError('Erro ao fazer login. Tente novamente.');
@@ -191,7 +187,7 @@ export default function Login() {
                 onChange={(e) => setLoginEmail(e.target.value)}
                 required
                 className="h-11"
-                autoComplete="email"
+                autoComplete="off"
               />
             </div>
 
@@ -205,7 +201,7 @@ export default function Login() {
                 onChange={(e) => setLoginPassword(e.target.value)}
                 required
                 className="h-11"
-                autoComplete="current-password"
+                autoComplete="off"
               />
             </div>
 
