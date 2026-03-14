@@ -10,6 +10,7 @@ import { GlobalSearch } from './GlobalSearch';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { impersonateCompany, listPlatformCompanies, stopImpersonation } from '@/services/ownerPortal.service';
 import { supabase } from '@/integrations/supabase/client';
+import { resolveOrRepairTenantHost } from '@/lib/tenantDomain';
 
 export function AppLayout() {
   const { isAuthenticated, isLoading, effectiveRole, tenantId, session, impersonation, startImpersonationSession, stopImpersonationSession } = useAuth();
@@ -177,29 +178,10 @@ export function AppLayout() {
 
       setIsDomainRedirectRunning(true);
 
-      const { data: configData } = await supabase
-        .from('empresa_config')
-        .select('dominio_custom')
-        .eq('empresa_id', tenantId)
-        .not('dominio_custom', 'is', null)
-        .order('updated_at', { ascending: false })
-        .limit(1)
-        .maybeSingle();
-
-      let targetHost = (configData?.dominio_custom ?? '').trim().toLowerCase();
-
-      if (!targetHost) {
-        const { data: companyData } = await supabase
-          .from('empresas')
-          .select('slug')
-          .eq('id', tenantId)
-          .maybeSingle();
-
-        const slug = (companyData?.slug ?? '').trim().toLowerCase();
-        if (slug) {
-          targetHost = `${slug}.${tenantBaseDomain}`;
-        }
-      }
+      let targetHost = await resolveOrRepairTenantHost({
+        tenantId,
+        tenantBaseDomain,
+      });
 
       if (!targetHost) {
         const metadataSlug = String(
@@ -209,7 +191,15 @@ export function AppLayout() {
         ).trim().toLowerCase();
 
         if (metadataSlug) {
-          targetHost = `${metadataSlug}.${tenantBaseDomain}`;
+          targetHost = await resolveOrRepairTenantHost({
+            tenantId,
+            tenantBaseDomain,
+            slugHint: metadataSlug,
+          });
+
+          if (!targetHost) {
+            targetHost = `${metadataSlug}.${tenantBaseDomain}`;
+          }
         }
       }
 

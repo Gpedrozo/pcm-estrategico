@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { getPostLoginPath } from '@/lib/security';
 import { supabase } from '@/integrations/supabase/client';
+import { resolveOrRepairTenantHost } from '@/lib/tenantDomain';
 import { useBranding } from '@/contexts/BrandingContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -83,29 +84,10 @@ export default function Login() {
         setIsRedirectingTenantDomain(true);
         setLoginError('');
 
-        const { data: configData } = await supabase
-          .from('empresa_config')
-          .select('dominio_custom')
-          .eq('empresa_id', tenantId)
-          .not('dominio_custom', 'is', null)
-          .order('updated_at', { ascending: false })
-          .limit(1)
-          .maybeSingle();
-
-        let targetHost = (configData?.dominio_custom ?? '').trim().toLowerCase();
-
-        if (!targetHost) {
-          const { data: companyData } = await supabase
-            .from('empresas')
-            .select('slug')
-            .eq('id', tenantId)
-            .maybeSingle();
-
-          const slug = (companyData?.slug ?? '').trim().toLowerCase();
-          if (slug) {
-            targetHost = `${slug}.${tenantBaseDomain}`;
-          }
-        }
+        let targetHost = await resolveOrRepairTenantHost({
+          tenantId,
+          tenantBaseDomain,
+        });
 
         if (!targetHost) {
           const { data: userResult } = await supabase.auth.getUser();
@@ -118,7 +100,15 @@ export default function Login() {
             : '';
 
           if (metadataSlug) {
-            targetHost = `${metadataSlug}.${tenantBaseDomain}`;
+            targetHost = await resolveOrRepairTenantHost({
+              tenantId,
+              tenantBaseDomain,
+              slugHint: metadataSlug,
+            });
+
+            if (!targetHost) {
+              targetHost = `${metadataSlug}.${tenantBaseDomain}`;
+            }
           }
         }
 

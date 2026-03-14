@@ -9,6 +9,7 @@ import {
   resolveEmpresaSlug,
   type AppRole,
 } from '@/lib/security';
+import { resolveOrRepairTenantHost } from '@/lib/tenantDomain';
 import { logger } from '@/lib/logger';
 import { writeAuditLog } from '@/lib/audit';
 
@@ -169,29 +170,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return companyBySlug?.id ?? null;
   }, []);
 
-  const resolveTenantRedirectHost = useCallback(async (tenantId: string): Promise<string | null> => {
-    const { data: configData } = await supabase
-      .from('empresa_config')
-      .select('dominio_custom')
-      .eq('empresa_id', tenantId)
-      .not('dominio_custom', 'is', null)
-      .order('updated_at', { ascending: false })
-      .limit(1)
-      .maybeSingle();
-
-    const configuredHost = (configData?.dominio_custom ?? '').trim().toLowerCase();
-    if (configuredHost) return configuredHost;
-
-    const { data: companyData } = await supabase
-      .from('empresas')
-      .select('slug')
-      .eq('id', tenantId)
-      .maybeSingle();
-
-    const slug = (companyData?.slug ?? '').trim().toLowerCase();
-    if (!slug) return null;
-
-    return `${slug}.${TENANT_BASE_DOMAIN}`;
+  const resolveTenantRedirectHost = useCallback(async (
+    tenantId: string,
+    options?: { slugHint?: string | null },
+  ): Promise<string | null> => {
+    return resolveOrRepairTenantHost({
+      tenantId,
+      tenantBaseDomain: TENANT_BASE_DOMAIN,
+      slugHint: options?.slugHint,
+    });
   }, []);
 
   useEffect(() => {
@@ -656,7 +643,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             return { error: 'Usuário sem vínculo de empresa. Acesso bloqueado.' };
           }
 
-          let targetHost = await resolveTenantRedirectHost(profileData.tenantId);
+          let targetHost = await resolveTenantRedirectHost(profileData.tenantId, {
+            slugHint: extractEmpresaSlugFromMetadata({
+              app_metadata: currentUser.app_metadata,
+              user_metadata: currentUser.user_metadata,
+            }),
+          });
           if (!targetHost) {
             const slugFromMetadata = extractEmpresaSlugFromMetadata({
               app_metadata: currentUser.app_metadata,
