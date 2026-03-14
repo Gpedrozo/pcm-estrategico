@@ -79,10 +79,37 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         hostname,
         error: error.message,
       });
+      // Continue with slug fallback below.
+    }
+
+    if (domainConfig?.empresa_id) return domainConfig.empresa_id;
+
+    // Strict fallback: if host is <slug>.<base-domain>, resolve by company slug.
+    const baseDomain = TENANT_BASE_DOMAIN.toLowerCase();
+    const isBaseDomainHost = hostname === baseDomain || hostname === `www.${baseDomain}`;
+
+    if (isBaseDomainHost) return null;
+    if (!hostname.endsWith(`.${baseDomain}`)) return null;
+
+    const slug = hostname.replace(`.${baseDomain}`, '').split('.')[0]?.trim().toLowerCase();
+    if (!slug || slug === 'www') return null;
+
+    const { data: companyBySlug, error: slugError } = await supabase
+      .from('empresas')
+      .select('id')
+      .eq('slug', slug)
+      .maybeSingle();
+
+    if (slugError) {
+      logger.warn('tenant_slug_resolve_failed', {
+        hostname,
+        slug,
+        error: slugError.message,
+      });
       return null;
     }
 
-    return domainConfig?.empresa_id ?? null;
+    return companyBySlug?.id ?? null;
   }, []);
 
   const resolveTenantRedirectHost = useCallback(async (tenantId: string): Promise<string | null> => {

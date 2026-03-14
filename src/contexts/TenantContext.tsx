@@ -50,7 +50,25 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
         return;
       }
 
-      const empresaId = domainConfig?.empresa_id ?? null;
+      let empresaId = domainConfig?.empresa_id ?? null;
+
+      if (!empresaId) {
+        const baseDomain = (import.meta.env.VITE_TENANT_BASE_DOMAIN || 'gppis.com.br').toLowerCase();
+        const isBaseDomainHost = hostname === baseDomain || hostname === `www.${baseDomain}`;
+
+        if (!isBaseDomainHost && hostname.endsWith(`.${baseDomain}`)) {
+          const slug = hostname.replace(`.${baseDomain}`, '').split('.')[0]?.trim().toLowerCase();
+          if (slug && slug !== 'www') {
+            const { data: companyBySlug } = await supabase
+              .from('empresas')
+              .select('id')
+              .eq('slug', slug)
+              .maybeSingle();
+
+            empresaId = companyBySlug?.id ?? null;
+          }
+        }
+      }
 
       if (!empresaId) {
         setTenant(null);
