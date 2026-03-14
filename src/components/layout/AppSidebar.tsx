@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import { 
   LayoutDashboard, 
   FileText, 
@@ -33,6 +34,7 @@ import { NavLink, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useBranding } from '@/contexts/BrandingContext';
 import { useOptionalTenant } from '@/contexts/TenantContext';
+import { supabase } from '@/integrations/supabase/client';
 import {
   Sidebar,
   SidebarContent,
@@ -111,10 +113,38 @@ export function AppSidebar() {
   const tenantContext = useOptionalTenant();
   const tenant = tenantContext?.tenant ?? null;
   const location = useLocation();
+  const [resolvedCompanyName, setResolvedCompanyName] = useState<string | null>(null);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const loadCompanyName = async () => {
+      if (!user?.tenantId) {
+        if (isMounted) setResolvedCompanyName(null);
+        return;
+      }
+
+      const { data } = await supabase
+        .from('empresas')
+        .select('nome')
+        .eq('id', user.tenantId)
+        .maybeSingle();
+
+      if (!isMounted) return;
+      setResolvedCompanyName(data?.nome ?? null);
+    };
+
+    void loadCompanyName();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [user?.tenantId]);
 
   const activeCompanyName =
     branding?.nome_fantasia
     || branding?.razao_social
+    || resolvedCompanyName
     || tenant?.name
     || null;
 
