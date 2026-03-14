@@ -18,6 +18,13 @@ interface TenantContextValue {
 
 const TenantContext = createContext<TenantContextValue | undefined>(undefined);
 
+const TENANT_BASE_DOMAIN = (import.meta.env.VITE_TENANT_BASE_DOMAIN || 'gppis.com.br').toLowerCase();
+
+function isTenantBaseDomain(hostname: string) {
+  const normalized = hostname.toLowerCase();
+  return normalized === TENANT_BASE_DOMAIN || normalized === `www.${TENANT_BASE_DOMAIN}`;
+}
+
 
 export function TenantProvider({ children }: { children: React.ReactNode }) {
   const [tenant, setTenant] = useState<Tenant | null>(null);
@@ -50,7 +57,34 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
         return;
       }
 
-      const empresaId = domainConfig?.empresa_id ?? null;
+      let empresaId = domainConfig?.empresa_id ?? null;
+
+      if (!empresaId && isTenantBaseDomain(hostname)) {
+        const { data: authUser } = await supabase.auth.getUser();
+        const userId = authUser?.user?.id ?? null;
+
+        if (userId) {
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('empresa_id')
+            .eq('id', userId)
+            .maybeSingle();
+
+          empresaId = profile?.empresa_id ?? null;
+
+          if (!empresaId) {
+            const { data: roleRows } = await supabase
+              .from('user_roles')
+              .select('empresa_id')
+              .eq('user_id', userId)
+              .not('empresa_id', 'is', null)
+              .limit(1);
+
+            empresaId = roleRows?.[0]?.empresa_id ?? null;
+          }
+        }
+      }
+
       if (!empresaId) {
         setTenant(null);
         setError('Domínio tenant não autorizado');
@@ -60,7 +94,7 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
 
       const { data, error: fetchError } = await supabase
         .from('empresas')
-        .select('id, nome, ativo')
+        .select('id, nome, ativo, slug')
         .eq('id', empresaId)
         .maybeSingle();
 
@@ -72,7 +106,7 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
       } else {
         setTenant({
           id: data.id,
-          slug: tenantSlug,
+          slug: (data.slug || tenantSlug || 'default').toLowerCase(),
           name: data.nome,
           is_active: data.ativo,
         });
