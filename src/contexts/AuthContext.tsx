@@ -550,8 +550,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       if (!isOwnerDomain(window.location.hostname) && isBaseTenantHost && !isGlobalRole && profileData.tenantId) {
         const targetHost = await resolveTenantRedirectHost(profileData.tenantId);
-        const currentHost = window.location.hostname.toLowerCase();
-
         if (targetHost) {
           const normalizedTargetHost = targetHost.toLowerCase();
           const targetUrl = `${window.location.protocol}//${normalizedTargetHost}/dashboard`;
@@ -559,15 +557,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           return { error: null };
         }
 
-        logger.warn('tenant_redirect_host_not_found_fallback_dashboard', {
-          userId: currentUser.id,
-          tenantId: profileData.tenantId,
-          currentHost,
-        });
-
-        const fallbackUrl = `${window.location.protocol}//${currentHost}/dashboard`;
-        window.location.assign(fallbackUrl);
-        return { error: null };
+        return {
+          error: 'Nao foi possivel localizar o subdominio da sua empresa. Contate o suporte para revisar slug/dominio_custom.',
+        };
       }
 
       if (!isGlobalRole && !profileData.tenantId) {
