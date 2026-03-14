@@ -52,6 +52,26 @@ const IMPERSONATION_STORAGE_KEY = 'pcm.owner.impersonation.session';
 const TENANT_BASE_DOMAIN = (import.meta.env.VITE_TENANT_BASE_DOMAIN || 'gppis.com.br').toLowerCase();
 const LOGOUT_MARKER_PARAM = 'logout';
 const SESSION_TRANSFER_MAX_AGE_MS = 2 * 60 * 1000;
+const LOGIN_PROFILE_TIMEOUT_MS = 12_000;
+const TENANT_HOST_RESOLVE_TIMEOUT_MS = 6_000;
+
+async function withTimeout<T>(promise: Promise<T>, timeoutMs: number, timeoutMessage: string): Promise<T> {
+  let timer: number | null = null;
+
+  const timeoutPromise = new Promise<never>((_, reject) => {
+    timer = window.setTimeout(() => {
+      reject(new Error(timeoutMessage));
+    }, timeoutMs);
+  });
+
+  try {
+    return await Promise.race([promise, timeoutPromise]);
+  } finally {
+    if (timer !== null) {
+      window.clearTimeout(timer);
+    }
+  }
+}
 
 function isTenantBaseDomain(hostname: string) {
   const normalized = hostname.toLowerCase();
@@ -641,10 +661,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const { data: { session: currentSession } } = await supabase.auth.getSession();
     const { data: { user: currentUser } } = await supabase.auth.getUser();
     if (currentUser) {
-      const profileData = await resolveUserProfile(currentUser.id, currentUser.email, {
-        app_metadata: currentUser.app_metadata,
-        user_metadata: currentUser.user_metadata,
-      }, currentSession?.access_token ?? null);
+      let profileData: {
+        nome: string;
+        tipo: AppRole;
+        roles: AppRole[];
+        tenantId: string | null;
+      };
+
+      try {
+        profileData = await withTimeout(
+          resolveUserProfile(currentUser.id, currentUser.email, {
+            app_metadata: currentUser.app_metadata,
+            user_metadata: currentUser.user_metadata,
+          }, currentSession?.access_token ?? null),
+          LOGIN_PROFILE_TIMEOUT_MS,
+          'timeout_resolving_user_profile',
+        );
+      } catch {
+        await supabase.auth.signOut();
+        return { error: 'Tempo esgotado ao carregar seu perfil. Tente novamente.' };
+      }
 
       const isOwnerPortalAllowed =
         profileData.tipo === 'SYSTEM_OWNER' ||
@@ -680,12 +716,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             return { error: 'Usuário sem vínculo de empresa. Acesso bloqueado.' };
           }
 
-          let targetHost = await resolveTenantRedirectHost(profileData.tenantId, {
-            slugHint: extractEmpresaSlugFromMetadata({
-              app_metadata: currentUser.app_metadata,
-              user_metadata: currentUser.user_metadata,
+          let targetHost = await withTimeout(
+            resolveTenantRedirectHost(profileData.tenantId, {
+              slugHint: extractEmpresaSlugFromMetadata({
+                app_metadata: currentUser.app_metadata,
+                user_metadata: currentUser.user_metadata,
+              }),
             }),
-          });
+            TENANT_HOST_RESOLVE_TIMEOUT_MS,
+            'timeout_resolving_tenant_host',
+          ).catch(() => null);
           if (!targetHost) {
             const slugFromMetadata = extractEmpresaSlugFromMetadata({
               app_metadata: currentUser.app_metadata,

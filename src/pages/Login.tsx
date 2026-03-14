@@ -11,6 +11,26 @@ import { Label } from '@/components/ui/label';
 import { Loader2, AlertCircle, Settings } from 'lucide-react';
 import { z } from 'zod';
 
+const TENANT_REDIRECT_TIMEOUT_MS = 6_000;
+
+async function withTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T> {
+  let timer: number | null = null;
+
+  const timeoutPromise = new Promise<never>((_, reject) => {
+    timer = window.setTimeout(() => {
+      reject(new Error('timeout'));
+    }, timeoutMs);
+  });
+
+  try {
+    return await Promise.race([promise, timeoutPromise]);
+  } finally {
+    if (timer !== null) {
+      window.clearTimeout(timer);
+    }
+  }
+}
+
 // Validação do login
 const loginSchema = z.object({
   email: z
@@ -105,10 +125,13 @@ export default function Login() {
         setIsRedirectingTenantDomain(true);
         setLoginError('');
 
-        let targetHost = await resolveOrRepairTenantHost({
-          tenantId,
-          tenantBaseDomain,
-        });
+        let targetHost = await withTimeout(
+          resolveOrRepairTenantHost({
+            tenantId,
+            tenantBaseDomain,
+          }),
+          TENANT_REDIRECT_TIMEOUT_MS,
+        ).catch(() => null);
 
         if (!targetHost) {
           const { data: userResult } = await supabase.auth.getUser();
@@ -121,11 +144,14 @@ export default function Login() {
             : '';
 
           if (metadataSlug) {
-            targetHost = await resolveOrRepairTenantHost({
-              tenantId,
-              tenantBaseDomain,
-              slugHint: metadataSlug,
-            });
+            targetHost = await withTimeout(
+              resolveOrRepairTenantHost({
+                tenantId,
+                tenantBaseDomain,
+                slugHint: metadataSlug,
+              }),
+              TENANT_REDIRECT_TIMEOUT_MS,
+            ).catch(() => null);
 
             if (!targetHost) {
               targetHost = `${metadataSlug}.${tenantBaseDomain}`;
