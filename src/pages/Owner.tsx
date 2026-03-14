@@ -20,6 +20,7 @@ import {
 } from '@/hooks/useOwnerPortal'
 
 const OWNER_MASTER_EMAIL = (import.meta.env.VITE_OWNER_MASTER_EMAIL || 'pedrozo@gppis.com.br').toLowerCase()
+const TENANT_BASE_DOMAIN = (import.meta.env.VITE_TENANT_BASE_DOMAIN || 'gppis.com.br').toLowerCase()
 
 const toArray = <T,>(value: unknown): T[] => (Array.isArray(value) ? (value as T[]) : [])
 
@@ -39,6 +40,15 @@ type OwnerTab =
   | 'logs'
   | 'configuracoes'
   | 'owner-master'
+
+type CompanyCredentialNote = {
+  companyName: string
+  companySlug: string
+  masterEmail: string
+  initialPassword: string
+  loginUrl: string
+  noteText: string
+}
 
 function Card({ title, subtitle, children }: { title: string; subtitle?: string; children: React.ReactNode }) {
   return (
@@ -64,6 +74,7 @@ export default function Owner() {
   const [active, setActive] = useState<OwnerTab>('dashboard')
   const [feedback, setFeedback] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [companyCredentialNote, setCompanyCredentialNote] = useState<CompanyCredentialNote | null>(null)
   const [systemActionOutput, setSystemActionOutput] = useState<unknown>(null)
   const [systemForm, setSystemForm] = useState({ user_id: '', empresa_id: '', table_name: '', auth_password: '', keep_core: false, keep_billing: false, include_auth_users: true })
   const [selectedTenantTables, setSelectedTenantTables] = useState<string[]>([])
@@ -254,6 +265,104 @@ export default function Owner() {
   const clearFeedback = () => {
     setFeedback(null)
     setError(null)
+    setCompanyCredentialNote(null)
+  }
+
+  const buildCreateCompanyPayload = () => ({
+    company: {
+      nome: createCompanyForm.nome,
+      slug: createCompanyForm.slug || undefined,
+      razao_social: createCompanyForm.razao_social || undefined,
+      nome_fantasia: createCompanyForm.nome_fantasia || undefined,
+      cnpj: createCompanyForm.cnpj || undefined,
+      endereco: createCompanyForm.endereco || undefined,
+      telefone: createCompanyForm.telefone || undefined,
+      email: createCompanyForm.email || undefined,
+      responsavel: createCompanyForm.responsavel || undefined,
+      segmento: createCompanyForm.segmento || undefined,
+    },
+    user: {
+      nome: createCompanyForm.admin_nome || 'Administrador',
+      email: createCompanyForm.admin_email,
+      role: 'ADMIN',
+    },
+  })
+
+  const handleCreateCompany = async () => {
+    clearFeedback()
+    try {
+      const response = await createCompanyMutation.mutateAsync(buildCreateCompanyPayload()) as any
+      const createdCompany = response?.company ?? {}
+      const masterUser = response?.master_user ?? {}
+      const initialPassword = String(masterUser?.initial_password ?? '').trim()
+      const companySlug = String(createdCompany?.slug ?? '').trim()
+      const companyName = String(createdCompany?.nome ?? createCompanyForm.nome).trim()
+      const masterEmail = String(masterUser?.email ?? createCompanyForm.admin_email).trim().toLowerCase()
+      const loginUrl = companySlug
+        ? `https://${companySlug}.${TENANT_BASE_DOMAIN}/login`
+        : `https://${TENANT_BASE_DOMAIN}/login`
+
+      if (initialPassword) {
+        const noteText = [
+          'CREDENCIAIS INICIAIS DO CLIENTE',
+          `Empresa: ${companyName}`,
+          `Slug: ${companySlug || 'N/A'}`,
+          `Login: ${masterEmail}`,
+          `Senha temporaria: ${initialPassword}`,
+          `URL de acesso: ${loginUrl}`,
+          'Acao obrigatoria: alterar a senha no primeiro acesso.',
+        ].join('\n')
+
+        setCompanyCredentialNote({
+          companyName,
+          companySlug,
+          masterEmail,
+          initialPassword,
+          loginUrl,
+          noteText,
+        })
+      }
+
+      if (response?.warning) {
+        setFeedback(`Empresa criada com alerta: ${String(response.warning)}`)
+        return
+      }
+
+      setFeedback(initialPassword ? 'Empresa criada com sucesso. Credenciais iniciais disponiveis para copia.' : 'Empresa criada com sucesso.')
+    } catch (err: any) {
+      const rawMessage = String(err?.message ?? err ?? 'Falha na operacao.')
+      const normalized = rawMessage.toLowerCase()
+
+      if (normalized.includes('non-2xx')) {
+        setError(
+          'A edge function owner-portal-admin retornou erro sem detalhe (non-2xx). Verifique permissao de owner master, senha de confirmacao e logs da edge function para o action executado.',
+        )
+        return
+      }
+
+      if (normalized.includes('forbidden: owner master only') || normalized.includes('owner master only')) {
+        setError('Operacao restrita ao owner master (pedrozo@gppis.com.br).')
+        return
+      }
+
+      setError(rawMessage)
+    }
+  }
+
+  const copyCompanyCredentialNote = async () => {
+    if (!companyCredentialNote) return
+    if (!navigator?.clipboard?.writeText) {
+      setError('Clipboard indisponivel neste navegador/contexto.')
+      return
+    }
+
+    try {
+      await navigator.clipboard.writeText(companyCredentialNote.noteText)
+      setFeedback('Nota de credenciais copiada para a area de transferencia.')
+      setError(null)
+    } catch {
+      setError('Nao foi possivel copiar a nota automaticamente. Tente copiar manualmente.')
+    }
   }
 
   const runAction = async (fn: () => Promise<unknown>, success: string) => {
@@ -471,30 +580,22 @@ export default function Owner() {
             <button
               className="mt-3 rounded bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground"
               disabled={createCompanyMutation.isPending || !createCompanyForm.nome || !createCompanyForm.admin_nome || !createCompanyForm.admin_email}
-              onClick={() =>
-                runAction(
-                  () =>
-                    createCompanyMutation.mutateAsync({
-                      company: {
-                        nome: createCompanyForm.nome,
-                        slug: createCompanyForm.slug || undefined,
-                        razao_social: createCompanyForm.razao_social || undefined,
-                        nome_fantasia: createCompanyForm.nome_fantasia || undefined,
-                        cnpj: createCompanyForm.cnpj || undefined,
-                        endereco: createCompanyForm.endereco || undefined,
-                        telefone: createCompanyForm.telefone || undefined,
-                        email: createCompanyForm.email || undefined,
-                        responsavel: createCompanyForm.responsavel || undefined,
-                        segmento: createCompanyForm.segmento || undefined,
-                      },
-                      user: { nome: createCompanyForm.admin_nome || 'Administrador', email: createCompanyForm.admin_email, role: 'ADMIN' },
-                    }),
-                  'Empresa criada com sucesso.',
-                )
-              }
+              onClick={handleCreateCompany}
             >
               Criar empresa
             </button>
+
+            {companyCredentialNote && (
+              <div className="mt-4 rounded-lg border border-amber-500/40 bg-amber-950/20 p-3">
+                <p className="text-xs font-semibold uppercase tracking-wide text-amber-200">Credenciais iniciais do cliente</p>
+                <p className="mt-1 text-xs text-amber-100/80">Essa informacao e exibida apenas agora. Copie e envie para o cliente em canal seguro.</p>
+                <pre className="mt-3 overflow-x-auto rounded border border-amber-600/40 bg-slate-950 p-3 text-xs text-amber-100 whitespace-pre-wrap">{companyCredentialNote.noteText}</pre>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <button className="rounded border border-amber-400 px-3 py-2 text-xs font-semibold text-amber-200" onClick={copyCompanyCredentialNote}>Copiar nota</button>
+                  <a className="rounded border border-slate-600 px-3 py-2 text-xs font-semibold text-slate-200" href={companyCredentialNote.loginUrl} target="_blank" rel="noreferrer">Abrir login do cliente</a>
+                </div>
+              </div>
+            )}
           </Card>
 
           <Card title="Atualizar empresa">

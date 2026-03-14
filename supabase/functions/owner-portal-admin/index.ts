@@ -220,6 +220,19 @@ function normalizeSlug(text: string) {
     .slice(0, 48);
 }
 
+function generateTemporaryPassword(length = 14) {
+  const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789";
+  const bytes = new Uint8Array(length);
+  crypto.getRandomValues(bytes);
+  let body = "";
+
+  for (let i = 0; i < bytes.length; i++) {
+    body += alphabet[bytes[i] % alphabet.length];
+  }
+
+  return `Tmp#${body}!`;
+}
+
 const TENANT_BASE_DOMAIN = (Deno.env.get("TENANT_BASE_DOMAIN")
   ?? Deno.env.get("VITE_TENANT_BASE_DOMAIN")
   ?? "gppis.com.br")
@@ -955,12 +968,18 @@ Deno.serve(async (req) => {
       }
     }
 
-    const password = body.user.password?.trim() || `Tmp#${Math.random().toString(36).slice(2, 10)}!`;
+    const masterRole = body.user.role ?? "ADMIN";
+    const password = body.user.password?.trim() || generateTemporaryPassword();
 
     const { data: createdAuth, error: authError } = await admin.auth.admin.createUser({
       email: body.user.email.trim().toLowerCase(),
       password,
       email_confirm: true,
+      app_metadata: {
+        empresa_id: company.id,
+        role: masterRole,
+        roles: [masterRole],
+      },
       user_metadata: {
         nome: body.user.nome,
         empresa_id: company.id,
@@ -975,8 +994,6 @@ Deno.serve(async (req) => {
       }
       return fail(authMessage, 400, null, req);
     }
-
-    const masterRole = body.user.role ?? "ADMIN";
 
     const { error: profileUpsertError } = await admin.from("profiles").upsert({
       id: createdAuth.user.id,

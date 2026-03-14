@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { getPostLoginPath, isOwnerDomain } from '@/lib/security';
+import { getPostLoginPath } from '@/lib/security';
 import { useBranding } from '@/contexts/BrandingContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -36,28 +36,10 @@ export default function Login() {
   const [loginPassword, setLoginPassword] = useState('');
   const [loginError, setLoginError] = useState('');
   const [isLoginLoading, setIsLoginLoading] = useState(false);
-  const [isRedirecting, setIsRedirecting] = useState(false);
-  const [redirectStep, setRedirectStep] = useState(0);
-  const [redirectTimeoutMs, setRedirectTimeoutMs] = useState<number | null>(null);
-
-  const redirectSteps = [
-    'Autenticando identidade...',
-    'Validando contexto da empresa...',
-    'Abrindo ambiente seguro...',
-  ];
 
   const { login, isAuthenticated, isLoading, effectiveRole } = useAuth();
   const navigate = useNavigate();
   const { branding } = useBranding();
-  const tenantBaseDomain = (import.meta.env.VITE_TENANT_BASE_DOMAIN || 'gppis.com.br').toLowerCase();
-  const currentHost = window.location.hostname.toLowerCase();
-  const isTenantBaseHost =
-    currentHost === tenantBaseDomain ||
-    currentHost === `www.${tenantBaseDomain}`;
-  const isGlobalRole =
-    effectiveRole === 'SYSTEM_OWNER' ||
-    effectiveRole === 'SYSTEM_ADMIN' ||
-    effectiveRole === 'MASTER_TI';
 
   const activeBranding = branding || {
     nome_fantasia: 'PCM ESTRATÉGICO',
@@ -69,52 +51,14 @@ export default function Login() {
   // Redireciona para dashboard se já estiver logado
   useEffect(() => {
     if (!isLoading && isAuthenticated) {
-      if (isTenantBaseHost && !isOwnerDomain(currentHost) && !isGlobalRole) {
-        setIsRedirecting(true);
-        setRedirectStep(0);
-        setRedirectTimeoutMs(Date.now() + 15000);
-        return;
-      }
-
-      setIsRedirecting(false);
-      setRedirectTimeoutMs(null);
       navigate(getPostLoginPath(effectiveRole));
     }
-  }, [isAuthenticated, isLoading, navigate, effectiveRole, isTenantBaseHost, currentHost, isGlobalRole]);
-
-  useEffect(() => {
-    if (!isRedirecting) {
-      setRedirectStep(0);
-      return;
-    }
-
-    const timer = window.setInterval(() => {
-      setRedirectStep((prev) => (prev + 1) % redirectSteps.length);
-    }, 900);
-
-    return () => window.clearInterval(timer);
-  }, [isRedirecting]);
-
-  useEffect(() => {
-    if (!isRedirecting || !redirectTimeoutMs) return;
-
-    const timer = window.setInterval(() => {
-      if (Date.now() < redirectTimeoutMs) return;
-      setIsRedirecting(false);
-      setRedirectTimeoutMs(null);
-      setLoginError('Redirecionamento demorou mais que o esperado. Tente novamente em alguns segundos.');
-      window.clearInterval(timer);
-    }, 1000);
-
-    return () => window.clearInterval(timer);
-  }, [isRedirecting, redirectTimeoutMs]);
+  }, [isAuthenticated, isLoading, navigate, effectiveRole]);
 
   // Função de login
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoginError('');
-    setIsRedirecting(false);
-    setRedirectStep(0);
     setIsLoginLoading(true);
 
     try {
@@ -130,15 +74,9 @@ export default function Login() {
 
       if (error) {
         setLoginError(error);
-        setIsRedirecting(false);
-        setRedirectStep(0);
-        setRedirectTimeoutMs(null);
       }
     } catch (err) {
       setLoginError('Erro ao fazer login. Tente novamente.');
-      setIsRedirecting(false);
-      setRedirectStep(0);
-      setRedirectTimeoutMs(null);
     } finally {
       setIsLoginLoading(false);
     }
@@ -215,7 +153,7 @@ export default function Login() {
             <Button 
               type="submit" 
               className="w-full h-11 font-medium"
-              disabled={isLoginLoading || isRedirecting}
+              disabled={isLoginLoading}
               style={{ backgroundColor: '#111827', color: getContrastTextColor('#111827') }}
             >
               {isLoginLoading ? (
@@ -223,28 +161,10 @@ export default function Login() {
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   Entrando...
                 </>
-              ) : isRedirecting ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Redirecionando...
-                </>
               ) : (
                 'Entrar'
               )}
             </Button>
-
-            {isRedirecting && (
-              <div className="space-y-2 pt-1">
-                <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
-                  <div
-                    className="h-full rounded-full bg-primary transition-all duration-700"
-                    style={{ width: `${((redirectStep + 1) / redirectSteps.length) * 100}%` }}
-                  />
-                </div>
-                <p className="text-center text-xs font-medium text-foreground/90">{redirectSteps[redirectStep]}</p>
-                <p className="text-center text-xs text-muted-foreground">Voce sera direcionado automaticamente para o subdominio da sua empresa.</p>
-              </div>
-            )}
           </form>
         </div>
 
