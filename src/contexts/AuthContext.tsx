@@ -645,7 +645,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           const currentHostname = window.location.hostname.toLowerCase();
           if (targetHost !== currentHostname) {
             const transferHash = buildSessionTransferHash(currentSession ?? null);
-            const targetUrl = `${window.location.protocol}//${targetHost}/dashboard${transferHash ? `#${transferHash}` : ''}`;
+            const targetUrl = `${window.location.protocol}//${targetHost}/login${transferHash ? `#${transferHash}` : ''}`;
             window.location.assign(targetUrl);
             return { error: null };
           }

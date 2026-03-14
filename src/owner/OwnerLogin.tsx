@@ -110,7 +110,7 @@ export default function OwnerLogin() {
           activeSession?.access_token ?? session?.access_token ?? null,
           activeSession?.refresh_token ?? session?.refresh_token ?? null,
         );
-        const targetUrl = `${window.location.protocol}//${targetHost}/dashboard${transferHash ? `#${transferHash}` : ''}`;
+        const targetUrl = `${window.location.protocol}//${targetHost}/login${transferHash ? `#${transferHash}` : ''}`;
         window.location.assign(targetUrl);
         return;
       }
