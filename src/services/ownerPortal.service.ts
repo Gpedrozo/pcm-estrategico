@@ -461,104 +461,12 @@ export async function deleteCompanyByOwner(payload: {
   include_auth_users?: boolean
   auth_password: string
 }) {
-  let supportsDeleteCompanyAction = true
-  try {
-    const health = await getOwnerBackendHealth()
-    const supported = new Set(Array.isArray(health?.supported_actions) ? health.supported_actions : [])
-    supportsDeleteCompanyAction = supported.has('delete_company' as OwnerAction)
-  } catch {
-    // If health check fails, keep optimistic path and try delete_company once.
-    supportsDeleteCompanyAction = true
+  const health = await getOwnerBackendHealth().catch(() => null)
+  const supported = new Set(Array.isArray(health?.supported_actions) ? health.supported_actions : [])
+  if (supported.size > 0 && !supported.has('delete_company' as OwnerAction)) {
+    throw new Error('Acao delete_company indisponivel no backend owner. Atualize a edge function owner-portal-admin antes de excluir empresas.')
   }
 
-  try {
-    if (!supportsDeleteCompanyAction) {
-      throw new Error('Unsupported action: delete_company')
-    }
-
-    return await callOwnerAdmin({ action: 'delete_company', ...payload })
-  } catch (err: any) {
-    const msg = String(err?.message ?? err ?? '')
-    if (!isUnsupportedActionMessage(msg)) {
-      throw err
-    }
-
-    // Backend legado: tenta limpeza por empresa antes da exclusão física.
-    // Se a ação também for unsupported, seguimos para tentativa direta de DELETE nas tabelas de cadastro.
-    try {
-      await callOwnerAdmin({
-        action: 'cleanup_company_data',
-        empresa_id: payload.empresa_id,
-        keep_company_core: false,
-        keep_billing_data: false,
-        include_auth_users: payload.include_auth_users ?? false,
-        auth_password: payload.auth_password,
-      })
-    } catch (cleanupErr: any) {
-      const cleanupMessage = String(cleanupErr?.message ?? cleanupErr ?? '')
-      if (!isUnsupportedActionMessage(cleanupMessage)) {
-        throw cleanupErr
-      }
-
-      // Fallback extra: remove vinculos diretos de usuario por empresa para reduzir falhas de FK ao excluir a empresa.
-      await supabase.from('user_roles').delete().eq('empresa_id', payload.empresa_id)
-      await supabase.from('rbac_user_roles').delete().eq('empresa_id', payload.empresa_id)
-      await supabase.from('profiles').delete().eq('empresa_id', payload.empresa_id)
-    }
-
-    const deleteFromCompanyTable = async (tableName: 'enterprise_companies' | 'empresas') => {
-      const { count, error } = await (supabase.from(tableName as any) as any)
-        .delete({ count: 'exact' })
-        .eq('id', payload.empresa_id)
-
-      if (error && isMissingTableMessage(error?.message ?? error)) {
-        return {
-          tableName,
-          deletedRows: 0,
-          error: null,
-        }
-      }
-
-      return {
-        tableName,
-        deletedRows: Number(count ?? 0),
-        error,
-      }
-    }
-
-    const primaryDelete = await deleteFromCompanyTable('enterprise_companies')
-    const legacyDelete = await deleteFromCompanyTable('empresas')
-
-    const deletedRowsTotal = primaryDelete.deletedRows + legacyDelete.deletedRows
-    if (deletedRowsTotal > 0) {
-      return {
-        success: true,
-        legacy_physical_delete: true,
-        deleted_rows_total: deletedRowsTotal,
-        deleted_rows_by_table: {
-          enterprise_companies: primaryDelete.deletedRows,
-          empresas: legacyDelete.deletedRows,
-        },
-      }
-    }
-
-    const hasPrimaryError = Boolean(primaryDelete.error)
-    const hasLegacyError = Boolean(legacyDelete.error)
-
-    if (hasLegacyError && isEmpresaForeignKeyMessage(legacyDelete.error?.message ?? legacyDelete.error)) {
-      throw new Error(
-        'Falha ao excluir empresa por dependencias de FK (empresa_id). Execute cleanup_company_data/delete_company no backend atualizado para remover dependencias tenant antes da exclusao fisica.',
-      )
-    }
-
-    if (hasPrimaryError || hasLegacyError) {
-      const primaryMessage = primaryDelete.error ? String(primaryDelete.error.message ?? primaryDelete.error) : ''
-      const legacyMessage = legacyDelete.error ? String(legacyDelete.error.message ?? legacyDelete.error) : ''
-      throw new Error(
-        `Falha na exclusao fisica da empresa no fallback legado. enterprise_companies: ${primaryMessage || 'sem erro'}, empresas: ${legacyMessage || 'sem erro'}`,
-      )
-    }
-
-    throw new Error('Nenhum registro de empresa foi removido no fallback legado. Verifique se a empresa existe em enterprise_companies/empresas e se o usuario atual possui permissao de DELETE (RLS).')
-  }
+  // Operacao destrutiva deve ocorrer apenas no backend owner-portal-admin.
+  return callOwnerAdmin({ action: 'delete_company', ...payload })
 }

@@ -1,10 +1,13 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import type { Indicadores } from '@/types';
+import { useAuth } from '@/contexts/AuthContext';
 
 export function useIndicadores() {
+  const { tenantId } = useAuth();
+
   return useQuery({
-    queryKey: ['indicadores'],
+    queryKey: ['indicadores', tenantId],
     queryFn: async () => {
       // Fetch all orders to calculate indicators
       const { data: ordensData, error: ordensError } = await supabase

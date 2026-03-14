@@ -3,6 +3,7 @@ import { useToast } from '@/hooks/use-toast';
 import { contratosService } from '@/services/contratos.service';
 import { contratoSchema, type ContratoFormData } from '@/schemas/contrato.schema';
 import { ZodError } from 'zod';
+import { useAuth } from '@/contexts/AuthContext';
 
 export interface ContratoRow {
   id: string;
@@ -34,8 +35,10 @@ export type ContratoInsert = ContratoFormData;
 ================================ */
 
 export function useContratos() {
+  const { tenantId } = useAuth();
+
   return useQuery({
-    queryKey: ['contratos'],
+    queryKey: ['contratos', tenantId],
     queryFn: async () => {
       const data = await contratosService.listar();
       return data as ContratoRow[];
@@ -44,8 +47,10 @@ export function useContratos() {
 }
 
 export function useContratosAtivos() {
+  const { tenantId } = useAuth();
+
   return useQuery({
-    queryKey: ['contratos', 'ativos'],
+    queryKey: ['contratos', tenantId, 'ativos'],
     queryFn: async () => {
       const data = await contratosService.listarAtivos();
       return data as ContratoRow[];
@@ -54,8 +59,10 @@ export function useContratosAtivos() {
 }
 
 export function useContratosByFornecedor(fornecedorId: string | undefined) {
+  const { tenantId } = useAuth();
+
   return useQuery({
-    queryKey: ['contratos', 'fornecedor', fornecedorId],
+    queryKey: ['contratos', tenantId, 'fornecedor', fornecedorId],
     queryFn: async () => {
       if (!fornecedorId) return [];
       const data = await contratosService.listarPorFornecedor(fornecedorId);
@@ -72,6 +79,7 @@ export function useContratosByFornecedor(fornecedorId: string | undefined) {
 export function useCreateContrato() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const { tenantId } = useAuth();
 
   return useMutation({
     mutationFn: async (contrato: ContratoFormData) => {
@@ -86,7 +94,7 @@ export function useCreateContrato() {
       }
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['contratos'] });
+      queryClient.invalidateQueries({ queryKey: ['contratos', tenantId] });
       toast({
         title: 'Sucesso!',
         description: 'Contrato cadastrado com sucesso.',
@@ -105,6 +113,7 @@ export function useCreateContrato() {
 export function useUpdateContrato() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const { tenantId } = useAuth();
 
   return useMutation({
     mutationFn: async (
@@ -114,7 +123,7 @@ export function useUpdateContrato() {
       return await contratosService.atualizar(id, updates);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['contratos'] });
+      queryClient.invalidateQueries({ queryKey: ['contratos', tenantId] });
       toast({
         title: 'Sucesso!',
         description: 'Contrato atualizado com sucesso.',
@@ -133,13 +142,14 @@ export function useUpdateContrato() {
 export function useDeleteContrato() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const { tenantId } = useAuth();
 
   return useMutation({
     mutationFn: async (id: string) => {
       return await contratosService.excluir(id);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['contratos'] });
+      queryClient.invalidateQueries({ queryKey: ['contratos', tenantId] });
       toast({
         title: 'Sucesso!',
         description: 'Contrato removido com sucesso.',

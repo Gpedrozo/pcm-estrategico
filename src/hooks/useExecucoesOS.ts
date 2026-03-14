@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { insertWithColumnFallback } from '@/lib/supabaseCompat';
+import { useAuth } from '@/contexts/AuthContext';
 
 export interface ExecucaoOSRow {
   id: string;
@@ -75,8 +76,10 @@ export interface CloseOSAtomicParams {
 }
 
 export function useExecucoesOS() {
+  const { tenantId } = useAuth();
+
   return useQuery({
-    queryKey: ['execucoes-os'],
+    queryKey: ['execucoes-os', tenantId],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('execucoes_os')
@@ -90,8 +93,10 @@ export function useExecucoesOS() {
 }
 
 export function useExecucaoByOSId(osId: string | undefined) {
+  const { tenantId } = useAuth();
+
   return useQuery({
-    queryKey: ['execucao-os', osId],
+    queryKey: ['execucao-os', tenantId, osId],
     queryFn: async () => {
       if (!osId) return null;
       
@@ -111,6 +116,7 @@ export function useExecucaoByOSId(osId: string | undefined) {
 export function useCreateExecucaoOS() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const { tenantId } = useAuth();
 
   return useMutation({
     mutationFn: async (execucao: ExecucaoOSInsert) => {
@@ -125,8 +131,8 @@ export function useCreateExecucaoOS() {
       ) as Promise<ExecucaoOSRow>;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['execucoes-os'] });
-      queryClient.invalidateQueries({ queryKey: ['indicadores'] });
+      queryClient.invalidateQueries({ queryKey: ['execucoes-os', tenantId] });
+      queryClient.invalidateQueries({ queryKey: ['indicadores', tenantId] });
     },
     onError: (error: any) => {
       toast({
@@ -141,6 +147,7 @@ export function useCreateExecucaoOS() {
 export function useCloseOSAtomic() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const { tenantId } = useAuth();
 
   return useMutation({
     mutationFn: async (params: CloseOSAtomicParams) => {
@@ -170,11 +177,11 @@ export function useCloseOSAtomic() {
       return Array.isArray(data) ? data[0] : data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['ordens-servico'] });
-      queryClient.invalidateQueries({ queryKey: ['ordens-servico-pending'] });
-      queryClient.invalidateQueries({ queryKey: ['ordens-servico-recent'] });
-      queryClient.invalidateQueries({ queryKey: ['execucoes-os'] });
-      queryClient.invalidateQueries({ queryKey: ['indicadores'] });
+      queryClient.invalidateQueries({ queryKey: ['ordens-servico', tenantId] });
+      queryClient.invalidateQueries({ queryKey: ['ordens-servico-pending', tenantId] });
+      queryClient.invalidateQueries({ queryKey: ['ordens-servico-recent', tenantId] });
+      queryClient.invalidateQueries({ queryKey: ['execucoes-os', tenantId] });
+      queryClient.invalidateQueries({ queryKey: ['indicadores', tenantId] });
       queryClient.invalidateQueries({ queryKey: ['materiais'] });
     },
     onError: (error: any) => {

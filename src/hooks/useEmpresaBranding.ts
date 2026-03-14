@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { useOptionalTenant } from '@/contexts/TenantContext';
 
 export interface EmpresaBranding {
   dominio_custom: string | null;
@@ -32,8 +33,10 @@ export function resolveEmpresaBranding(input: Partial<EmpresaBranding> | null | 
 }
 
 export function useEmpresaBranding() {
+  const tenantContext = useOptionalTenant();
+
   const query = useQuery({
-    queryKey: ['empresa-branding'],
+    queryKey: ['empresa-branding', tenantContext?.tenant?.id ?? window.location.hostname.toLowerCase()],
     queryFn: async () => {
       const hostname = typeof window === 'undefined' ? null : window.location.hostname;
 

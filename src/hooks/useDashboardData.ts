@@ -6,6 +6,7 @@ import { useOrdensServico } from './useOrdensServico';
 import { useExecucoesOS } from './useExecucoesOS';
 import { format, subMonths, startOfMonth, parseISO, differenceInDays, differenceInHours } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface TopEquipmentItem {
   tag: string;
@@ -41,11 +42,12 @@ interface DashboardKpiRow {
 }
 
 export function useDashboardData() {
+  const { tenantId } = useAuth();
   const { data: indicadores, isLoading: loadingIndicadores } = useIndicadores();
   const { data: ordensServico, isLoading: loadingOS } = useOrdensServico();
   const { data: execucoes, isLoading: loadingExec } = useExecucoesOS();
   const { data: dashboardKpis, isLoading: loadingDbKpis } = useQuery({
-    queryKey: ['dashboard-kpis-db'],
+    queryKey: ['dashboard-kpis-db', tenantId],
     queryFn: async () => {
       const { data, error } = await (supabase as any)
         .from('v_dashboard_kpis')

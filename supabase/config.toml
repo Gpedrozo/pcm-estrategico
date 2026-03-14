@@ -16,7 +16,7 @@ verify_enabled = true
 enable_signup = true
 double_confirm_changes = true
 enable_confirmations = true
-secure_password_change = false
+secure_password_change = true
 max_frequency = "1m0s"
 otp_length = 8
 otp_expiry = 3600
@@ -25,10 +25,10 @@ otp_expiry = 3600
 enabled = false
 
 [functions.analisar-causa-raiz]
-verify_jwt = false
+verify_jwt = true
 
 [functions.owner-portal-admin]
-verify_jwt = false
+verify_jwt = true
 
 [functions.company-membership]
 verify_jwt = true

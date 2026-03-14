@@ -182,44 +182,86 @@ export default function Programacao() {
     if (!printWindow) return;
 
     const tipoLabel = selectedEvent.tipo === 'lubrificacao' ? 'Lubrificação' : 'Preventiva';
+    const doc = printWindow.document;
+    doc.open();
+    doc.write('<!doctype html><html><head><meta charset="utf-8"></head><body></body></html>');
+    doc.close();
 
-    printWindow.document.write(`
-      <html>
-        <head>
-          <title>Ficha ${tipoLabel}</title>
-          <style>
-            body { font-family: Arial, sans-serif; margin: 24px; color: #111; }
-            h1 { font-size: 20px; margin-bottom: 12px; }
-            .line { margin: 8px 0; }
-            .label { font-weight: bold; }
-            .box { border: 1px solid #ccc; border-radius: 6px; padding: 12px; margin-top: 14px; }
-            .sign { margin-top: 32px; display: flex; justify-content: space-between; gap: 24px; }
-            .sign div { width: 45%; border-top: 1px solid #999; padding-top: 8px; text-align: center; }
-          </style>
-        </head>
-        <body>
-          <h1>Ficha de Execução - ${tipoLabel}</h1>
-          <div class="line"><span class="label">Título:</span> ${selectedEvent.titulo}</div>
-          <div class="line"><span class="label">Equipamento:</span> ${equipamento?.nome || 'Não informado'}</div>
-          <div class="line"><span class="label">TAG:</span> ${equipamento?.tag || 'Não informado'}</div>
-          <div class="line"><span class="label">Data programada:</span> ${new Date(selectedEvent.data_programada).toLocaleString('pt-BR')}</div>
-          <div class="line"><span class="label">Responsável:</span> ${selectedEvent.responsavel || '—'}</div>
-          <div class="box">
-            <div class="label">Descrição da atividade:</div>
-            <div>${selectedEvent.descricao || '—'}</div>
-          </div>
-          <div class="box" style="min-height: 140px;">
-            <div class="label">Anotações de execução:</div>
-          </div>
-          <div class="sign">
-            <div>Mecânico responsável</div>
-            <div>Supervisor / Aprovação</div>
-          </div>
-          <script>window.onload = () => window.print();</script>
-        </body>
-      </html>
-    `);
-    printWindow.document.close();
+    doc.title = `Ficha ${tipoLabel}`;
+
+    const style = doc.createElement('style');
+    style.textContent = [
+      'body { font-family: Arial, sans-serif; margin: 24px; color: #111; }',
+      'h1 { font-size: 20px; margin-bottom: 12px; }',
+      '.line { margin: 8px 0; }',
+      '.label { font-weight: bold; }',
+      '.box { border: 1px solid #ccc; border-radius: 6px; padding: 12px; margin-top: 14px; }',
+      '.sign { margin-top: 32px; display: flex; justify-content: space-between; gap: 24px; }',
+      '.sign div { width: 45%; border-top: 1px solid #999; padding-top: 8px; text-align: center; }',
+    ].join('\n');
+    doc.head.appendChild(style);
+
+    const body = doc.body;
+
+    const title = doc.createElement('h1');
+    title.textContent = `Ficha de Execução - ${tipoLabel}`;
+    body.appendChild(title);
+
+    const addLine = (label: string, value: string) => {
+      const line = doc.createElement('div');
+      line.className = 'line';
+
+      const labelSpan = doc.createElement('span');
+      labelSpan.className = 'label';
+      labelSpan.textContent = `${label}: `;
+
+      const valueSpan = doc.createElement('span');
+      valueSpan.textContent = value;
+
+      line.appendChild(labelSpan);
+      line.appendChild(valueSpan);
+      body.appendChild(line);
+    };
+
+    addLine('Título', selectedEvent.titulo || '—');
+    addLine('Equipamento', equipamento?.nome || 'Não informado');
+    addLine('TAG', equipamento?.tag || 'Não informado');
+    addLine('Data programada', new Date(selectedEvent.data_programada).toLocaleString('pt-BR'));
+    addLine('Responsável', selectedEvent.responsavel || '—');
+
+    const descricaoBox = doc.createElement('div');
+    descricaoBox.className = 'box';
+    const descricaoLabel = doc.createElement('div');
+    descricaoLabel.className = 'label';
+    descricaoLabel.textContent = 'Descrição da atividade:';
+    const descricaoValue = doc.createElement('div');
+    descricaoValue.textContent = selectedEvent.descricao || '—';
+    descricaoBox.appendChild(descricaoLabel);
+    descricaoBox.appendChild(descricaoValue);
+    body.appendChild(descricaoBox);
+
+    const anotacoesBox = doc.createElement('div');
+    anotacoesBox.className = 'box';
+    anotacoesBox.style.minHeight = '140px';
+    const anotacoesLabel = doc.createElement('div');
+    anotacoesLabel.className = 'label';
+    anotacoesLabel.textContent = 'Anotações de execução:';
+    anotacoesBox.appendChild(anotacoesLabel);
+    body.appendChild(anotacoesBox);
+
+    const sign = doc.createElement('div');
+    sign.className = 'sign';
+    const sign1 = doc.createElement('div');
+    sign1.textContent = 'Mecânico responsável';
+    const sign2 = doc.createElement('div');
+    sign2.textContent = 'Supervisor / Aprovação';
+    sign.appendChild(sign1);
+    sign.appendChild(sign2);
+    body.appendChild(sign);
+
+    printWindow.onload = () => {
+      printWindow.print();
+    };
   };
 
   if (isLoading) {

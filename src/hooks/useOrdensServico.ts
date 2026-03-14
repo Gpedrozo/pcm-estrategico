@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/contexts/AuthContext';
 
 function getCreateOrdemServicoErrorMessage(error: unknown) {
   const message =
@@ -73,8 +74,10 @@ export interface OrdemServicoUpdate {
 }
 
 export function useOrdensServico() {
+  const { tenantId } = useAuth();
+
   return useQuery({
-    queryKey: ['ordens-servico'],
+    queryKey: ['ordens-servico', tenantId],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('ordens_servico')
@@ -88,8 +91,10 @@ export function useOrdensServico() {
 }
 
 export function useRecentOrdensServico(limit = 5) {
+  const { tenantId } = useAuth();
+
   return useQuery({
-    queryKey: ['ordens-servico-recent', limit],
+    queryKey: ['ordens-servico-recent', tenantId, limit],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('ordens_servico')
@@ -104,8 +109,10 @@ export function useRecentOrdensServico(limit = 5) {
 }
 
 export function usePendingOrdensServico() {
+  const { tenantId } = useAuth();
+
   return useQuery({
-    queryKey: ['ordens-servico-pending'],
+    queryKey: ['ordens-servico-pending', tenantId],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('ordens_servico')
@@ -124,6 +131,7 @@ export function usePendingOrdensServico() {
 export function useCreateOrdemServico() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const { tenantId } = useAuth();
 
   return useMutation({
     mutationFn: async (os: OrdemServicoInsert) => {
@@ -149,11 +157,11 @@ export function useCreateOrdemServico() {
       return data as OrdemServicoRow;
     },
     onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ['ordens-servico'] });
-      queryClient.invalidateQueries({ queryKey: ['ordens-servico-recent'] });
-      queryClient.invalidateQueries({ queryKey: ['ordens-servico-pending'] });
-      queryClient.invalidateQueries({ queryKey: ['indicadores'] });
-      queryClient.invalidateQueries({ queryKey: ['document-sequences'] });
+      queryClient.invalidateQueries({ queryKey: ['ordens-servico', tenantId] });
+      queryClient.invalidateQueries({ queryKey: ['ordens-servico-recent', tenantId] });
+      queryClient.invalidateQueries({ queryKey: ['ordens-servico-pending', tenantId] });
+      queryClient.invalidateQueries({ queryKey: ['indicadores', tenantId] });
+      queryClient.invalidateQueries({ queryKey: ['document-sequences', tenantId] });
       toast({
         title: 'O.S Criada com Sucesso!',
         description: `Ordem de Serviço nº ${data.numero_os} foi registrada.`,
@@ -172,6 +180,7 @@ export function useCreateOrdemServico() {
 export function useUpdateOrdemServico() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const { tenantId } = useAuth();
 
   return useMutation({
     mutationFn: async ({ id, ...updates }: OrdemServicoUpdate & { id: string }) => {
@@ -186,10 +195,10 @@ export function useUpdateOrdemServico() {
       return data as OrdemServicoRow;
     },
     onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ['ordens-servico'] });
-      queryClient.invalidateQueries({ queryKey: ['ordens-servico-recent'] });
-      queryClient.invalidateQueries({ queryKey: ['ordens-servico-pending'] });
-      queryClient.invalidateQueries({ queryKey: ['indicadores'] });
+      queryClient.invalidateQueries({ queryKey: ['ordens-servico', tenantId] });
+      queryClient.invalidateQueries({ queryKey: ['ordens-servico-recent', tenantId] });
+      queryClient.invalidateQueries({ queryKey: ['ordens-servico-pending', tenantId] });
+      queryClient.invalidateQueries({ queryKey: ['indicadores', tenantId] });
     },
     onError: (error: any) => {
       toast({
