@@ -65,27 +65,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const isAutoLogoutRunningRef = useRef(false);
 
   const buildSessionTransferHash = useCallback((sessionData: Session | null) => {
-    if (!sessionData?.access_token || !sessionData?.refresh_token) {
+    if (!sessionData?.access_token || !sessionData?.refresh_token) return null;
+
+    try {
+      const payload = {
+        access_token: sessionData.access_token,
+        refresh_token: sessionData.refresh_token,
+      };
+      const encoded = encodeURIComponent(window.btoa(JSON.stringify(payload)));
+      return `session_transfer=${encoded}`;
+    } catch {
       return null;
     }
-
-    const payload = {
-      access_token: sessionData.access_token,
-      refresh_token: sessionData.refresh_token,
-    };
-
-    const encoded = encodeURIComponent(window.btoa(JSON.stringify(payload)));
-    return `session_transfer=${encoded}`;
   }, []);
 
   useEffect(() => {
-    let isMounted = true;
-
     const consumeSessionTransfer = async () => {
       const rawHash = window.location.hash.startsWith('#')
         ? window.location.hash.slice(1)
         : '';
-
       if (!rawHash) return;
 
       const params = new URLSearchParams(rawHash);
@@ -94,10 +92,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       try {
         const decodedJson = window.atob(decodeURIComponent(encodedTransfer));
-        const decoded = JSON.parse(decodedJson) as {
-          access_token?: string;
-          refresh_token?: string;
-        };
+        const decoded = JSON.parse(decodedJson) as { access_token?: string; refresh_token?: string };
 
         if (!decoded?.access_token || !decoded?.refresh_token) return;
 
@@ -112,9 +107,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           });
           return;
         }
-
-        if (!isMounted) return;
-
         params.delete('session_transfer');
         const nextHash = params.toString();
         const cleanedUrl = `${window.location.pathname}${window.location.search}${nextHash ? `#${nextHash}` : ''}`;
@@ -127,10 +119,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
 
     void consumeSessionTransfer();
-
-    return () => {
-      isMounted = false;
-    };
   }, []);
 
   const resolveDomainEmpresaId = useCallback(async (): Promise<string | null> => {

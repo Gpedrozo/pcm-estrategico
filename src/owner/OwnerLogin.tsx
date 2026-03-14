@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Shield, Loader2, AlertCircle } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
 import { getPostLoginPath } from '@/lib/security';
 import { impersonateCompany, listPlatformCompanies, type OwnerCompany } from '@/services/ownerPortal.service';
 import { Button } from '@/components/ui/button';
@@ -34,6 +35,20 @@ export default function OwnerLogin() {
   const navigate = useNavigate();
 
   const isOwnerRole = effectiveRole === 'SYSTEM_OWNER' || effectiveRole === 'SYSTEM_ADMIN';
+
+  const buildSessionTransferHash = (accessToken?: string | null, refreshToken?: string | null) => {
+    if (!accessToken || !refreshToken) return null;
+    try {
+      const payload = {
+        access_token: accessToken,
+        refresh_token: refreshToken,
+      };
+      const encoded = encodeURIComponent(window.btoa(JSON.stringify(payload)));
+      return `session_transfer=${encoded}`;
+    } catch {
+      return null;
+    }
+  };
 
   const tenantBaseDomain = (import.meta.env.VITE_TENANT_BASE_DOMAIN || '').trim().toLowerCase();
 
@@ -90,7 +105,12 @@ export default function OwnerLogin() {
 
       if (tenantBaseDomain) {
         const targetHost = selected.slug ? `${selected.slug}.${tenantBaseDomain}` : tenantBaseDomain;
-        const targetUrl = `${window.location.protocol}//${targetHost}/dashboard`;
+        const { data: { session: activeSession } } = await supabase.auth.getSession();
+        const transferHash = buildSessionTransferHash(
+          activeSession?.access_token ?? session?.access_token ?? null,
+          activeSession?.refresh_token ?? session?.refresh_token ?? null,
+        );
+        const targetUrl = `${window.location.protocol}//${targetHost}/dashboard${transferHash ? `#${transferHash}` : ''}`;
         window.location.assign(targetUrl);
         return;
       }
