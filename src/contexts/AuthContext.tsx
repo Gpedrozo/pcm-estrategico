@@ -669,10 +669,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           }
 
           if (!targetHost) {
-            await supabase.auth.signOut();
-            return {
-              error: 'Nao foi possivel localizar o dominio da sua empresa. Contate o suporte para revisar o slug/dominio_custom.',
-            };
+            logger.warn('tenant_redirect_host_missing_fallback_base_domain', {
+              userId: currentUser.id,
+              tenantId: profileData.tenantId,
+            });
+            return { error: null };
           }
 
           const currentHostname = window.location.hostname.toLowerCase();

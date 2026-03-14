@@ -125,7 +125,8 @@ export default function Login() {
         if (!targetHost) {
           if (!isActive) return;
           setIsRedirectingTenantDomain(false);
-          setLoginError('Empresa sem slug/dominio configurado. Contate o suporte para ajustar o tenant.');
+          const nextPath = resolveSafeNextPath();
+          navigate(nextPath || getPostLoginPath(effectiveRole), { replace: true });
           return;
         }
 
