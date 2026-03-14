@@ -200,14 +200,14 @@ export default function Login() {
   // Loading inicial
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      <div className="min-h-screen flex items-center justify-center bg-[#090f1a]">
+        <Loader2 className="h-8 w-8 animate-spin text-sky-300" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background p-4">
+    <div className="min-h-screen flex items-center justify-center bg-[#090f1a] bg-gradient-to-b from-[#0b1220] via-[#0a111d] to-[#090f1a] p-4">
       <div className="w-full max-w-md">
         {/* Logo e Header */}
         <div className="text-center mb-8">
@@ -224,14 +224,14 @@ export default function Login() {
           <h1 className="text-2xl font-bold text-foreground">
             {activeBranding.nome_fantasia || activeBranding.razao_social || 'PCM ESTRATÉGICO'}
           </h1>
-          <p className="text-muted-foreground mt-1">Sistema de Gestão de Manutenção Industrial</p>
+          <p className="mt-1 text-slate-400">Sistema de Gestão de Manutenção Industrial</p>
         </div>
 
         {/* Login Form */}
-        <div className="bg-card border border-border rounded-lg p-6 shadow-industrial">
+        <div className="rounded-lg border border-slate-700 bg-slate-900/95 p-6 shadow-industrial">
           <form onSubmit={handleLogin} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="login-email">Email</Label>
+              <Label htmlFor="login-email" className="text-slate-200">Email</Label>
               <Input
                 id="login-email"
                 type="email"
@@ -239,13 +239,13 @@ export default function Login() {
                 value={loginEmail}
                 onChange={(e) => setLoginEmail(e.target.value)}
                 required
-                className="h-11"
+                className="h-11 border-slate-600 bg-slate-800 text-slate-100 placeholder:text-slate-500"
                 autoComplete="off"
               />
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="login-password">Senha</Label>
+              <Label htmlFor="login-password" className="text-slate-200">Senha</Label>
               <Input
                 id="login-password"
                 type="password"
@@ -253,13 +253,13 @@ export default function Login() {
                 value={loginPassword}
                 onChange={(e) => setLoginPassword(e.target.value)}
                 required
-                className="h-11"
+                className="h-11 border-slate-600 bg-slate-800 text-slate-100 placeholder:text-slate-500"
                 autoComplete="off"
               />
             </div>
 
             {loginError && (
-              <div className="flex items-center gap-2 p-3 rounded-md bg-destructive/10 text-destructive text-sm">
+              <div className="flex items-center gap-2 rounded-md border border-rose-500/50 bg-rose-950/40 p-3 text-sm text-rose-200">
                 <AlertCircle className="h-4 w-4 flex-shrink-0" />
                 <span>{loginError}</span>
               </div>
@@ -289,7 +289,7 @@ export default function Login() {
         </div>
 
         {/* Footer */}
-        <p className="text-center text-xs text-muted-foreground mt-6">
+        <p className="mt-6 text-center text-xs text-slate-500">
           © 2024 PCM ESTRATÉGICO • v2.0
         </p>
       </div>

@@ -21,8 +21,11 @@ import {
 
 const OWNER_MASTER_EMAIL = (import.meta.env.VITE_OWNER_MASTER_EMAIL || 'pedrozo@gppis.com.br').toLowerCase()
 const TENANT_BASE_DOMAIN = (import.meta.env.VITE_TENANT_BASE_DOMAIN || 'gppis.com.br').toLowerCase()
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
 const toArray = <T,>(value: unknown): T[] => (Array.isArray(value) ? (value as T[]) : [])
+const normalizeEmail = (value: string) => value.trim().toLowerCase()
+const isValidEmail = (value: string) => EMAIL_REGEX.test(normalizeEmail(value))
 
 type OwnerTab =
   | 'dashboard'
@@ -283,13 +286,27 @@ export default function Owner() {
     },
     user: {
       nome: createCompanyForm.admin_nome || 'Administrador',
-      email: createCompanyForm.admin_email,
+      email: normalizeEmail(createCompanyForm.admin_email),
       role: 'ADMIN',
     },
   })
 
   const handleCreateCompany = async () => {
     clearFeedback()
+
+    const normalizedAdminEmail = normalizeEmail(createCompanyForm.admin_email)
+    const normalizedOperationalEmail = normalizeEmail(createCompanyForm.email)
+
+    if (!isValidEmail(normalizedAdminEmail)) {
+      setError('Email do administrador invalido. Use um email completo (ex.: admin@empresa.com).')
+      return
+    }
+
+    if (normalizedOperationalEmail && !isValidEmail(normalizedOperationalEmail)) {
+      setError('Email operacional invalido. Use um email completo ou deixe o campo em branco.')
+      return
+    }
+
     try {
       const response = await createCompanyMutation.mutateAsync(buildCreateCompanyPayload()) as any
       const createdCompany = response?.company ?? {}
@@ -297,7 +314,7 @@ export default function Owner() {
       const initialPassword = String(masterUser?.initial_password ?? '').trim()
       const companySlug = String(createdCompany?.slug ?? '').trim()
       const companyName = String(createdCompany?.nome ?? createCompanyForm.nome).trim()
-      const masterEmail = String(masterUser?.email ?? createCompanyForm.admin_email).trim().toLowerCase()
+      const masterEmail = String(masterUser?.email ?? normalizedAdminEmail).trim().toLowerCase()
       const loginUrl = companySlug
         ? `https://${companySlug}.${TENANT_BASE_DOMAIN}/login`
         : `https://${TENANT_BASE_DOMAIN}/login`
@@ -567,32 +584,38 @@ export default function Owner() {
               <input className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm" placeholder="Nome" value={createCompanyForm.nome} onChange={(e) => setCreateCompanyForm((s) => ({ ...s, nome: e.target.value }))} />
               <input className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm" placeholder="Slug" value={createCompanyForm.slug} onChange={(e) => setCreateCompanyForm((s) => ({ ...s, slug: e.target.value }))} />
               <input className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm" placeholder="Nome admin" value={createCompanyForm.admin_nome} onChange={(e) => setCreateCompanyForm((s) => ({ ...s, admin_nome: e.target.value }))} />
-              <input className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm" placeholder="Email admin" value={createCompanyForm.admin_email} onChange={(e) => setCreateCompanyForm((s) => ({ ...s, admin_email: e.target.value }))} />
+              <input className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm" type="email" placeholder="Email admin" value={createCompanyForm.admin_email} onChange={(e) => setCreateCompanyForm((s) => ({ ...s, admin_email: e.target.value }))} />
               <input className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm" placeholder="Razao social" value={createCompanyForm.razao_social} onChange={(e) => setCreateCompanyForm((s) => ({ ...s, razao_social: e.target.value }))} />
               <input className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm" placeholder="Nome fantasia" value={createCompanyForm.nome_fantasia} onChange={(e) => setCreateCompanyForm((s) => ({ ...s, nome_fantasia: e.target.value }))} />
               <input className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm" placeholder="CNPJ" value={createCompanyForm.cnpj} onChange={(e) => setCreateCompanyForm((s) => ({ ...s, cnpj: e.target.value }))} />
               <input className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm" placeholder="Telefone" value={createCompanyForm.telefone} onChange={(e) => setCreateCompanyForm((s) => ({ ...s, telefone: e.target.value }))} />
               <input className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm md:col-span-2" placeholder="Endereco" value={createCompanyForm.endereco} onChange={(e) => setCreateCompanyForm((s) => ({ ...s, endereco: e.target.value }))} />
-              <input className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm" placeholder="Email operacional" value={createCompanyForm.email} onChange={(e) => setCreateCompanyForm((s) => ({ ...s, email: e.target.value }))} />
+              <input className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm" type="email" placeholder="Email operacional" value={createCompanyForm.email} onChange={(e) => setCreateCompanyForm((s) => ({ ...s, email: e.target.value }))} />
               <input className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm" placeholder="Responsavel" value={createCompanyForm.responsavel} onChange={(e) => setCreateCompanyForm((s) => ({ ...s, responsavel: e.target.value }))} />
               <input className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm" placeholder="Segmento" value={createCompanyForm.segmento} onChange={(e) => setCreateCompanyForm((s) => ({ ...s, segmento: e.target.value }))} />
             </div>
             <button
               className="mt-3 rounded bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground"
-              disabled={createCompanyMutation.isPending || !createCompanyForm.nome || !createCompanyForm.admin_nome || !createCompanyForm.admin_email}
+              disabled={
+                createCompanyMutation.isPending
+                || !createCompanyForm.nome
+                || !createCompanyForm.admin_nome
+                || !isValidEmail(createCompanyForm.admin_email)
+                || (!!normalizeEmail(createCompanyForm.email) && !isValidEmail(createCompanyForm.email))
+              }
               onClick={handleCreateCompany}
             >
               Criar empresa
             </button>
 
             {companyCredentialNote && (
-              <div className="mt-4 rounded-lg border border-amber-400/70 bg-slate-900 p-4 shadow-sm">
-                <p className="text-xs font-semibold uppercase tracking-wide text-amber-100">Credenciais iniciais do cliente</p>
-                <p className="mt-1 text-xs leading-relaxed text-slate-100">Essa informacao e exibida apenas agora. Copie e envie para o cliente em canal seguro.</p>
-                <pre className="mt-3 overflow-x-auto rounded border border-amber-300/60 bg-slate-950 p-3 text-xs leading-relaxed text-amber-100 whitespace-pre-wrap">{companyCredentialNote.noteText}</pre>
+              <div className="mt-4 rounded-lg border border-slate-600 bg-slate-950 p-4 shadow-sm">
+                <p className="text-xs font-semibold uppercase tracking-wide text-sky-200">Credenciais iniciais do cliente</p>
+                <p className="mt-1 text-xs leading-relaxed text-slate-300">Essa informacao e exibida apenas agora. Copie e envie para o cliente em canal seguro.</p>
+                <pre className="mt-3 overflow-x-auto rounded border border-slate-700 bg-[#050b16] p-3 text-xs leading-relaxed text-slate-100 whitespace-pre-wrap">{companyCredentialNote.noteText}</pre>
                 <div className="mt-3 flex flex-wrap gap-2">
-                  <button className="rounded border border-amber-300 bg-amber-300/10 px-3 py-2 text-xs font-semibold text-amber-100 hover:bg-amber-300/20" onClick={copyCompanyCredentialNote}>Copiar nota</button>
-                  <a className="rounded border border-slate-400 bg-slate-800 px-3 py-2 text-xs font-semibold text-slate-100 hover:bg-slate-700" href={companyCredentialNote.loginUrl} target="_blank" rel="noreferrer">Abrir login do cliente</a>
+                  <button className="rounded border border-sky-500 bg-sky-900/30 px-3 py-2 text-xs font-semibold text-sky-100 hover:bg-sky-900/45" onClick={copyCompanyCredentialNote}>Copiar nota</button>
+                  <a className="rounded border border-slate-500 bg-slate-800 px-3 py-2 text-xs font-semibold text-slate-100 hover:bg-slate-700" href={companyCredentialNote.loginUrl} target="_blank" rel="noreferrer">Abrir login do cliente</a>
                 </div>
               </div>
             )}
@@ -656,7 +679,7 @@ export default function Owner() {
           <Card title="Criar usuario">
             <div className="grid gap-2 md:grid-cols-5">
               <input className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm" placeholder="Nome" value={createUserForm.nome} onChange={(e) => setCreateUserForm((s) => ({ ...s, nome: e.target.value }))} />
-              <input className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm" placeholder="Email" value={createUserForm.email} onChange={(e) => setCreateUserForm((s) => ({ ...s, email: e.target.value }))} />
+              <input className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm" type="email" placeholder="Email" value={createUserForm.email} onChange={(e) => setCreateUserForm((s) => ({ ...s, email: e.target.value }))} />
               <input className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm" type="password" placeholder="Senha" value={createUserForm.password} onChange={(e) => setCreateUserForm((s) => ({ ...s, password: e.target.value }))} />
               <select className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm" value={createUserForm.role} onChange={(e) => setCreateUserForm((s) => ({ ...s, role: e.target.value }))}>
                 <option value="ADMIN">ADMIN</option>
@@ -676,19 +699,21 @@ export default function Owner() {
             </div>
             <button
               className="mt-3 rounded bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground"
-              disabled={createUserMutation.isPending || !createUserForm.nome || !createUserForm.email || !createUserForm.empresa_id}
+              disabled={createUserMutation.isPending || !createUserForm.nome || !isValidEmail(createUserForm.email) || !createUserForm.empresa_id}
               onClick={() =>
-                runAction(
-                  () =>
-                    createUserMutation.mutateAsync({
-                      nome: createUserForm.nome || 'Usuario',
-                      email: createUserForm.email,
-                      password: createUserForm.password || undefined,
-                      role: createUserForm.role,
-                      empresa_id: createUserForm.empresa_id || undefined,
-                    }),
-                  'Usuario criado com sucesso.',
-                )
+                isValidEmail(createUserForm.email)
+                  ? runAction(
+                      () =>
+                        createUserMutation.mutateAsync({
+                          nome: createUserForm.nome || 'Usuario',
+                          email: normalizeEmail(createUserForm.email),
+                          password: createUserForm.password || undefined,
+                          role: createUserForm.role,
+                          empresa_id: createUserForm.empresa_id || undefined,
+                        }),
+                      'Usuario criado com sucesso.',
+                    )
+                  : setError('Email de usuario invalido. Use um email completo (ex.: usuario@empresa.com).')
               }
             >
               Criar usuario
@@ -1401,9 +1426,9 @@ export default function Owner() {
           <Card title="Criar owner/admin da plataforma">
             <div className="grid gap-2 md:grid-cols-4">
               <input className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm" placeholder="Nome" value={ownerMasterForm.nome} onChange={(e) => setOwnerMasterForm((s) => ({ ...s, nome: e.target.value }))} />
-              <input className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm" placeholder="Email" value={ownerMasterForm.email} onChange={(e) => setOwnerMasterForm((s) => ({ ...s, email: e.target.value }))} />
+              <input className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm" type="email" placeholder="Email" value={ownerMasterForm.email} onChange={(e) => setOwnerMasterForm((s) => ({ ...s, email: e.target.value }))} />
               <input className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm" type="password" placeholder="Senha (opcional)" value={ownerMasterForm.password} onChange={(e) => setOwnerMasterForm((s) => ({ ...s, password: e.target.value }))} />
-              <button className="rounded bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground" disabled={!ownerMasterForm.nome || !ownerMasterForm.email || createPlatformOwnerMutation.isPending} onClick={() => runAction(() => createPlatformOwnerMutation.mutateAsync({ nome: ownerMasterForm.nome, email: ownerMasterForm.email, password: ownerMasterForm.password || undefined }), 'Conta de plataforma criada com sucesso.')}>Criar conta</button>
+              <button className="rounded bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground" disabled={!ownerMasterForm.nome || !isValidEmail(ownerMasterForm.email) || createPlatformOwnerMutation.isPending} onClick={() => isValidEmail(ownerMasterForm.email) ? runAction(() => createPlatformOwnerMutation.mutateAsync({ nome: ownerMasterForm.nome, email: normalizeEmail(ownerMasterForm.email), password: ownerMasterForm.password || undefined }), 'Conta de plataforma criada com sucesso.') : setError('Email de owner invalido. Use um email completo.')}>Criar conta</button>
             </div>
           </Card>
 

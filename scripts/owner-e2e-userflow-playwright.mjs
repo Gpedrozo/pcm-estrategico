@@ -1,6 +1,30 @@
 import { chromium } from 'playwright'
-import { writeFileSync, mkdirSync } from 'node:fs'
+import { writeFileSync, mkdirSync, existsSync, readFileSync } from 'node:fs'
 import { spawnSync } from 'node:child_process'
+import { resolve } from 'node:path'
+
+function loadDotEnvFile() {
+  const envPath = resolve(process.cwd(), '.env')
+  if (!existsSync(envPath)) return
+
+  const raw = readFileSync(envPath, 'utf8')
+  for (const line of raw.split(/\r?\n/)) {
+    const trimmed = line.trim()
+    if (!trimmed || trimmed.startsWith('#')) continue
+
+    const index = trimmed.indexOf('=')
+    if (index <= 0) continue
+
+    const key = trimmed.slice(0, index).trim()
+    const value = trimmed.slice(index + 1).trim().replace(/^"|"$/g, '')
+
+    if (!process.env[key]) {
+      process.env[key] = value
+    }
+  }
+}
+
+loadDotEnvFile()
 
 const OWNER_BASE_URL = process.env.OWNER_BASE_URL || 'https://owner.gppis.com.br'
 const OWNER_EMAIL = process.env.OWNER_EMAIL || 'pedrozo@gppis.com.br'
