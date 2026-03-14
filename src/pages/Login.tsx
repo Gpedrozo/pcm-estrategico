@@ -11,7 +11,12 @@ import { z } from 'zod';
 
 // Validação do login
 const loginSchema = z.object({
-  email: z.string().email('Email inválido').max(255, 'Email muito longo'),
+  email: z
+    .string()
+    .trim()
+    .min(5, 'Email inválido')
+    .max(255, 'Email muito longo')
+    .regex(/^[^\s@]+@[^\s@]+\.[^\s@]+$/, 'Email inválido'),
   password: z.string().min(6, 'Senha deve ter pelo menos 6 caracteres').max(100, 'Senha muito longa'),
 });
 
@@ -113,14 +118,15 @@ export default function Login() {
     setIsLoginLoading(true);
 
     try {
-      const validation = loginSchema.safeParse({ email: loginEmail, password: loginPassword });
+      const normalizedEmail = loginEmail.trim().toLowerCase();
+      const validation = loginSchema.safeParse({ email: normalizedEmail, password: loginPassword });
       if (!validation.success) {
         setLoginError(validation.error.errors[0].message);
         setIsLoginLoading(false);
         return;
       }
 
-      const { error } = await login(loginEmail, loginPassword);
+      const { error } = await login(normalizedEmail, loginPassword);
 
       if (error) {
         setLoginError(error);

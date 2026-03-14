@@ -64,6 +64,75 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const lastActivityAtRef = useRef<number>(Date.now());
   const isAutoLogoutRunningRef = useRef(false);
 
+  const buildSessionTransferHash = useCallback((sessionData: Session | null) => {
+    if (!sessionData?.access_token || !sessionData?.refresh_token) {
+      return null;
+    }
+
+    const payload = {
+      access_token: sessionData.access_token,
+      refresh_token: sessionData.refresh_token,
+    };
+
+    const encoded = encodeURIComponent(window.btoa(JSON.stringify(payload)));
+    return `session_transfer=${encoded}`;
+  }, []);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const consumeSessionTransfer = async () => {
+      const rawHash = window.location.hash.startsWith('#')
+        ? window.location.hash.slice(1)
+        : '';
+
+      if (!rawHash) return;
+
+      const params = new URLSearchParams(rawHash);
+      const encodedTransfer = params.get('session_transfer');
+      if (!encodedTransfer) return;
+
+      try {
+        const decodedJson = window.atob(decodeURIComponent(encodedTransfer));
+        const decoded = JSON.parse(decodedJson) as {
+          access_token?: string;
+          refresh_token?: string;
+        };
+
+        if (!decoded?.access_token || !decoded?.refresh_token) return;
+
+        const { error } = await supabase.auth.setSession({
+          access_token: decoded.access_token,
+          refresh_token: decoded.refresh_token,
+        });
+
+        if (error) {
+          logger.warn('session_transfer_consume_failed', {
+            error: error.message,
+          });
+          return;
+        }
+
+        if (!isMounted) return;
+
+        params.delete('session_transfer');
+        const nextHash = params.toString();
+        const cleanedUrl = `${window.location.pathname}${window.location.search}${nextHash ? `#${nextHash}` : ''}`;
+        window.history.replaceState({}, document.title, cleanedUrl);
+      } catch (error) {
+        logger.warn('session_transfer_decode_failed', {
+          error: String(error),
+        });
+      }
+    };
+
+    void consumeSessionTransfer();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
   const resolveDomainEmpresaId = useCallback(async (): Promise<string | null> => {
     if (isOwnerDomain(window.location.hostname)) return null;
 
@@ -74,17 +143,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       .eq('dominio_custom', hostname)
       .maybeSingle();
 
+    if (!error && domainConfig?.empresa_id) {
+      return domainConfig.empresa_id;
+    }
+
     if (error) {
       logger.warn('tenant_domain_resolve_failed', {
         hostname,
         error: error.message,
       });
-      // Continue with slug fallback below.
     }
 
-    if (domainConfig?.empresa_id) return domainConfig.empresa_id;
-
-    // Strict fallback: if host is <slug>.<base-domain>, resolve by company slug.
     const baseDomain = TENANT_BASE_DOMAIN.toLowerCase();
     const isBaseDomainHost = hostname === baseDomain || hostname === `www.${baseDomain}`;
 
@@ -522,11 +591,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [resolveUserProfile]);
 
   const login = useCallback(async (email: string, password: string): Promise<{ error: string | null }> => {
-    const tenantDomainError = await validateTenantDomainAccess({ allowBaseDomain: true });
-    if (tenantDomainError) {
-      return { error: tenantDomainError };
-    }
-
     const { error } = await supabase.auth.signInWithPassword({
       email,
       password,
@@ -575,18 +639,45 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       const isBaseTenantHost = isTenantBaseDomain(window.location.hostname);
 
-      if (!isOwnerDomain(window.location.hostname) && isBaseTenantHost && !isGlobalRole && profileData.tenantId) {
-        const targetHost = await resolveTenantRedirectHost(profileData.tenantId);
-        if (targetHost) {
-          const normalizedTargetHost = targetHost.toLowerCase();
-          const targetUrl = `${window.location.protocol}//${normalizedTargetHost}/dashboard`;
-          window.location.assign(targetUrl);
-          return { error: null };
+      if (!isOwnerDomain(window.location.hostname) && !isGlobalRole) {
+        if (isBaseTenantHost) {
+          if (!profileData.tenantId) {
+            await supabase.auth.signOut();
+            return { error: 'Usuário sem vínculo de empresa. Acesso bloqueado.' };
+          }
+
+          const targetHost = await resolveTenantRedirectHost(profileData.tenantId);
+          if (!targetHost) {
+            await supabase.auth.signOut();
+            return {
+              error: 'Nao foi possivel localizar o dominio da sua empresa. Contate o suporte para revisar o slug/dominio_custom.',
+            };
+          }
+
+          const currentHostname = window.location.hostname.toLowerCase();
+          if (targetHost !== currentHostname) {
+            const transferHash = buildSessionTransferHash(currentSession ?? null);
+            const targetUrl = `${window.location.protocol}//${targetHost}/dashboard${transferHash ? `#${transferHash}` : ''}`;
+            window.location.assign(targetUrl);
+            return { error: null };
+          }
+
+          return {
+            error: null,
+          };
         }
 
-        return {
-          error: 'Nao foi possivel localizar o subdominio da sua empresa. Contate o suporte para revisar slug/dominio_custom.',
-        };
+        const domainEmpresaId = await resolveDomainEmpresaId();
+
+        if (!domainEmpresaId) {
+          await supabase.auth.signOut();
+          return { error: 'Domínio não autorizado para login.' };
+        }
+
+        if (!profileData.tenantId || profileData.tenantId !== domainEmpresaId) {
+          await supabase.auth.signOut();
+          return { error: 'Usuário não pertence à empresa deste subdomínio.' };
+        }
       }
 
       if (!isGlobalRole && !profileData.tenantId) {
@@ -619,7 +710,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     });
 
     return { error: null };
-  }, [resolveTenantRedirectHost, resolveUserProfile, validateTenantDomainAccess]);
+  }, [buildSessionTransferHash, resolveDomainEmpresaId, resolveTenantRedirectHost, resolveUserProfile]);
 
   const signup = useCallback(async (email: string, password: string, nome: string): Promise<{ error: string | null }> => {
     const redirectUrl = `${window.location.origin}/`;

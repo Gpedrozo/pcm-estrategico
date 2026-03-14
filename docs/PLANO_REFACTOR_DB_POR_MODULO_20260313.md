@@ -76,7 +76,7 @@ Reduzir o schema do Supabase para manter apenas tabelas com uso real no sistema,
 
 ### Fase 2 - Quarentena
 
-- Renomear candidatas para prefixo legacy_ (ou z_legacy_).
+- Renomear candidatas para prefixo legacy\_ (ou z\_legacy\_).
 - Criar views de compatibilidade temporarias somente nas tabelas que acusarem uso residual.
 - Monitorar mais 7 dias.
 

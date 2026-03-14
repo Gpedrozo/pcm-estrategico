@@ -33,7 +33,7 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
       setIsLoading(true);
       setError(null);
 
-      const hostname = window.location.hostname;
+      const hostname = window.location.hostname.toLowerCase();
 
       const { data: domainConfig, error: domainError } = await supabase
         .from('empresa_config')
@@ -43,14 +43,23 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
 
       if (!isMounted) return;
 
-      if (domainError) {
-        setTenant(null);
-        setError(domainError.message);
-        setIsLoading(false);
-        return;
-      }
-
       let empresaId = domainConfig?.empresa_id ?? null;
+      if (!empresaId && tenantSlug !== 'default') {
+        const { data: slugCompany, error: slugError } = await supabase
+          .from('empresas')
+          .select('id')
+          .eq('slug', tenantSlug)
+          .maybeSingle();
+
+        if (slugError) {
+          setTenant(null);
+          setError(slugError.message);
+          setIsLoading(false);
+          return;
+        }
+
+        empresaId = slugCompany?.id ?? null;
+      }
 
       if (!empresaId) {
         const baseDomain = (import.meta.env.VITE_TENANT_BASE_DOMAIN || 'gppis.com.br').toLowerCase();
@@ -72,7 +81,7 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
 
       if (!empresaId) {
         setTenant(null);
-        setError('Domínio tenant não autorizado');
+        setError(domainError?.message || 'Domínio tenant não autorizado');
         setIsLoading(false);
         return;
       }

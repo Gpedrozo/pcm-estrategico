@@ -107,11 +107,13 @@ const adminMenuItems = [
 export function AppSidebar() {
   const { user, logout, isAdmin, effectiveRole } = useAuth();
   const { branding } = useBranding();
+  const { tenant } = useTenant();
   const location = useLocation();
 
   const activeCompanyName =
     branding?.nome_fantasia
     || branding?.razao_social
+    || tenant?.name
     || null;
 
   const isActive = (path: string) => location.pathname === path;
