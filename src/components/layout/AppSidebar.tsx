@@ -32,6 +32,7 @@ import {
 import { NavLink, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useBranding } from '@/contexts/BrandingContext';
+import { useOptionalTenant } from '@/contexts/TenantContext';
 import {
   Sidebar,
   SidebarContent,
@@ -107,7 +108,8 @@ const adminMenuItems = [
 export function AppSidebar() {
   const { user, logout, isAdmin, effectiveRole } = useAuth();
   const { branding } = useBranding();
-  const { tenant } = useTenant();
+  const tenantContext = useOptionalTenant();
+  const tenant = tenantContext?.tenant ?? null;
   const location = useLocation();
 
   const activeCompanyName =
