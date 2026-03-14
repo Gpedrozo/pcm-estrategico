@@ -1,0 +1,3071 @@
+{
+  "generatedAt": "2026-03-13T23:51:23.642Z",
+  "summary": {
+    "modulesAudited": 39,
+    "createdTablesInMigrations": 92,
+    "tablesUsedByModules": 41,
+    "tablesUsedByFrontendGlobal": 49,
+    "tablesUsedByEdgeFunctions": 24,
+    "tablesUsedOverall": 58,
+    "unusedCandidateTables": 35
+  },
+  "global": {
+    "moduleTableOps": {
+      "acoes_corretivas": [
+        "insert",
+        "select",
+        "update"
+      ],
+      "analise_causa_raiz": [
+        "insert",
+        "select",
+        "update"
+      ],
+      "anomalias_inspecao": [
+        "insert",
+        "select"
+      ],
+      "areas": [
+        "delete",
+        "insert",
+        "select",
+        "update"
+      ],
+      "atividades_preventivas": [
+        "delete",
+        "insert",
+        "select",
+        "update"
+      ],
+      "audit_logs": [
+        "select"
+      ],
+      "componentes_equipamento": [
+        "delete",
+        "insert",
+        "select",
+        "update"
+      ],
+      "configuracoes_sistema": [
+        "select",
+        "upsert"
+      ],
+      "contratos": [
+        "delete",
+        "insert",
+        "select",
+        "update"
+      ],
+      "dados_empresa": [
+        "select",
+        "update"
+      ],
+      "documentos_tecnicos": [
+        "insert",
+        "select"
+      ],
+      "empresa_config": [
+        "select"
+      ],
+      "empresas": [
+        "select"
+      ],
+      "equipamentos": [
+        "delete",
+        "insert",
+        "select",
+        "update"
+      ],
+      "execucoes_lubrificacao": [
+        "insert",
+        "select",
+        "update"
+      ],
+      "execucoes_os": [
+        "insert",
+        "select"
+      ],
+      "execucoes_preventivas": [
+        "insert",
+        "select",
+        "update"
+      ],
+      "fmea": [
+        "delete",
+        "insert",
+        "select",
+        "update"
+      ],
+      "fornecedores": [
+        "insert",
+        "select",
+        "update"
+      ],
+      "incidentes_ssma": [
+        "insert",
+        "select",
+        "update"
+      ],
+      "inspecoes": [
+        "insert",
+        "select",
+        "update"
+      ],
+      "maintenance_schedule": [
+        "delete",
+        "select",
+        "update",
+        "upsert"
+      ],
+      "materiais": [
+        "delete",
+        "insert",
+        "select",
+        "update"
+      ],
+      "materiais_os": [
+        "delete",
+        "insert",
+        "select"
+      ],
+      "mecanicos": [
+        "delete",
+        "insert",
+        "select",
+        "update"
+      ],
+      "medicoes_preditivas": [
+        "insert",
+        "select"
+      ],
+      "melhorias": [
+        "insert",
+        "select",
+        "update"
+      ],
+      "movimentacoes_materiais": [
+        "insert",
+        "select"
+      ],
+      "ordens_servico": [
+        "insert",
+        "select",
+        "update"
+      ],
+      "permissoes_trabalho": [
+        "insert",
+        "select",
+        "update"
+      ],
+      "planos_lubrificacao": [
+        "delete",
+        "insert",
+        "select",
+        "update"
+      ],
+      "planos_preventivos": [
+        "delete",
+        "insert",
+        "select",
+        "update"
+      ],
+      "plantas": [
+        "delete",
+        "insert",
+        "select",
+        "update"
+      ],
+      "profiles": [
+        "delete",
+        "select",
+        "update"
+      ],
+      "rbac_user_roles": [
+        "delete"
+      ],
+      "servicos_preventivos": [
+        "delete",
+        "insert",
+        "select",
+        "update"
+      ],
+      "sistemas": [
+        "delete",
+        "insert",
+        "select",
+        "update"
+      ],
+      "support_tickets": [
+        "insert",
+        "select"
+      ],
+      "templates_preventivos": [
+        "delete",
+        "insert",
+        "select"
+      ],
+      "user_roles": [
+        "delete",
+        "select",
+        "update"
+      ],
+      "v_dashboard_kpis": [
+        "select"
+      ]
+    },
+    "moduleRpc": [],
+    "frontendTableOps": {
+      "acoes_corretivas": [
+        "insert",
+        "select",
+        "update"
+      ],
+      "ai_root_cause_analysis": [
+        "select"
+      ],
+      "analise_causa_raiz": [
+        "insert",
+        "select",
+        "update"
+      ],
+      "anomalias_inspecao": [
+        "insert",
+        "select"
+      ],
+      "areas": [
+        "delete",
+        "insert",
+        "select",
+        "update"
+      ],
+      "atividades_lubrificacao": [
+        "delete",
+        "insert",
+        "select",
+        "update"
+      ],
+      "atividades_preventivas": [
+        "delete",
+        "insert",
+        "select",
+        "update"
+      ],
+      "audit_logs": [
+        "select"
+      ],
+      "componentes_equipamento": [
+        "delete",
+        "insert",
+        "select",
+        "update"
+      ],
+      "configuracoes_sistema": [
+        "insert",
+        "select",
+        "update",
+        "upsert"
+      ],
+      "contratos": [
+        "delete",
+        "insert",
+        "select",
+        "update"
+      ],
+      "dados_empresa": [
+        "insert",
+        "select",
+        "update"
+      ],
+      "document_layouts": [
+        "insert",
+        "select",
+        "update"
+      ],
+      "document_sequences": [
+        "select",
+        "update",
+        "upsert"
+      ],
+      "documentos_tecnicos": [
+        "delete",
+        "insert",
+        "select",
+        "update"
+      ],
+      "empresa_config": [
+        "select"
+      ],
+      "empresas": [
+        "select"
+      ],
+      "enterprise_audit_logs": [
+        "select"
+      ],
+      "equipamentos": [
+        "delete",
+        "insert",
+        "select",
+        "update"
+      ],
+      "execucoes_lubrificacao": [
+        "insert",
+        "select",
+        "update"
+      ],
+      "execucoes_os": [
+        "insert",
+        "select"
+      ],
+      "execucoes_preventivas": [
+        "insert",
+        "select",
+        "update"
+      ],
+      "fmea": [
+        "delete",
+        "insert",
+        "select",
+        "update"
+      ],
+      "fornecedores": [
+        "insert",
+        "select",
+        "update"
+      ],
+      "incidentes_ssma": [
+        "insert",
+        "select",
+        "update"
+      ],
+      "inspecoes": [
+        "insert",
+        "select",
+        "update"
+      ],
+      "maintenance_schedule": [
+        "delete",
+        "select",
+        "update",
+        "upsert"
+      ],
+      "materiais": [
+        "delete",
+        "insert",
+        "select",
+        "update"
+      ],
+      "materiais_os": [
+        "delete",
+        "insert",
+        "select"
+      ],
+      "mecanicos": [
+        "delete",
+        "insert",
+        "select",
+        "update"
+      ],
+      "medicoes_preditivas": [
+        "delete",
+        "insert",
+        "select",
+        "update"
+      ],
+      "melhorias": [
+        "insert",
+        "select",
+        "update"
+      ],
+      "movimentacoes_materiais": [
+        "insert",
+        "select"
+      ],
+      "ordens_servico": [
+        "insert",
+        "select",
+        "update"
+      ],
+      "permissoes_granulares": [
+        "delete",
+        "insert",
+        "select"
+      ],
+      "permissoes_trabalho": [
+        "insert",
+        "select",
+        "update"
+      ],
+      "planos_lubrificacao": [
+        "delete",
+        "insert",
+        "select",
+        "update"
+      ],
+      "planos_preventivos": [
+        "delete",
+        "insert",
+        "select",
+        "update"
+      ],
+      "plantas": [
+        "delete",
+        "insert",
+        "select",
+        "update"
+      ],
+      "profiles": [
+        "delete",
+        "select",
+        "update"
+      ],
+      "rbac_user_roles": [
+        "delete"
+      ],
+      "security_logs": [
+        "select"
+      ],
+      "servicos_preventivos": [
+        "delete",
+        "insert",
+        "select",
+        "update"
+      ],
+      "sistemas": [
+        "delete",
+        "insert",
+        "select",
+        "update"
+      ],
+      "solicitacoes_manutencao": [
+        "select"
+      ],
+      "support_tickets": [
+        "insert",
+        "select"
+      ],
+      "templates_preventivos": [
+        "delete",
+        "insert",
+        "select"
+      ],
+      "user_roles": [
+        "delete",
+        "select",
+        "update"
+      ],
+      "v_dashboard_kpis": [
+        "select"
+      ]
+    },
+    "frontendRpc": [],
+    "frontendFiles": [
+      "src/App.tsx",
+      "src/components/NavLink.tsx",
+      "src/components/command-palette/CommandPalette.tsx",
+      "src/components/dashboard/AlertsPanel.tsx",
+      "src/components/dashboard/BacklogSummary.tsx",
+      "src/components/dashboard/CostByTypeChart.tsx",
+      "src/components/dashboard/CostTrendChart.tsx",
+      "src/components/dashboard/DashboardFilters.tsx",
+      "src/components/dashboard/EquipmentRankingCard.tsx",
+      "src/components/dashboard/IndicatorCard.tsx",
+      "src/components/dashboard/KPIGaugeCard.tsx",
+      "src/components/dashboard/MaintenanceIndicators.tsx",
+      "src/components/dashboard/OEEGaugeCard.tsx",
+      "src/components/dashboard/OSByStatusChart.tsx",
+      "src/components/dashboard/OSDistributionChart.tsx",
+      "src/components/dashboard/QuickActions.tsx",
+      "src/components/dashboard/RecentActivityFeed.tsx",
+      "src/components/dashboard/ReliabilityCard.tsx",
+      "src/components/dashboard/SLAComplianceCard.tsx",
+      "src/components/dashboard/TopEquipmentTable.tsx",
+      "src/components/equipamentos/ComponenteFormDialog.tsx",
+      "src/components/equipamentos/ComponenteTree.tsx",
+      "src/components/equipamentos/ComponentesPanel.tsx",
+      "src/components/guards/EnvironmentGuard.tsx",
+      "src/components/guards/MasterTIGuard.test.tsx",
+      "src/components/guards/MasterTIGuard.tsx",
+      "src/components/guards/SystemOwnerGuard.test.tsx",
+      "src/components/guards/SystemOwnerGuard.tsx",
+      "src/components/guards/TenantQueryIsolationGuard.tsx",
+      "src/components/layout/AppLayout.tsx",
+      "src/components/layout/AppSidebar.tsx",
+      "src/components/layout/GlobalSearch.tsx",
+      "src/components/layout/SessionModulesAuth.test.tsx",
+      "src/components/lubrificacao/AtividadesList.tsx",
+      "src/components/lubrificacao/ExecucaoFormDialog.tsx",
+      "src/components/lubrificacao/PlanoDetailPanel.tsx",
+      "src/components/lubrificacao/PlanoFormDialog.tsx",
+      "src/components/master-ti/MasterAuditLogs.tsx",
+      "src/components/master-ti/MasterDatabaseManager.tsx",
+      "src/components/master-ti/MasterDocumentLayouts.tsx",
+      "src/components/master-ti/MasterEmpresaData.tsx",
+      "src/components/master-ti/MasterGlobalSettings.tsx",
+      "src/components/master-ti/MasterHeader.tsx",
+      "src/components/master-ti/MasterLogoManager.tsx",
+      "src/components/master-ti/MasterPermissionsManager.tsx",
+      "src/components/master-ti/MasterSecurity.tsx",
+      "src/components/master-ti/MasterSystemMonitor.tsx",
+      "src/components/master-ti/MasterUsersManager.tsx",
+      "src/components/notifications/NotificationCenter.tsx",
+      "src/components/os/OSPrintDialog.tsx",
+      "src/components/os/OSPrintTemplate.tsx",
+      "src/components/os/OSStatusBadge.tsx",
+      "src/components/os/OSTypeBadge.tsx",
+      "src/components/preventiva/PlanoDetailPanel.tsx",
+      "src/components/preventiva/PlanoFormDialog.tsx",
+      "src/components/preventiva/PreventivaPrintTemplate.test.tsx",
+      "src/components/preventiva/PreventivaPrintTemplate.tsx",
+      "src/components/print/DocumentPrintBase.tsx",
+      "src/components/print/PrintPreviewDialog.tsx",
+      "src/components/ui/accordion.tsx",
+      "src/components/ui/alert-dialog.tsx",
+      "src/components/ui/alert.tsx",
+      "src/components/ui/aspect-ratio.tsx",
+      "src/components/ui/avatar.tsx",
+      "src/components/ui/badge.tsx",
+      "src/components/ui/breadcrumb.tsx",
+      "src/components/ui/button.tsx",
+      "src/components/ui/calendar.tsx",
+      "src/components/ui/card.tsx",
+      "src/components/ui/carousel.tsx",
+      "src/components/ui/chart.tsx",
+      "src/components/ui/checkbox.tsx",
+      "src/components/ui/collapsible.tsx",
+      "src/components/ui/command.tsx",
+      "src/components/ui/context-menu.tsx",
+      "src/components/ui/data-table-pagination.tsx",
+      "src/components/ui/dialog.tsx",
+      "src/components/ui/drawer.tsx",
+      "src/components/ui/dropdown-menu.tsx",
+      "src/components/ui/form.tsx",
+      "src/components/ui/hover-card.tsx",
+      "src/components/ui/input-otp.tsx",
+      "src/components/ui/input.tsx",
+      "src/components/ui/label.tsx",
+      "src/components/ui/menubar.tsx",
+      "src/components/ui/navigation-menu.tsx",
+      "src/components/ui/pagination.tsx",
+      "src/components/ui/popover.tsx",
+      "src/components/ui/progress.tsx",
+      "src/components/ui/radio-group.tsx",
+      "src/components/ui/resizable.tsx",
+      "src/components/ui/scroll-area.tsx",
+      "src/components/ui/select.tsx",
+      "src/components/ui/separator.tsx",
+      "src/components/ui/sheet.tsx",
+      "src/components/ui/sidebar.tsx",
+      "src/components/ui/skeleton.tsx",
+      "src/components/ui/slider.tsx",
+      "src/components/ui/sonner.tsx",
+      "src/components/ui/switch.tsx",
+      "src/components/ui/table.tsx",
+      "src/components/ui/tabs.tsx",
+      "src/components/ui/textarea.tsx",
+      "src/components/ui/toast.tsx",
+      "src/components/ui/toaster.tsx",
+      "src/components/ui/toggle-group.tsx",
+      "src/components/ui/toggle.tsx",
+      "src/components/ui/tooltip.tsx",
+      "src/components/ui/use-toast.ts",
+      "src/contexts/AuthContext.tsx",
+      "src/contexts/BrandingContext.tsx",
+      "src/contexts/TenantContext.tsx",
+      "src/guards/EnvironmentGuard.tsx",
+      "src/guards/RoleGuard.tsx",
+      "src/guards/SystemOwnerGuard.tsx",
+      "src/hooks/use-mobile.tsx",
+      "src/hooks/use-toast.ts",
+      "src/hooks/useAtividadesLubrificacao.ts",
+      "src/hooks/useAtividadesPreventivas.ts",
+      "src/hooks/useAuditoria.ts",
+      "src/hooks/useComponentesEquipamento.ts",
+      "src/hooks/useConfiguracoesOperacionaisEmpresa.ts",
+      "src/hooks/useContratos.ts",
+      "src/hooks/useControlPlane.ts",
+      "src/hooks/useDadosEmpresa.ts",
+      "src/hooks/useDashboardData.ts",
+      "src/hooks/useDocumentEngine.ts",
+      "src/hooks/useDocumentosTecnicos.ts",
+      "src/hooks/useEmpresaBranding.ts",
+      "src/hooks/useEquipamentos.ts",
+      "src/hooks/useExecucoesOS.ts",
+      "src/hooks/useExecucoesPreventivas.ts",
+      "src/hooks/useFMEA.ts",
+      "src/hooks/useFornecedores.ts",
+      "src/hooks/useHierarquia.ts",
+      "src/hooks/useIndicadores.ts",
+      "src/hooks/useInspecoes.ts",
+      "src/hooks/useLubrificacao.ts",
+      "src/hooks/useMaintenanceSchedule.ts",
+      "src/hooks/useMateriais.ts",
+      "src/hooks/useMecanicos.ts",
+      "src/hooks/useMedicoesPreditivas.ts",
+      "src/hooks/useMelhorias.ts",
+      "src/hooks/useOrdensServico.ts",
+      "src/hooks/useOrdensServicoPaginated.ts",
+      "src/hooks/useOwnerPortal.ts",
+      "src/hooks/usePaginatedQuery.ts",
+      "src/hooks/usePermission.ts",
+      "src/hooks/usePermissoesGranulares.ts",
+      "src/hooks/usePlanosPreventivos.ts",
+      "src/hooks/useRCA.ts",
+      "src/hooks/useSSMA.ts",
+      "src/hooks/useSolicitacoes.ts",
+      "src/hooks/useSupportTickets.ts",
+      "src/hooks/useTemplatesPreventivos.ts",
+      "src/hooks/useUsuarios.ts",
+      "src/integrations/supabase/client.ts",
+      "src/integrations/supabase/rpc.ts",
+      "src/integrations/supabase/types.ts",
+      "src/layouts/OwnerPortalLayout.tsx",
+      "src/lib/audit.ts",
+      "src/lib/logger.ts",
+      "src/lib/osBadges.ts",
+      "src/lib/reportGenerator.ts",
+      "src/lib/secure-signup.ts",
+      "src/lib/security.test.ts",
+      "src/lib/security.ts",
+      "src/lib/supabaseCompat.ts",
+      "src/lib/utils.ts",
+      "src/main.tsx",
+      "src/modules/rootCauseAI/RootCauseAIPage.tsx",
+      "src/modules/rootCauseAI/components/AnalysisResultCard.tsx",
+      "src/modules/rootCauseAI/components/ConfidenceScoreBar.tsx",
+      "src/modules/rootCauseAI/types.ts",
+      "src/modules/rootCauseAI/useRootCauseAI.ts",
+      "src/owner/OwnerLayout.tsx",
+      "src/owner/OwnerLogin.tsx",
+      "src/pages/ArquivosOwner.tsx",
+      "src/pages/Auditoria.tsx",
+      "src/pages/Backlog.tsx",
+      "src/pages/ConfiguracoesEmpresa.tsx",
+      "src/pages/Contratos.tsx",
+      "src/pages/Custos.tsx",
+      "src/pages/Dashboard.tsx",
+      "src/pages/DocumentosTecnicos.tsx",
+      "src/pages/Equipamentos.tsx",
+      "src/pages/FMEA.tsx",
+      "src/pages/FecharOS.tsx",
+      "src/pages/Fornecedores.tsx",
+      "src/pages/Hierarquia.tsx",
+      "src/pages/HistoricoOS.tsx",
+      "src/pages/Index.tsx",
+      "src/pages/Inspecoes.tsx",
+      "src/pages/Instalar.tsx",
+      "src/pages/Login.tsx",
+      "src/pages/Lubrificacao.tsx",
+      "src/pages/ManualOperacao.tsx",
+      "src/pages/MasterTI.tsx",
+      "src/pages/Materiais.tsx",
+      "src/pages/Mecanicos.tsx",
+      "src/pages/Melhorias.tsx",
+      "src/pages/NotFound.tsx",
+      "src/pages/NovaOS.tsx",
+      "src/pages/Owner.test.tsx",
+      "src/pages/Owner.tsx",
+      "src/pages/Preditiva.tsx",
+      "src/pages/Preventiva.tsx",
+      "src/pages/Programacao.tsx",
+      "src/pages/RCA.tsx",
+      "src/pages/Relatorios.tsx",
+      "src/pages/SSMA.tsx",
+      "src/pages/Solicitacoes.tsx",
+      "src/pages/Suporte.tsx",
+      "src/pages/Usuarios.tsx",
+      "src/pages/lubrificacao/LubrificacaoDetalhe.tsx",
+      "src/pages/lubrificacao/LubrificacaoForm.tsx",
+      "src/pages/lubrificacao/LubrificacaoList.tsx",
+      "src/schemas/contrato.schema.ts",
+      "src/security/EnvironmentGuard.test.tsx",
+      "src/security/EnvironmentGuard.tsx",
+      "src/security/SystemOwnerGuard.test.tsx",
+      "src/security/SystemOwnerGuard.tsx",
+      "src/services/contratos.service.ts",
+      "src/services/maintenanceSchedule.ts",
+      "src/services/ownerPortal.service.ts",
+      "src/services/storage.ts",
+      "src/test/arquivos-owner.test.ts",
+      "src/test/audit-rpc.integration.test.ts",
+      "src/test/auth-context-mock.ts",
+      "src/test/critical-alert-rules.test.ts",
+      "src/test/empresaBranding.test.ts",
+      "src/test/example.test.ts",
+      "src/test/multiTenantMigration.test.ts",
+      "src/test/owner-modules-hooks-regression.test.tsx",
+      "src/test/secure-signup.test.ts",
+      "src/test/setup.ts",
+      "src/test/usePermission.integration.test.tsx",
+      "src/test/useSolicitacoes.insert.integration.test.tsx",
+      "src/test/useSolicitacoesInsert.integration.test.tsx",
+      "src/types/index.ts",
+      "src/types/lubrificacao.ts",
+      "src/vite-env.d.ts"
+    ],
+    "functionTableOps": {
+      "ai_root_cause_analysis": [
+        "insert"
+      ],
+      "assinaturas": [
+        "insert",
+        "select",
+        "update"
+      ],
+      "configuracoes_sistema": [
+        "delete",
+        "select",
+        "upsert"
+      ],
+      "contract_versions": [
+        "delete",
+        "insert"
+      ],
+      "contracts": [
+        "delete",
+        "insert",
+        "select",
+        "update"
+      ],
+      "dados_empresa": [
+        "delete",
+        "select",
+        "upsert"
+      ],
+      "empresa_config": [
+        "select",
+        "upsert"
+      ],
+      "empresas": [
+        "delete",
+        "insert",
+        "select",
+        "update"
+      ],
+      "enterprise_audit_logs": [
+        "delete",
+        "insert",
+        "select"
+      ],
+      "equipamentos": [
+        "select"
+      ],
+      "execucoes_os": [
+        "insert",
+        "select"
+      ],
+      "historico_manutencao": [
+        "insert"
+      ],
+      "materiais": [
+        "select"
+      ],
+      "medicoes_preditivas": [
+        "select"
+      ],
+      "ordens_servico": [
+        "insert",
+        "select",
+        "update"
+      ],
+      "planos": [
+        "select"
+      ],
+      "planos_preventivos": [
+        "select",
+        "update"
+      ],
+      "plans": [
+        "delete",
+        "insert",
+        "select",
+        "update"
+      ],
+      "platform_metrics": [
+        "upsert"
+      ],
+      "profiles": [
+        "delete",
+        "select",
+        "upsert"
+      ],
+      "subscriptions": [
+        "delete",
+        "select",
+        "update",
+        "upsert"
+      ],
+      "support_tickets": [
+        "delete",
+        "select",
+        "update"
+      ],
+      "user_roles": [
+        "delete",
+        "select",
+        "upsert"
+      ],
+      "usuarios": [
+        "select"
+      ]
+    },
+    "functionRpc": [],
+    "edgeFunctionFiles": [
+      "supabase/functions/_shared/auth.ts",
+      "supabase/functions/_shared/response.ts",
+      "supabase/functions/analisar-causa-raiz/index.ts",
+      "supabase/functions/company-membership/index.ts",
+      "supabase/functions/generate-preventive-os/index.ts",
+      "supabase/functions/kpi-report/index.ts",
+      "supabase/functions/maintenance-os-service/index.ts",
+      "supabase/functions/owner-portal-admin/index.ts",
+      "supabase/functions/platform-metrics-rollup/index.ts",
+      "supabase/functions/stripe-webhook/index.ts",
+      "supabase/functions/system-health-check/index.ts"
+    ],
+    "createdTables": [
+      "acoes_corretivas",
+      "ai_root_cause_analysis",
+      "analise_causa_raiz",
+      "anomalias_inspecao",
+      "areas",
+      "assinaturas",
+      "atividades_lubrificacao",
+      "atividades_preventivas",
+      "ativos",
+      "audit_logs",
+      "auditoria",
+      "avaliacoes_fornecedores",
+      "causas",
+      "checklists",
+      "componentes_equipamento",
+      "configuracoes_sistema",
+      "contract_versions",
+      "contracts",
+      "contratos",
+      "dados_empresa",
+      "document_layouts",
+      "document_sequences",
+      "documentos_tecnicos",
+      "edge_refactor_contract",
+      "empresa_config",
+      "empresas",
+      "enterprise_audit_logs",
+      "enterprise_companies",
+      "enterprise_impersonation_sessions",
+      "enterprise_plans",
+      "enterprise_subscriptions",
+      "enterprise_system_integrity",
+      "equipamentos",
+      "execucoes_lubrificacao",
+      "execucoes_os",
+      "execucoes_os_pausas",
+      "execucoes_preventivas",
+      "falhas",
+      "fmea",
+      "fornecedores",
+      "historico_manutencao",
+      "incidentes_ssma",
+      "indicadores_kpi",
+      "inspecoes",
+      "legacy_tenant_rollback_snapshot",
+      "localizacoes",
+      "maintenance_action_suggestions",
+      "maintenance_schedule",
+      "materiais",
+      "materiais_os",
+      "mecanicos",
+      "medicoes_preditivas",
+      "melhorias",
+      "membros_empresa",
+      "migration_validation_windows",
+      "movimentacoes_materiais",
+      "orcamentos_manutencao",
+      "ordens_servico",
+      "permissoes",
+      "permissoes_granulares",
+      "permissoes_trabalho",
+      "planos",
+      "planos_lubrificacao",
+      "planos_manutencao",
+      "planos_preventivos",
+      "plans",
+      "plantas",
+      "platform_metrics",
+      "profiles",
+      "rate_limits",
+      "rate_limits_por_empresa",
+      "rbac_permissions",
+      "rbac_role_permissions",
+      "rbac_roles",
+      "rbac_user_roles",
+      "role_permissions",
+      "security_logs",
+      "servicos_preventivos",
+      "sistemas",
+      "solicitacoes_manutencao",
+      "subscription_payments",
+      "subscriptions",
+      "support_tickets",
+      "system_notifications",
+      "system_owner_allowlist",
+      "tags_ativos",
+      "tarefas_plano",
+      "templates_preventivos",
+      "tenants",
+      "unidades",
+      "user_roles",
+      "usuarios"
+    ],
+    "unusedCandidateTables": [
+      "ativos",
+      "auditoria",
+      "avaliacoes_fornecedores",
+      "causas",
+      "checklists",
+      "edge_refactor_contract",
+      "enterprise_companies",
+      "enterprise_impersonation_sessions",
+      "enterprise_plans",
+      "enterprise_subscriptions",
+      "enterprise_system_integrity",
+      "execucoes_os_pausas",
+      "falhas",
+      "indicadores_kpi",
+      "legacy_tenant_rollback_snapshot",
+      "localizacoes",
+      "maintenance_action_suggestions",
+      "membros_empresa",
+      "migration_validation_windows",
+      "orcamentos_manutencao",
+      "permissoes",
+      "planos_manutencao",
+      "rate_limits",
+      "rate_limits_por_empresa",
+      "rbac_permissions",
+      "rbac_role_permissions",
+      "rbac_roles",
+      "role_permissions",
+      "subscription_payments",
+      "system_notifications",
+      "system_owner_allowlist",
+      "tags_ativos",
+      "tarefas_plano",
+      "tenants",
+      "unidades"
+    ]
+  },
+  "modules": [
+    {
+      "module": "ArquivosOwner",
+      "entry": "src/pages/ArquivosOwner.tsx",
+      "dependencyFileCount": 1,
+      "dependencyFiles": [
+        "src/pages/ArquivosOwner.tsx"
+      ],
+      "tables": {},
+      "rpc": []
+    },
+    {
+      "module": "Auditoria",
+      "entry": "src/pages/Auditoria.tsx",
+      "dependencyFileCount": 15,
+      "dependencyFiles": [
+        "src/components/ui/button.tsx",
+        "src/components/ui/input.tsx",
+        "src/components/ui/label.tsx",
+        "src/components/ui/select.tsx",
+        "src/components/ui/skeleton.tsx",
+        "src/contexts/AuthContext.tsx",
+        "src/hooks/useAuditoria.ts",
+        "src/integrations/supabase/client.ts",
+        "src/integrations/supabase/rpc.ts",
+        "src/integrations/supabase/types.ts",
+        "src/lib/audit.ts",
+        "src/lib/logger.ts",
+        "src/lib/security.ts",
+        "src/lib/utils.ts",
+        "src/pages/Auditoria.tsx"
+      ],
+      "tables": {
+        "audit_logs": [
+          "select"
+        ],
+        "configuracoes_sistema": [
+          "select"
+        ],
+        "empresa_config": [
+          "select"
+        ],
+        "empresas": [
+          "select"
+        ],
+        "profiles": [
+          "select"
+        ],
+        "user_roles": [
+          "select"
+        ]
+      },
+      "rpc": []
+    },
+    {
+      "module": "Backlog",
+      "entry": "src/pages/Backlog.tsx",
+      "dependencyFileCount": 18,
+      "dependencyFiles": [
+        "src/components/os/OSStatusBadge.tsx",
+        "src/components/os/OSTypeBadge.tsx",
+        "src/components/ui/badge.tsx",
+        "src/components/ui/button.tsx",
+        "src/components/ui/card.tsx",
+        "src/components/ui/input.tsx",
+        "src/components/ui/select.tsx",
+        "src/components/ui/skeleton.tsx",
+        "src/components/ui/toast.tsx",
+        "src/hooks/use-toast.ts",
+        "src/hooks/useOrdensServico.ts",
+        "src/integrations/supabase/client.ts",
+        "src/integrations/supabase/types.ts",
+        "src/lib/osBadges.ts",
+        "src/lib/security.ts",
+        "src/lib/utils.ts",
+        "src/pages/Backlog.tsx",
+        "src/types/index.ts"
+      ],
+      "tables": {
+        "ordens_servico": [
+          "insert",
+          "select",
+          "update"
+        ]
+      },
+      "rpc": []
+    },
+    {
+      "module": "ConfiguracoesEmpresa",
+      "entry": "src/pages/ConfiguracoesEmpresa.tsx",
+      "dependencyFileCount": 20,
+      "dependencyFiles": [
+        "src/components/ui/button.tsx",
+        "src/components/ui/card.tsx",
+        "src/components/ui/input.tsx",
+        "src/components/ui/label.tsx",
+        "src/components/ui/skeleton.tsx",
+        "src/components/ui/textarea.tsx",
+        "src/components/ui/toast.tsx",
+        "src/contexts/AuthContext.tsx",
+        "src/contexts/TenantContext.tsx",
+        "src/hooks/use-toast.ts",
+        "src/hooks/useConfiguracoesOperacionaisEmpresa.ts",
+        "src/hooks/useDadosEmpresa.ts",
+        "src/integrations/supabase/client.ts",
+        "src/integrations/supabase/rpc.ts",
+        "src/integrations/supabase/types.ts",
+        "src/lib/audit.ts",
+        "src/lib/logger.ts",
+        "src/lib/security.ts",
+        "src/lib/utils.ts",
+        "src/pages/ConfiguracoesEmpresa.tsx"
+      ],
+      "tables": {
+        "configuracoes_sistema": [
+          "select",
+          "upsert"
+        ],
+        "dados_empresa": [
+          "select",
+          "update"
+        ],
+        "empresa_config": [
+          "select"
+        ],
+        "empresas": [
+          "select"
+        ],
+        "profiles": [
+          "select"
+        ],
+        "user_roles": [
+          "select"
+        ]
+      },
+      "rpc": []
+    },
+    {
+      "module": "Contratos",
+      "entry": "src/pages/Contratos.tsx",
+      "dependencyFileCount": 25,
+      "dependencyFiles": [
+        "src/components/ui/badge.tsx",
+        "src/components/ui/button.tsx",
+        "src/components/ui/card.tsx",
+        "src/components/ui/dialog.tsx",
+        "src/components/ui/input.tsx",
+        "src/components/ui/label.tsx",
+        "src/components/ui/select.tsx",
+        "src/components/ui/skeleton.tsx",
+        "src/components/ui/textarea.tsx",
+        "src/components/ui/toast.tsx",
+        "src/contexts/AuthContext.tsx",
+        "src/hooks/use-toast.ts",
+        "src/hooks/useContratos.ts",
+        "src/hooks/useFornecedores.ts",
+        "src/integrations/supabase/client.ts",
+        "src/integrations/supabase/rpc.ts",
+        "src/integrations/supabase/types.ts",
+        "src/lib/audit.ts",
+        "src/lib/logger.ts",
+        "src/lib/security.ts",
+        "src/lib/supabaseCompat.ts",
+        "src/lib/utils.ts",
+        "src/pages/Contratos.tsx",
+        "src/schemas/contrato.schema.ts",
+        "src/services/contratos.service.ts"
+      ],
+      "tables": {
+        "configuracoes_sistema": [
+          "select"
+        ],
+        "contratos": [
+          "delete",
+          "insert",
+          "select",
+          "update"
+        ],
+        "empresa_config": [
+          "select"
+        ],
+        "empresas": [
+          "select"
+        ],
+        "fornecedores": [
+          "insert",
+          "select",
+          "update"
+        ],
+        "profiles": [
+          "select"
+        ],
+        "user_roles": [
+          "select"
+        ]
+      },
+      "rpc": []
+    },
+    {
+      "module": "Custos",
+      "entry": "src/pages/Custos.tsx",
+      "dependencyFileCount": 21,
+      "dependencyFiles": [
+        "src/components/ui/badge.tsx",
+        "src/components/ui/button.tsx",
+        "src/components/ui/card.tsx",
+        "src/components/ui/select.tsx",
+        "src/components/ui/skeleton.tsx",
+        "src/components/ui/tabs.tsx",
+        "src/components/ui/toast.tsx",
+        "src/contexts/AuthContext.tsx",
+        "src/hooks/use-toast.ts",
+        "src/hooks/useEquipamentos.ts",
+        "src/hooks/useExecucoesOS.ts",
+        "src/hooks/useOrdensServico.ts",
+        "src/integrations/supabase/client.ts",
+        "src/integrations/supabase/rpc.ts",
+        "src/integrations/supabase/types.ts",
+        "src/lib/audit.ts",
+        "src/lib/logger.ts",
+        "src/lib/security.ts",
+        "src/lib/supabaseCompat.ts",
+        "src/lib/utils.ts",
+        "src/pages/Custos.tsx"
+      ],
+      "tables": {
+        "configuracoes_sistema": [
+          "select"
+        ],
+        "empresa_config": [
+          "select"
+        ],
+        "empresas": [
+          "select"
+        ],
+        "equipamentos": [
+          "delete",
+          "insert",
+          "select",
+          "update"
+        ],
+        "execucoes_os": [
+          "insert",
+          "select"
+        ],
+        "ordens_servico": [
+          "insert",
+          "select",
+          "update"
+        ],
+        "profiles": [
+          "select"
+        ],
+        "user_roles": [
+          "select"
+        ]
+      },
+      "rpc": []
+    },
+    {
+      "module": "Dashboard",
+      "entry": "src/pages/Dashboard.tsx",
+      "dependencyFileCount": 32,
+      "dependencyFiles": [
+        "src/components/dashboard/BacklogSummary.tsx",
+        "src/components/dashboard/CostTrendChart.tsx",
+        "src/components/dashboard/IndicatorCard.tsx",
+        "src/components/dashboard/KPIGaugeCard.tsx",
+        "src/components/dashboard/OSByStatusChart.tsx",
+        "src/components/dashboard/OSDistributionChart.tsx",
+        "src/components/dashboard/QuickActions.tsx",
+        "src/components/os/OSStatusBadge.tsx",
+        "src/components/os/OSTypeBadge.tsx",
+        "src/components/ui/badge.tsx",
+        "src/components/ui/button.tsx",
+        "src/components/ui/card.tsx",
+        "src/components/ui/progress.tsx",
+        "src/components/ui/skeleton.tsx",
+        "src/components/ui/toast.tsx",
+        "src/contexts/AuthContext.tsx",
+        "src/hooks/use-toast.ts",
+        "src/hooks/useDashboardData.ts",
+        "src/hooks/useExecucoesOS.ts",
+        "src/hooks/useIndicadores.ts",
+        "src/hooks/useOrdensServico.ts",
+        "src/integrations/supabase/client.ts",
+        "src/integrations/supabase/rpc.ts",
+        "src/integrations/supabase/types.ts",
+        "src/lib/audit.ts",
+        "src/lib/logger.ts",
+        "src/lib/osBadges.ts",
+        "src/lib/security.ts",
+        "src/lib/supabaseCompat.ts",
+        "src/lib/utils.ts",
+        "src/pages/Dashboard.tsx",
+        "src/types/index.ts"
+      ],
+      "tables": {
+        "configuracoes_sistema": [
+          "select"
+        ],
+        "empresa_config": [
+          "select"
+        ],
+        "empresas": [
+          "select"
+        ],
+        "execucoes_os": [
+          "insert",
+          "select"
+        ],
+        "ordens_servico": [
+          "insert",
+          "select",
+          "update"
+        ],
+        "profiles": [
+          "select"
+        ],
+        "user_roles": [
+          "select"
+        ],
+        "v_dashboard_kpis": [
+          "select"
+        ]
+      },
+      "rpc": []
+    },
+    {
+      "module": "DocumentosTecnicos",
+      "entry": "src/pages/DocumentosTecnicos.tsx",
+      "dependencyFileCount": 23,
+      "dependencyFiles": [
+        "src/components/ui/badge.tsx",
+        "src/components/ui/button.tsx",
+        "src/components/ui/card.tsx",
+        "src/components/ui/dialog.tsx",
+        "src/components/ui/input.tsx",
+        "src/components/ui/label.tsx",
+        "src/components/ui/select.tsx",
+        "src/components/ui/skeleton.tsx",
+        "src/components/ui/tabs.tsx",
+        "src/components/ui/textarea.tsx",
+        "src/components/ui/toast.tsx",
+        "src/contexts/AuthContext.tsx",
+        "src/hooks/use-toast.ts",
+        "src/hooks/useEquipamentos.ts",
+        "src/integrations/supabase/client.ts",
+        "src/integrations/supabase/rpc.ts",
+        "src/integrations/supabase/types.ts",
+        "src/lib/audit.ts",
+        "src/lib/logger.ts",
+        "src/lib/security.ts",
+        "src/lib/supabaseCompat.ts",
+        "src/lib/utils.ts",
+        "src/pages/DocumentosTecnicos.tsx"
+      ],
+      "tables": {
+        "configuracoes_sistema": [
+          "select"
+        ],
+        "documentos_tecnicos": [
+          "insert",
+          "select"
+        ],
+        "empresa_config": [
+          "select"
+        ],
+        "empresas": [
+          "select"
+        ],
+        "equipamentos": [
+          "delete",
+          "insert",
+          "select",
+          "update"
+        ],
+        "profiles": [
+          "select"
+        ],
+        "user_roles": [
+          "select"
+        ]
+      },
+      "rpc": []
+    },
+    {
+      "module": "Equipamentos",
+      "entry": "src/pages/Equipamentos.tsx",
+      "dependencyFileCount": 32,
+      "dependencyFiles": [
+        "src/components/equipamentos/ComponenteFormDialog.tsx",
+        "src/components/equipamentos/ComponenteTree.tsx",
+        "src/components/equipamentos/ComponentesPanel.tsx",
+        "src/components/ui/alert-dialog.tsx",
+        "src/components/ui/badge.tsx",
+        "src/components/ui/button.tsx",
+        "src/components/ui/card.tsx",
+        "src/components/ui/dialog.tsx",
+        "src/components/ui/input.tsx",
+        "src/components/ui/label.tsx",
+        "src/components/ui/select.tsx",
+        "src/components/ui/sheet.tsx",
+        "src/components/ui/skeleton.tsx",
+        "src/components/ui/switch.tsx",
+        "src/components/ui/tabs.tsx",
+        "src/components/ui/textarea.tsx",
+        "src/components/ui/toast.tsx",
+        "src/contexts/AuthContext.tsx",
+        "src/hooks/use-toast.ts",
+        "src/hooks/useComponentesEquipamento.ts",
+        "src/hooks/useEquipamentos.ts",
+        "src/hooks/useHierarquia.ts",
+        "src/integrations/supabase/client.ts",
+        "src/integrations/supabase/rpc.ts",
+        "src/integrations/supabase/types.ts",
+        "src/lib/audit.ts",
+        "src/lib/logger.ts",
+        "src/lib/reportGenerator.ts",
+        "src/lib/security.ts",
+        "src/lib/supabaseCompat.ts",
+        "src/lib/utils.ts",
+        "src/pages/Equipamentos.tsx"
+      ],
+      "tables": {
+        "areas": [
+          "delete",
+          "insert",
+          "select",
+          "update"
+        ],
+        "componentes_equipamento": [
+          "delete",
+          "insert",
+          "select",
+          "update"
+        ],
+        "configuracoes_sistema": [
+          "select"
+        ],
+        "empresa_config": [
+          "select"
+        ],
+        "empresas": [
+          "select"
+        ],
+        "equipamentos": [
+          "delete",
+          "insert",
+          "select",
+          "update"
+        ],
+        "plantas": [
+          "delete",
+          "insert",
+          "select",
+          "update"
+        ],
+        "profiles": [
+          "select"
+        ],
+        "sistemas": [
+          "delete",
+          "insert",
+          "select",
+          "update"
+        ],
+        "user_roles": [
+          "select"
+        ]
+      },
+      "rpc": []
+    },
+    {
+      "module": "FecharOS",
+      "entry": "src/pages/FecharOS.tsx",
+      "dependencyFileCount": 31,
+      "dependencyFiles": [
+        "src/components/os/OSStatusBadge.tsx",
+        "src/components/os/OSTypeBadge.tsx",
+        "src/components/ui/badge.tsx",
+        "src/components/ui/button.tsx",
+        "src/components/ui/card.tsx",
+        "src/components/ui/checkbox.tsx",
+        "src/components/ui/input.tsx",
+        "src/components/ui/label.tsx",
+        "src/components/ui/select.tsx",
+        "src/components/ui/skeleton.tsx",
+        "src/components/ui/tabs.tsx",
+        "src/components/ui/textarea.tsx",
+        "src/components/ui/toast.tsx",
+        "src/contexts/AuthContext.tsx",
+        "src/hooks/use-toast.ts",
+        "src/hooks/useAuditoria.ts",
+        "src/hooks/useExecucoesOS.ts",
+        "src/hooks/useMateriais.ts",
+        "src/hooks/useMecanicos.ts",
+        "src/hooks/useOrdensServico.ts",
+        "src/integrations/supabase/client.ts",
+        "src/integrations/supabase/rpc.ts",
+        "src/integrations/supabase/types.ts",
+        "src/lib/audit.ts",
+        "src/lib/logger.ts",
+        "src/lib/osBadges.ts",
+        "src/lib/security.ts",
+        "src/lib/supabaseCompat.ts",
+        "src/lib/utils.ts",
+        "src/pages/FecharOS.tsx",
+        "src/types/index.ts"
+      ],
+      "tables": {
+        "audit_logs": [
+          "select"
+        ],
+        "configuracoes_sistema": [
+          "select"
+        ],
+        "empresa_config": [
+          "select"
+        ],
+        "empresas": [
+          "select"
+        ],
+        "execucoes_os": [
+          "insert",
+          "select"
+        ],
+        "materiais": [
+          "delete",
+          "insert",
+          "select",
+          "update"
+        ],
+        "materiais_os": [
+          "delete",
+          "insert",
+          "select"
+        ],
+        "mecanicos": [
+          "delete",
+          "insert",
+          "select",
+          "update"
+        ],
+        "movimentacoes_materiais": [
+          "insert",
+          "select"
+        ],
+        "ordens_servico": [
+          "insert",
+          "select",
+          "update"
+        ],
+        "profiles": [
+          "select"
+        ],
+        "user_roles": [
+          "select"
+        ]
+      },
+      "rpc": []
+    },
+    {
+      "module": "FMEA",
+      "entry": "src/pages/FMEA.tsx",
+      "dependencyFileCount": 22,
+      "dependencyFiles": [
+        "src/components/ui/badge.tsx",
+        "src/components/ui/button.tsx",
+        "src/components/ui/dialog.tsx",
+        "src/components/ui/input.tsx",
+        "src/components/ui/label.tsx",
+        "src/components/ui/select.tsx",
+        "src/components/ui/skeleton.tsx",
+        "src/components/ui/textarea.tsx",
+        "src/components/ui/toast.tsx",
+        "src/contexts/AuthContext.tsx",
+        "src/hooks/use-toast.ts",
+        "src/hooks/useEquipamentos.ts",
+        "src/hooks/useFMEA.ts",
+        "src/integrations/supabase/client.ts",
+        "src/integrations/supabase/rpc.ts",
+        "src/integrations/supabase/types.ts",
+        "src/lib/audit.ts",
+        "src/lib/logger.ts",
+        "src/lib/security.ts",
+        "src/lib/supabaseCompat.ts",
+        "src/lib/utils.ts",
+        "src/pages/FMEA.tsx"
+      ],
+      "tables": {
+        "configuracoes_sistema": [
+          "select"
+        ],
+        "empresa_config": [
+          "select"
+        ],
+        "empresas": [
+          "select"
+        ],
+        "equipamentos": [
+          "delete",
+          "insert",
+          "select",
+          "update"
+        ],
+        "fmea": [
+          "delete",
+          "insert",
+          "select",
+          "update"
+        ],
+        "profiles": [
+          "select"
+        ],
+        "user_roles": [
+          "select"
+        ]
+      },
+      "rpc": []
+    },
+    {
+      "module": "Fornecedores",
+      "entry": "src/pages/Fornecedores.tsx",
+      "dependencyFileCount": 17,
+      "dependencyFiles": [
+        "src/components/ui/badge.tsx",
+        "src/components/ui/button.tsx",
+        "src/components/ui/dialog.tsx",
+        "src/components/ui/input.tsx",
+        "src/components/ui/label.tsx",
+        "src/components/ui/select.tsx",
+        "src/components/ui/skeleton.tsx",
+        "src/components/ui/textarea.tsx",
+        "src/components/ui/toast.tsx",
+        "src/hooks/use-toast.ts",
+        "src/hooks/useFornecedores.ts",
+        "src/integrations/supabase/client.ts",
+        "src/integrations/supabase/types.ts",
+        "src/lib/security.ts",
+        "src/lib/supabaseCompat.ts",
+        "src/lib/utils.ts",
+        "src/pages/Fornecedores.tsx"
+      ],
+      "tables": {
+        "contratos": [
+          "insert",
+          "select",
+          "update"
+        ],
+        "fornecedores": [
+          "insert",
+          "select",
+          "update"
+        ]
+      },
+      "rpc": []
+    },
+    {
+      "module": "Hierarquia",
+      "entry": "src/pages/Hierarquia.tsx",
+      "dependencyFileCount": 24,
+      "dependencyFiles": [
+        "src/components/ui/alert-dialog.tsx",
+        "src/components/ui/badge.tsx",
+        "src/components/ui/button.tsx",
+        "src/components/ui/dialog.tsx",
+        "src/components/ui/input.tsx",
+        "src/components/ui/label.tsx",
+        "src/components/ui/select.tsx",
+        "src/components/ui/skeleton.tsx",
+        "src/components/ui/switch.tsx",
+        "src/components/ui/tabs.tsx",
+        "src/components/ui/textarea.tsx",
+        "src/components/ui/toast.tsx",
+        "src/contexts/AuthContext.tsx",
+        "src/hooks/use-toast.ts",
+        "src/hooks/useHierarquia.ts",
+        "src/integrations/supabase/client.ts",
+        "src/integrations/supabase/rpc.ts",
+        "src/integrations/supabase/types.ts",
+        "src/lib/audit.ts",
+        "src/lib/logger.ts",
+        "src/lib/security.ts",
+        "src/lib/supabaseCompat.ts",
+        "src/lib/utils.ts",
+        "src/pages/Hierarquia.tsx"
+      ],
+      "tables": {
+        "areas": [
+          "delete",
+          "insert",
+          "select",
+          "update"
+        ],
+        "configuracoes_sistema": [
+          "select"
+        ],
+        "empresa_config": [
+          "select"
+        ],
+        "empresas": [
+          "select"
+        ],
+        "plantas": [
+          "delete",
+          "insert",
+          "select",
+          "update"
+        ],
+        "profiles": [
+          "select"
+        ],
+        "sistemas": [
+          "delete",
+          "insert",
+          "select",
+          "update"
+        ],
+        "user_roles": [
+          "select"
+        ]
+      },
+      "rpc": []
+    },
+    {
+      "module": "HistoricoOS",
+      "entry": "src/pages/HistoricoOS.tsx",
+      "dependencyFileCount": 36,
+      "dependencyFiles": [
+        "src/components/os/OSPrintDialog.tsx",
+        "src/components/os/OSPrintTemplate.tsx",
+        "src/components/os/OSStatusBadge.tsx",
+        "src/components/os/OSTypeBadge.tsx",
+        "src/components/print/DocumentPrintBase.tsx",
+        "src/components/print/PrintPreviewDialog.tsx",
+        "src/components/ui/button.tsx",
+        "src/components/ui/calendar.tsx",
+        "src/components/ui/card.tsx",
+        "src/components/ui/data-table-pagination.tsx",
+        "src/components/ui/dialog.tsx",
+        "src/components/ui/input.tsx",
+        "src/components/ui/label.tsx",
+        "src/components/ui/popover.tsx",
+        "src/components/ui/select.tsx",
+        "src/components/ui/skeleton.tsx",
+        "src/components/ui/tabs.tsx",
+        "src/components/ui/toast.tsx",
+        "src/contexts/AuthContext.tsx",
+        "src/contexts/TenantContext.tsx",
+        "src/hooks/use-toast.ts",
+        "src/hooks/useDadosEmpresa.ts",
+        "src/hooks/useEquipamentos.ts",
+        "src/hooks/useExecucoesOS.ts",
+        "src/hooks/useOrdensServico.ts",
+        "src/integrations/supabase/client.ts",
+        "src/integrations/supabase/rpc.ts",
+        "src/integrations/supabase/types.ts",
+        "src/lib/audit.ts",
+        "src/lib/logger.ts",
+        "src/lib/osBadges.ts",
+        "src/lib/security.ts",
+        "src/lib/supabaseCompat.ts",
+        "src/lib/utils.ts",
+        "src/pages/HistoricoOS.tsx",
+        "src/types/index.ts"
+      ],
+      "tables": {
+        "configuracoes_sistema": [
+          "select"
+        ],
+        "dados_empresa": [
+          "select",
+          "update"
+        ],
+        "empresa_config": [
+          "select"
+        ],
+        "empresas": [
+          "select"
+        ],
+        "equipamentos": [
+          "delete",
+          "insert",
+          "select",
+          "update"
+        ],
+        "execucoes_os": [
+          "insert",
+          "select"
+        ],
+        "ordens_servico": [
+          "insert",
+          "select",
+          "update"
+        ],
+        "profiles": [
+          "select"
+        ],
+        "user_roles": [
+          "select"
+        ]
+      },
+      "rpc": []
+    },
+    {
+      "module": "Index",
+      "entry": "src/pages/Index.tsx",
+      "dependencyFileCount": 9,
+      "dependencyFiles": [
+        "src/assets/gppis-logo.png",
+        "src/contexts/AuthContext.tsx",
+        "src/integrations/supabase/client.ts",
+        "src/integrations/supabase/rpc.ts",
+        "src/integrations/supabase/types.ts",
+        "src/lib/audit.ts",
+        "src/lib/logger.ts",
+        "src/lib/security.ts",
+        "src/pages/Index.tsx"
+      ],
+      "tables": {
+        "configuracoes_sistema": [
+          "select"
+        ],
+        "empresa_config": [
+          "select"
+        ],
+        "empresas": [
+          "select"
+        ],
+        "profiles": [
+          "select"
+        ],
+        "user_roles": [
+          "select"
+        ]
+      },
+      "rpc": []
+    },
+    {
+      "module": "Inspecoes",
+      "entry": "src/pages/Inspecoes.tsx",
+      "dependencyFileCount": 22,
+      "dependencyFiles": [
+        "src/components/ui/badge.tsx",
+        "src/components/ui/button.tsx",
+        "src/components/ui/dialog.tsx",
+        "src/components/ui/input.tsx",
+        "src/components/ui/label.tsx",
+        "src/components/ui/select.tsx",
+        "src/components/ui/skeleton.tsx",
+        "src/components/ui/textarea.tsx",
+        "src/components/ui/toast.tsx",
+        "src/contexts/AuthContext.tsx",
+        "src/hooks/use-toast.ts",
+        "src/hooks/useInspecoes.ts",
+        "src/integrations/supabase/client.ts",
+        "src/integrations/supabase/rpc.ts",
+        "src/integrations/supabase/types.ts",
+        "src/lib/audit.ts",
+        "src/lib/logger.ts",
+        "src/lib/security.ts",
+        "src/lib/supabaseCompat.ts",
+        "src/lib/utils.ts",
+        "src/pages/Inspecoes.tsx",
+        "src/services/maintenanceSchedule.ts"
+      ],
+      "tables": {
+        "anomalias_inspecao": [
+          "insert",
+          "select"
+        ],
+        "configuracoes_sistema": [
+          "select"
+        ],
+        "empresa_config": [
+          "select"
+        ],
+        "empresas": [
+          "select"
+        ],
+        "inspecoes": [
+          "insert",
+          "select",
+          "update"
+        ],
+        "maintenance_schedule": [
+          "delete",
+          "upsert"
+        ],
+        "profiles": [
+          "select"
+        ],
+        "user_roles": [
+          "select"
+        ]
+      },
+      "rpc": []
+    },
+    {
+      "module": "Instalar",
+      "entry": "src/pages/Instalar.tsx",
+      "dependencyFileCount": 5,
+      "dependencyFiles": [
+        "src/components/ui/button.tsx",
+        "src/components/ui/card.tsx",
+        "src/lib/logger.ts",
+        "src/lib/utils.ts",
+        "src/pages/Instalar.tsx"
+      ],
+      "tables": {},
+      "rpc": []
+    },
+    {
+      "module": "Login",
+      "entry": "src/pages/Login.tsx",
+      "dependencyFileCount": 14,
+      "dependencyFiles": [
+        "src/components/ui/button.tsx",
+        "src/components/ui/input.tsx",
+        "src/components/ui/label.tsx",
+        "src/contexts/AuthContext.tsx",
+        "src/contexts/BrandingContext.tsx",
+        "src/contexts/TenantContext.tsx",
+        "src/integrations/supabase/client.ts",
+        "src/integrations/supabase/rpc.ts",
+        "src/integrations/supabase/types.ts",
+        "src/lib/audit.ts",
+        "src/lib/logger.ts",
+        "src/lib/security.ts",
+        "src/lib/utils.ts",
+        "src/pages/Login.tsx"
+      ],
+      "tables": {
+        "configuracoes_sistema": [
+          "select"
+        ],
+        "dados_empresa": [
+          "select"
+        ],
+        "empresa_config": [
+          "select"
+        ],
+        "empresas": [
+          "select"
+        ],
+        "profiles": [
+          "select"
+        ],
+        "user_roles": [
+          "select"
+        ]
+      },
+      "rpc": []
+    },
+    {
+      "module": "Lubrificacao",
+      "entry": "src/pages/Lubrificacao.tsx",
+      "dependencyFileCount": 28,
+      "dependencyFiles": [
+        "src/components/ui/badge.tsx",
+        "src/components/ui/button.tsx",
+        "src/components/ui/card.tsx",
+        "src/components/ui/dialog.tsx",
+        "src/components/ui/input.tsx",
+        "src/components/ui/label.tsx",
+        "src/components/ui/select.tsx",
+        "src/components/ui/skeleton.tsx",
+        "src/components/ui/textarea.tsx",
+        "src/components/ui/toast.tsx",
+        "src/contexts/AuthContext.tsx",
+        "src/hooks/use-toast.ts",
+        "src/hooks/useEquipamentos.ts",
+        "src/hooks/useLubrificacao.ts",
+        "src/integrations/supabase/client.ts",
+        "src/integrations/supabase/rpc.ts",
+        "src/integrations/supabase/types.ts",
+        "src/lib/audit.ts",
+        "src/lib/logger.ts",
+        "src/lib/security.ts",
+        "src/lib/supabaseCompat.ts",
+        "src/lib/utils.ts",
+        "src/pages/Lubrificacao.tsx",
+        "src/pages/lubrificacao/LubrificacaoDetalhe.tsx",
+        "src/pages/lubrificacao/LubrificacaoForm.tsx",
+        "src/pages/lubrificacao/LubrificacaoList.tsx",
+        "src/services/maintenanceSchedule.ts",
+        "src/types/lubrificacao.ts"
+      ],
+      "tables": {
+        "configuracoes_sistema": [
+          "select"
+        ],
+        "empresa_config": [
+          "select"
+        ],
+        "empresas": [
+          "select"
+        ],
+        "equipamentos": [
+          "delete",
+          "insert",
+          "select",
+          "update"
+        ],
+        "execucoes_lubrificacao": [
+          "insert",
+          "select",
+          "update"
+        ],
+        "maintenance_schedule": [
+          "delete",
+          "upsert"
+        ],
+        "ordens_servico": [
+          "insert"
+        ],
+        "planos_lubrificacao": [
+          "delete",
+          "insert",
+          "select",
+          "update"
+        ],
+        "profiles": [
+          "select"
+        ],
+        "user_roles": [
+          "select"
+        ]
+      },
+      "rpc": []
+    },
+    {
+      "module": "LubrificacaoDetalhe",
+      "entry": "src/pages/lubrificacao/LubrificacaoDetalhe.tsx",
+      "dependencyFileCount": 17,
+      "dependencyFiles": [
+        "src/components/ui/badge.tsx",
+        "src/components/ui/button.tsx",
+        "src/components/ui/card.tsx",
+        "src/components/ui/toast.tsx",
+        "src/contexts/AuthContext.tsx",
+        "src/hooks/use-toast.ts",
+        "src/hooks/useEquipamentos.ts",
+        "src/integrations/supabase/client.ts",
+        "src/integrations/supabase/rpc.ts",
+        "src/integrations/supabase/types.ts",
+        "src/lib/audit.ts",
+        "src/lib/logger.ts",
+        "src/lib/security.ts",
+        "src/lib/supabaseCompat.ts",
+        "src/lib/utils.ts",
+        "src/pages/lubrificacao/LubrificacaoDetalhe.tsx",
+        "src/types/lubrificacao.ts"
+      ],
+      "tables": {
+        "configuracoes_sistema": [
+          "select"
+        ],
+        "empresa_config": [
+          "select"
+        ],
+        "empresas": [
+          "select"
+        ],
+        "equipamentos": [
+          "delete",
+          "insert",
+          "select",
+          "update"
+        ],
+        "profiles": [
+          "select"
+        ],
+        "user_roles": [
+          "select"
+        ]
+      },
+      "rpc": []
+    },
+    {
+      "module": "LubrificacaoForm",
+      "entry": "src/pages/lubrificacao/LubrificacaoForm.tsx",
+      "dependencyFileCount": 20,
+      "dependencyFiles": [
+        "src/components/ui/button.tsx",
+        "src/components/ui/dialog.tsx",
+        "src/components/ui/input.tsx",
+        "src/components/ui/label.tsx",
+        "src/components/ui/select.tsx",
+        "src/components/ui/textarea.tsx",
+        "src/components/ui/toast.tsx",
+        "src/contexts/AuthContext.tsx",
+        "src/hooks/use-toast.ts",
+        "src/hooks/useEquipamentos.ts",
+        "src/integrations/supabase/client.ts",
+        "src/integrations/supabase/rpc.ts",
+        "src/integrations/supabase/types.ts",
+        "src/lib/audit.ts",
+        "src/lib/logger.ts",
+        "src/lib/security.ts",
+        "src/lib/supabaseCompat.ts",
+        "src/lib/utils.ts",
+        "src/pages/lubrificacao/LubrificacaoForm.tsx",
+        "src/types/lubrificacao.ts"
+      ],
+      "tables": {
+        "configuracoes_sistema": [
+          "select"
+        ],
+        "empresa_config": [
+          "select"
+        ],
+        "empresas": [
+          "select"
+        ],
+        "equipamentos": [
+          "delete",
+          "insert",
+          "select",
+          "update"
+        ],
+        "profiles": [
+          "select"
+        ],
+        "user_roles": [
+          "select"
+        ]
+      },
+      "rpc": []
+    },
+    {
+      "module": "LubrificacaoList",
+      "entry": "src/pages/lubrificacao/LubrificacaoList.tsx",
+      "dependencyFileCount": 19,
+      "dependencyFiles": [
+        "src/components/ui/badge.tsx",
+        "src/components/ui/button.tsx",
+        "src/components/ui/card.tsx",
+        "src/components/ui/input.tsx",
+        "src/components/ui/select.tsx",
+        "src/components/ui/toast.tsx",
+        "src/contexts/AuthContext.tsx",
+        "src/hooks/use-toast.ts",
+        "src/hooks/useEquipamentos.ts",
+        "src/integrations/supabase/client.ts",
+        "src/integrations/supabase/rpc.ts",
+        "src/integrations/supabase/types.ts",
+        "src/lib/audit.ts",
+        "src/lib/logger.ts",
+        "src/lib/security.ts",
+        "src/lib/supabaseCompat.ts",
+        "src/lib/utils.ts",
+        "src/pages/lubrificacao/LubrificacaoList.tsx",
+        "src/types/lubrificacao.ts"
+      ],
+      "tables": {
+        "configuracoes_sistema": [
+          "select"
+        ],
+        "empresa_config": [
+          "select"
+        ],
+        "empresas": [
+          "select"
+        ],
+        "equipamentos": [
+          "delete",
+          "insert",
+          "select",
+          "update"
+        ],
+        "profiles": [
+          "select"
+        ],
+        "user_roles": [
+          "select"
+        ]
+      },
+      "rpc": []
+    },
+    {
+      "module": "ManualOperacao",
+      "entry": "src/pages/ManualOperacao.tsx",
+      "dependencyFileCount": 8,
+      "dependencyFiles": [
+        "src/contexts/AuthContext.tsx",
+        "src/integrations/supabase/client.ts",
+        "src/integrations/supabase/rpc.ts",
+        "src/integrations/supabase/types.ts",
+        "src/lib/audit.ts",
+        "src/lib/logger.ts",
+        "src/lib/security.ts",
+        "src/pages/ManualOperacao.tsx"
+      ],
+      "tables": {
+        "configuracoes_sistema": [
+          "select"
+        ],
+        "empresa_config": [
+          "select"
+        ],
+        "empresas": [
+          "select"
+        ],
+        "profiles": [
+          "select"
+        ],
+        "user_roles": [
+          "select"
+        ]
+      },
+      "rpc": []
+    },
+    {
+      "module": "MasterTI",
+      "entry": "src/pages/MasterTI.tsx",
+      "dependencyFileCount": 10,
+      "dependencyFiles": [
+        "src/components/ui/tabs.tsx",
+        "src/contexts/AuthContext.tsx",
+        "src/integrations/supabase/client.ts",
+        "src/integrations/supabase/rpc.ts",
+        "src/integrations/supabase/types.ts",
+        "src/lib/audit.ts",
+        "src/lib/logger.ts",
+        "src/lib/security.ts",
+        "src/lib/utils.ts",
+        "src/pages/MasterTI.tsx"
+      ],
+      "tables": {
+        "configuracoes_sistema": [
+          "select"
+        ],
+        "empresa_config": [
+          "select"
+        ],
+        "empresas": [
+          "select"
+        ],
+        "profiles": [
+          "select"
+        ],
+        "user_roles": [
+          "select"
+        ]
+      },
+      "rpc": []
+    },
+    {
+      "module": "Materiais",
+      "entry": "src/pages/Materiais.tsx",
+      "dependencyFileCount": 23,
+      "dependencyFiles": [
+        "src/components/ui/alert-dialog.tsx",
+        "src/components/ui/badge.tsx",
+        "src/components/ui/button.tsx",
+        "src/components/ui/dialog.tsx",
+        "src/components/ui/input.tsx",
+        "src/components/ui/label.tsx",
+        "src/components/ui/select.tsx",
+        "src/components/ui/skeleton.tsx",
+        "src/components/ui/switch.tsx",
+        "src/components/ui/tabs.tsx",
+        "src/components/ui/toast.tsx",
+        "src/contexts/AuthContext.tsx",
+        "src/hooks/use-toast.ts",
+        "src/hooks/useMateriais.ts",
+        "src/integrations/supabase/client.ts",
+        "src/integrations/supabase/rpc.ts",
+        "src/integrations/supabase/types.ts",
+        "src/lib/audit.ts",
+        "src/lib/logger.ts",
+        "src/lib/security.ts",
+        "src/lib/supabaseCompat.ts",
+        "src/lib/utils.ts",
+        "src/pages/Materiais.tsx"
+      ],
+      "tables": {
+        "configuracoes_sistema": [
+          "select"
+        ],
+        "empresa_config": [
+          "select"
+        ],
+        "empresas": [
+          "select"
+        ],
+        "materiais": [
+          "delete",
+          "insert",
+          "select",
+          "update"
+        ],
+        "materiais_os": [
+          "delete",
+          "insert",
+          "select"
+        ],
+        "movimentacoes_materiais": [
+          "insert",
+          "select"
+        ],
+        "profiles": [
+          "select"
+        ],
+        "user_roles": [
+          "select"
+        ]
+      },
+      "rpc": []
+    },
+    {
+      "module": "Mecanicos",
+      "entry": "src/pages/Mecanicos.tsx",
+      "dependencyFileCount": 21,
+      "dependencyFiles": [
+        "src/components/ui/alert-dialog.tsx",
+        "src/components/ui/button.tsx",
+        "src/components/ui/dialog.tsx",
+        "src/components/ui/input.tsx",
+        "src/components/ui/label.tsx",
+        "src/components/ui/select.tsx",
+        "src/components/ui/skeleton.tsx",
+        "src/components/ui/switch.tsx",
+        "src/components/ui/toast.tsx",
+        "src/contexts/AuthContext.tsx",
+        "src/hooks/use-toast.ts",
+        "src/hooks/useMecanicos.ts",
+        "src/integrations/supabase/client.ts",
+        "src/integrations/supabase/rpc.ts",
+        "src/integrations/supabase/types.ts",
+        "src/lib/audit.ts",
+        "src/lib/logger.ts",
+        "src/lib/security.ts",
+        "src/lib/supabaseCompat.ts",
+        "src/lib/utils.ts",
+        "src/pages/Mecanicos.tsx"
+      ],
+      "tables": {
+        "configuracoes_sistema": [
+          "select"
+        ],
+        "empresa_config": [
+          "select"
+        ],
+        "empresas": [
+          "select"
+        ],
+        "mecanicos": [
+          "delete",
+          "insert",
+          "select",
+          "update"
+        ],
+        "profiles": [
+          "select"
+        ],
+        "user_roles": [
+          "select"
+        ]
+      },
+      "rpc": []
+    },
+    {
+      "module": "Melhorias",
+      "entry": "src/pages/Melhorias.tsx",
+      "dependencyFileCount": 22,
+      "dependencyFiles": [
+        "src/components/ui/badge.tsx",
+        "src/components/ui/button.tsx",
+        "src/components/ui/dialog.tsx",
+        "src/components/ui/input.tsx",
+        "src/components/ui/label.tsx",
+        "src/components/ui/select.tsx",
+        "src/components/ui/skeleton.tsx",
+        "src/components/ui/textarea.tsx",
+        "src/components/ui/toast.tsx",
+        "src/contexts/AuthContext.tsx",
+        "src/hooks/use-toast.ts",
+        "src/hooks/useEquipamentos.ts",
+        "src/hooks/useMelhorias.ts",
+        "src/integrations/supabase/client.ts",
+        "src/integrations/supabase/rpc.ts",
+        "src/integrations/supabase/types.ts",
+        "src/lib/audit.ts",
+        "src/lib/logger.ts",
+        "src/lib/security.ts",
+        "src/lib/supabaseCompat.ts",
+        "src/lib/utils.ts",
+        "src/pages/Melhorias.tsx"
+      ],
+      "tables": {
+        "configuracoes_sistema": [
+          "select"
+        ],
+        "empresa_config": [
+          "select"
+        ],
+        "empresas": [
+          "select"
+        ],
+        "equipamentos": [
+          "delete",
+          "insert",
+          "select",
+          "update"
+        ],
+        "melhorias": [
+          "insert",
+          "select",
+          "update"
+        ],
+        "profiles": [
+          "select"
+        ],
+        "user_roles": [
+          "select"
+        ]
+      },
+      "rpc": []
+    },
+    {
+      "module": "NotFound",
+      "entry": "src/pages/NotFound.tsx",
+      "dependencyFileCount": 2,
+      "dependencyFiles": [
+        "src/lib/logger.ts",
+        "src/pages/NotFound.tsx"
+      ],
+      "tables": {},
+      "rpc": []
+    },
+    {
+      "module": "NovaOS",
+      "entry": "src/pages/NovaOS.tsx",
+      "dependencyFileCount": 27,
+      "dependencyFiles": [
+        "src/components/os/OSPrintTemplate.tsx",
+        "src/components/print/DocumentPrintBase.tsx",
+        "src/components/ui/button.tsx",
+        "src/components/ui/dialog.tsx",
+        "src/components/ui/input.tsx",
+        "src/components/ui/label.tsx",
+        "src/components/ui/select.tsx",
+        "src/components/ui/skeleton.tsx",
+        "src/components/ui/textarea.tsx",
+        "src/components/ui/toast.tsx",
+        "src/contexts/AuthContext.tsx",
+        "src/contexts/TenantContext.tsx",
+        "src/hooks/use-toast.ts",
+        "src/hooks/useAuditoria.ts",
+        "src/hooks/useDadosEmpresa.ts",
+        "src/hooks/useEquipamentos.ts",
+        "src/hooks/useOrdensServico.ts",
+        "src/hooks/useSolicitacoes.ts",
+        "src/integrations/supabase/client.ts",
+        "src/integrations/supabase/rpc.ts",
+        "src/integrations/supabase/types.ts",
+        "src/lib/audit.ts",
+        "src/lib/logger.ts",
+        "src/lib/security.ts",
+        "src/lib/supabaseCompat.ts",
+        "src/lib/utils.ts",
+        "src/pages/NovaOS.tsx"
+      ],
+      "tables": {
+        "audit_logs": [
+          "select"
+        ],
+        "configuracoes_sistema": [
+          "select"
+        ],
+        "dados_empresa": [
+          "select",
+          "update"
+        ],
+        "empresa_config": [
+          "select"
+        ],
+        "empresas": [
+          "select"
+        ],
+        "equipamentos": [
+          "delete",
+          "insert",
+          "select",
+          "update"
+        ],
+        "ordens_servico": [
+          "insert",
+          "select",
+          "update"
+        ],
+        "profiles": [
+          "select"
+        ],
+        "user_roles": [
+          "select"
+        ]
+      },
+      "rpc": []
+    },
+    {
+      "module": "Owner",
+      "entry": "src/pages/Owner.tsx",
+      "dependencyFileCount": 11,
+      "dependencyFiles": [
+        "src/contexts/AuthContext.tsx",
+        "src/hooks/useOwnerPortal.ts",
+        "src/integrations/supabase/client.ts",
+        "src/integrations/supabase/rpc.ts",
+        "src/integrations/supabase/types.ts",
+        "src/layouts/OwnerPortalLayout.tsx",
+        "src/lib/audit.ts",
+        "src/lib/logger.ts",
+        "src/lib/security.ts",
+        "src/pages/Owner.tsx",
+        "src/services/ownerPortal.service.ts"
+      ],
+      "tables": {
+        "configuracoes_sistema": [
+          "select"
+        ],
+        "empresa_config": [
+          "select"
+        ],
+        "empresas": [
+          "select"
+        ],
+        "profiles": [
+          "delete",
+          "select"
+        ],
+        "rbac_user_roles": [
+          "delete"
+        ],
+        "user_roles": [
+          "delete",
+          "select"
+        ]
+      },
+      "rpc": []
+    },
+    {
+      "module": "Preditiva",
+      "entry": "src/pages/Preditiva.tsx",
+      "dependencyFileCount": 24,
+      "dependencyFiles": [
+        "src/components/ui/badge.tsx",
+        "src/components/ui/button.tsx",
+        "src/components/ui/card.tsx",
+        "src/components/ui/dialog.tsx",
+        "src/components/ui/input.tsx",
+        "src/components/ui/label.tsx",
+        "src/components/ui/select.tsx",
+        "src/components/ui/skeleton.tsx",
+        "src/components/ui/tabs.tsx",
+        "src/components/ui/textarea.tsx",
+        "src/components/ui/toast.tsx",
+        "src/contexts/AuthContext.tsx",
+        "src/hooks/use-toast.ts",
+        "src/hooks/useEquipamentos.ts",
+        "src/integrations/supabase/client.ts",
+        "src/integrations/supabase/rpc.ts",
+        "src/integrations/supabase/types.ts",
+        "src/lib/audit.ts",
+        "src/lib/logger.ts",
+        "src/lib/security.ts",
+        "src/lib/supabaseCompat.ts",
+        "src/lib/utils.ts",
+        "src/pages/Preditiva.tsx",
+        "src/services/maintenanceSchedule.ts"
+      ],
+      "tables": {
+        "configuracoes_sistema": [
+          "select"
+        ],
+        "empresa_config": [
+          "select"
+        ],
+        "empresas": [
+          "select"
+        ],
+        "equipamentos": [
+          "delete",
+          "insert",
+          "select",
+          "update"
+        ],
+        "maintenance_schedule": [
+          "delete",
+          "upsert"
+        ],
+        "medicoes_preditivas": [
+          "insert",
+          "select"
+        ],
+        "profiles": [
+          "select"
+        ],
+        "user_roles": [
+          "select"
+        ]
+      },
+      "rpc": []
+    },
+    {
+      "module": "Preventiva",
+      "entry": "src/pages/Preventiva.tsx",
+      "dependencyFileCount": 38,
+      "dependencyFiles": [
+        "src/components/preventiva/PlanoDetailPanel.tsx",
+        "src/components/preventiva/PlanoFormDialog.tsx",
+        "src/components/preventiva/PreventivaPrintTemplate.tsx",
+        "src/components/print/DocumentPrintBase.tsx",
+        "src/components/print/PrintPreviewDialog.tsx",
+        "src/components/ui/badge.tsx",
+        "src/components/ui/button.tsx",
+        "src/components/ui/checkbox.tsx",
+        "src/components/ui/dialog.tsx",
+        "src/components/ui/input.tsx",
+        "src/components/ui/label.tsx",
+        "src/components/ui/select.tsx",
+        "src/components/ui/separator.tsx",
+        "src/components/ui/skeleton.tsx",
+        "src/components/ui/switch.tsx",
+        "src/components/ui/tabs.tsx",
+        "src/components/ui/textarea.tsx",
+        "src/components/ui/toast.tsx",
+        "src/contexts/AuthContext.tsx",
+        "src/contexts/TenantContext.tsx",
+        "src/hooks/use-toast.ts",
+        "src/hooks/useAtividadesPreventivas.ts",
+        "src/hooks/useDadosEmpresa.ts",
+        "src/hooks/useEquipamentos.ts",
+        "src/hooks/useExecucoesPreventivas.ts",
+        "src/hooks/useMecanicos.ts",
+        "src/hooks/usePlanosPreventivos.ts",
+        "src/hooks/useTemplatesPreventivos.ts",
+        "src/integrations/supabase/client.ts",
+        "src/integrations/supabase/rpc.ts",
+        "src/integrations/supabase/types.ts",
+        "src/lib/audit.ts",
+        "src/lib/logger.ts",
+        "src/lib/security.ts",
+        "src/lib/supabaseCompat.ts",
+        "src/lib/utils.ts",
+        "src/pages/Preventiva.tsx",
+        "src/services/maintenanceSchedule.ts"
+      ],
+      "tables": {
+        "atividades_preventivas": [
+          "delete",
+          "insert",
+          "select",
+          "update"
+        ],
+        "configuracoes_sistema": [
+          "select"
+        ],
+        "dados_empresa": [
+          "select",
+          "update"
+        ],
+        "empresa_config": [
+          "select"
+        ],
+        "empresas": [
+          "select"
+        ],
+        "equipamentos": [
+          "delete",
+          "insert",
+          "select",
+          "update"
+        ],
+        "execucoes_preventivas": [
+          "insert",
+          "select",
+          "update"
+        ],
+        "maintenance_schedule": [
+          "delete",
+          "upsert"
+        ],
+        "mecanicos": [
+          "delete",
+          "insert",
+          "select",
+          "update"
+        ],
+        "planos_preventivos": [
+          "delete",
+          "insert",
+          "select",
+          "update"
+        ],
+        "profiles": [
+          "select"
+        ],
+        "servicos_preventivos": [
+          "delete",
+          "insert",
+          "select",
+          "update"
+        ],
+        "templates_preventivos": [
+          "delete",
+          "insert",
+          "select"
+        ],
+        "user_roles": [
+          "select"
+        ]
+      },
+      "rpc": []
+    },
+    {
+      "module": "Programacao",
+      "entry": "src/pages/Programacao.tsx",
+      "dependencyFileCount": 23,
+      "dependencyFiles": [
+        "src/components/ui/badge.tsx",
+        "src/components/ui/button.tsx",
+        "src/components/ui/card.tsx",
+        "src/components/ui/dialog.tsx",
+        "src/components/ui/input.tsx",
+        "src/components/ui/label.tsx",
+        "src/components/ui/skeleton.tsx",
+        "src/components/ui/toast.tsx",
+        "src/contexts/AuthContext.tsx",
+        "src/hooks/use-toast.ts",
+        "src/hooks/useEquipamentos.ts",
+        "src/hooks/useMaintenanceSchedule.ts",
+        "src/hooks/useOrdensServico.ts",
+        "src/integrations/supabase/client.ts",
+        "src/integrations/supabase/rpc.ts",
+        "src/integrations/supabase/types.ts",
+        "src/lib/audit.ts",
+        "src/lib/logger.ts",
+        "src/lib/security.ts",
+        "src/lib/supabaseCompat.ts",
+        "src/lib/utils.ts",
+        "src/pages/Programacao.tsx",
+        "src/services/maintenanceSchedule.ts"
+      ],
+      "tables": {
+        "configuracoes_sistema": [
+          "select"
+        ],
+        "empresa_config": [
+          "select"
+        ],
+        "empresas": [
+          "select"
+        ],
+        "equipamentos": [
+          "delete",
+          "insert",
+          "select",
+          "update"
+        ],
+        "maintenance_schedule": [
+          "delete",
+          "select",
+          "update",
+          "upsert"
+        ],
+        "ordens_servico": [
+          "insert",
+          "select",
+          "update"
+        ],
+        "profiles": [
+          "select"
+        ],
+        "user_roles": [
+          "select"
+        ]
+      },
+      "rpc": []
+    },
+    {
+      "module": "RCA",
+      "entry": "src/pages/RCA.tsx",
+      "dependencyFileCount": 22,
+      "dependencyFiles": [
+        "src/components/ui/badge.tsx",
+        "src/components/ui/button.tsx",
+        "src/components/ui/dialog.tsx",
+        "src/components/ui/input.tsx",
+        "src/components/ui/label.tsx",
+        "src/components/ui/select.tsx",
+        "src/components/ui/skeleton.tsx",
+        "src/components/ui/textarea.tsx",
+        "src/components/ui/toast.tsx",
+        "src/contexts/AuthContext.tsx",
+        "src/hooks/use-toast.ts",
+        "src/hooks/useEquipamentos.ts",
+        "src/hooks/useRCA.ts",
+        "src/integrations/supabase/client.ts",
+        "src/integrations/supabase/rpc.ts",
+        "src/integrations/supabase/types.ts",
+        "src/lib/audit.ts",
+        "src/lib/logger.ts",
+        "src/lib/security.ts",
+        "src/lib/supabaseCompat.ts",
+        "src/lib/utils.ts",
+        "src/pages/RCA.tsx"
+      ],
+      "tables": {
+        "acoes_corretivas": [
+          "insert",
+          "select",
+          "update"
+        ],
+        "analise_causa_raiz": [
+          "insert",
+          "select",
+          "update"
+        ],
+        "configuracoes_sistema": [
+          "select"
+        ],
+        "empresa_config": [
+          "select"
+        ],
+        "empresas": [
+          "select"
+        ],
+        "equipamentos": [
+          "delete",
+          "insert",
+          "select",
+          "update"
+        ],
+        "profiles": [
+          "select"
+        ],
+        "user_roles": [
+          "select"
+        ]
+      },
+      "rpc": []
+    },
+    {
+      "module": "Relatorios",
+      "entry": "src/pages/Relatorios.tsx",
+      "dependencyFileCount": 23,
+      "dependencyFiles": [
+        "src/components/ui/badge.tsx",
+        "src/components/ui/button.tsx",
+        "src/components/ui/card.tsx",
+        "src/components/ui/input.tsx",
+        "src/components/ui/label.tsx",
+        "src/components/ui/skeleton.tsx",
+        "src/components/ui/toast.tsx",
+        "src/contexts/AuthContext.tsx",
+        "src/contexts/TenantContext.tsx",
+        "src/hooks/use-toast.ts",
+        "src/hooks/useDadosEmpresa.ts",
+        "src/hooks/useIndicadores.ts",
+        "src/hooks/useOrdensServico.ts",
+        "src/integrations/supabase/client.ts",
+        "src/integrations/supabase/rpc.ts",
+        "src/integrations/supabase/types.ts",
+        "src/lib/audit.ts",
+        "src/lib/logger.ts",
+        "src/lib/reportGenerator.ts",
+        "src/lib/security.ts",
+        "src/lib/utils.ts",
+        "src/pages/Relatorios.tsx",
+        "src/types/index.ts"
+      ],
+      "tables": {
+        "configuracoes_sistema": [
+          "select"
+        ],
+        "dados_empresa": [
+          "select",
+          "update"
+        ],
+        "empresa_config": [
+          "select"
+        ],
+        "empresas": [
+          "select"
+        ],
+        "execucoes_os": [
+          "select"
+        ],
+        "ordens_servico": [
+          "insert",
+          "select",
+          "update"
+        ],
+        "profiles": [
+          "select"
+        ],
+        "user_roles": [
+          "select"
+        ]
+      },
+      "rpc": []
+    },
+    {
+      "module": "Solicitacoes",
+      "entry": "src/pages/Solicitacoes.tsx",
+      "dependencyFileCount": 22,
+      "dependencyFiles": [
+        "src/components/ui/badge.tsx",
+        "src/components/ui/button.tsx",
+        "src/components/ui/dialog.tsx",
+        "src/components/ui/input.tsx",
+        "src/components/ui/label.tsx",
+        "src/components/ui/select.tsx",
+        "src/components/ui/skeleton.tsx",
+        "src/components/ui/textarea.tsx",
+        "src/components/ui/toast.tsx",
+        "src/contexts/AuthContext.tsx",
+        "src/hooks/use-toast.ts",
+        "src/hooks/useEquipamentos.ts",
+        "src/hooks/useSolicitacoes.ts",
+        "src/integrations/supabase/client.ts",
+        "src/integrations/supabase/rpc.ts",
+        "src/integrations/supabase/types.ts",
+        "src/lib/audit.ts",
+        "src/lib/logger.ts",
+        "src/lib/security.ts",
+        "src/lib/supabaseCompat.ts",
+        "src/lib/utils.ts",
+        "src/pages/Solicitacoes.tsx"
+      ],
+      "tables": {
+        "configuracoes_sistema": [
+          "select"
+        ],
+        "empresa_config": [
+          "select"
+        ],
+        "empresas": [
+          "select"
+        ],
+        "equipamentos": [
+          "delete",
+          "insert",
+          "select",
+          "update"
+        ],
+        "profiles": [
+          "select"
+        ],
+        "user_roles": [
+          "select"
+        ]
+      },
+      "rpc": []
+    },
+    {
+      "module": "SSMA",
+      "entry": "src/pages/SSMA.tsx",
+      "dependencyFileCount": 23,
+      "dependencyFiles": [
+        "src/components/ui/badge.tsx",
+        "src/components/ui/button.tsx",
+        "src/components/ui/dialog.tsx",
+        "src/components/ui/input.tsx",
+        "src/components/ui/label.tsx",
+        "src/components/ui/select.tsx",
+        "src/components/ui/skeleton.tsx",
+        "src/components/ui/tabs.tsx",
+        "src/components/ui/textarea.tsx",
+        "src/components/ui/toast.tsx",
+        "src/contexts/AuthContext.tsx",
+        "src/hooks/use-toast.ts",
+        "src/hooks/useEquipamentos.ts",
+        "src/hooks/useSSMA.ts",
+        "src/integrations/supabase/client.ts",
+        "src/integrations/supabase/rpc.ts",
+        "src/integrations/supabase/types.ts",
+        "src/lib/audit.ts",
+        "src/lib/logger.ts",
+        "src/lib/security.ts",
+        "src/lib/supabaseCompat.ts",
+        "src/lib/utils.ts",
+        "src/pages/SSMA.tsx"
+      ],
+      "tables": {
+        "configuracoes_sistema": [
+          "select"
+        ],
+        "empresa_config": [
+          "select"
+        ],
+        "empresas": [
+          "select"
+        ],
+        "equipamentos": [
+          "delete",
+          "insert",
+          "select",
+          "update"
+        ],
+        "incidentes_ssma": [
+          "insert",
+          "select",
+          "update"
+        ],
+        "permissoes_trabalho": [
+          "insert",
+          "select",
+          "update"
+        ],
+        "profiles": [
+          "select"
+        ],
+        "user_roles": [
+          "select"
+        ]
+      },
+      "rpc": []
+    },
+    {
+      "module": "Suporte",
+      "entry": "src/pages/Suporte.tsx",
+      "dependencyFileCount": 16,
+      "dependencyFiles": [
+        "src/components/ui/button.tsx",
+        "src/components/ui/input.tsx",
+        "src/components/ui/label.tsx",
+        "src/components/ui/textarea.tsx",
+        "src/components/ui/toast.tsx",
+        "src/contexts/AuthContext.tsx",
+        "src/hooks/use-toast.ts",
+        "src/hooks/useSupportTickets.ts",
+        "src/integrations/supabase/client.ts",
+        "src/integrations/supabase/rpc.ts",
+        "src/integrations/supabase/types.ts",
+        "src/lib/audit.ts",
+        "src/lib/logger.ts",
+        "src/lib/security.ts",
+        "src/lib/utils.ts",
+        "src/pages/Suporte.tsx"
+      ],
+      "tables": {
+        "configuracoes_sistema": [
+          "select"
+        ],
+        "empresa_config": [
+          "select"
+        ],
+        "empresas": [
+          "select"
+        ],
+        "profiles": [
+          "select"
+        ],
+        "support_tickets": [
+          "insert",
+          "select"
+        ],
+        "user_roles": [
+          "select"
+        ]
+      },
+      "rpc": []
+    },
+    {
+      "module": "Usuarios",
+      "entry": "src/pages/Usuarios.tsx",
+      "dependencyFileCount": 18,
+      "dependencyFiles": [
+        "src/components/ui/button.tsx",
+        "src/components/ui/dialog.tsx",
+        "src/components/ui/input.tsx",
+        "src/components/ui/label.tsx",
+        "src/components/ui/select.tsx",
+        "src/components/ui/skeleton.tsx",
+        "src/components/ui/toast.tsx",
+        "src/contexts/AuthContext.tsx",
+        "src/hooks/use-toast.ts",
+        "src/hooks/useUsuarios.ts",
+        "src/integrations/supabase/client.ts",
+        "src/integrations/supabase/rpc.ts",
+        "src/integrations/supabase/types.ts",
+        "src/lib/audit.ts",
+        "src/lib/logger.ts",
+        "src/lib/security.ts",
+        "src/lib/utils.ts",
+        "src/pages/Usuarios.tsx"
+      ],
+      "tables": {
+        "configuracoes_sistema": [
+          "select"
+        ],
+        "empresa_config": [
+          "select"
+        ],
+        "empresas": [
+          "select"
+        ],
+        "profiles": [
+          "select",
+          "update"
+        ],
+        "user_roles": [
+          "select",
+          "update"
+        ]
+      },
+      "rpc": []
+    }
+  ]
+}

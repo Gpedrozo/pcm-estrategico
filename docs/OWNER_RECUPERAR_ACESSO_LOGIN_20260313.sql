@@ -1,6 +1,7 @@
 -- Recupera acesso ao Owner Portal para um usuario existente no auth.users.
 -- Seguro para reexecucao (idempotente).
 -- Ajuste apenas target_email e target_nome, se necessario.
+-- Inclui sincronizacao de app_metadata (fallback usado no frontend).
 
 begin;
 
@@ -10,6 +11,7 @@ declare
   target_nome text := 'Pedrozo';
   v_user_id uuid;
   v_empresa_id uuid;
+  v_app_meta jsonb;
 begin
   -- 1) Localiza usuario no Auth
   select id
@@ -58,11 +60,25 @@ begin
   values (v_user_id, v_empresa_id, 'SYSTEM_ADMIN')
   on conflict (user_id, empresa_id, role) do nothing;
 
+  -- 5) Sincroniza app_metadata no Auth para garantir fallback de role no frontend
+  select coalesce(u.raw_app_meta_data, '{}'::jsonb)
+    into v_app_meta
+    from auth.users u
+   where u.id = v_user_id
+   limit 1;
+
+  v_app_meta := jsonb_set(v_app_meta, '{role}', to_jsonb('SYSTEM_OWNER'::text), true);
+  v_app_meta := jsonb_set(v_app_meta, '{roles}', to_jsonb(array['SYSTEM_OWNER','SYSTEM_ADMIN']::text[]), true);
+
+  update auth.users
+     set raw_app_meta_data = v_app_meta
+   where id = v_user_id;
+
   raise notice 'Acesso recuperado para %, user_id=%, empresa_id=%', target_email, v_user_id, v_empresa_id;
 end
 $$;
 
--- 5) Validacao final
+-- 6) Validacao final
 select u.id as user_id, u.email
   from auth.users u
  where lower(u.email) = lower('pedrozo@gppis.com.br');
@@ -77,5 +93,9 @@ select ur.user_id, ur.empresa_id, ur.role
    select id from auth.users where lower(email) = lower('pedrozo@gppis.com.br') limit 1
  )
  order by ur.role;
+
+select u.email, u.raw_app_meta_data
+  from auth.users u
+ where lower(u.email) = lower('pedrozo@gppis.com.br');
 
 commit;
