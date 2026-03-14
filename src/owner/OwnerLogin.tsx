@@ -42,6 +42,7 @@ export default function OwnerLogin() {
       const payload = {
         access_token: accessToken,
         refresh_token: refreshToken,
+        issued_at: Date.now(),
       };
       const encoded = encodeURIComponent(window.btoa(JSON.stringify(payload)));
       return `session_transfer=${encoded}`;

@@ -137,6 +137,7 @@ export default function Login() {
             const payload = {
               access_token: activeSession.access_token,
               refresh_token: activeSession.refresh_token,
+              issued_at: Date.now(),
             };
             transferHash = `#session_transfer=${encodeURIComponent(window.btoa(JSON.stringify(payload)))}`;
           } catch {

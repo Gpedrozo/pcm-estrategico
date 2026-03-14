@@ -51,6 +51,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 const IMPERSONATION_STORAGE_KEY = 'pcm.owner.impersonation.session';
 const TENANT_BASE_DOMAIN = (import.meta.env.VITE_TENANT_BASE_DOMAIN || 'gppis.com.br').toLowerCase();
 const LOGOUT_MARKER_PARAM = 'logout';
+const SESSION_TRANSFER_MAX_AGE_MS = 2 * 60 * 1000;
 
 function isTenantBaseDomain(hostname: string) {
   const normalized = hostname.toLowerCase();
@@ -86,6 +87,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const payload = {
         access_token: sessionData.access_token,
         refresh_token: sessionData.refresh_token,
+        issued_at: Date.now(),
       };
       const encoded = encodeURIComponent(window.btoa(JSON.stringify(payload)));
       return `session_transfer=${encoded}`;
@@ -118,9 +120,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       try {
         const decodedJson = window.atob(decodeURIComponent(encodedTransfer));
-        const decoded = JSON.parse(decodedJson) as { access_token?: string; refresh_token?: string };
+        const decoded = JSON.parse(decodedJson) as { access_token?: string; refresh_token?: string; issued_at?: number };
 
         if (!decoded?.access_token || !decoded?.refresh_token) return;
+
+        const issuedAt = Number(decoded.issued_at || 0);
+        const isFreshTransfer = Number.isFinite(issuedAt) && issuedAt > 0 && (Date.now() - issuedAt) <= SESSION_TRANSFER_MAX_AGE_MS;
+        if (!isFreshTransfer) {
+          logger.warn('session_transfer_expired_or_invalid', {
+            issuedAt,
+          });
+          stripAuthHandoffFromUrl();
+          return;
+        }
 
         const { error } = await supabase.auth.setSession({
           access_token: decoded.access_token,
