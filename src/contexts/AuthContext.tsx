@@ -50,10 +50,24 @@ export interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 const IMPERSONATION_STORAGE_KEY = 'pcm.owner.impersonation.session';
 const TENANT_BASE_DOMAIN = (import.meta.env.VITE_TENANT_BASE_DOMAIN || 'gppis.com.br').toLowerCase();
+const LOGOUT_MARKER_PARAM = 'logout';
 
 function isTenantBaseDomain(hostname: string) {
   const normalized = hostname.toLowerCase();
   return normalized === TENANT_BASE_DOMAIN || normalized === `www.${TENANT_BASE_DOMAIN}`;
+}
+
+function stripAuthHandoffFromUrl() {
+  const queryParams = new URLSearchParams(window.location.search);
+  queryParams.delete(LOGOUT_MARKER_PARAM);
+
+  const hashParams = new URLSearchParams(window.location.hash.startsWith('#') ? window.location.hash.slice(1) : '');
+  hashParams.delete('session_transfer');
+
+  const nextQuery = queryParams.toString();
+  const nextHash = hashParams.toString();
+  const cleanedUrl = `${window.location.pathname}${nextQuery ? `?${nextQuery}` : ''}${nextHash ? `#${nextHash}` : ''}`;
+  window.history.replaceState({}, document.title, cleanedUrl);
 }
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
@@ -82,6 +96,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     const consumeSessionTransfer = async () => {
+      const searchParams = new URLSearchParams(window.location.search);
+      const hasLogoutMarker = searchParams.get(LOGOUT_MARKER_PARAM) === '1';
+
+      if (hasLogoutMarker) {
+        await supabase.auth.signOut({ scope: 'local' });
+        stripAuthHandoffFromUrl();
+        return;
+      }
+
+      if (window.location.pathname !== '/login') return;
+
       const rawHash = window.location.hash.startsWith('#')
         ? window.location.hash.slice(1)
         : '';
@@ -800,14 +825,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setSession(null);
 
       const { error: localSignOutError } = await supabase.auth.signOut({ scope: 'local' });
-      if (localSignOutError) {
-        const { error: globalSignOutError } = await supabase.auth.signOut();
-        if (globalSignOutError) {
-          logger.warn('logout_signout_failed', {
-            localError: localSignOutError.message,
-            globalError: globalSignOutError.message,
-          });
-        }
+      const { error: globalSignOutError } = await supabase.auth.signOut();
+
+      if (localSignOutError || globalSignOutError) {
+        logger.warn('logout_signout_failed', {
+          localError: localSignOutError?.message ?? null,
+          globalError: globalSignOutError?.message ?? null,
+        });
+      }
+
+      stripAuthHandoffFromUrl();
+
+      const currentHost = window.location.hostname.toLowerCase();
+      const shouldRedirectToBaseDomain =
+        !isOwnerDomain(currentHost)
+        && !isTenantBaseDomain(currentHost)
+        && currentHost.endsWith(`.${TENANT_BASE_DOMAIN}`);
+
+      if (shouldRedirectToBaseDomain) {
+        const targetUrl = `${window.location.protocol}//${TENANT_BASE_DOMAIN}/login?${LOGOUT_MARKER_PARAM}=1`;
+        window.location.assign(targetUrl);
       }
     }
   }, [user]);
