@@ -256,6 +256,53 @@ const SUPPORTED_OWNER_ACTIONS: Payload["action"][] = [
   "purge_table_data",
 ];
 
+function resolveRateLimitConfig(action: Payload["action"]) {
+  const readHeavyActions = new Set<Payload["action"]>([
+    "dashboard",
+    "platform_stats",
+    "list_companies",
+    "list_users",
+    "list_plans",
+    "list_subscriptions",
+    "list_contracts",
+    "list_support_tickets",
+    "list_audit_logs",
+    "get_company_settings",
+    "list_platform_owners",
+    "list_database_tables",
+  ]);
+
+  const criticalWriteActions = new Set<Payload["action"]>([
+    "cleanup_company_data",
+    "purge_table_data",
+    "delete_company",
+    "create_platform_owner",
+    "create_system_admin",
+  ]);
+
+  if (readHeavyActions.has(action)) {
+    return {
+      maxRequests: 240,
+      windowSeconds: 60,
+      blockSeconds: 90,
+    };
+  }
+
+  if (criticalWriteActions.has(action)) {
+    return {
+      maxRequests: 25,
+      windowSeconds: 60,
+      blockSeconds: 180,
+    };
+  }
+
+  return {
+    maxRequests: 80,
+    windowSeconds: 60,
+    blockSeconds: 120,
+  };
+}
+
 async function verifyActorPassword(input: {
   email?: string | null;
   password?: string | null;
@@ -849,12 +896,13 @@ Deno.serve(async (req) => {
   }
 
   const trace = createRequestTrace("edge.owner-portal-admin", req, body.action);
+  const limitConfig = resolveRateLimitConfig(body.action);
   const rateLimit = await enforceRateLimit(admin, {
-    scope: `edge.owner-portal-admin.${body.action}`,
+    scope: `edge.owner-portal-admin.v2.${body.action}`,
     identifier: auth.user.id ?? auth.user.email ?? null,
-    maxRequests: 90,
-    windowSeconds: 60,
-    blockSeconds: 600,
+    maxRequests: limitConfig.maxRequests,
+    windowSeconds: limitConfig.windowSeconds,
+    blockSeconds: limitConfig.blockSeconds,
   });
 
   if (!rateLimit.allowed) {
