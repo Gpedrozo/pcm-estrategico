@@ -335,6 +335,8 @@ function shouldEnforceRateLimit(action: Payload["action"]) {
   return writeOrSensitiveActions.has(action);
 }
 
+const OWNER_RATE_LIMIT_ENABLED = (Deno.env.get("OWNER_RATE_LIMIT_ENABLED") ?? "false").toLowerCase() === "true";
+
 async function verifyActorPassword(input: {
   email?: string | null;
   password?: string | null;
@@ -928,7 +930,7 @@ Deno.serve(async (req) => {
   }
 
   const trace = createRequestTrace("edge.owner-portal-admin", req, body.action);
-  if (shouldEnforceRateLimit(body.action)) {
+  if (OWNER_RATE_LIMIT_ENABLED && shouldEnforceRateLimit(body.action)) {
     const limitConfig = resolveRateLimitConfig(body.action);
     const rateLimit = await enforceRateLimit(admin, {
       scope: `edge.owner-portal-admin.v3.${body.action}`,
