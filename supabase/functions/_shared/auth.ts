@@ -35,7 +35,7 @@ export function tokenFromRequest(req: Request): string | null {
   return auth.slice(7).trim();
 }
 
-export async function requireUser(req: Request) {
+export async function requireUser(req: Request, options?: { allowPasswordChangeFlow?: boolean }) {
   const token = tokenFromRequest(req);
   if (!token) {
     return { error: "Missing bearer token", status: 401 } as const;
@@ -55,6 +55,27 @@ export async function requireUser(req: Request) {
   if (error || !data?.user) {
     const reason = error?.message ?? "Invalid token";
     return { error: reason, status: 401 } as const;
+  }
+
+  const profileCheck = await admin
+    .from("profiles")
+    .select("force_password_change")
+    .eq("id", data.user.id)
+    .maybeSingle();
+
+  const requiresPasswordChange = Boolean((profileCheck.data as any)?.force_password_change);
+  const requestPath = new URL(req.url).pathname;
+  const allowPasswordChangeFlow =
+    Boolean(options?.allowPasswordChangeFlow)
+    ||
+    requestPath.includes("/auth-change-password")
+    || req.headers.get("x-allow-password-change") === "1";
+
+  if (requiresPasswordChange && !allowPasswordChangeFlow) {
+    return {
+      error: "Password change required before accessing protected APIs",
+      status: 428,
+    } as const;
   }
 
   return { user: data.user, token, admin } as const;

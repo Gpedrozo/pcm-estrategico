@@ -60,7 +60,7 @@ export default function Login() {
   const [isLoginLoading, setIsLoginLoading] = useState(false);
   const [isRedirectingTenantDomain, setIsRedirectingTenantDomain] = useState(false);
 
-  const { login, isAuthenticated, isLoading, effectiveRole, tenantId } = useAuth();
+  const { login, isAuthenticated, isLoading, effectiveRole, tenantId, forcePasswordChange } = useAuth();
   const navigate = useNavigate();
   const { branding } = useBranding();
   const tenantBaseDomain = (import.meta.env.VITE_TENANT_BASE_DOMAIN || 'gppis.com.br').toLowerCase();
@@ -107,6 +107,12 @@ export default function Login() {
 
     const redirectAuthenticatedUser = async () => {
       if (isLoading || !isAuthenticated) return;
+
+      if (forcePasswordChange) {
+        setIsRedirectingTenantDomain(false);
+        navigate('/change-password', { replace: true });
+        return;
+      }
 
       const isGlobalRole =
         effectiveRole === 'SYSTEM_OWNER' ||
@@ -211,6 +217,7 @@ export default function Login() {
     isLoading,
     navigate,
     effectiveRole,
+    forcePasswordChange,
     tenantId,
     tenantBaseDomain,
     currentHost,

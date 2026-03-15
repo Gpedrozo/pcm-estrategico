@@ -13,7 +13,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { resolveOrRepairTenantHost } from '@/lib/tenantDomain';
 
 export function AppLayout() {
-  const { isAuthenticated, isLoading, effectiveRole, tenantId, session, impersonation, startImpersonationSession, stopImpersonationSession } = useAuth();
+  const { isAuthenticated, isLoading, effectiveRole, tenantId, session, forcePasswordChange, impersonation, startImpersonationSession, stopImpersonationSession } = useAuth();
   const location = useLocation();
   const [commandOpen, setCommandOpen] = useState(false);
   const [isStoppingImpersonation, setIsStoppingImpersonation] = useState(false);
@@ -246,6 +246,14 @@ export function AppLayout() {
 
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />;
+  }
+
+  if (forcePasswordChange && location.pathname !== '/change-password') {
+    return <Navigate to="/change-password" replace />;
+  }
+
+  if (!forcePasswordChange && location.pathname === '/change-password') {
+    return <Navigate to="/dashboard" replace />;
   }
 
   if (isDomainRedirectRunning) {

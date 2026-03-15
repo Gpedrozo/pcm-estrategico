@@ -20,6 +20,8 @@ export interface AuthUser {
   tipo: AppRole;
   roles: AppRole[];
   tenantId: string | null;
+  tenantSlug: string | null;
+  forcePasswordChange: boolean;
 }
 
 export interface ImpersonationSession {
@@ -35,6 +37,7 @@ export interface AuthContextType {
   isAuthenticated: boolean;
   isLoading: boolean;
   login: (email: string, password: string) => Promise<{ error: string | null }>;
+  changePassword: (newPassword: string) => Promise<{ error: string | null }>;
   signup: (email: string, password: string, nome: string) => Promise<{ error: string | null }>;
   logout: () => Promise<void>;
   isAdmin: boolean;
@@ -42,6 +45,8 @@ export interface AuthContextType {
   isSystemOwner: boolean;
   effectiveRole: AppRole;
   tenantId: string | null;
+  tenantSlug: string | null;
+  forcePasswordChange: boolean;
   impersonation: ImpersonationSession | null;
   startImpersonationSession: (session: ImpersonationSession) => void;
   stopImpersonationSession: () => void;
@@ -447,6 +452,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return normalized || null;
   }, []);
 
+  const extractForcePasswordChangeFromMetadata = useCallback((metadata?: {
+    app_metadata?: Record<string, unknown>;
+    user_metadata?: Record<string, unknown>;
+  }) => {
+    const candidate =
+      metadata?.app_metadata?.force_password_change
+      ?? metadata?.user_metadata?.force_password_change
+      ?? metadata?.app_metadata?.must_change_password
+      ?? metadata?.user_metadata?.must_change_password;
+
+    return Boolean(candidate);
+  }, []);
+
   const fetchUserProfile = useCallback(async (
     userId: string,
     email?: string | null,
@@ -456,7 +474,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       const { data: profile } = await supabase
         .from('profiles')
-        .select('nome,empresa_id')
+        .select('nome,empresa_id,force_password_change')
         .eq('id', userId)
         .maybeSingle();
 
@@ -509,6 +527,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         tenantId = (roleData || [])[0]?.empresa_id || profile?.empresa_id || metadataEmpresaId || null;
       }
 
+      let tenantSlug: string | null = extractEmpresaSlugFromMetadata(metadata);
+      if (tenantId) {
+        const { data: companyData } = await supabase
+          .from('empresas')
+          .select('slug')
+          .eq('id', tenantId)
+          .maybeSingle();
+
+        const slug = typeof companyData?.slug === 'string'
+          ? companyData.slug.trim().toLowerCase()
+          : '';
+        if (slug) tenantSlug = slug;
+      }
+
+      const forcePasswordChange =
+        Boolean(profile?.force_password_change)
+        || extractForcePasswordChangeFromMetadata(metadata);
+
       const effectiveRole = getEffectiveRole({ roles, email });
 
       return {
@@ -516,6 +552,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         tipo: effectiveRole,
         roles,
         tenantId,
+        tenantSlug,
+        forcePasswordChange,
       };
     } catch (error) {
       logger.error('fetch_user_profile_failed', {
@@ -530,9 +568,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         tipo: 'USUARIO',
         roles,
         tenantId: null,
+        tenantSlug: extractEmpresaSlugFromMetadata(metadata),
+        forcePasswordChange: extractForcePasswordChangeFromMetadata(metadata),
       };
     }
-  }, [extractEmpresaIdFromMetadata, extractRolesFromMetadata]);
+  }, [extractEmpresaIdFromMetadata, extractEmpresaSlugFromMetadata, extractForcePasswordChangeFromMetadata, extractRolesFromMetadata]);
 
   const elevateToSystemOwner = useCallback((profileData: {
     nome: string;
@@ -687,6 +727,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               tipo: profileData.tipo,
               roles: profileData.roles,
               tenantId: profileData.tenantId,
+              tenantSlug: profileData.tenantSlug,
+              forcePasswordChange: profileData.forcePasswordChange,
             });
 
             setIsLoading(false);
@@ -717,6 +759,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             tipo: profileData.tipo,
             roles: profileData.roles,
             tenantId: profileData.tenantId,
+            tenantSlug: profileData.tenantSlug,
+            forcePasswordChange: profileData.forcePasswordChange,
           });
 
           setIsLoading(false);
@@ -745,10 +789,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     if (error) {
       const failedAttempt = registerFailedLoginAttempt(email);
-      await writeAuditLog('AUTH_LOGIN_FAILED', {
-        email: email.trim().toLowerCase(),
-        attempts_in_window: failedAttempt.attemptsCount,
-        blocked_until: failedAttempt.blockedUntil > 0 ? new Date(failedAttempt.blockedUntil).toISOString() : null,
+      await writeAuditLog({
+        action: 'AUTH_LOGIN_FAILED',
+        table: 'auth',
+        source: 'auth_context',
+        severity: 'warning',
+        metadata: {
+          email: email.trim().toLowerCase(),
+          attempts_in_window: failedAttempt.attemptsCount,
+          blocked_until: failedAttempt.blockedUntil > 0 ? new Date(failedAttempt.blockedUntil).toISOString() : null,
+        },
       }).catch(() => null);
 
       if (error.message.includes('Invalid login credentials')) {
@@ -768,6 +818,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         tipo: AppRole;
         roles: AppRole[];
         tenantId: string | null;
+        tenantSlug: string | null;
+        forcePasswordChange: boolean;
       };
 
       try {
@@ -801,6 +853,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         tipo: profileData.tipo,
         roles: profileData.roles,
         tenantId: profileData.tenantId,
+        tenantSlug: profileData.tenantSlug,
+        forcePasswordChange: profileData.forcePasswordChange,
       });
       setIsLoading(false);
 
@@ -905,6 +959,80 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     return { error: null };
   }, [buildSessionTransferHash, extractEmpresaSlugFromMetadata, resolveDomainEmpresaId, resolveTenantRedirectHost, resolveUserProfile]);
+
+  const changePassword = useCallback(async (newPassword: string): Promise<{ error: string | null }> => {
+    const normalizedPassword = newPassword.trim();
+    if (normalizedPassword.length < 8) {
+      return { error: 'A nova senha deve ter pelo menos 8 caracteres.' };
+    }
+
+    const { error: changeError } = await supabase.functions.invoke('auth-change-password', {
+      body: {
+        new_password: normalizedPassword,
+      },
+    });
+
+    if (changeError) {
+      const { error: fallbackPasswordError } = await supabase.auth.updateUser({
+        password: normalizedPassword,
+      });
+      if (fallbackPasswordError) {
+        return { error: changeError.message || fallbackPasswordError.message };
+      }
+
+      const { data: fallbackUserResult } = await supabase.auth.getUser();
+      const fallbackUser = fallbackUserResult.user;
+      if (fallbackUser?.id) {
+        await supabase
+          .from('profiles')
+          .update({ force_password_change: false })
+          .eq('id', fallbackUser.id)
+          .catch(() => null);
+      }
+    }
+
+    const { data: userResult } = await supabase.auth.getUser();
+    const currentUser = userResult.user;
+
+    if (!currentUser?.id) {
+      return { error: 'Sessão inválida após atualização de senha.' };
+    }
+
+    const refreshedProfile = await resolveUserProfile(
+      currentUser.id,
+      currentUser.email,
+      {
+        app_metadata: currentUser.app_metadata,
+        user_metadata: currentUser.user_metadata,
+      },
+    );
+
+    setUser((previous) => {
+      if (!previous) return previous;
+      return {
+        ...previous,
+        nome: refreshedProfile.nome,
+        tipo: refreshedProfile.tipo,
+        roles: refreshedProfile.roles,
+        tenantId: refreshedProfile.tenantId,
+        tenantSlug: refreshedProfile.tenantSlug,
+        forcePasswordChange: false,
+      };
+    });
+
+    await writeAuditLog({
+      action: 'AUTH_PASSWORD_CHANGED',
+      table: 'profiles',
+      recordId: currentUser.id,
+      empresaId: refreshedProfile.tenantId,
+      source: 'auth_context',
+      metadata: {
+        force_password_change_cleared: true,
+      },
+    }).catch(() => null);
+
+    return { error: null };
+  }, [resolveUserProfile]);
 
   const signup = useCallback(async (email: string, password: string, nome: string): Promise<{ error: string | null }> => {
     const redirectUrl = `${window.location.origin}/`;
@@ -1133,6 +1261,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     effectiveRole === 'SYSTEM_ADMIN';
   const isSystemOwner = effectiveRole === 'SYSTEM_OWNER' || effectiveRole === 'SYSTEM_ADMIN';
   const tenantId = currentTenantId;
+  const tenantSlug = user?.tenantSlug ?? null;
+  const forcePasswordChange = Boolean(user?.forcePasswordChange);
 
   return (
     <AuthContext.Provider
@@ -1142,6 +1272,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         isAuthenticated: !!session,
         isLoading,
         login,
+        changePassword,
         signup,
         logout,
         isAdmin,
@@ -1149,6 +1280,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         isSystemOwner,
         effectiveRole,
         tenantId,
+        tenantSlug,
+        forcePasswordChange,
         impersonation,
         startImpersonationSession,
         stopImpersonationSession,

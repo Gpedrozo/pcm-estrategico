@@ -21,6 +21,7 @@ const OwnerLogin = lazy(() => import('@/owner/OwnerLogin'))
 
 const Index = lazy(() => import('./pages/Index'))
 const Login = lazy(() => import('./pages/Login'))
+const ChangePassword = lazy(() => import('./pages/ChangePassword'))
 const Dashboard = lazy(() => import('./pages/Dashboard'))
 const NovaOS = lazy(() => import('./pages/NovaOS'))
 const FecharOS = lazy(() => import('./pages/FecharOS'))
@@ -86,12 +87,16 @@ const AdminOnlyRoute = ({ children }: { children: React.ReactNode }) => {
 };
 
 const OwnerOnlyRoute = ({ children }: { children: React.ReactNode }) => {
-  const { isAuthenticated, isLoading, isSystemOwner } = useAuth();
+  const { isAuthenticated, isLoading, isSystemOwner, forcePasswordChange } = useAuth();
 
   if (isLoading) return <RouteLoading />;
 
   if (!isAuthenticated || !isSystemOwner) {
     return <Navigate to="/login" replace />;
+  }
+
+  if (forcePasswordChange) {
+    return <Navigate to="/change-password" replace />;
   }
 
   return <>{children}</>;
@@ -114,6 +119,15 @@ function OwnerRoutes() {
           element={
             <EnvironmentGuard allowOwner>
               <OwnerLogin />
+            </EnvironmentGuard>
+          }
+        />
+
+        <Route
+          path="/change-password"
+          element={
+            <EnvironmentGuard allowOwner>
+              <ChangePassword />
             </EnvironmentGuard>
           }
         />
@@ -145,6 +159,7 @@ function TenantRoutes() {
               <Routes>
                 <Route path="/" element={<Index />} />
                 <Route path="/login" element={<Login />} />
+                <Route path="/change-password" element={<ChangePassword />} />
                 <Route path="/instalar" element={<Instalar />} />
 
               <Route element={<AppLayout />}>

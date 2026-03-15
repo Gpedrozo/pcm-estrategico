@@ -26,5 +26,6 @@ export function buildSecureSignupMetadata({
     empresa_id: empresaId,
     role,
     must_change_password: true,
+    force_password_change: true,
   };
 }

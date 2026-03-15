@@ -21,7 +21,7 @@ function resolveHostContext(hostname: string) {
 
 export function TenantDomainMiddleware({ children }: { children: React.ReactNode }) {
   const { tenant, isLoading, error } = useTenant()
-  const { isAuthenticated, logout } = useAuth()
+  const { isAuthenticated, tenantId, logout } = useAuth()
   const location = useLocation()
 
   const hostname = window.location.hostname.toLowerCase()
@@ -32,6 +32,14 @@ export function TenantDomainMiddleware({ children }: { children: React.ReactNode
     if (!hostContext.isTenantSubdomain || isLoading || !error || !isAuthenticated) return
     void logout()
   }, [error, hostContext.isTenantSubdomain, isAuthenticated, isLoading, logout])
+
+  useEffect(() => {
+    if (!hostContext.isTenantSubdomain || isLoading || !isAuthenticated) return
+    if (!tenant?.id || !tenantId) return
+    if (tenant.id !== tenantId) {
+      void logout()
+    }
+  }, [hostContext.isTenantSubdomain, isAuthenticated, isLoading, logout, tenant?.id, tenantId])
 
   if (isOwnerHost) return <>{children}</>
 

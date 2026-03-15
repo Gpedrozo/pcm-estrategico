@@ -5,7 +5,7 @@ import { useEffect, useState } from 'react';
 import logo from '@/assets/gppis-logo.png';
 
 const Index = () => {
-  const { isAuthenticated, isLoading, effectiveRole } = useAuth();
+  const { isAuthenticated, isLoading, effectiveRole, forcePasswordChange } = useAuth();
   const [showSplash, setShowSplash] = useState(true);
 
   useEffect(() => {
@@ -68,6 +68,10 @@ const Index = () => {
         </div>
       </div>
     );
+  }
+
+  if (isAuthenticated && forcePasswordChange) {
+    return <Navigate to="/change-password" replace />;
   }
 
   return <Navigate to={isAuthenticated ? getPostLoginPath(effectiveRole) : '/login'} replace />;

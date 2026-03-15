@@ -29,6 +29,8 @@ function createAuthUser(overrides: Partial<AuthUser> = {}): AuthUser {
     tipo: 'USUARIO',
     roles: ['USUARIO'],
     tenantId: 'empresa-1',
+    tenantSlug: 'empresa-teste',
+    forcePasswordChange: false,
     ...overrides,
   };
 }
@@ -40,6 +42,7 @@ export function createAuthContextValue(overrides: Partial<AuthContextType> = {})
     isAuthenticated: true,
     isLoading: false,
     login: async () => ({ error: null }),
+    changePassword: async () => ({ error: null }),
     signup: async () => ({ error: null }),
     logout: async () => {},
     isAdmin: false,
@@ -47,6 +50,8 @@ export function createAuthContextValue(overrides: Partial<AuthContextType> = {})
     isSystemOwner: false,
     effectiveRole: 'USUARIO',
     tenantId: 'empresa-1',
+    tenantSlug: 'empresa-teste',
+    forcePasswordChange: false,
     impersonation: null,
     startImpersonationSession: () => {},
     stopImpersonationSession: () => {},

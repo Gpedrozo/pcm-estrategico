@@ -31,7 +31,7 @@ export default function OwnerLogin() {
   const [companies, setCompanies] = useState<OwnerCompany[]>([]);
   const [selectedCompanyId, setSelectedCompanyId] = useState('');
 
-  const { login, logout, user, session, isAuthenticated, isLoading, effectiveRole, startImpersonationSession } = useAuth();
+  const { login, logout, user, session, isAuthenticated, isLoading, effectiveRole, forcePasswordChange, startImpersonationSession } = useAuth();
   const navigate = useNavigate();
 
   const isOwnerRole = effectiveRole === 'SYSTEM_OWNER' || effectiveRole === 'SYSTEM_ADMIN';
@@ -69,6 +69,12 @@ export default function OwnerLogin() {
       setIsChooserLoading(false);
     }
   };
+
+  useEffect(() => {
+    if (isLoading || !isAuthenticated) return;
+    if (!forcePasswordChange) return;
+    navigate('/change-password', { replace: true });
+  }, [forcePasswordChange, isAuthenticated, isLoading, navigate]);
 
   useEffect(() => {
     if (isLoading || !isAuthenticated || !isOwnerRole) return;

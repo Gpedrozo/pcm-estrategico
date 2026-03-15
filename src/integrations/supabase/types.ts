@@ -2123,6 +2123,7 @@ export type Database = {
           created_at: string
           email: string | null
           empresa_id: string
+          force_password_change: boolean
           id: string
           nome: string
           updated_at: string
@@ -2131,6 +2132,7 @@ export type Database = {
           created_at?: string
           email?: string | null
           empresa_id: string
+          force_password_change?: boolean
           id: string
           nome: string
           updated_at?: string
@@ -2139,6 +2141,7 @@ export type Database = {
           created_at?: string
           email?: string | null
           empresa_id?: string
+          force_password_change?: boolean
           id?: string
           nome?: string
           updated_at?: string
