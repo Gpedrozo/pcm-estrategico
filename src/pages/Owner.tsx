@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { Loader2, ShieldCheck } from 'lucide-react'
+import { AlertTriangle, Loader2, ShieldCheck } from 'lucide-react'
 import { Bar, BarChart, CartesianGrid, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import { useAuth } from '@/contexts/AuthContext'
 import { OwnerPortalLayout } from '@/layouts/OwnerPortalLayout'
@@ -129,6 +129,13 @@ export default function Owner() {
   const [deleteCompanyStageIndex, setDeleteCompanyStageIndex] = useState(0)
   const [deleteCompanyElapsedSeconds, setDeleteCompanyElapsedSeconds] = useState(0)
   const [deleteCompanyTargetEmpresaId, setDeleteCompanyTargetEmpresaId] = useState('')
+  const [deleteCompanyDialogCompanyId, setDeleteCompanyDialogCompanyId] = useState('')
+  const [deleteCompanyDialogCompanyLabel, setDeleteCompanyDialogCompanyLabel] = useState('')
+  const [deleteCompanyDialogConfirmText, setDeleteCompanyDialogConfirmText] = useState('')
+  const [deleteCompanyDialogPassword, setDeleteCompanyDialogPassword] = useState('')
+
+  const isDeleteCompanyDialogVisible = !!deleteCompanyDialogCompanyId
+  const deleteCompanyExpectedPhrase = deleteCompanyDialogCompanyLabel ? `EXCLUIR ${deleteCompanyDialogCompanyLabel}` : ''
 
   const deleteCompanyCurrentStage = DELETE_COMPANY_STAGES[Math.min(deleteCompanyStageIndex, DELETE_COMPANY_STAGES.length - 1)]
   const deleteCompanyProgressPercent = Math.round(((Math.min(deleteCompanyStageIndex, DELETE_COMPANY_STAGES.length - 1) + 1) / DELETE_COMPANY_STAGES.length) * 100)
@@ -447,6 +454,21 @@ export default function Owner() {
     setDeleteCompanyTargetEmpresaId('')
   }
 
+  const openDeleteCompanyDialog = (company: { id: string; nome?: string; slug?: string }) => {
+    const companyLabel = String(company.nome || company.slug || company.id)
+    setDeleteCompanyDialogCompanyId(company.id)
+    setDeleteCompanyDialogCompanyLabel(companyLabel)
+    setDeleteCompanyDialogConfirmText('')
+    setDeleteCompanyDialogPassword('')
+  }
+
+  const closeDeleteCompanyDialog = () => {
+    setDeleteCompanyDialogCompanyId('')
+    setDeleteCompanyDialogCompanyLabel('')
+    setDeleteCompanyDialogConfirmText('')
+    setDeleteCompanyDialogPassword('')
+  }
+
   const closeDeleteOverlayWithMinimumDelay = (startedAt: number, minimumVisibleMs = 1200) => {
     const elapsed = Date.now() - startedAt
     const remaining = Math.max(250, minimumVisibleMs - elapsed)
@@ -493,36 +515,45 @@ export default function Owner() {
       return
     }
 
-    const companyLabel = String(company.nome || company.slug || company.id)
-    const expectedPhrase = `EXCLUIR ${companyLabel}`
-    const confirmationInput = window.prompt(
-      `Para confirmar exclusao total e irreversivel, digite exatamente: ${expectedPhrase}`,
-    )
+    openDeleteCompanyDialog(company)
+  }
 
-    if (confirmationInput !== expectedPhrase) {
-      setError('Confirmacao invalida. A empresa nao foi excluida.')
+  const confirmDeleteCompanyFromDialog = async () => {
+    clearFeedback()
+
+    if (!deleteCompanyDialogCompanyId || !deleteCompanyDialogCompanyLabel) {
+      setError('Empresa alvo nao encontrada para exclusao.')
       return
     }
 
-    const authPassword = window.prompt('Digite sua senha para autorizar a exclusao definitiva desta empresa:')
-    if (!authPassword) {
+    if (deleteCompanyDialogConfirmText.trim() !== deleteCompanyExpectedPhrase) {
+      setError('Confirmacao invalida. Digite exatamente a frase de confirmacao.')
+      return
+    }
+
+    if (!deleteCompanyDialogPassword.trim()) {
       setError('Senha de confirmacao obrigatoria para excluir empresa.')
       return
     }
 
+    const companyId = deleteCompanyDialogCompanyId
+    const companyLabel = deleteCompanyDialogCompanyLabel
+    const authPassword = deleteCompanyDialogPassword
+    closeDeleteCompanyDialog()
+
     await runOwnerMasterAction(async () => {
-      beginDeleteCompanyOverlay(company.id)
+      beginDeleteCompanyOverlay(companyId)
       const startedAt = Date.now()
       try {
         const output = await deleteCompanyByOwnerMutation.mutateAsync({
-          empresa_id: company.id,
+          empresa_id: companyId,
           include_auth_users: true,
           auth_password: authPassword,
         })
         setSystemActionOutput(output)
         completeDeleteCompanyOverlay()
 
-        if (updateCompanyForm.empresa_id === company.id) {
+        if (updateCompanyForm.empresa_id === companyId) {
           setUpdateCompanyForm({ empresa_id: '', nome: '', status: 'active' })
         }
 
@@ -1770,29 +1801,91 @@ export default function Owner() {
         </div>
       )}
 
+      {isDeleteCompanyDialogVisible && (
+        <div className="fixed inset-0 z-[125] flex items-center justify-center bg-slate-950/60 px-4 backdrop-blur-sm">
+          <div className="w-full max-w-xl rounded-2xl border border-rose-300 bg-gradient-to-br from-rose-50 via-orange-50 to-amber-100 p-6 text-slate-900 shadow-2xl shadow-rose-950/30">
+            <div className="flex items-center gap-3">
+              <AlertTriangle className="h-5 w-5 text-rose-600" />
+              <p className="text-base font-semibold">Confirmar exclusao definitiva</p>
+            </div>
+
+            <p className="mt-3 text-sm text-slate-700">
+              Esta acao remove empresa, usuarios, contratos, assinaturas e dados vinculados.
+            </p>
+
+            <div className="mt-4 rounded-xl border border-rose-200 bg-white/75 p-4">
+              <p className="text-xs font-semibold uppercase tracking-wide text-rose-700">Empresa alvo</p>
+              <p className="mt-1 text-sm font-semibold text-slate-900">{deleteCompanyDialogCompanyLabel}</p>
+              <p className="text-xs text-slate-600">ID: {deleteCompanyDialogCompanyId}</p>
+            </div>
+
+            <div className="mt-4 space-y-3">
+              <div>
+                <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-slate-700">Frase de confirmacao</p>
+                <p className="mb-2 rounded border border-slate-300 bg-white px-3 py-2 text-sm font-semibold text-slate-900">{deleteCompanyExpectedPhrase}</p>
+                <input
+                  className="w-full rounded border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 placeholder:text-slate-500"
+                  placeholder="Digite exatamente a frase acima"
+                  value={deleteCompanyDialogConfirmText}
+                  onChange={(e) => setDeleteCompanyDialogConfirmText(e.target.value)}
+                />
+              </div>
+
+              <div>
+                <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-slate-700">Senha do owner master</p>
+                <input
+                  className="w-full rounded border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 placeholder:text-slate-500"
+                  type="password"
+                  placeholder="Digite sua senha para autorizar"
+                  value={deleteCompanyDialogPassword}
+                  onChange={(e) => setDeleteCompanyDialogPassword(e.target.value)}
+                />
+              </div>
+            </div>
+
+            <div className="mt-5 flex flex-wrap justify-end gap-2">
+              <button
+                className="rounded border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700"
+                onClick={closeDeleteCompanyDialog}
+                disabled={deleteCompanyByOwnerMutation.isPending}
+              >
+                Cancelar
+              </button>
+              <button
+                className="rounded border border-rose-700 bg-rose-600 px-3 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60"
+                onClick={confirmDeleteCompanyFromDialog}
+                disabled={deleteCompanyByOwnerMutation.isPending || deleteCompanyDialogConfirmText.trim() !== deleteCompanyExpectedPhrase || !deleteCompanyDialogPassword.trim()}
+              >
+                Confirmar e excluir
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {isDeleteCompanyOverlayVisible && (
-        <div className="fixed inset-0 z-[120] flex items-center justify-center bg-slate-950/85 px-4 backdrop-blur-sm">
-          <div className="w-full max-w-lg rounded-xl border border-rose-500/40 bg-slate-900/95 p-6 shadow-2xl shadow-rose-950/50">
-            <div className="flex items-center gap-3 text-rose-200">
+        <div className="fixed inset-0 z-[120] flex items-center justify-center bg-slate-900/65 px-4 backdrop-blur-sm">
+          <div className="w-full max-w-lg rounded-2xl border border-rose-300 bg-gradient-to-br from-rose-100 via-orange-50 to-amber-100 p-6 text-slate-900 shadow-2xl shadow-rose-950/30">
+            <div className="flex items-center gap-3 text-rose-700">
               <Loader2 className="h-5 w-5 animate-spin" />
               <p className="text-sm font-semibold tracking-wide">Exclusao em andamento</p>
             </div>
 
-            <p className="mt-3 text-xs text-slate-300">
-              Empresa alvo: <span className="font-semibold text-slate-100">{deleteCompanyTargetEmpresaId}</span>
+            <p className="mt-3 text-xs text-slate-700">
+              Empresa alvo: <span className="font-semibold text-slate-900">{deleteCompanyTargetEmpresaId}</span>
             </p>
-            <p className="mt-1 text-sm text-slate-100">{deleteCompanyCurrentStage}</p>
+            <p className="mt-1 text-sm text-slate-900">{deleteCompanyCurrentStage}</p>
 
-            <div className="mt-4 h-2 overflow-hidden rounded-full bg-slate-800">
-              <div className="h-full rounded-full bg-rose-500 transition-all duration-500" style={{ width: `${deleteCompanyProgressPercent}%` }} />
+            <div className="mt-4 h-2 overflow-hidden rounded-full bg-rose-200">
+              <div className="h-full rounded-full bg-rose-600 transition-all duration-500" style={{ width: `${deleteCompanyProgressPercent}%` }} />
             </div>
 
-            <div className="mt-3 flex items-center justify-between text-xs text-slate-400">
+            <div className="mt-3 flex items-center justify-between text-xs text-slate-700">
               <span>{deleteCompanyProgressPercent}% concluido</span>
               <span>Tempo: {deleteCompanyElapsedLabel}</span>
             </div>
 
-            <p className="mt-4 text-xs text-slate-400">
+            <p className="mt-4 text-xs text-slate-700">
               Aguarde a finalizacao completa. Fechar a pagina durante este processo pode interromper o acompanhamento visual da exclusao.
             </p>
           </div>
