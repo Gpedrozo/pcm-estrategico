@@ -74,6 +74,26 @@ function toRoles(values: unknown[]): string[] {
   ));
 }
 
+function authPayloadMessage(payload: any) {
+  return String(
+    payload?.msg
+    ?? payload?.message
+    ?? payload?.error_description
+    ?? payload?.error
+    ?? "",
+  ).trim();
+}
+
+function isCredentialFailure(status: number, payload: any) {
+  const message = authPayloadMessage(payload).toLowerCase();
+  if (message.includes("invalid login credentials")) return true;
+  if (message.includes("invalid credentials")) return true;
+  if (message.includes("email not confirmed")) return true;
+  if (message.includes("email or password")) return true;
+  if (status === 400 && !message) return true;
+  return false;
+}
+
 async function resolveProfileAndTenant(admin: ReturnType<typeof createClient>, user: any) {
   const userId = String(user?.id ?? "");
   const userEmail = String(user?.email ?? "").trim().toLowerCase();
@@ -176,12 +196,17 @@ async function resolveProfileAndTenant(admin: ReturnType<typeof createClient>, u
   return { profile, tenant };
 }
 
-async function signInWithPassword(email: string, password: string) {
+async function signInWithPassword(email: string, password: string, req: Request) {
   const supabaseUrl = env("SUPABASE_URL");
-  const anonKey = envOptional("SUPABASE_ANON_KEY") ?? envOptional("SUPABASE_PUBLISHABLE_KEY");
+  const anonKeyFromEnv = envOptional("EDGE_PUBLIC_ANON_KEY")
+    ?? envOptional("ANON_KEY")
+    ?? envOptional("SUPABASE_ANON_KEY")
+    ?? envOptional("SUPABASE_PUBLISHABLE_KEY");
+  const apikeyFromRequest = req.headers.get("apikey")?.trim() ?? null;
+  const anonKey = anonKeyFromEnv || apikeyFromRequest;
 
   if (!anonKey) {
-    console.error("[auth-login] missing SUPABASE_ANON_KEY/SUPABASE_PUBLISHABLE_KEY in edge runtime");
+    console.error("[auth-login] missing anon key in edge runtime and request headers");
     return {
       ok: false,
       status: 401,
@@ -275,7 +300,7 @@ Deno.serve(async (req) => {
     const windowStartMs = currentAttempt?.window_start ? new Date(currentAttempt.window_start).getTime() : now;
     const isWindowExpired = now - windowStartMs > WINDOW_MS;
 
-    const signIn = await signInWithPassword(email, password);
+    const signIn = await signInWithPassword(email, password, req);
 
     if (!signIn.ok) {
       const nextAttemptCount = isWindowExpired
@@ -306,6 +331,18 @@ Deno.serve(async (req) => {
       if (shouldBlock) {
         return fail("Muitas tentativas de login. Tente novamente mais tarde.", 429, {
           retry_after_seconds: Math.ceil(BLOCK_MS / 1000),
+        }, req);
+      }
+
+      if (!isCredentialFailure(signIn.status, signIn.payload)) {
+        const authMessage = authPayloadMessage(signIn.payload);
+        console.error("[auth-login] auth provider rejected request", {
+          status: signIn.status,
+          message: authMessage,
+        });
+        return fail("Auth provider request failed", 502, {
+          auth_status: signIn.status,
+          auth_message: authMessage || null,
         }, req);
       }
 
@@ -348,7 +385,7 @@ Deno.serve(async (req) => {
     }
 
     if (admin) {
-      await admin
+      const { error: clearAttemptsError } = await admin
         .from("login_attempts")
         .upsert({
           email,
@@ -358,8 +395,13 @@ Deno.serve(async (req) => {
           blocked_until: null,
         }, {
           onConflict: "email,ip_address",
-        })
-        .catch(() => null);
+        });
+
+      if (clearAttemptsError) {
+        console.error("[auth-login] failed to clear login attempts after success", {
+          reason: clearAttemptsError.message,
+        });
+      }
     }
 
     return ok({

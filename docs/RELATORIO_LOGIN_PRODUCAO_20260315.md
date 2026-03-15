@@ -111,3 +111,26 @@ Estado atual verificado:
 
 - não foi reproduzido `503` nos testes HTTP atuais;
 - respostas atuais são funcionais (400/401) para entradas inválidas.
+
+## Atualização de incidente (persistência do erro)
+
+Após nova validação, foi encontrada uma segunda causa raiz que explicava o erro persistente mesmo com senha válida:
+
+- a função `auth-login` estava lançando exceção em tempo de execução no fluxo de sucesso por uso incorreto de `.catch()` após `await` no `upsert` de `login_attempts`.
+
+Erro observado em runtime:
+
+```json
+{"error":"Auth login runtime failure","details":{"reason":"admin.from(...).upsert(...).catch is not a function"}}
+```
+
+Correção aplicada:
+
+1. troca do trecho para tratamento correto via `const { error } = await ...upsert(...)`;
+2. manutenção do fluxo funcional para credenciais inválidas (`401 Invalid credentials`);
+3. redeploy da função `auth-login` no projeto `dvwsferonoczgmvfubgu`.
+
+Validação final pós-correção:
+
+- credencial válida (`pedrozo@gppis.com.br` + senha operacional) => `HTTP/1.1 200 OK` com `user`, `session`, `tenant`, `profile`;
+- credencial inválida => `HTTP/1.1 401 Unauthorized` com `{"error":"Invalid credentials"}`.
