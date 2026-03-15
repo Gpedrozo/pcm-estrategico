@@ -469,6 +469,22 @@ export default function Owner() {
     setDeleteCompanyDialogPassword('')
   }
 
+  useEffect(() => {
+    if (!isDeleteCompanyDialogVisible) return
+
+    // Double reset to neutralize aggressive browser autofill in password fields.
+    setDeleteCompanyDialogConfirmText('')
+    setDeleteCompanyDialogPassword('')
+    const timer = window.setTimeout(() => {
+      setDeleteCompanyDialogConfirmText('')
+      setDeleteCompanyDialogPassword('')
+    }, 80)
+
+    return () => {
+      window.clearTimeout(timer)
+    }
+  }, [isDeleteCompanyDialogVisible, deleteCompanyDialogCompanyId])
+
   const closeDeleteOverlayWithMinimumDelay = (startedAt: number, minimumVisibleMs = 1200) => {
     const elapsed = Date.now() - startedAt
     const remaining = Math.max(250, minimumVisibleMs - elapsed)
@@ -1826,6 +1842,8 @@ export default function Owner() {
                 <input
                   className="w-full rounded border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 placeholder:text-slate-500"
                   placeholder="Digite exatamente a frase acima"
+                  autoComplete="off"
+                  name="delete-company-confirm-phrase"
                   value={deleteCompanyDialogConfirmText}
                   onChange={(e) => setDeleteCompanyDialogConfirmText(e.target.value)}
                 />
@@ -1837,6 +1855,10 @@ export default function Owner() {
                   className="w-full rounded border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 placeholder:text-slate-500"
                   type="password"
                   placeholder="Digite sua senha para autorizar"
+                  autoComplete="new-password"
+                  name="delete-company-owner-password"
+                  data-lpignore="true"
+                  data-1p-ignore="true"
                   value={deleteCompanyDialogPassword}
                   onChange={(e) => setDeleteCompanyDialogPassword(e.target.value)}
                 />
