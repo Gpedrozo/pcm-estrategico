@@ -70,6 +70,13 @@ type LoginRateLimitEntry = {
 };
 
 type AuthLoginPayload = {
+  session?: {
+    access_token?: string;
+    refresh_token?: string;
+    expires_in?: number | null;
+    expires_at?: number | null;
+    token_type?: string | null;
+  };
   access_token?: string;
   refresh_token?: string;
   user?: {
@@ -82,6 +89,19 @@ type AuthLoginPayload = {
   details?: {
     retry_after_seconds?: number;
     [key: string]: unknown;
+  } | null;
+  profile?: {
+    id?: string;
+    nome?: string;
+    email?: string;
+    tenant_id?: string | null;
+    force_password_change?: boolean;
+    roles?: string[];
+  } | null;
+  tenant?: {
+    id?: string;
+    slug?: string | null;
+    name?: string | null;
   } | null;
 };
 
@@ -806,14 +826,45 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     });
 
     const loginPayload = (loginData ?? null) as AuthLoginPayload | null;
+    const accessToken = loginPayload?.access_token ?? loginPayload?.session?.access_token ?? null;
+    const refreshToken = loginPayload?.refresh_token ?? loginPayload?.session?.refresh_token ?? null;
 
-    if (loginInvokeError || !loginPayload?.access_token || !loginPayload?.refresh_token) {
+    if (loginInvokeError || !accessToken || !refreshToken) {
       const failedAttempt = registerFailedLoginAttempt(email);
 
       let message = 'Falha ao autenticar. Tente novamente.';
-      const context = (loginInvokeError as { context?: { json?: () => Promise<unknown> } } | null)?.context;
-      const contextPayload = context?.json ? await context.json().catch(() => null) as AuthLoginPayload | null : null;
-      const effectiveError = contextPayload?.error ?? loginPayload?.error ?? loginInvokeError?.message ?? '';
+      const context = (loginInvokeError as { context?: { json?: () => Promise<unknown>; text?: () => Promise<string>; status?: number; statusText?: string; clone?: () => any } } | null)?.context;
+
+      let contextPayload: AuthLoginPayload | null = null;
+      let contextText = '';
+      let contextStatus: number | null = null;
+
+      if (context) {
+        contextStatus = typeof context.status === 'number' ? context.status : null;
+
+        const contextForJson = typeof context.clone === 'function' ? context.clone() : context;
+        contextPayload = contextForJson?.json
+          ? await contextForJson.json().catch(() => null) as AuthLoginPayload | null
+          : null;
+
+        const contextForText = typeof context.clone === 'function' ? context.clone() : context;
+        contextText = contextForText?.text
+          ? await contextForText.text().catch(() => '')
+          : '';
+      }
+
+      const normalizedContextText = contextText.trim();
+      let effectiveError = contextPayload?.error ?? loginPayload?.error ?? loginInvokeError?.message ?? '';
+
+      if (!effectiveError && normalizedContextText) {
+        try {
+          const parsed = JSON.parse(normalizedContextText) as AuthLoginPayload;
+          effectiveError = parsed?.error ?? '';
+        } catch {
+          effectiveError = normalizedContextText;
+        }
+      }
+
       const retryAfter =
         contextPayload?.details?.retry_after_seconds
         ?? loginPayload?.details?.retry_after_seconds
@@ -823,6 +874,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         message = `Muitas tentativas de login. Tente novamente em ${Number(retryAfter)}s.`;
       } else if (String(effectiveError).toLowerCase().includes('inválid') || String(effectiveError).toLowerCase().includes('invalid')) {
         message = 'Email ou senha inválidos';
+      } else if (contextStatus === 400 && String(effectiveError).toLowerCase().includes('email and password required')) {
+        message = 'Email e senha são obrigatórios';
+      } else if (contextStatus === 503 && String(effectiveError).toLowerCase().includes('login service unavailable')) {
+        message = 'Serviço de login indisponível no momento. Tente novamente em instantes.';
       } else if (effectiveError) {
         message = effectiveError;
       }
@@ -843,8 +898,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
 
     const { error: setSessionError } = await supabase.auth.setSession({
-      access_token: loginPayload.access_token,
-      refresh_token: loginPayload.refresh_token,
+      access_token: accessToken,
+      refresh_token: refreshToken,
     });
 
     if (setSessionError) {

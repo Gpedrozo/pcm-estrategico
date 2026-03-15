@@ -8,6 +8,21 @@ type Payload = {
   password?: string;
 };
 
+type ProfilePayload = {
+  id: string;
+  nome: string;
+  email: string;
+  tenant_id: string | null;
+  force_password_change: boolean;
+  roles: string[];
+};
+
+type TenantPayload = {
+  id: string;
+  slug: string | null;
+  name: string | null;
+};
+
 const WINDOW_MS = 5 * 60 * 1000;
 const BLOCK_MS = 15 * 60 * 1000;
 const MAX_ATTEMPTS = 5;
@@ -16,6 +31,11 @@ function env(name: string) {
   const value = Deno.env.get(name);
   if (!value) throw new Error(`Missing environment variable: ${name}`);
   return value;
+}
+
+function envOptional(name: string) {
+  const value = Deno.env.get(name);
+  return value && value.trim() ? value : null;
 }
 
 function adminClient() {
@@ -39,9 +59,136 @@ function isRateLimitStorageError(message?: string | null) {
   return text.includes("login_attempts") || text.includes("relation") || text.includes("does not exist");
 }
 
+function isMissingRelationError(message?: string | null, relationName?: string) {
+  const text = String(message ?? "").toLowerCase();
+  if (!text) return false;
+  if (relationName && !text.includes(relationName.toLowerCase())) return false;
+  return text.includes("does not exist") || text.includes("relation") || text.includes("schema cache");
+}
+
+function toRoles(values: unknown[]): string[] {
+  return Array.from(new Set(
+    values
+      .map((value) => String(value ?? "").trim())
+      .filter(Boolean),
+  ));
+}
+
+async function resolveProfileAndTenant(admin: ReturnType<typeof createClient>, user: any) {
+  const userId = String(user?.id ?? "");
+  const userEmail = String(user?.email ?? "").trim().toLowerCase();
+
+  let tenantId: string | null = null;
+  let tenantSlug: string | null = null;
+  let tenantName: string | null = null;
+
+  let profileNome = "Usuário";
+  let profileForcePasswordChange = false;
+  const roleCandidates: unknown[] = [];
+
+  const profileQuery = await admin
+    .from("profiles")
+    .select("nome,email,empresa_id,tenant_id,force_password_change")
+    .eq("id", userId)
+    .maybeSingle();
+
+  if (!profileQuery.error && profileQuery.data) {
+    profileNome = String(profileQuery.data.nome ?? profileNome);
+    profileForcePasswordChange = Boolean(profileQuery.data.force_password_change);
+    tenantId = String(profileQuery.data.tenant_id ?? profileQuery.data.empresa_id ?? "").trim() || null;
+  }
+
+  const tenantUserQuery = await admin
+    .from("tenant_users")
+    .select("tenant_id,role")
+    .eq("user_id", userId)
+    .limit(1);
+
+  if (!tenantUserQuery.error && Array.isArray(tenantUserQuery.data) && tenantUserQuery.data.length > 0) {
+    const first = tenantUserQuery.data[0] as { tenant_id?: string | null; role?: string | null };
+    tenantId = String(first.tenant_id ?? "").trim() || tenantId;
+    roleCandidates.push(first.role);
+  }
+
+  const userRolesQuery = await admin
+    .from("user_roles")
+    .select("empresa_id,role")
+    .eq("user_id", userId)
+    .limit(10);
+
+  if (!userRolesQuery.error && Array.isArray(userRolesQuery.data) && userRolesQuery.data.length > 0) {
+    const firstRole = userRolesQuery.data[0] as { empresa_id?: string | null; role?: string | null };
+    tenantId = String(firstRole.empresa_id ?? "").trim() || tenantId;
+    for (const item of userRolesQuery.data) {
+      roleCandidates.push((item as { role?: string | null }).role);
+    }
+  }
+
+  if (tenantId) {
+    const tenantQuery = await admin
+      .from("tenants")
+      .select("id,slug,name")
+      .eq("id", tenantId)
+      .maybeSingle();
+
+    if (!tenantQuery.error && tenantQuery.data) {
+      tenantSlug = String(tenantQuery.data.slug ?? "").trim() || null;
+      tenantName = String(tenantQuery.data.name ?? "").trim() || null;
+    }
+
+    if (tenantQuery.error && !isMissingRelationError(tenantQuery.error.message, "tenants")) {
+      throw new Error(`tenant_lookup_failed: ${tenantQuery.error.message}`);
+    }
+  }
+
+  if (tenantId && (!tenantSlug || !tenantName)) {
+    const companyQuery = await admin
+      .from("empresas")
+      .select("id,slug,nome")
+      .eq("id", tenantId)
+      .maybeSingle();
+
+    if (!companyQuery.error && companyQuery.data) {
+      tenantSlug = String(companyQuery.data.slug ?? "").trim() || tenantSlug;
+      tenantName = String(companyQuery.data.nome ?? "").trim() || tenantName;
+    }
+  }
+
+  const roles = toRoles(roleCandidates);
+
+  const tenant: TenantPayload | null = tenantId
+    ? {
+        id: tenantId,
+        slug: tenantSlug,
+        name: tenantName,
+      }
+    : null;
+
+  const profile: ProfilePayload = {
+    id: userId,
+    nome: profileNome,
+    email: userEmail,
+    tenant_id: tenantId,
+    force_password_change: profileForcePasswordChange,
+    roles,
+  };
+
+  return { profile, tenant };
+}
+
 async function signInWithPassword(email: string, password: string) {
   const supabaseUrl = env("SUPABASE_URL");
-  const anonKey = env("SUPABASE_ANON_KEY");
+  const anonKey = envOptional("SUPABASE_ANON_KEY") ?? envOptional("SUPABASE_PUBLISHABLE_KEY");
+
+  if (!anonKey) {
+    return {
+      ok: false,
+      status: 503,
+      payload: {
+        error: "Login service unavailable",
+      },
+    };
+  }
 
   const response = await fetch(`${supabaseUrl}/auth/v1/token?grant_type=password`, {
     method: "POST",
@@ -75,7 +222,7 @@ Deno.serve(async (req) => {
     const password = String(body?.password ?? "");
 
     if (!email || !password) {
-      return fail("email and password are required", 400, null, req);
+      return fail("Email and password required", 400, null, req);
     }
 
     const ipAddress = resolveClientIp(req);
@@ -109,7 +256,7 @@ Deno.serve(async (req) => {
     }
 
     if (fetchError && !isRateLimitStorageError(fetchError.message)) {
-      return fail("Falha ao validar tentativas de login", 500, { reason: fetchError.message }, req);
+      return fail("Rate limit validation failed", 503, { reason: fetchError.message }, req);
     }
 
     if (fetchError) {
@@ -153,7 +300,7 @@ Deno.serve(async (req) => {
         });
 
         if (upsertError && !isRateLimitStorageError(upsertError.message)) {
-          return fail("Falha ao registrar tentativa de login", 500, { reason: upsertError.message }, req);
+          return fail("Rate limit registration failed", 503, { reason: upsertError.message }, req);
         }
 
         if (upsertError) {
@@ -169,7 +316,37 @@ Deno.serve(async (req) => {
         }, req);
       }
 
-      return fail("Email ou senha inválidos", 401, null, req);
+      return fail("Invalid credentials", 401, null, req);
+    }
+
+    const loginUser = signIn.payload?.user;
+    const accessToken = String(signIn.payload?.access_token ?? "").trim();
+    const refreshToken = String(signIn.payload?.refresh_token ?? "").trim();
+
+    if (!loginUser?.id || !accessToken || !refreshToken) {
+      return fail("Login service unavailable", 503, null, req);
+    }
+
+    let profile: ProfilePayload = {
+      id: String(loginUser.id),
+      nome: "Usuário",
+      email: String(loginUser.email ?? email),
+      tenant_id: null,
+      force_password_change: false,
+      roles: [],
+    };
+    let tenant: TenantPayload | null = null;
+
+    if (admin) {
+      try {
+        const resolved = await resolveProfileAndTenant(admin, loginUser);
+        profile = resolved.profile;
+        tenant = resolved.tenant;
+      } catch (error: any) {
+        console.error("[auth-login] profile/tenant resolution degraded", {
+          reason: error?.message ?? String(error),
+        });
+      }
     }
 
     if (admin) {
@@ -187,8 +364,21 @@ Deno.serve(async (req) => {
         .catch(() => null);
     }
 
-    return ok(signIn.payload ?? {}, 200, req);
+    return ok({
+      user: signIn.payload.user ?? null,
+      session: {
+        access_token: accessToken,
+        refresh_token: refreshToken,
+        token_type: signIn.payload.token_type ?? null,
+        expires_in: signIn.payload.expires_in ?? null,
+        expires_at: signIn.payload.expires_at ?? null,
+      },
+      tenant,
+      profile,
+      access_token: accessToken,
+      refresh_token: refreshToken,
+    }, 200, req);
   } catch (error: any) {
-    return fail("Falha inesperada no login", 500, { reason: error?.message ?? String(error) }, req);
+    return fail("Login service unavailable", 503, { reason: error?.message ?? String(error) }, req);
   }
 });
