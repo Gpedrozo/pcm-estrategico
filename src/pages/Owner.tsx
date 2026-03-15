@@ -93,6 +93,13 @@ const DELETE_COMPANY_STAGES = [
   'Finalizando operacao e atualizando painel',
 ]
 
+const CREATE_COMPANY_STAGES = [
+  'Validando dados de onboarding da empresa',
+  'Criando empresa e estrutura inicial',
+  'Provisionando administrador inicial',
+  'Finalizando credenciais e acesso',
+]
+
 function Card({ title, subtitle, children }: { title: string; subtitle?: string; children: React.ReactNode }) {
   return (
     <section className="rounded-lg border border-slate-800 bg-slate-900 p-4">
@@ -133,6 +140,13 @@ export default function Owner() {
   const [deleteCompanyDialogCompanyLabel, setDeleteCompanyDialogCompanyLabel] = useState('')
   const [deleteCompanyDialogConfirmText, setDeleteCompanyDialogConfirmText] = useState('')
   const [deleteCompanyDialogPassword, setDeleteCompanyDialogPassword] = useState('')
+  const [isCreateCompanyDialogVisible, setIsCreateCompanyDialogVisible] = useState(false)
+  const [createCompanyDialogConfirmText, setCreateCompanyDialogConfirmText] = useState('')
+  const [createCompanyDialogPassword, setCreateCompanyDialogPassword] = useState('')
+  const [isCreateCompanyOverlayVisible, setIsCreateCompanyOverlayVisible] = useState(false)
+  const [createCompanyStageIndex, setCreateCompanyStageIndex] = useState(0)
+  const [createCompanyElapsedSeconds, setCreateCompanyElapsedSeconds] = useState(0)
+  const [createCompanyTargetName, setCreateCompanyTargetName] = useState('')
 
   const isDeleteCompanyDialogVisible = !!deleteCompanyDialogCompanyId
   const deleteCompanyExpectedPhrase = deleteCompanyDialogCompanyLabel ? `EXCLUIR ${deleteCompanyDialogCompanyLabel}` : ''
@@ -140,6 +154,9 @@ export default function Owner() {
   const deleteCompanyCurrentStage = DELETE_COMPANY_STAGES[Math.min(deleteCompanyStageIndex, DELETE_COMPANY_STAGES.length - 1)]
   const deleteCompanyProgressPercent = Math.round(((Math.min(deleteCompanyStageIndex, DELETE_COMPANY_STAGES.length - 1) + 1) / DELETE_COMPANY_STAGES.length) * 100)
   const deleteCompanyElapsedLabel = `${String(Math.floor(deleteCompanyElapsedSeconds / 60)).padStart(2, '0')}:${String(deleteCompanyElapsedSeconds % 60).padStart(2, '0')}`
+  const createCompanyCurrentStage = CREATE_COMPANY_STAGES[Math.min(createCompanyStageIndex, CREATE_COMPANY_STAGES.length - 1)]
+  const createCompanyProgressPercent = Math.round(((Math.min(createCompanyStageIndex, CREATE_COMPANY_STAGES.length - 1) + 1) / CREATE_COMPANY_STAGES.length) * 100)
+  const createCompanyElapsedLabel = `${String(Math.floor(createCompanyElapsedSeconds / 60)).padStart(2, '0')}:${String(createCompanyElapsedSeconds % 60).padStart(2, '0')}`
 
   const ownerMasterEmail = getOwnerMasterEmail()
   const isOwnerMaster = normalizeEmail(user?.email || '') === ownerMasterEmail
@@ -332,6 +349,13 @@ export default function Owner() {
   } = useOwnerCompanyActions()
 
   const [createCompanyForm, setCreateCompanyForm] = useState(emptyCreateCompanyForm)
+  const createCompanyNameLabel = createCompanyForm.nome.trim()
+  const createCompanyExpectedPhrase = createCompanyNameLabel ? `CRIAR EMPRESA ${createCompanyNameLabel}` : ''
+  const canCreateCompanySubmit = !createCompanyMutation.isPending
+    && !!createCompanyForm.nome
+    && !!createCompanyForm.admin_nome
+    && isValidEmail(createCompanyForm.admin_email)
+    && (!normalizeEmail(createCompanyForm.email) || isValidEmail(createCompanyForm.email))
   const [updateCompanyForm, setUpdateCompanyForm] = useState(emptyUpdateCompanyForm)
   const [createUserForm, setCreateUserForm] = useState(emptyCreateUserForm)
   const [userStatusForm, setUserStatusForm] = useState(emptyUserStatusForm)
@@ -436,6 +460,23 @@ export default function Owner() {
     }
   }, [isDeleteCompanyOverlayVisible])
 
+  useEffect(() => {
+    if (!isCreateCompanyOverlayVisible) return
+
+    setCreateCompanyElapsedSeconds(0)
+    const stageTimer = window.setInterval(() => {
+      setCreateCompanyStageIndex((current) => Math.min(current + 1, CREATE_COMPANY_STAGES.length - 2))
+    }, 1400)
+    const elapsedTimer = window.setInterval(() => {
+      setCreateCompanyElapsedSeconds((seconds) => seconds + 1)
+    }, 1000)
+
+    return () => {
+      window.clearInterval(stageTimer)
+      window.clearInterval(elapsedTimer)
+    }
+  }, [isCreateCompanyOverlayVisible])
+
   const beginDeleteCompanyOverlay = (empresaId: string) => {
     setDeleteCompanyTargetEmpresaId(empresaId)
     setDeleteCompanyStageIndex(0)
@@ -469,6 +510,23 @@ export default function Owner() {
     setDeleteCompanyDialogPassword('')
   }
 
+  const openCreateCompanyDialog = () => {
+    if (!canCreateCompanySubmit) {
+      setError('Preencha os campos obrigatorios da criacao com dados validos antes de continuar.')
+      return
+    }
+
+    setIsCreateCompanyDialogVisible(true)
+    setCreateCompanyDialogConfirmText('')
+    setCreateCompanyDialogPassword('')
+  }
+
+  const closeCreateCompanyDialog = () => {
+    setIsCreateCompanyDialogVisible(false)
+    setCreateCompanyDialogConfirmText('')
+    setCreateCompanyDialogPassword('')
+  }
+
   useEffect(() => {
     if (!isDeleteCompanyDialogVisible) return
 
@@ -485,11 +543,52 @@ export default function Owner() {
     }
   }, [isDeleteCompanyDialogVisible, deleteCompanyDialogCompanyId])
 
+  useEffect(() => {
+    if (!isCreateCompanyDialogVisible) return
+
+    setCreateCompanyDialogConfirmText('')
+    setCreateCompanyDialogPassword('')
+    const timer = window.setTimeout(() => {
+      setCreateCompanyDialogConfirmText('')
+      setCreateCompanyDialogPassword('')
+    }, 80)
+
+    return () => {
+      window.clearTimeout(timer)
+    }
+  }, [isCreateCompanyDialogVisible, createCompanyNameLabel])
+
   const closeDeleteOverlayWithMinimumDelay = (startedAt: number, minimumVisibleMs = 1200) => {
     const elapsed = Date.now() - startedAt
     const remaining = Math.max(250, minimumVisibleMs - elapsed)
     window.setTimeout(() => {
       closeDeleteCompanyOverlay()
+    }, remaining)
+  }
+
+  const beginCreateCompanyOverlay = (companyName: string) => {
+    setCreateCompanyTargetName(companyName)
+    setCreateCompanyStageIndex(0)
+    setCreateCompanyElapsedSeconds(0)
+    setIsCreateCompanyOverlayVisible(true)
+  }
+
+  const completeCreateCompanyOverlay = () => {
+    setCreateCompanyStageIndex(CREATE_COMPANY_STAGES.length - 1)
+  }
+
+  const closeCreateCompanyOverlay = () => {
+    setIsCreateCompanyOverlayVisible(false)
+    setCreateCompanyStageIndex(0)
+    setCreateCompanyElapsedSeconds(0)
+    setCreateCompanyTargetName('')
+  }
+
+  const closeCreateOverlayWithMinimumDelay = (startedAt: number, minimumVisibleMs = 1200) => {
+    const elapsed = Date.now() - startedAt
+    const remaining = Math.max(250, minimumVisibleMs - elapsed)
+    window.setTimeout(() => {
+      closeCreateCompanyOverlay()
     }, remaining)
   }
 
@@ -580,7 +679,7 @@ export default function Owner() {
     }, `Empresa ${companyLabel} excluida definitivamente com todos os dados relacionados.`)
   }
 
-  const handleCreateCompany = async () => {
+  const executeCreateCompany = async () => {
     clearFeedback()
 
     const normalizedAdminEmail = normalizeEmail(createCompanyForm.admin_email)
@@ -654,6 +753,35 @@ export default function Owner() {
       }
 
       setError(rawMessage)
+    }
+  }
+
+  const handleCreateCompany = async () => {
+    clearFeedback()
+
+    if (!canCreateCompanySubmit) {
+      setError('Preencha os campos obrigatorios da criacao com dados validos antes de continuar.')
+      return
+    }
+
+    if (!createCompanyExpectedPhrase || createCompanyDialogConfirmText.trim() !== createCompanyExpectedPhrase) {
+      setError('Confirmacao invalida. Digite exatamente a frase de confirmacao.')
+      return
+    }
+
+    if (!createCompanyDialogPassword.trim()) {
+      setError('Senha de confirmacao obrigatoria para criar empresa.')
+      return
+    }
+
+    closeCreateCompanyDialog()
+    beginCreateCompanyOverlay(createCompanyNameLabel)
+    const startedAt = Date.now()
+    try {
+      await executeCreateCompany()
+      completeCreateCompanyOverlay()
+    } finally {
+      closeCreateOverlayWithMinimumDelay(startedAt)
     }
   }
 
@@ -890,13 +1018,9 @@ export default function Owner() {
             <button
               className="mt-3 rounded bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground"
               disabled={
-                createCompanyMutation.isPending
-                || !createCompanyForm.nome
-                || !createCompanyForm.admin_nome
-                || !isValidEmail(createCompanyForm.admin_email)
-                || (!!normalizeEmail(createCompanyForm.email) && !isValidEmail(createCompanyForm.email))
+                !canCreateCompanySubmit
               }
-              onClick={handleCreateCompany}
+              onClick={openCreateCompanyDialog}
             >
               Criar empresa
             </button>
@@ -1817,6 +1941,76 @@ export default function Owner() {
         </div>
       )}
 
+      {isCreateCompanyDialogVisible && (
+        <div className="fixed inset-0 z-[126] flex items-center justify-center bg-slate-950/60 px-4 backdrop-blur-sm">
+          <div className="w-full max-w-xl rounded-2xl border border-emerald-300 bg-gradient-to-br from-emerald-50 via-cyan-50 to-sky-100 p-6 text-slate-900 shadow-2xl shadow-emerald-950/25">
+            <div className="flex items-center gap-3">
+              <ShieldCheck className="h-5 w-5 text-emerald-600" />
+              <p className="text-base font-semibold">Confirmar criacao de empresa</p>
+            </div>
+
+            <p className="mt-3 text-sm text-slate-700">
+              Vamos criar tenant, dados base e administrador inicial. Revise os dados antes de confirmar.
+            </p>
+
+            <div className="mt-4 rounded-xl border border-emerald-200 bg-white/75 p-4">
+              <p className="text-xs font-semibold uppercase tracking-wide text-emerald-700">Resumo rapido</p>
+              <p className="mt-1 text-sm"><span className="font-semibold">Empresa:</span> {createCompanyNameLabel}</p>
+              <p className="text-sm"><span className="font-semibold">Slug:</span> {createCompanyForm.slug || 'automatico'}</p>
+              <p className="text-sm"><span className="font-semibold">Admin:</span> {normalizeEmail(createCompanyForm.admin_email)}</p>
+              <p className="text-sm"><span className="font-semibold">Email operacional:</span> {normalizeEmail(createCompanyForm.email) || 'nao informado'}</p>
+            </div>
+
+            <div className="mt-4 space-y-3">
+              <div>
+                <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-slate-700">Frase de confirmacao</p>
+                <p className="mb-2 rounded border border-slate-300 bg-white px-3 py-2 text-sm font-semibold text-slate-900">{createCompanyExpectedPhrase}</p>
+                <input
+                  className="w-full rounded border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 placeholder:text-slate-500"
+                  placeholder="Digite exatamente a frase acima"
+                  autoComplete="off"
+                  name="create-company-confirm-phrase"
+                  value={createCompanyDialogConfirmText}
+                  onChange={(e) => setCreateCompanyDialogConfirmText(e.target.value)}
+                />
+              </div>
+
+              <div>
+                <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-slate-700">Senha do owner master</p>
+                <input
+                  className="w-full rounded border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 placeholder:text-slate-500"
+                  type="password"
+                  placeholder="Digite sua senha para autorizar"
+                  autoComplete="new-password"
+                  name="create-company-owner-password"
+                  data-lpignore="true"
+                  data-1p-ignore="true"
+                  value={createCompanyDialogPassword}
+                  onChange={(e) => setCreateCompanyDialogPassword(e.target.value)}
+                />
+              </div>
+            </div>
+
+            <div className="mt-5 flex flex-wrap justify-end gap-2">
+              <button
+                className="rounded border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700"
+                onClick={closeCreateCompanyDialog}
+                disabled={createCompanyMutation.isPending}
+              >
+                Cancelar
+              </button>
+              <button
+                className="rounded border border-emerald-700 bg-emerald-600 px-3 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60"
+                onClick={handleCreateCompany}
+                disabled={createCompanyMutation.isPending || createCompanyDialogConfirmText.trim() !== createCompanyExpectedPhrase || !createCompanyDialogPassword.trim()}
+              >
+                Confirmar e criar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {isDeleteCompanyDialogVisible && (
         <div className="fixed inset-0 z-[125] flex items-center justify-center bg-slate-950/60 px-4 backdrop-blur-sm">
           <div className="w-full max-w-xl rounded-2xl border border-rose-300 bg-gradient-to-br from-rose-50 via-orange-50 to-amber-100 p-6 text-slate-900 shadow-2xl shadow-rose-950/30">
@@ -1909,6 +2103,35 @@ export default function Owner() {
 
             <p className="mt-4 text-xs text-slate-700">
               Aguarde a finalizacao completa. Fechar a pagina durante este processo pode interromper o acompanhamento visual da exclusao.
+            </p>
+          </div>
+        </div>
+      )}
+
+      {isCreateCompanyOverlayVisible && (
+        <div className="fixed inset-0 z-[121] flex items-center justify-center bg-slate-900/65 px-4 backdrop-blur-sm">
+          <div className="w-full max-w-lg rounded-2xl border border-emerald-300 bg-gradient-to-br from-emerald-100 via-cyan-50 to-sky-100 p-6 text-slate-900 shadow-2xl shadow-emerald-950/25">
+            <div className="flex items-center gap-3 text-emerald-700">
+              <Loader2 className="h-5 w-5 animate-spin" />
+              <p className="text-sm font-semibold tracking-wide">Criacao em andamento</p>
+            </div>
+
+            <p className="mt-3 text-xs text-slate-700">
+              Empresa alvo: <span className="font-semibold text-slate-900">{createCompanyTargetName}</span>
+            </p>
+            <p className="mt-1 text-sm text-slate-900">{createCompanyCurrentStage}</p>
+
+            <div className="mt-4 h-2 overflow-hidden rounded-full bg-emerald-200">
+              <div className="h-full rounded-full bg-emerald-600 transition-all duration-500" style={{ width: `${createCompanyProgressPercent}%` }} />
+            </div>
+
+            <div className="mt-3 flex items-center justify-between text-xs text-slate-700">
+              <span>{createCompanyProgressPercent}% concluido</span>
+              <span>Tempo: {createCompanyElapsedLabel}</span>
+            </div>
+
+            <p className="mt-4 text-xs text-slate-700">
+              Aguarde a finalizacao completa para obter as credenciais iniciais e a URL de acesso da empresa.
             </p>
           </div>
         </div>
