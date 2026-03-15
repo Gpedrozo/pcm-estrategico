@@ -1,4 +1,7 @@
 import { preflight, rejectIfOriginNotAllowed, resolveCorsHeaders } from "./response.ts";
+import { requireUser, unauthorizedResponse } from "./auth.ts";
+
+declare const Deno: any;
 
 type ProxyConfig = {
   serviceName: string;
@@ -24,7 +27,12 @@ export async function proxyOwnerAction(req: Request, config: ProxyConfig) {
 
   const authorization = req.headers.get("authorization");
   if (!authorization) {
-    return jsonResponse(req, { success: false, error: "Unauthorized" }, 401);
+    return unauthorizedResponse(req);
+  }
+
+  const auth = await requireUser(req);
+  if ("error" in auth) {
+    return unauthorizedResponse(req);
   }
 
   const payload = await req.json().catch(() => null) as Record<string, unknown> | null;

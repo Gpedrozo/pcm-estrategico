@@ -1,6 +1,7 @@
 // @ts-nocheck
 // @ts-ignore: Deno JSR import is resolved at Supabase edge runtime
 import { createClient } from "jsr:@supabase/supabase-js@2";
+import { resolveCorsHeaders } from "./response.ts";
 
 declare const Deno: any;
 
@@ -35,27 +36,43 @@ export function tokenFromRequest(req: Request): string | null {
   return auth.slice(7).trim();
 }
 
+function maskToken(token: string) {
+  if (!token) return "";
+  if (token.length <= 16) return "***";
+  return `${token.slice(0, 8)}...${token.slice(-8)}`;
+}
+
+export function unauthorizedPayload() {
+  return {
+    success: false,
+    error: "unauthorized",
+  };
+}
+
+export function unauthorizedResponse(req: Request) {
+  return new Response(JSON.stringify(unauthorizedPayload()), {
+    status: 401,
+    headers: { ...resolveCorsHeaders(req), "Content-Type": "application/json" },
+  });
+}
+
 export async function requireUser(req: Request, options?: { allowPasswordChangeFlow?: boolean }) {
   const token = tokenFromRequest(req);
   if (!token) {
-    return { error: "Missing bearer token", status: 401 } as const;
+    console.log("JWT RECEIVED:", "missing");
+    return { error: "unauthorized", status: 401 } as const;
   }
+
+  console.log("JWT RECEIVED:", maskToken(token));
 
   const admin = adminClient();
-  const userScoped = userClient(token);
-
-  if (userScoped) {
-    const { data, error } = await userScoped.auth.getUser();
-    if (!error && data?.user) {
-      return { user: data.user, token, admin } as const;
-    }
-  }
-
   const { data, error } = await admin.auth.getUser(token);
   if (error || !data?.user) {
-    const reason = error?.message ?? "Invalid token";
-    return { error: reason, status: 401 } as const;
+    console.log("USER AUTH:", "null");
+    return { error: "unauthorized", status: 401 } as const;
   }
+
+  console.log("USER AUTH:", data.user.email ?? null);
 
   const profileCheck = await admin
     .from("profiles")

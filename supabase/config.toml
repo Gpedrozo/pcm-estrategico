@@ -28,22 +28,22 @@ enabled = false
 verify_jwt = true
 
 [functions.owner-portal-admin]
-verify_jwt = true
+verify_jwt = false
 
 [functions.owner-companies]
-verify_jwt = true
+verify_jwt = false
 
 [functions.owner-users]
-verify_jwt = true
+verify_jwt = false
 
 [functions.owner-billing]
-verify_jwt = true
+verify_jwt = false
 
 [functions.owner-data-control]
-verify_jwt = true
+verify_jwt = false
 
 [functions.owner-audit]
-verify_jwt = true
+verify_jwt = false
 
 [functions.company-membership]
 verify_jwt = true

@@ -1,6 +1,6 @@
 // @ts-nocheck
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { adminClient, isSystemOperator, requireUser } from "../_shared/auth.ts";
+import { adminClient, isSystemOperator, requireUser, unauthorizedResponse } from "../_shared/auth.ts";
 import { fail, ok, preflight, rejectIfOriginNotAllowed, resolveCorsHeaders } from "../_shared/response.ts";
 import { enforceRateLimit } from "../_shared/rateLimit.ts";
 import { createRequestTrace, traceDurationMs, writeOperationalLog } from "../_shared/observability.ts";
@@ -828,9 +828,9 @@ Deno.serve(async (req) => {
   if (req.method !== "POST") return badRequestResponse(req, "Method not allowed", 405);
 
   const auth = await requireUser(req);
-  if ("error" in auth) return badRequestResponse(req, auth.error ?? "Unauthorized", auth.status ?? 401);
+  if ("error" in auth) return unauthorizedResponse(req);
 
-  const admin = adminClient();
+  const admin = auth.admin;
   const isSystem = await isSystemOperator(admin, auth.user.id);
   if (!isSystem) return forbiddenResponse(req);
 
