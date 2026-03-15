@@ -6,7 +6,7 @@ describe('buildSecureSignupMetadata', () => {
     expect(() => buildSecureSignupMetadata({ nome: 'Teste' })).toThrow('empresa_id é obrigatório para criação de usuário');
   });
 
-  it('deve gerar metadata com must_change_password ativado', () => {
+  it('deve gerar metadata com flags de troca obrigatoria de senha ativadas', () => {
     const metadata = buildSecureSignupMetadata({
       nome: 'Teste',
       empresaId: 'f47ac10b-58cc-4372-a567-0e02b2c3d479',
@@ -18,6 +18,7 @@ describe('buildSecureSignupMetadata', () => {
       empresa_id: 'f47ac10b-58cc-4372-a567-0e02b2c3d479',
       role: 'USUARIO',
       must_change_password: true,
+      force_password_change: true,
     });
   });
 
