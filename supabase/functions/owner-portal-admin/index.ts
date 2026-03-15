@@ -558,12 +558,12 @@ async function logPlatformAudit(
 
 function getOwnerMasterEmail() {
   const configured = (Deno.env.get("OWNER_MASTER_EMAIL") ?? "").trim().toLowerCase();
-  return configured || null;
+  return configured || "pedrozo@gppis.com.br";
 }
 
 function isOwnerMasterEmail(email?: string | null, ownerMasterEmail?: string) {
   if (!ownerMasterEmail) return false;
-  return (email ?? "").toLowerCase() === ownerMasterEmail.toLowerCase();
+  return (email ?? "").trim().toLowerCase() === ownerMasterEmail.toLowerCase();
 }
 
 async function logOwnerMasterHiddenAudit(
