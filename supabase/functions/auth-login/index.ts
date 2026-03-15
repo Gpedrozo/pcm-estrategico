@@ -79,15 +79,34 @@ Deno.serve(async (req) => {
     }
 
     const ipAddress = resolveClientIp(req);
-    const admin = adminClient();
+    let admin: ReturnType<typeof createClient> | null = null;
+    try {
+      admin = adminClient();
+    } catch (error: any) {
+      console.error("[auth-login] admin client unavailable, continuing without throttle", {
+        reason: error?.message ?? String(error),
+      });
+    }
     const now = Date.now();
 
-    const { data: currentAttemptRaw, error: fetchError } = await admin
-      .from("login_attempts")
-      .select("attempt_count,window_start,blocked_until")
-      .eq("email", email)
-      .eq("ip_address", ipAddress)
-      .maybeSingle();
+    let currentAttemptRaw: {
+      attempt_count: number;
+      window_start: string | null;
+      blocked_until: string | null;
+    } | null = null;
+    let fetchError: { message?: string } | null = null;
+
+    if (admin) {
+      const query = await admin
+        .from("login_attempts")
+        .select("attempt_count,window_start,blocked_until")
+        .eq("email", email)
+        .eq("ip_address", ipAddress)
+        .maybeSingle();
+
+      currentAttemptRaw = query.data as typeof currentAttemptRaw;
+      fetchError = query.error as typeof fetchError;
+    }
 
     if (fetchError && !isRateLimitStorageError(fetchError.message)) {
       return fail("Falha ao validar tentativas de login", 500, { reason: fetchError.message }, req);
@@ -122,24 +141,26 @@ Deno.serve(async (req) => {
       const shouldBlock = nextAttemptCount >= MAX_ATTEMPTS;
       const nextBlockedUntil = shouldBlock ? new Date(now + BLOCK_MS).toISOString() : null;
 
-      const { error: upsertError } = await admin.from("login_attempts").upsert({
-        email,
-        ip_address: ipAddress,
-        attempt_count: nextAttemptCount,
-        window_start: new Date(isWindowExpired ? now : windowStartMs).toISOString(),
-        blocked_until: nextBlockedUntil,
-      }, {
-        onConflict: "email,ip_address",
-      });
-
-      if (upsertError && !isRateLimitStorageError(upsertError.message)) {
-        return fail("Falha ao registrar tentativa de login", 500, { reason: upsertError.message }, req);
-      }
-
-      if (upsertError) {
-        console.error("[auth-login] failed to persist login attempt, returning auth result", {
-          reason: upsertError.message,
+      if (admin) {
+        const { error: upsertError } = await admin.from("login_attempts").upsert({
+          email,
+          ip_address: ipAddress,
+          attempt_count: nextAttemptCount,
+          window_start: new Date(isWindowExpired ? now : windowStartMs).toISOString(),
+          blocked_until: nextBlockedUntil,
+        }, {
+          onConflict: "email,ip_address",
         });
+
+        if (upsertError && !isRateLimitStorageError(upsertError.message)) {
+          return fail("Falha ao registrar tentativa de login", 500, { reason: upsertError.message }, req);
+        }
+
+        if (upsertError) {
+          console.error("[auth-login] failed to persist login attempt, returning auth result", {
+            reason: upsertError.message,
+          });
+        }
       }
 
       if (shouldBlock) {
@@ -151,18 +172,20 @@ Deno.serve(async (req) => {
       return fail("Email ou senha inválidos", 401, null, req);
     }
 
-    await admin
-      .from("login_attempts")
-      .upsert({
-        email,
-        ip_address: ipAddress,
-        attempt_count: 0,
-        window_start: new Date(now).toISOString(),
-        blocked_until: null,
-      }, {
-        onConflict: "email,ip_address",
-      })
-      .catch(() => null);
+    if (admin) {
+      await admin
+        .from("login_attempts")
+        .upsert({
+          email,
+          ip_address: ipAddress,
+          attempt_count: 0,
+          window_start: new Date(now).toISOString(),
+          blocked_until: null,
+        }, {
+          onConflict: "email,ip_address",
+        })
+        .catch(() => null);
+    }
 
     return ok(signIn.payload ?? {}, 200, req);
   } catch (error: any) {
