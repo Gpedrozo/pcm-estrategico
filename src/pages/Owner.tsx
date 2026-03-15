@@ -20,8 +20,8 @@ import {
 } from '@/hooks/useOwnerPortal'
 
 const getOwnerMasterEmail = () => {
-  const configured = String(import.meta.env.VITE_OWNER_MASTER_EMAIL ?? process.env.OWNER_MASTER_EMAIL ?? '').trim().toLowerCase()
-  return configured || null
+  const configured = String(import.meta.env.VITE_OWNER_MASTER_EMAIL ?? '').trim().toLowerCase()
+  return configured || 'pedrozo@gppis.com.br'
 }
 const TENANT_BASE_DOMAIN = (import.meta.env.VITE_TENANT_BASE_DOMAIN || 'gppis.com.br').toLowerCase()
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
@@ -120,7 +120,7 @@ export default function Owner() {
   const [auditFilters, setAuditFilters] = useState(emptyAuditFilters)
 
   const ownerMasterEmail = getOwnerMasterEmail()
-  const isOwnerMaster = !!ownerMasterEmail && (user?.email || '').toLowerCase() === ownerMasterEmail
+  const isOwnerMaster = normalizeEmail(user?.email || '') === ownerMasterEmail
 
   const dashboardActive = active === 'dashboard'
   const companiesActive = active === 'empresas'
