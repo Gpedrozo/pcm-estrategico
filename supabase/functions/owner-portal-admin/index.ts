@@ -2,6 +2,9 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { adminClient, isSystemOperator, requireUser } from "../_shared/auth.ts";
 import { fail, ok, preflight, rejectIfOriginNotAllowed } from "../_shared/response.ts";
+import { enforceRateLimit } from "../_shared/rateLimit.ts";
+import { createRequestTrace, traceDurationMs, writeOperationalLog } from "../_shared/observability.ts";
+import { failRateLimited, logAuditEvent } from "../_shared/audit.ts";
 
 type Payload = {
   action:
@@ -747,6 +750,32 @@ Deno.serve(async (req) => {
     }, 200, req);
   }
 
+  const trace = createRequestTrace("edge.owner-portal-admin", req, body.action);
+  const rateLimit = await enforceRateLimit(admin, {
+    scope: `edge.owner-portal-admin.${body.action}`,
+    identifier: auth.user.id ?? auth.user.email ?? null,
+    maxRequests: 90,
+    windowSeconds: 60,
+    blockSeconds: 600,
+  });
+
+  if (!rateLimit.allowed) {
+    await writeOperationalLog(admin, {
+      scope: trace.scope,
+      action: body.action,
+      endpoint: trace.endpoint,
+      statusCode: 429,
+      durationMs: traceDurationMs(trace),
+      empresaId: body.empresa_id ?? null,
+      userId: auth.user.id,
+      metadata: {
+        reason: rateLimit.reason,
+      },
+      errorMessage: "rate_limited",
+    });
+    return failRateLimited(req, "Muitas requisições no owner-portal-admin");
+  }
+
   const isOwnerMaster = isOwnerMasterEmail(auth.user.email ?? null);
   const ownerMasterOnlyActions = new Set<Payload["action"]>([
     "list_platform_owners",
@@ -1102,6 +1131,36 @@ Deno.serve(async (req) => {
       details: { company_id: company.id, master_email: body.user.email },
     });
 
+    await logAuditEvent(admin, {
+      action: "OWNER_CREATE_COMPANY",
+      entityType: "company",
+      entityId: company.id,
+      empresaId: company.id,
+      userId: auth.user.id,
+      payload: {
+        company_slug: company.slug,
+        master_email: body.user.email,
+      },
+      severity: "info",
+      source: "owner-portal-admin",
+      endpoint: trace.endpoint,
+      executionMs: traceDurationMs(trace),
+      req,
+    });
+
+    await writeOperationalLog(admin, {
+      scope: trace.scope,
+      action: body.action,
+      endpoint: trace.endpoint,
+      statusCode: 200,
+      durationMs: traceDurationMs(trace),
+      empresaId: company.id,
+      userId: auth.user.id,
+      metadata: {
+        company_id: company.id,
+      },
+    });
+
     return ok({
       company,
       master_user: {
@@ -1295,6 +1354,18 @@ Deno.serve(async (req) => {
       return fail("user payload is required", 400, null, req);
     }
 
+    const { error: planLimitError } = await admin.rpc("check_company_plan_limit", {
+      p_empresa_id: body.user.empresa_id,
+      p_limit_type: "users",
+      p_increment: 1,
+    });
+
+    if (planLimitError) {
+      return fail("Limite de usuários do plano atingido ou assinatura inválida.", 403, {
+        reason: planLimitError.message,
+      }, req);
+    }
+
     const normalizedUserEmail = body.user.email.trim().toLowerCase();
     const normalizedRole = String(body.user.role).trim().toUpperCase();
 
@@ -1362,6 +1433,36 @@ Deno.serve(async (req) => {
       empresaId: body.user.empresa_id,
       actionType: "OWNER_CREATE_USER",
       details: { user_id: createdAuth.user.id, role: normalizedRole },
+    });
+
+    await logAuditEvent(admin, {
+      action: "OWNER_CREATE_USER",
+      entityType: "user",
+      entityId: createdAuth.user.id,
+      empresaId: body.user.empresa_id,
+      userId: auth.user.id,
+      payload: {
+        role: normalizedRole,
+        target_email: normalizedUserEmail,
+      },
+      severity: "info",
+      source: "owner-portal-admin",
+      endpoint: trace.endpoint,
+      executionMs: traceDurationMs(trace),
+      req,
+    });
+
+    await writeOperationalLog(admin, {
+      scope: trace.scope,
+      action: body.action,
+      endpoint: trace.endpoint,
+      statusCode: 200,
+      durationMs: traceDurationMs(trace),
+      empresaId: body.user.empresa_id,
+      userId: auth.user.id,
+      metadata: {
+        target_user_id: createdAuth.user.id,
+      },
     });
 
     return ok({ success: true, user_id: createdAuth.user.id, initial_password: password }, 200, req);
@@ -2233,6 +2334,38 @@ Deno.serve(async (req) => {
       },
     });
 
+    await logAuditEvent(admin, {
+      action: "OWNER_MASTER_DELETE_COMPANY",
+      entityType: "company",
+      entityId: body.empresa_id,
+      empresaId: body.empresa_id,
+      userId: auth.user.id,
+      payload: {
+        company_name: expectedName,
+        include_auth_users: includeAuthUsers,
+        deleted_auth_users: deletedAuthUsers,
+      },
+      severity: "critical",
+      source: "owner-portal-admin",
+      endpoint: trace.endpoint,
+      executionMs: traceDurationMs(trace),
+      req,
+    });
+
+    await writeOperationalLog(admin, {
+      scope: trace.scope,
+      action: body.action,
+      endpoint: trace.endpoint,
+      statusCode: 200,
+      durationMs: traceDurationMs(trace),
+      empresaId: body.empresa_id,
+      userId: auth.user.id,
+      metadata: {
+        company_name: expectedName,
+        deleted_auth_users: deletedAuthUsers,
+      },
+    });
+
     return ok({
       success: true,
       summary: {
@@ -2425,6 +2558,22 @@ Deno.serve(async (req) => {
   return fail("Unsupported action", 400, null, req);
   } catch (error: any) {
     const message = error?.message ? String(error.message) : "Unhandled owner-portal-admin error";
+    try {
+      const admin = adminClient();
+      await writeOperationalLog(admin, {
+        scope: "edge.owner-portal-admin",
+        action: "unhandled_error",
+        endpoint: new URL(req.url).pathname,
+        statusCode: 500,
+        durationMs: null,
+        empresaId: null,
+        userId: null,
+        metadata: {},
+        errorMessage: message,
+      });
+    } catch {
+      // noop
+    }
     return fail("Falha inesperada no owner-portal-admin", 500, { reason: message }, req);
   }
 });

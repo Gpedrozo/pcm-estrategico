@@ -54,6 +54,94 @@ const LOGOUT_MARKER_PARAM = 'logout';
 const SESSION_TRANSFER_MAX_AGE_MS = 2 * 60 * 1000;
 const LOGIN_PROFILE_TIMEOUT_MS = 12_000;
 const TENANT_HOST_RESOLVE_TIMEOUT_MS = 6_000;
+const LOGIN_RATE_LIMIT_STORAGE_KEY = 'pcm.auth.login.rate_limit.v1';
+const LOGIN_RATE_LIMIT_MAX_ATTEMPTS = 5;
+const LOGIN_RATE_LIMIT_WINDOW_MS = 5 * 60 * 1000;
+const LOGIN_RATE_LIMIT_BLOCK_MS = 15 * 60 * 1000;
+
+type LoginRateLimitEntry = {
+  attempts: number[];
+  blockedUntil: number;
+};
+
+function normalizeLoginRateLimitKey(email: string) {
+  return email.trim().toLowerCase();
+}
+
+function loadLoginRateLimitState(): Record<string, LoginRateLimitEntry> {
+  try {
+    const raw = window.localStorage.getItem(LOGIN_RATE_LIMIT_STORAGE_KEY);
+    if (!raw) return {};
+    const parsed = JSON.parse(raw) as Record<string, LoginRateLimitEntry>;
+    return parsed && typeof parsed === 'object' ? parsed : {};
+  } catch {
+    return {};
+  }
+}
+
+function saveLoginRateLimitState(state: Record<string, LoginRateLimitEntry>) {
+  try {
+    window.localStorage.setItem(LOGIN_RATE_LIMIT_STORAGE_KEY, JSON.stringify(state));
+  } catch {
+    // noop
+  }
+}
+
+function getLoginRateLimitStatus(email: string) {
+  const now = Date.now();
+  const key = normalizeLoginRateLimitKey(email);
+  const state = loadLoginRateLimitState();
+  const entry = state[key];
+
+  if (!entry) {
+    return { blocked: false, retryAfterSeconds: 0 };
+  }
+
+  const attempts = (entry.attempts ?? []).filter((ts) => now - ts <= LOGIN_RATE_LIMIT_WINDOW_MS);
+  const blockedUntil = Number(entry.blockedUntil ?? 0);
+  const blocked = blockedUntil > now;
+
+  state[key] = { attempts, blockedUntil };
+  saveLoginRateLimitState(state);
+
+  return {
+    blocked,
+    retryAfterSeconds: blocked ? Math.max(1, Math.ceil((blockedUntil - now) / 1000)) : 0,
+  };
+}
+
+function registerFailedLoginAttempt(email: string) {
+  const now = Date.now();
+  const key = normalizeLoginRateLimitKey(email);
+  const state = loadLoginRateLimitState();
+  const current = state[key] ?? { attempts: [], blockedUntil: 0 };
+  const attempts = (current.attempts ?? []).filter((ts) => now - ts <= LOGIN_RATE_LIMIT_WINDOW_MS);
+  attempts.push(now);
+
+  let blockedUntil = Number(current.blockedUntil ?? 0);
+  if (attempts.length >= LOGIN_RATE_LIMIT_MAX_ATTEMPTS) {
+    blockedUntil = now + LOGIN_RATE_LIMIT_BLOCK_MS;
+  }
+
+  state[key] = {
+    attempts,
+    blockedUntil,
+  };
+  saveLoginRateLimitState(state);
+
+  return {
+    blockedUntil,
+    attemptsCount: attempts.length,
+  };
+}
+
+function resetLoginRateLimit(email: string) {
+  const key = normalizeLoginRateLimitKey(email);
+  const state = loadLoginRateLimitState();
+  if (!state[key]) return;
+  delete state[key];
+  saveLoginRateLimitState(state);
+}
 
 async function withTimeout<T>(promise: Promise<T>, timeoutMs: number, timeoutMessage: string): Promise<T> {
   let timer: number | null = null;
@@ -645,18 +733,32 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [resolveUserProfile]);
 
   const login = useCallback(async (email: string, password: string): Promise<{ error: string | null }> => {
+    const throttle = getLoginRateLimitStatus(email);
+    if (throttle.blocked) {
+      return { error: `Muitas tentativas de login. Tente novamente em ${throttle.retryAfterSeconds}s.` };
+    }
+
     const { error } = await supabase.auth.signInWithPassword({
       email,
       password,
     });
 
     if (error) {
+      const failedAttempt = registerFailedLoginAttempt(email);
+      await writeAuditLog('AUTH_LOGIN_FAILED', {
+        email: email.trim().toLowerCase(),
+        attempts_in_window: failedAttempt.attemptsCount,
+        blocked_until: failedAttempt.blockedUntil > 0 ? new Date(failedAttempt.blockedUntil).toISOString() : null,
+      }).catch(() => null);
+
       if (error.message.includes('Invalid login credentials')) {
         return { error: 'Email ou senha inválidos' };
       }
 
       return { error: error.message };
     }
+
+    resetLoginRateLimit(email);
 
     const { data: { session: currentSession } } = await supabase.auth.getSession();
     const { data: { user: currentUser } } = await supabase.auth.getUser();

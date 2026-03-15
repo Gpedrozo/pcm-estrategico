@@ -1,6 +1,9 @@
 // @ts-nocheck
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { adminClient, ensureEmpresaAccess, isSystemOperator, requireUser } from "../_shared/auth.ts";
+import { logAuditEvent, failRateLimited } from "../_shared/audit.ts";
+import { createRequestTrace, traceDurationMs, writeOperationalLog } from "../_shared/observability.ts";
+import { enforceRateLimit } from "../_shared/rateLimit.ts";
 import { fail, ok, preflight, rejectIfOriginNotAllowed } from "../_shared/response.ts";
 
 type Payload = {
@@ -27,6 +30,8 @@ async function canManageMembers(admin: ReturnType<typeof adminClient>, userId: s
 }
 
 Deno.serve(async (req) => {
+  const trace = createRequestTrace("company-membership", req);
+
   if (req.method === "OPTIONS") return preflight(req, "POST, OPTIONS");
 
   const originDenied = rejectIfOriginNotAllowed(req);
@@ -41,6 +46,16 @@ Deno.serve(async (req) => {
   if (!body?.action || !body.empresa_id) return fail("action and empresa_id are required", 400, null, req);
 
   const admin = adminClient();
+
+  const rateLimit = await enforceRateLimit(admin, {
+    scope: "edge.company-membership",
+    identifier: `${auth.user.id}:${body.action}`,
+    maxRequests: 60,
+    windowSeconds: 60,
+    blockSeconds: 900,
+  });
+  if (!rateLimit.allowed) return failRateLimited(req, "Rate limit exceeded for membership service");
+
   const allowed = await ensureEmpresaAccess(admin, auth.user.id, body.empresa_id);
   if (!allowed) return fail("Forbidden for empresa", 403, null, req);
 
@@ -54,11 +69,28 @@ Deno.serve(async (req) => {
       .eq("empresa_id", body.empresa_id)
       .order("created_at", { ascending: false });
     if (error) return fail(error.message, 400, null, req);
+    await writeOperationalLog(admin, {
+      scope: trace.scope,
+      action: body.action,
+      endpoint: trace.endpoint,
+      statusCode: 200,
+      durationMs: traceDurationMs(trace),
+      empresaId: body.empresa_id,
+      userId: auth.user.id,
+      metadata: { count: Array.isArray(data) ? data.length : 0 },
+    });
     return ok({ members: data ?? [] }, 200, req);
   }
 
   if (body.action === "upsert_member") {
     if (!body.user_id || !body.role) return fail("user_id and role are required", 400, null, req);
+
+    const { error: limitError } = await admin.rpc("check_company_plan_limit", {
+      p_empresa_id: body.empresa_id,
+      p_limit_type: "users",
+      p_increment: 1,
+    });
+    if (limitError) return fail(limitError.message, 429, { code: "PLAN_LIMIT_EXCEEDED" }, req);
 
     const { error: roleError } = await admin
       .from("user_roles")
@@ -72,6 +104,29 @@ Deno.serve(async (req) => {
       );
 
     if (roleError) return fail(roleError.message, 400, null, req);
+
+    const durationMs = traceDurationMs(trace);
+    await logAuditEvent(admin, {
+      action: "UPSERT_MEMBER",
+      entityType: "user_roles",
+      entityId: body.user_id,
+      empresaId: body.empresa_id,
+      userId: auth.user.id,
+      req,
+      endpoint: trace.endpoint,
+      executionMs: durationMs,
+      payload: { role: body.role },
+    });
+    await writeOperationalLog(admin, {
+      scope: trace.scope,
+      action: body.action,
+      endpoint: trace.endpoint,
+      statusCode: 200,
+      durationMs,
+      empresaId: body.empresa_id,
+      userId: auth.user.id,
+      metadata: { managed_user_id: body.user_id, role: body.role },
+    });
     return ok({ success: true }, 200, req);
   }
 
@@ -85,6 +140,29 @@ Deno.serve(async (req) => {
       .eq("user_id", body.user_id);
 
     if (error) return fail(error.message, 400, null, req);
+
+    const durationMs = traceDurationMs(trace);
+    await logAuditEvent(admin, {
+      action: "DISABLE_MEMBER",
+      entityType: "user_roles",
+      entityId: body.user_id,
+      empresaId: body.empresa_id,
+      userId: auth.user.id,
+      req,
+      endpoint: trace.endpoint,
+      executionMs: durationMs,
+      payload: { managed_user_id: body.user_id },
+    });
+    await writeOperationalLog(admin, {
+      scope: trace.scope,
+      action: body.action,
+      endpoint: trace.endpoint,
+      statusCode: 200,
+      durationMs,
+      empresaId: body.empresa_id,
+      userId: auth.user.id,
+      metadata: { managed_user_id: body.user_id },
+    });
     return ok({ success: true }, 200, req);
   }
 
