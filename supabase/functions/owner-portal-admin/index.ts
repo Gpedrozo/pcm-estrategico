@@ -832,6 +832,9 @@ async function cleanupCompanyTenantRows(
 
   const deletedByTable: Record<string, number> = {};
   const tableErrors: Array<{ table_name: string; error: string }> = [];
+  // Capture user IDs before row cleanup so auth deletion can still run even if
+  // profiles/user_roles are removed during tenant table purge.
+  const userIds = await collectCompanyUserIds(admin, empresaId);
 
   // Repeating passes reduces FK ordering sensitivity because dependent rows are removed first.
   for (let pass = 0; pass < 12; pass += 1) {
@@ -872,8 +875,6 @@ async function cleanupCompanyTenantRows(
       break;
     }
   }
-
-  const userIds = await collectCompanyUserIds(admin, empresaId);
 
   if (userIds.length > 0) {
     const roleDelete = await admin.from("user_roles").delete({ count: "exact" }).in("user_id", userIds);

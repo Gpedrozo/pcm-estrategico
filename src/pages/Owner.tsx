@@ -30,7 +30,7 @@ const toArray = <T,>(value: unknown): T[] => (Array.isArray(value) ? (value as T
 const normalizeEmail = (value: string) => value.trim().toLowerCase()
 const isValidEmail = (value: string) => EMAIL_REGEX.test(normalizeEmail(value))
 
-const emptySystemForm = () => ({ user_id: '', empresa_id: '', table_name: '', auth_password: '', keep_core: false, keep_billing: false, include_auth_users: false })
+const emptySystemForm = () => ({ user_id: '', empresa_id: '', table_name: '', auth_password: '', keep_core: false, keep_billing: false, include_auth_users: true })
 const emptyAuditFilters = () => ({ empresa_id: '', user_id: '', module: '', from: '', to: '', action_type: '', severity: '' })
 const emptyCreateCompanyForm = () => ({
   nome: '',
