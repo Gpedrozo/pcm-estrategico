@@ -30,6 +30,36 @@ const toArray = <T,>(value: unknown): T[] => (Array.isArray(value) ? (value as T
 const normalizeEmail = (value: string) => value.trim().toLowerCase()
 const isValidEmail = (value: string) => EMAIL_REGEX.test(normalizeEmail(value))
 
+const emptySystemForm = () => ({ user_id: '', empresa_id: '', table_name: '', auth_password: '', keep_core: false, keep_billing: false, include_auth_users: false })
+const emptyAuditFilters = () => ({ empresa_id: '', user_id: '', module: '', from: '', to: '', action_type: '', severity: '' })
+const emptyCreateCompanyForm = () => ({
+  nome: '',
+  slug: '',
+  admin_nome: '',
+  admin_email: '',
+  razao_social: '',
+  nome_fantasia: '',
+  cnpj: '',
+  endereco: '',
+  telefone: '',
+  email: '',
+  responsavel: '',
+  segmento: '',
+})
+const emptyUpdateCompanyForm = () => ({ empresa_id: '', nome: '', status: '' })
+const emptyCreateUserForm = () => ({ nome: '', email: '', password: '', role: '', empresa_id: '' })
+const emptyUserStatusForm = () => ({ user_id: '', status: '' })
+const emptyCreatePlanForm = () => ({ code: '', name: '', price_month: '' })
+const emptyUpdatePlanForm = () => ({ id: '', code: '', name: '', price_month: '' })
+const emptyChangePlanForm = () => ({ empresa_id: '', plano_codigo: '' })
+const emptyCreateSubscriptionForm = () => ({ empresa_id: '', plan_id: '', amount: '', status: '' })
+const emptySubscriptionStatusForm = () => ({ empresa_id: '', status: '' })
+const emptyBillingForm = () => ({ subscription_id: '', amount: '', payment_status: '' })
+const emptyContractForm = () => ({ contract_id: '', content: '', summary: '', status: '' })
+const emptySupportForm = () => ({ ticket_id: '', response: '', status: '' })
+const emptySettingsForm = () => ({ empresa_id: '', modules: '', limits: '', features: '' })
+const emptyOwnerMasterForm = () => ({ nome: '', email: '', password: '' })
+
 type OwnerTab =
   | 'dashboard'
   | 'empresas'
@@ -85,9 +115,9 @@ export default function Owner() {
   const [error, setError] = useState<string | null>(null)
   const [companyCredentialNote, setCompanyCredentialNote] = useState<CompanyCredentialNote | null>(null)
   const [systemActionOutput, setSystemActionOutput] = useState<unknown>(null)
-  const [systemForm, setSystemForm] = useState({ user_id: '', empresa_id: '', table_name: '', auth_password: '', keep_core: false, keep_billing: false, include_auth_users: true })
+  const [systemForm, setSystemForm] = useState(emptySystemForm)
   const [selectedTenantTables, setSelectedTenantTables] = useState<string[]>([])
-  const [auditFilters, setAuditFilters] = useState({ empresa_id: '', user_id: '', module: '', from: '', to: '', action_type: '', severity: '' })
+  const [auditFilters, setAuditFilters] = useState(emptyAuditFilters)
 
   const ownerMasterEmail = getOwnerMasterEmail()
   const isOwnerMaster = !!ownerMasterEmail && (user?.email || '').toLowerCase() === ownerMasterEmail
@@ -256,34 +286,21 @@ export default function Owner() {
     deleteCompanyByOwnerMutation,
   } = useOwnerCompanyActions()
 
-  const [createCompanyForm, setCreateCompanyForm] = useState({
-    nome: '',
-    slug: '',
-    admin_nome: '',
-    admin_email: '',
-    razao_social: '',
-    nome_fantasia: '',
-    cnpj: '',
-    endereco: '',
-    telefone: '',
-    email: '',
-    responsavel: '',
-    segmento: '',
-  })
-  const [updateCompanyForm, setUpdateCompanyForm] = useState({ empresa_id: '', nome: '', status: 'active' })
-  const [createUserForm, setCreateUserForm] = useState({ nome: '', email: '', password: '', role: 'ADMIN', empresa_id: '' })
-  const [userStatusForm, setUserStatusForm] = useState({ user_id: '', status: 'ativo' })
-  const [createPlanForm, setCreatePlanForm] = useState({ code: '', name: '', price_month: '' })
-  const [updatePlanForm, setUpdatePlanForm] = useState({ id: '', code: '', name: '', price_month: '' })
-  const [changePlanForm, setChangePlanForm] = useState({ empresa_id: '', plano_codigo: '' })
-  const [createSubscriptionForm, setCreateSubscriptionForm] = useState({ empresa_id: '', plan_id: '', amount: '', status: 'ativa' })
-  const [subscriptionStatusForm, setSubscriptionStatusForm] = useState({ empresa_id: '', status: 'ativa' })
-  const [billingForm, setBillingForm] = useState({ subscription_id: '', amount: '', payment_status: 'paid' })
-  const [contractForm, setContractForm] = useState({ contract_id: '', content: '', summary: '', status: 'ativo' })
+  const [createCompanyForm, setCreateCompanyForm] = useState(emptyCreateCompanyForm)
+  const [updateCompanyForm, setUpdateCompanyForm] = useState(emptyUpdateCompanyForm)
+  const [createUserForm, setCreateUserForm] = useState(emptyCreateUserForm)
+  const [userStatusForm, setUserStatusForm] = useState(emptyUserStatusForm)
+  const [createPlanForm, setCreatePlanForm] = useState(emptyCreatePlanForm)
+  const [updatePlanForm, setUpdatePlanForm] = useState(emptyUpdatePlanForm)
+  const [changePlanForm, setChangePlanForm] = useState(emptyChangePlanForm)
+  const [createSubscriptionForm, setCreateSubscriptionForm] = useState(emptyCreateSubscriptionForm)
+  const [subscriptionStatusForm, setSubscriptionStatusForm] = useState(emptySubscriptionStatusForm)
+  const [billingForm, setBillingForm] = useState(emptyBillingForm)
+  const [contractForm, setContractForm] = useState(emptyContractForm)
   const [contractOnlyId, setContractOnlyId] = useState('')
-  const [supportForm, setSupportForm] = useState({ ticket_id: '', response: '', status: 'resolvido' })
-  const [settingsForm, setSettingsForm] = useState({ empresa_id: '', modules: '{}', limits: '{}', features: '{}' })
-  const [ownerMasterForm, setOwnerMasterForm] = useState({ nome: '', email: '', password: '' })
+  const [supportForm, setSupportForm] = useState(emptySupportForm)
+  const [settingsForm, setSettingsForm] = useState(emptySettingsForm)
+  const [ownerMasterForm, setOwnerMasterForm] = useState(emptyOwnerMasterForm)
 
   const selectedSettingsQuery = useOwnerCompanySettings(settingsForm.empresa_id || null)
   const selectedSettings = toArray<{ chave: string; valor: Record<string, unknown> }>((selectedSettingsQuery.data as any)?.settings)
@@ -292,6 +309,26 @@ export default function Owner() {
     setFeedback(null)
     setError(null)
     setCompanyCredentialNote(null)
+  }
+
+  const clearAllOwnerForms = () => {
+    setCreateCompanyForm(emptyCreateCompanyForm())
+    setUpdateCompanyForm(emptyUpdateCompanyForm())
+    setCreateUserForm(emptyCreateUserForm())
+    setUserStatusForm(emptyUserStatusForm())
+    setCreatePlanForm(emptyCreatePlanForm())
+    setUpdatePlanForm(emptyUpdatePlanForm())
+    setChangePlanForm(emptyChangePlanForm())
+    setCreateSubscriptionForm(emptyCreateSubscriptionForm())
+    setSubscriptionStatusForm(emptySubscriptionStatusForm())
+    setBillingForm(emptyBillingForm())
+    setContractForm(emptyContractForm())
+    setContractOnlyId('')
+    setSupportForm(emptySupportForm())
+    setSettingsForm(emptySettingsForm())
+    setOwnerMasterForm(emptyOwnerMasterForm())
+    setSystemForm(emptySystemForm())
+    setSelectedTenantTables([])
   }
 
   const buildCreateCompanyPayload = () => ({
@@ -364,10 +401,12 @@ export default function Owner() {
       }
 
       if (response?.warning) {
+        clearAllOwnerForms()
         setFeedback(`Empresa criada com alerta: ${String(response.warning)}`)
         return
       }
 
+      clearAllOwnerForms()
       setFeedback(initialPassword ? 'Empresa criada com sucesso. Credenciais iniciais disponiveis para copia.' : 'Empresa criada com sucesso.')
     } catch (err: any) {
       const rawMessage = String(err?.message ?? err ?? 'Falha na operacao.')
@@ -409,6 +448,7 @@ export default function Owner() {
     clearFeedback()
     try {
       await fn()
+      clearAllOwnerForms()
       setFeedback(success)
     } catch (err: any) {
       const rawMessage = String(err?.message ?? err ?? 'Falha na operacao.')
@@ -657,6 +697,7 @@ export default function Owner() {
               </select>
               <input className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm" placeholder="Novo nome" value={updateCompanyForm.nome} onChange={(e) => setUpdateCompanyForm((s) => ({ ...s, nome: e.target.value }))} />
               <select className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm" value={updateCompanyForm.status} onChange={(e) => setUpdateCompanyForm((s) => ({ ...s, status: e.target.value }))}>
+                <option value="">Selecione status</option>
                 <option value="active">Ativa</option>
                 <option value="blocked">Bloqueada</option>
                 <option value="suspended">Suspensa</option>
@@ -664,7 +705,7 @@ export default function Owner() {
             </div>
             <div className="mt-3 flex gap-2">
               <button className="rounded border border-slate-600 px-3 py-2 text-sm" disabled={!updateCompanyForm.empresa_id || updateCompanyMutation.isPending} onClick={() => runAction(() => updateCompanyMutation.mutateAsync({ empresaId: updateCompanyForm.empresa_id, company: { nome: updateCompanyForm.nome || undefined } }), 'Empresa atualizada.')}>Salvar</button>
-              <button className="rounded border border-amber-500 px-3 py-2 text-sm text-amber-300" disabled={!updateCompanyForm.empresa_id || setCompanyLifecycle.isPending} onClick={() => runAction(() => setCompanyLifecycle.mutateAsync({ empresaId: updateCompanyForm.empresa_id, status: updateCompanyForm.status }), 'Status da empresa atualizado.')}>Aplicar status</button>
+              <button className="rounded border border-amber-500 px-3 py-2 text-sm text-amber-300" disabled={!updateCompanyForm.empresa_id || !updateCompanyForm.status || setCompanyLifecycle.isPending} onClick={() => runAction(() => setCompanyLifecycle.mutateAsync({ empresaId: updateCompanyForm.empresa_id, status: updateCompanyForm.status }), 'Status da empresa atualizado.')}>Aplicar status</button>
             </div>
           </Card>
 
@@ -706,6 +747,7 @@ export default function Owner() {
               <input className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm" type="email" placeholder="Email" value={createUserForm.email} onChange={(e) => setCreateUserForm((s) => ({ ...s, email: e.target.value }))} />
               <input className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm" type="password" placeholder="Senha" value={createUserForm.password} onChange={(e) => setCreateUserForm((s) => ({ ...s, password: e.target.value }))} />
               <select className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm" value={createUserForm.role} onChange={(e) => setCreateUserForm((s) => ({ ...s, role: e.target.value }))}>
+                <option value="">Perfil</option>
                 <option value="ADMIN">ADMIN</option>
                 <option value="GESTOR">GESTOR</option>
                 <option value="TECNICO">TECNICO</option>
@@ -723,7 +765,7 @@ export default function Owner() {
             </div>
             <button
               className="mt-3 rounded bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground"
-              disabled={createUserMutation.isPending || !createUserForm.nome || !isValidEmail(createUserForm.email) || !createUserForm.empresa_id}
+              disabled={createUserMutation.isPending || !createUserForm.nome || !isValidEmail(createUserForm.email) || !createUserForm.role || !createUserForm.empresa_id}
               onClick={() =>
                 isValidEmail(createUserForm.email)
                   ? runAction(
@@ -755,10 +797,11 @@ export default function Owner() {
                 ))}
               </select>
               <select className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm" value={userStatusForm.status} onChange={(e) => setUserStatusForm((s) => ({ ...s, status: e.target.value }))}>
+                <option value="">Selecione status</option>
                 <option value="ativo">Ativo</option>
                 <option value="inativo">Inativo</option>
               </select>
-              <button className="rounded border border-slate-600 px-3 py-2 text-sm" disabled={!userStatusForm.user_id || setUserStatusMutation.isPending} onClick={() => runAction(() => setUserStatusMutation.mutateAsync({ userId: userStatusForm.user_id, status: userStatusForm.status }), 'Status do usuario atualizado.')}>Aplicar</button>
+              <button className="rounded border border-slate-600 px-3 py-2 text-sm" disabled={!userStatusForm.user_id || !userStatusForm.status || setUserStatusMutation.isPending} onClick={() => runAction(() => setUserStatusMutation.mutateAsync({ userId: userStatusForm.user_id, status: userStatusForm.status }), 'Status do usuario atualizado.')}>Aplicar</button>
             </div>
           </Card>
 
@@ -892,7 +935,7 @@ export default function Owner() {
                 ))}
               </select>
               <input className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm" placeholder="Valor" value={createSubscriptionForm.amount} onChange={(e) => setCreateSubscriptionForm((s) => ({ ...s, amount: e.target.value }))} />
-              <button className="rounded bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground" disabled={!createSubscriptionForm.empresa_id || !createSubscriptionForm.plan_id || createSubscriptionMutation.isPending} onClick={() => runAction(() => createSubscriptionMutation.mutateAsync({ empresa_id: createSubscriptionForm.empresa_id, plan_id: createSubscriptionForm.plan_id, amount: createSubscriptionForm.amount ? Number(createSubscriptionForm.amount) : undefined, status: createSubscriptionForm.status }), 'Assinatura criada com sucesso.')}>Criar assinatura</button>
+              <button className="rounded bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground" disabled={!createSubscriptionForm.empresa_id || !createSubscriptionForm.plan_id || createSubscriptionMutation.isPending} onClick={() => runAction(() => createSubscriptionMutation.mutateAsync({ empresa_id: createSubscriptionForm.empresa_id, plan_id: createSubscriptionForm.plan_id, amount: createSubscriptionForm.amount ? Number(createSubscriptionForm.amount) : undefined, status: createSubscriptionForm.status || undefined }), 'Assinatura criada com sucesso.')}>Criar assinatura</button>
             </div>
           </Card>
 
@@ -907,12 +950,13 @@ export default function Owner() {
                 ))}
               </select>
               <select className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm" value={subscriptionStatusForm.status} onChange={(e) => setSubscriptionStatusForm((s) => ({ ...s, status: e.target.value }))}>
+                <option value="">Selecione status</option>
                 <option value="ativa">Ativa</option>
                 <option value="atrasada">Atrasada</option>
                 <option value="cancelada">Cancelada</option>
                 <option value="teste">Teste</option>
               </select>
-              <button className="rounded border border-slate-600 px-3 py-2 text-sm" disabled={!subscriptionStatusForm.empresa_id || setSubscriptionStatusMutation.isPending} onClick={() => runAction(() => setSubscriptionStatusMutation.mutateAsync({ empresaId: subscriptionStatusForm.empresa_id, status: subscriptionStatusForm.status }), 'Status da assinatura atualizado.')}>Aplicar status</button>
+              <button className="rounded border border-slate-600 px-3 py-2 text-sm" disabled={!subscriptionStatusForm.empresa_id || !subscriptionStatusForm.status || setSubscriptionStatusMutation.isPending} onClick={() => runAction(() => setSubscriptionStatusMutation.mutateAsync({ empresaId: subscriptionStatusForm.empresa_id, status: subscriptionStatusForm.status }), 'Status da assinatura atualizado.')}>Aplicar status</button>
             </div>
           </Card>
 
@@ -980,11 +1024,12 @@ export default function Owner() {
               <input className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm" placeholder="Subscription ID" value={billingForm.subscription_id} onChange={(e) => setBillingForm((s) => ({ ...s, subscription_id: e.target.value }))} />
               <input className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm" placeholder="Novo valor" value={billingForm.amount} onChange={(e) => setBillingForm((s) => ({ ...s, amount: e.target.value }))} />
               <select className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm" value={billingForm.payment_status} onChange={(e) => setBillingForm((s) => ({ ...s, payment_status: e.target.value }))}>
+                <option value="">Selecione pagamento</option>
                 <option value="paid">Pago</option>
                 <option value="pending">Pendente</option>
                 <option value="late">Atrasado</option>
               </select>
-              <button className="rounded border border-slate-600 px-3 py-2 text-sm" disabled={!billingForm.subscription_id || updateSubscriptionBillingMutation.isPending} onClick={() => runAction(() => updateSubscriptionBillingMutation.mutateAsync({ subscriptionId: billingForm.subscription_id, billing: { amount: billingForm.amount ? Number(billingForm.amount) : undefined, payment_status: billingForm.payment_status } }), 'Cobranca atualizada com sucesso.')}>Atualizar cobranca</button>
+              <button className="rounded border border-slate-600 px-3 py-2 text-sm" disabled={!billingForm.subscription_id || !billingForm.payment_status || updateSubscriptionBillingMutation.isPending} onClick={() => runAction(() => updateSubscriptionBillingMutation.mutateAsync({ subscriptionId: billingForm.subscription_id, billing: { amount: billingForm.amount ? Number(billingForm.amount) : undefined, payment_status: billingForm.payment_status } }), 'Cobranca atualizada com sucesso.')}>Atualizar cobranca</button>
             </div>
           </Card>
 
@@ -1090,11 +1135,12 @@ export default function Owner() {
               </select>
               <input className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm" placeholder="Resposta" value={supportForm.response} onChange={(e) => setSupportForm((s) => ({ ...s, response: e.target.value }))} />
               <select className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm" value={supportForm.status} onChange={(e) => setSupportForm((s) => ({ ...s, status: e.target.value }))}>
+                <option value="">Selecione status</option>
                 <option value="resolvido">Resolvido</option>
                 <option value="em_andamento">Em andamento</option>
                 <option value="aberto">Aberto</option>
               </select>
-              <button className="rounded border border-slate-600 px-3 py-2 text-sm" disabled={!supportForm.ticket_id || !supportForm.response || respondSupportMutation.isPending} onClick={() => runAction(() => respondSupportMutation.mutateAsync({ ticketId: supportForm.ticket_id, response: supportForm.response, status: supportForm.status }), 'Ticket respondido com sucesso.')}>Responder</button>
+              <button className="rounded border border-slate-600 px-3 py-2 text-sm" disabled={!supportForm.ticket_id || !supportForm.response || !supportForm.status || respondSupportMutation.isPending} onClick={() => runAction(() => respondSupportMutation.mutateAsync({ ticketId: supportForm.ticket_id, response: supportForm.response, status: supportForm.status }), 'Ticket respondido com sucesso.')}>Responder</button>
             </div>
           </Card>
 
