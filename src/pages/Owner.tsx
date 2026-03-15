@@ -447,6 +447,14 @@ export default function Owner() {
     setDeleteCompanyTargetEmpresaId('')
   }
 
+  const closeDeleteOverlayWithMinimumDelay = (startedAt: number, minimumVisibleMs = 1200) => {
+    const elapsed = Date.now() - startedAt
+    const remaining = Math.max(250, minimumVisibleMs - elapsed)
+    window.setTimeout(() => {
+      closeDeleteCompanyOverlay()
+    }, remaining)
+  }
+
   const buildCreateCompanyPayload = () => ({
     company: {
       nome: createCompanyForm.nome,
@@ -503,18 +511,25 @@ export default function Owner() {
     }
 
     await runOwnerMasterAction(async () => {
-      const output = await deleteCompanyByOwnerMutation.mutateAsync({
-        empresa_id: company.id,
-        include_auth_users: true,
-        auth_password: authPassword,
-      })
-      setSystemActionOutput(output)
+      beginDeleteCompanyOverlay(company.id)
+      const startedAt = Date.now()
+      try {
+        const output = await deleteCompanyByOwnerMutation.mutateAsync({
+          empresa_id: company.id,
+          include_auth_users: true,
+          auth_password: authPassword,
+        })
+        setSystemActionOutput(output)
+        completeDeleteCompanyOverlay()
 
-      if (updateCompanyForm.empresa_id === company.id) {
-        setUpdateCompanyForm({ empresa_id: '', nome: '', status: 'active' })
+        if (updateCompanyForm.empresa_id === company.id) {
+          setUpdateCompanyForm({ empresa_id: '', nome: '', status: 'active' })
+        }
+
+        return output
+      } finally {
+        closeDeleteOverlayWithMinimumDelay(startedAt)
       }
-
-      return output
     }, `Empresa ${companyLabel} excluida definitivamente com todos os dados relacionados.`)
   }
 
@@ -1643,15 +1658,14 @@ export default function Owner() {
               }, 'Limpeza da tabela concluida com sucesso.')}>Limpar tabela</button>
               <button className="rounded border border-rose-600 px-3 py-2 text-sm text-rose-300" disabled={!isOwnerMaster || !systemForm.empresa_id || !systemForm.auth_password || deleteCompanyByOwnerMutation.isPending} onClick={() => runOwnerMasterAction(async () => {
                 beginDeleteCompanyOverlay(systemForm.empresa_id)
+                const startedAt = Date.now()
                 try {
                   const output = await deleteCompanyByOwnerMutation.mutateAsync({ empresa_id: systemForm.empresa_id, include_auth_users: systemForm.include_auth_users, auth_password: systemForm.auth_password })
                   setSystemActionOutput(output)
                   completeDeleteCompanyOverlay()
                   return output
                 } finally {
-                  window.setTimeout(() => {
-                    closeDeleteCompanyOverlay()
-                  }, 550)
+                  closeDeleteOverlayWithMinimumDelay(startedAt)
                 }
               }, 'Empresa excluida definitivamente com sucesso.')}>Excluir empresa</button>
             </div>
