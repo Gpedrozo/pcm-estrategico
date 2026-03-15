@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Loader2, ShieldCheck } from 'lucide-react'
 import { Bar, BarChart, CartesianGrid, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import { useAuth } from '@/contexts/AuthContext'
@@ -122,22 +122,45 @@ export default function Owner() {
   const ownerMasterEmail = getOwnerMasterEmail()
   const isOwnerMaster = !!ownerMasterEmail && (user?.email || '').toLowerCase() === ownerMasterEmail
 
-  const { data: statsData } = useOwnerStats()
-  const { data: backendHealth, error: backendHealthError } = useOwnerBackendHealth()
-  const { data: companiesData, isLoading: isLoadingCompanies } = useOwnerCompanies()
-  const { data: usersData, isLoading: isLoadingUsers } = useOwnerUsers()
-  const { data: plansData, isLoading: isLoadingPlans } = useOwnerPlans()
-  const { data: subscriptionsData, isLoading: isLoadingSubscriptions } = useOwnerSubscriptions()
-  const { data: contractsData, isLoading: isLoadingContracts } = useOwnerContracts()
+  const dashboardActive = active === 'dashboard'
+  const companiesActive = active === 'empresas'
+  const usersActive = active === 'usuarios'
+  const plansActive = active === 'planos'
+  const subscriptionsActive = active === 'assinaturas'
+  const contractsActive = active === 'contratos'
+  const auditActive = active === 'auditoria' || active === 'logs'
+  const supportActive = active === 'suporte'
+  const financeActive = active === 'financeiro'
+  const settingsActive = active === 'configuracoes' || active === 'feature-flags'
+  const monitoringActive = active === 'monitoramento'
+  const systemActive = active === 'sistema'
+  const ownerMasterActive = active === 'owner-master'
+
+  const shouldLoadCompanies = dashboardActive || companiesActive || usersActive || subscriptionsActive || auditActive || settingsActive || monitoringActive || systemActive || financeActive
+  const shouldLoadUsers = dashboardActive || usersActive || auditActive
+  const shouldLoadPlans = plansActive || subscriptionsActive
+  const shouldLoadSubscriptions = dashboardActive || subscriptionsActive || financeActive
+  const shouldLoadContracts = contractsActive
+  const shouldLoadAudit = auditActive
+  const shouldLoadSupport = supportActive || monitoringActive
+  const shouldLoadOwners = ownerMasterActive
+
+  const { data: statsData } = useOwnerStats(dashboardActive)
+  const { data: backendHealth, error: backendHealthError } = useOwnerBackendHealth(monitoringActive || systemActive || dashboardActive)
+  const { data: companiesData, isLoading: isLoadingCompanies } = useOwnerCompanies(shouldLoadCompanies)
+  const { data: usersData, isLoading: isLoadingUsers } = useOwnerUsers(undefined, shouldLoadUsers)
+  const { data: plansData, isLoading: isLoadingPlans } = useOwnerPlans(shouldLoadPlans)
+  const { data: subscriptionsData, isLoading: isLoadingSubscriptions } = useOwnerSubscriptions(shouldLoadSubscriptions)
+  const { data: contractsData, isLoading: isLoadingContracts } = useOwnerContracts(shouldLoadContracts)
   const { data: auditData, isLoading: isLoadingAudit } = useOwnerAuditLogs({
     empresa_id: auditFilters.empresa_id || undefined,
     user_id: auditFilters.user_id || undefined,
     module: auditFilters.module || undefined,
     from: auditFilters.from || undefined,
     to: auditFilters.to || undefined,
-  })
-  const { data: supportData, isLoading: isLoadingSupport } = useOwnerSupportTickets()
-  const { data: ownersData, isLoading: isLoadingOwners } = useOwnerMasterOwners()
+  }, shouldLoadAudit)
+  const { data: supportData, isLoading: isLoadingSupport } = useOwnerSupportTickets(shouldLoadSupport)
+  const { data: ownersData, isLoading: isLoadingOwners } = useOwnerMasterOwners(shouldLoadOwners)
   const monitoringLive = active === 'monitoramento' && isDocumentVisible
   const adminTablesLive = active === 'sistema' && isDocumentVisible
   const tablesLive = monitoringLive || adminTablesLive
@@ -302,7 +325,7 @@ export default function Owner() {
   const [settingsForm, setSettingsForm] = useState(emptySettingsForm)
   const [ownerMasterForm, setOwnerMasterForm] = useState(emptyOwnerMasterForm)
 
-  const selectedSettingsQuery = useOwnerCompanySettings(settingsForm.empresa_id || null)
+  const selectedSettingsQuery = useOwnerCompanySettings(settingsForm.empresa_id || null, settingsActive)
   const selectedSettings = toArray<{ chave: string; valor: Record<string, unknown> }>((selectedSettingsQuery.data as any)?.settings)
 
   const clearFeedback = () => {
@@ -311,7 +334,7 @@ export default function Owner() {
     setCompanyCredentialNote(null)
   }
 
-  const clearAllOwnerForms = () => {
+  const clearAllOwnerForms = useCallback(() => {
     setCreateCompanyForm(emptyCreateCompanyForm())
     setUpdateCompanyForm(emptyUpdateCompanyForm())
     setCreateUserForm(emptyCreateUserForm())
@@ -329,7 +352,40 @@ export default function Owner() {
     setOwnerMasterForm(emptyOwnerMasterForm())
     setSystemForm(emptySystemForm())
     setSelectedTenantTables([])
-  }
+  }, [])
+
+  useEffect(() => {
+    if (typeof document === 'undefined') return
+
+    const forceClearAutofill = () => {
+      const fields = document.querySelectorAll<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>('input, textarea, select')
+      fields.forEach((field) => {
+        if (field instanceof HTMLInputElement) {
+          if (['checkbox', 'radio', 'hidden', 'button', 'submit'].includes(field.type)) return
+          if (!field.value) return
+          field.value = ''
+        } else if (field instanceof HTMLTextAreaElement) {
+          if (!field.value) return
+          field.value = ''
+        } else if (field instanceof HTMLSelectElement) {
+          if (field.selectedIndex <= 0) return
+          field.selectedIndex = 0
+        }
+
+        field.dispatchEvent(new Event('input', { bubbles: true }))
+        field.dispatchEvent(new Event('change', { bubbles: true }))
+      })
+    }
+
+    clearAllOwnerForms()
+    const timeoutFast = window.setTimeout(forceClearAutofill, 80)
+    const timeoutLate = window.setTimeout(forceClearAutofill, 350)
+
+    return () => {
+      window.clearTimeout(timeoutFast)
+      window.clearTimeout(timeoutLate)
+    }
+  }, [clearAllOwnerForms])
 
   const buildCreateCompanyPayload = () => ({
     company: {

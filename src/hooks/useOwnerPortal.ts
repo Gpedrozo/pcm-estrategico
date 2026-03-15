@@ -57,68 +57,91 @@ const invalidateOwnerReads = (qc: ReturnType<typeof useQueryClient>) => {
   qc.invalidateQueries({ queryKey: ['owner'] })
 }
 
-export function useOwnerStats() {
+export function useOwnerStats(enabled = true) {
   return useQuery({
     queryKey: ownerQueryKeys.stats,
     queryFn: getPlatformStats,
+    enabled,
     staleTime: 20_000,
+    refetchOnWindowFocus: false,
+    retry: 0,
   })
 }
 
-export function useOwnerBackendHealth() {
+export function useOwnerBackendHealth(enabled = true) {
   return useQuery({
     queryKey: ownerQueryKeys.health,
     queryFn: getOwnerBackendHealth,
+    enabled,
     staleTime: 15_000,
+    refetchOnWindowFocus: false,
     retry: 1,
   })
 }
 
-export function useOwnerCompanies() {
+export function useOwnerCompanies(enabled = true) {
   return useQuery({
     queryKey: ownerQueryKeys.companies,
     queryFn: listPlatformCompanies,
+    enabled,
     staleTime: 20_000,
+    refetchOnWindowFocus: false,
+    retry: 0,
   })
 }
 
-export function useOwnerUsers(empresaId?: string) {
+export function useOwnerUsers(empresaId?: string, enabled = true) {
   return useQuery({
     queryKey: ownerQueryKeys.users(empresaId ?? null),
     queryFn: () => listGlobalUsers(empresaId),
+    enabled,
     staleTime: 20_000,
+    refetchOnWindowFocus: false,
+    retry: 0,
   })
 }
 
-export function useOwnerPlans() {
+export function useOwnerPlans(enabled = true) {
   return useQuery({
     queryKey: ownerQueryKeys.plans,
     queryFn: listPlans,
+    enabled,
     staleTime: 20_000,
+    refetchOnWindowFocus: false,
+    retry: 0,
   })
 }
 
-export function useOwnerSubscriptions() {
+export function useOwnerSubscriptions(enabled = true) {
   return useQuery({
     queryKey: ownerQueryKeys.subscriptions,
     queryFn: () => listSubscriptions(500),
+    enabled,
     staleTime: 20_000,
+    refetchOnWindowFocus: false,
+    retry: 0,
   })
 }
 
-export function useOwnerContracts() {
+export function useOwnerContracts(enabled = true) {
   return useQuery({
     queryKey: ownerQueryKeys.contracts,
     queryFn: listContracts,
+    enabled,
     staleTime: 20_000,
+    refetchOnWindowFocus: false,
+    retry: 0,
   })
 }
 
-export function useOwnerSupportTickets() {
+export function useOwnerSupportTickets(enabled = true) {
   return useQuery({
     queryKey: ownerQueryKeys.support,
     queryFn: listSupportTickets,
+    enabled,
     staleTime: 15_000,
+    refetchOnWindowFocus: false,
+    retry: 0,
   })
 }
 
@@ -128,30 +151,39 @@ export function useOwnerAuditLogs(filters?: {
   module?: string
   from?: string
   to?: string
-}) {
+}, enabled = true) {
   return useQuery({
     queryKey: ownerQueryKeys.audit(filters),
     queryFn: () => listAuditLogs(filters),
+    enabled,
     staleTime: 15_000,
+    refetchOnWindowFocus: false,
+    retry: 0,
   })
 }
 
-export function useOwnerCompanySettings(empresaId?: string | null) {
+export function useOwnerCompanySettings(empresaId?: string | null, enabled = true) {
   return useQuery({
     queryKey: ownerQueryKeys.settings(empresaId),
     queryFn: () => {
       if (!empresaId) return Promise.resolve({ settings: [] as Array<{ chave: string; valor: Record<string, unknown> }> })
       return getCompanySettings(empresaId)
     },
+    enabled,
     staleTime: 15_000,
+    refetchOnWindowFocus: false,
+    retry: 0,
   })
 }
 
-export function useOwnerMasterOwners() {
+export function useOwnerMasterOwners(enabled = true) {
   return useQuery({
     queryKey: ownerQueryKeys.platformOwners,
     queryFn: listPlatformOwners,
+    enabled,
     staleTime: 15_000,
+    refetchOnWindowFocus: false,
+    retry: 0,
   })
 }
 
@@ -171,6 +203,8 @@ export function useOwnerDatabaseTables(enabled = true, refetchInterval: number |
     staleTime: 10_000,
     refetchInterval: computeRefetchInterval,
     refetchIntervalInBackground: false,
+    refetchOnWindowFocus: false,
+    retry: 0,
   })
 }
 
