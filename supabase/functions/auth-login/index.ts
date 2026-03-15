@@ -34,6 +34,11 @@ function resolveClientIp(req: Request) {
   return firstForwardedIp || realIp || cfIp || "unknown";
 }
 
+function isRateLimitStorageError(message?: string | null) {
+  const text = String(message ?? "").toLowerCase();
+  return text.includes("login_attempts") || text.includes("relation") || text.includes("does not exist");
+}
+
 async function signInWithPassword(email: string, password: string) {
   const supabaseUrl = env("SUPABASE_URL");
   const anonKey = env("SUPABASE_ANON_KEY");
@@ -77,16 +82,24 @@ Deno.serve(async (req) => {
     const admin = adminClient();
     const now = Date.now();
 
-    const { data: currentAttempt, error: fetchError } = await admin
+    const { data: currentAttemptRaw, error: fetchError } = await admin
       .from("login_attempts")
       .select("attempt_count,window_start,blocked_until")
       .eq("email", email)
       .eq("ip_address", ipAddress)
       .maybeSingle();
 
-    if (fetchError) {
+    if (fetchError && !isRateLimitStorageError(fetchError.message)) {
       return fail("Falha ao validar tentativas de login", 500, { reason: fetchError.message }, req);
     }
+
+    if (fetchError) {
+      console.error("[auth-login] rate-limit storage unavailable, continuing without throttle", {
+        reason: fetchError.message,
+      });
+    }
+
+    const currentAttempt = fetchError ? null : currentAttemptRaw;
 
     const blockedUntilMs = currentAttempt?.blocked_until ? new Date(currentAttempt.blocked_until).getTime() : 0;
     if (blockedUntilMs > now) {
@@ -119,8 +132,14 @@ Deno.serve(async (req) => {
         onConflict: "email,ip_address",
       });
 
-      if (upsertError) {
+      if (upsertError && !isRateLimitStorageError(upsertError.message)) {
         return fail("Falha ao registrar tentativa de login", 500, { reason: upsertError.message }, req);
+      }
+
+      if (upsertError) {
+        console.error("[auth-login] failed to persist login attempt, returning auth result", {
+          reason: upsertError.message,
+        });
       }
 
       if (shouldBlock) {

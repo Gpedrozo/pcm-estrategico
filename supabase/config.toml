@@ -38,3 +38,12 @@ verify_jwt = true
 
 [functions.platform-metrics-rollup]
 verify_jwt = true
+
+[functions.auth-login]
+verify_jwt = false
+
+[functions.auth-forgot-password]
+verify_jwt = false
+
+[functions.auth-change-password]
+verify_jwt = true
