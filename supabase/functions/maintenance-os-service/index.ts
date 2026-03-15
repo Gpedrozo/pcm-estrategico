@@ -4,6 +4,7 @@ import { adminClient, ensureEmpresaAccess, requireUser } from "../_shared/auth.t
 import { logAuditEvent, failRateLimited } from "../_shared/audit.ts";
 import { createRequestTrace, traceDurationMs, writeOperationalLog } from "../_shared/observability.ts";
 import { enforceRateLimit } from "../_shared/rateLimit.ts";
+import { captureSystemError } from "../_shared/monitoring.ts";
 import { fail, ok, preflight, rejectIfOriginNotAllowed } from "../_shared/response.ts";
 
 type Payload = {
@@ -23,6 +24,7 @@ type Payload = {
 
 Deno.serve(async (req) => {
   const trace = createRequestTrace("maintenance-os-service", req);
+  try {
 
   if (req.method === "OPTIONS") return preflight(req, "POST, OPTIONS");
 
@@ -89,6 +91,7 @@ Deno.serve(async (req) => {
       req,
       endpoint: trace.endpoint,
       executionMs: durationMs,
+      requestId: trace.requestId,
       payload: {
         action: payload.action,
         tipo: payload.tipo ?? "CORRETIVA",
@@ -103,6 +106,7 @@ Deno.serve(async (req) => {
       durationMs,
       empresaId: payload.empresa_id,
       userId: auth.user.id,
+      requestId: trace.requestId,
       metadata: { os_id: data?.id ?? null },
     });
     return ok({ os: data }, 200, req);
@@ -144,6 +148,7 @@ Deno.serve(async (req) => {
       req,
       endpoint: trace.endpoint,
       executionMs: durationMs,
+      requestId: trace.requestId,
       payload: { os_id: payload.os_id },
     });
     await writeOperationalLog(admin, {
@@ -154,6 +159,7 @@ Deno.serve(async (req) => {
       durationMs,
       empresaId: payload.empresa_id,
       userId: auth.user.id,
+      requestId: trace.requestId,
       metadata: { os_id: payload.os_id, execucao_id: data?.id ?? null },
     });
 
@@ -190,6 +196,7 @@ Deno.serve(async (req) => {
       req,
       endpoint: trace.endpoint,
       executionMs: durationMs,
+      requestId: trace.requestId,
       payload: { os_id: payload.os_id, custo_total: payload.custo_total ?? 0 },
     });
     await writeOperationalLog(admin, {
@@ -200,6 +207,7 @@ Deno.serve(async (req) => {
       durationMs,
       empresaId: payload.empresa_id,
       userId: auth.user.id,
+      requestId: trace.requestId,
       metadata: { os_id: payload.os_id },
     });
 
@@ -207,4 +215,34 @@ Deno.serve(async (req) => {
   }
 
   return fail("Unsupported action", 400, null, req);
+  } catch (error: any) {
+    const admin = adminClient();
+    await captureSystemError(admin, {
+      error,
+      requestId: trace.requestId,
+      endpoint: trace.endpoint,
+      source: "maintenance-os-service",
+      severity: "critical",
+      metadata: {
+        phase: "handler_catch",
+      },
+    });
+
+    await writeOperationalLog(admin, {
+      scope: trace.scope,
+      action: "unhandled_error",
+      endpoint: trace.endpoint,
+      statusCode: 500,
+      durationMs: traceDurationMs(trace),
+      empresaId: null,
+      userId: null,
+      requestId: trace.requestId,
+      metadata: {},
+      errorMessage: error?.message ?? "Unhandled maintenance-os-service error",
+    });
+
+    return fail("Falha inesperada no maintenance-os-service", 500, {
+      request_id: trace.requestId,
+    }, req);
+  }
 });

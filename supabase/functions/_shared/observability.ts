@@ -1,10 +1,12 @@
 // @ts-nocheck
 
 export function createRequestTrace(scope: string, req: Request, action?: string | null) {
+  const incomingRequestId = req.headers.get("x-request-id") ?? req.headers.get("x-correlation-id") ?? null;
   return {
     scope,
     action: action ?? null,
     endpoint: new URL(req.url).pathname,
+    requestId: incomingRequestId ?? crypto.randomUUID(),
     startedAt: Date.now(),
   };
 }
@@ -23,6 +25,7 @@ export async function writeOperationalLog(admin: any, input: {
   userId?: string | null;
   metadata?: Record<string, unknown>;
   errorMessage?: string | null;
+  requestId?: string | null;
 }) {
   const payload = {
     p_scope: input.scope,
@@ -34,6 +37,7 @@ export async function writeOperationalLog(admin: any, input: {
     p_user_id: input.userId ?? null,
     p_metadata: input.metadata ?? {},
     p_error_message: input.errorMessage ?? null,
+    p_request_id: input.requestId ?? null,
   };
 
   const { error } = await admin.rpc("app_write_operational_log", payload);

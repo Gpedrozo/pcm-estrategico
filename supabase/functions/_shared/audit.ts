@@ -22,6 +22,7 @@ export type AuditEventInput = {
   source?: string;
   endpoint?: string | null;
   executionMs?: number | null;
+  requestId?: string | null;
   req?: Request;
 };
 
@@ -42,6 +43,7 @@ export async function logAuditEvent(admin: any, input: AuditEventInput) {
     p_severity: input.severity ?? "info",
     p_endpoint: input.endpoint ?? null,
     p_execution_ms: input.executionMs ?? null,
+    p_request_id: input.requestId ?? null,
   };
 
   const { error } = await admin.rpc("log_audit_event", params);
@@ -63,6 +65,7 @@ export async function logAuditEvent(admin: any, input: AuditEventInput) {
     severity: input.severity ?? "info",
     endpoint: input.endpoint ?? null,
     execution_ms: input.executionMs ?? null,
+    request_id: input.requestId ?? null,
     metadata: input.payload ?? {},
   });
 }
