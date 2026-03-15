@@ -17,6 +17,7 @@ interface OwnerPortalLayoutProps {
   onNavigate: (key: string) => void
   backendHealthy?: boolean
   backendStatusMessage?: string | null
+  pollingPaused?: boolean
   children: ReactNode
 }
 
@@ -28,6 +29,7 @@ export function OwnerPortalLayout({
   onNavigate,
   backendHealthy,
   backendStatusMessage,
+  pollingPaused,
   children,
 }: OwnerPortalLayoutProps) {
   const { user, logout, impersonation, stopImpersonationSession } = useAuth()
@@ -81,6 +83,12 @@ export function OwnerPortalLayout({
                   {backendHealthy ? <CheckCircle2 className="h-3.5 w-3.5" /> : <AlertTriangle className="h-3.5 w-3.5" />}
                   {backendHealthy ? 'Backend owner conectado' : 'Backend owner com incompatibilidade'}
                 </p>
+              </div>
+            )}
+
+            {pollingPaused && (
+              <div className="hidden rounded-md border border-amber-300/70 bg-amber-100 px-3 py-2 text-xs text-amber-900 lg:block">
+                Polling pausado: aba inativa
               </div>
             )}
 

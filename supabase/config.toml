@@ -30,6 +30,21 @@ verify_jwt = true
 [functions.owner-portal-admin]
 verify_jwt = true
 
+[functions.owner-companies]
+verify_jwt = true
+
+[functions.owner-users]
+verify_jwt = true
+
+[functions.owner-billing]
+verify_jwt = true
+
+[functions.owner-data-control]
+verify_jwt = true
+
+[functions.owner-audit]
+verify_jwt = true
+
 [functions.company-membership]
 verify_jwt = true
 

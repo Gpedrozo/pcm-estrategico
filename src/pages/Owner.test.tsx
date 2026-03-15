@@ -50,6 +50,8 @@ import { useAuth } from "@/contexts/AuthContext";
 
 const mockedUseAuth = vi.mocked(useAuth);
 
+process.env.OWNER_MASTER_EMAIL = 'owner-master@gppis.com.br'
+
 function renderWithQuery(ui: JSX.Element) {
   const queryClient = new QueryClient({
     defaultOptions: {
@@ -93,4 +95,30 @@ describe("Owner page access", () => {
     expect(screen.getByText("Owner Portal")).toBeInTheDocument();
     expect(screen.getByText("Visao executiva do ecossistema multiempresa.")).toBeInTheDocument();
   });
+
+  it('hides owner master tab for non-master system owner', () => {
+    mockedUseAuth.mockReturnValue(createAuthContextValue({
+      isSystemOwner: true,
+      user: {
+        ...createAuthContextValue().user,
+        email: 'outro-owner@gppis.com.br',
+      },
+    }))
+
+    renderWithQuery(<Owner />)
+    expect(screen.queryByText('Owner Master')).not.toBeInTheDocument()
+  })
+
+  it('shows owner master tab for configured owner master', () => {
+    mockedUseAuth.mockReturnValue(createAuthContextValue({
+      isSystemOwner: true,
+      user: {
+        ...createAuthContextValue().user,
+        email: 'owner-master@gppis.com.br',
+      },
+    }))
+
+    renderWithQuery(<Owner />)
+    expect(screen.getByText('Owner Master')).toBeInTheDocument()
+  })
 });

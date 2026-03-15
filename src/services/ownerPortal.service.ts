@@ -137,6 +137,38 @@ export interface OwnerBackendHealth {
   timestamp: string
 }
 
+export interface OwnerActionPayload {
+  action: OwnerAction
+  [key: string]: unknown
+}
+
+export interface OwnerApiResponse<T = unknown> {
+  success?: boolean
+  error?: string
+  details?: unknown
+  data?: T
+  [key: string]: unknown
+}
+
+export interface OwnerErrorResponse {
+  success: false
+  error: string
+  details?: unknown
+  trace_id?: string
+}
+
+export const isOwnerActionPayload = (value: unknown): value is OwnerActionPayload => {
+  if (!value || typeof value !== 'object') return false
+  const action = (value as Record<string, unknown>).action
+  return typeof action === 'string' && action.length > 0
+}
+
+export const isOwnerErrorResponse = (value: unknown): value is OwnerErrorResponse => {
+  if (!value || typeof value !== 'object') return false
+  const maybe = value as Record<string, unknown>
+  return maybe.success === false && typeof maybe.error === 'string'
+}
+
 const isUnsupportedActionMessage = (value: unknown) => {
   const msg = String(value ?? '').toLowerCase()
   return msg.includes('unsupported action') || msg.includes('missing action')
@@ -152,9 +184,10 @@ const isEmpresaForeignKeyMessage = (value: unknown) => {
   return msg.includes('violates foreign key constraint') && msg.includes('empresa')
 }
 
-const parseErrorMessage = async (error: any) => {
-  if (!error) return 'Falha desconhecida ao executar operação Owner.'
-  const context = error?.context
+const parseErrorMessage = async (error: unknown) => {
+  const unsafeError = error as { context?: unknown; message?: unknown } | null
+  if (!unsafeError) return 'Falha desconhecida ao executar operação Owner.'
+  const context = unsafeError?.context
 
   const status = Number((context as any)?.status)
   const statusText = String((context as any)?.statusText ?? '').trim()
@@ -195,13 +228,17 @@ const parseErrorMessage = async (error: any) => {
     }
   }
 
-  const direct = String(error?.message ?? '').trim()
+  const direct = String(unsafeError?.message ?? '').trim()
   if (direct) return withStatus(direct)
 
   return withStatus('Falha desconhecida ao executar operação Owner.')
 }
 
-export async function callOwnerAdmin<T = unknown>(payload: Record<string, unknown>) {
+export async function callOwnerAdmin<T = unknown>(payload: OwnerActionPayload) {
+  if (!isOwnerActionPayload(payload)) {
+    throw new Error('Payload owner inválido: action obrigatória.')
+  }
+
   const { data: sessionResult } = await supabase.auth.getSession()
   const token = sessionResult?.session?.access_token
 
@@ -219,6 +256,10 @@ export async function callOwnerAdmin<T = unknown>(payload: Record<string, unknow
   if (error) {
     const message = await parseErrorMessage(error)
     throw new Error(message)
+  }
+
+  if (isOwnerErrorResponse(data)) {
+    throw new Error(data.error)
   }
 
   return data as T

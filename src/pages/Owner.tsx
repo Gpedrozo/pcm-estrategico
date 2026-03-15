@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Loader2, ShieldCheck } from 'lucide-react'
 import { Bar, BarChart, CartesianGrid, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import { useAuth } from '@/contexts/AuthContext'
@@ -19,7 +19,13 @@ import {
   useOwnerUsers,
 } from '@/hooks/useOwnerPortal'
 
-const OWNER_MASTER_EMAIL = (import.meta.env.VITE_OWNER_MASTER_EMAIL || 'pedrozo@gppis.com.br').toLowerCase()
+const getOwnerMasterEmail = () => {
+  const configured = String(import.meta.env.VITE_OWNER_MASTER_EMAIL ?? process.env.OWNER_MASTER_EMAIL ?? '').trim().toLowerCase()
+  if (!configured) {
+    throw new Error('OWNER_MASTER_EMAIL not configured')
+  }
+  return configured
+}
 const TENANT_BASE_DOMAIN = (import.meta.env.VITE_TENANT_BASE_DOMAIN || 'gppis.com.br').toLowerCase()
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
@@ -75,6 +81,9 @@ function Metric({ label, value }: { label: string; value: string | number }) {
 export default function Owner() {
   const { isSystemOwner, isLoading, user } = useAuth()
   const [active, setActive] = useState<OwnerTab>('dashboard')
+  const [isDocumentVisible, setIsDocumentVisible] = useState(() =>
+    typeof document === 'undefined' ? true : document.visibilityState !== 'hidden',
+  )
   const [feedback, setFeedback] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [companyCredentialNote, setCompanyCredentialNote] = useState<CompanyCredentialNote | null>(null)
@@ -83,7 +92,8 @@ export default function Owner() {
   const [selectedTenantTables, setSelectedTenantTables] = useState<string[]>([])
   const [auditFilters, setAuditFilters] = useState({ empresa_id: '', user_id: '', module: '', from: '', to: '', action_type: '', severity: '' })
 
-  const isOwnerMaster = (user?.email || '').toLowerCase() === OWNER_MASTER_EMAIL
+  const ownerMasterEmail = getOwnerMasterEmail()
+  const isOwnerMaster = (user?.email || '').toLowerCase() === ownerMasterEmail
 
   const { data: statsData } = useOwnerStats()
   const { data: backendHealth, error: backendHealthError } = useOwnerBackendHealth()
@@ -101,17 +111,33 @@ export default function Owner() {
   })
   const { data: supportData, isLoading: isLoadingSupport } = useOwnerSupportTickets()
   const { data: ownersData, isLoading: isLoadingOwners } = useOwnerMasterOwners()
-  const monitoringLive = active === 'monitoramento'
-  const tablesLive = active === 'monitoramento' || active === 'sistema'
+  const monitoringLive = active === 'monitoramento' && isDocumentVisible
+  const adminTablesLive = active === 'sistema' && isDocumentVisible
+  const tablesLive = monitoringLive || adminTablesLive
+  const tablesRefetchInterval = monitoringLive ? 5000 : adminTablesLive ? 10000 : false
   const {
     data: tablesData,
     isLoading: isLoadingTables,
     isFetching: isFetchingTables,
     error: tablesError,
     dataUpdatedAt: tablesUpdatedAt,
-  } = useOwnerDatabaseTables(tablesLive, monitoringLive ? 250 : false, systemForm.empresa_id || null)
+  } = useOwnerDatabaseTables(tablesLive, tablesRefetchInterval, systemForm.empresa_id || null)
   const tablesErrorMessage = String((tablesError as any)?.message ?? '')
   const tablesUnsupported = /unsupported action|missing action/i.test(tablesErrorMessage)
+
+  useEffect(() => {
+    if (typeof document === 'undefined') return
+
+    const syncVisibility = () => {
+      setIsDocumentVisible(document.visibilityState !== 'hidden')
+    }
+
+    syncVisibility()
+    document.addEventListener('visibilitychange', syncVisibility)
+    return () => {
+      document.removeEventListener('visibilitychange', syncVisibility)
+    }
+  }, [])
 
   const companies = useMemo(
     () => toArray<{ id: string; nome?: string; slug?: string; status?: string }>((companiesData as any)?.companies),
@@ -357,8 +383,8 @@ export default function Owner() {
         return
       }
 
-      if (normalized.includes('forbidden: owner master only') || normalized.includes('owner master only')) {
-        setError('Operacao restrita ao owner master (pedrozo@gppis.com.br).')
+      if (normalized.includes('forbidden') || normalized.includes('owner master only')) {
+        setError('Operacao restrita ao owner master.')
         return
       }
 
@@ -398,8 +424,8 @@ export default function Owner() {
         return
       }
 
-      if (normalized.includes('forbidden: owner master only') || normalized.includes('owner master only')) {
-        setError('Operacao restrita ao owner master (pedrozo@gppis.com.br).')
+      if (normalized.includes('forbidden') || normalized.includes('owner master only')) {
+        setError('Operacao restrita ao owner master.')
         return
       }
 
@@ -410,7 +436,7 @@ export default function Owner() {
   const runOwnerMasterAction = async (fn: () => Promise<unknown>, success: string) => {
     if (!isOwnerMaster) {
       setFeedback(null)
-      setError('Operacao restrita ao owner master (pedrozo@gppis.com.br).')
+      setError('Operacao restrita ao owner master.')
       return
     }
 
@@ -536,6 +562,7 @@ export default function Owner() {
       }}
       backendHealthy={backendCompatibility.healthy}
       backendStatusMessage={backendCompatibility.message}
+      pollingPaused={!isDocumentVisible && (active === 'monitoramento' || active === 'sistema')}
     >
       {active === 'dashboard' && (
         <div className="space-y-4">
@@ -1363,7 +1390,7 @@ export default function Owner() {
             </div>
 
             {!isOwnerMaster && (
-              <p className="mt-3 text-xs text-rose-300">Acoes destrutivas liberadas somente para pedrozo@gppis.com.br (owner master).</p>
+              <p className="mt-3 text-xs text-rose-300">Acoes destrutivas liberadas somente para owner master.</p>
             )}
 
             {tablesUnsupported && (

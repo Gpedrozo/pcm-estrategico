@@ -156,13 +156,21 @@ export function useOwnerMasterOwners() {
 }
 
 export function useOwnerDatabaseTables(enabled = true, refetchInterval: number | false = false, empresaId?: string | null) {
+  const computeRefetchInterval = () => {
+    if (refetchInterval === false) return false
+    if (typeof document !== 'undefined' && document.visibilityState === 'hidden') {
+      return false
+    }
+    return refetchInterval
+  }
+
   return useQuery({
     queryKey: [...ownerQueryKeys.databaseTables, empresaId ?? null],
     queryFn: () => listDatabaseTables(empresaId ?? null),
     enabled,
     staleTime: 10_000,
-    refetchInterval,
-    refetchIntervalInBackground: true,
+    refetchInterval: computeRefetchInterval,
+    refetchIntervalInBackground: false,
   })
 }
 

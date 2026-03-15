@@ -1,7 +1,7 @@
 // @ts-nocheck
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { adminClient, isSystemOperator, requireUser } from "../_shared/auth.ts";
-import { fail, ok, preflight, rejectIfOriginNotAllowed } from "../_shared/response.ts";
+import { fail, ok, preflight, rejectIfOriginNotAllowed, resolveCorsHeaders } from "../_shared/response.ts";
 import { enforceRateLimit } from "../_shared/rateLimit.ts";
 import { createRequestTrace, traceDurationMs, writeOperationalLog } from "../_shared/observability.ts";
 import { failRateLimited, logAuditEvent } from "../_shared/audit.ts";
@@ -142,6 +142,68 @@ type Payload = {
   keep_billing_data?: boolean;
   include_auth_users?: boolean;
 };
+
+type OwnerActionPayload = Payload;
+
+type OwnerApiResponse<T extends Record<string, unknown> = Record<string, unknown>> = {
+  success: true;
+  operation_id?: string;
+} & T;
+
+type OwnerErrorResponse = {
+  success: false;
+  error: string;
+  trace_id?: string;
+};
+
+type CleanupCompanyRowsResult = {
+  deletedByTable: Record<string, number>;
+  userIds: string[];
+  tableErrors: Array<{ table_name: string; error: string }>;
+  error?: string;
+};
+
+function isOwnerActionPayload(value: unknown): value is OwnerActionPayload {
+  if (!value || typeof value !== "object") return false;
+  const action = (value as Record<string, unknown>).action;
+  return typeof action === "string" && action.length > 0;
+}
+
+function okWithOperation<T extends Record<string, unknown>>(
+  req: Request,
+  payload: T,
+  operationId?: string,
+) {
+  const body: OwnerApiResponse<T> = {
+    success: true,
+    ...payload,
+  };
+  if (operationId) body.operation_id = operationId;
+  return ok(body, 200, req);
+}
+
+function forbiddenResponse(req: Request, traceId?: string) {
+  const body: OwnerErrorResponse = {
+    success: false,
+    error: "Forbidden",
+    trace_id: traceId,
+  };
+
+  return new Response(JSON.stringify(body), {
+    status: 403,
+    headers: { ...resolveCorsHeaders(req), "Content-Type": "application/json" },
+  });
+}
+
+function internalServerErrorResponse(req: Request) {
+  return new Response(JSON.stringify({
+    success: false,
+    error: "Internal server error",
+  }), {
+    status: 500,
+    headers: { ...resolveCorsHeaders(req), "Content-Type": "application/json" },
+  });
+}
 
 const SUPPORTED_OWNER_ACTIONS: Payload["action"][] = [
   "health_check",
@@ -403,7 +465,13 @@ async function logPlatformAudit(
   });
 }
 
-const OWNER_MASTER_EMAIL = (Deno.env.get("OWNER_MASTER_EMAIL") ?? "pedrozo@gppis.com.br").toLowerCase();
+const OWNER_MASTER_EMAIL = (() => {
+  const configured = (Deno.env.get("OWNER_MASTER_EMAIL") ?? "").trim().toLowerCase();
+  if (!configured) {
+    throw new Error("OWNER_MASTER_EMAIL not configured");
+  }
+  return configured;
+})();
 
 function isOwnerMasterEmail(email?: string | null) {
   return (email ?? "").toLowerCase() === OWNER_MASTER_EMAIL;
@@ -570,6 +638,14 @@ function extractReferencedTableFromFkError(message?: string | null) {
   return null;
 }
 
+function isForeignKeyError(error: unknown) {
+  if (!error || typeof error !== "object") return false;
+  const candidate = error as { code?: unknown; message?: unknown };
+  const code = String(candidate.code ?? "");
+  const message = String(candidate.message ?? "").toLowerCase();
+  return code === "23503" || message.includes("foreign key");
+}
+
 async function listDatabaseTables(admin: ReturnType<typeof adminClient>, empresaId?: string | null) {
   const rows: Array<{ table_name: string; total_rows: number; has_empresa_id: boolean }> = [];
 
@@ -634,7 +710,7 @@ async function cleanupCompanyTenantRows(
     keepCompanyCore: boolean;
     keepBillingData: boolean;
   },
-) {
+): Promise<CleanupCompanyRowsResult> {
   const allTables = await listDatabaseTables(admin);
   const tenantTables = allTables
     .filter((table) => table.has_empresa_id)
@@ -646,6 +722,7 @@ async function cleanupCompanyTenantRows(
     });
 
   const deletedByTable: Record<string, number> = {};
+  const tableErrors: Array<{ table_name: string; error: string }> = [];
 
   // Repeating passes reduces FK ordering sensitivity because dependent rows are removed first.
   for (let pass = 0; pass < 12; pass += 1) {
@@ -659,16 +736,15 @@ async function cleanupCompanyTenantRows(
         .eq("empresa_id", empresaId);
 
       if (error) {
-        const isFkOrderingError =
-          (error as any)?.code === "23503" ||
-          String((error as any)?.message ?? "").toLowerCase().includes("foreign key");
+        const isFkOrderingError = isForeignKeyError(error);
 
         if (isFkOrderingError) {
           pendingFkTables.add(tableName);
           continue;
         }
 
-        return { error: `Falha ao limpar tabela ${tableName}: ${error.message}` };
+        tableErrors.push({ table_name: tableName, error: String(error.message ?? "delete_failed") });
+        continue;
       }
 
       const removed = Number(count ?? 0);
@@ -680,9 +756,9 @@ async function cleanupCompanyTenantRows(
 
     if (passDeleted === 0) {
       if (pendingFkTables.size > 0) {
-        return {
-          error: `Falha ao limpar dependências de FK por empresa_id. Tabelas pendentes: ${Array.from(pendingFkTables).join(", ")}`,
-        };
+        for (const tableName of Array.from(pendingFkTables)) {
+          tableErrors.push({ table_name: tableName, error: "foreign_key_dependency" });
+        }
       }
       break;
     }
@@ -693,13 +769,23 @@ async function cleanupCompanyTenantRows(
   if (userIds.length > 0) {
     const roleDelete = await admin.from("user_roles").delete({ count: "exact" }).in("user_id", userIds);
     if (roleDelete.error) {
-      return { error: `Falha ao limpar perfis de acesso da empresa: ${roleDelete.error.message}` };
+      return {
+        deletedByTable,
+        userIds,
+        tableErrors,
+        error: `Falha ao limpar perfis de acesso da empresa: ${roleDelete.error.message}`,
+      };
     }
     deletedByTable.user_roles = (deletedByTable.user_roles ?? 0) + Number(roleDelete.count ?? 0);
 
     const profileDelete = await admin.from("profiles").delete({ count: "exact" }).in("id", userIds);
     if (profileDelete.error) {
-      return { error: `Falha ao limpar usuários da empresa: ${profileDelete.error.message}` };
+      return {
+        deletedByTable,
+        userIds,
+        tableErrors,
+        error: `Falha ao limpar usuários da empresa: ${profileDelete.error.message}`,
+      };
     }
     deletedByTable.profiles = (deletedByTable.profiles ?? 0) + Number(profileDelete.count ?? 0);
   }
@@ -707,6 +793,7 @@ async function cleanupCompanyTenantRows(
   return {
     deletedByTable,
     userIds,
+    tableErrors,
   };
 }
 
@@ -737,8 +824,9 @@ Deno.serve(async (req) => {
   const isSystem = await isSystemOperator(admin, auth.user.id);
   if (!isSystem) return fail("Forbidden", 403, null, req);
 
-  const body = (await req.json().catch(() => null)) as Payload | null;
-  if (!body?.action) return fail("Missing action", 400, null, req);
+  const rawBody = await req.json().catch(() => null);
+  if (!isOwnerActionPayload(rawBody)) return fail("Missing action", 400, null, req);
+  const body = rawBody;
 
   if (body.action === "health_check") {
     return ok({
@@ -788,12 +876,17 @@ Deno.serve(async (req) => {
   ]);
 
   if (ownerMasterOnlyActions.has(body.action) && !isOwnerMaster) {
-    return fail(
-      `Forbidden: owner master only. Required email: ${OWNER_MASTER_EMAIL}. Current user: ${auth.user.email ?? "unknown"}`,
-      403,
-      null,
-      req,
-    );
+    console.error(JSON.stringify({
+      level: "warn",
+      source: "owner-portal-admin",
+      event: "owner_master_forbidden",
+      expected_email: OWNER_MASTER_EMAIL,
+      received_email: auth.user.email ?? null,
+      trace_id: trace.requestId,
+      action: body.action,
+      timestamp: new Date().toISOString(),
+    }));
+    return forbiddenResponse(req, trace.requestId);
   }
 
   if (!isOwnerMaster && body.action !== "list_audit_logs") {
@@ -1957,6 +2050,7 @@ Deno.serve(async (req) => {
 
     const now = new Date();
     const expiresAt = new Date(now.getTime() + (60 * 60 * 1000));
+    const operationId = crypto.randomUUID();
 
     await logPlatformAudit(admin, {
       actorId: auth.user.id,
@@ -1969,10 +2063,11 @@ Deno.serve(async (req) => {
         company_status: company.status ?? null,
         issued_at: now.toISOString(),
         expires_at: expiresAt.toISOString(),
+        operation_id: operationId,
       },
     });
 
-    return ok({
+    return okWithOperation(req, {
       success: true,
       impersonation: {
         empresa_id: company.id,
@@ -1981,7 +2076,7 @@ Deno.serve(async (req) => {
         issued_at: now.toISOString(),
         expires_at: expiresAt.toISOString(),
       },
-    }, 200, req);
+    }, operationId);
   }
 
   if (body.action === "stop_impersonation") {
@@ -2154,6 +2249,7 @@ Deno.serve(async (req) => {
 
   if (body.action === "cleanup_company_data") {
     if (!body.empresa_id) return fail("empresa_id is required", 400, null, req);
+    const operationId = crypto.randomUUID();
 
     const passwordOk = await verifyActorPassword({
       email: auth.user.email,
@@ -2174,19 +2270,24 @@ Deno.serve(async (req) => {
       keepBillingData,
     });
 
-    if ((cleanupResult as any)?.error) {
-      return fail(String((cleanupResult as any).error), 400, null, req);
+    if (cleanupResult.error) {
+      return fail(cleanupResult.error, 400, {
+        operation_id: operationId,
+        table_errors: cleanupResult.tableErrors,
+      }, req);
     }
 
-    const deletedByTable = (cleanupResult as any).deletedByTable ?? {};
-    const userIds = ((cleanupResult as any).userIds ?? []) as string[];
+    const deletedByTable = cleanupResult.deletedByTable ?? {};
+    const userIds = cleanupResult.userIds ?? [];
+    const tableErrors = cleanupResult.tableErrors ?? [];
 
     let deletedAuthUsers = 0;
     if (includeAuthUsers && userIds.length > 0) {
       deletedAuthUsers = await deleteAuthUsers(admin, userIds);
     }
 
-    const totalDeleted = Object.values(deletedByTable).reduce((acc: number, value: any) => acc + Number(value ?? 0), 0);
+    const totalDeleted = Object.values(deletedByTable).reduce((acc: number, value) => acc + Number(value ?? 0), 0);
+    const affectedTables = Object.keys(deletedByTable);
 
     await logOwnerMasterHiddenAudit(admin, {
       actorId: auth.user.id,
@@ -2199,10 +2300,12 @@ Deno.serve(async (req) => {
         include_auth_users: includeAuthUsers,
         deleted_auth_users: deletedAuthUsers,
         deleted_by_table: deletedByTable,
+        operation_id: operationId,
+        table_errors: tableErrors,
       },
     });
 
-    return ok({
+    return okWithOperation(req, {
       success: true,
       summary: {
         empresa_id: body.empresa_id,
@@ -2212,13 +2315,20 @@ Deno.serve(async (req) => {
         deleted_auth_users: deletedAuthUsers,
         deleted_by_table: deletedByTable,
         total_deleted: totalDeleted,
+        affected_tables: affectedTables,
+        rows_deleted: totalDeleted,
+        table_errors: tableErrors,
       },
-    }, 200, req);
+      affected_tables: affectedTables,
+      rows_deleted: totalDeleted,
+      table_errors: tableErrors,
+    }, operationId);
   }
 
   if (body.action === "purge_table_data") {
     const tableName = (body.table_name ?? "").trim();
     if (!tableName) return fail("table_name is required", 400, null, req);
+    const operationId = crypto.randomUUID();
     if (!PLATFORM_TABLES.includes(tableName)) {
       return fail("Tabela não permitida para purge", 400, null, req);
     }
@@ -2265,21 +2375,29 @@ Deno.serve(async (req) => {
         table_name: tableName,
         empresa_id: body.empresa_id ?? null,
         deleted_rows: Number(count ?? 0),
+        operation_id: operationId,
       },
     });
 
-    return ok({
+    return okWithOperation(req, {
       success: true,
       summary: {
         table_name: tableName,
         empresa_id: body.empresa_id ?? null,
         deleted_rows: Number(count ?? 0),
+        affected_tables: [tableName],
+        rows_deleted: Number(count ?? 0),
+        table_errors: [],
       },
-    }, 200, req);
+      affected_tables: [tableName],
+      rows_deleted: Number(count ?? 0),
+      table_errors: [],
+    }, operationId);
   }
 
   if (body.action === "delete_company") {
     if (!body.empresa_id) return fail("empresa_id is required", 400, null, req);
+    const operationId = crypto.randomUUID();
 
     const passwordOk = await verifyActorPassword({
       email: auth.user.email,
@@ -2309,11 +2427,16 @@ Deno.serve(async (req) => {
       keepBillingData: false,
     });
 
-    if ((cleanupResult as any)?.error) {
-      return fail(String((cleanupResult as any).error), 400, null, req);
+    if (cleanupResult.error) {
+      return fail(cleanupResult.error, 400, {
+        operation_id: operationId,
+        table_errors: cleanupResult.tableErrors,
+      }, req);
     }
 
-    const userIds = ((cleanupResult as any).userIds ?? []) as string[];
+    const userIds = cleanupResult.userIds ?? [];
+    const tableErrors = cleanupResult.tableErrors ?? [];
+    const cleanupDeletedByTable = cleanupResult.deletedByTable ?? {};
     let deletedAuthUsers = 0;
     if (includeAuthUsers && userIds.length > 0) {
       deletedAuthUsers = await deleteAuthUsers(admin, userIds);
@@ -2324,7 +2447,7 @@ Deno.serve(async (req) => {
     await admin.from("contracts").delete().eq("empresa_id", body.empresa_id);
     await admin.from("subscriptions").delete().eq("empresa_id", body.empresa_id);
 
-    let lastDeleteCompanyError: any = null;
+    let lastDeleteCompanyError: { message?: string; code?: string } | null = null;
     for (let attempt = 0; attempt < 8; attempt += 1) {
       const { error: deleteCompanyError } = await admin
         .from("empresas")
@@ -2337,9 +2460,7 @@ Deno.serve(async (req) => {
       }
 
       lastDeleteCompanyError = deleteCompanyError;
-      const isFkError =
-        (deleteCompanyError as any)?.code === "23503" ||
-        String(deleteCompanyError.message ?? "").toLowerCase().includes("foreign key");
+      const isFkError = isForeignKeyError(deleteCompanyError);
 
       if (!isFkError) {
         break;
@@ -2383,6 +2504,8 @@ Deno.serve(async (req) => {
         company_name: expectedName,
         include_auth_users: includeAuthUsers,
         deleted_auth_users: deletedAuthUsers,
+        operation_id: operationId,
+        table_errors: tableErrors,
       },
     });
 
@@ -2396,6 +2519,7 @@ Deno.serve(async (req) => {
         company_name: expectedName,
         include_auth_users: includeAuthUsers,
         deleted_auth_users: deletedAuthUsers,
+        operation_id: operationId,
       },
       severity: "critical",
       source: "owner-portal-admin",
@@ -2418,14 +2542,23 @@ Deno.serve(async (req) => {
       },
     });
 
-    return ok({
+    const affectedTables = Object.keys(cleanupDeletedByTable);
+    const rowsDeleted = Object.values(cleanupDeletedByTable).reduce((acc: number, value) => acc + Number(value ?? 0), 0);
+
+    return okWithOperation(req, {
       success: true,
       summary: {
         empresa_id: body.empresa_id,
         company_name: expectedName,
         deleted_auth_users: deletedAuthUsers,
+        affected_tables: affectedTables,
+        rows_deleted: rowsDeleted,
+        table_errors: tableErrors,
       },
-    }, 200, req);
+      affected_tables: affectedTables,
+      rows_deleted: rowsDeleted,
+      table_errors: tableErrors,
+    }, operationId);
   }
 
   if (body.action === "cleanup_owner_stress_data") {
@@ -2610,6 +2743,16 @@ Deno.serve(async (req) => {
   return fail("Unsupported action", 400, null, req);
   } catch (error: any) {
     const message = error?.message ? String(error.message) : "Unhandled owner-portal-admin error";
+    const traceId = req.headers.get("x-request-id") ?? req.headers.get("x-correlation-id") ?? crypto.randomUUID();
+    console.error(JSON.stringify({
+      level: "error",
+      source: "owner-portal-admin",
+      event: "unhandled_error",
+      trace_id: traceId,
+      endpoint: new URL(req.url).pathname,
+      message,
+      timestamp: new Date().toISOString(),
+    }));
     try {
       const admin = adminClient();
       await writeOperationalLog(admin, {
@@ -2620,12 +2763,13 @@ Deno.serve(async (req) => {
         durationMs: null,
         empresaId: null,
         userId: null,
-        metadata: {},
+        metadata: { trace_id: traceId },
         errorMessage: message,
+        requestId: traceId,
       });
     } catch {
       // noop
     }
-    return fail("Falha inesperada no owner-portal-admin", 500, { reason: message }, req);
+    return internalServerErrorResponse(req);
   }
 });
