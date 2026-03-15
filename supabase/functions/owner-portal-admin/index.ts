@@ -1314,48 +1314,69 @@ Deno.serve(async (req) => {
       return fail("Falha ao vincular papel do usuário master na empresa (user_roles).", 400, { reason }, req);
     }
 
-    if (!body.subscription?.plan_id) {
-      const reason = await rollbackCreateCompany("subscription_plan_required");
-      return fail(
-        "Assinatura inicial obrigatória: informe subscription.plan_id para concluir o onboarding transacional.",
-        400,
-        { reason },
-        req,
-      );
-    }
+    let onboardingWarning: string | null = null;
+    let selectedPlanId = body.subscription?.plan_id ?? null;
 
-    const startsAt = body.subscription.starts_at ?? new Date().toISOString().slice(0, 10);
-    const { data: subscription, error: subscriptionError } = await admin
-      .from("subscriptions")
-      .upsert({
-        empresa_id: company.id,
-        plan_id: body.subscription.plan_id,
-        amount: body.subscription.amount ?? 0,
-        payment_method: body.subscription.payment_method ?? null,
-        period: body.subscription.period ?? "monthly",
-        starts_at: startsAt,
-        ends_at: body.subscription.ends_at ?? null,
-        renewal_at: body.subscription.renewal_at ?? body.subscription.ends_at ?? null,
-        status: body.subscription.status ?? "teste",
-        payment_status: body.subscription.payment_status ?? null,
-      }, { onConflict: "empresa_id" })
-      .select("*")
-      .single();
+    if (!selectedPlanId) {
+      const { data: fallbackPlan, error: fallbackPlanError } = await admin
+        .from("plans")
+        .select("id,code")
+        .eq("active", true)
+        .order("price_month", { ascending: true })
+        .limit(1)
+        .maybeSingle();
 
-    if (subscriptionError || !subscription?.id) {
-      const reason = await rollbackCreateCompany(subscriptionError?.message ?? "subscription_create_failed");
-      return fail("Falha ao criar assinatura inicial da empresa.", 400, { reason }, req);
-    }
-
-    let contract: any = null;
-    try {
-      contract = await createContractFromSubscription(admin, auth.user.id, subscription);
-      if (!contract?.id) {
-        throw new Error("contract_create_failed");
+      if (fallbackPlanError) {
+        const reason = await rollbackCreateCompany(fallbackPlanError.message ?? "fallback_plan_lookup_failed");
+        return fail("Falha ao localizar plano padrão para assinatura inicial.", 400, { reason }, req);
       }
-    } catch (error: any) {
-      const reason = await rollbackCreateCompany(error?.message ?? "contract_create_failed");
-      return fail("Falha ao gerar contrato inicial da empresa.", 400, { reason }, req);
+
+      if (fallbackPlan?.id) {
+        selectedPlanId = fallbackPlan.id;
+        onboardingWarning = `Plano inicial não informado. Assinatura criada automaticamente com plano ${fallbackPlan.code ?? fallbackPlan.id}.`;
+      } else {
+        onboardingWarning = "Empresa criada sem assinatura inicial: nenhum plano ativo encontrado para fallback automático.";
+      }
+    }
+
+    let subscription: any = null;
+    let contract: any = null;
+
+    if (selectedPlanId) {
+      const startsAt = body.subscription?.starts_at ?? new Date().toISOString().slice(0, 10);
+      const { data: createdSubscription, error: subscriptionError } = await admin
+        .from("subscriptions")
+        .upsert({
+          empresa_id: company.id,
+          plan_id: selectedPlanId,
+          amount: body.subscription?.amount ?? 0,
+          payment_method: body.subscription?.payment_method ?? null,
+          period: body.subscription?.period ?? "monthly",
+          starts_at: startsAt,
+          ends_at: body.subscription?.ends_at ?? null,
+          renewal_at: body.subscription?.renewal_at ?? body.subscription?.ends_at ?? null,
+          status: body.subscription?.status ?? "teste",
+          payment_status: body.subscription?.payment_status ?? null,
+        }, { onConflict: "empresa_id" })
+        .select("*")
+        .single();
+
+      if (subscriptionError || !createdSubscription?.id) {
+        const reason = await rollbackCreateCompany(subscriptionError?.message ?? "subscription_create_failed");
+        return fail("Falha ao criar assinatura inicial da empresa.", 400, { reason }, req);
+      }
+
+      subscription = createdSubscription;
+
+      try {
+        contract = await createContractFromSubscription(admin, auth.user.id, createdSubscription);
+        if (!contract?.id) {
+          throw new Error("contract_create_failed");
+        }
+      } catch (error: any) {
+        const reason = await rollbackCreateCompany(error?.message ?? "contract_create_failed");
+        return fail("Falha ao gerar contrato inicial da empresa.", 400, { reason }, req);
+      }
     }
 
     await logPlatformAudit(admin, {
@@ -1363,7 +1384,13 @@ Deno.serve(async (req) => {
       actorEmail: auth.user.email,
       empresaId: company.id,
       actionType: "OWNER_CREATE_COMPANY",
-      details: { company_id: company.id, master_email: body.user.email },
+      details: {
+        company_id: company.id,
+        master_email: body.user.email,
+        subscription_created: Boolean(subscription?.id),
+        contract_created: Boolean(contract?.id),
+        warning: onboardingWarning,
+      },
     });
 
     await logAuditEvent(admin, {
@@ -1375,6 +1402,9 @@ Deno.serve(async (req) => {
       payload: {
         company_slug: company.slug,
         master_email: body.user.email,
+        subscription_created: Boolean(subscription?.id),
+        contract_created: Boolean(contract?.id),
+        warning: onboardingWarning,
       },
       severity: "info",
       source: "owner-portal-admin",
@@ -1403,16 +1433,21 @@ Deno.serve(async (req) => {
         email: body.user.email,
         initial_password: password,
       },
-      subscription: {
-        id: subscription.id,
-        plan_id: subscription.plan_id,
-        status: subscription.status,
-      },
-      contract: {
-        id: contract.id,
-        status: contract.status,
-        version: contract.version,
-      },
+      subscription: subscription
+        ? {
+          id: subscription.id,
+          plan_id: subscription.plan_id,
+          status: subscription.status,
+        }
+        : null,
+      contract: contract
+        ? {
+          id: contract.id,
+          status: contract.status,
+          version: contract.version,
+        }
+        : null,
+      warning: onboardingWarning,
     }, 200, req);
   }
 
