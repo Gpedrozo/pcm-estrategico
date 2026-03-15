@@ -205,6 +205,16 @@ function internalServerErrorResponse(req: Request) {
   });
 }
 
+function badRequestResponse(req: Request, message: string, status = 400) {
+  return new Response(JSON.stringify({
+    success: false,
+    error: message,
+  }), {
+    status,
+    headers: { ...resolveCorsHeaders(req), "Content-Type": "application/json" },
+  });
+}
+
 const SUPPORTED_OWNER_ACTIONS: Payload["action"][] = [
   "health_check",
   "dashboard",
@@ -465,16 +475,16 @@ async function logPlatformAudit(
   });
 }
 
-const OWNER_MASTER_EMAIL = (() => {
+function getOwnerMasterEmail() {
   const configured = (Deno.env.get("OWNER_MASTER_EMAIL") ?? "").trim().toLowerCase();
   if (!configured) {
     throw new Error("OWNER_MASTER_EMAIL not configured");
   }
   return configured;
-})();
+}
 
-function isOwnerMasterEmail(email?: string | null) {
-  return (email ?? "").toLowerCase() === OWNER_MASTER_EMAIL;
+function isOwnerMasterEmail(email?: string | null, ownerMasterEmail?: string) {
+  return (email ?? "").toLowerCase() === (ownerMasterEmail ?? "").toLowerCase();
 }
 
 async function logOwnerMasterHiddenAudit(
@@ -815,17 +825,17 @@ Deno.serve(async (req) => {
   const originDenied = rejectIfOriginNotAllowed(req);
   if (originDenied) return originDenied;
 
-  if (req.method !== "POST") return fail("Method not allowed", 405, null, req);
+  if (req.method !== "POST") return badRequestResponse(req, "Method not allowed", 405);
 
   const auth = await requireUser(req);
-  if ("error" in auth) return fail(auth.error ?? "Unauthorized", auth.status ?? 401, null, req);
+  if ("error" in auth) return badRequestResponse(req, auth.error ?? "Unauthorized", auth.status ?? 401);
 
   const admin = adminClient();
   const isSystem = await isSystemOperator(admin, auth.user.id);
-  if (!isSystem) return fail("Forbidden", 403, null, req);
+  if (!isSystem) return forbiddenResponse(req);
 
   const rawBody = await req.json().catch(() => null);
-  if (!isOwnerActionPayload(rawBody)) return fail("Missing action", 400, null, req);
+  if (!isOwnerActionPayload(rawBody)) return badRequestResponse(req, "Missing action", 400);
   const body = rawBody;
 
   if (body.action === "health_check") {
@@ -864,7 +874,15 @@ Deno.serve(async (req) => {
     return failRateLimited(req, "Muitas requisições no owner-portal-admin");
   }
 
-  const isOwnerMaster = isOwnerMasterEmail(auth.user.email ?? null);
+  let ownerMasterEmail = "";
+  try {
+    ownerMasterEmail = getOwnerMasterEmail();
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "OWNER_MASTER_EMAIL not configured";
+    return badRequestResponse(req, message, 500);
+  }
+
+  const isOwnerMaster = isOwnerMasterEmail(auth.user.email ?? null, ownerMasterEmail);
   const ownerMasterOnlyActions = new Set<Payload["action"]>([
     "list_platform_owners",
     "create_platform_owner",
@@ -880,7 +898,7 @@ Deno.serve(async (req) => {
       level: "warn",
       source: "owner-portal-admin",
       event: "owner_master_forbidden",
-      expected_email: OWNER_MASTER_EMAIL,
+      expected_email: ownerMasterEmail,
       received_email: auth.user.email ?? null,
       trace_id: trace.requestId,
       action: body.action,

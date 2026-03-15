@@ -2,6 +2,7 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { proxyOwnerAction } from "../_shared/ownerActionProxy.ts";
 
 const ALLOWED_ACTIONS = [
+  "health_check",
   "list_audit_logs",
   "list_support_tickets",
   "respond_support_ticket",
