@@ -1,0 +1,27 @@
+{
+  "startedAt": "2026-03-15T21:47:35.955Z",
+  "baseUrl": "https://owner.gppis.com.br",
+  "runs": 1,
+  "successRuns": 0,
+  "failedRuns": 0,
+  "failures": [],
+  "events": [
+    {
+      "at": "2026-03-15T21:47:40.052Z",
+      "type": "login_typed",
+      "details": {
+        "emailLength": 20,
+        "passwordLength": 10
+      }
+    },
+    {
+      "at": "2026-03-15T21:48:40.132Z",
+      "type": "login_still_visible",
+      "details": {
+        "pageUrl": "https://owner.gppis.com.br/login",
+        "errText": "formulario de login permaneceu aberto sem entrar no Owner"
+      }
+    }
+  ],
+  "finishedAt": "2026-03-15T21:48:40.132Z"
+}

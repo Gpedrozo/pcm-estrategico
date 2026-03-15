@@ -1,0 +1,43 @@
+{
+  "startedAt": "2026-03-15T21:46:08.767Z",
+  "baseUrl": "https://owner.gppis.com.br",
+  "runs": 1,
+  "successRuns": 0,
+  "failedRuns": 0,
+  "failures": [],
+  "events": [
+    {
+      "at": "2026-03-15T21:46:15.869Z",
+      "type": "login_typed",
+      "details": {
+        "emailLength": 20,
+        "passwordLength": 10
+      }
+    },
+    {
+      "at": "2026-03-15T21:46:45.967Z",
+      "type": "login_still_visible",
+      "details": {
+        "pageUrl": "https://owner.gppis.com.br/login",
+        "errText": "HTTP 500: OWNER_MASTER_EMAIL not configured"
+      }
+    },
+    {
+      "at": "2026-03-15T21:46:45.967Z",
+      "type": "auto_repair_attempt",
+      "details": {
+        "loginMessage": "Falha de login no Owner Portal: HTTP 500: OWNER_MASTER_EMAIL not configured"
+      }
+    },
+    {
+      "at": "2026-03-15T21:46:46.107Z",
+      "type": "auto_repair_result",
+      "details": {
+        "status": 1,
+        "stdout": "",
+        "stderr": "file:///C:/Users/Gustavo%20Pedrozo%20Pint/Desktop/pcm-estrategico/scripts/repair-and-verify-owner-login.mjs:33\r\n  throw new Error('Missing SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY or VITE_SUPABASE_PUBLISHABLE_KEY')\r\n        ^\r\n\r\nError: Missing SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY or VITE_SUPABASE_PUBLISHABLE_KEY\r\n    at file:///C:/Users/Gustavo%20Pedrozo%20Pint/Desktop/pcm-estrategico/scripts/repair-and-verify-owner-login.mjs:33:9\r\n    at ModuleJob.run (node:internal/modules/esm/module_job:430:25)\r\n    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:655:26)\r\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:101:5)\r\n\r\nNode.js v25.6.0\r\n"
+      }
+    }
+  ],
+  "finishedAt": "2026-03-15T21:46:46.107Z"
+}

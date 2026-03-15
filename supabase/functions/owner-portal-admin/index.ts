@@ -558,14 +558,12 @@ async function logPlatformAudit(
 
 function getOwnerMasterEmail() {
   const configured = (Deno.env.get("OWNER_MASTER_EMAIL") ?? "").trim().toLowerCase();
-  if (!configured) {
-    throw new Error("OWNER_MASTER_EMAIL not configured");
-  }
-  return configured;
+  return configured || null;
 }
 
 function isOwnerMasterEmail(email?: string | null, ownerMasterEmail?: string) {
-  return (email ?? "").toLowerCase() === (ownerMasterEmail ?? "").toLowerCase();
+  if (!ownerMasterEmail) return false;
+  return (email ?? "").toLowerCase() === ownerMasterEmail.toLowerCase();
 }
 
 async function logOwnerMasterHiddenAudit(
@@ -958,13 +956,7 @@ Deno.serve(async (req) => {
     }
   }
 
-  let ownerMasterEmail = "";
-  try {
-    ownerMasterEmail = getOwnerMasterEmail();
-  } catch (error) {
-    const message = error instanceof Error ? error.message : "OWNER_MASTER_EMAIL not configured";
-    return badRequestResponse(req, message, 500);
-  }
+  const ownerMasterEmail = getOwnerMasterEmail();
 
   const isOwnerMaster = isOwnerMasterEmail(auth.user.email ?? null, ownerMasterEmail);
   const ownerMasterOnlyActions = new Set<Payload["action"]>([
@@ -1146,15 +1138,28 @@ Deno.serve(async (req) => {
 
       const companyId = company.id;
 
-      await admin.from("contract_versions").delete().eq("empresa_id", companyId).catch(() => null);
-      await admin.from("contracts").delete().eq("empresa_id", companyId).catch(() => null);
-      await admin.from("subscriptions").delete().eq("empresa_id", companyId).catch(() => null);
-      await admin.from("user_roles").delete().eq("empresa_id", companyId).catch(() => null);
-      await admin.from("profiles").delete().eq("empresa_id", companyId).catch(() => null);
-      await admin.from("empresa_config").delete().eq("empresa_id", companyId).catch(() => null);
-      await admin.from("configuracoes_sistema").delete().eq("empresa_id", companyId).catch(() => null);
-      await admin.from("dados_empresa").delete().eq("empresa_id", companyId).catch(() => null);
-      await admin.from("empresas").delete().eq("id", companyId).catch(() => null);
+      const safeDeleteByEmpresa = async (tableName: string) => {
+        try {
+          await admin.from(tableName).delete().eq("empresa_id", companyId);
+        } catch {
+          // noop: rollback deve tentar o máximo possível sem interromper o fluxo principal.
+        }
+      };
+
+      await safeDeleteByEmpresa("contract_versions");
+      await safeDeleteByEmpresa("contracts");
+      await safeDeleteByEmpresa("subscriptions");
+      await safeDeleteByEmpresa("user_roles");
+      await safeDeleteByEmpresa("profiles");
+      await safeDeleteByEmpresa("empresa_config");
+      await safeDeleteByEmpresa("configuracoes_sistema");
+      await safeDeleteByEmpresa("dados_empresa");
+
+      try {
+        await admin.from("empresas").delete().eq("id", companyId);
+      } catch {
+        // noop
+      }
 
       return reason;
     };
@@ -1268,13 +1273,11 @@ Deno.serve(async (req) => {
         empresa_slug: slug,
         role: masterRole,
         roles: [masterRole],
-        force_password_change: true,
       },
       user_metadata: {
         nome: body.user.nome,
         empresa_id: company.id,
         empresa_slug: slug,
-        force_password_change: true,
       },
     });
 
@@ -1295,7 +1298,6 @@ Deno.serve(async (req) => {
       empresa_id: company.id,
       nome: body.user.nome,
       email: body.user.email.trim().toLowerCase(),
-      force_password_change: true,
     }, { onConflict: "id" });
 
     if (profileUpsertError) {
@@ -1668,13 +1670,11 @@ Deno.serve(async (req) => {
         empresa_slug: targetCompany.slug ?? null,
         role: normalizedRole,
         roles: [normalizedRole],
-        force_password_change: true,
       },
       user_metadata: {
         nome: body.user.nome,
         empresa_id: body.user.empresa_id,
         empresa_slug: targetCompany.slug ?? null,
-        force_password_change: true,
       },
     });
 
@@ -1685,7 +1685,6 @@ Deno.serve(async (req) => {
       empresa_id: body.user.empresa_id,
       nome: body.user.nome,
       email: normalizedUserEmail,
-      force_password_change: true,
     }, { onConflict: "id" });
 
     if (profileError) {
