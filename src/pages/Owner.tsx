@@ -21,10 +21,7 @@ import {
 
 const getOwnerMasterEmail = () => {
   const configured = String(import.meta.env.VITE_OWNER_MASTER_EMAIL ?? process.env.OWNER_MASTER_EMAIL ?? '').trim().toLowerCase()
-  if (!configured) {
-    throw new Error('OWNER_MASTER_EMAIL not configured')
-  }
-  return configured
+  return configured || null
 }
 const TENANT_BASE_DOMAIN = (import.meta.env.VITE_TENANT_BASE_DOMAIN || 'gppis.com.br').toLowerCase()
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
@@ -93,7 +90,7 @@ export default function Owner() {
   const [auditFilters, setAuditFilters] = useState({ empresa_id: '', user_id: '', module: '', from: '', to: '', action_type: '', severity: '' })
 
   const ownerMasterEmail = getOwnerMasterEmail()
-  const isOwnerMaster = (user?.email || '').toLowerCase() === ownerMasterEmail
+  const isOwnerMaster = !!ownerMasterEmail && (user?.email || '').toLowerCase() === ownerMasterEmail
 
   const { data: statsData } = useOwnerStats()
   const { data: backendHealth, error: backendHealthError } = useOwnerBackendHealth()
