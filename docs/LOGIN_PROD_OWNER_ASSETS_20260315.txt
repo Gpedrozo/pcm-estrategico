@@ -1,0 +1,5 @@
+SITE=owner.gppis.com.br
+ASSET=/assets/index-CYFSprME.js
+HAS_SUPABASE_URL=True
+HAS_AUTH_LOGIN=True
+JWT_REF=
