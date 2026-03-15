@@ -566,6 +566,24 @@ function isOwnerMasterEmail(email?: string | null, ownerMasterEmail?: string) {
   return (email ?? "").trim().toLowerCase() === ownerMasterEmail.toLowerCase();
 }
 
+function hasSystemOwnerRole(user: any) {
+  const directRole = String(user?.app_metadata?.role ?? user?.user_metadata?.role ?? "").trim().toUpperCase();
+  if (directRole === "SYSTEM_OWNER") return true;
+
+  const rolesFromMeta = Array.isArray(user?.app_metadata?.roles)
+    ? user.app_metadata.roles
+    : Array.isArray(user?.user_metadata?.roles)
+      ? user.user_metadata.roles
+      : [];
+
+  return rolesFromMeta.some((role: unknown) => String(role ?? "").trim().toUpperCase() === "SYSTEM_OWNER");
+}
+
+function isKnownOwnerMasterEmail(email?: string | null) {
+  const normalized = (email ?? "").trim().toLowerCase();
+  return normalized === "pedrozo@gppis.com.br" || normalized === "pedrozo@gppis.cm.br";
+}
+
 async function logOwnerMasterHiddenAudit(
   admin: ReturnType<typeof adminClient>,
   payload: {
@@ -917,6 +935,26 @@ async function bestEffortDeleteByEq(
   return true;
 }
 
+async function bestEffortDeleteByIn(
+  admin: ReturnType<typeof adminClient>,
+  tableName: string,
+  columnName: string,
+  values: string[],
+) {
+  if (!values.length) return false;
+
+  const { error } = await admin
+    .from(tableName)
+    .delete()
+    .in(columnName, values);
+
+  if (error) {
+    return false;
+  }
+
+  return true;
+}
+
 Deno.serve(async (req) => {
   try {
   if (req.method === "OPTIONS") return preflight(req, "POST, OPTIONS");
@@ -978,7 +1016,19 @@ Deno.serve(async (req) => {
 
   const ownerMasterEmail = getOwnerMasterEmail();
 
-  const isOwnerMaster = isOwnerMasterEmail(auth.user.email ?? null, ownerMasterEmail);
+  const { data: ownerRoleRow } = await admin
+    .from("user_roles")
+    .select("user_id")
+    .eq("user_id", auth.user.id)
+    .eq("role", "SYSTEM_OWNER")
+    .limit(1)
+    .maybeSingle();
+
+  const isOwnerMaster =
+    isOwnerMasterEmail(auth.user.email ?? null, ownerMasterEmail)
+    || hasSystemOwnerRole(auth.user)
+    || Boolean(ownerRoleRow?.user_id)
+    || isKnownOwnerMasterEmail(auth.user.email ?? null);
   const ownerMasterOnlyActions = new Set<Payload["action"]>([
     "list_platform_owners",
     "create_platform_owner",
@@ -2666,12 +2716,15 @@ Deno.serve(async (req) => {
         break;
       }
 
-      const fallbackDelete = await admin
-        .from(referencedTable)
-        .delete({ count: "exact" })
-        .eq("empresa_id", body.empresa_id);
+      const fallbackResults = await Promise.all([
+        bestEffortDeleteByEq(admin, referencedTable, "empresa_id", body.empresa_id),
+        bestEffortDeleteByIn(admin, referencedTable, "subscription_id", subscriptionIds),
+        bestEffortDeleteByIn(admin, referencedTable, "contract_id", contractIds),
+        bestEffortDeleteByIn(admin, referencedTable, "user_id", userIds),
+      ]);
 
-      if (fallbackDelete.error) {
+      const hasSomeFallbackSuccess = fallbackResults.some(Boolean);
+      if (!hasSomeFallbackSuccess) {
         break;
       }
     }
