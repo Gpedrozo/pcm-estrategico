@@ -39,7 +39,7 @@ export interface AuthContextType {
   login: (email: string, password: string) => Promise<{ error: string | null }>;
   changePassword: (newPassword: string) => Promise<{ error: string | null }>;
   signup: (email: string, password: string, nome: string) => Promise<{ error: string | null }>;
-  logout: () => Promise<void>;
+  logout: (options?: { reason?: LogoutReason }) => Promise<void>;
   isAdmin: boolean;
   isMasterTI: boolean;
   isSystemOwner: boolean;
@@ -56,6 +56,10 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 const IMPERSONATION_STORAGE_KEY = 'pcm.owner.impersonation.session';
 const TENANT_BASE_DOMAIN = (import.meta.env.VITE_TENANT_BASE_DOMAIN || 'gppis.com.br').toLowerCase();
 const LOGOUT_MARKER_PARAM = 'logout';
+const LOGOUT_REASON_PARAM = 'reason';
+const TAB_CLOSE_MARKER_STORAGE_KEY = 'pcm.auth.window_closed.v1';
+const TAB_CLOSE_MARKER_MAX_AGE_MS = 12 * 60 * 60 * 1000;
+const DEFAULT_INACTIVITY_TIMEOUT_MS = 10 * 60 * 1000;
 const SESSION_TRANSFER_MAX_AGE_MS = 2 * 60 * 1000;
 const LOGIN_PROFILE_TIMEOUT_MS = 12_000;
 const TENANT_HOST_RESOLVE_TIMEOUT_MS = 6_000;
@@ -68,6 +72,8 @@ type LoginRateLimitEntry = {
   attempts: number[];
   blockedUntil: number;
 };
+
+type LogoutReason = 'manual' | 'inactivity' | 'window_closed' | 'security';
 
 function normalizeLoginRateLimitKey(email: string) {
   return email.trim().toLowerCase();
@@ -184,6 +190,37 @@ function stripAuthHandoffFromUrl() {
   window.history.replaceState({}, document.title, cleanedUrl);
 }
 
+function getNavigationType(): string | null {
+  try {
+    const entry = window.performance.getEntriesByType('navigation')[0] as PerformanceNavigationTiming | undefined;
+    return entry?.type ?? null;
+  } catch {
+    return null;
+  }
+}
+
+function shouldForceLogoutByClosedWindowMarker() {
+  try {
+    const navigationType = getNavigationType();
+    if (navigationType === 'reload' || navigationType === 'back_forward') {
+      return false;
+    }
+
+    const raw = window.localStorage.getItem(TAB_CLOSE_MARKER_STORAGE_KEY);
+    if (!raw) return false;
+
+    window.localStorage.removeItem(TAB_CLOSE_MARKER_STORAGE_KEY);
+
+    const parsed = JSON.parse(raw) as { at?: number };
+    const markerAt = Number(parsed?.at ?? 0);
+    if (!Number.isFinite(markerAt) || markerAt <= 0) return false;
+
+    return (Date.now() - markerAt) <= TAB_CLOSE_MARKER_MAX_AGE_MS;
+  } catch {
+    return false;
+  }
+}
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [session, setSession] = useState<Session | null>(null);
@@ -192,6 +229,53 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [inactivityTimeoutMs, setInactivityTimeoutMs] = useState<number | null>(null);
   const lastActivityAtRef = useRef<number>(Date.now());
   const isAutoLogoutRunningRef = useRef(false);
+  const isIntentionalLogoutNavigationRef = useRef(false);
+
+  useEffect(() => {
+    if (!shouldForceLogoutByClosedWindowMarker()) return;
+
+    const forceLogoutAfterClosedWindow = async () => {
+      await supabase.auth.signOut({ scope: 'local' });
+      await supabase.auth.signOut();
+
+      const queryParams = new URLSearchParams(window.location.search);
+      queryParams.set(LOGOUT_MARKER_PARAM, '1');
+      queryParams.set(LOGOUT_REASON_PARAM, 'window_closed');
+      const nextQuery = queryParams.toString();
+
+      if (window.location.pathname === '/login') {
+        const nextUrl = `${window.location.pathname}${nextQuery ? `?${nextQuery}` : ''}${window.location.hash}`;
+        window.history.replaceState({}, document.title, nextUrl);
+        return;
+      }
+
+      window.location.assign(`/login?${nextQuery}`);
+    };
+
+    void forceLogoutAfterClosedWindow();
+  }, []);
+
+  useEffect(() => {
+    const markWindowClosed = () => {
+      if (isIntentionalLogoutNavigationRef.current) return;
+      if (!session || !user) return;
+
+      try {
+        window.localStorage.setItem(
+          TAB_CLOSE_MARKER_STORAGE_KEY,
+          JSON.stringify({ at: Date.now() }),
+        );
+      } catch {
+        // noop
+      }
+    };
+
+    window.addEventListener('pagehide', markWindowClosed);
+
+    return () => {
+      window.removeEventListener('pagehide', markWindowClosed);
+    };
+  }, [session, user]);
 
   const buildSessionTransferHash = useCallback((sessionData: Session | null) => {
     if (!sessionData?.access_token || !sessionData?.refresh_token) return null;
@@ -1099,7 +1183,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return { error: null };
   }, [validateTenantDomainAccess]);
 
-  const logout = useCallback(async () => {
+  const logout = useCallback(async (options?: { reason?: LogoutReason }) => {
+    const reason = options?.reason ?? 'manual';
     try {
       if (user) {
         await writeAuditLog({
@@ -1140,10 +1225,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         && !isTenantBaseDomain(currentHost)
         && currentHost.endsWith(`.${TENANT_BASE_DOMAIN}`);
 
+      const reasonQuery = reason !== 'manual'
+        ? `&${LOGOUT_REASON_PARAM}=${encodeURIComponent(reason)}`
+        : '';
+
       if (shouldRedirectToBaseDomain) {
-        const targetUrl = `${window.location.protocol}//${TENANT_BASE_DOMAIN}/login?${LOGOUT_MARKER_PARAM}=1`;
+        isIntentionalLogoutNavigationRef.current = true;
+        const targetUrl = `${window.location.protocol}//${TENANT_BASE_DOMAIN}/login?${LOGOUT_MARKER_PARAM}=1${reasonQuery}`;
         window.location.assign(targetUrl);
+        return;
       }
+
+      isIntentionalLogoutNavigationRef.current = true;
+      const fallbackLoginUrl = `/login?${LOGOUT_MARKER_PARAM}=1${reasonQuery}`;
+      window.location.assign(fallbackLoginUrl);
     }
   }, [user]);
 
@@ -1172,13 +1267,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           empresaId: currentTenantId,
           error: error.message,
         });
-        setInactivityTimeoutMs(null);
+        setInactivityTimeoutMs(DEFAULT_INACTIVITY_TIMEOUT_MS);
         return;
       }
 
       const minutesValue = Number((data?.valor as Record<string, unknown> | null)?.inactivity_timeout_minutes ?? 0);
       if (!Number.isFinite(minutesValue) || minutesValue <= 0) {
-        setInactivityTimeoutMs(null);
+        setInactivityTimeoutMs(DEFAULT_INACTIVITY_TIMEOUT_MS);
         return;
       }
 
@@ -1230,7 +1325,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         inactivityTimeoutMs,
       });
 
-      void logout();
+      void logout({ reason: 'inactivity' });
     }, 15_000);
 
     return () => {

@@ -57,6 +57,7 @@ export default function Login() {
   const [loginEmail, setLoginEmail] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
   const [loginError, setLoginError] = useState('');
+  const [logoutNotice, setLogoutNotice] = useState('');
   const [isLoginLoading, setIsLoginLoading] = useState(false);
   const [isRedirectingTenantDomain, setIsRedirectingTenantDomain] = useState(false);
 
@@ -79,6 +80,24 @@ export default function Login() {
     const hashParams = new URLSearchParams(rawHash);
     return Boolean(hashParams.get('session_transfer'));
   };
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const reason = params.get('reason');
+
+    if (reason === 'inactivity') {
+      setLogoutNotice('Usuário desconectado por inatividade (10 minutos sem atividade). Faça login novamente.');
+    } else if (reason === 'window_closed') {
+      setLogoutNotice('Sessão encerrada ao fechar a página. Faça login novamente para continuar.');
+    }
+
+    if (!reason) return;
+
+    params.delete('reason');
+    const nextQuery = params.toString();
+    const cleanedUrl = `${window.location.pathname}${nextQuery ? `?${nextQuery}` : ''}${window.location.hash}`;
+    window.history.replaceState({}, document.title, cleanedUrl);
+  }, []);
 
   useEffect(() => {
     if (isLoading || isAuthenticated) return;
@@ -316,6 +335,12 @@ export default function Login() {
               <div className="flex items-center gap-2 rounded-md border border-rose-500/50 bg-rose-950/40 p-3 text-sm text-rose-200">
                 <AlertCircle className="h-4 w-4 flex-shrink-0" />
                 <span>{loginError}</span>
+              </div>
+            )}
+
+            {logoutNotice && (
+              <div className="rounded-md border border-amber-500/40 bg-amber-950/30 p-3 text-sm text-amber-100">
+                {logoutNotice}
               </div>
             )}
 
