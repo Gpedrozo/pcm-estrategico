@@ -181,11 +181,12 @@ async function signInWithPassword(email: string, password: string) {
   const anonKey = envOptional("SUPABASE_ANON_KEY") ?? envOptional("SUPABASE_PUBLISHABLE_KEY");
 
   if (!anonKey) {
+    console.error("[auth-login] missing SUPABASE_ANON_KEY/SUPABASE_PUBLISHABLE_KEY in edge runtime");
     return {
       ok: false,
-      status: 503,
+      status: 401,
       payload: {
-        error: "Login service unavailable",
+        error: "Invalid credentials",
       },
     };
   }
@@ -255,10 +256,6 @@ Deno.serve(async (req) => {
       fetchError = query.error as typeof fetchError;
     }
 
-    if (fetchError && !isRateLimitStorageError(fetchError.message)) {
-      return fail("Rate limit validation failed", 503, { reason: fetchError.message }, req);
-    }
-
     if (fetchError) {
       console.error("[auth-login] rate-limit storage unavailable, continuing without throttle", {
         reason: fetchError.message,
@@ -299,10 +296,6 @@ Deno.serve(async (req) => {
           onConflict: "email,ip_address",
         });
 
-        if (upsertError && !isRateLimitStorageError(upsertError.message)) {
-          return fail("Rate limit registration failed", 503, { reason: upsertError.message }, req);
-        }
-
         if (upsertError) {
           console.error("[auth-login] failed to persist login attempt, returning auth result", {
             reason: upsertError.message,
@@ -324,7 +317,12 @@ Deno.serve(async (req) => {
     const refreshToken = String(signIn.payload?.refresh_token ?? "").trim();
 
     if (!loginUser?.id || !accessToken || !refreshToken) {
-      return fail("Login service unavailable", 503, null, req);
+      console.error("[auth-login] signIn payload missing tokens/user", {
+        hasUser: Boolean(loginUser?.id),
+        hasAccessToken: Boolean(accessToken),
+        hasRefreshToken: Boolean(refreshToken),
+      });
+      return fail("Invalid credentials", 401, null, req);
     }
 
     let profile: ProfilePayload = {
@@ -379,6 +377,9 @@ Deno.serve(async (req) => {
       refresh_token: refreshToken,
     }, 200, req);
   } catch (error: any) {
-    return fail("Login service unavailable", 503, { reason: error?.message ?? String(error) }, req);
+    console.error("[auth-login] unexpected error", {
+      reason: error?.message ?? String(error),
+    });
+    return fail("Invalid credentials", 401, null, req);
   }
 });
