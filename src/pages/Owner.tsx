@@ -20,7 +20,7 @@ import {
 } from '@/hooks/useOwnerPortal'
 
 const getOwnerMasterEmail = () => {
-  const configured = String(import.meta.env.VITE_OWNER_MASTER_EMAIL ?? '').trim().toLowerCase()
+  const configured = String(import.meta.env.VITE_OWNER_MASTER_EMAIL ?? process.env.OWNER_MASTER_EMAIL ?? '').trim().toLowerCase()
   return configured || 'pedrozo@gppis.com.br'
 }
 const TENANT_BASE_DOMAIN = (import.meta.env.VITE_TENANT_BASE_DOMAIN || 'gppis.com.br').toLowerCase()
