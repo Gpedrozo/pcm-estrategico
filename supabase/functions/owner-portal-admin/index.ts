@@ -938,6 +938,31 @@ Deno.serve(async (req) => {
 
     let company = insertedCompany;
     let ensuredSlug = (company?.slug ?? "").trim().toLowerCase();
+    let createdAuthUserId: string | null = null;
+
+    const rollbackCreateCompany = async (reason: string) => {
+      if (createdAuthUserId) {
+        await admin.auth.admin.deleteUser(createdAuthUserId).catch(() => null);
+      }
+
+      if (!company?.id) {
+        return reason;
+      }
+
+      const companyId = company.id;
+
+      await admin.from("contract_versions").delete().eq("empresa_id", companyId).catch(() => null);
+      await admin.from("contracts").delete().eq("empresa_id", companyId).catch(() => null);
+      await admin.from("subscriptions").delete().eq("empresa_id", companyId).catch(() => null);
+      await admin.from("user_roles").delete().eq("empresa_id", companyId).catch(() => null);
+      await admin.from("profiles").delete().eq("empresa_id", companyId).catch(() => null);
+      await admin.from("empresa_config").delete().eq("empresa_id", companyId).catch(() => null);
+      await admin.from("configuracoes_sistema").delete().eq("empresa_id", companyId).catch(() => null);
+      await admin.from("dados_empresa").delete().eq("empresa_id", companyId).catch(() => null);
+      await admin.from("empresas").delete().eq("id", companyId).catch(() => null);
+
+      return reason;
+    };
 
     if (!ensuredSlug) {
       const fallbackBase = normalizeSlug(companyName) || `empresa-${String(company.id || "").slice(0, 8) || Date.now()}`;
@@ -966,8 +991,8 @@ Deno.serve(async (req) => {
         .single();
 
       if (slugRepairError || !updatedCompany?.slug) {
-        await admin.from("empresas").delete().eq("id", company.id);
-        return fail("Falha ao garantir slug da empresa recém-criada.", 400, { reason: slugRepairError?.message ?? "missing slug" }, req);
+        const reason = await rollbackCreateCompany(slugRepairError?.message ?? "missing slug");
+        return fail("Falha ao garantir slug da empresa recém-criada.", 400, { reason }, req);
       }
 
       company = updatedCompany;
@@ -983,8 +1008,8 @@ Deno.serve(async (req) => {
     }, { onConflict: "empresa_id" });
 
     if (companyDataError) {
-      await admin.from("empresas").delete().eq("id", company.id);
-      return fail("Falha ao salvar dados da empresa.", 400, { reason: companyDataError.message }, req);
+      const reason = await rollbackCreateCompany(companyDataError.message);
+      return fail("Falha ao salvar dados da empresa.", 400, { reason }, req);
     }
 
     const { error: configError } = await admin.from("configuracoes_sistema").upsert({
@@ -1013,11 +1038,11 @@ Deno.serve(async (req) => {
     }, { onConflict: "empresa_id,chave" });
 
     if (configError || securityPolicyError) {
-      await admin.from("empresas").delete().eq("id", company.id);
+      const reason = await rollbackCreateCompany(configError?.message ?? securityPolicyError?.message ?? "unknown");
       return fail(
         "Falha ao salvar configurações iniciais da empresa.",
         400,
-        { reason: configError?.message ?? securityPolicyError?.message ?? "unknown" },
+        { reason },
         req,
       );
     }
@@ -1031,8 +1056,8 @@ Deno.serve(async (req) => {
       }, { onConflict: "empresa_id" });
 
       if (domainError) {
-        await admin.from("empresas").delete().eq("id", company.id);
-        return fail("Falha ao configurar domínio automático da empresa.", 400, { reason: domainError.message }, req);
+        const reason = await rollbackCreateCompany(domainError.message);
+        return fail("Falha ao configurar domínio automático da empresa.", 400, { reason }, req);
       }
     }
 
@@ -1059,13 +1084,16 @@ Deno.serve(async (req) => {
     });
 
     if (authError || !createdAuth?.user?.id) {
-      await admin.from("empresas").delete().eq("id", company.id);
       const authMessage = authError?.message ?? "Failed to create company master user";
       if (authMessage.toLowerCase().includes("already") || authMessage.toLowerCase().includes("registered")) {
-        return fail("O email do usuário MASTER já está cadastrado. Use outro email.", 409, { reason: authMessage }, req);
+        const reason = await rollbackCreateCompany(authMessage);
+        return fail("O email do usuário MASTER já está cadastrado. Use outro email.", 409, { reason }, req);
       }
-      return fail(authMessage, 400, null, req);
+      const reason = await rollbackCreateCompany(authMessage);
+      return fail(authMessage, 400, { reason }, req);
     }
+
+    createdAuthUserId = createdAuth.user.id;
 
     const { error: profileUpsertError } = await admin.from("profiles").upsert({
       id: createdAuth.user.id,
@@ -1076,9 +1104,8 @@ Deno.serve(async (req) => {
     }, { onConflict: "id" });
 
     if (profileUpsertError) {
-      await admin.auth.admin.deleteUser(createdAuth.user.id).catch(() => null);
-      await admin.from("empresas").delete().eq("id", company.id);
-      return fail("Falha ao vincular usuário master na empresa (profiles).", 400, { reason: profileUpsertError.message }, req);
+      const reason = await rollbackCreateCompany(profileUpsertError.message);
+      return fail("Falha ao vincular usuário master na empresa (profiles).", 400, { reason }, req);
     }
 
     const { error: roleUpsertError } = await admin.from("user_roles").upsert({
@@ -1088,42 +1115,52 @@ Deno.serve(async (req) => {
     }, { onConflict: "user_id,empresa_id,role" });
 
     if (roleUpsertError) {
-      await admin.auth.admin.deleteUser(createdAuth.user.id).catch(() => null);
-      await admin.from("profiles").delete().eq("id", createdAuth.user.id).catch(() => null);
-      await admin.from("empresas").delete().eq("id", company.id);
-      return fail("Falha ao vincular papel do usuário master na empresa (user_roles).", 400, { reason: roleUpsertError.message }, req);
+      const reason = await rollbackCreateCompany(roleUpsertError.message);
+      return fail("Falha ao vincular papel do usuário master na empresa (user_roles).", 400, { reason }, req);
     }
 
-    let subscriptionWarning: string | null = null;
+    if (!body.subscription?.plan_id) {
+      const reason = await rollbackCreateCompany("subscription_plan_required");
+      return fail(
+        "Assinatura inicial obrigatória: informe subscription.plan_id para concluir o onboarding transacional.",
+        400,
+        { reason },
+        req,
+      );
+    }
 
-    if (body.subscription?.plan_id) {
-      try {
-        const startsAt = body.subscription.starts_at ?? new Date().toISOString().slice(0, 10);
-        const { data: subscription, error: subscriptionError } = await admin
-          .from("subscriptions")
-          .upsert({
-            empresa_id: company.id,
-            plan_id: body.subscription.plan_id,
-            amount: body.subscription.amount ?? 0,
-            payment_method: body.subscription.payment_method ?? null,
-            period: body.subscription.period ?? "monthly",
-            starts_at: startsAt,
-            ends_at: body.subscription.ends_at ?? null,
-            renewal_at: body.subscription.renewal_at ?? body.subscription.ends_at ?? null,
-            status: body.subscription.status ?? "teste",
-            payment_status: body.subscription.payment_status ?? null,
-          }, { onConflict: "empresa_id" })
-          .select("*")
-          .single();
+    const startsAt = body.subscription.starts_at ?? new Date().toISOString().slice(0, 10);
+    const { data: subscription, error: subscriptionError } = await admin
+      .from("subscriptions")
+      .upsert({
+        empresa_id: company.id,
+        plan_id: body.subscription.plan_id,
+        amount: body.subscription.amount ?? 0,
+        payment_method: body.subscription.payment_method ?? null,
+        period: body.subscription.period ?? "monthly",
+        starts_at: startsAt,
+        ends_at: body.subscription.ends_at ?? null,
+        renewal_at: body.subscription.renewal_at ?? body.subscription.ends_at ?? null,
+        status: body.subscription.status ?? "teste",
+        payment_status: body.subscription.payment_status ?? null,
+      }, { onConflict: "empresa_id" })
+      .select("*")
+      .single();
 
-        if (subscriptionError) {
-          throw subscriptionError;
-        }
+    if (subscriptionError || !subscription?.id) {
+      const reason = await rollbackCreateCompany(subscriptionError?.message ?? "subscription_create_failed");
+      return fail("Falha ao criar assinatura inicial da empresa.", 400, { reason }, req);
+    }
 
-        await createContractFromSubscription(admin, auth.user.id, subscription);
-      } catch (error: any) {
-        subscriptionWarning = error?.message ?? "Falha ao criar assinatura/contrato inicial";
+    let contract: any = null;
+    try {
+      contract = await createContractFromSubscription(admin, auth.user.id, subscription);
+      if (!contract?.id) {
+        throw new Error("contract_create_failed");
       }
+    } catch (error: any) {
+      const reason = await rollbackCreateCompany(error?.message ?? "contract_create_failed");
+      return fail("Falha ao gerar contrato inicial da empresa.", 400, { reason }, req);
     }
 
     await logPlatformAudit(admin, {
@@ -1171,7 +1208,16 @@ Deno.serve(async (req) => {
         email: body.user.email,
         initial_password: password,
       },
-      warning: subscriptionWarning,
+      subscription: {
+        id: subscription.id,
+        plan_id: subscription.plan_id,
+        status: subscription.status,
+      },
+      contract: {
+        id: contract.id,
+        status: contract.status,
+        version: contract.version,
+      },
     }, 200, req);
   }
 

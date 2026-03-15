@@ -34,8 +34,19 @@ Deno.serve(async (req) => {
 
     const admin = adminClient();
 
+    const currentAppMetadata = (auth.user.app_metadata ?? {}) as Record<string, unknown>;
+    const currentUserMetadata = (auth.user.user_metadata ?? {}) as Record<string, unknown>;
+
     const { error: updateAuthError } = await admin.auth.admin.updateUserById(auth.user.id, {
       password: newPassword,
+      app_metadata: {
+        ...currentAppMetadata,
+        force_password_change: false,
+      },
+      user_metadata: {
+        ...currentUserMetadata,
+        force_password_change: false,
+      },
     });
 
     if (updateAuthError) {
@@ -65,6 +76,8 @@ Deno.serve(async (req) => {
       source: "auth-change-password",
       payload: {
         force_password_change: false,
+        app_metadata_force_password_change: false,
+        user_metadata_force_password_change: false,
       },
     });
 

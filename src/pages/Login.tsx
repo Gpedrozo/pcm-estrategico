@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { getPostLoginPath } from '@/lib/security';
 import { supabase } from '@/integrations/supabase/client';
@@ -339,6 +339,15 @@ export default function Login() {
                 'Entrar'
               )}
             </Button>
+
+            <div className="text-right">
+              <Link
+                to="/forgot-password"
+                className="text-sm text-slate-400 transition-colors hover:text-slate-200"
+              >
+                Esqueci minha senha
+              </Link>
+            </div>
           </form>
         </div>
 

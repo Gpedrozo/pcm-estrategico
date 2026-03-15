@@ -69,6 +69,22 @@ type LoginRateLimitEntry = {
   blockedUntil: number;
 };
 
+type AuthLoginPayload = {
+  access_token?: string;
+  refresh_token?: string;
+  user?: {
+    id?: string;
+    email?: string;
+    app_metadata?: Record<string, unknown>;
+    user_metadata?: Record<string, unknown>;
+  };
+  error?: string;
+  details?: {
+    retry_after_seconds?: number;
+    [key: string]: unknown;
+  } | null;
+};
+
 function normalizeLoginRateLimitKey(email: string) {
   return email.trim().toLowerCase();
 }
@@ -782,13 +798,35 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return { error: `Muitas tentativas de login. Tente novamente em ${throttle.retryAfterSeconds}s.` };
     }
 
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
+    const { data: loginData, error: loginInvokeError } = await supabase.functions.invoke('auth-login', {
+      body: {
+        email,
+        password,
+      },
     });
 
-    if (error) {
+    const loginPayload = (loginData ?? null) as AuthLoginPayload | null;
+
+    if (loginInvokeError || !loginPayload?.access_token || !loginPayload?.refresh_token) {
       const failedAttempt = registerFailedLoginAttempt(email);
+
+      let message = 'Falha ao autenticar. Tente novamente.';
+      const context = (loginInvokeError as { context?: { json?: () => Promise<unknown> } } | null)?.context;
+      const contextPayload = context?.json ? await context.json().catch(() => null) as AuthLoginPayload | null : null;
+      const effectiveError = contextPayload?.error ?? loginPayload?.error ?? loginInvokeError?.message ?? '';
+      const retryAfter =
+        contextPayload?.details?.retry_after_seconds
+        ?? loginPayload?.details?.retry_after_seconds
+        ?? null;
+
+      if (retryAfter && Number(retryAfter) > 0) {
+        message = `Muitas tentativas de login. Tente novamente em ${Number(retryAfter)}s.`;
+      } else if (String(effectiveError).toLowerCase().includes('inválid') || String(effectiveError).toLowerCase().includes('invalid')) {
+        message = 'Email ou senha inválidos';
+      } else if (effectiveError) {
+        message = effectiveError;
+      }
+
       await writeAuditLog({
         action: 'AUTH_LOGIN_FAILED',
         table: 'auth',
@@ -801,11 +839,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         },
       }).catch(() => null);
 
-      if (error.message.includes('Invalid login credentials')) {
-        return { error: 'Email ou senha inválidos' };
-      }
+      return { error: message };
+    }
 
-      return { error: error.message };
+    const { error: setSessionError } = await supabase.auth.setSession({
+      access_token: loginPayload.access_token,
+      refresh_token: loginPayload.refresh_token,
+    });
+
+    if (setSessionError) {
+      return { error: 'Falha ao concluir sessão após login. Tente novamente.' };
     }
 
     resetLoginRateLimit(email);

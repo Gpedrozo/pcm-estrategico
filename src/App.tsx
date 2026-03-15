@@ -22,6 +22,8 @@ const OwnerLogin = lazy(() => import('@/owner/OwnerLogin'))
 const Index = lazy(() => import('./pages/Index'))
 const Login = lazy(() => import('./pages/Login'))
 const ChangePassword = lazy(() => import('./pages/ChangePassword'))
+const ForgotPassword = lazy(() => import('./pages/ForgotPassword'))
+const ResetPassword = lazy(() => import('./pages/ResetPassword'))
 const Dashboard = lazy(() => import('./pages/Dashboard'))
 const NovaOS = lazy(() => import('./pages/NovaOS'))
 const FecharOS = lazy(() => import('./pages/FecharOS'))
@@ -133,6 +135,24 @@ function OwnerRoutes() {
         />
 
         <Route
+          path="/forgot-password"
+          element={
+            <EnvironmentGuard allowOwner>
+              <ForgotPassword />
+            </EnvironmentGuard>
+          }
+        />
+
+        <Route
+          path="/reset-password"
+          element={
+            <EnvironmentGuard allowOwner>
+              <ResetPassword />
+            </EnvironmentGuard>
+          }
+        />
+
+        <Route
           path="/"
           element={
             <EnvironmentGuard allowOwner>
@@ -160,6 +180,8 @@ function TenantRoutes() {
                 <Route path="/" element={<Index />} />
                 <Route path="/login" element={<Login />} />
                 <Route path="/change-password" element={<ChangePassword />} />
+                <Route path="/forgot-password" element={<ForgotPassword />} />
+                <Route path="/reset-password" element={<ResetPassword />} />
                 <Route path="/instalar" element={<Instalar />} />
 
               <Route element={<AppLayout />}>
