@@ -303,6 +303,38 @@ function resolveRateLimitConfig(action: Payload["action"]) {
   };
 }
 
+function shouldEnforceRateLimit(action: Payload["action"]) {
+  const writeOrSensitiveActions = new Set<Payload["action"]>([
+    "create_company",
+    "update_company",
+    "set_company_status",
+    "create_user",
+    "set_user_status",
+    "create_plan",
+    "update_plan",
+    "create_subscription",
+    "set_subscription_status",
+    "update_subscription_billing",
+    "update_contract",
+    "regenerate_contract",
+    "delete_contract",
+    "respond_support_ticket",
+    "update_company_settings",
+    "block_company",
+    "change_plan",
+    "create_system_admin",
+    "impersonate_company",
+    "stop_impersonation",
+    "create_platform_owner",
+    "cleanup_owner_stress_data",
+    "cleanup_company_data",
+    "delete_company",
+    "purge_table_data",
+  ]);
+
+  return writeOrSensitiveActions.has(action);
+}
+
 async function verifyActorPassword(input: {
   email?: string | null;
   password?: string | null;
@@ -896,30 +928,32 @@ Deno.serve(async (req) => {
   }
 
   const trace = createRequestTrace("edge.owner-portal-admin", req, body.action);
-  const limitConfig = resolveRateLimitConfig(body.action);
-  const rateLimit = await enforceRateLimit(admin, {
-    scope: `edge.owner-portal-admin.v2.${body.action}`,
-    identifier: auth.user.id ?? auth.user.email ?? null,
-    maxRequests: limitConfig.maxRequests,
-    windowSeconds: limitConfig.windowSeconds,
-    blockSeconds: limitConfig.blockSeconds,
-  });
-
-  if (!rateLimit.allowed) {
-    await writeOperationalLog(admin, {
-      scope: trace.scope,
-      action: body.action,
-      endpoint: trace.endpoint,
-      statusCode: 429,
-      durationMs: traceDurationMs(trace),
-      empresaId: body.empresa_id ?? null,
-      userId: auth.user.id,
-      metadata: {
-        reason: rateLimit.reason,
-      },
-      errorMessage: "rate_limited",
+  if (shouldEnforceRateLimit(body.action)) {
+    const limitConfig = resolveRateLimitConfig(body.action);
+    const rateLimit = await enforceRateLimit(admin, {
+      scope: `edge.owner-portal-admin.v3.${body.action}`,
+      identifier: auth.user.id ?? auth.user.email ?? null,
+      maxRequests: limitConfig.maxRequests,
+      windowSeconds: limitConfig.windowSeconds,
+      blockSeconds: limitConfig.blockSeconds,
     });
-    return failRateLimited(req, "Muitas requisições no owner-portal-admin");
+
+    if (!rateLimit.allowed) {
+      await writeOperationalLog(admin, {
+        scope: trace.scope,
+        action: body.action,
+        endpoint: trace.endpoint,
+        statusCode: 429,
+        durationMs: traceDurationMs(trace),
+        empresaId: body.empresa_id ?? null,
+        userId: auth.user.id,
+        metadata: {
+          reason: rateLimit.reason,
+        },
+        errorMessage: "rate_limited",
+      });
+      return failRateLimited(req, "Muitas requisições no owner-portal-admin");
+    }
   }
 
   let ownerMasterEmail = "";
