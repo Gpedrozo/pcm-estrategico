@@ -636,6 +636,7 @@ const PLATFORM_TABLES = [
   "auditoria_logs",
   "avaliacoes_fornecedores",
   "componentes_equipamento",
+  "company_subscriptions",
   "configuracoes_sistema",
   "contract_versions",
   "contracts",
@@ -705,6 +706,7 @@ const TENANT_AUTH_TABLES = new Set([
 
 const TENANT_BILLING_TABLES = new Set([
   "subscriptions",
+  "company_subscriptions",
   "contracts",
   "contract_versions",
 ]);
@@ -895,6 +897,24 @@ async function deleteAuthUsers(admin: ReturnType<typeof adminClient>, userIds: s
   }
 
   return removed;
+}
+
+async function bestEffortDeleteByEq(
+  admin: ReturnType<typeof adminClient>,
+  tableName: string,
+  columnName: string,
+  value: string,
+) {
+  const { error } = await admin
+    .from(tableName)
+    .delete()
+    .eq(columnName, value);
+
+  if (error) {
+    return false;
+  }
+
+  return true;
 }
 
 Deno.serve(async (req) => {
@@ -1138,29 +1158,41 @@ Deno.serve(async (req) => {
 
       const companyId = company.id;
 
-      const safeDeleteByEmpresa = async (tableName: string) => {
-        try {
-          await admin.from(tableName).delete().eq("empresa_id", companyId);
-        } catch {
-          // noop: rollback deve tentar o máximo possível sem interromper o fluxo principal.
-        }
-      };
+      const { data: rollbackContracts } = await admin
+        .from("contracts")
+        .select("id")
+        .eq("empresa_id", companyId)
+        .limit(5000);
 
-      await safeDeleteByEmpresa("contract_versions");
-      await safeDeleteByEmpresa("contracts");
-      await safeDeleteByEmpresa("subscriptions");
-      await safeDeleteByEmpresa("user_roles");
-      await safeDeleteByEmpresa("profiles");
-      await safeDeleteByEmpresa("empresa_config");
-      await safeDeleteByEmpresa("configuracoes_sistema");
-      await safeDeleteByEmpresa("dados_empresa");
+      const { data: rollbackSubscriptions } = await admin
+        .from("subscriptions")
+        .select("id")
+        .eq("empresa_id", companyId)
+        .limit(5000);
 
-      try {
-        await admin.from("empresas").delete().eq("id", companyId);
-      } catch {
-        // noop
+      const rollbackContractIds = (rollbackContracts ?? []).map((row: any) => row?.id).filter(Boolean);
+      const rollbackSubscriptionIds = (rollbackSubscriptions ?? []).map((row: any) => row?.id).filter(Boolean);
+
+      if (rollbackContractIds.length > 0) {
+        await admin.from("contract_versions").delete().in("contract_id", rollbackContractIds);
       }
 
+      if (rollbackSubscriptionIds.length > 0) {
+        await admin.from("subscription_payments").delete().in("subscription_id", rollbackSubscriptionIds);
+      }
+
+      await bestEffortDeleteByEq(admin, "contracts", "empresa_id", companyId);
+      await bestEffortDeleteByEq(admin, "subscriptions", "empresa_id", companyId);
+      await bestEffortDeleteByEq(admin, "company_subscriptions", "empresa_id", companyId);
+      await bestEffortDeleteByEq(admin, "user_roles", "empresa_id", companyId);
+      await bestEffortDeleteByEq(admin, "profiles", "empresa_id", companyId);
+      await bestEffortDeleteByEq(admin, "empresa_config", "empresa_id", companyId);
+      await bestEffortDeleteByEq(admin, "configuracoes_sistema", "empresa_id", companyId);
+      await bestEffortDeleteByEq(admin, "dados_empresa", "empresa_id", companyId);
+      await bestEffortDeleteByEq(admin, "enterprise_impersonation_sessions", "empresa_id", companyId);
+      await bestEffortDeleteByEq(admin, "enterprise_subscriptions", "empresa_id", companyId);
+      await bestEffortDeleteByEq(admin, "enterprise_audit_logs", "empresa_id", companyId);
+      await bestEffortDeleteByEq(admin, "empresas", "id", companyId);
       return reason;
     };
 
@@ -2558,6 +2590,21 @@ Deno.serve(async (req) => {
 
     const includeAuthUsers = Boolean(body.include_auth_users);
 
+    const { data: beforeDeleteContracts } = await admin
+      .from("contracts")
+      .select("id")
+      .eq("empresa_id", body.empresa_id)
+      .limit(5000);
+
+    const { data: beforeDeleteSubscriptions } = await admin
+      .from("subscriptions")
+      .select("id")
+      .eq("empresa_id", body.empresa_id)
+      .limit(5000);
+
+    const contractIds = (beforeDeleteContracts ?? []).map((row: any) => row?.id).filter(Boolean);
+    const subscriptionIds = (beforeDeleteSubscriptions ?? []).map((row: any) => row?.id).filter(Boolean);
+
     const cleanupResult = await cleanupCompanyTenantRows(admin, body.empresa_id, {
       keepCompanyCore: false,
       keepBillingData: false,
@@ -2578,8 +2625,20 @@ Deno.serve(async (req) => {
       deletedAuthUsers = await deleteAuthUsers(admin, userIds);
     }
 
+    if (contractIds.length > 0) {
+      await admin.from("contract_versions").delete().in("contract_id", contractIds);
+    }
+
+    if (subscriptionIds.length > 0) {
+      await admin.from("subscription_payments").delete().in("subscription_id", subscriptionIds);
+    }
+
     await admin.from("configuracoes_sistema").delete().eq("empresa_id", body.empresa_id);
     await admin.from("dados_empresa").delete().eq("empresa_id", body.empresa_id);
+    await admin.from("company_subscriptions").delete().eq("empresa_id", body.empresa_id);
+    await admin.from("enterprise_impersonation_sessions").delete().eq("empresa_id", body.empresa_id);
+    await admin.from("enterprise_subscriptions").delete().eq("empresa_id", body.empresa_id);
+    await admin.from("enterprise_audit_logs").delete().eq("empresa_id", body.empresa_id);
     await admin.from("contracts").delete().eq("empresa_id", body.empresa_id);
     await admin.from("subscriptions").delete().eq("empresa_id", body.empresa_id);
 

@@ -325,6 +325,16 @@ export default function Owner() {
   const [settingsForm, setSettingsForm] = useState(emptySettingsForm)
   const [ownerMasterForm, setOwnerMasterForm] = useState(emptyOwnerMasterForm)
 
+  const resolveCompanyStatus = (value?: string) => {
+    const normalized = String(value || '').trim().toLowerCase()
+    if (!normalized) return 'active'
+    if (normalized === 'active' || normalized === 'blocked' || normalized === 'suspended') return normalized
+    if (normalized === 'ativa') return 'active'
+    if (normalized === 'bloqueada') return 'blocked'
+    if (normalized === 'suspensa') return 'suspended'
+    return 'active'
+  }
+
   const selectedSettingsQuery = useOwnerCompanySettings(settingsForm.empresa_id || null, settingsActive)
   const selectedSettings = toArray<{ chave: string; valor: Record<string, unknown> }>((selectedSettingsQuery.data as any)?.settings)
 
@@ -406,6 +416,57 @@ export default function Owner() {
       role: 'ADMIN',
     },
   })
+
+  const prepareCompanyForEdit = (company: { id: string; nome?: string; status?: string }) => {
+    setUpdateCompanyForm({
+      empresa_id: company.id,
+      nome: String(company.nome || ''),
+      status: resolveCompanyStatus(company.status),
+    })
+    setFeedback(`Empresa ${company.nome || company.id} carregada para edicao.`)
+    setError(null)
+  }
+
+  const handleDeleteCompanyFromList = async (company: { id: string; nome?: string; slug?: string }) => {
+    clearFeedback()
+
+    if (!isOwnerMaster) {
+      setError('Operacao restrita ao owner master (pedrozo@gppis.com.br).')
+      return
+    }
+
+    const companyLabel = String(company.nome || company.slug || company.id)
+    const expectedPhrase = `EXCLUIR ${companyLabel}`
+    const confirmationInput = window.prompt(
+      `Para confirmar exclusao total e irreversivel, digite exatamente: ${expectedPhrase}`,
+    )
+
+    if (confirmationInput !== expectedPhrase) {
+      setError('Confirmacao invalida. A empresa nao foi excluida.')
+      return
+    }
+
+    const authPassword = window.prompt('Digite sua senha para autorizar a exclusao definitiva desta empresa:')
+    if (!authPassword) {
+      setError('Senha de confirmacao obrigatoria para excluir empresa.')
+      return
+    }
+
+    await runOwnerMasterAction(async () => {
+      const output = await deleteCompanyByOwnerMutation.mutateAsync({
+        empresa_id: company.id,
+        include_auth_users: true,
+        auth_password: authPassword,
+      })
+      setSystemActionOutput(output)
+
+      if (updateCompanyForm.empresa_id === company.id) {
+        setUpdateCompanyForm({ empresa_id: '', nome: '', status: 'active' })
+      }
+
+      return output
+    }, `Empresa ${companyLabel} excluida definitivamente com todos os dados relacionados.`)
+  }
 
   const handleCreateCompany = async () => {
     clearFeedback()
@@ -743,7 +804,20 @@ export default function Owner() {
 
           <Card title="Atualizar empresa">
             <div className="grid gap-2 md:grid-cols-3">
-              <select className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm" value={updateCompanyForm.empresa_id} onChange={(e) => setUpdateCompanyForm((s) => ({ ...s, empresa_id: e.target.value }))}>
+              <select
+                className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm"
+                value={updateCompanyForm.empresa_id}
+                onChange={(e) => {
+                  const selectedId = e.target.value
+                  const selectedCompany = companies.find((company) => company.id === selectedId)
+                  setUpdateCompanyForm((s) => ({
+                    ...s,
+                    empresa_id: selectedId,
+                    nome: selectedCompany?.nome || '',
+                    status: resolveCompanyStatus(selectedCompany?.status),
+                  }))
+                }}
+              >
                 <option value="">Selecione empresa</option>
                 {companies.map((c) => (
                   <option key={c.id} value={c.id}>
@@ -760,7 +834,11 @@ export default function Owner() {
               </select>
             </div>
             <div className="mt-3 flex gap-2">
-              <button className="rounded border border-slate-600 px-3 py-2 text-sm" disabled={!updateCompanyForm.empresa_id || updateCompanyMutation.isPending} onClick={() => runAction(() => updateCompanyMutation.mutateAsync({ empresaId: updateCompanyForm.empresa_id, company: { nome: updateCompanyForm.nome || undefined } }), 'Empresa atualizada.')}>Salvar</button>
+              <button className="rounded border border-slate-600 px-3 py-2 text-sm" disabled={!updateCompanyForm.empresa_id || updateCompanyMutation.isPending} onClick={() => runAction(async () => {
+                const response = await updateCompanyMutation.mutateAsync({ empresaId: updateCompanyForm.empresa_id, company: { nome: updateCompanyForm.nome || undefined } })
+                setUpdateCompanyForm((s) => ({ ...s, nome: '' }))
+                return response
+              }, 'Empresa atualizada.')}>Salvar</button>
               <button className="rounded border border-amber-500 px-3 py-2 text-sm text-amber-300" disabled={!updateCompanyForm.empresa_id || !updateCompanyForm.status || setCompanyLifecycle.isPending} onClick={() => runAction(() => setCompanyLifecycle.mutateAsync({ empresaId: updateCompanyForm.empresa_id, status: updateCompanyForm.status }), 'Status da empresa atualizado.')}>Aplicar status</button>
             </div>
           </Card>
@@ -773,6 +851,7 @@ export default function Owner() {
                     <th className="px-3 py-2 text-left">Empresa</th>
                     <th className="px-3 py-2 text-left">Slug</th>
                     <th className="px-3 py-2 text-left">Status</th>
+                    <th className="px-3 py-2 text-left">Acoes</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -781,16 +860,47 @@ export default function Owner() {
                       <td className="px-3 py-2">{c.nome || c.id}</td>
                       <td className="px-3 py-2">{c.slug || '-'}</td>
                       <td className="px-3 py-2">{c.status || '-'}</td>
+                      <td className="px-3 py-2">
+                        <div className="flex flex-wrap gap-2">
+                          <button
+                            className="rounded border border-slate-600 px-2 py-1 text-[11px]"
+                            onClick={() => prepareCompanyForEdit(c)}
+                          >
+                            Editar
+                          </button>
+                          <button
+                            className="rounded border border-amber-500 px-2 py-1 text-[11px] text-amber-300"
+                            disabled={setCompanyLifecycle.isPending}
+                            onClick={() => {
+                              const nextStatus = resolveCompanyStatus(c.status) === 'active' ? 'blocked' : 'active'
+                              runAction(
+                                () => setCompanyLifecycle.mutateAsync({ empresaId: c.id, status: nextStatus }),
+                                `Status da empresa ${c.nome || c.id} alterado para ${nextStatus}.`,
+                              )
+                            }}
+                          >
+                            Alterar
+                          </button>
+                          <button
+                            className="rounded border border-rose-600 px-2 py-1 text-[11px] text-rose-300"
+                            disabled={deleteCompanyByOwnerMutation.isPending}
+                            onClick={() => handleDeleteCompanyFromList(c)}
+                          >
+                            Excluir
+                          </button>
+                        </div>
+                      </td>
                     </tr>
                   ))}
                   {isLoadingCompanies && (
                     <tr>
-                      <td className="px-3 py-3 text-slate-400" colSpan={3}>Carregando empresas...</td>
+                      <td className="px-3 py-3 text-slate-400" colSpan={4}>Carregando empresas...</td>
                     </tr>
                   )}
                 </tbody>
               </table>
             </div>
+            <p className="mt-2 text-[11px] text-rose-300">Excluir empresa remove todos os dados relacionados ao tenant (historico, contratos, assinaturas, usuarios, perfis e registros vinculados).</p>
           </Card>
         </div>
       )}
