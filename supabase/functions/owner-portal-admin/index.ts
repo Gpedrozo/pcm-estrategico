@@ -934,7 +934,6 @@ async function bestEffortDeleteByEq(
 
   return true;
 }
-
 async function bestEffortDeleteByIn(
   admin: ReturnType<typeof adminClient>,
   tableName: string,
@@ -951,7 +950,6 @@ async function bestEffortDeleteByIn(
   if (error) {
     return false;
   }
-
   return true;
 }
 

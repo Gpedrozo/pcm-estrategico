@@ -86,6 +86,13 @@ type CompanyCredentialNote = {
   noteText: string
 }
 
+const DELETE_COMPANY_STAGES = [
+  'Validando permissao de owner master',
+  'Removendo dados vinculados da empresa',
+  'Executando exclusao definitiva da empresa',
+  'Finalizando operacao e atualizando painel',
+]
+
 function Card({ title, subtitle, children }: { title: string; subtitle?: string; children: React.ReactNode }) {
   return (
     <section className="rounded-lg border border-slate-800 bg-slate-900 p-4">
@@ -118,6 +125,14 @@ export default function Owner() {
   const [systemForm, setSystemForm] = useState(emptySystemForm)
   const [selectedTenantTables, setSelectedTenantTables] = useState<string[]>([])
   const [auditFilters, setAuditFilters] = useState(emptyAuditFilters)
+  const [isDeleteCompanyOverlayVisible, setIsDeleteCompanyOverlayVisible] = useState(false)
+  const [deleteCompanyStageIndex, setDeleteCompanyStageIndex] = useState(0)
+  const [deleteCompanyElapsedSeconds, setDeleteCompanyElapsedSeconds] = useState(0)
+  const [deleteCompanyTargetEmpresaId, setDeleteCompanyTargetEmpresaId] = useState('')
+
+  const deleteCompanyCurrentStage = DELETE_COMPANY_STAGES[Math.min(deleteCompanyStageIndex, DELETE_COMPANY_STAGES.length - 1)]
+  const deleteCompanyProgressPercent = Math.round(((Math.min(deleteCompanyStageIndex, DELETE_COMPANY_STAGES.length - 1) + 1) / DELETE_COMPANY_STAGES.length) * 100)
+  const deleteCompanyElapsedLabel = `${String(Math.floor(deleteCompanyElapsedSeconds / 60)).padStart(2, '0')}:${String(deleteCompanyElapsedSeconds % 60).padStart(2, '0')}`
 
   const ownerMasterEmail = getOwnerMasterEmail()
   const isOwnerMaster = normalizeEmail(user?.email || '') === ownerMasterEmail
@@ -396,6 +411,41 @@ export default function Owner() {
       window.clearTimeout(timeoutLate)
     }
   }, [clearAllOwnerForms])
+
+  useEffect(() => {
+    if (!isDeleteCompanyOverlayVisible) return
+
+    setDeleteCompanyElapsedSeconds(0)
+    const stageTimer = window.setInterval(() => {
+      setDeleteCompanyStageIndex((current) => Math.min(current + 1, DELETE_COMPANY_STAGES.length - 2))
+    }, 1400)
+    const elapsedTimer = window.setInterval(() => {
+      setDeleteCompanyElapsedSeconds((seconds) => seconds + 1)
+    }, 1000)
+
+    return () => {
+      window.clearInterval(stageTimer)
+      window.clearInterval(elapsedTimer)
+    }
+  }, [isDeleteCompanyOverlayVisible])
+
+  const beginDeleteCompanyOverlay = (empresaId: string) => {
+    setDeleteCompanyTargetEmpresaId(empresaId)
+    setDeleteCompanyStageIndex(0)
+    setDeleteCompanyElapsedSeconds(0)
+    setIsDeleteCompanyOverlayVisible(true)
+  }
+
+  const completeDeleteCompanyOverlay = () => {
+    setDeleteCompanyStageIndex(DELETE_COMPANY_STAGES.length - 1)
+  }
+
+  const closeDeleteCompanyOverlay = () => {
+    setIsDeleteCompanyOverlayVisible(false)
+    setDeleteCompanyStageIndex(0)
+    setDeleteCompanyElapsedSeconds(0)
+    setDeleteCompanyTargetEmpresaId('')
+  }
 
   const buildCreateCompanyPayload = () => ({
     company: {
@@ -1592,9 +1642,17 @@ export default function Owner() {
                 return output
               }, 'Limpeza da tabela concluida com sucesso.')}>Limpar tabela</button>
               <button className="rounded border border-rose-600 px-3 py-2 text-sm text-rose-300" disabled={!isOwnerMaster || !systemForm.empresa_id || !systemForm.auth_password || deleteCompanyByOwnerMutation.isPending} onClick={() => runOwnerMasterAction(async () => {
-                const output = await deleteCompanyByOwnerMutation.mutateAsync({ empresa_id: systemForm.empresa_id, include_auth_users: systemForm.include_auth_users, auth_password: systemForm.auth_password })
-                setSystemActionOutput(output)
-                return output
+                beginDeleteCompanyOverlay(systemForm.empresa_id)
+                try {
+                  const output = await deleteCompanyByOwnerMutation.mutateAsync({ empresa_id: systemForm.empresa_id, include_auth_users: systemForm.include_auth_users, auth_password: systemForm.auth_password })
+                  setSystemActionOutput(output)
+                  completeDeleteCompanyOverlay()
+                  return output
+                } finally {
+                  window.setTimeout(() => {
+                    closeDeleteCompanyOverlay()
+                  }, 550)
+                }
               }, 'Empresa excluida definitivamente com sucesso.')}>Excluir empresa</button>
             </div>
 
@@ -1695,6 +1753,35 @@ export default function Owner() {
               </table>
             </div>
           </Card>
+        </div>
+      )}
+
+      {isDeleteCompanyOverlayVisible && (
+        <div className="fixed inset-0 z-[120] flex items-center justify-center bg-slate-950/85 px-4 backdrop-blur-sm">
+          <div className="w-full max-w-lg rounded-xl border border-rose-500/40 bg-slate-900/95 p-6 shadow-2xl shadow-rose-950/50">
+            <div className="flex items-center gap-3 text-rose-200">
+              <Loader2 className="h-5 w-5 animate-spin" />
+              <p className="text-sm font-semibold tracking-wide">Exclusao em andamento</p>
+            </div>
+
+            <p className="mt-3 text-xs text-slate-300">
+              Empresa alvo: <span className="font-semibold text-slate-100">{deleteCompanyTargetEmpresaId}</span>
+            </p>
+            <p className="mt-1 text-sm text-slate-100">{deleteCompanyCurrentStage}</p>
+
+            <div className="mt-4 h-2 overflow-hidden rounded-full bg-slate-800">
+              <div className="h-full rounded-full bg-rose-500 transition-all duration-500" style={{ width: `${deleteCompanyProgressPercent}%` }} />
+            </div>
+
+            <div className="mt-3 flex items-center justify-between text-xs text-slate-400">
+              <span>{deleteCompanyProgressPercent}% concluido</span>
+              <span>Tempo: {deleteCompanyElapsedLabel}</span>
+            </div>
+
+            <p className="mt-4 text-xs text-slate-400">
+              Aguarde a finalizacao completa. Fechar a pagina durante este processo pode interromper o acompanhamento visual da exclusao.
+            </p>
+          </div>
         </div>
       )}
 
