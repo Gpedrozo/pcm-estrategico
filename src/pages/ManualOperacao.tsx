@@ -1,5 +1,5 @@
-import { useEffect, useMemo } from 'react';
-import { BookOpen, CheckCircle2, Printer } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
+import { BookOpen, CheckCircle2, Loader2, PlayCircle, Printer } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNavigate, useParams } from 'react-router-dom';
 
@@ -402,6 +402,10 @@ export default function ManualOperacao() {
   const { user } = useAuth();
   const { perfil } = useParams();
   const navigate = useNavigate();
+  const [simEmail, setSimEmail] = useState('');
+  const [simPassword, setSimPassword] = useState('');
+  const [simStep, setSimStep] = useState<'idle' | 'typing_email' | 'typing_password' | 'ready' | 'submitting' | 'done'>('idle');
+  const [moduleDemoIndex, setModuleDemoIndex] = useState(0);
 
   const roleAtual = mapToRoleManual(user?.tipo);
   const rolePorRota = mapSlugToRole(perfil);
@@ -433,16 +437,73 @@ export default function ManualOperacao() {
     return operacoes.filter((op) => op.perfis.includes(roleEfetivo));
   }, [roleEfetivo]);
 
+  useEffect(() => {
+    const demoEmail = 'teste@gmail.com';
+    const demoPassword = 'Senha@123';
+
+    setSimEmail('');
+    setSimPassword('');
+    setSimStep('typing_email');
+
+    let emailIndex = 0;
+    let passIndex = 0;
+
+    const emailTimer = window.setInterval(() => {
+      emailIndex += 1;
+      setSimEmail(demoEmail.slice(0, emailIndex));
+      if (emailIndex >= demoEmail.length) {
+        window.clearInterval(emailTimer);
+        window.setTimeout(() => {
+          setSimStep('typing_password');
+          const passTimer = window.setInterval(() => {
+            passIndex += 1;
+            setSimPassword(demoPassword.slice(0, passIndex));
+            if (passIndex >= demoPassword.length) {
+              window.clearInterval(passTimer);
+              setSimStep('ready');
+              window.setTimeout(() => {
+                setSimStep('submitting');
+                window.setTimeout(() => {
+                  setSimStep('done');
+                }, 1100);
+              }, 500);
+            }
+          }, 90);
+        }, 250);
+      }
+    }, 80);
+
+    return () => {
+      window.clearInterval(emailTimer);
+    };
+  }, [roleEfetivo]);
+
+  useEffect(() => {
+    if (!operacoesFiltradas.length) return;
+    if (simStep !== 'done') {
+      setModuleDemoIndex(0);
+      return;
+    }
+
+    const moduleTimer = window.setInterval(() => {
+      setModuleDemoIndex((current) => (current + 1) % operacoesFiltradas.length);
+    }, 2200);
+
+    return () => window.clearInterval(moduleTimer);
+  }, [operacoesFiltradas, simStep]);
+
+  const moduloAtualDemo = operacoesFiltradas[moduleDemoIndex] ?? null;
+
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-[radial-gradient(circle_at_top,#101f35_0%,#0b1422_35%,#090f1a_100%)]">
       <div className="mx-auto max-w-7xl px-4 py-8 md:px-8">
-        <header className="mb-6 rounded-xl border bg-card p-6">
+        <header className="mb-6 rounded-xl border border-slate-700/70 bg-slate-900/80 p-6 backdrop-blur-sm">
           <div className="mb-2 flex items-center gap-2 text-primary">
             <BookOpen className="h-6 w-6" />
             <span className="text-sm font-semibold uppercase tracking-wide">Manuais de Operacao do Sistema</span>
           </div>
-          <h1 className="text-3xl font-bold text-foreground">{tituloManual}</h1>
-          <p className="mt-2 max-w-4xl text-sm text-muted-foreground">
+          <h1 className="text-3xl font-bold text-slate-100">{tituloManual}</h1>
+          <p className="mt-2 max-w-4xl text-sm text-slate-300">
             Pagina operacional completa com imagens estampadas na tela, passo a passo, criterios de validacao
             e erros comuns por processo.
           </p>
@@ -450,7 +511,7 @@ export default function ManualOperacao() {
             <button
               type="button"
               onClick={() => window.print()}
-              className="inline-flex items-center gap-2 rounded-md border bg-background px-3 py-2 text-sm text-foreground hover:bg-muted"
+              className="inline-flex items-center gap-2 rounded-md border border-slate-600 bg-slate-950/70 px-3 py-2 text-sm text-slate-100 hover:bg-slate-800"
             >
               <Printer className="h-4 w-4" />
               Imprimir este manual
@@ -458,10 +519,70 @@ export default function ManualOperacao() {
           </div>
         </header>
 
+        <section className="mb-8 overflow-hidden rounded-xl border border-cyan-500/30 bg-slate-900/70 shadow-[0_0_40px_rgba(34,211,238,0.08)]">
+          <div className="grid gap-0 lg:grid-cols-[1.1fr_1fr]">
+            <div className="border-b border-slate-700/70 p-6 lg:border-b-0 lg:border-r">
+              <div className="mb-4 flex items-center gap-2 text-cyan-300">
+                <PlayCircle className="h-5 w-5" />
+                <h2 className="text-sm font-semibold uppercase tracking-wide">Simulador de Login</h2>
+              </div>
+              <div className="rounded-lg border border-slate-700 bg-[#0d1728] p-4">
+                <p className="mb-3 text-xs text-slate-400">Fluxo animado: preenchimento automatico e clique em Entrar.</p>
+                <div className="space-y-3">
+                  <div className="rounded border border-slate-700 bg-slate-950 p-3">
+                    <p className="mb-1 text-[11px] uppercase tracking-wide text-slate-400">Email</p>
+                    <p className="font-mono text-sm text-slate-100">{simEmail}<span className="animate-pulse">|</span></p>
+                  </div>
+                  <div className="rounded border border-slate-700 bg-slate-950 p-3">
+                    <p className="mb-1 text-[11px] uppercase tracking-wide text-slate-400">Senha</p>
+                    <p className="font-mono text-sm text-slate-100">{'•'.repeat(simPassword.length)}{simStep === 'typing_password' && <span className="animate-pulse">|</span>}</p>
+                  </div>
+                  <button
+                    type="button"
+                    className={`w-full rounded-md px-4 py-2 text-sm font-semibold transition-all ${simStep === 'submitting' ? 'scale-[1.03] bg-cyan-400 text-slate-900 shadow-[0_0_20px_rgba(34,211,238,0.45)]' : simStep === 'done' ? 'bg-emerald-500 text-emerald-950' : 'bg-slate-700 text-slate-200'}`}
+                  >
+                    {simStep === 'submitting' ? (
+                      <span className="inline-flex items-center gap-2"><Loader2 className="h-4 w-4 animate-spin" /> Entrando...</span>
+                    ) : simStep === 'done' ? 'Entrou com sucesso' : 'Entrar'}
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div className="p-6">
+              <div className="mb-4 flex items-center gap-2 text-cyan-300">
+                <PlayCircle className="h-5 w-5" />
+                <h2 className="text-sm font-semibold uppercase tracking-wide">Video Guiado Modulo a Modulo</h2>
+              </div>
+              {moduloAtualDemo ? (
+                <>
+                  <div className="overflow-hidden rounded-lg border border-slate-700 bg-slate-950">
+                    <img src={moduloAtualDemo.imagem} alt={`Demo ${moduloAtualDemo.modulo}`} className="h-56 w-full object-cover transition-all duration-700" />
+                  </div>
+                  <div className="mt-3">
+                    <p className="text-xs uppercase tracking-wide text-slate-400">Modulo atual</p>
+                    <h3 className="text-lg font-semibold text-slate-100">{moduloAtualDemo.modulo}</h3>
+                    <p className="text-sm text-slate-300">{moduloAtualDemo.titulo}</p>
+                  </div>
+                  <div className="mt-4 flex flex-wrap gap-2">
+                    {operacoesFiltradas.map((item, index) => (
+                      <span key={item.id} className={`rounded-full border px-2 py-1 text-[11px] ${index === moduleDemoIndex ? 'border-cyan-400 bg-cyan-500/20 text-cyan-200' : 'border-slate-700 text-slate-400'}`}>
+                        {item.id} {item.modulo}
+                      </span>
+                    ))}
+                  </div>
+                </>
+              ) : (
+                <p className="text-sm text-slate-300">Nenhum modulo disponivel para este perfil.</p>
+              )}
+            </div>
+          </div>
+        </section>
+
         {podeAcessarTreinamento && (
-          <section className="mb-8 rounded-xl border bg-card p-4">
-            <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">Acesso de treinamento</h2>
-            <p className="mb-3 text-sm text-muted-foreground">
+          <section className="mb-8 rounded-xl border border-slate-700 bg-slate-900/70 p-4">
+            <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-slate-400">Acesso de treinamento</h2>
+            <p className="mb-3 text-sm text-slate-300">
               Admin e Master TI podem acessar os manuais de todos os perfis para suporte e treinamento de equipes.
             </p>
             <div className="flex flex-wrap gap-2">
@@ -471,8 +592,8 @@ export default function ManualOperacao() {
                   onClick={() => navigate(`/manuais-operacao/${mapRoleToSlug(opcao.id)}`)}
                   className={`rounded-md border px-3 py-2 text-sm transition-colors ${
                     roleEfetivo === opcao.id
-                      ? 'border-primary bg-primary text-primary-foreground'
-                      : 'bg-background text-foreground hover:bg-muted'
+                      ? 'border-cyan-400 bg-cyan-500/20 text-cyan-100'
+                      : 'border-slate-700 bg-slate-950 text-slate-100 hover:bg-slate-800'
                   }`}
                   type="button"
                 >
