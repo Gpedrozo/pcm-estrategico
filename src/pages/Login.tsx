@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { getPostLoginPath } from '@/lib/security';
@@ -60,6 +60,7 @@ export default function Login() {
   const [logoutNotice, setLogoutNotice] = useState('');
   const [isLoginLoading, setIsLoginLoading] = useState(false);
   const [isRedirectingTenantDomain, setIsRedirectingTenantDomain] = useState(false);
+  const allowPostLoginRedirectRef = useRef(false);
 
   const { login, isAuthenticated, isLoading, effectiveRole, tenantId, forcePasswordChange } = useAuth();
   const navigate = useNavigate();
@@ -149,7 +150,8 @@ export default function Login() {
         isTenantBaseHost
         && window.location.pathname === '/login'
         && !nextPath
-        && !hasSessionTransferHash();
+        && !hasSessionTransferHash()
+        && !allowPostLoginRedirectRef.current;
 
       // When user opens principal /login to switch account, do not auto-redirect
       // using a stale authenticated context from previous tenant access.
@@ -261,6 +263,7 @@ export default function Login() {
     setLoginError('');
     setIsRedirectingTenantDomain(false);
     setIsLoginLoading(true);
+    allowPostLoginRedirectRef.current = true;
 
     try {
       const normalizedEmail = loginEmail.trim().toLowerCase();
@@ -274,9 +277,11 @@ export default function Login() {
       const { error } = await login(normalizedEmail, loginPassword);
 
       if (error) {
+        allowPostLoginRedirectRef.current = false;
         setLoginError(error);
       }
     } catch (err) {
+      allowPostLoginRedirectRef.current = false;
       setLoginError('Erro ao fazer login. Tente novamente.');
     } finally {
       setIsLoginLoading(false);
