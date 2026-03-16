@@ -14,6 +14,7 @@ const OWNER_HARD_RESET_MARKER = "owner-runtime-hard-reset-v1";
 const CHUNK_RELOAD_MARKER = "pcm-chunk-reload-at-v1";
 const CHUNK_RELOAD_COOLDOWN_MS = 30_000;
 const LOGIN_SW_RESET_MARKER = "pcm-login-sw-reset-v1";
+let isCriticalReportInFlight = false;
 const ACTIVE_SUPABASE_PROJECT_REF = (() => {
 	const configuredUrl = import.meta.env.VITE_SUPABASE_URL;
 	if (!configuredUrl) return null;
@@ -26,13 +27,21 @@ const ACTIVE_SUPABASE_PROJECT_REF = (() => {
 })();
 
 async function reportCriticalClientIssue(action: string, metadata: Record<string, unknown>) {
-	await writeAuditLog({
-		action,
-		table: 'client_runtime',
-		source: 'main_global_handlers',
-		severity: 'critical',
-		metadata,
-	});
+	if (isCriticalReportInFlight) return;
+	isCriticalReportInFlight = true;
+	try {
+		await writeAuditLog({
+			action,
+			table: 'client_runtime',
+			source: 'main_global_handlers',
+			severity: 'critical',
+			metadata,
+		});
+	} catch {
+		// Never rethrow from global runtime handlers.
+	} finally {
+		isCriticalReportInFlight = false;
+	}
 }
 
 function renderBootstrapFatalFallback(raw: unknown) {
