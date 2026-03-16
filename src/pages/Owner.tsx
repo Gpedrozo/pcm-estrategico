@@ -247,7 +247,7 @@ export default function Owner() {
     () => toArray<{ id: string; action_type?: string; source?: string; created_at?: string; severity?: string; actor_email?: string; actor_id?: string }>(auditData),
     [auditData],
   )
-  const tickets = useMemo(() => toArray<{ id: string; subject?: string; status?: string; priority?: string }>(supportData), [supportData])
+  const tickets = useMemo(() => toArray<{ id: string; empresa_id?: string; subject?: string; status?: string; priority?: string }>(supportData), [supportData])
   const owners = useMemo(() => toArray<{ user_id: string; role?: string; profile?: { nome?: string; email?: string } }>(ownersData), [ownersData])
   const tables = useMemo(
     () =>
@@ -285,28 +285,38 @@ export default function Owner() {
     })
   }, [logs, auditFilters.action_type, auditFilters.severity])
 
+  const scopedSubscriptions = useMemo(
+    () => (monitoringEmpresaId ? subscriptions.filter((sub) => sub.empresa_id === monitoringEmpresaId) : subscriptions),
+    [monitoringEmpresaId, subscriptions],
+  )
+
+  const scopedTickets = useMemo(
+    () => (monitoringEmpresaId ? tickets.filter((ticket) => ticket.empresa_id === monitoringEmpresaId) : tickets),
+    [monitoringEmpresaId, tickets],
+  )
+
   const financeiroResumo = useMemo(() => {
-    const activeSubs = subscriptions.filter((sub) => sub.status === 'ativa')
-    const paidSubs = subscriptions.filter((sub) => sub.payment_status === 'paid')
-    const lateSubs = subscriptions.filter((sub) => sub.status === 'atrasada' || sub.payment_status === 'late')
+    const activeSubs = scopedSubscriptions.filter((sub) => sub.status === 'ativa')
+    const paidSubs = scopedSubscriptions.filter((sub) => sub.payment_status === 'paid')
+    const lateSubs = scopedSubscriptions.filter((sub) => sub.status === 'atrasada' || sub.payment_status === 'late')
     const mrr = activeSubs.reduce((acc, sub) => acc + Number(sub.amount ?? 0), 0)
     return {
-      totalAssinaturas: subscriptions.length,
+      totalAssinaturas: scopedSubscriptions.length,
       ativas: activeSubs.length,
       pagas: paidSubs.length,
       atrasadas: lateSubs.length,
       mrr,
     }
-  }, [subscriptions])
+  }, [scopedSubscriptions])
 
   const supportResumo = useMemo(() => {
     return {
-      total: tickets.length,
-      aberto: tickets.filter((ticket) => ticket.status === 'aberto').length,
-      andamento: tickets.filter((ticket) => ticket.status === 'em_andamento').length,
-      resolvido: tickets.filter((ticket) => ticket.status === 'resolvido').length,
+      total: scopedTickets.length,
+      aberto: scopedTickets.filter((ticket) => ticket.status === 'aberto').length,
+      andamento: scopedTickets.filter((ticket) => ticket.status === 'em_andamento').length,
+      resolvido: scopedTickets.filter((ticket) => ticket.status === 'resolvido').length,
     }
-  }, [tickets])
+  }, [scopedTickets])
 
   const companyStatusChartData = useMemo(() => {
     const grouped = companies.reduce<Record<string, number>>((acc, company) => {
