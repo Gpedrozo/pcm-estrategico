@@ -40,6 +40,7 @@ export default function OwnerLogin() {
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
+    const hasLogoutMarker = params.get('logout') === '1';
     const reason = params.get('reason');
 
     if (reason === 'inactivity') {
@@ -48,8 +49,9 @@ export default function OwnerLogin() {
       setLogoutNotice('Sessão encerrada ao fechar a página. Faça login novamente para continuar.');
     }
 
-    if (!reason) return;
+    if (!hasLogoutMarker && !reason) return;
 
+    params.delete('logout');
     params.delete('reason');
     const nextQuery = params.toString();
     const cleanedUrl = `${window.location.pathname}${nextQuery ? `?${nextQuery}` : ''}${window.location.hash}`;
