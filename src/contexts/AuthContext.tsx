@@ -248,21 +248,36 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       await supabase.auth.signOut({ scope: 'local' });
       await supabase.auth.signOut();
 
+      if (window.location.pathname === '/login') {
+        stripAuthHandoffFromUrl();
+        return;
+      }
+
       const queryParams = new URLSearchParams(window.location.search);
       queryParams.set(LOGOUT_MARKER_PARAM, '1');
       queryParams.set(LOGOUT_REASON_PARAM, 'window_closed');
       const nextQuery = queryParams.toString();
 
-      if (window.location.pathname === '/login') {
-        const nextUrl = `${window.location.pathname}${nextQuery ? `?${nextQuery}` : ''}${window.location.hash}`;
-        window.history.replaceState({}, document.title, nextUrl);
-        return;
-      }
-
       window.location.assign(`/login?${nextQuery}`);
     };
 
     void forceLogoutAfterClosedWindow();
+  }, []);
+
+  useEffect(() => {
+    if (window.location.pathname !== '/login') return;
+
+    const searchParams = new URLSearchParams(window.location.search);
+    const hasLogoutParams =
+      searchParams.has(LOGOUT_MARKER_PARAM)
+      || searchParams.has(LOGOUT_REASON_PARAM);
+
+    const hashParams = new URLSearchParams(window.location.hash.startsWith('#') ? window.location.hash.slice(1) : '');
+    const hasSessionTransfer = Boolean(hashParams.get('session_transfer'));
+
+    if (hasLogoutParams && !hasSessionTransfer) {
+      stripAuthHandoffFromUrl();
+    }
   }, []);
 
   useEffect(() => {
