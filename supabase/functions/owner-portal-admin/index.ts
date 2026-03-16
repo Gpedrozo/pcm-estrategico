@@ -1354,11 +1354,15 @@ Deno.serve(async (req) => {
         empresa_slug: slug,
         role: masterRole,
         roles: [masterRole],
+        force_password_change: true,
+        must_change_password: true,
       },
       user_metadata: {
         nome: body.user.nome,
         empresa_id: company.id,
         empresa_slug: slug,
+        force_password_change: true,
+        must_change_password: true,
       },
     });
 
@@ -1379,6 +1383,7 @@ Deno.serve(async (req) => {
       empresa_id: company.id,
       nome: body.user.nome,
       email: body.user.email.trim().toLowerCase(),
+      force_password_change: true,
     }, { onConflict: "id" });
 
     if (profileUpsertError) {

@@ -27,6 +27,13 @@ export function TenantDomainMiddleware({ children }: { children: React.ReactNode
   const hostname = window.location.hostname.toLowerCase()
   const isOwnerHost = isOwnerDomain(hostname)
   const hostContext = resolveHostContext(hostname)
+  const isLoginRoute = location.pathname === '/login'
+  const hasSessionTransferHash = (() => {
+    const rawHash = window.location.hash.startsWith('#') ? window.location.hash.slice(1) : ''
+    if (!rawHash) return false
+    const params = new URLSearchParams(rawHash)
+    return Boolean(params.get('session_transfer'))
+  })()
 
   useEffect(() => {
     if (!hostContext.isTenantSubdomain || isLoading || !error || !isAuthenticated) return
@@ -42,6 +49,12 @@ export function TenantDomainMiddleware({ children }: { children: React.ReactNode
   }, [hostContext.isTenantSubdomain, isAuthenticated, isLoading, logout, tenant?.id, tenantId])
 
   if (isOwnerHost) return <>{children}</>
+
+  // Never block the login screen for unauthenticated users on tenant subdomains.
+  // This avoids first-access race conditions where tenant context resolves before session transfer.
+  if (hostContext.isTenantSubdomain && isLoginRoute && (!isAuthenticated || hasSessionTransferHash)) {
+    return <>{children}</>
+  }
 
   if (hostContext.isTenantSubdomain && isLoading) {
     return (
