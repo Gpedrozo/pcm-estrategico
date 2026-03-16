@@ -13,7 +13,6 @@ const LEGACY_OWNER_PROJECT_REF = "cplowhoklcegnjvwmrsk";
 const OWNER_HARD_RESET_MARKER = "owner-runtime-hard-reset-v1";
 const CHUNK_RELOAD_MARKER = "pcm-chunk-reload-at-v1";
 const CHUNK_RELOAD_COOLDOWN_MS = 30_000;
-const LOGIN_SW_RESET_MARKER = "pcm-login-sw-reset-v1";
 let isCriticalReportInFlight = false;
 const ACTIVE_SUPABASE_PROJECT_REF = (() => {
 	const configuredUrl = import.meta.env.VITE_SUPABASE_URL;
@@ -244,26 +243,7 @@ async function hardenOwnerRuntime() {
 	}
 }
 
-async function resetLoginServiceWorkerOnce() {
-	if (typeof window === "undefined") return;
-	if (window.location.pathname !== "/login") return;
-	if (!("serviceWorker" in navigator)) return;
-
-	try {
-		if (window.sessionStorage.getItem(LOGIN_SW_RESET_MARKER) === "1") return;
-		window.sessionStorage.setItem(LOGIN_SW_RESET_MARKER, "1");
-
-		const registrations = await navigator.serviceWorker.getRegistrations();
-		if (registrations.length === 0) return;
-
-		await Promise.all(registrations.map((registration) => registration.unregister()));
-		window.location.reload();
-	} catch {
-	}
-}
-
 void hardenOwnerRuntime().finally(() => {
-	void resetLoginServiceWorkerOnce();
 	try {
 		createRoot(document.getElementById("root")!).render(<App />);
 	} catch (error) {
