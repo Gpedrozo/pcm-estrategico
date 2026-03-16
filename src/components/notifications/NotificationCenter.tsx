@@ -33,7 +33,7 @@ export function NotificationCenter() {
 
   // Generate notifications from system events
   useEffect(() => {
-    if (!user) return;
+    if (!user?.tenantId) return;
 
     let isActive = true;
 
@@ -44,6 +44,7 @@ export function NotificationCenter() {
       const { data: pendingOS } = await supabase
         .from('ordens_servico')
         .select('id, numero_os, prioridade, data_solicitacao')
+        .eq('empresa_id', user.tenantId)
         .in('status', ['ABERTA', 'EM_ANDAMENTO', 'AGUARDANDO_MATERIAL'])
         .order('data_solicitacao', { ascending: true })
         .limit(5);
@@ -80,6 +81,7 @@ export function NotificationCenter() {
       const { data: overduePlans } = await supabase
         .from('planos_preventivos')
         .select('id, nome, proxima_execucao')
+        .eq('empresa_id', user.tenantId)
         .eq('ativo', true)
         .lt('proxima_execucao', today)
         .limit(5);
@@ -100,6 +102,7 @@ export function NotificationCenter() {
       const { data: lowStockMaterials } = await supabase
         .from('materiais')
         .select('id, nome, estoque_atual, estoque_minimo')
+        .eq('empresa_id', user.tenantId)
         .eq('ativo', true);
 
       const belowMinimum = lowStockMaterials?.filter(m => m.estoque_atual < m.estoque_minimo) || [];
@@ -119,6 +122,7 @@ export function NotificationCenter() {
       const { data: criticalMeasurements } = await supabase
         .from('medicoes_preditivas')
         .select('id, tag, valor, limite_critico')
+        .eq('empresa_id', user.tenantId)
         .eq('status', 'CRITICO')
         .limit(5);
 
@@ -160,6 +164,7 @@ export function NotificationCenter() {
           event: 'INSERT',
           schema: 'public',
           table: 'ordens_servico',
+          filter: `empresa_id=eq.${user.tenantId}`,
         },
         (payload) => {
           const newOS = payload.new as {
