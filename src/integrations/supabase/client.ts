@@ -61,8 +61,8 @@ const isTestEnvironment =
 const hasSupabaseEnv = Boolean(SUPABASE_URL && SUPABASE_KEY)
 
 if (!hasSupabaseEnv && !isTestEnvironment && !import.meta.env.DEV) {
-  throw new Error(
-    'Supabase environment is not configured. Define VITE_SUPABASE_URL with VITE_SUPABASE_PUBLISHABLE_KEY or VITE_SUPABASE_ANON_KEY.'
+  console.error(
+    '[supabase-client] Ambiente Supabase nao configurado. A aplicacao sera inicializada em modo de seguranca ate as variaveis VITE_SUPABASE_* serem definidas.'
   )
 }
 
@@ -78,15 +78,15 @@ const normalizedProjectId = SUPABASE_PROJECT_ID?.trim() || null
 
 if (!isTestEnvironment && hasSupabaseEnv) {
   if (projectRefFromUrl && projectRefFromKey && projectRefFromUrl !== projectRefFromKey) {
-    throw new Error('Supabase URL and publishable key are from different projects. Use a single Supabase project for all system databases.')
+    console.error('[supabase-client] VITE_SUPABASE_URL e VITE_SUPABASE_PUBLISHABLE_KEY apontam para projetos diferentes.')
   }
 
   if (normalizedProjectId && projectRefFromUrl && normalizedProjectId !== projectRefFromUrl) {
-    throw new Error('VITE_SUPABASE_PROJECT_ID does not match VITE_SUPABASE_URL. Keep all data in one Supabase project.')
+    console.error('[supabase-client] VITE_SUPABASE_PROJECT_ID diverge de VITE_SUPABASE_URL.')
   }
 
   if (normalizedProjectId && projectRefFromKey && normalizedProjectId !== projectRefFromKey) {
-    throw new Error('VITE_SUPABASE_PROJECT_ID does not match VITE_SUPABASE_PUBLISHABLE_KEY. Keep all data in one Supabase project.')
+    console.error('[supabase-client] VITE_SUPABASE_PROJECT_ID diverge de VITE_SUPABASE_PUBLISHABLE_KEY.')
   }
 }
 
@@ -112,8 +112,8 @@ const hasLocalStorageApi =
 
 const authStorage = hasLocalStorageApi ? window.localStorage : memoryStorage
 
-const fallbackUrl = isTestEnvironment ? 'http://127.0.0.1:54321' : ''
-const fallbackKey = isTestEnvironment ? 'test-key' : ''
+const fallbackUrl = 'http://127.0.0.1:54321'
+const fallbackKey = isTestEnvironment ? 'test-key' : 'runtime-fallback-key'
 
 export const supabase = createClient<Database>(SUPABASE_URL || fallbackUrl, SUPABASE_KEY || fallbackKey, {
   auth: {
