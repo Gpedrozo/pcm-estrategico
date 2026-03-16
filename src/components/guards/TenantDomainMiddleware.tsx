@@ -19,6 +19,13 @@ function resolveHostContext(hostname: string) {
   }
 }
 
+function hasSessionTransferHash() {
+  const rawHash = window.location.hash.startsWith('#') ? window.location.hash.slice(1) : ''
+  if (!rawHash) return false
+  const params = new URLSearchParams(rawHash)
+  return Boolean(params.get('session_transfer'))
+}
+
 export function TenantDomainMiddleware({ children }: { children: React.ReactNode }) {
   const { tenant, isLoading, error } = useTenant()
   const { isAuthenticated, tenantId, logout } = useAuth()
@@ -31,16 +38,18 @@ export function TenantDomainMiddleware({ children }: { children: React.ReactNode
 
   useEffect(() => {
     if (!hostContext.isTenantSubdomain || isLoading || !error || !isAuthenticated) return
+    if (isLoginRoute || hasSessionTransferHash()) return
     void logout()
-  }, [error, hostContext.isTenantSubdomain, isAuthenticated, isLoading, logout])
+  }, [error, hostContext.isTenantSubdomain, isAuthenticated, isLoading, isLoginRoute, logout])
 
   useEffect(() => {
     if (!hostContext.isTenantSubdomain || isLoading || !isAuthenticated) return
+    if (isLoginRoute || hasSessionTransferHash()) return
     if (!tenant?.id || !tenantId) return
     if (tenant.id !== tenantId) {
       void logout()
     }
-  }, [hostContext.isTenantSubdomain, isAuthenticated, isLoading, logout, tenant?.id, tenantId])
+  }, [hostContext.isTenantSubdomain, isAuthenticated, isLoading, isLoginRoute, logout, tenant?.id, tenantId])
 
   if (isOwnerHost) return <>{children}</>
 
