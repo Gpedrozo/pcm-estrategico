@@ -962,7 +962,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     const { data: { session: currentSession } } = await supabase.auth.getSession();
     const { data: { user: currentUser } } = await supabase.auth.getUser();
-    if (currentUser) {
+    const activeSession = currentSession ?? signInData.session ?? null;
+    const activeUser = currentUser ?? signInData.user ?? null;
+
+    if (activeUser) {
       let profileData: {
         nome: string;
         tipo: AppRole;
@@ -974,10 +977,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       try {
         profileData = await withTimeout(
-          resolveUserProfile(currentUser.id, currentUser.email, {
-            app_metadata: currentUser.app_metadata,
-            user_metadata: currentUser.user_metadata,
-          }, currentSession?.access_token ?? null),
+          resolveUserProfile(activeUser.id, activeUser.email, {
+            app_metadata: activeUser.app_metadata,
+            user_metadata: activeUser.user_metadata,
+          }, activeSession?.access_token ?? null),
           LOGIN_PROFILE_TIMEOUT_MS,
           'timeout_resolving_user_profile',
         );
@@ -995,10 +998,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return { error: 'Conta autenticada, mas sem permissão SYSTEM_OWNER para o Owner Portal.' };
       }
 
-      setSession(currentSession ?? null);
+      setSession(activeSession);
       setUser({
-        id: currentUser.id,
-        email: currentUser.email || '',
+        id: activeUser.id,
+        email: activeUser.email || '',
         nome: profileData.nome,
         tipo: profileData.tipo,
         roles: profileData.roles,
@@ -1025,8 +1028,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           let targetHost = await withTimeout(
             resolveTenantRedirectHost(profileData.tenantId, {
               slugHint: extractEmpresaSlugFromMetadata({
-                app_metadata: currentUser.app_metadata,
-                user_metadata: currentUser.user_metadata,
+                app_metadata: activeUser.app_metadata,
+                user_metadata: activeUser.user_metadata,
               }),
             }),
             TENANT_HOST_RESOLVE_TIMEOUT_MS,
@@ -1034,8 +1037,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           ).catch(() => null);
           if (!targetHost) {
             const slugFromMetadata = extractEmpresaSlugFromMetadata({
-              app_metadata: currentUser.app_metadata,
-              user_metadata: currentUser.user_metadata,
+              app_metadata: activeUser.app_metadata,
+              user_metadata: activeUser.user_metadata,
             });
 
             if (slugFromMetadata) {
@@ -1045,7 +1048,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
           if (!targetHost) {
             logger.warn('tenant_redirect_host_missing_fallback_base_domain', {
-              userId: currentUser.id,
+              userId: activeUser.id,
               tenantId: profileData.tenantId,
             });
             await supabase.auth.signOut();
@@ -1054,7 +1057,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
           const currentHostname = window.location.hostname.toLowerCase();
           if (targetHost !== currentHostname) {
-            const transferHash = buildSessionTransferHash(currentSession ?? null);
+            const transferHash = buildSessionTransferHash(activeSession);
             const targetUrl = `${window.location.protocol}//${targetHost}/login${transferHash ? `#${transferHash}` : ''}`;
             window.location.assign(targetUrl);
             return { error: null };
@@ -1069,12 +1072,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
         if (!domainEmpresaId) {
           const metadataEmpresaId = extractEmpresaIdFromMetadata({
-            app_metadata: currentUser.app_metadata,
-            user_metadata: currentUser.user_metadata,
+            app_metadata: activeUser.app_metadata,
+            user_metadata: activeUser.user_metadata,
           });
           const metadataEmpresaSlug = extractEmpresaSlugFromMetadata({
-            app_metadata: currentUser.app_metadata,
-            user_metadata: currentUser.user_metadata,
+            app_metadata: activeUser.app_metadata,
+            user_metadata: activeUser.user_metadata,
           });
 
           const hostname = window.location.hostname.toLowerCase();
