@@ -727,7 +727,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     metadata?: { app_metadata?: Record<string, unknown>; user_metadata?: Record<string, unknown> },
     token?: string | null,
   ) => {
-    const domainEmpresaId = await resolveDomainEmpresaId();
+    let domainEmpresaId = await resolveDomainEmpresaId();
+
+    // Fallback for first access on brand-new tenants: trust auth metadata when host slug matches.
+    if (!domainEmpresaId && !isOwnerDomain(window.location.hostname)) {
+      const metadataEmpresaId = extractEmpresaIdFromMetadata(metadata);
+      const metadataEmpresaSlug = extractEmpresaSlugFromMetadata(metadata);
+      const hostname = window.location.hostname.toLowerCase();
+      const baseDomain = TENANT_BASE_DOMAIN.toLowerCase();
+      const hostSlug = hostname.endsWith(`.${baseDomain}`)
+        ? hostname.replace(`.${baseDomain}`, '').split('.')[0]?.trim().toLowerCase() || null
+        : null;
+
+      if (metadataEmpresaId && metadataEmpresaSlug && hostSlug && hostSlug === metadataEmpresaSlug) {
+        domainEmpresaId = metadataEmpresaId;
+      }
+    }
+
     let profileData = await fetchUserProfile(userId, email, metadata, domainEmpresaId);
 
     if (!isOwnerDomain(window.location.hostname)) {
@@ -1034,7 +1050,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           };
         }
 
-        const domainEmpresaId = await resolveDomainEmpresaId();
+        let domainEmpresaId = await resolveDomainEmpresaId();
+
+        if (!domainEmpresaId) {
+          const metadataEmpresaId = extractEmpresaIdFromMetadata({
+            app_metadata: currentUser.app_metadata,
+            user_metadata: currentUser.user_metadata,
+          });
+          const metadataEmpresaSlug = extractEmpresaSlugFromMetadata({
+            app_metadata: currentUser.app_metadata,
+            user_metadata: currentUser.user_metadata,
+          });
+
+          const hostname = window.location.hostname.toLowerCase();
+          const hostSlug = hostname.endsWith(`.${TENANT_BASE_DOMAIN}`)
+            ? hostname.replace(`.${TENANT_BASE_DOMAIN}`, '').split('.')[0]?.trim().toLowerCase() || null
+            : null;
+
+          if (metadataEmpresaId && metadataEmpresaSlug && hostSlug && hostSlug === metadataEmpresaSlug) {
+            domainEmpresaId = metadataEmpresaId;
+          }
+        }
 
         if (!domainEmpresaId) {
           await supabase.auth.signOut();

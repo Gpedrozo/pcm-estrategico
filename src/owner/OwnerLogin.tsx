@@ -4,6 +4,7 @@ import { Shield, Loader2, AlertCircle } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { getPostLoginPath } from '@/lib/security';
+import { resolveOrRepairTenantHost } from '@/lib/tenantDomain';
 import { impersonateCompany, listPlatformCompanies, type OwnerCompany } from '@/services/ownerPortal.service';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -130,23 +131,38 @@ export default function OwnerLogin() {
       });
 
       if (tenantBaseDomain) {
-        let targetHost = selected.slug ? `${selected.slug}.${tenantBaseDomain}` : '';
+        let targetHost = await resolveOrRepairTenantHost({
+          tenantId: selected.id,
+          tenantBaseDomain,
+          slugHint: selected.slug ?? undefined,
+        });
 
         if (!targetHost) {
-          const { data: configData } = await supabase
-            .from('empresa_config')
-            .select('dominio_custom')
-            .eq('empresa_id', selected.id)
-            .not('dominio_custom', 'is', null)
-            .order('updated_at', { ascending: false })
-            .limit(1)
-            .maybeSingle();
+          const { data: { session: activeSession } } = await supabase.auth.getSession();
+          const metadataSlug = String(
+            activeSession?.user?.app_metadata?.empresa_slug
+            ?? activeSession?.user?.user_metadata?.empresa_slug
+            ?? response?.session?.user?.app_metadata?.empresa_slug
+            ?? response?.session?.user?.user_metadata?.empresa_slug
+            ?? selected.slug
+            ?? '',
+          ).trim().toLowerCase();
 
-          targetHost = (configData?.dominio_custom ?? '').trim().toLowerCase();
+          if (metadataSlug) {
+            targetHost = await resolveOrRepairTenantHost({
+              tenantId: selected.id,
+              tenantBaseDomain,
+              slugHint: metadataSlug,
+            });
+
+            if (!targetHost) {
+              targetHost = `${metadataSlug}.${tenantBaseDomain}`;
+            }
+          }
         }
 
         if (!targetHost) {
-          targetHost = tenantBaseDomain;
+          throw new Error('Nao foi possivel resolver o dominio da empresa. Atualize a empresa e tente novamente em alguns segundos.');
         }
 
         const { data: { session: activeSession } } = await supabase.auth.getSession();

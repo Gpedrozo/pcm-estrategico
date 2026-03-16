@@ -3,6 +3,7 @@ import { Activity, AlertTriangle, CheckCircle, Clock, Database, Gauge, Loader2, 
 import { Bar, BarChart, CartesianGrid, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import { useAuth } from '@/contexts/AuthContext'
 import { OwnerPortalLayout } from '@/layouts/OwnerPortalLayout'
+import { resolveOrRepairTenantHost } from '@/lib/tenantDomain'
 import {
   useOwnerAuditLogs,
   useOwnerBackendHealth,
@@ -828,8 +829,16 @@ export default function Owner() {
       const companySlug = String(createdCompany?.slug ?? '').trim()
       const companyName = String(createdCompany?.nome ?? createCompanyForm.nome).trim()
       const masterEmail = String(masterUser?.email ?? normalizedAdminEmail).trim().toLowerCase()
-      const loginUrl = companySlug
-        ? `https://${companySlug}.${TENANT_BASE_DOMAIN}/login`
+
+      const resolvedHost = await resolveOrRepairTenantHost({
+        tenantId: String(createdCompany?.id ?? ''),
+        tenantBaseDomain: TENANT_BASE_DOMAIN,
+        slugHint: companySlug || undefined,
+      })
+
+      const loginHost = resolvedHost || (companySlug ? `${companySlug}.${TENANT_BASE_DOMAIN}` : '')
+      const loginUrl = loginHost
+        ? `https://${loginHost}/login`
         : `https://${TENANT_BASE_DOMAIN}/login`
 
       if (initialPassword) {
