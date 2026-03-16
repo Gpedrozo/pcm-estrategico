@@ -17,12 +17,12 @@ import { BrandingProvider } from "@/contexts/BrandingContext";
 import { isOwnerDomain } from "@/lib/security";
 import { Loader2 } from 'lucide-react'
 import { AppErrorBoundary } from '@/components/runtime/AppErrorBoundary';
+import OwnerLogin from '@/owner/OwnerLogin';
+import Login from './pages/Login';
 
 const Owner = lazy(() => import('./pages/Owner'))
-const OwnerLogin = lazy(() => import('@/owner/OwnerLogin'))
 
 const Index = lazy(() => import('./pages/Index'))
-const Login = lazy(() => import('./pages/Login'))
 const ChangePassword = lazy(() => import('./pages/ChangePassword'))
 const ForgotPassword = lazy(() => import('./pages/ForgotPassword'))
 const ResetPassword = lazy(() => import('./pages/ResetPassword'))
