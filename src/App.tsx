@@ -165,6 +165,42 @@ function OwnerRoutes() {
           }
         />
 
+        <Route
+          path="/manuais-operacao"
+          element={
+            <EnvironmentGuard allowOwner>
+              <ManualOperacao />
+            </EnvironmentGuard>
+          }
+        />
+
+        <Route
+          path="/manuais-operacao/usuario"
+          element={
+            <EnvironmentGuard allowOwner>
+              <ManualOperacao />
+            </EnvironmentGuard>
+          }
+        />
+
+        <Route
+          path="/manuais-operacao/admin"
+          element={
+            <EnvironmentGuard allowOwner>
+              <ManualOperacao />
+            </EnvironmentGuard>
+          }
+        />
+
+        <Route
+          path="/manuais-operacao/master-ti"
+          element={
+            <EnvironmentGuard allowOwner>
+              <ManualOperacao />
+            </EnvironmentGuard>
+          }
+        />
+
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </Suspense>
