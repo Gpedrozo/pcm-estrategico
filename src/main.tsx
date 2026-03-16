@@ -11,7 +11,8 @@ const OWNER_DOMAIN_ALIASES = new Set([
 ]);
 const LEGACY_OWNER_PROJECT_REF = "cplowhoklcegnjvwmrsk";
 const OWNER_HARD_RESET_MARKER = "owner-runtime-hard-reset-v1";
-const CHUNK_RELOAD_MARKER = "pcm-chunk-reload-once-v1";
+const CHUNK_RELOAD_MARKER = "pcm-chunk-reload-at-v1";
+const CHUNK_RELOAD_COOLDOWN_MS = 30_000;
 const ACTIVE_SUPABASE_PROJECT_REF = (() => {
 	const configuredUrl = import.meta.env.VITE_SUPABASE_URL;
 	if (!configuredUrl) return null;
@@ -48,18 +49,54 @@ function isDynamicChunkLoadError(raw: unknown) {
 	);
 }
 
+function hasRecentChunkReload() {
+	try {
+		const raw = window.sessionStorage.getItem(CHUNK_RELOAD_MARKER);
+		const timestamp = Number(raw ?? 0);
+		return Number.isFinite(timestamp) && timestamp > 0 && Date.now() - timestamp <= CHUNK_RELOAD_COOLDOWN_MS;
+	} catch {
+		return false;
+	}
+}
+
+async function clearClientCachesBeforeReload() {
+	try {
+		if ("serviceWorker" in navigator) {
+			const registrations = await navigator.serviceWorker.getRegistrations();
+			await Promise.all(registrations.map((registration) => registration.unregister()));
+		}
+	} catch {
+	}
+
+	try {
+		if ("caches" in window) {
+			const cacheKeys = await caches.keys();
+			await Promise.all(
+				cacheKeys
+					.filter((cacheName) => cacheName.includes("workbox") || cacheName.includes("vite-pwa") || cacheName.includes("supabase-cache"))
+					.map((cacheName) => caches.delete(cacheName)),
+			);
+		}
+	} catch {
+	}
+}
+
 function recoverFromDynamicChunkError(raw: unknown) {
 	if (!isDynamicChunkLoadError(raw)) return false;
 
 	try {
-		if (window.sessionStorage.getItem(CHUNK_RELOAD_MARKER) === "1") {
+		if (hasRecentChunkReload()) {
 			return false;
 		}
 
-		window.sessionStorage.setItem(CHUNK_RELOAD_MARKER, "1");
-		const targetUrl = new URL(window.location.href);
-		targetUrl.searchParams.set("chunk_reload", Date.now().toString());
-		window.location.replace(targetUrl.toString());
+		const now = Date.now();
+		window.sessionStorage.setItem(CHUNK_RELOAD_MARKER, String(now));
+
+		void clearClientCachesBeforeReload().finally(() => {
+			const targetUrl = new URL(window.location.href);
+			targetUrl.searchParams.set("chunk_reload", now.toString());
+			window.location.replace(targetUrl.toString());
+		});
 		return true;
 	} catch {
 		return false;
@@ -166,8 +203,4 @@ async function hardenOwnerRuntime() {
 
 void hardenOwnerRuntime().finally(() => {
 	createRoot(document.getElementById("root")!).render(<App />);
-	try {
-		window.sessionStorage.removeItem(CHUNK_RELOAD_MARKER);
-	} catch {
-	}
 });

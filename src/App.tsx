@@ -16,6 +16,7 @@ import { TenantProvider } from "@/contexts/TenantContext";
 import { BrandingProvider } from "@/contexts/BrandingContext";
 import { isOwnerDomain } from "@/lib/security";
 import { Loader2 } from 'lucide-react'
+import { AppErrorBoundary } from '@/components/runtime/AppErrorBoundary';
 
 const Owner = lazy(() => import('./pages/Owner'))
 const OwnerLogin = lazy(() => import('@/owner/OwnerLogin'))
@@ -294,19 +295,21 @@ function TenantRoutes() {
 }
 
 const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <AuthProvider>
-      <TenantQueryIsolationGuard />
-      <TooltipProvider>
-        <Toaster />
-        <Sonner />
-        <BrowserRouter>
-          {isOwnerDomain() ? <OwnerRoutes /> : <TenantRoutes />}
-        </BrowserRouter>
-        <SpeedInsights />
-      </TooltipProvider>
-    </AuthProvider>
-  </QueryClientProvider>
+  <AppErrorBoundary>
+    <QueryClientProvider client={queryClient}>
+      <AuthProvider>
+        <TenantQueryIsolationGuard />
+        <TooltipProvider>
+          <Toaster />
+          <Sonner />
+          <BrowserRouter>
+            {isOwnerDomain() ? <OwnerRoutes /> : <TenantRoutes />}
+          </BrowserRouter>
+          <SpeedInsights />
+        </TooltipProvider>
+      </AuthProvider>
+    </QueryClientProvider>
+  </AppErrorBoundary>
 );
 
 export default App;
