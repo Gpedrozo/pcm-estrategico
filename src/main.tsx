@@ -13,6 +13,7 @@ const LEGACY_OWNER_PROJECT_REF = "cplowhoklcegnjvwmrsk";
 const OWNER_HARD_RESET_MARKER = "owner-runtime-hard-reset-v1";
 const CHUNK_RELOAD_MARKER = "pcm-chunk-reload-at-v1";
 const CHUNK_RELOAD_COOLDOWN_MS = 30_000;
+const LOGIN_SW_RESET_MARKER = "pcm-login-sw-reset-v1";
 const ACTIVE_SUPABASE_PROJECT_REF = (() => {
 	const configuredUrl = import.meta.env.VITE_SUPABASE_URL;
 	if (!configuredUrl) return null;
@@ -32,6 +33,39 @@ async function reportCriticalClientIssue(action: string, metadata: Record<string
 		severity: 'critical',
 		metadata,
 	});
+}
+
+function renderBootstrapFatalFallback(raw: unknown) {
+	const message = String((raw as { message?: string })?.message ?? raw ?? "Erro inesperado ao inicializar aplicacao.");
+	const root = document.getElementById("root");
+	if (!root) return;
+
+	root.innerHTML = `
+	  <div style="min-height:100vh;display:flex;align-items:center;justify-content:center;background:#0b1220;padding:24px;color:#e5e7eb;font-family:Segoe UI,Arial,sans-serif;">
+	    <div style="max-width:640px;width:100%;background:#111827;border:1px solid #334155;border-radius:12px;padding:20px;box-shadow:0 10px 30px rgba(0,0,0,.35);">
+	      <h1 style="margin:0 0 8px 0;font-size:20px;">Falha ao carregar o sistema</h1>
+	      <p style="margin:0 0 16px 0;font-size:14px;color:#cbd5e1;">Uma falha em runtime bloqueou a inicializacao apos o login. Tente as acoes abaixo.</p>
+	      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+	        <button id="pcm-reload-btn" style="padding:10px 14px;border-radius:8px;border:1px solid #475569;background:#0f172a;color:#e2e8f0;cursor:pointer;">Recarregar pagina</button>
+	        <button id="pcm-login-btn" style="padding:10px 14px;border-radius:8px;border:1px solid #475569;background:#0f172a;color:#e2e8f0;cursor:pointer;">Voltar ao login</button>
+	      </div>
+	      <p style="margin-top:14px;font-size:12px;color:#94a3b8;word-break:break-word;">${message}</p>
+	    </div>
+	  </div>
+	`;
+
+	const reloadBtn = document.getElementById("pcm-reload-btn");
+	if (reloadBtn) {
+		reloadBtn.addEventListener("click", () => window.location.reload());
+	}
+
+	const loginBtn = document.getElementById("pcm-login-btn");
+	if (loginBtn) {
+		loginBtn.addEventListener("click", () => {
+			const next = encodeURIComponent(`${window.location.pathname}${window.location.search}` || "/dashboard");
+			window.location.assign(`/login?next=${next}`);
+		});
+	}
 }
 
 function isDynamicChunkLoadError(raw: unknown) {
@@ -201,6 +235,39 @@ async function hardenOwnerRuntime() {
 	}
 }
 
+async function resetLoginServiceWorkerOnce() {
+	if (typeof window === "undefined") return;
+	if (window.location.pathname !== "/login") return;
+	if (!("serviceWorker" in navigator)) return;
+
+	try {
+		if (window.sessionStorage.getItem(LOGIN_SW_RESET_MARKER) === "1") return;
+		window.sessionStorage.setItem(LOGIN_SW_RESET_MARKER, "1");
+
+		const registrations = await navigator.serviceWorker.getRegistrations();
+		if (registrations.length === 0) return;
+
+		await Promise.all(registrations.map((registration) => registration.unregister()));
+		window.location.reload();
+	} catch {
+	}
+}
+
 void hardenOwnerRuntime().finally(() => {
-	createRoot(document.getElementById("root")!).render(<App />);
+	void resetLoginServiceWorkerOnce();
+	try {
+		createRoot(document.getElementById("root")!).render(<App />);
+	} catch (error) {
+		logger.error("bootstrap_render_failed", {
+			error: String(error),
+			path: window.location.pathname,
+		});
+
+		void reportCriticalClientIssue('CLIENT_BOOTSTRAP_RENDER_FAILED', {
+			error: String(error),
+			path: window.location.pathname,
+		});
+
+		renderBootstrapFatalFallback(error);
+	}
 });
