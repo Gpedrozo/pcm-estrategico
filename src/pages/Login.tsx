@@ -142,6 +142,20 @@ export default function Login() {
         currentHost === tenantBaseDomain ||
         currentHost === `www.${tenantBaseDomain}`;
 
+      const nextPath = resolveSafeNextPath();
+      const isManualAccountSwitchIntent =
+        isTenantBaseHost
+        && window.location.pathname === '/login'
+        && !nextPath
+        && !hasSessionTransferHash();
+
+      // When user opens principal /login to switch account, do not auto-redirect
+      // using a stale authenticated context from previous tenant access.
+      if (isManualAccountSwitchIntent) {
+        setIsRedirectingTenantDomain(false);
+        return;
+      }
+
       if (!isGlobalRole && isTenantBaseHost) {
         if (!tenantId) {
           return;
@@ -187,7 +201,6 @@ export default function Login() {
         if (!targetHost) {
           if (!isActive) return;
           setIsRedirectingTenantDomain(false);
-          const nextPath = resolveSafeNextPath();
           navigate(nextPath || getPostLoginPath(effectiveRole), { replace: true });
           return;
         }
@@ -195,7 +208,6 @@ export default function Login() {
         if (targetHost === currentHost) {
           if (!isActive) return;
           setIsRedirectingTenantDomain(false);
-          const nextPath = resolveSafeNextPath();
           navigate(nextPath || getPostLoginPath(effectiveRole), { replace: true });
           return;
         }
@@ -222,7 +234,6 @@ export default function Login() {
       }
 
       setIsRedirectingTenantDomain(false);
-      const nextPath = resolveSafeNextPath();
       navigate(nextPath || getPostLoginPath(effectiveRole), { replace: true });
     };
 
