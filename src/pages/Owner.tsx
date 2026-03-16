@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { AlertTriangle, Loader2, ShieldCheck } from 'lucide-react'
+import { Activity, AlertTriangle, CheckCircle, Clock, Database, Gauge, Loader2, ShieldCheck } from 'lucide-react'
 import { Bar, BarChart, CartesianGrid, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import { useAuth } from '@/contexts/AuthContext'
 import { OwnerPortalLayout } from '@/layouts/OwnerPortalLayout'
@@ -99,6 +99,33 @@ const CREATE_COMPANY_STAGES = [
   'Provisionando administrador inicial',
   'Finalizando credenciais e acesso',
 ]
+
+const MONITOR_TABLE_LABELS: Record<string, string> = {
+  ordens_servico: 'Ordens de Servico',
+  equipamentos: 'Equipamentos',
+  planos_preventivos: 'Planos Preventivos',
+  planos_lubrificacao: 'Planos Lubrificacao',
+  medicoes_preditivas: 'Medicoes Preditivas',
+  inspecoes: 'Inspecoes',
+  fmea: 'FMEA',
+  analise_causa_raiz: 'Causa Raiz (RCA)',
+  melhorias: 'Melhorias',
+  materiais: 'Materiais',
+  mecanicos: 'Mecanicos',
+  fornecedores: 'Fornecedores',
+  contratos: 'Contratos',
+  documentos_tecnicos: 'Documentos Tecnicos',
+  solicitacoes_manutencao: 'Solicitacoes',
+  incidentes_ssma: 'SSMA/Incidentes',
+  componentes_equipamento: 'Componentes',
+  execucoes_os: 'Execucoes OS',
+  profiles: 'Usuarios',
+  audit_logs: 'Auditoria',
+  security_logs: 'Security Logs',
+  notificacoes: 'Notificacoes',
+  permissoes_granulares: 'Permissoes Granulares',
+  configuracoes_sistema: 'Configuracoes',
+}
 
 function Card({ title, subtitle, children }: { title: string; subtitle?: string; children: React.ReactNode }) {
   return (
@@ -261,10 +288,43 @@ export default function Owner() {
     () =>
       tables.map((table) => ({
         ...table,
+        module_name: MONITOR_TABLE_LABELS[table.table_name] || table.table_name,
         status: table.total_rows >= 0 ? 'online' : 'indisponivel',
       })),
     [tables],
   )
+
+  const monitorSummary = useMemo(() => {
+    const totalTables = monitoredDatabases.length
+    const activeModules = monitoredDatabases.filter((item) => item.total_rows > 0).length
+    const errorModules = monitoredDatabases.filter((item) => item.status !== 'online').length + (tablesError ? 1 : 0)
+    const totalRecords = monitoredDatabases.reduce((acc, item) => acc + Number(item.total_rows || 0), 0)
+    const responseMs = Number((backendHealth as any)?.duration_ms ?? 0)
+
+    const availabilityPercent = totalTables > 0
+      ? Math.max(0, Math.min(100, Math.round(((totalTables - errorModules) / totalTables) * 100)))
+      : 0
+    const coveragePercent = totalTables > 0
+      ? Math.max(0, Math.min(100, Math.round((activeModules / totalTables) * 100)))
+      : 0
+
+    const status = errorModules > 0
+      ? 'critical'
+      : backendHealth?.status === 'ok'
+        ? 'healthy'
+        : 'warning'
+
+    return {
+      totalTables,
+      activeModules,
+      errorModules,
+      totalRecords,
+      responseMs,
+      availabilityPercent,
+      coveragePercent,
+      status,
+    }
+  }, [backendHealth, monitoredDatabases, tablesError])
 
   const tenantScopedTables = useMemo(
     () => tables.filter((table) => table.has_empresa_id),
@@ -1711,19 +1771,55 @@ export default function Owner() {
             </div>
           </div>
 
-          <div className="grid gap-3 md:grid-cols-4">
-            <Metric label="Service" value={backendHealth?.service || 'owner-portal-admin'} />
-            <Metric label="Status" value={backendHealth?.status || 'desconhecido'} />
-            <Metric label="Versao" value={backendHealth?.version || 'n/a'} />
-            <Metric label="Tabelas monitoradas" value={tables.length} />
+          <div className="rounded-lg border border-slate-800 bg-slate-950 p-4">
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <div className={`h-3 w-3 rounded-full ${monitorSummary.status === 'healthy' ? 'bg-emerald-400' : monitorSummary.status === 'warning' ? 'bg-amber-400' : 'bg-rose-400'} animate-pulse`} />
+                <div>
+                  <p className="text-sm font-semibold text-slate-100">Status Geral do Sistema</p>
+                  <p className="text-xs text-slate-400">Monitoramento em tempo real • Atualizacao a cada 5s</p>
+                </div>
+              </div>
+              <span className={`rounded-full px-3 py-1 text-[11px] font-semibold ${monitorSummary.status === 'healthy' ? 'bg-emerald-900/40 text-emerald-300 border border-emerald-600/40' : monitorSummary.status === 'warning' ? 'bg-amber-900/40 text-amber-300 border border-amber-600/40' : 'bg-rose-900/40 text-rose-300 border border-rose-600/40'}`}>
+                {monitorSummary.status === 'healthy' ? 'Operacional' : monitorSummary.status === 'warning' ? 'Atencao' : 'Critico'}
+              </span>
+            </div>
           </div>
 
-          <div className="mt-4 grid gap-3 md:grid-cols-4">
+          <div className="mt-4 grid gap-3 md:grid-cols-4 lg:grid-cols-7">
+            <Metric label="Tempo resposta" value={monitorSummary.responseMs > 0 ? `${monitorSummary.responseMs}ms` : '-'} />
+            <Metric label="Registros totais" value={monitorSummary.totalRecords} />
+            <Metric label="Modulos ativos" value={`${monitorSummary.activeModules}/${monitorSummary.totalTables}`} />
+            <Metric label="Modulos com erro" value={monitorSummary.errorModules} />
             <Metric label="Registros globais" value={tables.filter((t) => !t.has_empresa_id).reduce((acc, t) => acc + t.total_rows, 0)} />
-            <Metric label="Registros tenant" value={tables.filter((t) => t.has_empresa_id).reduce((acc, t) => acc + t.total_rows, 0)} />
             <Metric label="Tickets abertos" value={supportResumo.aberto} />
             <Metric label="Assinaturas atrasadas" value={financeiroResumo.atrasadas} />
           </div>
+
+          <div className="mt-4 rounded-lg border border-slate-800 bg-slate-950 p-4">
+            <p className="text-sm font-semibold text-slate-100">Performance do Banco</p>
+            <div className="mt-3 grid gap-4 md:grid-cols-2">
+              <div>
+                <div className="mb-1 flex items-center justify-between text-xs text-slate-400">
+                  <span className="inline-flex items-center gap-1"><Gauge className="h-3.5 w-3.5" /> Disponibilidade</span>
+                  <span className="font-mono text-slate-200">{monitorSummary.availabilityPercent}%</span>
+                </div>
+                <div className="h-2 rounded bg-slate-800">
+                  <div className="h-2 rounded bg-emerald-500" style={{ width: `${monitorSummary.availabilityPercent}%` }} />
+                </div>
+              </div>
+              <div>
+                <div className="mb-1 flex items-center justify-between text-xs text-slate-400">
+                  <span className="inline-flex items-center gap-1"><Activity className="h-3.5 w-3.5" /> Cobertura dos modulos</span>
+                  <span className="font-mono text-slate-200">{monitorSummary.coveragePercent}%</span>
+                </div>
+                <div className="h-2 rounded bg-slate-800">
+                  <div className="h-2 rounded bg-blue-500" style={{ width: `${monitorSummary.coveragePercent}%` }} />
+                </div>
+              </div>
+            </div>
+          </div>
+
           <div className="mt-4 rounded border border-slate-800 bg-slate-950 p-3">
             <p className="text-xs text-slate-400">Acoes suportadas</p>
             <div className="mt-2 flex flex-wrap gap-2">
@@ -1752,6 +1848,7 @@ export default function Owner() {
               <table className="w-full text-xs">
                 <thead className="bg-slate-900">
                   <tr>
+                    <th className="px-3 py-2 text-left">Modulo</th>
                     <th className="px-3 py-2 text-left">Base/Tabela</th>
                     <th className="px-3 py-2 text-left">Status</th>
                     <th className="px-3 py-2 text-right">Registros</th>
@@ -1761,6 +1858,7 @@ export default function Owner() {
                 <tbody>
                   {monitoredDatabases.map((db) => (
                     <tr key={db.table_name} className="border-t border-slate-800">
+                      <td className="px-3 py-2">{db.module_name}</td>
                       <td className="px-3 py-2">{db.table_name}</td>
                       <td className="px-3 py-2">
                         <span
@@ -1775,12 +1873,12 @@ export default function Owner() {
                   ))}
                   {isLoadingTables && (
                     <tr>
-                      <td className="px-3 py-3 text-slate-400" colSpan={4}>Carregando status das bases/tabelas...</td>
+                      <td className="px-3 py-3 text-slate-400" colSpan={5}>Carregando status das bases/tabelas...</td>
                     </tr>
                   )}
                   {!isLoadingTables && monitoredDatabases.length === 0 && (
                     <tr>
-                      <td className="px-3 py-3 text-slate-400" colSpan={4}>Nenhuma base/tabela retornada pelo backend.</td>
+                      <td className="px-3 py-3 text-slate-400" colSpan={5}>Nenhuma base/tabela retornada pelo backend.</td>
                     </tr>
                   )}
                 </tbody>
