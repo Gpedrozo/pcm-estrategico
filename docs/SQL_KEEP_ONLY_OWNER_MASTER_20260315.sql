@@ -26,11 +26,7 @@ begin
   delete from public.user_roles where user_id <> v_owner_id;
   delete from public.profiles where id <> v_owner_id;
 
-  -- Mantem owner com contexto global limpo
-  update public.profiles
-     set empresa_id = null,
-         updated_at = now()
-   where id = v_owner_id;
+  -- Nao atualiza empresa_id do owner: existe trigger de seguranca bloqueando essa alteracao.
 
   -- 3) Limpa todas as tabelas do schema public, exceto as de usuario base
   --    (profiles/user_roles ja foram tratadas acima)
