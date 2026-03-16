@@ -8,6 +8,7 @@ import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { usePermission } from "@/hooks/usePermission";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { EnvironmentGuard } from "@/components/guards/EnvironmentGuard";
+import { MasterTIGuard } from "@/components/guards/MasterTIGuard";
 import { TenantDomainMiddleware } from '@/components/guards/TenantDomainMiddleware';
 import { TenantQueryIsolationGuard } from '@/components/guards/TenantQueryIsolationGuard';
 import { SpeedInsights } from "@vercel/speed-insights/react";
@@ -51,6 +52,7 @@ const Custos = lazy(() => import('./pages/Custos'))
 const Relatorios = lazy(() => import('./pages/Relatorios'))
 const DocumentosTecnicos = lazy(() => import('./pages/DocumentosTecnicos'))
 const ConfiguracoesEmpresa = lazy(() => import('./pages/ConfiguracoesEmpresa'))
+const MasterTI = lazy(() => import('./pages/MasterTI'))
 const Lubrificacao = lazy(() => import('./pages/Lubrificacao'))
 const NotFound = lazy(() => import('./pages/NotFound'))
 const Instalar = lazy(() => import('./pages/Instalar'))
@@ -230,7 +232,14 @@ function TenantRoutes() {
                   }
                 />
 
-                <Route path="/master-ti" element={<Navigate to="/dashboard" replace />} />
+                <Route
+                  path="/master-ti"
+                  element={
+                    <MasterTIGuard>
+                      <MasterTI />
+                    </MasterTIGuard>
+                  }
+                />
                 <Route path="/inteligencia-causa-raiz" element={<RootCauseAIPage />} />
                 <Route path="/manuais-operacao" element={<ManualOperacao />} />
                 <Route path="/manuais-operacao/usuario" element={<ManualOperacao />} />

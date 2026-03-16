@@ -102,6 +102,7 @@ const ajudaMenuItems = [
 
 const adminMenuItems = [
   { title: 'Config. Empresa', url: '/empresa/configuracoes', icon: Settings },
+  { title: 'Master TI', url: '/master-ti', icon: Shield },
   { title: 'Usuários', url: '/usuarios', icon: Users },
   { title: 'Auditoria', url: '/auditoria', icon: ClipboardList },
   { title: 'Arquivos Owner', url: '/admin/arquivos-owner', icon: FolderTree },
