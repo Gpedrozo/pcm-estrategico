@@ -27,7 +27,6 @@ import {
   DollarSign,
   BarChart3,
   FileArchive,
-  FolderTree,
   Droplet,
 } from 'lucide-react';
 import { NavLink, useLocation } from 'react-router-dom';
@@ -105,7 +104,6 @@ const adminMenuItems = [
   { title: 'Master TI', url: '/master-ti', icon: Shield },
   { title: 'Usuários', url: '/usuarios', icon: Users },
   { title: 'Auditoria', url: '/auditoria', icon: ClipboardList },
-  { title: 'Arquivos Owner', url: '/admin/arquivos-owner', icon: FolderTree },
 ];
 
 export function AppSidebar() {
