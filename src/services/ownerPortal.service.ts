@@ -58,6 +58,12 @@ export interface OwnerPlan {
   id: string
   code?: string | null
   name?: string | null
+  description?: string | null
+  user_limit?: number | null
+  module_flags?: Record<string, unknown> | null
+  data_limit_mb?: number | null
+  premium_features?: unknown[] | null
+  company_limit?: number | null
   price_month?: number | null
   active?: boolean | null
 }

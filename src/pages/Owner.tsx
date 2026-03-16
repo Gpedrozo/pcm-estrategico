@@ -49,8 +49,31 @@ const emptyCreateCompanyForm = () => ({
 const emptyUpdateCompanyForm = () => ({ empresa_id: '', nome: '', status: '' })
 const emptyCreateUserForm = () => ({ nome: '', email: '', password: '', role: '', empresa_id: '' })
 const emptyUserStatusForm = () => ({ user_id: '', status: '' })
-const emptyCreatePlanForm = () => ({ code: '', name: '', price_month: '' })
-const emptyUpdatePlanForm = () => ({ id: '', code: '', name: '', price_month: '' })
+const emptyCreatePlanForm = () => ({
+  code: '',
+  name: '',
+  description: '',
+  price_month: '',
+  user_limit: '10',
+  data_limit_mb: '2048',
+  company_limit: '',
+  module_flags_json: '{\n  "dashboard": true\n}',
+  premium_features_json: '[]',
+  active: true,
+})
+const emptyUpdatePlanForm = () => ({
+  id: '',
+  code: '',
+  name: '',
+  description: '',
+  price_month: '',
+  user_limit: '',
+  data_limit_mb: '',
+  company_limit: '',
+  module_flags_json: '{\n}',
+  premium_features_json: '[]',
+  active: true,
+})
 const emptyChangePlanForm = () => ({ empresa_id: '', plano_codigo: '' })
 const emptyCreateSubscriptionForm = () => ({ empresa_id: '', plan_id: '', amount: '', status: '' })
 const emptySubscriptionStatusForm = () => ({ empresa_id: '', status: '' })
@@ -264,7 +287,22 @@ export default function Owner() {
     [companiesData],
   )
   const users = useMemo(() => toArray<{ id: string; nome?: string; email?: string; status?: string; empresa_id?: string; user_roles?: Array<{ role?: string; empresa_id?: string }> }>(usersData), [usersData])
-  const plans = useMemo(() => toArray<{ id: string; name?: string; code?: string; price_month?: number }>(plansData), [plansData])
+  const plans = useMemo(
+    () => toArray<{
+      id: string
+      name?: string
+      code?: string
+      description?: string
+      user_limit?: number
+      module_flags?: Record<string, unknown>
+      data_limit_mb?: number
+      premium_features?: unknown[]
+      company_limit?: number | null
+      price_month?: number
+      active?: boolean
+    }>(plansData),
+    [plansData],
+  )
   const subscriptions = useMemo(
     () => toArray<{ id: string; empresa_id?: string; plan_id?: string; status?: string; amount?: number; payment_status?: string; updated_at?: string }>(subscriptionsData),
     [subscriptionsData],
@@ -924,6 +962,87 @@ export default function Owner() {
     await runAction(fn, success)
   }
 
+  const parseOptionalNumber = (rawValue: string, fieldLabel: string) => {
+    const normalized = rawValue.trim().replace(',', '.')
+    if (!normalized) return undefined
+    const parsed = Number(normalized)
+    if (!Number.isFinite(parsed)) {
+      throw new Error(`Campo ${fieldLabel} invalido. Informe um numero valido.`)
+    }
+    return parsed
+  }
+
+  const parseRequiredNumber = (rawValue: string, fieldLabel: string) => {
+    const parsed = parseOptionalNumber(rawValue, fieldLabel)
+    if (parsed === undefined) {
+      throw new Error(`Campo ${fieldLabel} obrigatorio.`)
+    }
+    return parsed
+  }
+
+  const parseJsonObjectInput = (rawValue: string, fieldLabel: string) => {
+    const source = rawValue.trim() || '{}'
+    let parsed: unknown
+    try {
+      parsed = JSON.parse(source)
+    } catch {
+      throw new Error(`Campo ${fieldLabel} deve conter JSON valido.`)
+    }
+
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+      throw new Error(`Campo ${fieldLabel} deve ser um objeto JSON.`)
+    }
+
+    return parsed as Record<string, unknown>
+  }
+
+  const parseJsonArrayInput = (rawValue: string, fieldLabel: string) => {
+    const source = rawValue.trim() || '[]'
+    let parsed: unknown
+    try {
+      parsed = JSON.parse(source)
+    } catch {
+      throw new Error(`Campo ${fieldLabel} deve conter JSON valido.`)
+    }
+
+    if (!Array.isArray(parsed)) {
+      throw new Error(`Campo ${fieldLabel} deve ser um array JSON.`)
+    }
+
+    return parsed
+  }
+
+  const buildPlanPayload = (form: {
+    code: string
+    name: string
+    description: string
+    price_month: string
+    user_limit: string
+    data_limit_mb: string
+    company_limit: string
+    module_flags_json: string
+    premium_features_json: string
+    active: boolean
+  }) => {
+    const code = form.code.trim().toUpperCase()
+    const name = form.name.trim()
+    if (!code) throw new Error('Campo codigo do plano obrigatorio.')
+    if (!name) throw new Error('Campo nome do plano obrigatorio.')
+
+    return {
+      code,
+      name,
+      description: form.description.trim() || undefined,
+      price_month: parseRequiredNumber(form.price_month, 'Preco mensal'),
+      user_limit: parseRequiredNumber(form.user_limit, 'Limite de usuarios'),
+      data_limit_mb: parseRequiredNumber(form.data_limit_mb, 'Limite de storage (MB)'),
+      company_limit: parseOptionalNumber(form.company_limit, 'Limite de empresas'),
+      module_flags: parseJsonObjectInput(form.module_flags_json, 'Modulos (JSON)'),
+      premium_features: parseJsonArrayInput(form.premium_features_json, 'Recursos premium (JSON)'),
+      active: Boolean(form.active),
+    }
+  }
+
   const navItems = useMemo(
     () => [
       { key: 'dashboard', label: 'Dashboard' },
@@ -1334,8 +1453,22 @@ export default function Owner() {
             <div className="grid gap-2 md:grid-cols-4">
               <input className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm" placeholder="Codigo" value={createPlanForm.code} onChange={(e) => setCreatePlanForm((s) => ({ ...s, code: e.target.value }))} />
               <input className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm" placeholder="Nome" value={createPlanForm.name} onChange={(e) => setCreatePlanForm((s) => ({ ...s, name: e.target.value }))} />
+              <input className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm" placeholder="Limite usuarios" value={createPlanForm.user_limit} onChange={(e) => setCreatePlanForm((s) => ({ ...s, user_limit: e.target.value }))} />
               <input className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm" placeholder="Preco mensal" value={createPlanForm.price_month} onChange={(e) => setCreatePlanForm((s) => ({ ...s, price_month: e.target.value }))} />
-              <button className="rounded bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground" disabled={createPlanMutation.isPending || !createPlanForm.name} onClick={() => runAction(() => createPlanMutation.mutateAsync({ code: createPlanForm.code || undefined, name: createPlanForm.name, price_month: createPlanForm.price_month ? Number(createPlanForm.price_month) : undefined }), 'Plano criado com sucesso.')}>Criar plano</button>
+            </div>
+            <div className="mt-2 grid gap-2 md:grid-cols-4">
+              <input className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm" placeholder="Storage MB" value={createPlanForm.data_limit_mb} onChange={(e) => setCreatePlanForm((s) => ({ ...s, data_limit_mb: e.target.value }))} />
+              <input className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm" placeholder="Limite empresas (opcional)" value={createPlanForm.company_limit} onChange={(e) => setCreatePlanForm((s) => ({ ...s, company_limit: e.target.value }))} />
+              <label className="flex items-center gap-2 rounded border border-slate-700 bg-slate-950 px-3 py-2 text-xs text-slate-300">
+                <input type="checkbox" checked={createPlanForm.active} onChange={(e) => setCreatePlanForm((s) => ({ ...s, active: e.target.checked }))} />
+                Plano ativo
+              </label>
+              <button className="rounded bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground" disabled={createPlanMutation.isPending || !createPlanForm.name || !createPlanForm.code} onClick={() => runAction(() => createPlanMutation.mutateAsync(buildPlanPayload(createPlanForm)), 'Plano criado com sucesso.')}>Criar plano</button>
+            </div>
+            <textarea className="mt-2 min-h-[70px] w-full rounded border border-slate-700 bg-slate-950 px-3 py-2 text-xs" placeholder="Descricao" value={createPlanForm.description} onChange={(e) => setCreatePlanForm((s) => ({ ...s, description: e.target.value }))} />
+            <div className="mt-2 grid gap-2 md:grid-cols-2">
+              <textarea className="min-h-[90px] w-full rounded border border-slate-700 bg-slate-950 px-3 py-2 text-xs font-mono" placeholder='Modulos JSON, ex: {"dashboard": true}' value={createPlanForm.module_flags_json} onChange={(e) => setCreatePlanForm((s) => ({ ...s, module_flags_json: e.target.value }))} />
+              <textarea className="min-h-[90px] w-full rounded border border-slate-700 bg-slate-950 px-3 py-2 text-xs font-mono" placeholder='Premium features JSON, ex: ["analytics"]' value={createPlanForm.premium_features_json} onChange={(e) => setCreatePlanForm((s) => ({ ...s, premium_features_json: e.target.value }))} />
             </div>
           </Card>
 
@@ -1352,7 +1485,14 @@ export default function Owner() {
                     id: selectedId,
                     code: selectedPlan?.code || s.code,
                     name: selectedPlan?.name || s.name,
+                    description: selectedPlan?.description || '',
                     price_month: selectedPlan?.price_month !== undefined ? String(selectedPlan.price_month) : s.price_month,
+                    user_limit: selectedPlan?.user_limit !== undefined ? String(selectedPlan.user_limit) : '',
+                    data_limit_mb: selectedPlan?.data_limit_mb !== undefined ? String(selectedPlan.data_limit_mb) : '',
+                    company_limit: selectedPlan?.company_limit !== undefined && selectedPlan?.company_limit !== null ? String(selectedPlan.company_limit) : '',
+                    module_flags_json: JSON.stringify(selectedPlan?.module_flags ?? {}, null, 2),
+                    premium_features_json: JSON.stringify(selectedPlan?.premium_features ?? [], null, 2),
+                    active: selectedPlan?.active !== false,
                   }))
                 }}
               >
@@ -1365,11 +1505,25 @@ export default function Owner() {
               </select>
               <input className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm" placeholder="Novo codigo" value={updatePlanForm.code} onChange={(e) => setUpdatePlanForm((s) => ({ ...s, code: e.target.value }))} />
               <input className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm" placeholder="Novo nome" value={updatePlanForm.name} onChange={(e) => setUpdatePlanForm((s) => ({ ...s, name: e.target.value }))} />
-              <button className="rounded border border-slate-600 px-3 py-2 text-sm" disabled={!updatePlanForm.id || updatePlanMutation.isPending} onClick={() => runAction(() => updatePlanMutation.mutateAsync({ id: updatePlanForm.id, code: updatePlanForm.code || undefined, name: updatePlanForm.name || undefined, price_month: updatePlanForm.price_month ? Number(updatePlanForm.price_month) : undefined }), 'Plano atualizado com sucesso.')}>Salvar</button>
+              <button className="rounded border border-slate-600 px-3 py-2 text-sm" disabled={!updatePlanForm.id || updatePlanMutation.isPending} onClick={() => runAction(() => updatePlanMutation.mutateAsync({ id: updatePlanForm.id, ...buildPlanPayload(updatePlanForm) }), 'Plano atualizado com sucesso.')}>Salvar</button>
             </div>
-            <div className="mt-2 grid gap-2 md:grid-cols-2">
+            <div className="mt-2 grid gap-2 md:grid-cols-4">
               <input className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm" placeholder="Preco mensal" value={updatePlanForm.price_month} onChange={(e) => setUpdatePlanForm((s) => ({ ...s, price_month: e.target.value }))} />
-              <p className="self-center text-xs text-slate-400">Ao selecionar um plano, codigo/nome/preco sao preenchidos automaticamente para evitar inconsistencias.</p>
+              <input className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm" placeholder="Limite usuarios" value={updatePlanForm.user_limit} onChange={(e) => setUpdatePlanForm((s) => ({ ...s, user_limit: e.target.value }))} />
+              <input className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm" placeholder="Storage MB" value={updatePlanForm.data_limit_mb} onChange={(e) => setUpdatePlanForm((s) => ({ ...s, data_limit_mb: e.target.value }))} />
+              <input className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm" placeholder="Limite empresas (opcional)" value={updatePlanForm.company_limit} onChange={(e) => setUpdatePlanForm((s) => ({ ...s, company_limit: e.target.value }))} />
+            </div>
+            <textarea className="mt-2 min-h-[70px] w-full rounded border border-slate-700 bg-slate-950 px-3 py-2 text-xs" placeholder="Descricao" value={updatePlanForm.description} onChange={(e) => setUpdatePlanForm((s) => ({ ...s, description: e.target.value }))} />
+            <div className="mt-2 grid gap-2 md:grid-cols-2">
+              <textarea className="min-h-[90px] w-full rounded border border-slate-700 bg-slate-950 px-3 py-2 text-xs font-mono" placeholder='Modulos JSON, ex: {"dashboard": true}' value={updatePlanForm.module_flags_json} onChange={(e) => setUpdatePlanForm((s) => ({ ...s, module_flags_json: e.target.value }))} />
+              <textarea className="min-h-[90px] w-full rounded border border-slate-700 bg-slate-950 px-3 py-2 text-xs font-mono" placeholder='Premium features JSON, ex: ["analytics"]' value={updatePlanForm.premium_features_json} onChange={(e) => setUpdatePlanForm((s) => ({ ...s, premium_features_json: e.target.value }))} />
+            </div>
+            <div className="mt-2 flex items-center gap-3">
+              <label className="flex items-center gap-2 text-xs text-slate-300">
+                <input type="checkbox" checked={updatePlanForm.active} onChange={(e) => setUpdatePlanForm((s) => ({ ...s, active: e.target.checked }))} />
+                Plano ativo
+              </label>
+              <p className="text-xs text-slate-400">Ao selecionar um plano, todos os campos sao preenchidos automaticamente.</p>
             </div>
           </Card>
 
@@ -1380,20 +1534,29 @@ export default function Owner() {
                   <tr>
                     <th className="px-3 py-2 text-left">Plano</th>
                     <th className="px-3 py-2 text-left">Codigo</th>
+                    <th className="px-3 py-2 text-left">Status</th>
+                    <th className="px-3 py-2 text-left">Limites</th>
                     <th className="px-3 py-2 text-right">Preco</th>
                   </tr>
                 </thead>
                 <tbody>
                   {plans.map((p) => (
                     <tr key={p.id} className="border-t border-slate-800">
-                      <td className="px-3 py-2">{p.name || '-'}</td>
+                      <td className="px-3 py-2">
+                        <p className="font-semibold text-slate-100">{p.name || '-'}</p>
+                        <p className="text-[11px] text-slate-400">{p.description || 'Sem descricao'}</p>
+                      </td>
                       <td className="px-3 py-2">{p.code || '-'}</td>
-                      <td className="px-3 py-2 text-right">{Number(p.price_month || 0)}</td>
+                      <td className="px-3 py-2">{p.active === false ? 'Inativo' : 'Ativo'}</td>
+                      <td className="px-3 py-2">
+                        U:{p.user_limit ?? '-'} | MB:{p.data_limit_mb ?? '-'} | Emp:{p.company_limit ?? 'Ilimitado'}
+                      </td>
+                      <td className="px-3 py-2 text-right">{Number(p.price_month || 0).toLocaleString('pt-BR')}</td>
                     </tr>
                   ))}
                   {isLoadingPlans && (
                     <tr>
-                      <td className="px-3 py-3 text-slate-400" colSpan={3}>Carregando planos...</td>
+                      <td className="px-3 py-3 text-slate-400" colSpan={5}>Carregando planos...</td>
                     </tr>
                   )}
                 </tbody>

@@ -1901,6 +1901,7 @@ Deno.serve(async (req) => {
     if (!planId && !planCode) return fail("plan id or code is required", 400, null, req);
 
     const updatePayload = {
+      code: body.plan?.code,
       name: body.plan?.name,
       description: body.plan?.description,
       user_limit: body.plan?.user_limit,
