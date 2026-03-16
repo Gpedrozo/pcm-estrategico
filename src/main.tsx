@@ -11,6 +11,7 @@ const OWNER_DOMAIN_ALIASES = new Set([
 ]);
 const LEGACY_OWNER_PROJECT_REF = "cplowhoklcegnjvwmrsk";
 const OWNER_HARD_RESET_MARKER = "owner-runtime-hard-reset-v1";
+const CHUNK_RELOAD_MARKER = "pcm-chunk-reload-once-v1";
 const ACTIVE_SUPABASE_PROJECT_REF = (() => {
 	const configuredUrl = import.meta.env.VITE_SUPABASE_URL;
 	if (!configuredUrl) return null;
@@ -32,7 +33,44 @@ async function reportCriticalClientIssue(action: string, metadata: Record<string
 	});
 }
 
+function isDynamicChunkLoadError(raw: unknown) {
+	const message = String(
+		(raw as { message?: string })?.message
+			?? raw
+			?? "",
+	).toLowerCase();
+
+	return (
+		message.includes("failed to fetch dynamically imported module") ||
+		message.includes("importing a module script failed") ||
+		message.includes("loading chunk") ||
+		message.includes("chunkloaderror")
+	);
+}
+
+function recoverFromDynamicChunkError(raw: unknown) {
+	if (!isDynamicChunkLoadError(raw)) return false;
+
+	try {
+		if (window.sessionStorage.getItem(CHUNK_RELOAD_MARKER) === "1") {
+			return false;
+		}
+
+		window.sessionStorage.setItem(CHUNK_RELOAD_MARKER, "1");
+		const targetUrl = new URL(window.location.href);
+		targetUrl.searchParams.set("chunk_reload", Date.now().toString());
+		window.location.replace(targetUrl.toString());
+		return true;
+	} catch {
+		return false;
+	}
+}
+
 window.addEventListener("error", (event) => {
+	if (recoverFromDynamicChunkError(event.error ?? event.message)) {
+		return;
+	}
+
 	logger.error("unhandled_error", {
 		message: event.message,
 		source: event.filename,
@@ -49,6 +87,11 @@ window.addEventListener("error", (event) => {
 });
 
 window.addEventListener("unhandledrejection", (event) => {
+	if (recoverFromDynamicChunkError(event.reason)) {
+		event.preventDefault();
+		return;
+	}
+
 	logger.error("unhandled_promise_rejection", {
 		reason: String(event.reason ?? "unknown"),
 	});
@@ -123,4 +166,8 @@ async function hardenOwnerRuntime() {
 
 void hardenOwnerRuntime().finally(() => {
 	createRoot(document.getElementById("root")!).render(<App />);
+	try {
+		window.sessionStorage.removeItem(CHUNK_RELOAD_MARKER);
+	} catch {
+	}
 });
