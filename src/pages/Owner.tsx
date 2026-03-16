@@ -130,6 +130,7 @@ export default function Owner() {
   const [companyCredentialNote, setCompanyCredentialNote] = useState<CompanyCredentialNote | null>(null)
   const [systemActionOutput, setSystemActionOutput] = useState<unknown>(null)
   const [systemForm, setSystemForm] = useState(emptySystemForm)
+  const [monitoringEmpresaId, setMonitoringEmpresaId] = useState('')
   const [selectedTenantTables, setSelectedTenantTables] = useState<string[]>([])
   const [auditFilters, setAuditFilters] = useState(emptyAuditFilters)
   const [isDeleteCompanyOverlayVisible, setIsDeleteCompanyOverlayVisible] = useState(false)
@@ -204,13 +205,16 @@ export default function Owner() {
   const adminTablesLive = active === 'sistema' && isDocumentVisible
   const tablesLive = monitoringLive || adminTablesLive
   const tablesRefetchInterval = monitoringLive ? 5000 : adminTablesLive ? 10000 : false
+  const databaseTablesEmpresaId = monitoringActive
+    ? (monitoringEmpresaId || null)
+    : (systemForm.empresa_id || null)
   const {
     data: tablesData,
     isLoading: isLoadingTables,
     isFetching: isFetchingTables,
     error: tablesError,
     dataUpdatedAt: tablesUpdatedAt,
-  } = useOwnerDatabaseTables(tablesLive, tablesRefetchInterval, systemForm.empresa_id || null)
+  } = useOwnerDatabaseTables(tablesLive, tablesRefetchInterval, databaseTablesEmpresaId)
   const tablesErrorMessage = String((tablesError as any)?.message ?? '')
   const tablesUnsupported = /unsupported action|missing action/i.test(tablesErrorMessage)
 
@@ -1677,6 +1681,26 @@ export default function Owner() {
 
       {active === 'monitoramento' && (
         <Card title="Monitoramento" subtitle="Saude do backend e cobertura de acoes">
+          <div className="mb-4 grid gap-2 md:grid-cols-2">
+            <select
+              className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm"
+              value={monitoringEmpresaId}
+              onChange={(e) => setMonitoringEmpresaId(e.target.value)}
+            >
+              <option value="">Escopo: Geral (todas as empresas)</option>
+              {companies.map((company) => (
+                <option key={company.id} value={company.id}>
+                  Escopo: {company.nome || company.slug || company.id}
+                </option>
+              ))}
+            </select>
+            <div className="rounded border border-slate-800 bg-slate-950 px-3 py-2 text-xs text-slate-400">
+              {monitoringEmpresaId
+                ? 'Monitoramento filtrado pela empresa selecionada (empresa_id).'
+                : 'Monitoramento geral: exibe dados agregados de todas as empresas.'}
+            </div>
+          </div>
+
           <div className="grid gap-3 md:grid-cols-4">
             <Metric label="Service" value={backendHealth?.service || 'owner-portal-admin'} />
             <Metric label="Status" value={backendHealth?.status || 'desconhecido'} />
