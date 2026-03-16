@@ -41,6 +41,9 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
       const hostname = window.location.hostname.toLowerCase();
       const baseDomain = (import.meta.env.VITE_TENANT_BASE_DOMAIN || 'gppis.com.br').toLowerCase();
       const isBaseDomainHost = hostname === baseDomain || hostname === `www.${baseDomain}`;
+      const hostSlug = hostname.endsWith(`.${baseDomain}`)
+        ? hostname.replace(`.${baseDomain}`, '').split('.')[0]?.trim().toLowerCase() || ''
+        : '';
 
       if (!isBaseDomainHost && hostname.endsWith(`.${baseDomain}`) && (tenantSlug === 'default' || !TENANT_SLUG_REGEX.test(tenantSlug))) {
         setTenant(null);
@@ -65,14 +68,30 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
           .eq('slug', tenantSlug)
           .maybeSingle();
 
-        if (slugError) {
-          setTenant(null);
-          setError(slugError.message);
-          setIsLoading(false);
-          return;
+        if (slugError && !slugCompany?.id) {
+          // Do not fail early here. On first access, slug lookup can fail due to
+          // propagation/RLS timing while auth metadata already has tenant identity.
+          const { data: authUserResult } = await supabase.auth.getUser();
+          const authUser = authUserResult?.user;
+          const metadataEmpresaId = typeof authUser?.app_metadata?.empresa_id === 'string'
+            ? authUser.app_metadata.empresa_id
+            : typeof authUser?.user_metadata?.empresa_id === 'string'
+              ? authUser.user_metadata.empresa_id
+              : null;
+          const metadataEmpresaSlug = String(
+            authUser?.app_metadata?.empresa_slug
+            ?? authUser?.user_metadata?.empresa_slug
+            ?? '',
+          ).trim().toLowerCase();
+
+          if (metadataEmpresaId && metadataEmpresaSlug && metadataEmpresaSlug === tenantSlug) {
+            empresaId = metadataEmpresaId;
+          }
         }
 
-        empresaId = slugCompany?.id ?? null;
+        if (!empresaId) {
+          empresaId = slugCompany?.id ?? null;
+        }
       }
 
       if (!empresaId) {
@@ -84,7 +103,7 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
         }
 
         if (hostname.endsWith(`.${baseDomain}`)) {
-          const slug = hostname.replace(`.${baseDomain}`, '').split('.')[0]?.trim().toLowerCase();
+          const slug = hostSlug;
           if (slug && slug !== 'www' && TENANT_SLUG_REGEX.test(slug)) {
             const { data: companyBySlug } = await supabase
               .from('empresas')
@@ -119,7 +138,7 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
 
       if (!empresaId) {
         setTenant(null);
-        setError(domainError?.message || 'Domínio tenant não autorizado');
+        setError('Domínio tenant não autorizado');
         setIsLoading(false);
         return;
       }
