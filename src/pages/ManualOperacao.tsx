@@ -439,6 +439,18 @@ function mapToRoleManual(role?: string): RoleManual {
   return 'USUARIO';
 }
 
+function resolveManualGroup(modulo: string): string {
+  if (modulo.startsWith('Acesso')) return 'Acesso e Fluxo Operacional';
+  if (modulo.startsWith('Ordens de Servico')) return 'Acesso e Fluxo Operacional';
+  if (modulo.startsWith('Planejamento')) return 'Planejamento';
+  if (modulo.startsWith('Cadastros')) return 'Cadastros e Suprimentos';
+  if (modulo.startsWith('Seguranca')) return 'Seguranca e Conformidade';
+  if (modulo.startsWith('Analises')) return 'Analises e Melhoria Continua';
+  if (modulo.startsWith('Relatorios')) return 'Gestao e Indicadores';
+  if (modulo.startsWith('Administracao')) return 'Administracao e Governanca';
+  return 'Outros';
+}
+
 function buildSceneEtapas(op: OperacaoManual): string[] {
   return op.passos.slice(0, 4);
 }
@@ -590,6 +602,18 @@ export default function ManualOperacao() {
 
   const demoScenes = useMemo(() => {
     return buildDemoScenes(operacoesFiltradas);
+  }, [operacoesFiltradas]);
+
+  const groupedChapters = useMemo(() => {
+    const grouped = new Map<string, OperacaoManual[]>();
+    operacoesFiltradas.forEach((op) => {
+      const group = resolveManualGroup(op.modulo);
+      const current = grouped.get(group) || [];
+      current.push(op);
+      grouped.set(group, current);
+    });
+
+    return Array.from(grouped.entries()).map(([group, items]) => ({ group, items }));
   }, [operacoesFiltradas]);
 
   useEffect(() => {
@@ -842,9 +866,32 @@ export default function ManualOperacao() {
           </section>
         )}
 
-        <main className="space-y-8">
-          {operacoesFiltradas.map((op) => (
-            <article key={op.id} className="overflow-hidden rounded-xl border bg-card">
+        <div className="grid gap-8 lg:grid-cols-[280px_1fr]">
+          <aside className="h-fit rounded-xl border border-slate-700 bg-slate-900/80 p-4 lg:sticky lg:top-6">
+            <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-slate-300">Capitulos do Manual</h2>
+            <div className="space-y-4">
+              {groupedChapters.map(({ group, items }) => (
+                <div key={group}>
+                  <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-slate-500">{group}</p>
+                  <div className="space-y-1">
+                    {items.map((item) => (
+                      <a
+                        key={item.id}
+                        href={`#manual-op-${item.id}`}
+                        className="block rounded-md border border-slate-800 px-2 py-1.5 text-xs text-slate-300 transition-colors hover:border-cyan-500/50 hover:bg-cyan-500/10 hover:text-cyan-100"
+                      >
+                        {item.id}. {item.titulo}
+                      </a>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </aside>
+
+          <main className="space-y-8">
+            {operacoesFiltradas.map((op) => (
+            <article id={`manual-op-${op.id}`} key={op.id} className="overflow-hidden rounded-xl border bg-card">
               <div className="border-b bg-muted/40 px-6 py-4">
                 <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{op.modulo}</p>
                 <h2 className="text-xl font-semibold text-foreground">{op.id}. {op.titulo}</h2>
@@ -907,7 +954,8 @@ export default function ManualOperacao() {
               </div>
             </article>
           ))}
-        </main>
+          </main>
+        </div>
       </div>
     </div>
   );

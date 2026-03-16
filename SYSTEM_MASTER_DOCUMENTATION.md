@@ -219,7 +219,7 @@ Authorization gates:
 
 ## 18. AI Root Cause Analysis
 
-- Uses Lovable AI Gateway
+- Uses AI Gateway (OpenAI-compatible)
 
 - Generates structured RCA summary and saves to ai_root_cause_analysis
 
@@ -295,7 +295,8 @@ Edge Functions:
 
 - SUPABASE_SERVICE_ROLE_KEY
 
-- LOVABLE_API_KEY (RCA function)
+- AI_GATEWAY_API_KEY (RCA function)
+- AI_GATEWAY_URL (RCA function)
 
 - STRIPE_SECRET_KEY (Stripe webhook)
 

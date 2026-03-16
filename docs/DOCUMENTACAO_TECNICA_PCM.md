@@ -116,7 +116,7 @@ O sistema contempla **21 mÃ³dulos funcionais** organizados em categorias:
 | **Estado Server** | TanStack Query | 5.83.0 |
 | **FormulÃ¡rios** | React Hook Form + Zod | 7.61.1 / 3.25 |
 | **GrÃ¡ficos** | Recharts | 2.15.4 |
-| **Backend** | Supabase (Lovable Cloud) | 2.90.1 |
+| **Backend** | Supabase Cloud | 2.90.1 |
 | **AutenticaÃ§Ã£o** | Supabase Auth | Integrado |
 
 ### 2.3 OrganizaÃ§Ã£o dos MÃ³dulos

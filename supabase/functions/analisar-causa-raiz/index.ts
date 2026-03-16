@@ -29,9 +29,10 @@ serve(async (req) => {
     const scope = await requireEmpresaScope(supabase, auth.user.id, body?.empresa_id ?? null);
     if ("error" in scope) return fail(scope.error, scope.status, null, req);
 
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) {
-      throw new Error("LOVABLE_API_KEY is not configured");
+    const AI_GATEWAY_API_KEY = Deno.env.get("AI_GATEWAY_API_KEY");
+    const AI_GATEWAY_URL = Deno.env.get("AI_GATEWAY_URL") || "https://openrouter.ai/api/v1/chat/completions";
+    if (!AI_GATEWAY_API_KEY) {
+      throw new Error("AI_GATEWAY_API_KEY is not configured");
     }
 
     const { data: ordensServico, error: osError } = await supabase
@@ -106,13 +107,13 @@ Identifique:
 6. Nível de criticidade (Baixo, Médio, Alto, Crítico)
 7. Score de confiança (0-100)`;
 
-    // Call Lovable AI Gateway
+    // Call AI Gateway (OpenAI-compatible)
     const aiResponse = await fetch(
-      "https://ai.gateway.lovable.dev/v1/chat/completions",
+      AI_GATEWAY_URL,
       {
         method: "POST",
         headers: {
-          Authorization: `Bearer ${LOVABLE_API_KEY}`,
+          Authorization: `Bearer ${AI_GATEWAY_API_KEY}`,
           "Content-Type": "application/json",
         },
         body: JSON.stringify({

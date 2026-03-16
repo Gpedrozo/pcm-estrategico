@@ -1,88 +1,76 @@
-﻿# Welcome to your Lovable project
+# PCM Estrategico
 
-## Project info
+Plataforma SaaS multi-tenant para Planejamento e Controle de Manutencao (PCM), com foco em operacao industrial, governanca, indicadores e rastreabilidade.
 
-**URL**: https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID
+## Stack
 
-## How can I edit this code?
+- React 18 + TypeScript
+- Vite
+- Tailwind CSS + Radix UI
+- Supabase (Auth, Postgres, Edge Functions)
+- TanStack Query
+- Vitest
 
-There are several ways of editing your application.
+## Requisitos
 
-**Use Lovable**
+- Node.js 18+
+- npm 9+
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and start prompting.
-
-Changes made via Lovable will be committed automatically to this repo.
-
-**Use your preferred IDE**
-
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
-
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
-
-Follow these steps:
+## Execucao local
 
 ```sh
-
-# Step 1: Clone the repository using the project's Git URL.
-
-git clone <YOUR_GIT_URL>
-
-# Step 2: Navigate to the project directory.
-
-cd <YOUR_PROJECT_NAME>
-
-# Step 3: Install the necessary dependencies.
-
-npm i
-
-# Step 4: Start the development server with auto-reloading and an instant preview.
-
+npm install
 npm run dev
 ```
 
-**Edit a file directly in GitHub**
+Aplicacao local: http://localhost:8080
 
-- Navigate to the desired file(s).
+## Build e validacao
 
-- Click the "Edit" button (pencil icon) at the top right of the file view.
+```sh
+npm run test -- --run
+npm run build
+```
 
-- Make your changes and commit the changes.
+Ou fluxo completo:
 
-**Use GitHub Codespaces**
+```sh
+npm run validate:full
+```
 
-- Navigate to the main page of your repository.
+## Variaveis de ambiente
 
-- Click on the "Code" button (green button) near the top right.
+Use o arquivo `.env.example` como base e crie seu `.env` local.
 
-- Select the "Codespaces" tab.
+Variaveis principais:
 
-- Click on "New codespace" to launch a new Codespace environment.
+- VITE_SUPABASE_URL
+- VITE_SUPABASE_PUBLISHABLE_KEY (ou VITE_SUPABASE_ANON_KEY)
+- VITE_OWNER_SUPABASE_URL
+- VITE_OWNER_SUPABASE_PUBLISHABLE_KEY (ou VITE_OWNER_SUPABASE_ANON_KEY)
+- VITE_TENANT_BASE_DOMAIN
+- VITE_OWNER_DOMAIN
 
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+## Estrutura principal
 
-## What technologies are used for this project?
+- src/pages: paginas de modulo
+- src/components: componentes visuais e de dominio
+- src/hooks: acesso de dados e regras de tela
+- src/services: servicos de backend/edge functions
+- src/contexts: autenticacao, tenant, branding
+- src/modules/rootCauseAI: modulo de IA
+- supabase/functions: funcoes edge
+- supabase/migrations: evolucao de schema e seguranca
 
-This project is built with:
+## Manual de operacao no sistema
 
-- Vite
+- Tenant: /manuais-operacao
+- Owner: /manuais-operacao
 
-- TypeScript
+O manual foi integrado ao app e pode ser usado para treinamento operacional por perfil.
 
-- React
+## Seguranca
 
-- shadcn-ui
-
-- Tailwind CSS
-
-## How can I deploy this project?
-
-Simply open [Lovable](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and click on Share -> Publish.
-
-## Can I connect a custom domain to my Lovable project?
-
-Yes, you can!
-
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
-
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
+- Nao versionar `.env`
+- Usar RLS com isolamento por `empresa_id`
+- Aplicar rotacao de chaves ao detectar exposicao de segredo
