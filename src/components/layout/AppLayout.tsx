@@ -4,7 +4,6 @@ import { AppSidebar } from './AppSidebar';
 import { useAuth } from '@/contexts/AuthContext';
 import { Menu, Loader2 } from 'lucide-react';
 import type { OwnerCompany } from '@/services/ownerPortal.service';
-import { CommandPalette } from '@/components/command-palette/CommandPalette';
 import { NotificationCenter } from '@/components/notifications/NotificationCenter';
 import { GlobalSearch } from './GlobalSearch';
 import { useEffect, useMemo, useRef, useState } from 'react';
@@ -15,7 +14,6 @@ import { resolveOrRepairTenantHost } from '@/lib/tenantDomain';
 export function AppLayout() {
   const { isAuthenticated, isLoading, effectiveRole, tenantId, session, forcePasswordChange, impersonation, startImpersonationSession, stopImpersonationSession } = useAuth();
   const location = useLocation();
-  const [commandOpen, setCommandOpen] = useState(false);
   const [isStoppingImpersonation, setIsStoppingImpersonation] = useState(false);
   const [countdownNow, setCountdownNow] = useState(Date.now());
   const hasAutoStoppedRef = useRef(false);
@@ -277,7 +275,6 @@ export function AppLayout() {
 
   return (
     <SidebarProvider>
-      <CommandPalette />
       <div className="flex min-h-screen w-full">
         <AppSidebar />
         <div className="flex-1 flex flex-col">
