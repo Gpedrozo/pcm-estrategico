@@ -19,6 +19,14 @@ interface OperacaoManual {
   errosComuns: string[];
 }
 
+interface ManualDemoScene {
+  id: string;
+  modulo: string;
+  titulo: string;
+  imagem: string;
+  etapas: string[];
+}
+
 const operacoes: OperacaoManual[] = [
   {
     id: '01',
@@ -156,6 +164,33 @@ const operacoes: OperacaoManual[] = [
   },
   {
     id: '06',
+    titulo: 'Historico de O.S e filtros operacionais',
+    modulo: 'Ordens de Servico > Historico O.S',
+    objetivo: 'Analisar ordens encerradas e em aberto com filtros para tomada de decisao rapida.',
+    quandoUsar: 'Analise diaria de desempenho, reincidencia de falhas e auditoria de execucao.',
+    imagem: '/manual-processos/04-fechar-os.svg',
+    perfis: ['USUARIO', 'ADMIN', 'MASTER_TI'],
+    preRequisitos: ['O.S emitidas e/ou fechadas no periodo.', 'Criterios de filtro definidos (status, TAG, periodo, prioridade).'],
+    passos: [
+      'Abrir Historico de O.S.',
+      'Filtrar por periodo e status para foco da analise.',
+      'Aplicar filtro por TAG, tipo e prioridade quando necessario.',
+      'Inspecionar tempo de atendimento, reincidencia e custo associado.',
+      'Exportar ou compartilhar os resultados com a equipe.'
+    ],
+    validacao: [
+      'Filtro aplicado retorna apenas dados esperados.',
+      'Indicadores de lead time e reincidencia ficam visiveis.',
+      'Analise gera acao clara para backlog/programacao.'
+    ],
+    errosComuns: [
+      'Filtrar sem delimitar periodo e comparar dados incompletos.',
+      'Analisar somente quantidade e ignorar impacto operacional.',
+      'Nao registrar conclusoes da analise para o proximo turno.'
+    ]
+  },
+  {
+    id: '07',
     titulo: 'Programacao semanal',
     modulo: 'Planejamento > Programacao',
     objetivo: 'Distribuir carga de manutencao com visao de capacidade e prazo.',
@@ -182,7 +217,7 @@ const operacoes: OperacaoManual[] = [
     ]
   },
   {
-    id: '07',
+    id: '08',
     titulo: 'Planos preventivos e aderencia',
     modulo: 'Planejamento > Preventiva',
     objetivo: 'Manter planos ativos, executaveis e com historico de cumprimento.',
@@ -209,7 +244,7 @@ const operacoes: OperacaoManual[] = [
     ]
   },
   {
-    id: '08',
+    id: '09',
     titulo: 'Preditiva e tratamento de alertas',
     modulo: 'Planejamento > Preditiva',
     objetivo: 'Antecipar falhas por condicao e acionar manutencao antes da quebra.',
@@ -236,7 +271,7 @@ const operacoes: OperacaoManual[] = [
     ]
   },
   {
-    id: '09',
+    id: '10',
     titulo: 'Materiais e baixo estoque',
     modulo: 'Cadastros > Materiais',
     objetivo: 'Assegurar disponibilidade de itens criticos e rastreabilidade de movimentacao.',
@@ -263,7 +298,7 @@ const operacoes: OperacaoManual[] = [
     ]
   },
   {
-    id: '10',
+    id: '11',
     titulo: 'SSMA - incidentes e permissao de trabalho',
     modulo: 'Seguranca > SSMA',
     objetivo: 'Registrar ocorrencias e controlar liberacoes de atividade de risco.',
@@ -290,7 +325,7 @@ const operacoes: OperacaoManual[] = [
     ]
   },
   {
-    id: '11',
+    id: '12',
     titulo: 'RCA, melhorias e licoes aprendidas',
     modulo: 'Analises > RCA e Melhorias',
     objetivo: 'Eliminar causa raiz de falhas recorrentes e registrar ganhos.',
@@ -317,7 +352,7 @@ const operacoes: OperacaoManual[] = [
     ]
   },
   {
-    id: '12',
+    id: '13',
     titulo: 'Custos, relatorios e fechamento gerencial',
     modulo: 'Relatorios > Custos e Relatorios',
     objetivo: 'Consolidar desempenho tecnico-financeiro para decisao gerencial.',
@@ -344,7 +379,7 @@ const operacoes: OperacaoManual[] = [
     ]
   },
   {
-    id: '13',
+    id: '14',
     titulo: 'Usuarios, auditoria e governanca',
     modulo: 'Administracao > Usuarios e Auditoria',
     objetivo: 'Controlar acesso e rastrear acoes criticas no tenant.',
@@ -398,6 +433,78 @@ function mapToRoleManual(role?: string): RoleManual {
   return 'USUARIO';
 }
 
+function buildSceneEtapas(op: OperacaoManual): string[] {
+  if (op.id === '02') {
+    return [
+      'Abrindo modulo de Solicitacoes...',
+      'Selecionando TAG e classificando urgencia...',
+      'Registrando sintoma e impacto operacional...',
+      'Enviando solicitacao para fila de atendimento...'
+    ];
+  }
+
+  if (op.id === '03') {
+    return [
+      'Carregando backlog do turno...',
+      'Aplicando filtros de prioridade e status...',
+      'Destacando itens criticos e vencidos...',
+      'Definindo proxima acao: emitir O.S ou reprogramar...'
+    ];
+  }
+
+  if (op.id === '04') {
+    return [
+      'Abrindo tela de Emissao de O.S...',
+      'Selecionando solicitacao/TAG e tipo de manutencao...',
+      'Preenchendo escopo tecnico e prioridade...',
+      'Gerando numero da O.S para execucao...'
+    ];
+  }
+
+  if (op.id === '05') {
+    return [
+      'Selecionando O.S em execucao...',
+      'Apontando horas, materiais e servico realizado...',
+      'Registrando evidencias tecnicas e RCA quando aplicavel...',
+      'Concluindo fechamento tecnico da ordem...'
+    ];
+  }
+
+  if (op.id === '06') {
+    return [
+      'Abrindo historico de O.S...',
+      'Filtrando por periodo, status e prioridade...',
+      'Analisando lead time, reincidencia e gargalos...',
+      'Gerando insights para backlog e programacao...'
+    ];
+  }
+
+  return op.passos.slice(0, 4);
+}
+
+function buildDemoScenes(ops: OperacaoManual[]): ManualDemoScene[] {
+  const prioridade = ['02', '03', '04', '05', '06'];
+
+  const ordenadas = [...ops].sort((a, b) => {
+    const idxA = prioridade.indexOf(a.id);
+    const idxB = prioridade.indexOf(b.id);
+
+    if (idxA >= 0 && idxB >= 0) return idxA - idxB;
+    if (idxA >= 0) return -1;
+    if (idxB >= 0) return 1;
+
+    return a.id.localeCompare(b.id, 'pt-BR', { numeric: true });
+  });
+
+  return ordenadas.map((op) => ({
+    id: op.id,
+    modulo: op.modulo,
+    titulo: op.titulo,
+    imagem: op.imagem,
+    etapas: buildSceneEtapas(op)
+  }));
+}
+
 export default function ManualOperacao() {
   const { user } = useAuth();
   const { perfil } = useParams();
@@ -405,7 +512,8 @@ export default function ManualOperacao() {
   const [simEmail, setSimEmail] = useState('');
   const [simPassword, setSimPassword] = useState('');
   const [simStep, setSimStep] = useState<'idle' | 'typing_email' | 'typing_password' | 'ready' | 'submitting' | 'done'>('idle');
-  const [moduleDemoIndex, setModuleDemoIndex] = useState(0);
+  const [videoSceneIndex, setVideoSceneIndex] = useState(0);
+  const [videoStepIndex, setVideoStepIndex] = useState(0);
 
   const roleAtual = mapToRoleManual(user?.tipo);
   const rolePorRota = mapSlugToRole(perfil);
@@ -436,6 +544,10 @@ export default function ManualOperacao() {
   const operacoesFiltradas = useMemo(() => {
     return operacoes.filter((op) => op.perfis.includes(roleEfetivo));
   }, [roleEfetivo]);
+
+  const demoScenes = useMemo(() => {
+    return buildDemoScenes(operacoesFiltradas);
+  }, [operacoesFiltradas]);
 
   useEffect(() => {
     const demoEmail = 'teste@gmail.com';
@@ -479,20 +591,43 @@ export default function ManualOperacao() {
   }, [roleEfetivo]);
 
   useEffect(() => {
-    if (!operacoesFiltradas.length) return;
     if (simStep !== 'done') {
-      setModuleDemoIndex(0);
+      setVideoSceneIndex(0);
+      setVideoStepIndex(0);
       return;
     }
 
-    const moduleTimer = window.setInterval(() => {
-      setModuleDemoIndex((current) => (current + 1) % operacoesFiltradas.length);
-    }, 2200);
+    if (!demoScenes.length) {
+      setVideoSceneIndex(0);
+      setVideoStepIndex(0);
+    }
+  }, [simStep, demoScenes.length]);
 
-    return () => window.clearInterval(moduleTimer);
-  }, [operacoesFiltradas, simStep]);
+  const cenaAtualDemo = demoScenes[videoSceneIndex] ?? null;
 
-  const moduloAtualDemo = operacoesFiltradas[moduleDemoIndex] ?? null;
+  useEffect(() => {
+    if (simStep !== 'done') return;
+    if (!cenaAtualDemo) return;
+
+    if (videoStepIndex >= cenaAtualDemo.etapas.length - 1) {
+      const timerCena = window.setTimeout(() => {
+        setVideoSceneIndex((current) => (current + 1) % demoScenes.length);
+        setVideoStepIndex(0);
+      }, 1300);
+
+      return () => window.clearTimeout(timerCena);
+    }
+
+    const timerEtapa = window.setTimeout(() => {
+      setVideoStepIndex((current) => current + 1);
+    }, 900);
+
+    return () => window.clearTimeout(timerEtapa);
+  }, [simStep, demoScenes.length, cenaAtualDemo, videoStepIndex]);
+
+  const progressoVideo = demoScenes.length
+    ? Math.round(((videoSceneIndex + 1) / demoScenes.length) * 100)
+    : 0;
 
   return (
     <div className="min-h-screen bg-[radial-gradient(circle_at_top,#101f35_0%,#0b1422_35%,#090f1a_100%)]">
@@ -552,21 +687,51 @@ export default function ManualOperacao() {
             <div className="p-6">
               <div className="mb-4 flex items-center gap-2 text-cyan-300">
                 <PlayCircle className="h-5 w-5" />
-                <h2 className="text-sm font-semibold uppercase tracking-wide">Video Guiado Modulo a Modulo</h2>
+                <h2 className="text-sm font-semibold uppercase tracking-wide">Video Guiado Operacional</h2>
               </div>
-              {moduloAtualDemo ? (
+              {cenaAtualDemo ? (
                 <>
                   <div className="overflow-hidden rounded-lg border border-slate-700 bg-slate-950">
-                    <img src={moduloAtualDemo.imagem} alt={`Demo ${moduloAtualDemo.modulo}`} className="h-56 w-full object-cover transition-all duration-700" />
+                    <div className="relative">
+                      <img src={cenaAtualDemo.imagem} alt={`Demo ${cenaAtualDemo.modulo}`} className="h-52 w-full object-cover transition-all duration-700" />
+                      <div className="absolute left-3 top-3 rounded-full border border-red-300/70 bg-red-500/20 px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-red-100">
+                        Ao vivo
+                      </div>
+                      <div className="absolute bottom-0 left-0 right-0 h-1 bg-slate-700/80">
+                        <div className="h-full bg-cyan-400 transition-all duration-700" style={{ width: `${progressoVideo}%` }} />
+                      </div>
+                    </div>
                   </div>
                   <div className="mt-3">
-                    <p className="text-xs uppercase tracking-wide text-slate-400">Modulo atual</p>
-                    <h3 className="text-lg font-semibold text-slate-100">{moduloAtualDemo.modulo}</h3>
-                    <p className="text-sm text-slate-300">{moduloAtualDemo.titulo}</p>
+                    <p className="text-xs uppercase tracking-wide text-slate-400">Roteiro em execucao</p>
+                    <h3 className="text-lg font-semibold text-slate-100">{cenaAtualDemo.modulo}</h3>
+                    <p className="text-sm text-slate-300">{cenaAtualDemo.titulo}</p>
+                  </div>
+                  <div className="mt-3 rounded-lg border border-cyan-400/30 bg-cyan-500/10 p-3">
+                    <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-cyan-200">Simulacao etapa por etapa</p>
+                    <ul className="space-y-2">
+                      {cenaAtualDemo.etapas.map((etapa, index) => {
+                        const concluida = index < videoStepIndex;
+                        const ativa = index === videoStepIndex && simStep === 'done';
+
+                        return (
+                          <li key={`${cenaAtualDemo.id}-${etapa}`} className={`flex items-start gap-2 rounded-md border px-2 py-2 text-xs transition-all ${concluida ? 'border-emerald-400/50 bg-emerald-500/10 text-emerald-100' : ativa ? 'border-cyan-400/60 bg-cyan-500/15 text-cyan-100' : 'border-slate-700 text-slate-400'}`}>
+                            {concluida ? (
+                              <CheckCircle2 className="mt-0.5 h-3.5 w-3.5 flex-none" />
+                            ) : ativa ? (
+                              <Loader2 className="mt-0.5 h-3.5 w-3.5 flex-none animate-spin" />
+                            ) : (
+                              <PlayCircle className="mt-0.5 h-3.5 w-3.5 flex-none" />
+                            )}
+                            <span>{etapa}</span>
+                          </li>
+                        );
+                      })}
+                    </ul>
                   </div>
                   <div className="mt-4 flex flex-wrap gap-2">
-                    {operacoesFiltradas.map((item, index) => (
-                      <span key={item.id} className={`rounded-full border px-2 py-1 text-[11px] ${index === moduleDemoIndex ? 'border-cyan-400 bg-cyan-500/20 text-cyan-200' : 'border-slate-700 text-slate-400'}`}>
+                    {demoScenes.map((item, index) => (
+                      <span key={item.id} className={`rounded-full border px-2 py-1 text-[11px] ${index === videoSceneIndex ? 'border-cyan-400 bg-cyan-500/20 text-cyan-200' : 'border-slate-700 text-slate-400'}`}>
                         {item.id} {item.modulo}
                       </span>
                     ))}
