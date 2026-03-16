@@ -23,7 +23,6 @@ import { OSDistributionChart } from '@/components/dashboard/OSDistributionChart'
 import { OSByStatusChart } from '@/components/dashboard/OSByStatusChart';
 import { CostTrendChart } from '@/components/dashboard/CostTrendChart';
 import { BacklogSummary } from '@/components/dashboard/BacklogSummary';
-import { QuickActions } from '@/components/dashboard/QuickActions';
 import { OSStatusBadge } from '@/components/os/OSStatusBadge';
 import { OSTypeBadge } from '@/components/os/OSTypeBadge';
 import { normalizeOSStatus, normalizeOSType } from '@/lib/osBadges';
@@ -121,9 +120,6 @@ export default function Dashboard() {
           </Button>
         </Link>
       </div>
-
-      {/* Quick Actions */}
-      <QuickActions osAbertas={ind.osAbertas} />
 
       {/* Operational Indicators */}
       <div>
