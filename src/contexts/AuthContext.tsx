@@ -180,6 +180,7 @@ function isTenantBaseDomain(hostname: string) {
 function stripAuthHandoffFromUrl() {
   const queryParams = new URLSearchParams(window.location.search);
   queryParams.delete(LOGOUT_MARKER_PARAM);
+  queryParams.delete(LOGOUT_REASON_PARAM);
 
   const hashParams = new URLSearchParams(window.location.hash.startsWith('#') ? window.location.hash.slice(1) : '');
   hashParams.delete('session_transfer');
@@ -201,6 +202,15 @@ function getNavigationType(): string | null {
 
 function shouldForceLogoutByClosedWindowMarker() {
   try {
+    const rawHash = window.location.hash.startsWith('#') ? window.location.hash.slice(1) : '';
+    if (rawHash) {
+      const hashParams = new URLSearchParams(rawHash);
+      if (hashParams.get('session_transfer')) {
+        window.localStorage.removeItem(TAB_CLOSE_MARKER_STORAGE_KEY);
+        return false;
+      }
+    }
+
     const navigationType = getNavigationType();
     if (navigationType === 'reload' || navigationType === 'back_forward') {
       return false;
@@ -298,12 +308,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const searchParams = new URLSearchParams(window.location.search);
       const hasLogoutMarker = searchParams.get(LOGOUT_MARKER_PARAM) === '1';
 
-      if (hasLogoutMarker) {
-        await supabase.auth.signOut({ scope: 'local' });
-        stripAuthHandoffFromUrl();
-        return;
-      }
-
       if (window.location.pathname !== '/login') return;
 
       const rawHash = window.location.hash.startsWith('#')
@@ -313,7 +317,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       const params = new URLSearchParams(rawHash);
       const encodedTransfer = params.get('session_transfer');
-      if (!encodedTransfer) return;
+      if (!encodedTransfer) {
+        if (hasLogoutMarker) {
+          await supabase.auth.signOut({ scope: 'local' });
+          stripAuthHandoffFromUrl();
+        }
+        return;
+      }
 
       try {
         const decodedJson = window.atob(decodeURIComponent(encodedTransfer));
@@ -329,6 +339,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           });
           stripAuthHandoffFromUrl();
           return;
+        }
+
+        // session_transfer has priority over stale logout markers from closed-window flow
+        if (hasLogoutMarker) {
+          searchParams.delete(LOGOUT_MARKER_PARAM);
+          searchParams.delete(LOGOUT_REASON_PARAM);
+          const nextQuery = searchParams.toString();
+          const nextHash = params.toString();
+          const cleanedUrl = `${window.location.pathname}${nextQuery ? `?${nextQuery}` : ''}${nextHash ? `#${nextHash}` : ''}`;
+          window.history.replaceState({}, document.title, cleanedUrl);
         }
 
         const { error } = await supabase.auth.setSession({
