@@ -25,6 +25,12 @@ interface ManualDemoScene {
   titulo: string;
   imagem: string;
   etapas: string[];
+  simulacao: {
+    tela: string;
+    campos: { label: string; valor: string; mascarado?: boolean }[];
+    acao: string;
+    resultado: string;
+  };
 }
 
 const operacoes: OperacaoManual[] = [
@@ -434,74 +440,111 @@ function mapToRoleManual(role?: string): RoleManual {
 }
 
 function buildSceneEtapas(op: OperacaoManual): string[] {
-  if (op.id === '02') {
-    return [
-      'Abrindo modulo de Solicitacoes...',
-      'Selecionando TAG e classificando urgencia...',
-      'Registrando sintoma e impacto operacional...',
-      'Enviando solicitacao para fila de atendimento...'
-    ];
-  }
-
-  if (op.id === '03') {
-    return [
-      'Carregando backlog do turno...',
-      'Aplicando filtros de prioridade e status...',
-      'Destacando itens criticos e vencidos...',
-      'Definindo proxima acao: emitir O.S ou reprogramar...'
-    ];
-  }
-
-  if (op.id === '04') {
-    return [
-      'Abrindo tela de Emissao de O.S...',
-      'Selecionando solicitacao/TAG e tipo de manutencao...',
-      'Preenchendo escopo tecnico e prioridade...',
-      'Gerando numero da O.S para execucao...'
-    ];
-  }
-
-  if (op.id === '05') {
-    return [
-      'Selecionando O.S em execucao...',
-      'Apontando horas, materiais e servico realizado...',
-      'Registrando evidencias tecnicas e RCA quando aplicavel...',
-      'Concluindo fechamento tecnico da ordem...'
-    ];
-  }
-
-  if (op.id === '06') {
-    return [
-      'Abrindo historico de O.S...',
-      'Filtrando por periodo, status e prioridade...',
-      'Analisando lead time, reincidencia e gargalos...',
-      'Gerando insights para backlog e programacao...'
-    ];
-  }
-
   return op.passos.slice(0, 4);
 }
 
+function buildSceneSimulacao(op: OperacaoManual): ManualDemoScene['simulacao'] {
+  if (op.id === '01') {
+    return {
+      tela: 'Tela de Login',
+      campos: [
+        { label: 'Email', valor: 'teste@gmail.com' },
+        { label: 'Senha', valor: 'Senha@123', mascarado: true }
+      ],
+      acao: 'Entrar',
+      resultado: 'Sessao iniciada e menu carregado.'
+    };
+  }
+
+  if (op.id === '02') {
+    return {
+      tela: 'Nova Solicitacao',
+      campos: [
+        { label: 'TAG', valor: 'BOMBA-101' },
+        { label: 'Urgencia', valor: 'Urgente' },
+        { label: 'Descricao', valor: 'Vazamento no selo mecanico com risco de parada.' }
+      ],
+      acao: 'Salvar Solicitacao',
+      resultado: 'Solicitacao enviada para a fila de triagem.'
+    };
+  }
+
+  if (op.id === '03') {
+    return {
+      tela: 'Backlog Diario',
+      campos: [
+        { label: 'Filtro Prioridade', valor: 'Critica + Alta' },
+        { label: 'Filtro Status', valor: 'Em Aberto' },
+        { label: 'Ordenacao', valor: 'Maior risco operacional' }
+      ],
+      acao: 'Aplicar Filtros',
+      resultado: 'Backlog priorizado com itens criticos no topo.'
+    };
+  }
+
+  if (op.id === '04') {
+    return {
+      tela: 'Emissao de O.S',
+      campos: [
+        { label: 'Solicitacao', valor: 'SOL-2026-00421' },
+        { label: 'Tipo', valor: 'Corretiva' },
+        { label: 'Prioridade', valor: 'Alta' },
+        { label: 'Escopo', valor: 'Troca de selo e alinhamento do conjunto.' }
+      ],
+      acao: 'Gerar O.S',
+      resultado: 'O.S OS-2026-00891 emitida com sucesso.'
+    };
+  }
+
+  if (op.id === '05') {
+    return {
+      tela: 'Fechamento de O.S',
+      campos: [
+        { label: 'O.S', valor: 'OS-2026-00891' },
+        { label: 'Horas Executadas', valor: '03:40' },
+        { label: 'Materiais', valor: 'Selo mecanico 2" + junta vedacao' },
+        { label: 'Servico Realizado', valor: 'Substituicao e teste funcional aprovado.' }
+      ],
+      acao: 'Concluir Fechamento',
+      resultado: 'O.S fechada e custos consolidados.'
+    };
+  }
+
+  if (op.id === '06') {
+    return {
+      tela: 'Historico de O.S',
+      campos: [
+        { label: 'Periodo', valor: '01/03/2026 - 16/03/2026' },
+        { label: 'Status', valor: 'Fechadas' },
+        { label: 'TAG', valor: 'BOMBA-101' },
+        { label: 'Filtro Analitico', valor: 'Reincidencia + Lead Time' }
+      ],
+      acao: 'Analisar Historico',
+      resultado: 'Relacao de falhas recorrentes e gargalos exibida.'
+    };
+  }
+
+  return {
+    tela: op.modulo,
+    campos: [
+      { label: 'Contexto', valor: op.quandoUsar },
+      { label: 'Objetivo', valor: op.objetivo }
+    ],
+    acao: 'Executar Rotina',
+    resultado: 'Rotina concluida com checklist aprovado.'
+  };
+}
+
 function buildDemoScenes(ops: OperacaoManual[]): ManualDemoScene[] {
-  const prioridade = ['02', '03', '04', '05', '06'];
-
-  const ordenadas = [...ops].sort((a, b) => {
-    const idxA = prioridade.indexOf(a.id);
-    const idxB = prioridade.indexOf(b.id);
-
-    if (idxA >= 0 && idxB >= 0) return idxA - idxB;
-    if (idxA >= 0) return -1;
-    if (idxB >= 0) return 1;
-
-    return a.id.localeCompare(b.id, 'pt-BR', { numeric: true });
-  });
+  const ordenadas = [...ops].sort((a, b) => a.id.localeCompare(b.id, 'pt-BR', { numeric: true }));
 
   return ordenadas.map((op) => ({
     id: op.id,
     modulo: op.modulo,
     titulo: op.titulo,
     imagem: op.imagem,
-    etapas: buildSceneEtapas(op)
+    etapas: buildSceneEtapas(op),
+    simulacao: buildSceneSimulacao(op)
   }));
 }
 
@@ -509,11 +552,11 @@ export default function ManualOperacao() {
   const { user } = useAuth();
   const { perfil } = useParams();
   const navigate = useNavigate();
-  const [simEmail, setSimEmail] = useState('');
-  const [simPassword, setSimPassword] = useState('');
-  const [simStep, setSimStep] = useState<'idle' | 'typing_email' | 'typing_password' | 'ready' | 'submitting' | 'done'>('idle');
+  const [simStep, setSimStep] = useState<'typing' | 'ready' | 'submitting' | 'done'>('typing');
   const [videoSceneIndex, setVideoSceneIndex] = useState(0);
   const [videoStepIndex, setVideoStepIndex] = useState(0);
+  const [campoAtivoIndex, setCampoAtivoIndex] = useState(0);
+  const [charCampoAtual, setCharCampoAtual] = useState(0);
 
   const roleAtual = mapToRoleManual(user?.tipo);
   const rolePorRota = mapSlugToRole(perfil);
@@ -550,80 +593,91 @@ export default function ManualOperacao() {
   }, [operacoesFiltradas]);
 
   useEffect(() => {
-    const demoEmail = 'teste@gmail.com';
-    const demoPassword = 'Senha@123';
-
-    setSimEmail('');
-    setSimPassword('');
-    setSimStep('typing_email');
-
-    let emailIndex = 0;
-    let passIndex = 0;
-
-    const emailTimer = window.setInterval(() => {
-      emailIndex += 1;
-      setSimEmail(demoEmail.slice(0, emailIndex));
-      if (emailIndex >= demoEmail.length) {
-        window.clearInterval(emailTimer);
-        window.setTimeout(() => {
-          setSimStep('typing_password');
-          const passTimer = window.setInterval(() => {
-            passIndex += 1;
-            setSimPassword(demoPassword.slice(0, passIndex));
-            if (passIndex >= demoPassword.length) {
-              window.clearInterval(passTimer);
-              setSimStep('ready');
-              window.setTimeout(() => {
-                setSimStep('submitting');
-                window.setTimeout(() => {
-                  setSimStep('done');
-                }, 1100);
-              }, 500);
-            }
-          }, 90);
-        }, 250);
-      }
-    }, 80);
-
-    return () => {
-      window.clearInterval(emailTimer);
-    };
-  }, [roleEfetivo]);
-
-  useEffect(() => {
-    if (simStep !== 'done') {
-      setVideoSceneIndex(0);
-      setVideoStepIndex(0);
-      return;
-    }
-
     if (!demoScenes.length) {
       setVideoSceneIndex(0);
       setVideoStepIndex(0);
+      setCampoAtivoIndex(0);
+      setCharCampoAtual(0);
+      setSimStep('typing');
+      return;
     }
-  }, [simStep, demoScenes.length]);
+
+    setVideoSceneIndex(0);
+    setVideoStepIndex(0);
+    setCampoAtivoIndex(0);
+    setCharCampoAtual(0);
+    setSimStep('typing');
+  }, [roleEfetivo, demoScenes.length]);
 
   const cenaAtualDemo = demoScenes[videoSceneIndex] ?? null;
 
   useEffect(() => {
-    if (simStep !== 'done') return;
     if (!cenaAtualDemo) return;
 
-    if (videoStepIndex >= cenaAtualDemo.etapas.length - 1) {
-      const timerCena = window.setTimeout(() => {
-        setVideoSceneIndex((current) => (current + 1) % demoScenes.length);
-        setVideoStepIndex(0);
-      }, 1300);
+    const campos = cenaAtualDemo.simulacao.campos;
 
-      return () => window.clearTimeout(timerCena);
+    if (simStep === 'typing') {
+      const campoAtual = campos[campoAtivoIndex];
+      if (!campoAtual) {
+        setSimStep('ready');
+        return;
+      }
+
+      if (charCampoAtual < campoAtual.valor.length) {
+        const timerChar = window.setTimeout(() => {
+          setCharCampoAtual((current) => current + 1);
+        }, 35);
+        return () => window.clearTimeout(timerChar);
+      }
+
+      if (campoAtivoIndex < campos.length - 1) {
+        const timerCampo = window.setTimeout(() => {
+          setCampoAtivoIndex((current) => current + 1);
+          setCharCampoAtual(0);
+        }, 180);
+        return () => window.clearTimeout(timerCampo);
+      }
+
+      const timerReady = window.setTimeout(() => {
+        setSimStep('ready');
+      }, 280);
+      return () => window.clearTimeout(timerReady);
     }
 
-    const timerEtapa = window.setTimeout(() => {
-      setVideoStepIndex((current) => current + 1);
-    }, 900);
+    if (simStep === 'ready') {
+      const timerSubmit = window.setTimeout(() => {
+        setSimStep('submitting');
+        setVideoStepIndex(0);
+      }, 500);
+      return () => window.clearTimeout(timerSubmit);
+    }
 
-    return () => window.clearTimeout(timerEtapa);
-  }, [simStep, demoScenes.length, cenaAtualDemo, videoStepIndex]);
+    if (simStep === 'submitting') {
+      if (videoStepIndex >= cenaAtualDemo.etapas.length - 1) {
+        const timerDone = window.setTimeout(() => {
+          setSimStep('done');
+        }, 750);
+        return () => window.clearTimeout(timerDone);
+      }
+
+      const timerEtapa = window.setTimeout(() => {
+        setVideoStepIndex((current) => current + 1);
+      }, 700);
+      return () => window.clearTimeout(timerEtapa);
+    }
+
+    if (simStep !== 'done') return;
+
+    const timerCena = window.setTimeout(() => {
+      setVideoSceneIndex((current) => (current + 1) % demoScenes.length);
+      setVideoStepIndex(0);
+      setCampoAtivoIndex(0);
+      setCharCampoAtual(0);
+      setSimStep('typing');
+    }, 1400);
+
+    return () => window.clearTimeout(timerCena);
+  }, [simStep, demoScenes.length, cenaAtualDemo, videoStepIndex, campoAtivoIndex, charCampoAtual]);
 
   const progressoVideo = demoScenes.length
     ? Math.round(((videoSceneIndex + 1) / demoScenes.length) * 100)
@@ -659,26 +713,45 @@ export default function ManualOperacao() {
             <div className="border-b border-slate-700/70 p-6 lg:border-b-0 lg:border-r">
               <div className="mb-4 flex items-center gap-2 text-cyan-300">
                 <PlayCircle className="h-5 w-5" />
-                <h2 className="text-sm font-semibold uppercase tracking-wide">Simulador de Login</h2>
+                <h2 className="text-sm font-semibold uppercase tracking-wide">Simulador Completo do Usuario Final</h2>
               </div>
               <div className="rounded-lg border border-slate-700 bg-[#0d1728] p-4">
-                <p className="mb-3 text-xs text-slate-400">Fluxo animado: preenchimento automatico e clique em Entrar.</p>
+                <p className="mb-3 text-xs text-slate-400">Todos os modulos executam no mesmo estilo do login: digitacao, acao e confirmacao.</p>
                 <div className="space-y-3">
                   <div className="rounded border border-slate-700 bg-slate-950 p-3">
-                    <p className="mb-1 text-[11px] uppercase tracking-wide text-slate-400">Email</p>
-                    <p className="font-mono text-sm text-slate-100">{simEmail}<span className="animate-pulse">|</span></p>
+                    <p className="mb-1 text-[11px] uppercase tracking-wide text-slate-400">Tela atual</p>
+                    <p className="text-sm font-semibold text-cyan-100">{cenaAtualDemo?.simulacao.tela ?? 'Carregando simulacao...'}</p>
                   </div>
-                  <div className="rounded border border-slate-700 bg-slate-950 p-3">
-                    <p className="mb-1 text-[11px] uppercase tracking-wide text-slate-400">Senha</p>
-                    <p className="font-mono text-sm text-slate-100">{'•'.repeat(simPassword.length)}{simStep === 'typing_password' && <span className="animate-pulse">|</span>}</p>
-                  </div>
+
+                  {(cenaAtualDemo?.simulacao.campos ?? []).map((campo, index) => {
+                    const valorCompleto = campo.mascarado ? '•'.repeat(campo.valor.length) : campo.valor;
+                    let valorRenderizado = '';
+                    if (index < campoAtivoIndex) {
+                      valorRenderizado = valorCompleto;
+                    } else if (index === campoAtivoIndex) {
+                      valorRenderizado = valorCompleto.slice(0, charCampoAtual);
+                    }
+
+                    const campoAtivo = simStep === 'typing' && index === campoAtivoIndex;
+
+                    return (
+                      <div key={`${cenaAtualDemo?.id ?? 'scene'}-${campo.label}-${index}`} className="rounded border border-slate-700 bg-slate-950 p-3">
+                        <p className="mb-1 text-[11px] uppercase tracking-wide text-slate-400">{campo.label}</p>
+                        <p className="font-mono text-sm text-slate-100">
+                          {valorRenderizado}
+                          {campoAtivo && <span className="animate-pulse">|</span>}
+                        </p>
+                      </div>
+                    );
+                  })}
+
                   <button
                     type="button"
                     className={`w-full rounded-md px-4 py-2 text-sm font-semibold transition-all ${simStep === 'submitting' ? 'scale-[1.03] bg-cyan-400 text-slate-900 shadow-[0_0_20px_rgba(34,211,238,0.45)]' : simStep === 'done' ? 'bg-emerald-500 text-emerald-950' : 'bg-slate-700 text-slate-200'}`}
                   >
                     {simStep === 'submitting' ? (
-                      <span className="inline-flex items-center gap-2"><Loader2 className="h-4 w-4 animate-spin" /> Entrando...</span>
-                    ) : simStep === 'done' ? 'Entrou com sucesso' : 'Entrar'}
+                      <span className="inline-flex items-center gap-2"><Loader2 className="h-4 w-4 animate-spin" /> Processando...</span>
+                    ) : simStep === 'done' ? (cenaAtualDemo?.simulacao.resultado ?? 'Concluido com sucesso') : (cenaAtualDemo?.simulacao.acao ?? 'Executar')}
                   </button>
                 </div>
               </div>
@@ -712,7 +785,7 @@ export default function ManualOperacao() {
                     <ul className="space-y-2">
                       {cenaAtualDemo.etapas.map((etapa, index) => {
                         const concluida = index < videoStepIndex;
-                        const ativa = index === videoStepIndex && simStep === 'done';
+                        const ativa = index === videoStepIndex && simStep === 'submitting';
 
                         return (
                           <li key={`${cenaAtualDemo.id}-${etapa}`} className={`flex items-start gap-2 rounded-md border px-2 py-2 text-xs transition-all ${concluida ? 'border-emerald-400/50 bg-emerald-500/10 text-emerald-100' : ativa ? 'border-cyan-400/60 bg-cyan-500/15 text-cyan-100' : 'border-slate-700 text-slate-400'}`}>
