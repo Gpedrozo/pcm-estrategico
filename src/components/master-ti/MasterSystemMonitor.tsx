@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Activity, CheckCircle, AlertTriangle, Clock, Database, Users, FileText, Wrench, BarChart3, ClipboardList, ShieldAlert, Package, Factory, Settings, Gauge, TrendingUp, Zap, Droplet } from 'lucide-react';
 import { Progress } from '@/components/ui/progress';
+import { useAuth } from '@/contexts/AuthContext';
 
 const MODULE_TABLES = [
   { module: 'Ordens de Serviço', table: 'ordens_servico' as const, icon: FileText, color: 'text-info' },
@@ -33,26 +34,62 @@ const MODULE_TABLES = [
 ] as const;
 
 export function MasterSystemMonitor() {
+  const { tenantId } = useAuth();
+
   const { data: healthData, isLoading } = useQuery({
-    queryKey: ['master-system-health-full'],
+    queryKey: ['master-system-health-full', tenantId],
     queryFn: async () => {
+      if (!tenantId) {
+        return {
+          responseTime: 0,
+          moduleCounts: MODULE_TABLES.map((m) => ({ ...m, count: 0, responseTime: 0 })),
+          recentOS24h: 0,
+          recentAudit24h: 0,
+          recentSolicit24h: 0,
+          recentSecurity24h: 0,
+          totalRecords: 0,
+          activeModules: 0,
+          errorModules: 0,
+          avgResponseTime: 0,
+        };
+      }
+
+      const countByTenant = async (table: string, createdAfter?: string) => {
+        const t0 = performance.now();
+
+        try {
+          let query = supabase
+            .from(table as any)
+            .select('id', { count: 'exact', head: true })
+            .eq('empresa_id', tenantId);
+
+          if (createdAfter) {
+            query = query.gte('created_at', createdAfter);
+          }
+
+          const { count, error } = await query;
+          if (error) return { count: 0, responseTime: Math.round(performance.now() - t0), hasError: true };
+
+          return { count: count ?? 0, responseTime: Math.round(performance.now() - t0), hasError: false };
+        } catch {
+          return { count: 0, responseTime: Math.round(performance.now() - t0), hasError: true };
+        }
+      };
+
       const start = performance.now();
       const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
 
       const [moduleCounts, recentOS, recentAudit, recentSolicit, recentSecurity] = await Promise.all([
         Promise.all(
           MODULE_TABLES.map(async (m) => {
-            const t0 = performance.now();
-            try {
-              const { count, error } = await supabase.from(m.table as any).select('*', { count: 'exact', head: true });
-              return { ...m, count: error ? -1 : (count ?? 0), responseTime: Math.round(performance.now() - t0) };
-            } catch { return { ...m, count: -1, responseTime: Math.round(performance.now() - t0) }; }
+            const result = await countByTenant(m.table);
+            return { ...m, count: result.count, responseTime: result.responseTime, hasError: result.hasError };
           })
         ),
-        supabase.from('ordens_servico').select('id', { count: 'exact', head: true }).gte('created_at', oneDayAgo),
-        supabase.from('audit_logs').select('id', { count: 'exact', head: true }).gte('created_at', oneDayAgo),
-        supabase.from('solicitacoes_manutencao').select('id', { count: 'exact', head: true }).gte('created_at', oneDayAgo),
-        supabase.from('security_logs').select('id', { count: 'exact', head: true }).gte('created_at', oneDayAgo),
+        countByTenant('ordens_servico', oneDayAgo),
+        countByTenant('audit_logs', oneDayAgo),
+        countByTenant('solicitacoes_manutencao', oneDayAgo),
+        countByTenant('security_logs', oneDayAgo),
       ]);
 
       const responseTime = Math.round(performance.now() - start);
@@ -60,13 +97,13 @@ export function MasterSystemMonitor() {
       return {
         responseTime,
         moduleCounts,
-        recentOS24h: recentOS.count ?? 0,
-        recentAudit24h: recentAudit.count ?? 0,
-        recentSolicit24h: recentSolicit.count ?? 0,
-        recentSecurity24h: recentSecurity.count ?? 0,
+        recentOS24h: recentOS.count,
+        recentAudit24h: recentAudit.count,
+        recentSolicit24h: recentSolicit.count,
+        recentSecurity24h: recentSecurity.count,
         totalRecords: moduleCounts.filter(m => m.count >= 0).reduce((a, b) => a + b.count, 0),
         activeModules: moduleCounts.filter(m => m.count > 0).length,
-        errorModules: moduleCounts.filter(m => m.count === -1).length,
+        errorModules: moduleCounts.filter(m => m.hasError).length,
         avgResponseTime: Math.round(moduleCounts.reduce((a, b) => a + b.responseTime, 0) / moduleCounts.length),
       };
     },
@@ -181,13 +218,13 @@ export function MasterSystemMonitor() {
                   </td>
                   <td className="font-mono text-xs text-muted-foreground">{m.table}</td>
                   <td>
-                    <Badge variant={m.count > 0 ? 'default' : 'secondary'} className="font-mono">
-                      {m.count >= 0 ? m.count.toLocaleString('pt-BR') : 'ERRO'}
+                    <Badge variant={!m.hasError && m.count > 0 ? 'default' : 'secondary'} className="font-mono">
+                      {m.hasError ? 'ERRO' : m.count.toLocaleString('pt-BR')}
                     </Badge>
                   </td>
                   <td className={`font-mono text-xs ${m.responseTime > 300 ? 'text-warning' : 'text-muted-foreground'}`}>{m.responseTime}ms</td>
                   <td>
-                    {m.count >= 0 ? (
+                    {!m.hasError ? (
                       <Badge variant="outline" className="bg-success/10 text-success border-success/20 text-[10px]">
                         <CheckCircle className="h-3 w-3 mr-1" /> Online
                       </Badge>

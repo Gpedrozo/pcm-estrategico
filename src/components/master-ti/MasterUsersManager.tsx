@@ -13,8 +13,11 @@ import { Search, Edit, Shield, User, Crown, Loader2, Users, Eye, ChevronLeft, Ch
 import { Skeleton } from '@/components/ui/skeleton';
 import { useLogAuditoria } from '@/hooks/useAuditoria';
 import { writeAuditLog } from '@/lib/audit';
+import { useAuth } from '@/contexts/AuthContext';
 
 type AppRole = 'MASTER_TI' | 'ADMIN' | 'USUARIO';
+
+const EDITABLE_ROLES: AppRole[] = ['USUARIO', 'ADMIN', 'MASTER_TI'];
 
 interface UserData {
   id: string;
@@ -33,6 +36,7 @@ const ROLE_CONFIG: Record<AppRole, { label: string; icon: React.ElementType; col
 const PAGE_SIZE = 15;
 
 export function MasterUsersManager() {
+  const { tenantId } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { log } = useLogAuditoria();
@@ -45,24 +49,65 @@ export function MasterUsersManager() {
   const [page, setPage] = useState(0);
 
   const { data: users, isLoading } = useQuery({
-    queryKey: ['master-users'],
+    queryKey: ['master-users', tenantId],
     queryFn: async () => {
-      const { data: profiles, error: pErr } = await supabase.from('profiles').select('*').order('nome');
+      if (!tenantId) return [] as UserData[];
+
+      const { data: profiles, error: pErr } = await supabase
+        .from('profiles')
+        .select('id, nome, created_at, updated_at, empresa_id')
+        .eq('empresa_id', tenantId)
+        .order('nome');
       if (pErr) throw pErr;
-      const { data: roles, error: rErr } = await supabase.from('user_roles').select('*');
+
+      const { data: roles, error: rErr } = await supabase
+        .from('user_roles')
+        .select('user_id, role, empresa_id, created_at')
+        .eq('empresa_id', tenantId);
       if (rErr) throw rErr;
-      return (profiles || []).map(p => {
-        const r = roles?.find(r => r.user_id === p.id);
-        return { id: p.id, nome: p.nome, role: (r?.role || 'USUARIO') as AppRole, created_at: p.created_at, updated_at: p.updated_at };
+
+      return (profiles || []).map((p) => {
+        const roleRows = (roles || []).filter((r) => r.user_id === p.id);
+        const normalizedRoles = roleRows.map((r) => String(r.role || '').toUpperCase());
+
+        let role: AppRole = 'USUARIO';
+        if (normalizedRoles.includes('MASTER_TI') || normalizedRoles.includes('SYSTEM_OWNER') || normalizedRoles.includes('SYSTEM_ADMIN')) {
+          role = 'MASTER_TI';
+        } else if (normalizedRoles.includes('ADMIN')) {
+          role = 'ADMIN';
+        }
+
+        return {
+          id: p.id,
+          nome: p.nome,
+          role,
+          created_at: p.created_at,
+          updated_at: p.updated_at,
+        };
       });
     },
   });
 
   const updateMutation = useMutation({
     mutationFn: async ({ userId, role, nome }: { userId: string; role: AppRole; nome: string }) => {
+      if (!tenantId) {
+        throw new Error('Tenant não identificado para atualizar usuário.');
+      }
+
       const { error: nErr } = await supabase.from('profiles').update({ nome }).eq('id', userId);
       if (nErr) throw nErr;
-      const { error: rErr } = await supabase.from('user_roles').update({ role }).eq('user_id', userId);
+
+      const { error: clearErr } = await supabase
+        .from('user_roles')
+        .delete()
+        .eq('user_id', userId)
+        .eq('empresa_id', tenantId)
+        .in('role', EDITABLE_ROLES);
+      if (clearErr) throw clearErr;
+
+      const { error: rErr } = await supabase
+        .from('user_roles')
+        .insert({ user_id: userId, empresa_id: tenantId, role });
       if (rErr) throw rErr;
 
       await writeAuditLog({
@@ -74,7 +119,7 @@ export function MasterUsersManager() {
       });
     },
     onSuccess: (_, vars) => {
-      queryClient.invalidateQueries({ queryKey: ['master-users'] });
+      queryClient.invalidateQueries({ queryKey: ['master-users', tenantId] });
       toast({ title: 'Usuário atualizado com sucesso.' });
       log('EDITAR_USUARIO', `Usuário "${vars.nome}" atualizado para perfil ${vars.role}`, 'MASTER_TI');
       setEditingUser(null);
