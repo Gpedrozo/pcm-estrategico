@@ -1139,29 +1139,29 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return { error: 'A nova senha deve ter pelo menos 8 caracteres.' };
     }
 
+    const { data: sessionResult } = await supabase.auth.getSession();
+    let accessToken = sessionResult.session?.access_token ?? null;
+
+    if (!accessToken) {
+      const { data: refreshedSession, error: refreshError } = await supabase.auth.refreshSession();
+      accessToken = refreshedSession.session?.access_token ?? null;
+
+      if (refreshError || !accessToken) {
+        return { error: 'Auth session missing! Faça login novamente para continuar.' };
+      }
+    }
+
     const { error: changeError } = await supabase.functions.invoke('auth-change-password', {
       body: {
         new_password: normalizedPassword,
       },
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
     });
 
     if (changeError) {
-      const { error: fallbackPasswordError } = await supabase.auth.updateUser({
-        password: normalizedPassword,
-      });
-      if (fallbackPasswordError) {
-        return { error: fallbackPasswordError.message || changeError.message || 'Falha ao atualizar senha.' };
-      }
-
-      const { data: fallbackUserResult } = await supabase.auth.getUser();
-      const fallbackUser = fallbackUserResult.user;
-      if (fallbackUser?.id) {
-        await supabase
-          .from('profiles')
-          .update({ force_password_change: false })
-          .eq('id', fallbackUser.id)
-          .catch(() => null);
-      }
+      return { error: changeError.message || 'Falha ao atualizar senha.' };
     }
 
     const { data: userResult } = await supabase.auth.getUser();

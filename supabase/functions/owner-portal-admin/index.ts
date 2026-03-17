@@ -1480,28 +1480,12 @@ Deno.serve(async (req) => {
       empresa_id: company.id,
       nome: body.user.nome,
       email: body.user.email.trim().toLowerCase(),
+      force_password_change: true,
     }, { onConflict: "id" });
 
     if (profileUpsertError) {
       const reason = await rollbackCreateCompany(profileUpsertError.message);
       return fail("Falha ao vincular usuário master na empresa (profiles).", 400, { reason }, req);
-    }
-
-    // Best effort para ambientes onde a coluna existe; nao bloqueia onboarding em schemas legados.
-    const { error: forcePasswordFlagError } = await admin
-      .from("profiles")
-      .update({ force_password_change: true })
-      .eq("id", createdAuth.user.id);
-
-    if (forcePasswordFlagError) {
-      const normalizedFlagError = (forcePasswordFlagError.message ?? "").toLowerCase();
-      const missingColumn = normalizedFlagError.includes("force_password_change")
-        && (normalizedFlagError.includes("does not exist") || normalizedFlagError.includes("column"));
-
-      if (!missingColumn) {
-        const reason = await rollbackCreateCompany(forcePasswordFlagError.message);
-        return fail("Falha ao marcar troca obrigatória de senha do usuário master.", 400, { reason }, req);
-      }
     }
 
     const { error: roleUpsertError } = await admin.from("user_roles").upsert({
