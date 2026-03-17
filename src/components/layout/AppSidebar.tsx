@@ -82,7 +82,7 @@ const cadastroMenuItems = [
   { title: 'Materiais', url: '/materiais', icon: Package },
   { title: 'Fornecedores', url: '/fornecedores', icon: Truck },
   { title: 'Contratos', url: '/contratos', icon: FileText },
-  { title: 'Documentos', url: '/documentos', icon: FileArchive },
+  { title: 'Catálogos Técnicos', url: '/documentos', icon: FileArchive },
 ];
 
 const relatoriosMenuItems = [
@@ -257,7 +257,7 @@ export function AppSidebar() {
 
             <SidebarGroup className="mt-4">
               <SidebarGroupLabel className="text-sidebar-foreground/50 uppercase text-xs font-semibold px-3 mb-2">
-                Cadastros
+                Catálogos
               </SidebarGroupLabel>
               <SidebarGroupContent>
                 <SidebarMenu>

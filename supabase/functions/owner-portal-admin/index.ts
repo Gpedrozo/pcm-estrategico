@@ -402,6 +402,89 @@ function buildManagedTenantDomain(slug: string) {
   return `${slug}.${TENANT_BASE_DOMAIN}`;
 }
 
+const CF_PAGES_AUTO_DOMAIN_ENABLED = (Deno.env.get("CF_PAGES_AUTO_DOMAIN_ENABLED") ?? "true").toLowerCase() !== "false";
+const CF_API_TOKEN = (Deno.env.get("CF_API_TOKEN") ?? "").trim();
+const CF_ACCOUNT_ID = (Deno.env.get("CF_ACCOUNT_ID") ?? "").trim();
+const CF_PAGES_PROJECT_NAME = (Deno.env.get("CF_PAGES_PROJECT_NAME") ?? "").trim();
+const CF_API_BASE_URL = "https://api.cloudflare.com/client/v4";
+
+function mergeWarnings(base: string | null, next: string | null) {
+  if (!next) return base;
+  if (!base) return next;
+  return `${base} ${next}`;
+}
+
+async function cloudflareApiRequest(path: string, init: RequestInit = {}) {
+  const response = await fetch(`${CF_API_BASE_URL}${path}`, {
+    ...init,
+    headers: {
+      Authorization: `Bearer ${CF_API_TOKEN}`,
+      ...(init.headers ?? {}),
+    },
+  });
+
+  const rawText = await response.text().catch(() => "");
+  const payload = rawText ? JSON.parse(rawText) : null;
+
+  if (!response.ok || !payload?.success) {
+    const apiMessage = payload?.errors?.[0]?.message
+      ?? payload?.messages?.[0]?.message
+      ?? rawText
+      ?? `HTTP ${response.status}`;
+    throw new Error(`Cloudflare API error: ${apiMessage}`);
+  }
+
+  return payload;
+}
+
+async function ensureCloudflarePagesCustomDomain(domain: string): Promise<{ status: "ok" | "skipped" | "error"; message: string }> {
+  if (!CF_PAGES_AUTO_DOMAIN_ENABLED) {
+    return {
+      status: "skipped",
+      message: "Provisionamento automatico no Cloudflare desativado (CF_PAGES_AUTO_DOMAIN_ENABLED=false).",
+    };
+  }
+
+  if (!CF_API_TOKEN || !CF_ACCOUNT_ID || !CF_PAGES_PROJECT_NAME) {
+    return {
+      status: "skipped",
+      message: "Variaveis CF_API_TOKEN, CF_ACCOUNT_ID e CF_PAGES_PROJECT_NAME nao configuradas.",
+    };
+  }
+
+  const accountId = encodeURIComponent(CF_ACCOUNT_ID);
+  const projectName = encodeURIComponent(CF_PAGES_PROJECT_NAME);
+  const route = `/accounts/${accountId}/pages/projects/${projectName}/domains`;
+
+  try {
+    const listPayload = await cloudflareApiRequest(route, { method: "GET" });
+    const domains = Array.isArray(listPayload?.result) ? listPayload.result : [];
+    const exists = domains.some((item: any) => (item?.name ?? "").toLowerCase() === domain.toLowerCase());
+
+    if (!exists) {
+      await cloudflareApiRequest(route, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: domain }),
+      });
+      return {
+        status: "ok",
+        message: `Dominio ${domain} provisionado no Cloudflare Pages.`,
+      };
+    }
+
+    return {
+      status: "ok",
+      message: `Dominio ${domain} ja estava provisionado no Cloudflare Pages.`,
+    };
+  } catch (error: any) {
+    return {
+      status: "error",
+      message: error?.message ?? "Falha desconhecida ao provisionar dominio no Cloudflare Pages.",
+    };
+  }
+}
+
 function isDuplicateKeyError(message?: string | null) {
   const normalized = (message ?? "").toLowerCase();
   return normalized.includes("duplicate key") || normalized.includes("unique constraint");
@@ -1340,6 +1423,14 @@ Deno.serve(async (req) => {
         const reason = await rollbackCreateCompany(domainError.message);
         return fail("Falha ao configurar domínio automático da empresa.", 400, { reason }, req);
       }
+
+      const cloudflareProvision = await ensureCloudflarePagesCustomDomain(managedDomain);
+      if (cloudflareProvision.status !== "ok") {
+        onboardingWarning = mergeWarnings(
+          onboardingWarning,
+          `Dominio da empresa criado no banco, mas com aviso no Cloudflare: ${cloudflareProvision.message}`,
+        );
+      }
     }
 
     const masterRole = body.user.role ?? "ADMIN";
@@ -1543,6 +1634,7 @@ Deno.serve(async (req) => {
     if (!body.empresa_id || !body.company) return fail("empresa_id and company are required", 400, null, req);
 
     const updatePayload: Record<string, unknown> = {};
+    let updateWarning: string | null = null;
     let previousSlug: string | null = null;
     let nextSlug: string | null = null;
 
@@ -1633,6 +1725,11 @@ Deno.serve(async (req) => {
           if (domainUpdateError) {
             return fail("Falha ao atualizar domínio automático da empresa.", 400, { reason: domainUpdateError.message }, req);
           }
+
+          const cloudflareProvision = await ensureCloudflarePagesCustomDomain(nextManagedDomain);
+          if (cloudflareProvision.status !== "ok") {
+            updateWarning = `Dominio atualizado no banco, mas com aviso no Cloudflare: ${cloudflareProvision.message}`;
+          }
         }
       }
     }
@@ -1645,7 +1742,7 @@ Deno.serve(async (req) => {
       details: { fields: Object.keys(updatePayload) },
     });
 
-    return ok({ success: true }, 200, req);
+    return ok({ success: true, warning: updateWarning }, 200, req);
   }
 
   if (body.action === "set_company_status" || body.action === "block_company") {
