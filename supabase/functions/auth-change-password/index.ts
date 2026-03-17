@@ -1,6 +1,6 @@
 // @ts-nocheck
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { adminClient, requireUser } from "../_shared/auth.ts";
+import { adminClient, requireUser, userClient } from "../_shared/auth.ts";
 import { fail, ok, preflight, rejectIfOriginNotAllowed } from "../_shared/response.ts";
 import { createRequestTrace, traceDurationMs, writeOperationalLog } from "../_shared/observability.ts";
 import { logAuditEvent } from "../_shared/audit.ts";
@@ -42,15 +42,41 @@ Deno.serve(async (req) => {
       app_metadata: {
         ...currentAppMetadata,
         force_password_change: false,
+        must_change_password: false,
       },
       user_metadata: {
         ...currentUserMetadata,
         force_password_change: false,
+        must_change_password: false,
       },
     });
 
     if (updateAuthError) {
-      return fail(updateAuthError.message, 400, null, req);
+      const currentUserClient = userClient(auth.token);
+      if (!currentUserClient) {
+        return fail(updateAuthError.message, 400, { source: "admin_update_user" }, req);
+      }
+
+      const { error: fallbackUpdateError } = await currentUserClient.auth.updateUser({
+        password: newPassword,
+        data: {
+          ...(currentUserMetadata ?? {}),
+          force_password_change: false,
+          must_change_password: false,
+        },
+      });
+
+      if (fallbackUpdateError) {
+        return fail(
+          `Falha ao atualizar senha: ${fallbackUpdateError.message || updateAuthError.message}`,
+          400,
+          {
+            source: "user_update_user",
+            admin_error: updateAuthError.message,
+          },
+          req,
+        );
+      }
     }
 
     const { error: profileError } = await admin
@@ -65,7 +91,17 @@ Deno.serve(async (req) => {
 
       // Em schema legado sem esta coluna, a senha ja foi alterada no auth; nao bloquear o fluxo.
       if (!isLegacySchemaMissingColumn) {
-        return fail(profileError.message, 400, null, req);
+        // Perfil e metadados nao podem impedir troca de senha quando auth foi atualizado.
+        await captureSystemError(admin, {
+          error: new Error(profileError.message),
+          requestId: trace.requestId,
+          endpoint: trace.endpoint,
+          source: "auth-change-password",
+          severity: "warning",
+          metadata: {
+            phase: "profile_force_password_change_update",
+          },
+        }).catch(() => null);
       }
     }
 
@@ -86,7 +122,7 @@ Deno.serve(async (req) => {
         app_metadata_force_password_change: false,
         user_metadata_force_password_change: false,
       },
-    });
+    }).catch(() => null);
 
     await writeOperationalLog(admin, {
       scope: trace.scope,
@@ -97,7 +133,7 @@ Deno.serve(async (req) => {
       userId: auth.user.id,
       requestId: trace.requestId,
       metadata: {},
-    });
+    }).catch(() => null);
 
     return ok({ success: true, request_id: trace.requestId }, 200, req);
   } catch (error) {

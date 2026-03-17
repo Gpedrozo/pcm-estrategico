@@ -1150,7 +1150,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         password: normalizedPassword,
       });
       if (fallbackPasswordError) {
-        return { error: changeError.message || fallbackPasswordError.message };
+        return { error: fallbackPasswordError.message || changeError.message || 'Falha ao atualizar senha.' };
       }
 
       const { data: fallbackUserResult } = await supabase.auth.getUser();
