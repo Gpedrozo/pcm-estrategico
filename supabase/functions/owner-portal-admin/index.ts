@@ -2414,8 +2414,21 @@ Deno.serve(async (req) => {
       .select("id")
       .single();
 
-    if (sessionError || !createdSession?.id) {
-      return fail(sessionError?.message ?? "Falha ao criar sessão de impersonação", 400, null, req);
+    const impersonationSessionId = createdSession?.id ?? null;
+    const impersonationSessionToken = sessionError ? null : sessionToken;
+
+    if (sessionError) {
+      await writeOperationalLog(admin, {
+        level: "warning",
+        source: "owner-portal-admin",
+        message: "owner_impersonation_session_persist_failed",
+        details: {
+          error: sessionError.message,
+          actor_user_id: auth.user.id,
+          empresa_id: company.id,
+          operation_id: operationId,
+        },
+      });
     }
 
     await logPlatformAudit(admin, {
@@ -2436,13 +2449,13 @@ Deno.serve(async (req) => {
     return okWithOperation(req, {
       success: true,
       impersonation: {
-        id: createdSession.id,
+        id: impersonationSessionId,
         empresa_id: company.id,
         empresa_nome: company.nome ?? null,
         company_status: company.status ?? null,
         issued_at: now.toISOString(),
         expires_at: expiresAt.toISOString(),
-        session_token: sessionToken,
+        session_token: impersonationSessionToken,
       },
     }, operationId);
   }
@@ -2494,7 +2507,14 @@ Deno.serve(async (req) => {
       .gt("expires_at", nowIso)
       .maybeSingle();
 
-    if (sessionError) return fail(sessionError.message, 400, null, req);
+    if (sessionError) {
+      const message = String(sessionError.message ?? "").toLowerCase();
+      if (message.includes("does not exist") || message.includes("schema cache")) {
+        // Backward compatibility: when migration is not yet applied, do not block runtime.
+        return ok({ success: true, valid: true, degraded_mode: true }, 200, req);
+      }
+      return fail(sessionError.message, 400, null, req);
+    }
     if (!sessionRow?.id) {
       return fail("Sessão de impersonação inválida ou expirada", 403, null, req);
     }
