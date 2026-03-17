@@ -337,6 +337,18 @@ function shouldEnforceRateLimit(action: Payload["action"]) {
 
 const OWNER_RATE_LIMIT_ENABLED = (Deno.env.get("OWNER_RATE_LIMIT_ENABLED") ?? "false").toLowerCase() === "true";
 
+function isSystemOperatorFromJwt(user: any) {
+  const appMetadata = (user?.app_metadata ?? {}) as Record<string, unknown>;
+  const roleFromToken = String(appMetadata.role ?? "").toUpperCase();
+  const rolesFromToken = Array.isArray(appMetadata.roles)
+    ? appMetadata.roles.map((value) => String(value).toUpperCase())
+    : [];
+
+  const allowed = new Set(["SYSTEM_OWNER", "SYSTEM_ADMIN", "MASTER_TI"]);
+  if (roleFromToken && allowed.has(roleFromToken)) return true;
+  return rolesFromToken.some((role) => allowed.has(role));
+}
+
 async function verifyActorPassword(input: {
   email?: string | null;
   password?: string | null;
@@ -1051,7 +1063,7 @@ Deno.serve(async (req) => {
   if ("error" in auth) return unauthorizedResponse(req);
 
   const admin = auth.admin;
-  const isSystem = await isSystemOperator(admin, auth.user.id);
+  const isSystem = isSystemOperatorFromJwt(auth.user) || await isSystemOperator(admin, auth.user.id);
   if (!isSystem) return forbiddenResponse(req);
 
   const rawBody = await req.json().catch(() => null);
