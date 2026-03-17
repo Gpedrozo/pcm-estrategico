@@ -35,9 +35,13 @@ export interface ImpersonationSession {
   expiresAt?: string | null;
 }
 
+export type AuthStatus = 'idle' | 'loading' | 'hydrating' | 'authenticated' | 'unauthenticated' | 'error';
+
 export interface AuthContextType {
   user: AuthUser | null;
   session: Session | null;
+  authStatus: AuthStatus;
+  isHydrating: boolean;
   isAuthenticated: boolean;
   isLoading: boolean;
   login: (email: string, password: string) => Promise<{ error: string | null }>;
@@ -74,6 +78,8 @@ const LOGIN_RATE_LIMIT_STORAGE_KEY = 'pcm.auth.login.rate_limit.v1';
 const LOGIN_RATE_LIMIT_MAX_ATTEMPTS = 5;
 const LOGIN_RATE_LIMIT_WINDOW_MS = 5 * 60 * 1000;
 const LOGIN_RATE_LIMIT_BLOCK_MS = 15 * 60 * 1000;
+const AUTH_REDIRECT_RETRY_STORAGE_KEY = 'pcm.auth.redirect.retry.v1';
+const AUTH_REDIRECT_RETRY_MAX = 2;
 
 type LoginRateLimitEntry = {
   attempts: number[];
@@ -302,15 +308,69 @@ function wasSessionTransferAlreadyConsumed(encoded: string) {
   }
 }
 
+function getRedirectRetryCount() {
+  try {
+    const raw = window.sessionStorage.getItem(AUTH_REDIRECT_RETRY_STORAGE_KEY);
+    if (!raw) return 0;
+    const parsed = JSON.parse(raw) as { count?: number };
+    const count = Number(parsed?.count ?? 0);
+    return Number.isFinite(count) && count > 0 ? Math.trunc(count) : 0;
+  } catch {
+    return 0;
+  }
+}
+
+function markRedirectRetryAttempt() {
+  const nextCount = getRedirectRetryCount() + 1;
+  try {
+    window.sessionStorage.setItem(
+      AUTH_REDIRECT_RETRY_STORAGE_KEY,
+      JSON.stringify({ count: nextCount, at: Date.now() }),
+    );
+  } catch {
+    // noop
+  }
+  return nextCount;
+}
+
+function clearRedirectRetryAttempts() {
+  try {
+    window.sessionStorage.removeItem(AUTH_REDIRECT_RETRY_STORAGE_KEY);
+  } catch {
+    // noop
+  }
+}
+
+function shouldBlockCrossDomainRedirect() {
+  return getRedirectRetryCount() >= AUTH_REDIRECT_RETRY_MAX;
+}
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [session, setSession] = useState<Session | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [authStatus, setAuthStatus] = useState<AuthStatus>('idle');
   const [impersonation, setImpersonation] = useState<ImpersonationSession | null>(null);
   const [inactivityTimeoutMs, setInactivityTimeoutMs] = useState<number | null>(null);
   const lastActivityAtRef = useRef<number>(Date.now());
   const isAutoLogoutRunningRef = useRef(false);
   const isIntentionalLogoutNavigationRef = useRef(false);
+
+  const transitionAuthStatus = useCallback((nextStatus: AuthStatus, reason: string, metadata?: Record<string, unknown>) => {
+    setAuthStatus((currentStatus) => {
+      if (currentStatus !== nextStatus) {
+        logger.info('auth_status_transition', {
+          from: currentStatus,
+          to: nextStatus,
+          reason,
+          ...metadata,
+        });
+      }
+      return nextStatus;
+    });
+  }, []);
+
+  const isHydrating = authStatus === 'hydrating';
+  const isLoading = authStatus === 'idle' || authStatus === 'loading' || authStatus === 'hydrating';
 
   useEffect(() => {
     if (!shouldForceLogoutByClosedWindowMarker()) return;
@@ -920,8 +980,38 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return profileData;
   }, [elevateToSystemOwner, fetchUserProfile, resolveDomainEmpresaId, verifyOwnerBackendAccess]);
 
+  const resolveUserProfileWithRetry = useCallback(async (
+    userId: string,
+    email?: string | null,
+    metadata?: { app_metadata?: Record<string, unknown>; user_metadata?: Record<string, unknown> },
+    token?: string | null,
+  ) => {
+    let lastError: unknown = null;
+
+    for (let attempt = 1; attempt <= 2; attempt += 1) {
+      try {
+        return await withTimeout(
+          resolveUserProfile(userId, email, metadata, token),
+          LOGIN_PROFILE_TIMEOUT_MS,
+          `timeout_resolving_user_profile_attempt_${attempt}`,
+        );
+      } catch (error) {
+        lastError = error;
+        logger.warn('auth_profile_hydration_attempt_failed', {
+          userId,
+          attempt,
+          error: String(error),
+        });
+      }
+    }
+
+    throw lastError ?? new Error('profile_hydration_failed');
+  }, [resolveUserProfile]);
+
   useEffect(() => {
     let isActive = true;
+
+    transitionAuthStatus('loading', 'auth_bootstrap_started');
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (_event, nextSession) => {
@@ -930,48 +1020,70 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setSession(nextSession);
 
         if (nextSession?.user) {
+          transitionAuthStatus('hydrating', 'auth_state_change_with_session', {
+            event: _event,
+            userId: nextSession.user.id,
+          });
+
           void (async () => {
-            const profileData = await resolveUserProfile(
-              nextSession.user.id,
-              nextSession.user.email,
-              {
-                app_metadata: nextSession.user.app_metadata,
-                user_metadata: nextSession.user.user_metadata,
-              },
-              nextSession.access_token,
-            );
+            try {
+              const profileData = await resolveUserProfileWithRetry(
+                nextSession.user.id,
+                nextSession.user.email,
+                {
+                  app_metadata: nextSession.user.app_metadata,
+                  user_metadata: nextSession.user.user_metadata,
+                },
+                nextSession.access_token,
+              );
 
-            if (!isActive) return;
+              if (!isActive) return;
 
-            const isGlobalRole =
-              profileData.tipo === 'SYSTEM_OWNER' ||
-              profileData.tipo === 'SYSTEM_ADMIN' ||
-              profileData.tipo === 'MASTER_TI';
+              const isGlobalRole =
+                profileData.tipo === 'SYSTEM_OWNER' ||
+                profileData.tipo === 'SYSTEM_ADMIN' ||
+                profileData.tipo === 'MASTER_TI';
 
-            if (!isGlobalRole && !profileData.tenantId) {
-              await supabase.auth.signOut();
+              if (!isGlobalRole && !profileData.tenantId) {
+                await supabase.auth.signOut();
+                setUser(null);
+                setSession(null);
+                transitionAuthStatus('unauthenticated', 'profile_without_tenant_after_hydration', {
+                  userId: nextSession.user.id,
+                });
+                return;
+              }
+
+              setUser({
+                id: nextSession.user.id,
+                email: nextSession.user.email || '',
+                nome: profileData.nome,
+                tipo: profileData.tipo,
+                roles: profileData.roles,
+                tenantId: profileData.tenantId,
+                tenantSlug: profileData.tenantSlug,
+                forcePasswordChange: profileData.forcePasswordChange,
+              });
+              clearRedirectRetryAttempts();
+              transitionAuthStatus('authenticated', 'profile_hydrated_from_auth_state_change', {
+                userId: nextSession.user.id,
+              });
+            } catch (error) {
+              logger.error('auth_state_change_hydration_failed', {
+                error: String(error),
+                userId: nextSession.user.id,
+              });
               setUser(null);
-              setSession(null);
-              setIsLoading(false);
-              return;
+              transitionAuthStatus('error', 'auth_state_change_hydration_failed', {
+                userId: nextSession.user.id,
+              });
             }
-
-            setUser({
-              id: nextSession.user.id,
-              email: nextSession.user.email || '',
-              nome: profileData.nome,
-              tipo: profileData.tipo,
-              roles: profileData.roles,
-              tenantId: profileData.tenantId,
-              tenantSlug: profileData.tenantSlug,
-              forcePasswordChange: profileData.forcePasswordChange,
-            });
-
-            setIsLoading(false);
           })();
         } else if (isActive) {
           setUser(null);
-          setIsLoading(false);
+          transitionAuthStatus('unauthenticated', 'auth_state_change_without_session', {
+            event: _event,
+          });
         }
       }
     );
@@ -982,7 +1094,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setSession(session);
 
       if (session?.user) {
-        resolveUserProfile(session.user.id, session.user.email, {
+        transitionAuthStatus('hydrating', 'bootstrap_session_found', {
+          userId: session.user.id,
+        });
+
+        void resolveUserProfileWithRetry(session.user.id, session.user.email, {
           app_metadata: session.user.app_metadata,
           user_metadata: session.user.user_metadata,
         }, session.access_token).then(profileData => {
@@ -999,10 +1115,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             forcePasswordChange: profileData.forcePasswordChange,
           });
 
-          setIsLoading(false);
+          clearRedirectRetryAttempts();
+          transitionAuthStatus('authenticated', 'bootstrap_profile_loaded', {
+            userId: session.user.id,
+          });
+        }).catch((error) => {
+          if (!isActive) return;
+          logger.error('auth_bootstrap_profile_failed', {
+            error: String(error),
+            userId: session.user.id,
+          });
+          setUser(null);
+          transitionAuthStatus('error', 'bootstrap_profile_failed', {
+            userId: session.user.id,
+          });
         });
       } else {
-        setIsLoading(false);
+        transitionAuthStatus('unauthenticated', 'bootstrap_without_session');
       }
     });
 
@@ -1010,11 +1139,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       isActive = false;
       subscription.unsubscribe();
     };
-  }, [resolveUserProfile]);
+  }, [resolveUserProfileWithRetry, transitionAuthStatus]);
 
   const login = useCallback(async (email: string, password: string): Promise<{ error: string | null }> => {
+    transitionAuthStatus('loading', 'login_started', {
+      email: email.trim().toLowerCase(),
+    });
+
     const throttle = getLoginRateLimitStatus(email);
     if (throttle.blocked) {
+      transitionAuthStatus('unauthenticated', 'login_rate_limited', {
+        retryAfterSeconds: throttle.retryAfterSeconds,
+      });
       return { error: `Muitas tentativas de login. Tente novamente em ${throttle.retryAfterSeconds}s.` };
     }
 
@@ -1056,10 +1192,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         },
       }).catch(() => null);
 
+      transitionAuthStatus('unauthenticated', 'login_failed', {
+        reason: normalizedError || 'unknown_login_error',
+      });
+
       return { error: message };
     }
 
     resetLoginRateLimit(email);
+    transitionAuthStatus('hydrating', 'login_session_received');
 
     const { data: { session: currentSession } } = await supabase.auth.getSession();
     const { data: { user: currentUser } } = await supabase.auth.getUser();
@@ -1077,16 +1218,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       };
 
       try {
-        profileData = await withTimeout(
-          resolveUserProfile(activeUser.id, activeUser.email, {
+        profileData = await resolveUserProfileWithRetry(activeUser.id, activeUser.email, {
             app_metadata: activeUser.app_metadata,
             user_metadata: activeUser.user_metadata,
-          }, activeSession?.access_token ?? null),
-          LOGIN_PROFILE_TIMEOUT_MS,
-          'timeout_resolving_user_profile',
-        );
+          }, activeSession?.access_token ?? null);
       } catch {
         await supabase.auth.signOut();
+        transitionAuthStatus('error', 'login_profile_hydration_timeout_or_error', {
+          userId: activeUser.id,
+        });
         return { error: 'Tempo esgotado ao carregar seu perfil. Tente novamente.' };
       }
 
@@ -1096,6 +1236,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       if (isOwnerDomain(window.location.hostname) && !isOwnerPortalAllowed) {
         await supabase.auth.signOut();
+        transitionAuthStatus('unauthenticated', 'login_missing_owner_permission', {
+          userId: activeUser.id,
+        });
         return { error: 'Conta autenticada, mas sem permissão SYSTEM_OWNER para o Owner Portal.' };
       }
 
@@ -1110,7 +1253,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         tenantSlug: profileData.tenantSlug,
         forcePasswordChange: profileData.forcePasswordChange,
       });
-      setIsLoading(false);
+      transitionAuthStatus('authenticated', 'login_profile_hydrated', {
+        userId: activeUser.id,
+      });
+      clearRedirectRetryAttempts();
 
       const isGlobalRole =
         profileData.tipo === 'SYSTEM_OWNER' ||
@@ -1158,6 +1304,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
           const currentHostname = window.location.hostname.toLowerCase();
           if (targetHost !== currentHostname) {
+            if (shouldBlockCrossDomainRedirect()) {
+              logger.warn('cross_domain_redirect_blocked_by_retry_limit', {
+                userId: activeUser.id,
+                currentHostname,
+                targetHost,
+                retryCount: getRedirectRetryCount(),
+              });
+              await supabase.auth.signOut();
+              transitionAuthStatus('error', 'cross_domain_redirect_retry_limit_reached', {
+                userId: activeUser.id,
+              });
+              return { error: 'Foram detectadas tentativas repetidas de redirecionamento. Faça login novamente.' };
+            }
+
             const transferHash = await buildSessionTransferHash(activeSession, targetHost);
             if (!transferHash) {
               logger.warn('session_transfer_hash_missing_on_cross_domain_redirect', {
@@ -1170,6 +1330,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             }
             const targetUrl = `${window.location.protocol}//${targetHost}/login${transferHash ? `#${transferHash}` : ''}`;
             if (transferHash) {
+              markRedirectRetryAttempt();
               markSessionTransferRedirectInProgress();
             }
             window.location.assign(targetUrl);
@@ -1205,17 +1366,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
         if (!domainEmpresaId) {
           await supabase.auth.signOut();
+          transitionAuthStatus('unauthenticated', 'login_blocked_domain_not_authorized', {
+            userId: activeUser.id,
+          });
           return { error: 'Domínio não autorizado para login.' };
         }
 
         if (!profileData.tenantId || profileData.tenantId !== domainEmpresaId) {
           await supabase.auth.signOut();
+          transitionAuthStatus('unauthenticated', 'login_blocked_tenant_mismatch', {
+            userId: activeUser.id,
+            domainEmpresaId,
+            profileTenantId: profileData.tenantId,
+          });
           return { error: 'Usuário não pertence à empresa deste subdomínio.' };
         }
       }
 
       if (!isGlobalRole && !profileData.tenantId) {
         await supabase.auth.signOut();
+        transitionAuthStatus('unauthenticated', 'login_blocked_without_tenant', {
+          userId: activeUser.id,
+        });
         return { error: 'Usuário sem vínculo de empresa. Acesso bloqueado.' };
       }
     }
@@ -1244,7 +1416,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     });
 
     return { error: null };
-  }, [buildSessionTransferHash, extractEmpresaSlugFromMetadata, resolveDomainEmpresaId, resolveTenantRedirectHost, resolveUserProfile]);
+  }, [buildSessionTransferHash, extractEmpresaSlugFromMetadata, resolveDomainEmpresaId, resolveTenantRedirectHost, resolveUserProfileWithRetry, transitionAuthStatus]);
 
   const changePassword = useCallback(async (newPassword: string): Promise<{ error: string | null }> => {
     const normalizedPassword = newPassword.trim();
@@ -1410,6 +1582,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     window.localStorage.removeItem(IMPERSONATION_STORAGE_KEY);
     setUser(null);
     setSession(null);
+    clearRedirectRetryAttempts();
+    transitionAuthStatus('unauthenticated', 'logout_started', {
+      reason,
+    });
 
     const { error: localSignOutError } = await supabase.auth.signOut({ scope: 'local' });
     const { error: globalSignOutError } = await supabase.auth.signOut();
@@ -1442,7 +1618,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     const fallbackLoginUrl = `/login?${LOGOUT_MARKER_PARAM}=1${reasonQuery}`;
     window.location.assign(fallbackLoginUrl);
-  }, [user]);
+  }, [transitionAuthStatus, user]);
 
   const currentTenantId = impersonation?.empresaId || user?.tenantId || null;
 
@@ -1581,7 +1757,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       value={{
         user,
         session,
-        isAuthenticated: !!session,
+        authStatus,
+        isHydrating,
+        isAuthenticated: authStatus === 'authenticated' && !!session,
         isLoading,
         login,
         changePassword,

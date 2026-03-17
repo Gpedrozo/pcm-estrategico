@@ -39,6 +39,8 @@ export function createAuthContextValue(overrides: Partial<AuthContextType> = {})
   return {
     user: createAuthUser(),
     session: createSession(),
+    authStatus: 'authenticated',
+    isHydrating: false,
     isAuthenticated: true,
     isLoading: false,
     login: async () => ({ error: null }),

@@ -13,9 +13,10 @@ import { resolveOrRepairTenantHost } from '@/lib/tenantDomain';
 import { createSessionTransferHash } from '@/lib/sessionTransfer';
 
 const SESSION_TRANSFER_REDIRECT_STORAGE_KEY = 'pcm.auth.session_transfer.redirect.v1';
+const AUTH_RETRY_COUNT_PARAM = 'retry_count';
 
 export function AppLayout() {
-  const { isAuthenticated, isLoading, effectiveRole, tenantId, session, forcePasswordChange, impersonation, startImpersonationSession, stopImpersonationSession } = useAuth();
+  const { isAuthenticated, isLoading, isHydrating, authStatus, effectiveRole, tenantId, session, forcePasswordChange, impersonation, startImpersonationSession, stopImpersonationSession } = useAuth();
   const location = useLocation();
   const [isStoppingImpersonation, setIsStoppingImpersonation] = useState(false);
   const [countdownNow, setCountdownNow] = useState(Date.now());
@@ -166,7 +167,8 @@ export function AppLayout() {
     let isActive = true;
 
     const redirectTenantFromBaseDomain = async () => {
-      if (isLoading || !isAuthenticated || !tenantId || !session) return;
+      if (isLoading || isHydrating || authStatus === 'idle' || authStatus === 'loading' || authStatus === 'hydrating') return;
+      if (!isAuthenticated || authStatus !== 'authenticated' || !tenantId || !session) return;
 
       const isGlobalRole =
         effectiveRole === 'SYSTEM_OWNER'
@@ -239,7 +241,7 @@ export function AppLayout() {
           // noop
         }
       }
-      window.location.assign(`${window.location.protocol}//${targetHost}/login?next=${nextParam}${transferHash}`);
+      window.location.assign(`${window.location.protocol}//${targetHost}/login?next=${nextParam}&${AUTH_RETRY_COUNT_PARAM}=0${transferHash}`);
     };
 
     void redirectTenantFromBaseDomain();
@@ -247,7 +249,7 @@ export function AppLayout() {
     return () => {
       isActive = false;
     };
-  }, [effectiveRole, isAuthenticated, isLoading, location.pathname, location.search, session, tenantId]);
+  }, [authStatus, effectiveRole, isAuthenticated, isHydrating, isLoading, location.pathname, location.search, session, tenantId]);
 
   if (isLoading) {
     return (

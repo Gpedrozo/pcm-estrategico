@@ -28,7 +28,7 @@ function hasSessionTransferHash() {
 
 export function TenantDomainMiddleware({ children }: { children: React.ReactNode }) {
   const { tenant, isLoading, error } = useTenant()
-  const { isAuthenticated, tenantId, logout, isLoading: isAuthLoading } = useAuth()
+  const { isAuthenticated, authStatus, isHydrating, tenantId, logout, isLoading: isAuthLoading } = useAuth()
   const location = useLocation()
 
   const hostname = window.location.hostname.toLowerCase()
@@ -37,19 +37,23 @@ export function TenantDomainMiddleware({ children }: { children: React.ReactNode
   const isLoginRoute = location.pathname === '/login'
 
   useEffect(() => {
-    if (!hostContext.isTenantSubdomain || isLoading || isAuthLoading || !error || !isAuthenticated) return
+    if (!hostContext.isTenantSubdomain || isLoading || isAuthLoading || isHydrating) return
+    if (authStatus === 'idle' || authStatus === 'loading' || authStatus === 'hydrating') return
+    if (!error || !isAuthenticated) return
     if (isLoginRoute || hasSessionTransferHash()) return
     void logout()
-  }, [error, hostContext.isTenantSubdomain, isAuthenticated, isLoading, isAuthLoading, isLoginRoute, logout])
+  }, [authStatus, error, hostContext.isTenantSubdomain, isAuthenticated, isHydrating, isLoading, isAuthLoading, isLoginRoute, logout])
 
   useEffect(() => {
-    if (!hostContext.isTenantSubdomain || isLoading || isAuthLoading || !isAuthenticated) return
+    if (!hostContext.isTenantSubdomain || isLoading || isAuthLoading || isHydrating) return
+    if (authStatus === 'idle' || authStatus === 'loading' || authStatus === 'hydrating') return
+    if (!isAuthenticated) return
     if (isLoginRoute || hasSessionTransferHash()) return
     if (!tenant?.id || !tenantId) return
     if (tenant.id !== tenantId) {
       void logout()
     }
-  }, [hostContext.isTenantSubdomain, isAuthenticated, isLoading, isAuthLoading, isLoginRoute, logout, tenant?.id, tenantId])
+  }, [authStatus, hostContext.isTenantSubdomain, isAuthenticated, isHydrating, isLoading, isAuthLoading, isLoginRoute, logout, tenant?.id, tenantId])
 
   if (isOwnerHost) return <>{children}</>
 

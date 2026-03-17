@@ -15,6 +15,8 @@ import { z } from 'zod';
 const SESSION_TRANSFER_REDIRECT_STORAGE_KEY = 'pcm.auth.session_transfer.redirect.v1';
 const SESSION_TRANSFER_CONSUMED_STORAGE_KEY = 'pcm.auth.session_transfer.consumed.v1';
 const SESSION_TRANSFER_CONSUMED_MAX_AGE_MS = 2 * 60 * 1000;
+const AUTH_RETRY_COUNT_PARAM = 'retry_count';
+const AUTH_RETRY_COUNT_MAX = 2;
 
 const TENANT_REDIRECT_TIMEOUT_MS = 6_000;
 
@@ -67,7 +69,7 @@ export default function Login() {
   const [isRedirectingTenantDomain, setIsRedirectingTenantDomain] = useState(false);
   const allowPostLoginRedirectRef = useRef(false);
 
-  const { login, isAuthenticated, isLoading, effectiveRole, tenantId, forcePasswordChange } = useAuth();
+  const { login, isAuthenticated, isLoading, isHydrating, authStatus, effectiveRole, tenantId, forcePasswordChange } = useAuth();
   const navigate = useNavigate();
   const { branding } = useBranding();
   const tenantBaseDomain = (import.meta.env.VITE_TENANT_BASE_DOMAIN || 'gppis.com.br').toLowerCase();
@@ -78,6 +80,13 @@ export default function Login() {
     if (!nextParam) return null;
     if (!nextParam.startsWith('/') || nextParam.startsWith('//')) return null;
     return nextParam;
+  };
+
+  const getRetryCountFromUrl = () => {
+    const raw = new URLSearchParams(window.location.search).get(AUTH_RETRY_COUNT_PARAM);
+    const parsed = Number(raw ?? 0);
+    if (!Number.isFinite(parsed) || parsed < 0) return 0;
+    return Math.trunc(parsed);
   };
 
   const hasSessionTransferHash = () => {
@@ -121,7 +130,8 @@ export default function Login() {
   }, []);
 
   useEffect(() => {
-    if (isLoading || isAuthenticated) return;
+    if (isLoading || isHydrating || authStatus === 'idle' || authStatus === 'loading' || authStatus === 'hydrating') return;
+    if (isAuthenticated || authStatus !== 'unauthenticated') return;
 
     const isBaseHost = currentHost === tenantBaseDomain || currentHost === `www.${tenantBaseDomain}`;
     const isTenantSubdomain = !isBaseHost && currentHost.endsWith(`.${tenantBaseDomain}`);
@@ -130,10 +140,17 @@ export default function Login() {
     if (hasSessionTransferHash()) return;
     if (wasSessionTransferRecentlyConsumed()) return;
 
+    const retryCount = getRetryCountFromUrl();
+    if (retryCount >= AUTH_RETRY_COUNT_MAX) {
+      setLoginError('Nao foi possivel concluir o redirecionamento entre dominios. Limite de tentativas atingido.');
+      return;
+    }
+
     const currentPath = `${window.location.pathname}${window.location.search}`;
-    const baseLoginUrl = `https://${tenantBaseDomain}/login?next=${encodeURIComponent(currentPath || '/dashboard')}`;
+    const nextRetry = retryCount + 1;
+    const baseLoginUrl = `https://${tenantBaseDomain}/login?next=${encodeURIComponent(currentPath || '/dashboard')}&${AUTH_RETRY_COUNT_PARAM}=${nextRetry}`;
     window.location.assign(baseLoginUrl);
-  }, [currentHost, isAuthenticated, isLoading, tenantBaseDomain]);
+  }, [authStatus, currentHost, isAuthenticated, isHydrating, isLoading, tenantBaseDomain]);
 
   useEffect(() => {
     if (!isAuthenticated) return;
@@ -156,7 +173,8 @@ export default function Login() {
     let isActive = true;
 
     const redirectAuthenticatedUser = async () => {
-      if (isLoading || !isAuthenticated) return;
+      if (isLoading || isHydrating || authStatus === 'idle' || authStatus === 'loading' || authStatus === 'hydrating') return;
+      if (!isAuthenticated || authStatus !== 'authenticated') return;
 
       if (forcePasswordChange) {
         setIsRedirectingTenantDomain(false);
@@ -189,6 +207,14 @@ export default function Login() {
       }
 
       if (!isGlobalRole && isTenantBaseHost) {
+        const retryCount = getRetryCountFromUrl();
+        if (retryCount >= AUTH_RETRY_COUNT_MAX) {
+          if (!isActive) return;
+          setIsRedirectingTenantDomain(false);
+          setLoginError('Loop de redirecionamento detectado. Tente novamente em instantes.');
+          return;
+        }
+
         if (!tenantId) {
           return;
         }
@@ -271,7 +297,7 @@ export default function Login() {
           }
         }
 
-        window.location.assign(`${window.location.protocol}//${targetHost}/login${transferHash}`);
+        window.location.assign(`${window.location.protocol}//${targetHost}/login?${AUTH_RETRY_COUNT_PARAM}=0${transferHash}`);
         return;
       }
 
@@ -287,6 +313,8 @@ export default function Login() {
   }, [
     isAuthenticated,
     isLoading,
+    isHydrating,
+    authStatus,
     navigate,
     effectiveRole,
     forcePasswordChange,

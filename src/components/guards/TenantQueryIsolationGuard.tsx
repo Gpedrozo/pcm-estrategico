@@ -4,7 +4,7 @@ import { useAuth } from '@/contexts/AuthContext';
 
 export function TenantQueryIsolationGuard() {
   const queryClient = useQueryClient();
-  const { tenantId, isAuthenticated } = useAuth();
+  const { tenantId, isAuthenticated, authStatus, isHydrating } = useAuth();
   const previousTenantRef = useRef<string | null>(null);
 
   useEffect(() => {
@@ -29,7 +29,11 @@ export function TenantQueryIsolationGuard() {
       queryClient.clear();
     };
 
-    if (!isAuthenticated) {
+    if (isHydrating || authStatus === 'idle' || authStatus === 'loading' || authStatus === 'hydrating') {
+      return;
+    }
+
+    if (!isAuthenticated || authStatus === 'unauthenticated') {
       if (previousTenantId !== null) {
         void isolateCache();
       }
@@ -43,7 +47,7 @@ export function TenantQueryIsolationGuard() {
     }
 
     previousTenantRef.current = currentTenantId;
-  }, [isAuthenticated, queryClient, tenantId]);
+  }, [authStatus, isAuthenticated, isHydrating, queryClient, tenantId]);
 
   return null;
 }

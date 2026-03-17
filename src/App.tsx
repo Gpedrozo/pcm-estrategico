@@ -92,9 +92,9 @@ const AdminOnlyRoute = ({ children }: { children: React.ReactNode }) => {
 };
 
 const OwnerOnlyRoute = ({ children }: { children: React.ReactNode }) => {
-  const { isAuthenticated, isLoading, isSystemOwner, forcePasswordChange } = useAuth();
+  const { isAuthenticated, isLoading, isHydrating, authStatus, isSystemOwner, forcePasswordChange } = useAuth();
 
-  if (isLoading) return <RouteLoading />;
+  if (isLoading || isHydrating || authStatus === 'idle' || authStatus === 'loading' || authStatus === 'hydrating') return <RouteLoading />;
 
   if (!isAuthenticated || !isSystemOwner) {
     return <Navigate to="/login" replace />;
