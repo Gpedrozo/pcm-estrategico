@@ -59,7 +59,14 @@ Deno.serve(async (req) => {
       .eq("id", auth.user.id);
 
     if (profileError) {
-      return fail(profileError.message, 400, null, req);
+      const normalizedProfileError = (profileError.message ?? "").toLowerCase();
+      const isLegacySchemaMissingColumn = normalizedProfileError.includes("force_password_change")
+        && (normalizedProfileError.includes("does not exist") || normalizedProfileError.includes("column"));
+
+      // Em schema legado sem esta coluna, a senha ja foi alterada no auth; nao bloquear o fluxo.
+      if (!isLegacySchemaMissingColumn) {
+        return fail(profileError.message, 400, null, req);
+      }
     }
 
     const durationMs = traceDurationMs(trace);
