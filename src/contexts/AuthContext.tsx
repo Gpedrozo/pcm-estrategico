@@ -12,7 +12,7 @@ import {
 import { resolveOrRepairTenantHost } from '@/lib/tenantDomain';
 import { logger } from '@/lib/logger';
 import { writeAuditLog } from '@/lib/audit';
-import { consumeSessionTransferCode, createSessionTransferCode } from '@/lib/sessionTransfer';
+import { consumeSessionTransferCode, createSessionTransferHash } from '@/lib/sessionTransfer';
 import { validateImpersonationSession } from '@/services/ownerPortal.service';
 
 export interface AuthUser {
@@ -375,9 +375,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [session, user]);
 
   const buildSessionTransferHash = useCallback(async (sessionData: Session | null, targetHost: string) => {
-    const code = await createSessionTransferCode(sessionData, targetHost);
-    if (!code) return null;
-    return `session_transfer=${encodeURIComponent(code)}`;
+    return createSessionTransferHash(sessionData, targetHost);
   }, []);
 
   useEffect(() => {
@@ -1161,6 +1159,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           const currentHostname = window.location.hostname.toLowerCase();
           if (targetHost !== currentHostname) {
             const transferHash = await buildSessionTransferHash(activeSession, targetHost);
+            if (!transferHash) {
+              logger.warn('session_transfer_hash_missing_on_cross_domain_redirect', {
+                userId: activeUser.id,
+                tenantId: profileData.tenantId,
+                currentHostname,
+                targetHost,
+              });
+              return { error: 'Não foi possível transferir sua sessão para o subdomínio. Tente novamente.' };
+            }
             const targetUrl = `${window.location.protocol}//${targetHost}/login${transferHash ? `#${transferHash}` : ''}`;
             if (transferHash) {
               markSessionTransferRedirectInProgress();

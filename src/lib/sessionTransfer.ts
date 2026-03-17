@@ -2,6 +2,22 @@ import type { Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { logger } from '@/lib/logger';
 
+function buildLegacySessionTransferHash(sessionData: Session | null): string | null {
+  if (!sessionData?.access_token || !sessionData?.refresh_token) return null;
+
+  try {
+    const payload = {
+      access_token: sessionData.access_token,
+      refresh_token: sessionData.refresh_token,
+      issued_at: Date.now(),
+    };
+    const encoded = encodeURIComponent(window.btoa(JSON.stringify(payload)));
+    return `session_transfer=${encoded}`;
+  } catch {
+    return null;
+  }
+}
+
 export async function createSessionTransferCode(sessionData: Session | null, targetHost: string): Promise<string | null> {
   if (!sessionData?.access_token || !sessionData?.refresh_token) return null;
 
@@ -22,6 +38,21 @@ export async function createSessionTransferCode(sessionData: Session | null, tar
 
   const code = String((data as { code?: string } | null)?.code ?? '').trim();
   return code || null;
+}
+
+export async function createSessionTransferHash(sessionData: Session | null, targetHost: string): Promise<string | null> {
+  const transferCode = await createSessionTransferCode(sessionData, targetHost);
+  if (transferCode) {
+    return `session_transfer=${encodeURIComponent(transferCode)}`;
+  }
+
+  const legacyHash = buildLegacySessionTransferHash(sessionData);
+  if (legacyHash) {
+    logger.warn('session_transfer_fallback_legacy_hash', {
+      targetHost: String(targetHost || '').trim().toLowerCase(),
+    });
+  }
+  return legacyHash;
 }
 
 export async function consumeSessionTransferCode(code: string, targetHost: string): Promise<{ access_token: string; refresh_token: string; issued_at: number } | null> {

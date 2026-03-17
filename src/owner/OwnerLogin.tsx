@@ -6,7 +6,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { getPostLoginPath } from '@/lib/security';
 import { resolveOrRepairTenantHost } from '@/lib/tenantDomain';
 import { getImpersonationExpiresAt, getImpersonationPayload, impersonateCompany, listPlatformCompanies, type OwnerCompany } from '@/services/ownerPortal.service';
-import { createSessionTransferCode } from '@/lib/sessionTransfer';
+import { createSessionTransferHash } from '@/lib/sessionTransfer';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -159,8 +159,10 @@ export default function OwnerLogin() {
         }
 
         const { data: { session: activeSession } } = await supabase.auth.getSession();
-        const transferCode = await createSessionTransferCode(activeSession ?? session ?? null, targetHost);
-        const transferHash = transferCode ? `session_transfer=${encodeURIComponent(transferCode)}` : null;
+          const transferHash = await createSessionTransferHash(activeSession ?? session ?? null, targetHost);
+        if (!transferHash) {
+          throw new Error('Falha ao transferir sessão para o subdomínio. Faça login novamente.');
+        }
         const targetUrl = `${window.location.protocol}//${targetHost}/login${transferHash ? `#${transferHash}` : ''}`;
         if (transferHash) {
           try {

@@ -10,7 +10,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { getImpersonationExpiresAt, getImpersonationPayload, impersonateCompany, listPlatformCompanies, stopImpersonation } from '@/services/ownerPortal.service';
 import { supabase } from '@/integrations/supabase/client';
 import { resolveOrRepairTenantHost } from '@/lib/tenantDomain';
-import { createSessionTransferCode } from '@/lib/sessionTransfer';
+import { createSessionTransferHash } from '@/lib/sessionTransfer';
 
 const SESSION_TRANSFER_REDIRECT_STORAGE_KEY = 'pcm.auth.session_transfer.redirect.v1';
 
@@ -216,9 +216,15 @@ export function AppLayout() {
       }
 
       let transferHash = '';
-      const transferCode = await createSessionTransferCode(session, targetHost);
-      if (transferCode) {
-        transferHash = `#session_transfer=${encodeURIComponent(transferCode)}`;
+      const transferTokenHash = await createSessionTransferHash(session, targetHost);
+      if (transferTokenHash) {
+        transferHash = `#${transferTokenHash}`;
+      }
+
+      if (!transferHash) {
+        if (!isActive) return;
+        setIsDomainRedirectRunning(false);
+        return;
       }
 
       const currentPath = `${location.pathname}${location.search}`;

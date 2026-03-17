@@ -4,7 +4,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { getPostLoginPath } from '@/lib/security';
 import { supabase } from '@/integrations/supabase/client';
 import { resolveOrRepairTenantHost } from '@/lib/tenantDomain';
-import { createSessionTransferCode } from '@/lib/sessionTransfer';
+import { createSessionTransferHash } from '@/lib/sessionTransfer';
 import { useBranding } from '@/contexts/BrandingContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -13,6 +13,8 @@ import { Loader2, AlertCircle, Settings } from 'lucide-react';
 import { z } from 'zod';
 
 const SESSION_TRANSFER_REDIRECT_STORAGE_KEY = 'pcm.auth.session_transfer.redirect.v1';
+const SESSION_TRANSFER_CONSUMED_STORAGE_KEY = 'pcm.auth.session_transfer.consumed.v1';
+const SESSION_TRANSFER_CONSUMED_MAX_AGE_MS = 2 * 60 * 1000;
 
 const TENANT_REDIRECT_TIMEOUT_MS = 6_000;
 
@@ -85,6 +87,19 @@ export default function Login() {
     return Boolean(hashParams.get('session_transfer'));
   };
 
+  const wasSessionTransferRecentlyConsumed = () => {
+    try {
+      const raw = window.sessionStorage.getItem(SESSION_TRANSFER_CONSUMED_STORAGE_KEY);
+      if (!raw) return false;
+      const parsed = JSON.parse(raw) as { at?: number };
+      const at = Number(parsed?.at ?? 0);
+      if (!Number.isFinite(at) || at <= 0) return false;
+      return (Date.now() - at) <= SESSION_TRANSFER_CONSUMED_MAX_AGE_MS;
+    } catch {
+      return false;
+    }
+  };
+
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const hasLogoutMarker = params.get('logout') === '1';
@@ -113,11 +128,21 @@ export default function Login() {
 
     if (!isTenantSubdomain) return;
     if (hasSessionTransferHash()) return;
+    if (wasSessionTransferRecentlyConsumed()) return;
 
     const currentPath = `${window.location.pathname}${window.location.search}`;
     const baseLoginUrl = `https://${tenantBaseDomain}/login?next=${encodeURIComponent(currentPath || '/dashboard')}`;
     window.location.assign(baseLoginUrl);
   }, [currentHost, isAuthenticated, isLoading, tenantBaseDomain]);
+
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    try {
+      window.sessionStorage.removeItem(SESSION_TRANSFER_CONSUMED_STORAGE_KEY);
+    } catch {
+      // noop
+    }
+  }, [isAuthenticated]);
 
   const activeBranding = branding || {
     nome_fantasia: 'PCM ESTRATÉGICO',
@@ -223,9 +248,16 @@ export default function Login() {
         const activeSession = sessionData?.session;
 
         let transferHash = '';
-        const transferCode = await createSessionTransferCode(activeSession ?? null, targetHost);
-        if (transferCode) {
-          transferHash = `#session_transfer=${encodeURIComponent(transferCode)}`;
+        const transferTokenHash = await createSessionTransferHash(activeSession ?? null, targetHost);
+        if (transferTokenHash) {
+          transferHash = `#${transferTokenHash}`;
+        }
+
+        if (!transferHash) {
+          if (!isActive) return;
+          setIsRedirectingTenantDomain(false);
+          setLoginError('Não foi possível transferir sua sessão para o subdomínio. Tente novamente.');
+          return;
         }
 
         if (transferHash) {
