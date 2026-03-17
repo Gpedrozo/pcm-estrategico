@@ -61,6 +61,9 @@ const TAB_CLOSE_MARKER_STORAGE_KEY = 'pcm.auth.window_closed.v1';
 const TAB_CLOSE_MARKER_MAX_AGE_MS = 12 * 60 * 60 * 1000;
 const DEFAULT_INACTIVITY_TIMEOUT_MS = 10 * 60 * 1000;
 const SESSION_TRANSFER_MAX_AGE_MS = 2 * 60 * 1000;
+const SESSION_TRANSFER_REDIRECT_STORAGE_KEY = 'pcm.auth.session_transfer.redirect.v1';
+const SESSION_TRANSFER_REDIRECT_MAX_AGE_MS = 15_000;
+const SESSION_TRANSFER_CONSUMED_STORAGE_KEY = 'pcm.auth.session_transfer.consumed.v1';
 const LOGIN_PROFILE_TIMEOUT_MS = 12_000;
 const TENANT_HOST_RESOLVE_TIMEOUT_MS = 6_000;
 const LOGIN_RATE_LIMIT_STORAGE_KEY = 'pcm.auth.login.rate_limit.v1';
@@ -231,6 +234,70 @@ function shouldForceLogoutByClosedWindowMarker() {
   }
 }
 
+function markSessionTransferRedirectInProgress() {
+  try {
+    window.sessionStorage.setItem(
+      SESSION_TRANSFER_REDIRECT_STORAGE_KEY,
+      JSON.stringify({ at: Date.now() }),
+    );
+  } catch {
+    // noop
+  }
+}
+
+function isSessionTransferRedirectInProgress() {
+  try {
+    const raw = window.sessionStorage.getItem(SESSION_TRANSFER_REDIRECT_STORAGE_KEY);
+    if (!raw) return false;
+    const parsed = JSON.parse(raw) as { at?: number };
+    const markerAt = Number(parsed?.at ?? 0);
+    if (!Number.isFinite(markerAt) || markerAt <= 0) {
+      window.sessionStorage.removeItem(SESSION_TRANSFER_REDIRECT_STORAGE_KEY);
+      return false;
+    }
+    if ((Date.now() - markerAt) > SESSION_TRANSFER_REDIRECT_MAX_AGE_MS) {
+      window.sessionStorage.removeItem(SESSION_TRANSFER_REDIRECT_STORAGE_KEY);
+      return false;
+    }
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function clearSessionTransferRedirectInProgress() {
+  try {
+    window.sessionStorage.removeItem(SESSION_TRANSFER_REDIRECT_STORAGE_KEY);
+  } catch {
+    // noop
+  }
+}
+
+function markConsumedSessionTransfer(encoded: string) {
+  try {
+    window.sessionStorage.setItem(
+      SESSION_TRANSFER_CONSUMED_STORAGE_KEY,
+      JSON.stringify({ encoded, at: Date.now() }),
+    );
+  } catch {
+    // noop
+  }
+}
+
+function wasSessionTransferAlreadyConsumed(encoded: string) {
+  try {
+    const raw = window.sessionStorage.getItem(SESSION_TRANSFER_CONSUMED_STORAGE_KEY);
+    if (!raw) return false;
+    const parsed = JSON.parse(raw) as { encoded?: string; at?: number };
+    const markerAt = Number(parsed?.at ?? 0);
+    if (String(parsed?.encoded ?? '') !== encoded) return false;
+    if (!Number.isFinite(markerAt) || markerAt <= 0) return false;
+    return (Date.now() - markerAt) <= SESSION_TRANSFER_MAX_AGE_MS;
+  } catch {
+    return false;
+  }
+}
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [session, setSession] = useState<Session | null>(null);
@@ -283,6 +350,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const markWindowClosed = () => {
       if (isIntentionalLogoutNavigationRef.current) return;
+      if (isSessionTransferRedirectInProgress()) return;
       if (!session || !user) return;
 
       try {
@@ -340,6 +408,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return;
       }
 
+      if (wasSessionTransferAlreadyConsumed(encodedTransfer)) {
+        params.delete('session_transfer');
+        const nextHash = params.toString();
+        const cleanedUrl = `${window.location.pathname}${window.location.search}${nextHash ? `#${nextHash}` : ''}`;
+        window.history.replaceState({}, document.title, cleanedUrl);
+        clearSessionTransferRedirectInProgress();
+        return;
+      }
+
       try {
         const decodedJson = window.atob(decodeURIComponent(encodedTransfer));
         const decoded = JSON.parse(decodedJson) as { access_token?: string; refresh_token?: string; issued_at?: number };
@@ -375,16 +452,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           logger.warn('session_transfer_consume_failed', {
             error: error.message,
           });
+          clearSessionTransferRedirectInProgress();
           return;
         }
+        markConsumedSessionTransfer(encodedTransfer);
         params.delete('session_transfer');
         const nextHash = params.toString();
         const cleanedUrl = `${window.location.pathname}${window.location.search}${nextHash ? `#${nextHash}` : ''}`;
         window.history.replaceState({}, document.title, cleanedUrl);
+        clearSessionTransferRedirectInProgress();
       } catch (error) {
         logger.warn('session_transfer_decode_failed', {
           error: String(error),
         });
+        clearSessionTransferRedirectInProgress();
       }
     };
 
@@ -1059,6 +1140,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           if (targetHost !== currentHostname) {
             const transferHash = buildSessionTransferHash(activeSession);
             const targetUrl = `${window.location.protocol}//${targetHost}/login${transferHash ? `#${transferHash}` : ''}`;
+            if (transferHash) {
+              markSessionTransferRedirectInProgress();
+            }
             window.location.assign(targetUrl);
             return { error: null };
           }
@@ -1275,45 +1359,44 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     } catch (error) {
       void error;
-    } finally {
-      setImpersonation(null);
-      window.localStorage.removeItem(IMPERSONATION_STORAGE_KEY);
-      setUser(null);
-      setSession(null);
-
-      const { error: localSignOutError } = await supabase.auth.signOut({ scope: 'local' });
-      const { error: globalSignOutError } = await supabase.auth.signOut();
-
-      if (localSignOutError || globalSignOutError) {
-        logger.warn('logout_signout_failed', {
-          localError: localSignOutError?.message ?? null,
-          globalError: globalSignOutError?.message ?? null,
-        });
-      }
-
-      stripAuthHandoffFromUrl();
-
-      const currentHost = window.location.hostname.toLowerCase();
-      const shouldRedirectToBaseDomain =
-        !isOwnerDomain(currentHost)
-        && !isTenantBaseDomain(currentHost)
-        && currentHost.endsWith(`.${TENANT_BASE_DOMAIN}`);
-
-      const reasonQuery = reason !== 'manual'
-        ? `&${LOGOUT_REASON_PARAM}=${encodeURIComponent(reason)}`
-        : '';
-
-      if (shouldRedirectToBaseDomain) {
-        isIntentionalLogoutNavigationRef.current = true;
-        const targetUrl = `${window.location.protocol}//${TENANT_BASE_DOMAIN}/login?${LOGOUT_MARKER_PARAM}=1${reasonQuery}`;
-        window.location.assign(targetUrl);
-        return;
-      }
-
-      isIntentionalLogoutNavigationRef.current = true;
-      const fallbackLoginUrl = `/login?${LOGOUT_MARKER_PARAM}=1${reasonQuery}`;
-      window.location.assign(fallbackLoginUrl);
     }
+
+    setImpersonation(null);
+    window.localStorage.removeItem(IMPERSONATION_STORAGE_KEY);
+    setUser(null);
+    setSession(null);
+
+    const { error: localSignOutError } = await supabase.auth.signOut({ scope: 'local' });
+    const { error: globalSignOutError } = await supabase.auth.signOut();
+
+    if (localSignOutError || globalSignOutError) {
+      logger.warn('logout_signout_failed', {
+        localError: localSignOutError?.message ?? null,
+        globalError: globalSignOutError?.message ?? null,
+      });
+    }
+
+    stripAuthHandoffFromUrl();
+
+    const currentHost = window.location.hostname.toLowerCase();
+    const shouldRedirectToBaseDomain =
+      !isOwnerDomain(currentHost)
+      && !isTenantBaseDomain(currentHost)
+      && currentHost.endsWith(`.${TENANT_BASE_DOMAIN}`);
+
+    const reasonQuery = reason !== 'manual'
+      ? `&${LOGOUT_REASON_PARAM}=${encodeURIComponent(reason)}`
+      : '';
+
+    isIntentionalLogoutNavigationRef.current = true;
+    if (shouldRedirectToBaseDomain) {
+      const targetUrl = `${window.location.protocol}//${TENANT_BASE_DOMAIN}/login?${LOGOUT_MARKER_PARAM}=1${reasonQuery}`;
+      window.location.assign(targetUrl);
+      return;
+    }
+
+    const fallbackLoginUrl = `/login?${LOGOUT_MARKER_PARAM}=1${reasonQuery}`;
+    window.location.assign(fallbackLoginUrl);
   }, [user]);
 
   const currentTenantId = impersonation?.empresaId || user?.tenantId || null;

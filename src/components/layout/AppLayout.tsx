@@ -11,6 +11,8 @@ import { impersonateCompany, listPlatformCompanies, stopImpersonation } from '@/
 import { supabase } from '@/integrations/supabase/client';
 import { resolveOrRepairTenantHost } from '@/lib/tenantDomain';
 
+const SESSION_TRANSFER_REDIRECT_STORAGE_KEY = 'pcm.auth.session_transfer.redirect.v1';
+
 export function AppLayout() {
   const { isAuthenticated, isLoading, effectiveRole, tenantId, session, forcePasswordChange, impersonation, startImpersonationSession, stopImpersonationSession } = useAuth();
   const location = useLocation();
@@ -84,6 +86,7 @@ export function AppLayout() {
           reason: 'expired_auto',
         });
       } catch {
+        // noop
       } finally {
         stopImpersonationSession();
       }
@@ -224,6 +227,16 @@ export function AppLayout() {
 
       const currentPath = `${location.pathname}${location.search}`;
       const nextParam = encodeURIComponent(currentPath || '/dashboard');
+      if (transferHash) {
+        try {
+          window.sessionStorage.setItem(
+            SESSION_TRANSFER_REDIRECT_STORAGE_KEY,
+            JSON.stringify({ at: Date.now() }),
+          );
+        } catch {
+          // noop
+        }
+      }
       window.location.assign(`${window.location.protocol}//${targetHost}/login?next=${nextParam}${transferHash}`);
     };
 

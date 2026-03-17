@@ -24,7 +24,7 @@ async function tryAssignSlug(tenantId: string, baseSlug: string): Promise<string
       .from('empresas')
       .update({ slug: candidate })
       .eq('id', tenantId)
-      .is('slug', null)
+      .or('slug.is.null,slug.eq.""')
       .select('slug')
       .maybeSingle();
 

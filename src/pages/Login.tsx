@@ -11,6 +11,8 @@ import { Label } from '@/components/ui/label';
 import { Loader2, AlertCircle, Settings } from 'lucide-react';
 import { z } from 'zod';
 
+const SESSION_TRANSFER_REDIRECT_STORAGE_KEY = 'pcm.auth.session_transfer.redirect.v1';
+
 const TENANT_REDIRECT_TIMEOUT_MS = 6_000;
 
 async function withTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T> {
@@ -230,6 +232,17 @@ export default function Login() {
             transferHash = `#session_transfer=${encodeURIComponent(window.btoa(JSON.stringify(payload)))}`;
           } catch {
             transferHash = '';
+          }
+        }
+
+        if (transferHash) {
+          try {
+            window.sessionStorage.setItem(
+              SESSION_TRANSFER_REDIRECT_STORAGE_KEY,
+              JSON.stringify({ at: Date.now() }),
+            );
+          } catch {
+            // noop
           }
         }
 

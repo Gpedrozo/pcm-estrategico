@@ -11,6 +11,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { z } from 'zod';
 
+const SESSION_TRANSFER_REDIRECT_STORAGE_KEY = 'pcm.auth.session_transfer.redirect.v1';
+
 const loginSchema = z.object({
   email: z
     .string()
@@ -173,6 +175,16 @@ export default function OwnerLogin() {
           activeSession?.refresh_token ?? session?.refresh_token ?? null,
         );
         const targetUrl = `${window.location.protocol}//${targetHost}/login${transferHash ? `#${transferHash}` : ''}`;
+        if (transferHash) {
+          try {
+            window.sessionStorage.setItem(
+              SESSION_TRANSFER_REDIRECT_STORAGE_KEY,
+              JSON.stringify({ at: Date.now() }),
+            );
+          } catch {
+            // noop
+          }
+        }
         window.location.assign(targetUrl);
         return;
       }
