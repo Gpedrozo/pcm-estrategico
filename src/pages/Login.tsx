@@ -153,13 +153,16 @@ export default function Login() {
   }, [authStatus, currentHost, isAuthenticated, isHydrating, isLoading, tenantBaseDomain]);
 
   useEffect(() => {
-    if (!isAuthenticated) return;
-    try {
-      window.sessionStorage.removeItem(SESSION_TRANSFER_CONSUMED_STORAGE_KEY);
-    } catch {
-      // noop
-    }
-  }, [isAuthenticated]);
+    if (!isAuthenticated || authStatus !== 'authenticated') return;
+
+    const params = new URLSearchParams(window.location.search);
+    if (!params.has(AUTH_RETRY_COUNT_PARAM)) return;
+
+    params.delete(AUTH_RETRY_COUNT_PARAM);
+    const nextQuery = params.toString();
+    const cleanedUrl = `${window.location.pathname}${nextQuery ? `?${nextQuery}` : ''}${window.location.hash}`;
+    window.history.replaceState({}, document.title, cleanedUrl);
+  }, [authStatus, isAuthenticated]);
 
   const activeBranding = branding || {
     nome_fantasia: 'PCM ESTRATÉGICO',
@@ -297,7 +300,7 @@ export default function Login() {
           }
         }
 
-        window.location.assign(`${window.location.protocol}//${targetHost}/login?${AUTH_RETRY_COUNT_PARAM}=0${transferHash}`);
+        window.location.assign(`${window.location.protocol}//${targetHost}/login?${AUTH_RETRY_COUNT_PARAM}=${retryCount}${transferHash}`);
         return;
       }
 

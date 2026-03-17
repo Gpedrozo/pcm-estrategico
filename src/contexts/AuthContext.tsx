@@ -345,6 +345,17 @@ function shouldBlockCrossDomainRedirect() {
   return getRedirectRetryCount() >= AUTH_REDIRECT_RETRY_MAX;
 }
 
+function getRetryCountFromCurrentUrl() {
+  try {
+    const raw = new URLSearchParams(window.location.search).get('retry_count');
+    const parsed = Number(raw ?? 0);
+    if (!Number.isFinite(parsed) || parsed < 0) return 0;
+    return Math.trunc(parsed);
+  } catch {
+    return 0;
+  }
+}
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [session, setSession] = useState<Session | null>(null);
@@ -1328,7 +1339,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               });
               return { error: 'Não foi possível transferir sua sessão para o subdomínio. Tente novamente.' };
             }
-            const targetUrl = `${window.location.protocol}//${targetHost}/login${transferHash ? `#${transferHash}` : ''}`;
+            const retryCount = getRetryCountFromCurrentUrl();
+            const targetUrl = `${window.location.protocol}//${targetHost}/login?retry_count=${retryCount}${transferHash ? `#${transferHash}` : ''}`;
             if (transferHash) {
               markRedirectRetryAttempt();
               markSessionTransferRedirectInProgress();

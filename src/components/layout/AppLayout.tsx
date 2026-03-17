@@ -231,6 +231,11 @@ export function AppLayout() {
 
       const currentPath = `${location.pathname}${location.search}`;
       const nextParam = encodeURIComponent(currentPath || '/dashboard');
+      const currentRetryCountRaw = new URLSearchParams(location.search).get(AUTH_RETRY_COUNT_PARAM);
+      const currentRetryCountParsed = Number(currentRetryCountRaw ?? 0);
+      const retryCount = Number.isFinite(currentRetryCountParsed) && currentRetryCountParsed >= 0
+        ? Math.trunc(currentRetryCountParsed)
+        : 0;
       if (transferHash) {
         try {
           window.sessionStorage.setItem(
@@ -241,7 +246,7 @@ export function AppLayout() {
           // noop
         }
       }
-      window.location.assign(`${window.location.protocol}//${targetHost}/login?next=${nextParam}&${AUTH_RETRY_COUNT_PARAM}=0${transferHash}`);
+      window.location.assign(`${window.location.protocol}//${targetHost}/login?next=${nextParam}&${AUTH_RETRY_COUNT_PARAM}=${retryCount}${transferHash}`);
     };
 
     void redirectTenantFromBaseDomain();
