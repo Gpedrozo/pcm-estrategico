@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { insertWithColumnFallback } from '@/lib/supabaseCompat';
 import { useAuth } from '@/contexts/AuthContext';
+import { callRpc } from '@/integrations/supabase/rpc';
 
 export interface ExecucaoOSRow {
   id: string;
@@ -81,9 +82,12 @@ export function useExecucoesOS() {
   return useQuery({
     queryKey: ['execucoes-os', tenantId],
     queryFn: async () => {
+      if (!tenantId) throw new Error('Tenant não resolvido.');
+
       const { data, error } = await supabase
         .from('execucoes_os')
         .select('*')
+        .eq('empresa_id', tenantId)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
@@ -100,10 +104,12 @@ export function useExecucaoByOSId(osId: string | undefined) {
     queryKey: ['execucao-os', tenantId, osId],
     queryFn: async () => {
       if (!osId) return null;
+      if (!tenantId) throw new Error('Tenant não resolvido.');
       
       const { data, error } = await supabase
         .from('execucoes_os')
         .select('*')
+        .eq('empresa_id', tenantId)
         .eq('os_id', osId)
         .maybeSingle();
 
@@ -152,8 +158,7 @@ export function useCloseOSAtomic() {
 
   return useMutation({
     mutationFn: async (params: CloseOSAtomicParams) => {
-      const rpcClient = supabase as any;
-      const { data, error } = await rpcClient.rpc('close_os_with_execution_atomic', {
+      const { data, error } = await callRpc<unknown[]>('close_os_with_execution_atomic', {
         p_os_id: params.os_id,
         p_mecanico_id: params.mecanico_id,
         p_mecanico_nome: params.mecanico_nome,

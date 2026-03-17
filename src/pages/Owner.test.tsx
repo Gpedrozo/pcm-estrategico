@@ -50,7 +50,7 @@ import { useAuth } from "@/contexts/AuthContext";
 
 const mockedUseAuth = vi.mocked(useAuth);
 
-process.env.OWNER_MASTER_EMAIL = 'owner-master@gppis.com.br'
+vi.stubEnv('VITE_OWNER_MASTER_EMAIL', 'owner-master@gppis.com.br')
 
 function renderWithQuery(ui: JSX.Element) {
   const queryClient = new QueryClient({

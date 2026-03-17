@@ -5,7 +5,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { getPostLoginPath } from '@/lib/security';
 import { resolveOrRepairTenantHost } from '@/lib/tenantDomain';
-import { impersonateCompany, listPlatformCompanies, type OwnerCompany } from '@/services/ownerPortal.service';
+import { getImpersonationExpiresAt, getImpersonationPayload, impersonateCompany, listPlatformCompanies, type OwnerCompany } from '@/services/ownerPortal.service';
+import { createSessionTransferCode } from '@/lib/sessionTransfer';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -60,21 +61,6 @@ export default function OwnerLogin() {
     window.history.replaceState({}, document.title, cleanedUrl);
   }, []);
 
-  const buildSessionTransferHash = (accessToken?: string | null, refreshToken?: string | null) => {
-    if (!accessToken || !refreshToken) return null;
-    try {
-      const payload = {
-        access_token: accessToken,
-        refresh_token: refreshToken,
-        issued_at: Date.now(),
-      };
-      const encoded = encodeURIComponent(window.btoa(JSON.stringify(payload)));
-      return `session_transfer=${encoded}`;
-    } catch {
-      return null;
-    }
-  };
-
   const tenantBaseDomain = (import.meta.env.VITE_TENANT_BASE_DOMAIN || '').trim().toLowerCase();
 
   const loadCompaniesForChooser = async () => {
@@ -123,11 +109,14 @@ export default function OwnerLogin() {
     setLoginError('');
 
     try {
-      const response: any = await impersonateCompany(selected.id);
+      const response = await impersonateCompany(selected.id);
       const nowIso = new Date().toISOString();
-      const expiresAt = response?.session?.expires_at || response?.expires_at || null;
+      const expiresAt = getImpersonationExpiresAt(response);
+      const impersonationPayload = getImpersonationPayload(response);
 
       startImpersonationSession({
+        id: impersonationPayload?.id ?? undefined,
+        sessionToken: impersonationPayload?.session_token ?? undefined,
         empresaId: selected.id,
         empresaNome: selected.nome ?? selected.slug ?? selected.id,
         startedAt: nowIso,
@@ -170,10 +159,8 @@ export default function OwnerLogin() {
         }
 
         const { data: { session: activeSession } } = await supabase.auth.getSession();
-        const transferHash = buildSessionTransferHash(
-          activeSession?.access_token ?? session?.access_token ?? null,
-          activeSession?.refresh_token ?? session?.refresh_token ?? null,
-        );
+        const transferCode = await createSessionTransferCode(activeSession ?? session ?? null, targetHost);
+        const transferHash = transferCode ? `session_transfer=${encodeURIComponent(transferCode)}` : null;
         const targetUrl = `${window.location.protocol}//${targetHost}/login${transferHash ? `#${transferHash}` : ''}`;
         if (transferHash) {
           try {

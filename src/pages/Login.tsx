@@ -4,6 +4,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { getPostLoginPath } from '@/lib/security';
 import { supabase } from '@/integrations/supabase/client';
 import { resolveOrRepairTenantHost } from '@/lib/tenantDomain';
+import { createSessionTransferCode } from '@/lib/sessionTransfer';
 import { useBranding } from '@/contexts/BrandingContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -222,17 +223,9 @@ export default function Login() {
         const activeSession = sessionData?.session;
 
         let transferHash = '';
-        if (activeSession?.access_token && activeSession?.refresh_token) {
-          try {
-            const payload = {
-              access_token: activeSession.access_token,
-              refresh_token: activeSession.refresh_token,
-              issued_at: Date.now(),
-            };
-            transferHash = `#session_transfer=${encodeURIComponent(window.btoa(JSON.stringify(payload)))}`;
-          } catch {
-            transferHash = '';
-          }
+        const transferCode = await createSessionTransferCode(activeSession ?? null, targetHost);
+        if (transferCode) {
+          transferHash = `#session_transfer=${encodeURIComponent(transferCode)}`;
         }
 
         if (transferHash) {

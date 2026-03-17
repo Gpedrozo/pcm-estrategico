@@ -9,17 +9,23 @@ export function useIndicadores() {
   return useQuery({
     queryKey: ['indicadores', tenantId],
     queryFn: async () => {
-      // Fetch all orders to calculate indicators
+      if (!tenantId) {
+        throw new Error('Tenant não resolvido para cálculo de indicadores.');
+      }
+
+      // Fetch only required fields from the current tenant.
       const { data: ordensData, error: ordensError } = await supabase
         .from('ordens_servico')
-        .select('*');
+        .select('status,data_fechamento,tipo,tempo_estimado,created_at,empresa_id')
+        .eq('empresa_id', tenantId);
 
       if (ordensError) throw ordensError;
 
-      // Fetch executions for time calculations
+      // Fetch only required fields from the current tenant.
       const { data: execucoesData, error: execucoesError } = await supabase
         .from('execucoes_os')
-        .select('*');
+        .select('tempo_execucao,custo_mao_obra,custo_materiais,custo_terceiros,data_execucao,empresa_id')
+        .eq('empresa_id', tenantId);
 
       if (execucoesError) throw execucoesError;
 
@@ -54,10 +60,16 @@ export function useIndicadores() {
       const backlogTempo = backlogOrdens.reduce((acc, os) => acc + (os.tempo_estimado || 0), 0) / 60; // hours
       const backlogSemanas = backlogTempo / 40; // assuming 40h work week
 
-      // Calculate monthly costs
-      const custoMaoObraMes = execucoes.reduce((acc, ex) => acc + (Number(ex.custo_mao_obra) || 0), 0);
-      const custoMateriaisMes = execucoes.reduce((acc, ex) => acc + (Number(ex.custo_materiais) || 0), 0);
-      const custoTerceirosMes = execucoes.reduce((acc, ex) => acc + (Number(ex.custo_terceiros) || 0), 0);
+      // Calculate monthly costs using only current month executions.
+      const execucoesMesAtual = execucoes.filter((ex) => {
+        if (!ex.data_execucao) return false;
+        const dataExecucao = new Date(ex.data_execucao);
+        return dataExecucao >= startOfMonth;
+      });
+
+      const custoMaoObraMes = execucoesMesAtual.reduce((acc, ex) => acc + (Number(ex.custo_mao_obra) || 0), 0);
+      const custoMateriaisMes = execucoesMesAtual.reduce((acc, ex) => acc + (Number(ex.custo_materiais) || 0), 0);
+      const custoTerceirosMes = execucoesMesAtual.reduce((acc, ex) => acc + (Number(ex.custo_terceiros) || 0), 0);
       const custoTotalMes = custoMaoObraMes + custoMateriaisMes + custoTerceirosMes;
 
       // Calculate MTTR (Mean Time To Repair) in hours
@@ -66,16 +78,37 @@ export function useIndicadores() {
         ? closedWithExecution.reduce((acc, ex) => acc + ex.tempo_execucao, 0) / closedWithExecution.length / 60
         : 0;
 
-      // MTBF calculation would require failure history - using estimate
-      const mtbf = 720; // Default: 30 days in hours
+      // Approximate MTBF from corrective closures in a measured time window.
+      const corretivasFechadas = ordens.filter((os) => os.tipo === 'CORRETIVA' && os.status === 'FECHADA' && os.data_fechamento);
+      const baseDate = ordens.reduce<Date | null>((earliest, os) => {
+        if (!os.created_at) return earliest;
+        const createdAt = new Date(os.created_at);
+        if (!earliest || createdAt < earliest) return createdAt;
+        return earliest;
+      }, null);
+      const operationHours = baseDate ? Math.max(0, (Date.now() - baseDate.getTime()) / (1000 * 60 * 60)) : 0;
+      const mtbf = corretivasFechadas.length > 0 ? operationHours / corretivasFechadas.length : 0;
 
       // Availability = MTBF / (MTBF + MTTR)
       const disponibilidade = mtbf > 0 ? (mtbf / (mtbf + mttr)) * 100 : 100;
 
-      // Planning adherence - calculate based on preventive vs total
-      const preventivas = ordens.filter(os => os.tipo === 'PREVENTIVA').length;
-      const totalOrdens = ordens.length;
-      const aderenciaProgramacao = totalOrdens > 0 ? (preventivas / totalOrdens) * 100 : 0;
+      // Planning adherence: preventive orders closed within the current month over all preventive closed in month.
+      const preventivasMes = ordens.filter((os) => {
+        if (os.tipo !== 'PREVENTIVA' || os.status !== 'FECHADA' || !os.data_fechamento) return false;
+        const fechamento = new Date(os.data_fechamento);
+        return fechamento >= startOfMonth;
+      });
+      const preventivasNoPrazoMes = preventivasMes.filter((os) => {
+        if (!os.created_at || !os.data_fechamento) return false;
+        const abertura = new Date(os.created_at);
+        const fechamento = new Date(os.data_fechamento);
+        const prazoHoras = Math.max(24, Number(os.tempo_estimado || 0) / 60);
+        const diffHoras = (fechamento.getTime() - abertura.getTime()) / (1000 * 60 * 60);
+        return diffHoras <= prazoHoras;
+      });
+      const aderenciaProgramacao = preventivasMes.length > 0
+        ? (preventivasNoPrazoMes.length / preventivasMes.length) * 100
+        : 0;
 
       const indicadores: Indicadores = {
         osAbertas,

@@ -1,7 +1,5 @@
 import { supabase } from '@/integrations/supabase/client';
 
-const db: any = supabase;
-
 function normalizeTenantSlug(input: string): string {
   return input
     .normalize('NFD')
@@ -20,7 +18,7 @@ async function tryAssignSlug(tenantId: string, baseSlug: string): Promise<string
   for (let attempt = 0; attempt < 20; attempt += 1) {
     const candidate = attempt === 0 ? baseSlug : `${baseSlug}-${attempt + 1}`;
 
-    const { data: updatedCompany, error } = await db
+    const { data: updatedCompany, error } = await supabase
       .from('empresas')
       .update({ slug: candidate })
       .eq('id', tenantId)
@@ -36,7 +34,7 @@ async function tryAssignSlug(tenantId: string, baseSlug: string): Promise<string
       return null;
     }
 
-    const { data: currentCompany } = await db
+    const { data: currentCompany } = await supabase
       .from('empresas')
       .select('slug')
       .eq('id', tenantId)
@@ -62,7 +60,7 @@ export async function resolveOrRepairTenantHost(options: {
 
   if (!tenantId || !tenantBaseDomain) return null;
 
-  const { data: configData } = await db
+  const { data: configData } = await supabase
     .from('empresa_config')
     .select('dominio_custom')
     .eq('empresa_id', tenantId)
@@ -74,7 +72,7 @@ export async function resolveOrRepairTenantHost(options: {
   const customDomain = String(configData?.dominio_custom ?? '').trim().toLowerCase();
   if (customDomain) return customDomain;
 
-  const { data: companyData } = await db
+  const { data: companyData } = await supabase
     .from('empresas')
     .select('slug,nome')
     .eq('id', tenantId)

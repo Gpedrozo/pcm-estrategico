@@ -7,9 +7,10 @@ import type { OwnerCompany } from '@/services/ownerPortal.service';
 import { NotificationCenter } from '@/components/notifications/NotificationCenter';
 import { GlobalSearch } from './GlobalSearch';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { impersonateCompany, listPlatformCompanies, stopImpersonation } from '@/services/ownerPortal.service';
+import { getImpersonationExpiresAt, getImpersonationPayload, impersonateCompany, listPlatformCompanies, stopImpersonation } from '@/services/ownerPortal.service';
 import { supabase } from '@/integrations/supabase/client';
 import { resolveOrRepairTenantHost } from '@/lib/tenantDomain';
+import { createSessionTransferCode } from '@/lib/sessionTransfer';
 
 const SESSION_TRANSFER_REDIRECT_STORAGE_KEY = 'pcm.auth.session_transfer.redirect.v1';
 
@@ -143,9 +144,12 @@ export function AppLayout() {
     try {
       const response: any = await impersonateCompany(selected.id);
       const nowIso = new Date().toISOString();
-      const expiresAt = response?.impersonation?.expires_at || null;
+      const expiresAt = getImpersonationExpiresAt(response);
+      const impersonationPayload = getImpersonationPayload(response);
 
       startImpersonationSession({
+        id: impersonationPayload?.id ?? undefined,
+        sessionToken: impersonationPayload?.session_token ?? undefined,
         empresaId: selected.id,
         empresaNome: selected.nome ?? selected.slug ?? selected.id,
         startedAt: nowIso,
@@ -212,17 +216,9 @@ export function AppLayout() {
       }
 
       let transferHash = '';
-      if (session.access_token && session.refresh_token) {
-        try {
-          const payload = {
-            access_token: session.access_token,
-            refresh_token: session.refresh_token,
-            issued_at: Date.now(),
-          };
-          transferHash = `#session_transfer=${encodeURIComponent(window.btoa(JSON.stringify(payload)))}`;
-        } catch {
-          transferHash = '';
-        }
+      const transferCode = await createSessionTransferCode(session, targetHost);
+      if (transferCode) {
+        transferHash = `#session_transfer=${encodeURIComponent(transferCode)}`;
       }
 
       const currentPath = `${location.pathname}${location.search}`;

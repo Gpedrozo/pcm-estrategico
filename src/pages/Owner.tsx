@@ -21,8 +21,7 @@ import {
 } from '@/hooks/useOwnerPortal'
 
 const getOwnerMasterEmail = () => {
-  const configured = String(import.meta.env.VITE_OWNER_MASTER_EMAIL ?? process.env.OWNER_MASTER_EMAIL ?? '').trim().toLowerCase()
-  return configured || 'pedrozo@gppis.com.br'
+  return String(import.meta.env.VITE_OWNER_MASTER_EMAIL ?? '').trim().toLowerCase()
 }
 const TENANT_BASE_DOMAIN = (import.meta.env.VITE_TENANT_BASE_DOMAIN || 'gppis.com.br').toLowerCase()
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
@@ -752,7 +751,7 @@ export default function Owner() {
     clearFeedback()
 
     if (!isOwnerMaster) {
-      setError('Operacao restrita ao owner master (pedrozo@gppis.com.br).')
+      setError('Operacao restrita ao owner master configurado no ambiente.')
       return
     }
 

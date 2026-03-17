@@ -38,6 +38,7 @@ type Payload = {
     | "create_system_admin"
     | "impersonate_company"
     | "stop_impersonation"
+    | "validate_impersonation"
     | "update_subscription_billing"
     | "list_platform_owners"
     | "create_platform_owner"
@@ -134,6 +135,8 @@ type Payload = {
   reason?: string;
   user_id?: string;
   empresa_nome?: string;
+  impersonation_session_id?: string;
+  impersonation_session_token?: string;
   confirmation_name?: string;
   confirmation_phrase?: string;
   auth_password?: string;
@@ -246,6 +249,7 @@ const SUPPORTED_OWNER_ACTIONS: Payload["action"][] = [
   "create_system_admin",
   "impersonate_company",
   "stop_impersonation",
+  "validate_impersonation",
   "update_subscription_billing",
   "list_platform_owners",
   "create_platform_owner",
@@ -325,6 +329,7 @@ function shouldEnforceRateLimit(action: Payload["action"]) {
     "create_system_admin",
     "impersonate_company",
     "stop_impersonation",
+    "validate_impersonation",
     "create_platform_owner",
     "cleanup_owner_stress_data",
     "cleanup_company_data",
@@ -2395,6 +2400,23 @@ Deno.serve(async (req) => {
     const now = new Date();
     const expiresAt = new Date(now.getTime() + (60 * 60 * 1000));
     const operationId = crypto.randomUUID();
+    const sessionToken = `${crypto.randomUUID().replaceAll("-", "")}${crypto.randomUUID().slice(0, 12)}`;
+
+    const { data: createdSession, error: sessionError } = await admin
+      .from("owner_impersonation_sessions")
+      .insert({
+        owner_user_id: auth.user.id,
+        empresa_id: company.id,
+        session_token: sessionToken,
+        expires_at: expiresAt.toISOString(),
+        active: true,
+      })
+      .select("id")
+      .single();
+
+    if (sessionError || !createdSession?.id) {
+      return fail(sessionError?.message ?? "Falha ao criar sessão de impersonação", 400, null, req);
+    }
 
     await logPlatformAudit(admin, {
       actorId: auth.user.id,
@@ -2414,16 +2436,30 @@ Deno.serve(async (req) => {
     return okWithOperation(req, {
       success: true,
       impersonation: {
+        id: createdSession.id,
         empresa_id: company.id,
         empresa_nome: company.nome ?? null,
         company_status: company.status ?? null,
         issued_at: now.toISOString(),
         expires_at: expiresAt.toISOString(),
+        session_token: sessionToken,
       },
     }, operationId);
   }
 
   if (body.action === "stop_impersonation") {
+    const stopQuery = admin
+      .from("owner_impersonation_sessions")
+      .update({ active: false })
+      .eq("owner_user_id", auth.user.id)
+      .eq("active", true);
+
+    if (body.empresa_id) {
+      stopQuery.eq("empresa_id", body.empresa_id);
+    }
+
+    await stopQuery;
+
     await logPlatformAudit(admin, {
       actorId: auth.user.id,
       actorEmail: auth.user.email,
@@ -2438,6 +2474,32 @@ Deno.serve(async (req) => {
     });
 
     return ok({ success: true }, 200, req);
+  }
+
+  if (body.action === "validate_impersonation") {
+    if (!body.impersonation_session_id || !body.impersonation_session_token || !body.empresa_id) {
+      return fail("impersonation_session_id, impersonation_session_token and empresa_id are required", 400, null, req);
+    }
+
+    const nowIso = new Date().toISOString();
+
+    const { data: sessionRow, error: sessionError } = await admin
+      .from("owner_impersonation_sessions")
+      .select("id")
+      .eq("id", body.impersonation_session_id)
+      .eq("session_token", body.impersonation_session_token)
+      .eq("owner_user_id", auth.user.id)
+      .eq("empresa_id", body.empresa_id)
+      .eq("active", true)
+      .gt("expires_at", nowIso)
+      .maybeSingle();
+
+    if (sessionError) return fail(sessionError.message, 400, null, req);
+    if (!sessionRow?.id) {
+      return fail("Sessão de impersonação inválida ou expirada", 403, null, req);
+    }
+
+    return ok({ success: true, valid: true }, 200, req);
   }
 
   if (body.action === "create_system_admin") {

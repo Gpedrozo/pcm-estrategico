@@ -79,9 +79,12 @@ export function useOrdensServico() {
   return useQuery({
     queryKey: ['ordens-servico', tenantId],
     queryFn: async () => {
+      if (!tenantId) throw new Error('Tenant não resolvido.');
+
       const { data, error } = await supabase
         .from('ordens_servico')
         .select('*')
+        .eq('empresa_id', tenantId)
         .order('numero_os', { ascending: false });
 
       if (error) throw error;
@@ -97,9 +100,12 @@ export function useRecentOrdensServico(limit = 5) {
   return useQuery({
     queryKey: ['ordens-servico-recent', tenantId, limit],
     queryFn: async () => {
+      if (!tenantId) throw new Error('Tenant não resolvido.');
+
       const { data, error } = await supabase
         .from('ordens_servico')
         .select('*')
+        .eq('empresa_id', tenantId)
         .order('data_solicitacao', { ascending: false })
         .limit(limit);
 
@@ -116,9 +122,12 @@ export function usePendingOrdensServico() {
   return useQuery({
     queryKey: ['ordens-servico-pending', tenantId],
     queryFn: async () => {
+      if (!tenantId) throw new Error('Tenant não resolvido.');
+
       const { data, error } = await supabase
         .from('ordens_servico')
         .select('*')
+        .eq('empresa_id', tenantId)
         .neq('status', 'FECHADA')
         .neq('status', 'CANCELADA')
         .order('prioridade', { ascending: true })
@@ -138,7 +147,10 @@ export function useCreateOrdemServico() {
 
   return useMutation({
     mutationFn: async (os: OrdemServicoInsert) => {
+      if (!tenantId) throw new Error('Tenant não resolvido.');
+
       const payload = {
+        empresa_id: tenantId,
         tipo: os.tipo,
         prioridade: os.prioridade ?? 'MEDIA',
         status: 'ABERTA',
@@ -187,10 +199,13 @@ export function useUpdateOrdemServico() {
 
   return useMutation({
     mutationFn: async ({ id, ...updates }: OrdemServicoUpdate & { id: string }) => {
+      if (!tenantId) throw new Error('Tenant não resolvido.');
+
       const { data, error } = await supabase
         .from('ordens_servico')
         .update(updates)
         .eq('id', id)
+        .eq('empresa_id', tenantId)
         .select()
         .single();
 

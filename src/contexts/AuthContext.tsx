@@ -12,6 +12,8 @@ import {
 import { resolveOrRepairTenantHost } from '@/lib/tenantDomain';
 import { logger } from '@/lib/logger';
 import { writeAuditLog } from '@/lib/audit';
+import { consumeSessionTransferCode, createSessionTransferCode } from '@/lib/sessionTransfer';
+import { validateImpersonationSession } from '@/services/ownerPortal.service';
 
 export interface AuthUser {
   id: string;
@@ -25,6 +27,8 @@ export interface AuthUser {
 }
 
 export interface ImpersonationSession {
+  id?: string;
+  sessionToken?: string;
   empresaId: string;
   empresaNome?: string | null;
   startedAt: string;
@@ -370,20 +374,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
   }, [session, user]);
 
-  const buildSessionTransferHash = useCallback((sessionData: Session | null) => {
-    if (!sessionData?.access_token || !sessionData?.refresh_token) return null;
-
-    try {
-      const payload = {
-        access_token: sessionData.access_token,
-        refresh_token: sessionData.refresh_token,
-        issued_at: Date.now(),
-      };
-      const encoded = encodeURIComponent(window.btoa(JSON.stringify(payload)));
-      return `session_transfer=${encoded}`;
-    } catch {
-      return null;
-    }
+  const buildSessionTransferHash = useCallback(async (sessionData: Session | null, targetHost: string) => {
+    const code = await createSessionTransferCode(sessionData, targetHost);
+    if (!code) return null;
+    return `session_transfer=${encodeURIComponent(code)}`;
   }, []);
 
   useEffect(() => {
@@ -418,10 +412,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
 
       try {
-        const decodedJson = window.atob(decodeURIComponent(encodedTransfer));
-        const decoded = JSON.parse(decodedJson) as { access_token?: string; refresh_token?: string; issued_at?: number };
+        let decoded = await consumeSessionTransferCode(encodedTransfer, window.location.hostname.toLowerCase());
 
-        if (!decoded?.access_token || !decoded?.refresh_token) return;
+        // Backward compatibility while old token-in-hash links may still exist.
+        if (!decoded) {
+          const decodedJson = window.atob(decodeURIComponent(encodedTransfer));
+          const legacy = JSON.parse(decodedJson) as { access_token?: string; refresh_token?: string; issued_at?: number };
+          if (!legacy?.access_token || !legacy?.refresh_token) return;
+          decoded = {
+            access_token: legacy.access_token,
+            refresh_token: legacy.refresh_token,
+            issued_at: Number(legacy.issued_at ?? 0),
+          };
+        }
 
         const issuedAt = Number(decoded.issued_at || 0);
         const isFreshTransfer = Number.isFinite(issuedAt) && issuedAt > 0 && (Date.now() - issuedAt) <= SESSION_TRANSFER_MAX_AGE_MS;
@@ -532,22 +535,41 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   useEffect(() => {
-    try {
-      const raw = window.localStorage.getItem(IMPERSONATION_STORAGE_KEY);
-      if (!raw) return;
-      const parsed = JSON.parse(raw) as ImpersonationSession;
-      if (!parsed?.empresaId || !parsed?.startedAt) {
+    const loadImpersonation = async () => {
+      try {
+        const raw = window.localStorage.getItem(IMPERSONATION_STORAGE_KEY);
+        if (!raw) return;
+        const parsed = JSON.parse(raw) as ImpersonationSession;
+        if (!parsed?.empresaId || !parsed?.startedAt) {
+          window.localStorage.removeItem(IMPERSONATION_STORAGE_KEY);
+          return;
+        }
+        if (parsed.expiresAt && new Date(parsed.expiresAt).getTime() <= Date.now()) {
+          window.localStorage.removeItem(IMPERSONATION_STORAGE_KEY);
+          return;
+        }
+
+        // Reject tampered localStorage impersonation sessions unless backend confirms validity.
+        if (parsed.id && parsed.sessionToken) {
+          try {
+            await validateImpersonationSession({
+              empresa_id: parsed.empresaId,
+              impersonation_session_id: parsed.id,
+              impersonation_session_token: parsed.sessionToken,
+            });
+          } catch {
+            window.localStorage.removeItem(IMPERSONATION_STORAGE_KEY);
+            return;
+          }
+        }
+
+        setImpersonation(parsed);
+      } catch {
         window.localStorage.removeItem(IMPERSONATION_STORAGE_KEY);
-        return;
       }
-      if (parsed.expiresAt && new Date(parsed.expiresAt).getTime() <= Date.now()) {
-        window.localStorage.removeItem(IMPERSONATION_STORAGE_KEY);
-        return;
-      }
-      setImpersonation(parsed);
-    } catch {
-      window.localStorage.removeItem(IMPERSONATION_STORAGE_KEY);
-    }
+    };
+
+    void loadImpersonation();
   }, []);
 
   useEffect(() => {
@@ -1138,7 +1160,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
           const currentHostname = window.location.hostname.toLowerCase();
           if (targetHost !== currentHostname) {
-            const transferHash = buildSessionTransferHash(activeSession);
+            const transferHash = await buildSessionTransferHash(activeSession, targetHost);
             const targetUrl = `${window.location.protocol}//${targetHost}/login${transferHash ? `#${transferHash}` : ''}`;
             if (transferHash) {
               markSessionTransferRedirectInProgress();
@@ -1295,6 +1317,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const redirectUrl = `${window.location.origin}/`;
     const empresaSlug = resolveEmpresaSlug(window.location.hostname);
     const hostname = window.location.hostname;
+    const baseDomain = TENANT_BASE_DOMAIN.toLowerCase();
 
     const tenantDomainError = await validateTenantDomainAccess();
     if (tenantDomainError) {
@@ -1311,7 +1334,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return { error: 'Falha ao validar domínio da empresa.' };
     }
 
-    const empresaId = domainConfig?.empresa_id ?? null;
+    let empresaId = domainConfig?.empresa_id ?? null;
+
+    if (!empresaId) {
+      const isSubdomainHost = hostname.toLowerCase().endsWith(`.${baseDomain}`) && !isTenantBaseDomain(hostname);
+      const slug = isSubdomainHost
+        ? hostname.toLowerCase().replace(`.${baseDomain}`, '').split('.')[0]?.trim().toLowerCase() || ''
+        : '';
+
+      if (slug && slug !== 'www') {
+        const { data: empresaIdBySlug } = await supabase.rpc('resolve_empresa_id_by_slug', {
+          p_slug: slug,
+        });
+        empresaId = typeof empresaIdBySlug === 'string' ? empresaIdBySlug : null;
+      }
+    }
+
     if (!empresaId) return { error: 'Domínio não autorizado para cadastro.' };
 
     const { error } = await supabase.auth.signUp({

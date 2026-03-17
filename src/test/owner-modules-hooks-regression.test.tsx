@@ -4,7 +4,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import Owner from '@/pages/Owner'
 import { createAuthContextValue } from '@/test/auth-context-mock'
 
-process.env.OWNER_MASTER_EMAIL = 'owner-master@gppis.com.br'
+vi.stubEnv('VITE_OWNER_MASTER_EMAIL', 'owner-master@gppis.com.br')
 
 vi.mock('@/contexts/AuthContext', () => ({
   useAuth: vi.fn(() =>

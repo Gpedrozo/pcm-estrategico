@@ -32,6 +32,7 @@ export type OwnerAction =
   | 'create_system_admin'
   | 'impersonate_company'
   | 'stop_impersonation'
+  | 'validate_impersonation'
   | 'list_platform_owners'
   | 'create_platform_owner'
   | 'list_database_tables'
@@ -154,6 +155,38 @@ export interface OwnerApiResponse<T = unknown> {
   details?: unknown
   data?: T
   [key: string]: unknown
+}
+
+export interface OwnerImpersonationPayload {
+  id?: string | null
+  empresa_id?: string | null
+  empresa_nome?: string | null
+  issued_at?: string | null
+  expires_at?: string | null
+  session_token?: string | null
+}
+
+export function getImpersonationExpiresAt(payload: unknown): string | null {
+  const value = payload as {
+    impersonation?: OwnerImpersonationPayload;
+    session?: { expires_at?: string | null };
+    expires_at?: string | null;
+  } | null;
+
+  const candidate =
+    value?.impersonation?.expires_at
+    ?? value?.session?.expires_at
+    ?? value?.expires_at
+    ?? null;
+
+  const normalized = String(candidate ?? '').trim();
+  return normalized || null;
+}
+
+export function getImpersonationPayload(payload: unknown): OwnerImpersonationPayload | null {
+  const value = payload as { impersonation?: OwnerImpersonationPayload } | null
+  if (!value?.impersonation || typeof value.impersonation !== 'object') return null
+  return value.impersonation
 }
 
 export interface OwnerErrorResponse {
@@ -404,6 +437,14 @@ export async function impersonateCompany(empresaId: string) {
 
 export async function stopImpersonation(params?: { empresa_id?: string; empresa_nome?: string; reason?: string }) {
   return callOwnerAdmin({ action: 'stop_impersonation', ...params })
+}
+
+export async function validateImpersonationSession(params: {
+  empresa_id: string
+  impersonation_session_id: string
+  impersonation_session_token: string
+}) {
+  return callOwnerAdmin({ action: 'validate_impersonation', ...params })
 }
 
 export async function listPlatformOwners(): Promise<PlatformOwnerRow[]> {

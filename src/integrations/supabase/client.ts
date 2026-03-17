@@ -46,8 +46,7 @@ const ownerProjectRef =
 
 const canUseOwnerSupabaseConfig =
   isOwnerRuntime &&
-  Boolean(OWNER_SUPABASE_URL && OWNER_SUPABASE_PUBLISHABLE_KEY) &&
-  Boolean(ownerProjectRef && defaultProjectRef && ownerProjectRef === defaultProjectRef)
+  Boolean(OWNER_SUPABASE_URL && OWNER_SUPABASE_PUBLISHABLE_KEY)
 
 const SUPABASE_URL = canUseOwnerSupabaseConfig ? OWNER_SUPABASE_URL : DEFAULT_SUPABASE_URL
 const SUPABASE_KEY = canUseOwnerSupabaseConfig ? OWNER_SUPABASE_PUBLISHABLE_KEY : DEFAULT_SUPABASE_PUBLISHABLE_KEY
@@ -66,9 +65,9 @@ if (!hasSupabaseEnv && !isTestEnvironment && !import.meta.env.DEV) {
   )
 }
 
-if (!isTestEnvironment && isOwnerRuntime && OWNER_SUPABASE_URL && OWNER_SUPABASE_PUBLISHABLE_KEY && !canUseOwnerSupabaseConfig) {
-  console.error(
-    '[owner-auth] Ignorando VITE_OWNER_SUPABASE_* por divergência de projeto. Usando VITE_SUPABASE_* para evitar Invalid JWT.'
+if (!isTestEnvironment && isOwnerRuntime && canUseOwnerSupabaseConfig && ownerProjectRef && defaultProjectRef && ownerProjectRef !== defaultProjectRef) {
+  console.warn(
+    '[owner-auth] VITE_OWNER_SUPABASE_* aponta para projeto diferente do tenant runtime. Modo multi-projeto ativo para owner.'
   )
 }
 

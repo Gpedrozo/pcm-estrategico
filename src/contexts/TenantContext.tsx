@@ -21,6 +21,18 @@ interface TenantContextValue {
 
 const TenantContext = createContext<TenantContextValue | undefined>(undefined);
 
+async function resolveEmpresaIdBySlug(slug: string): Promise<string | null> {
+  const normalized = slug.trim().toLowerCase();
+  if (!normalized) return null;
+
+  const { data, error } = await supabase.rpc('resolve_empresa_id_by_slug', {
+    p_slug: normalized,
+  });
+
+  if (error) return null;
+  return typeof data === 'string' ? data : null;
+}
+
 
 export function TenantProvider({ children }: { children: React.ReactNode }) {
   const queryClient = useQueryClient();
@@ -62,11 +74,9 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
 
       let empresaId = domainConfig?.empresa_id ?? null;
       if (!empresaId && tenantSlug !== 'default') {
-        const { data: slugCompany, error: slugError } = await supabase
-          .from('empresas')
-          .select('id')
-          .eq('slug', tenantSlug)
-          .maybeSingle();
+        const empresaIdBySlug = await resolveEmpresaIdBySlug(tenantSlug);
+        const slugCompany = empresaIdBySlug ? { id: empresaIdBySlug } : null;
+        const slugError = empresaIdBySlug ? null : { message: 'slug_lookup_failed' };
 
         if (slugError && !slugCompany?.id) {
           // Do not fail early here. On first access, slug lookup can fail due to
@@ -105,13 +115,7 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
         if (hostname.endsWith(`.${baseDomain}`)) {
           const slug = hostSlug;
           if (slug && slug !== 'www' && TENANT_SLUG_REGEX.test(slug)) {
-            const { data: companyBySlug } = await supabase
-              .from('empresas')
-              .select('id')
-              .eq('slug', slug)
-              .maybeSingle();
-
-            empresaId = companyBySlug?.id ?? null;
+            empresaId = await resolveEmpresaIdBySlug(slug);
 
             if (!empresaId) {
               // First-access fallback: read tenant identity from auth metadata when slug matches host.

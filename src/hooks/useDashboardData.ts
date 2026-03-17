@@ -49,9 +49,14 @@ export function useDashboardData() {
   const { data: dashboardKpis, isLoading: loadingDbKpis } = useQuery({
     queryKey: ['dashboard-kpis-db', tenantId],
     queryFn: async () => {
-      const { data, error } = await (supabase as any)
-        .from('v_dashboard_kpis')
-        .select('*')
+      if (!tenantId) {
+        throw new Error('Tenant não resolvido para KPIs do dashboard.');
+      }
+
+      const { data, error } = await supabase
+        .from('v_dashboard_kpis' as never)
+        .select('empresa_id,snapshot_at,os_abertas,os_fechadas_30d,urgentes_abertas,backlog_atrasado,custo_30d,mttr_horas_30d,mtbf_horas_30d,disponibilidade_estim,aderencia_preventiva_90d')
+        .eq('empresa_id', tenantId)
         .limit(1)
         .maybeSingle();
 
