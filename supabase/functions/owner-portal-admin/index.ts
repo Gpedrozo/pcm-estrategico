@@ -403,6 +403,7 @@ function buildManagedTenantDomain(slug: string) {
 }
 
 const CF_PAGES_AUTO_DOMAIN_ENABLED = (Deno.env.get("CF_PAGES_AUTO_DOMAIN_ENABLED") ?? "true").toLowerCase() !== "false";
+const CF_PAGES_PROVISION_REQUIRED = (Deno.env.get("CF_PAGES_PROVISION_REQUIRED") ?? "true").toLowerCase() !== "false";
 const CF_API_TOKEN = (Deno.env.get("CF_API_TOKEN") ?? "").trim();
 const CF_ACCOUNT_ID = (Deno.env.get("CF_ACCOUNT_ID") ?? "").trim();
 const CF_PAGES_PROJECT_NAME = (Deno.env.get("CF_PAGES_PROJECT_NAME") ?? "").trim();
@@ -1426,6 +1427,11 @@ Deno.serve(async (req) => {
 
       const cloudflareProvision = await ensureCloudflarePagesCustomDomain(managedDomain);
       if (cloudflareProvision.status !== "ok") {
+        if (CF_PAGES_PROVISION_REQUIRED) {
+          const reason = await rollbackCreateCompany(cloudflareProvision.message);
+          return fail("Falha ao provisionar dominio no Cloudflare Pages para o tenant.", 400, { reason }, req);
+        }
+
         onboardingWarning = mergeWarnings(
           onboardingWarning,
           `Dominio da empresa criado no banco, mas com aviso no Cloudflare: ${cloudflareProvision.message}`,
@@ -1728,6 +1734,12 @@ Deno.serve(async (req) => {
 
           const cloudflareProvision = await ensureCloudflarePagesCustomDomain(nextManagedDomain);
           if (cloudflareProvision.status !== "ok") {
+            if (CF_PAGES_PROVISION_REQUIRED) {
+              return fail("Falha ao provisionar dominio no Cloudflare Pages para o tenant.", 400, {
+                reason: cloudflareProvision.message,
+              }, req);
+            }
+
             updateWarning = `Dominio atualizado no banco, mas com aviso no Cloudflare: ${cloudflareProvision.message}`;
           }
         }
