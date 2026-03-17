@@ -32,6 +32,20 @@ function renderWithRoutes() {
 }
 
 describe("SystemOwnerGuard", () => {
+  it("keeps loading state while auth is hydrating", () => {
+    mockedUseAuth.mockReturnValue(createAuthContextValue({
+      isAuthenticated: false,
+      isLoading: true,
+      isHydrating: true,
+      authStatus: 'hydrating',
+      isSystemOwner: false,
+    }));
+
+    renderWithRoutes();
+    expect(screen.queryByText("Login page")).not.toBeInTheDocument();
+    expect(screen.queryByText("Dashboard page")).not.toBeInTheDocument();
+  });
+
   it("allows system owner users", () => {
     mockedUseAuth.mockReturnValue(createAuthContextValue({
       isAuthenticated: true,

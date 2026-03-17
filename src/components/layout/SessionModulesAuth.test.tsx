@@ -110,6 +110,20 @@ describe('Session and module route coverage', () => {
     expect(screen.getByText('Login page')).toBeInTheDocument();
   });
 
+  it('does not redirect to login while auth is hydrating', () => {
+    mockedUseAuth.mockReturnValue(
+      createAuthContextValue({
+        isAuthenticated: false,
+        isLoading: true,
+        isHydrating: true,
+        authStatus: 'hydrating',
+      })
+    );
+
+    renderProtectedRoute('/dashboard');
+    expect(screen.queryByText('Login page')).not.toBeInTheDocument();
+  });
+
   it('executes logout action from sidebar', () => {
     const logoutSpy = vi.fn().mockResolvedValue(undefined);
 

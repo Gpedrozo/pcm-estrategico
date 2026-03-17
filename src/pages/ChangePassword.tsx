@@ -9,18 +9,31 @@ import { Label } from '@/components/ui/label';
 
 export default function ChangePassword() {
   const navigate = useNavigate();
-  const { isLoading, isAuthenticated, forcePasswordChange, effectiveRole, changePassword } = useAuth();
+  const { isLoading, isHydrating, authStatus, isAuthenticated, forcePasswordChange, effectiveRole, changePassword } = useAuth();
 
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  if (!isLoading && !isAuthenticated) {
+  if (
+    !isLoading
+    && !isHydrating
+    && authStatus !== 'idle'
+    && authStatus !== 'loading'
+    && authStatus !== 'hydrating'
+    && (authStatus !== 'authenticated' || !isAuthenticated)
+  ) {
     return <Navigate to="/login" replace />;
   }
 
-  if (!isLoading && isAuthenticated && !forcePasswordChange) {
+  if (
+    !isLoading
+    && !isHydrating
+    && authStatus === 'authenticated'
+    && isAuthenticated
+    && !forcePasswordChange
+  ) {
     return <Navigate to="/dashboard" replace />;
   }
 

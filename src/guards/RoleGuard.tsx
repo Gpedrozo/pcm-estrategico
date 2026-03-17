@@ -12,9 +12,15 @@ export function RoleGuard({
   children: React.ReactNode;
   redirectTo?: string;
 }) {
-  const { isLoading, effectiveRole } = useAuth();
+  const { isLoading, isHydrating, authStatus, effectiveRole } = useAuth();
 
-  if (isLoading) return null;
+  if (isLoading || isHydrating || authStatus === 'idle' || authStatus === 'loading' || authStatus === 'hydrating') {
+    return null;
+  }
+
+  if (authStatus !== 'authenticated') {
+    return <Navigate to={redirectTo} replace />;
+  }
 
   if (!allow.includes(effectiveRole)) {
     return <Navigate to={redirectTo} replace />;

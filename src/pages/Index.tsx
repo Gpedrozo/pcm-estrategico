@@ -5,11 +5,11 @@ import { useEffect, useState } from 'react';
 import logo from '@/assets/gppis-logo.png';
 
 const Index = () => {
-  const { isAuthenticated, isLoading, effectiveRole, forcePasswordChange } = useAuth();
+  const { isAuthenticated, isLoading, isHydrating, authStatus, effectiveRole, forcePasswordChange } = useAuth();
   const [showSplash, setShowSplash] = useState(true);
 
   useEffect(() => {
-    if (isAuthenticated || isLoading) {
+    if (isAuthenticated || isLoading || isHydrating || authStatus === 'idle' || authStatus === 'loading' || authStatus === 'hydrating') {
       setShowSplash(false);
       return;
     }
@@ -19,9 +19,9 @@ const Index = () => {
     }, 600);
 
     return () => clearTimeout(timer);
-  }, [isAuthenticated, isLoading]);
+  }, [authStatus, isAuthenticated, isHydrating, isLoading]);
 
-  if (showSplash || isLoading) {
+  if (showSplash || isLoading || isHydrating || authStatus === 'idle' || authStatus === 'loading' || authStatus === 'hydrating') {
     return (
       <div
         className="
@@ -70,11 +70,11 @@ const Index = () => {
     );
   }
 
-  if (isAuthenticated && forcePasswordChange) {
+  if (authStatus === 'authenticated' && isAuthenticated && forcePasswordChange) {
     return <Navigate to="/change-password" replace />;
   }
 
-  return <Navigate to={isAuthenticated ? getPostLoginPath(effectiveRole) : '/login'} replace />;
+  return <Navigate to={authStatus === 'authenticated' && isAuthenticated ? getPostLoginPath(effectiveRole) : '/login'} replace />;
 };
 
 export default Index;

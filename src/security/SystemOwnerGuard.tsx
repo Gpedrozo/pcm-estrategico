@@ -9,7 +9,7 @@ interface SystemOwnerGuardProps {
 }
 
 export function SystemOwnerGuard({ children }: SystemOwnerGuardProps) {
-  const { user, session, isAuthenticated, isLoading, isSystemOwner, logout } = useAuth();
+  const { user, session, isAuthenticated, isLoading, isHydrating, authStatus, isSystemOwner, logout } = useAuth();
   const navigate = useNavigate();
   const [isAuthorized, setIsAuthorized] = useState(false);
   const [isChecking, setIsChecking] = useState(true);
@@ -18,9 +18,9 @@ export function SystemOwnerGuard({ children }: SystemOwnerGuardProps) {
     let cancelled = false;
 
     const validateAccess = async () => {
-      if (isLoading) return;
+      if (isLoading || isHydrating || authStatus === 'idle' || authStatus === 'loading' || authStatus === 'hydrating') return;
 
-      if (!isAuthenticated || !session?.user || !user?.id || !isSystemOwner) {
+      if (authStatus !== 'authenticated' || !isAuthenticated || !session?.user || !user?.id || !isSystemOwner) {
         if (isAuthenticated && session?.user && user?.id && !isSystemOwner) {
           await logout();
           navigate("/login", { replace: true });
@@ -68,9 +68,9 @@ export function SystemOwnerGuard({ children }: SystemOwnerGuardProps) {
     return () => {
       cancelled = true;
     };
-  }, [isAuthenticated, isLoading, isSystemOwner, logout, navigate, session, user?.id]);
+  }, [authStatus, isAuthenticated, isHydrating, isLoading, isSystemOwner, logout, navigate, session, user?.id]);
 
-  if (isLoading || isChecking) {
+  if (isLoading || isHydrating || authStatus === 'idle' || authStatus === 'loading' || authStatus === 'hydrating' || isChecking) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -78,7 +78,7 @@ export function SystemOwnerGuard({ children }: SystemOwnerGuardProps) {
     );
   }
 
-  if (!isAuthenticated || !isAuthorized) {
+  if (authStatus !== 'authenticated' || !isAuthenticated || !isAuthorized) {
     return <Navigate to="/login" replace />;
   }
 

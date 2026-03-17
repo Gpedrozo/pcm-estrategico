@@ -25,6 +25,19 @@ function renderRoutes() {
 }
 
 describe('ChangePassword', () => {
+  it('does not redirect while auth is hydrating', () => {
+    mockedUseAuth.mockReturnValue(createAuthContextValue({
+      isAuthenticated: false,
+      isLoading: true,
+      isHydrating: true,
+      authStatus: 'hydrating',
+    }));
+
+    renderRoutes();
+    expect(screen.queryByText('Login page')).not.toBeInTheDocument();
+    expect(screen.getByText('Troca obrigatória de senha')).toBeInTheDocument();
+  });
+
   it('redirects unauthenticated users to login', () => {
     mockedUseAuth.mockReturnValue(createAuthContextValue({
       isAuthenticated: false,
