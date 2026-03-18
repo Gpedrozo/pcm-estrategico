@@ -5,6 +5,7 @@ import { useTenant } from '@/contexts/TenantContext'
 import { useAuth } from '@/contexts/AuthContext'
 import { isOwnerDomain } from '@/lib/security'
 import { getSessionTransferFromUrl } from '@/lib/sessionTransfer'
+import { supabase } from '@/integrations/supabase/client'
 
 const TENANT_BASE_DOMAIN = (import.meta.env.VITE_TENANT_BASE_DOMAIN || 'gppis.com.br').toLowerCase()
 
@@ -26,7 +27,7 @@ function hasSessionTransferHash() {
 
 export function TenantDomainMiddleware({ children }: { children: React.ReactNode }) {
   const { tenant, isLoading, error } = useTenant()
-  const { isAuthenticated, authStatus, isHydrating, tenantId, logout, isLoading: isAuthLoading } = useAuth()
+  const { isAuthenticated, authStatus, isHydrating, tenantId, isLoading: isAuthLoading } = useAuth()
   const location = useLocation()
 
   const hostname = window.location.hostname.toLowerCase()
@@ -34,13 +35,27 @@ export function TenantDomainMiddleware({ children }: { children: React.ReactNode
   const hostContext = resolveHostContext(hostname)
   const isLoginRoute = location.pathname === '/login'
 
+  const forceTenantLocalReauth = async (reason: string) => {
+    try {
+      await supabase.auth.signOut({ scope: 'local' })
+      await supabase.auth.signOut().catch(() => null)
+    } catch {
+      // noop
+    }
+
+    if (window.location.pathname !== '/login') {
+      const next = encodeURIComponent(`${location.pathname}${location.search}` || '/dashboard')
+      window.location.assign(`/login?reason=${encodeURIComponent(reason)}&next=${next}`)
+    }
+  }
+
   useEffect(() => {
     if (!hostContext.isTenantSubdomain || isLoading || isAuthLoading || isHydrating) return
     if (authStatus === 'loading' || authStatus === 'hydrating') return
     if (!error || !isAuthenticated) return
     if (isLoginRoute || hasSessionTransferHash()) return
-    void logout()
-  }, [authStatus, error, hostContext.isTenantSubdomain, isAuthenticated, isHydrating, isLoading, isAuthLoading, isLoginRoute, logout])
+    void forceTenantLocalReauth('tenant_error')
+  }, [authStatus, error, hostContext.isTenantSubdomain, isAuthenticated, isHydrating, isLoading, isAuthLoading, isLoginRoute, location.pathname, location.search])
 
   useEffect(() => {
     if (!hostContext.isTenantSubdomain || isLoading || isAuthLoading || isHydrating) return
@@ -49,9 +64,9 @@ export function TenantDomainMiddleware({ children }: { children: React.ReactNode
     if (isLoginRoute || hasSessionTransferHash()) return
     if (!tenant?.id || !tenantId) return
     if (tenant.id !== tenantId) {
-      void logout()
+      void forceTenantLocalReauth('tenant_mismatch')
     }
-  }, [authStatus, hostContext.isTenantSubdomain, isAuthenticated, isHydrating, isLoading, isAuthLoading, isLoginRoute, logout, tenant?.id, tenantId])
+  }, [authStatus, hostContext.isTenantSubdomain, isAuthenticated, isHydrating, isLoading, isAuthLoading, isLoginRoute, tenant?.id, tenantId, location.pathname, location.search])
 
   if (isOwnerHost) return <>{children}</>
 
