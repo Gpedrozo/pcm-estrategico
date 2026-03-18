@@ -138,36 +138,19 @@ export default function Login() {
   }, [loginEmail]);
 
   useEffect(() => {
+    // Tenant login must be allowed directly on subdomains to avoid base-domain bounce loops.
     if (isLoading || isHydrating || authStatus === 'loading' || authStatus === 'hydrating') return;
     if (isAuthenticated || authStatus !== 'unauthenticated') return;
 
     const isBaseHost = currentHost === tenantBaseDomain || currentHost === `www.${tenantBaseDomain}`;
     const isTenantSubdomain = !isBaseHost && currentHost.endsWith(`.${tenantBaseDomain}`);
-    const handoffFailed = new URLSearchParams(window.location.search).get(HANDOFF_FAILED_PARAM) === '1';
-
     if (!isTenantSubdomain) return;
-    if (handoffFailed) return;
-    if (hasSessionTransferHash()) return;
-    if (wasSessionTransferRecentlyConsumed()) return;
 
-    const retryCount = getRetryCountFromUrl();
-    if (retryCount >= AUTH_RETRY_COUNT_MAX) {
-      setLoginError('Nao foi possivel concluir o redirecionamento entre dominios. Limite de tentativas atingido.');
-      logger.warn('tenant_subdomain_redirect_blocked_retry_limit', {
-        host: currentHost,
-        retryCount,
-      });
-      return;
-    }
-
-    const currentPath = `${window.location.pathname}${window.location.search}`;
-    const nextRetry = retryCount + 1;
-    const baseLoginUrl = `https://${tenantBaseDomain}/login?next=${encodeURIComponent(currentPath || '/dashboard')}&${AUTH_RETRY_COUNT_PARAM}=${nextRetry}`;
-    logger.info('tenant_subdomain_redirect_to_base_login', {
-      currentHost,
-      nextRetry,
+    logger.info('tenant_subdomain_direct_login_enabled', {
+      host: currentHost,
+      has_transfer: hasSessionTransferHash(),
+      consumed_recently: wasSessionTransferRecentlyConsumed(),
     });
-    window.location.assign(baseLoginUrl);
   }, [authStatus, currentHost, isAuthenticated, isHydrating, isLoading, tenantBaseDomain]);
 
   useEffect(() => {
