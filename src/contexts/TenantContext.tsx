@@ -5,6 +5,8 @@ import { resolveEmpresaSlug } from '@/lib/security';
 import { logger } from '@/lib/logger';
 
 const TENANT_SLUG_REGEX = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+const TENANT_RESOLVE_MAX_RETRIES = 3;
+const TENANT_RESOLVE_RETRY_DELAY_MS = 600;
 
 export interface Tenant {
   id: string;
@@ -40,9 +42,20 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
   const [tenant, setTenant] = useState<Tenant | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [reloadKey, setReloadKey] = useState(0);
   const previousTenantRef = useRef<string | null>(null);
 
   const tenantSlug = useMemo(() => resolveEmpresaSlug(window.location.hostname), []);
+
+  useEffect(() => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(() => {
+      setReloadKey((current) => current + 1);
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, []);
 
   useEffect(() => {
     let isMounted = true;
@@ -78,6 +91,48 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
       if (!isMounted) return;
 
       let empresaId = domainConfig?.empresa_id ?? null;
+
+      for (let attempt = 0; !empresaId && attempt < TENANT_RESOLVE_MAX_RETRIES; attempt += 1) {
+        if (attempt > 0) {
+          await new Promise((resolve) => window.setTimeout(resolve, TENANT_RESOLVE_RETRY_DELAY_MS));
+        }
+
+        if (!empresaId && tenantSlug !== 'default') {
+          empresaId = await resolveEmpresaIdBySlug(tenantSlug);
+        }
+
+        if (!empresaId && hostname.endsWith(`.${baseDomain}`)) {
+          const slug = hostSlug;
+          if (slug && slug !== 'www' && TENANT_SLUG_REGEX.test(slug)) {
+            empresaId = await resolveEmpresaIdBySlug(slug);
+          }
+        }
+
+        if (!empresaId) {
+          const { data: authUserResult } = await supabase.auth.getUser();
+          const authUser = authUserResult?.user;
+          const metadataEmpresaId = typeof authUser?.app_metadata?.empresa_id === 'string'
+            ? authUser.app_metadata.empresa_id
+            : typeof authUser?.user_metadata?.empresa_id === 'string'
+              ? authUser.user_metadata.empresa_id
+              : null;
+
+          const metadataEmpresaSlug = String(
+            authUser?.app_metadata?.empresa_slug
+            ?? authUser?.user_metadata?.empresa_slug
+            ?? '',
+          ).trim().toLowerCase();
+
+          if (metadataEmpresaId && metadataEmpresaSlug) {
+            if (metadataEmpresaSlug === tenantSlug || metadataEmpresaSlug === hostSlug) {
+              empresaId = metadataEmpresaId;
+            }
+          }
+        }
+
+        if (empresaId) break;
+      }
+
       if (!empresaId && tenantSlug !== 'default') {
         const empresaIdBySlug = await resolveEmpresaIdBySlug(tenantSlug);
         const slugCompany = empresaIdBySlug ? { id: empresaIdBySlug } : null;
@@ -190,7 +245,7 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
     return () => {
       isMounted = false;
     };
-  }, [tenantSlug]);
+  }, [reloadKey, tenantSlug]);
 
   useEffect(() => {
     const previousTenantId = previousTenantRef.current;

@@ -421,9 +421,16 @@ function buildManagedTenantDomain(slug: string) {
 
 const CF_PAGES_AUTO_DOMAIN_ENABLED = (Deno.env.get("CF_PAGES_AUTO_DOMAIN_ENABLED") ?? "true").toLowerCase() !== "false";
 const CF_PAGES_PROVISION_REQUIRED = (Deno.env.get("CF_PAGES_PROVISION_REQUIRED") ?? "true").toLowerCase() !== "false";
+const CF_DNS_AUTO_RECORD_ENABLED = (Deno.env.get("CF_DNS_AUTO_RECORD_ENABLED") ?? "true").toLowerCase() !== "false";
+const CF_DNS_PROVISION_REQUIRED = (Deno.env.get("CF_DNS_PROVISION_REQUIRED") ?? "true").toLowerCase() !== "false";
 const CF_API_TOKEN = (Deno.env.get("CF_API_TOKEN") ?? "").trim();
 const CF_ACCOUNT_ID = (Deno.env.get("CF_ACCOUNT_ID") ?? "").trim();
 const CF_PAGES_PROJECT_NAME = (Deno.env.get("CF_PAGES_PROJECT_NAME") ?? "").trim();
+const CF_ZONE_ID = (Deno.env.get("CF_ZONE_ID") ?? "").trim();
+const CF_DNS_RECORD_TYPE = (Deno.env.get("CF_DNS_RECORD_TYPE") ?? "CNAME").trim().toUpperCase();
+const CF_DNS_RECORD_TARGET = (Deno.env.get("CF_DNS_RECORD_TARGET") ?? "").trim().toLowerCase();
+const CF_DNS_RECORD_PROXIED = (Deno.env.get("CF_DNS_RECORD_PROXIED") ?? "true").toLowerCase() !== "false";
+const CF_DNS_RECORD_TTL = Number(Deno.env.get("CF_DNS_RECORD_TTL") ?? "1");
 const CF_API_BASE_URL = "https://api.cloudflare.com/client/v4";
 
 function mergeWarnings(base: string | null, next: string | null) {
@@ -501,6 +508,121 @@ async function ensureCloudflarePagesCustomDomain(domain: string): Promise<{ stat
       message: error?.message ?? "Falha desconhecida ao provisionar dominio no Cloudflare Pages.",
     };
   }
+}
+
+async function ensureCloudflareDnsRecord(domain: string): Promise<{ status: "ok" | "skipped" | "error"; message: string }> {
+  if (!CF_DNS_AUTO_RECORD_ENABLED) {
+    return {
+      status: "skipped",
+      message: "Provisionamento automatico DNS no Cloudflare desativado (CF_DNS_AUTO_RECORD_ENABLED=false).",
+    };
+  }
+
+  if (!CF_API_TOKEN || !CF_ZONE_ID || !CF_DNS_RECORD_TARGET) {
+    return {
+      status: "skipped",
+      message: "Variaveis CF_API_TOKEN, CF_ZONE_ID e CF_DNS_RECORD_TARGET nao configuradas.",
+    };
+  }
+
+  const zoneId = encodeURIComponent(CF_ZONE_ID);
+  const normalizedDomain = domain.trim().toLowerCase();
+  const recordType = ["A", "AAAA", "CNAME"].includes(CF_DNS_RECORD_TYPE) ? CF_DNS_RECORD_TYPE : "CNAME";
+  const ttl = Number.isFinite(CF_DNS_RECORD_TTL) && CF_DNS_RECORD_TTL >= 1 ? Math.trunc(CF_DNS_RECORD_TTL) : 1;
+
+  try {
+    const listPayload = await cloudflareApiRequest(
+      `/zones/${zoneId}/dns_records?type=${encodeURIComponent(recordType)}&name=${encodeURIComponent(normalizedDomain)}`,
+      { method: "GET" },
+    );
+
+    const records = Array.isArray(listPayload?.result) ? listPayload.result : [];
+    const existing = records.find((item: any) => String(item?.name ?? "").toLowerCase() === normalizedDomain);
+
+    const desiredPayload = {
+      type: recordType,
+      name: normalizedDomain,
+      content: CF_DNS_RECORD_TARGET,
+      ttl,
+      proxied: CF_DNS_RECORD_PROXIED,
+    };
+
+    if (!existing?.id) {
+      await cloudflareApiRequest(
+        `/zones/${zoneId}/dns_records`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(desiredPayload),
+        },
+      );
+
+      return {
+        status: "ok",
+        message: `DNS ${recordType} criado para ${normalizedDomain} -> ${CF_DNS_RECORD_TARGET}.`,
+      };
+    }
+
+    const currentContent = String(existing.content ?? "").trim().toLowerCase();
+    const currentProxied = Boolean(existing.proxied);
+    const needsUpdate = currentContent !== CF_DNS_RECORD_TARGET || currentProxied !== CF_DNS_RECORD_PROXIED;
+
+    if (needsUpdate) {
+      await cloudflareApiRequest(
+        `/zones/${zoneId}/dns_records/${encodeURIComponent(String(existing.id))}`,
+        {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(desiredPayload),
+        },
+      );
+
+      return {
+        status: "ok",
+        message: `DNS ${recordType} atualizado para ${normalizedDomain} -> ${CF_DNS_RECORD_TARGET}.`,
+      };
+    }
+
+    return {
+      status: "ok",
+      message: `DNS ${recordType} ja provisionado para ${normalizedDomain}.`,
+    };
+  } catch (error: any) {
+    return {
+      status: "error",
+      message: error?.message ?? "Falha desconhecida ao provisionar DNS no Cloudflare.",
+    };
+  }
+}
+
+async function ensureCloudflareTenantDomain(domain: string): Promise<{
+  status: "ok" | "skipped" | "error";
+  message: string;
+  dns: { status: "ok" | "skipped" | "error"; message: string };
+  pages: { status: "ok" | "skipped" | "error"; message: string };
+}> {
+  const dns = await ensureCloudflareDnsRecord(domain);
+  const pages = await ensureCloudflarePagesCustomDomain(domain);
+
+  const hasDnsFailure = dns.status === "error" || (dns.status === "skipped" && CF_DNS_PROVISION_REQUIRED);
+  const hasPagesFailure = pages.status === "error" || (pages.status === "skipped" && CF_PAGES_PROVISION_REQUIRED);
+
+  if (hasDnsFailure || hasPagesFailure) {
+    return {
+      status: "error",
+      message: `DNS: ${dns.message} Pages: ${pages.message}`,
+      dns,
+      pages,
+    };
+  }
+
+  const status = dns.status === "ok" || pages.status === "ok" ? "ok" : "skipped";
+  return {
+    status,
+    message: `DNS: ${dns.message} Pages: ${pages.message}`,
+    dns,
+    pages,
+  };
 }
 
 function isDuplicateKeyError(message?: string | null) {
@@ -1080,6 +1202,15 @@ Deno.serve(async (req) => {
       service: "owner-portal-admin",
       status: "ok",
       version: "2026-03-11-owner-health-v1",
+      cloudflare_provisioning: {
+        pages_auto_domain_enabled: CF_PAGES_AUTO_DOMAIN_ENABLED,
+        pages_provision_required: CF_PAGES_PROVISION_REQUIRED,
+        pages_credentials_configured: Boolean(CF_API_TOKEN && CF_ACCOUNT_ID && CF_PAGES_PROJECT_NAME),
+        dns_auto_record_enabled: CF_DNS_AUTO_RECORD_ENABLED,
+        dns_provision_required: CF_DNS_PROVISION_REQUIRED,
+        dns_credentials_configured: Boolean(CF_API_TOKEN && CF_ZONE_ID && CF_DNS_RECORD_TARGET),
+        dns_record_type: CF_DNS_RECORD_TYPE,
+      },
       supported_actions: SUPPORTED_OWNER_ACTIONS,
       timestamp: new Date().toISOString(),
     }, 200, req);
@@ -1429,6 +1560,8 @@ Deno.serve(async (req) => {
       );
     }
 
+    let onboardingWarning: string | null = null;
+
     const managedDomain = buildManagedTenantDomain(slug);
     if (managedDomain) {
       const { error: domainError } = await admin.from("empresa_config").upsert({
@@ -1442,16 +1575,16 @@ Deno.serve(async (req) => {
         return fail("Falha ao configurar domínio automático da empresa.", 400, { reason }, req);
       }
 
-      const cloudflareProvision = await ensureCloudflarePagesCustomDomain(managedDomain);
+      const cloudflareProvision = await ensureCloudflareTenantDomain(managedDomain);
       if (cloudflareProvision.status !== "ok") {
-        if (CF_PAGES_PROVISION_REQUIRED) {
+        if (CF_PAGES_PROVISION_REQUIRED || CF_DNS_PROVISION_REQUIRED) {
           const reason = await rollbackCreateCompany(cloudflareProvision.message);
-          return fail("Falha ao provisionar dominio no Cloudflare Pages para o tenant.", 400, { reason }, req);
+          return fail("Falha ao provisionar DNS/dominio no Cloudflare para o tenant.", 400, { reason }, req);
         }
 
         onboardingWarning = mergeWarnings(
           onboardingWarning,
-          `Dominio da empresa criado no banco, mas com aviso no Cloudflare: ${cloudflareProvision.message}`,
+          `Dominio da empresa criado no banco, mas com aviso no Cloudflare (DNS/Pages): ${cloudflareProvision.message}`,
         );
       }
     }
@@ -1516,7 +1649,6 @@ Deno.serve(async (req) => {
       return fail("Falha ao vincular papel do usuário master na empresa (user_roles).", 400, { reason }, req);
     }
 
-    let onboardingWarning: string | null = null;
     let selectedPlanId = body.subscription?.plan_id ?? null;
 
     if (!selectedPlanId) {
@@ -1749,15 +1881,15 @@ Deno.serve(async (req) => {
             return fail("Falha ao atualizar domínio automático da empresa.", 400, { reason: domainUpdateError.message }, req);
           }
 
-          const cloudflareProvision = await ensureCloudflarePagesCustomDomain(nextManagedDomain);
+          const cloudflareProvision = await ensureCloudflareTenantDomain(nextManagedDomain);
           if (cloudflareProvision.status !== "ok") {
-            if (CF_PAGES_PROVISION_REQUIRED) {
-              return fail("Falha ao provisionar dominio no Cloudflare Pages para o tenant.", 400, {
+            if (CF_PAGES_PROVISION_REQUIRED || CF_DNS_PROVISION_REQUIRED) {
+              return fail("Falha ao provisionar DNS/dominio no Cloudflare para o tenant.", 400, {
                 reason: cloudflareProvision.message,
               }, req);
             }
 
-            updateWarning = `Dominio atualizado no banco, mas com aviso no Cloudflare: ${cloudflareProvision.message}`;
+            updateWarning = `Dominio atualizado no banco, mas com aviso no Cloudflare (DNS/Pages): ${cloudflareProvision.message}`;
           }
         }
       }

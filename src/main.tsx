@@ -11,6 +11,7 @@ const OWNER_DOMAIN_ALIASES = new Set([
 ]);
 const LEGACY_OWNER_PROJECT_REF = "cplowhoklcegnjvwmrsk";
 const OWNER_HARD_RESET_MARKER = "owner-runtime-hard-reset-v1";
+const GLOBAL_RUNTIME_CACHE_RESET_MARKER = "global-runtime-cache-reset-v1";
 const CHUNK_RELOAD_MARKER = "pcm-chunk-reload-at-v1";
 const CHUNK_RELOAD_COOLDOWN_MS = 30_000;
 let isCriticalReportInFlight = false;
@@ -243,7 +244,52 @@ async function hardenOwnerRuntime() {
 	}
 }
 
-void hardenOwnerRuntime().finally(() => {
+async function hardenGlobalRuntimeCache() {
+	if (typeof window === "undefined") return;
+
+	try {
+		if (window.sessionStorage.getItem(GLOBAL_RUNTIME_CACHE_RESET_MARKER) === "1") {
+			return;
+		}
+	} catch {
+		// noop
+	}
+
+	try {
+		if ("serviceWorker" in navigator) {
+			const registrations = await navigator.serviceWorker.getRegistrations();
+			await Promise.all(registrations.map((registration) => registration.unregister()));
+		}
+	} catch {
+		// noop
+	}
+
+	try {
+		if ("caches" in window) {
+			const cacheKeys = await caches.keys();
+			await Promise.all(
+				cacheKeys
+					.filter((cacheName) =>
+						cacheName.includes("workbox") ||
+						cacheName.includes("vite-pwa") ||
+						cacheName.includes("supabase-cache"),
+					)
+					.map((cacheName) => caches.delete(cacheName)),
+			);
+		}
+	} catch {
+		// noop
+	}
+
+	try {
+		window.sessionStorage.setItem(GLOBAL_RUNTIME_CACHE_RESET_MARKER, "1");
+	} catch {
+		// noop
+	}
+}
+
+void hardenGlobalRuntimeCache().catch(() => null).finally(() => {
+	void hardenOwnerRuntime().finally(() => {
 	try {
 		createRoot(document.getElementById("root")!).render(<App />);
 	} catch (error) {
@@ -259,4 +305,5 @@ void hardenOwnerRuntime().finally(() => {
 
 		renderBootstrapFatalFallback(error);
 	}
+	});
 });
