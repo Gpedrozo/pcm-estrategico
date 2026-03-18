@@ -12,6 +12,75 @@ type State = {
   message: string;
 };
 
+const BOUNDARY_CHUNK_RELOAD_MARKER = 'pcm.boundary.chunk_reload.at.v1';
+const BOUNDARY_CHUNK_RELOAD_COOLDOWN_MS = 30_000;
+
+function isDynamicChunkLoadError(raw: unknown) {
+  const message = String((raw as { message?: string })?.message ?? raw ?? '').toLowerCase();
+
+  return (
+    message.includes('failed to fetch dynamically imported module')
+    || message.includes('importing a module script failed')
+    || message.includes('loading chunk')
+    || message.includes('chunkloaderror')
+  );
+}
+
+function hasRecentBoundaryChunkReload() {
+  try {
+    const raw = window.sessionStorage.getItem(BOUNDARY_CHUNK_RELOAD_MARKER);
+    const timestamp = Number(raw ?? 0);
+    return Number.isFinite(timestamp) && timestamp > 0 && (Date.now() - timestamp) <= BOUNDARY_CHUNK_RELOAD_COOLDOWN_MS;
+  } catch {
+    return false;
+  }
+}
+
+async function clearCachesForChunkRecovery() {
+  try {
+    if ('serviceWorker' in navigator) {
+      const registrations = await navigator.serviceWorker.getRegistrations();
+      await Promise.all(registrations.map((registration) => registration.unregister()));
+    }
+  } catch {
+    // noop
+  }
+
+  try {
+    if ('caches' in window) {
+      const cacheKeys = await caches.keys();
+      await Promise.all(
+        cacheKeys
+          .filter((cacheName) =>
+            cacheName.includes('workbox')
+            || cacheName.includes('vite-pwa')
+            || cacheName.includes('supabase-cache'))
+          .map((cacheName) => caches.delete(cacheName)),
+      );
+    }
+  } catch {
+    // noop
+  }
+}
+
+function recoverFromBoundaryChunkError(error: unknown) {
+  if (!isDynamicChunkLoadError(error)) return false;
+  if (hasRecentBoundaryChunkReload()) return false;
+
+  try {
+    const now = Date.now();
+    window.sessionStorage.setItem(BOUNDARY_CHUNK_RELOAD_MARKER, String(now));
+    void clearCachesForChunkRecovery().finally(() => {
+      const targetUrl = new URL(window.location.href);
+      targetUrl.searchParams.set('chunk_reload', String(now));
+      window.location.replace(targetUrl.toString());
+    });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 export class AppErrorBoundary extends React.Component<Props, State> {
   state: State = {
     hasError: false,
@@ -26,6 +95,10 @@ export class AppErrorBoundary extends React.Component<Props, State> {
   }
 
   componentDidCatch(error: unknown, errorInfo: React.ErrorInfo) {
+    if (recoverFromBoundaryChunkError(error)) {
+      return;
+    }
+
     const details = {
       message: String((error as { message?: string })?.message ?? error ?? 'unknown_error'),
       stack: (error as { stack?: string })?.stack ?? null,
