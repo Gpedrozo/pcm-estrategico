@@ -8,6 +8,32 @@ const defaultAllowedOrigins = [
   "https://owner.gppis.com.br",
 ];
 
+const TENANT_BASE_DOMAIN = (Deno.env.get("TENANT_BASE_DOMAIN")
+  ?? Deno.env.get("VITE_TENANT_BASE_DOMAIN")
+  ?? "gppis.com.br")
+  .trim()
+  .toLowerCase()
+  .replace(/^https?:\/\//, "")
+  .replace(/\/.*$/, "");
+
+function isTenantDomainOrigin(origin: string) {
+  if (!origin || !TENANT_BASE_DOMAIN) return false;
+
+  try {
+    const parsed = new URL(origin);
+    const hostname = parsed.hostname.toLowerCase();
+    const protocol = parsed.protocol.toLowerCase();
+
+    if (protocol !== "https:" && protocol !== "http:") {
+      return false;
+    }
+
+    return hostname === TENANT_BASE_DOMAIN || hostname.endsWith(`.${TENANT_BASE_DOMAIN}`);
+  } catch {
+    return false;
+  }
+}
+
 function allowedOrigins() {
   const configured = (Deno.env.get("CORS_ALLOWED_ORIGINS") ?? "")
     .split(",")
@@ -19,7 +45,7 @@ function allowedOrigins() {
 
 export function isAllowedOrigin(origin: string | null) {
   if (!origin) return true;
-  return allowedOrigins().includes(origin);
+  return allowedOrigins().includes(origin) || isTenantDomainOrigin(origin);
 }
 
 export function resolveCorsHeaders(
