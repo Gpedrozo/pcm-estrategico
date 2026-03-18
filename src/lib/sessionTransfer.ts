@@ -3,36 +3,90 @@ import { supabase } from '@/integrations/supabase/client';
 import { logger } from '@/lib/logger';
 
 const SESSION_TRANSFER_PARAM = 'session_transfer';
+const SESSION_LOOKUP_RETRIES = 5;
+const SESSION_LOOKUP_DELAY_MS = 220;
+const SESSION_TRANSFER_CREATE_RETRIES = 3;
+
+function sleep(ms: number) {
+  return new Promise((resolve) => window.setTimeout(resolve, ms));
+}
+
+async function resolveActiveSession(initialSession: Session | null): Promise<Session | null> {
+  let current = initialSession;
+
+  if (current?.access_token && current?.refresh_token) {
+    return current;
+  }
+
+  for (let attempt = 0; attempt < SESSION_LOOKUP_RETRIES; attempt += 1) {
+    if (attempt > 0) {
+      await sleep(SESSION_LOOKUP_DELAY_MS);
+    }
+
+    const { data } = await supabase.auth.getSession();
+    const candidate = data?.session ?? null;
+    if (candidate?.access_token && candidate?.refresh_token) {
+      return candidate;
+    }
+  }
+
+  return null;
+}
 
 export async function createSessionTransferCode(sessionData: Session | null, targetHost: string): Promise<string | null> {
-  if (!sessionData?.access_token || !sessionData?.refresh_token) return null;
+  const normalizedTargetHost = String(targetHost || '').trim().toLowerCase();
+  let activeSession = await resolveActiveSession(sessionData);
 
-  const { data, error } = await supabase.functions.invoke('session-transfer', {
-    headers: {
-      Authorization: `Bearer ${sessionData.access_token}`,
-      'x-allow-password-change': '1',
-    },
-    body: {
-      action: 'create',
-      access_token: sessionData.access_token,
-      refresh_token: sessionData.refresh_token,
-      target_host: String(targetHost || '').trim().toLowerCase(),
-      ttl_seconds: 45,
-    },
-  });
-
-  if (error) {
-    logger.warn('session_transfer_create_failed', { error: error.message });
+  if (!activeSession?.access_token || !activeSession?.refresh_token) {
+    logger.warn('session_transfer_create_missing_active_session', {
+      targetHost: normalizedTargetHost,
+    });
     return null;
   }
 
-  const code = String((data as { code?: string } | null)?.code ?? '').trim();
-  if (code) {
-    logger.info('session_transfer_create_success', {
-      targetHost: String(targetHost || '').trim().toLowerCase(),
+  for (let attempt = 1; attempt <= SESSION_TRANSFER_CREATE_RETRIES; attempt += 1) {
+    const { data, error } = await supabase.functions.invoke('session-transfer', {
+      headers: {
+        Authorization: `Bearer ${activeSession.access_token}`,
+        'x-allow-password-change': '1',
+      },
+      body: {
+        action: 'create',
+        access_token: activeSession.access_token,
+        refresh_token: activeSession.refresh_token,
+        target_host: normalizedTargetHost,
+        ttl_seconds: 45,
+      },
     });
+
+    if (!error) {
+      const code = String((data as { code?: string } | null)?.code ?? '').trim();
+      if (code) {
+        logger.info('session_transfer_create_success', {
+          targetHost: normalizedTargetHost,
+          attempt,
+        });
+        return code;
+      }
+    }
+
+    logger.warn('session_transfer_create_failed', {
+      targetHost: normalizedTargetHost,
+      attempt,
+      error: error?.message ?? 'empty code',
+    });
+
+    if (attempt < SESSION_TRANSFER_CREATE_RETRIES) {
+      const { data: refreshed } = await supabase.auth.refreshSession();
+      const refreshedSession = refreshed?.session ?? null;
+      if (refreshedSession?.access_token && refreshedSession?.refresh_token) {
+        activeSession = refreshedSession;
+      }
+      await sleep(150 * attempt);
+    }
   }
-  return code || null;
+
+  return null;
 }
 
 export async function createSessionTransferHash(sessionData: Session | null, targetHost: string): Promise<string | null> {
