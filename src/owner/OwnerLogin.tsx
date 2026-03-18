@@ -81,14 +81,14 @@ export default function OwnerLogin() {
   };
 
   useEffect(() => {
-    if (isLoading || isHydrating || authStatus === 'idle' || authStatus === 'loading' || authStatus === 'hydrating') return;
+    if (isLoading || isHydrating || authStatus === 'loading' || authStatus === 'hydrating') return;
     if (!isAuthenticated || authStatus !== 'authenticated') return;
     if (!forcePasswordChange) return;
     navigate('/change-password', { replace: true });
   }, [authStatus, forcePasswordChange, isAuthenticated, isHydrating, isLoading, navigate]);
 
   useEffect(() => {
-    if (isLoading || isHydrating || authStatus === 'idle' || authStatus === 'loading' || authStatus === 'hydrating') return;
+    if (isLoading || isHydrating || authStatus === 'loading' || authStatus === 'hydrating') return;
     if (!isAuthenticated || authStatus !== 'authenticated' || !isOwnerRole) return;
 
     setShowAccessChooser(true);
@@ -165,7 +165,7 @@ export default function OwnerLogin() {
         if (!transferHash) {
           throw new Error('Falha ao transferir sessão para o subdomínio. Faça login novamente.');
         }
-        const targetUrl = `${window.location.protocol}//${targetHost}/login${transferHash ? `#${transferHash}` : ''}`;
+        const targetUrl = `${window.location.protocol}//${targetHost}/login${transferHash ? `?${transferHash}` : ''}`;
         if (transferHash) {
           try {
             window.sessionStorage.setItem(
@@ -190,7 +190,7 @@ export default function OwnerLogin() {
 
   useEffect(() => {
     // Wait until auth context fully hydrates user/profile before enforcing owner-only logout.
-    if (isLoading || isHydrating || authStatus === 'idle' || authStatus === 'loading' || authStatus === 'hydrating') return;
+    if (isLoading || isHydrating || authStatus === 'loading' || authStatus === 'hydrating') return;
     if (!isAuthenticated || authStatus !== 'authenticated' || !session || !user) return;
     if (isOwnerRole) return;
 

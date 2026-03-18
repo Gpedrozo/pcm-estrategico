@@ -12,7 +12,7 @@ import {
 import { resolveOrRepairTenantHost } from '@/lib/tenantDomain';
 import { logger } from '@/lib/logger';
 import { writeAuditLog } from '@/lib/audit';
-import { consumeSessionTransferCode, createSessionTransferHash } from '@/lib/sessionTransfer';
+import { consumeSessionTransferCode, createSessionTransferHash, getSessionTransferFromUrl } from '@/lib/sessionTransfer';
 import { validateImpersonationSession } from '@/services/ownerPortal.service';
 
 export interface AuthUser {
@@ -35,7 +35,7 @@ export interface ImpersonationSession {
   expiresAt?: string | null;
 }
 
-export type AuthStatus = 'idle' | 'loading' | 'hydrating' | 'authenticated' | 'unauthenticated' | 'error';
+export type AuthStatus = 'loading' | 'hydrating' | 'authenticated' | 'unauthenticated' | 'error';
 
 export interface AuthContextType {
   user: AuthUser | null;
@@ -72,8 +72,10 @@ const SESSION_TRANSFER_MAX_AGE_MS = 2 * 60 * 1000;
 const SESSION_TRANSFER_REDIRECT_STORAGE_KEY = 'pcm.auth.session_transfer.redirect.v1';
 const SESSION_TRANSFER_REDIRECT_MAX_AGE_MS = 15_000;
 const SESSION_TRANSFER_CONSUMED_STORAGE_KEY = 'pcm.auth.session_transfer.consumed.v1';
+const SESSION_TRANSFER_PARAM = 'session_transfer';
 const LOGIN_PROFILE_TIMEOUT_MS = 12_000;
 const TENANT_HOST_RESOLVE_TIMEOUT_MS = 6_000;
+const HYDRATION_TIMEOUT_MS = 3_000;
 const LOGIN_RATE_LIMIT_STORAGE_KEY = 'pcm.auth.login.rate_limit.v1';
 const LOGIN_RATE_LIMIT_MAX_ATTEMPTS = 5;
 const LOGIN_RATE_LIMIT_WINDOW_MS = 5 * 60 * 1000;
@@ -194,6 +196,7 @@ function stripAuthHandoffFromUrl() {
   const queryParams = new URLSearchParams(window.location.search);
   queryParams.delete(LOGOUT_MARKER_PARAM);
   queryParams.delete(LOGOUT_REASON_PARAM);
+  queryParams.delete(SESSION_TRANSFER_PARAM);
 
   const hashParams = new URLSearchParams(window.location.hash.startsWith('#') ? window.location.hash.slice(1) : '');
   hashParams.delete('session_transfer');
@@ -215,13 +218,10 @@ function getNavigationType(): string | null {
 
 function shouldForceLogoutByClosedWindowMarker() {
   try {
-    const rawHash = window.location.hash.startsWith('#') ? window.location.hash.slice(1) : '';
-    if (rawHash) {
-      const hashParams = new URLSearchParams(rawHash);
-      if (hashParams.get('session_transfer')) {
-        window.localStorage.removeItem(TAB_CLOSE_MARKER_STORAGE_KEY);
-        return false;
-      }
+    const transfer = getSessionTransferFromUrl();
+    if (transfer.token) {
+      window.localStorage.removeItem(TAB_CLOSE_MARKER_STORAGE_KEY);
+      return false;
     }
 
     const navigationType = getNavigationType();
@@ -359,7 +359,7 @@ function getRetryCountFromCurrentUrl() {
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [session, setSession] = useState<Session | null>(null);
-  const [authStatus, setAuthStatus] = useState<AuthStatus>('idle');
+  const [authStatus, setAuthStatus] = useState<AuthStatus>('loading');
   const [impersonation, setImpersonation] = useState<ImpersonationSession | null>(null);
   const [inactivityTimeoutMs, setInactivityTimeoutMs] = useState<number | null>(null);
   const lastActivityAtRef = useRef<number>(Date.now());
@@ -381,7 +381,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const isHydrating = authStatus === 'hydrating';
-  const isLoading = authStatus === 'idle' || authStatus === 'loading' || authStatus === 'hydrating';
+  const isLoading = authStatus === 'loading' || authStatus === 'hydrating';
+
+  useEffect(() => {
+    if (authStatus !== 'hydrating') return;
+
+    const startedAt = performance.now();
+    const timer = window.setTimeout(() => {
+      transitionAuthStatus('error', 'hydrating_timeout_controlled', {
+        hydrationMs: Math.trunc(performance.now() - startedAt),
+      });
+      logger.warn('auth_hydrating_timeout_controlled', {
+        hydrationMs: Math.trunc(performance.now() - startedAt),
+      });
+    }, HYDRATION_TIMEOUT_MS);
+
+    return () => window.clearTimeout(timer);
+  }, [authStatus, transitionAuthStatus]);
 
   useEffect(() => {
     if (!shouldForceLogoutByClosedWindowMarker()) return;
@@ -414,8 +430,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       searchParams.has(LOGOUT_MARKER_PARAM)
       || searchParams.has(LOGOUT_REASON_PARAM);
 
-    const hashParams = new URLSearchParams(window.location.hash.startsWith('#') ? window.location.hash.slice(1) : '');
-    const hasSessionTransfer = Boolean(hashParams.get('session_transfer'));
+    const hasSessionTransfer = Boolean(getSessionTransferFromUrl().token);
 
     if (hasLogoutParams && !hasSessionTransfer) {
       stripAuthHandoffFromUrl();
@@ -456,13 +471,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       if (window.location.pathname !== '/login') return;
 
-      const rawHash = window.location.hash.startsWith('#')
-        ? window.location.hash.slice(1)
-        : '';
-      if (!rawHash) return;
-
-      const params = new URLSearchParams(rawHash);
-      const encodedTransfer = params.get('session_transfer');
+      const transfer = getSessionTransferFromUrl();
+      const encodedTransfer = transfer.token;
       if (!encodedTransfer) {
         if (hasLogoutMarker) {
           await supabase.auth.signOut({ scope: 'local' });
@@ -471,17 +481,30 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return;
       }
 
+      transitionAuthStatus('hydrating', 'session_transfer_consume_started', {
+        source: transfer.source,
+      });
+      const transferStartedAt = performance.now();
+
       if (wasSessionTransferAlreadyConsumed(encodedTransfer)) {
-        params.delete('session_transfer');
-        const nextHash = params.toString();
-        const cleanedUrl = `${window.location.pathname}${window.location.search}${nextHash ? `#${nextHash}` : ''}`;
+        const url = new URL(window.location.href);
+        url.searchParams.delete(SESSION_TRANSFER_PARAM);
+        const hashParams = new URLSearchParams(url.hash.startsWith('#') ? url.hash.slice(1) : '');
+        hashParams.delete(SESSION_TRANSFER_PARAM);
+        const nextHash = hashParams.toString();
+        const cleanedUrl = `${url.pathname}${url.search}${nextHash ? `#${nextHash}` : ''}`;
         window.history.replaceState({}, document.title, cleanedUrl);
         clearSessionTransferRedirectInProgress();
+        transitionAuthStatus('loading', 'session_transfer_already_consumed');
         return;
       }
 
       try {
-        let decoded = await consumeSessionTransferCode(encodedTransfer, window.location.hostname.toLowerCase());
+        let decoded = await withTimeout(
+          consumeSessionTransferCode(encodedTransfer, window.location.hostname.toLowerCase()),
+          HYDRATION_TIMEOUT_MS,
+          'session_transfer_consume_timeout',
+        );
 
         // Backward compatibility while old token-in-hash links may still exist.
         if (!decoded) {
@@ -501,6 +524,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           logger.warn('session_transfer_expired_or_invalid', {
             issuedAt,
           });
+          transitionAuthStatus('error', 'session_transfer_expired_or_invalid', {
+            hydrationMs: Math.trunc(performance.now() - transferStartedAt),
+          });
           stripAuthHandoffFromUrl();
           return;
         }
@@ -510,7 +536,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           searchParams.delete(LOGOUT_MARKER_PARAM);
           searchParams.delete(LOGOUT_REASON_PARAM);
           const nextQuery = searchParams.toString();
-          const nextHash = params.toString();
+          const hashParams = new URLSearchParams(window.location.hash.startsWith('#') ? window.location.hash.slice(1) : '');
+          hashParams.delete(SESSION_TRANSFER_PARAM);
+          const nextHash = hashParams.toString();
           const cleanedUrl = `${window.location.pathname}${nextQuery ? `?${nextQuery}` : ''}${nextHash ? `#${nextHash}` : ''}`;
           window.history.replaceState({}, document.title, cleanedUrl);
         }
@@ -524,25 +552,37 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           logger.warn('session_transfer_consume_failed', {
             error: error.message,
           });
+          transitionAuthStatus('error', 'session_transfer_set_session_failed', {
+            hydrationMs: Math.trunc(performance.now() - transferStartedAt),
+          });
           clearSessionTransferRedirectInProgress();
           return;
         }
         markConsumedSessionTransfer(encodedTransfer);
-        params.delete('session_transfer');
-        const nextHash = params.toString();
-        const cleanedUrl = `${window.location.pathname}${window.location.search}${nextHash ? `#${nextHash}` : ''}`;
+        const url = new URL(window.location.href);
+        url.searchParams.delete(SESSION_TRANSFER_PARAM);
+        const hashParams = new URLSearchParams(url.hash.startsWith('#') ? url.hash.slice(1) : '');
+        hashParams.delete(SESSION_TRANSFER_PARAM);
+        const nextHash = hashParams.toString();
+        const cleanedUrl = `${url.pathname}${url.search}${nextHash ? `#${nextHash}` : ''}`;
         window.history.replaceState({}, document.title, cleanedUrl);
         clearSessionTransferRedirectInProgress();
+        transitionAuthStatus('loading', 'session_transfer_consumed_success', {
+          hydrationMs: Math.trunc(performance.now() - transferStartedAt),
+        });
       } catch (error) {
         logger.warn('session_transfer_decode_failed', {
           error: String(error),
+        });
+        transitionAuthStatus('error', 'session_transfer_decode_failed', {
+          hydrationMs: Math.trunc(performance.now() - transferStartedAt),
         });
         clearSessionTransferRedirectInProgress();
       }
     };
 
     void consumeSessionTransfer();
-  }, []);
+  }, [transitionAuthStatus]);
 
   const resolveDomainEmpresaId = useCallback(async (): Promise<string | null> => {
     if (isOwnerDomain(window.location.hostname)) return null;
@@ -1340,7 +1380,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               return { error: 'Não foi possível transferir sua sessão para o subdomínio. Tente novamente.' };
             }
             const retryCount = getRetryCountFromCurrentUrl();
-            const targetUrl = `${window.location.protocol}//${targetHost}/login?retry_count=${retryCount}${transferHash ? `#${transferHash}` : ''}`;
+            const separator = transferHash ? '&' : '';
+            const targetUrl = `${window.location.protocol}//${targetHost}/login?retry_count=${retryCount}${separator}${transferHash}`;
+            logger.info('auth_context_cross_domain_redirect', {
+              userId: activeUser.id,
+              currentHostname,
+              targetHost,
+              retryCount,
+            });
             if (transferHash) {
               markRedirectRetryAttempt();
               markSessionTransferRedirectInProgress();

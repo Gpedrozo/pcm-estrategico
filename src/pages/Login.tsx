@@ -4,8 +4,9 @@ import { useAuth } from '@/contexts/AuthContext';
 import { getPostLoginPath } from '@/lib/security';
 import { supabase } from '@/integrations/supabase/client';
 import { resolveOrRepairTenantHost } from '@/lib/tenantDomain';
-import { createSessionTransferHash } from '@/lib/sessionTransfer';
+import { createSessionTransferHash, getSessionTransferFromUrl } from '@/lib/sessionTransfer';
 import { useBranding } from '@/contexts/BrandingContext';
+import { logger } from '@/lib/logger';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -89,12 +90,7 @@ export default function Login() {
     return Math.trunc(parsed);
   };
 
-  const hasSessionTransferHash = () => {
-    const rawHash = window.location.hash.startsWith('#') ? window.location.hash.slice(1) : '';
-    if (!rawHash) return false;
-    const hashParams = new URLSearchParams(rawHash);
-    return Boolean(hashParams.get('session_transfer'));
-  };
+  const hasSessionTransferHash = () => Boolean(getSessionTransferFromUrl().token);
 
   const wasSessionTransferRecentlyConsumed = () => {
     try {
@@ -130,7 +126,7 @@ export default function Login() {
   }, []);
 
   useEffect(() => {
-    if (isLoading || isHydrating || authStatus === 'idle' || authStatus === 'loading' || authStatus === 'hydrating') return;
+    if (isLoading || isHydrating || authStatus === 'loading' || authStatus === 'hydrating') return;
     if (isAuthenticated || authStatus !== 'unauthenticated') return;
 
     const isBaseHost = currentHost === tenantBaseDomain || currentHost === `www.${tenantBaseDomain}`;
@@ -143,12 +139,20 @@ export default function Login() {
     const retryCount = getRetryCountFromUrl();
     if (retryCount >= AUTH_RETRY_COUNT_MAX) {
       setLoginError('Nao foi possivel concluir o redirecionamento entre dominios. Limite de tentativas atingido.');
+      logger.warn('tenant_subdomain_redirect_blocked_retry_limit', {
+        host: currentHost,
+        retryCount,
+      });
       return;
     }
 
     const currentPath = `${window.location.pathname}${window.location.search}`;
     const nextRetry = retryCount + 1;
     const baseLoginUrl = `https://${tenantBaseDomain}/login?next=${encodeURIComponent(currentPath || '/dashboard')}&${AUTH_RETRY_COUNT_PARAM}=${nextRetry}`;
+    logger.info('tenant_subdomain_redirect_to_base_login', {
+      currentHost,
+      nextRetry,
+    });
     window.location.assign(baseLoginUrl);
   }, [authStatus, currentHost, isAuthenticated, isHydrating, isLoading, tenantBaseDomain]);
 
@@ -176,7 +180,7 @@ export default function Login() {
     let isActive = true;
 
     const redirectAuthenticatedUser = async () => {
-      if (isLoading || isHydrating || authStatus === 'idle' || authStatus === 'loading' || authStatus === 'hydrating') return;
+      if (isLoading || isHydrating || authStatus === 'loading' || authStatus === 'hydrating') return;
       if (!isAuthenticated || authStatus !== 'authenticated') return;
 
       if (forcePasswordChange) {
@@ -215,6 +219,11 @@ export default function Login() {
           if (!isActive) return;
           setIsRedirectingTenantDomain(false);
           setLoginError('Loop de redirecionamento detectado. Tente novamente em instantes.');
+          logger.warn('tenant_base_redirect_blocked_retry_limit', {
+            currentHost,
+            retryCount,
+            tenantId,
+          });
           return;
         }
 
@@ -286,6 +295,11 @@ export default function Login() {
           if (!isActive) return;
           setIsRedirectingTenantDomain(false);
           setLoginError('Não foi possível transferir sua sessão para o subdomínio. Tente novamente.');
+          logger.warn('tenant_base_redirect_missing_session_transfer', {
+            currentHost,
+            targetHost,
+            tenantId,
+          });
           return;
         }
 
@@ -300,7 +314,13 @@ export default function Login() {
           }
         }
 
-        window.location.assign(`${window.location.protocol}//${targetHost}/login?${AUTH_RETRY_COUNT_PARAM}=${retryCount}${transferHash}`);
+        logger.info('tenant_base_redirect_with_transfer', {
+          currentHost,
+          targetHost,
+          retryCount,
+        });
+        const separator = transferHash ? '&' : '';
+        window.location.assign(`${window.location.protocol}//${targetHost}/login?${AUTH_RETRY_COUNT_PARAM}=${retryCount}${separator}${transferHash}`);
         return;
       }
 

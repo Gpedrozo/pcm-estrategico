@@ -2,6 +2,8 @@ import type { Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { logger } from '@/lib/logger';
 
+const SESSION_TRANSFER_PARAM = 'session_transfer';
+
 function buildLegacySessionTransferHash(sessionData: Session | null): string | null {
   if (!sessionData?.access_token || !sessionData?.refresh_token) return null;
 
@@ -37,13 +39,18 @@ export async function createSessionTransferCode(sessionData: Session | null, tar
   }
 
   const code = String((data as { code?: string } | null)?.code ?? '').trim();
+  if (code) {
+    logger.info('session_transfer_create_success', {
+      targetHost: String(targetHost || '').trim().toLowerCase(),
+    });
+  }
   return code || null;
 }
 
 export async function createSessionTransferHash(sessionData: Session | null, targetHost: string): Promise<string | null> {
   const transferCode = await createSessionTransferCode(sessionData, targetHost);
   if (transferCode) {
-    return `session_transfer=${encodeURIComponent(transferCode)}`;
+    return `${SESSION_TRANSFER_PARAM}=${encodeURIComponent(transferCode)}`;
   }
 
   const legacyHash = buildLegacySessionTransferHash(sessionData);
@@ -55,9 +62,31 @@ export async function createSessionTransferHash(sessionData: Session | null, tar
   return legacyHash;
 }
 
+export function getSessionTransferFromUrl() {
+  const searchParams = new URLSearchParams(window.location.search);
+  const queryValue = String(searchParams.get(SESSION_TRANSFER_PARAM) ?? '').trim();
+  if (queryValue) {
+    return { token: queryValue, source: 'query' as const };
+  }
+
+  const rawHash = window.location.hash.startsWith('#') ? window.location.hash.slice(1) : '';
+  if (!rawHash) return { token: null, source: null as const };
+  const hashParams = new URLSearchParams(rawHash);
+  const hashValue = String(hashParams.get(SESSION_TRANSFER_PARAM) ?? '').trim();
+  if (hashValue) {
+    return { token: hashValue, source: 'hash' as const };
+  }
+
+  return { token: null, source: null as const };
+}
+
 export async function consumeSessionTransferCode(code: string, targetHost: string): Promise<{ access_token: string; refresh_token: string; issued_at: number } | null> {
   const normalizedCode = String(code || '').trim();
   if (!normalizedCode) return null;
+
+  logger.info('session_transfer_consume_attempt', {
+    targetHost: String(targetHost || '').trim().toLowerCase(),
+  });
 
   const { data, error } = await supabase.functions.invoke('session-transfer', {
     body: {
@@ -80,6 +109,10 @@ export async function consumeSessionTransferCode(code: string, targetHost: strin
   if (!access_token || !refresh_token || !Number.isFinite(issued_at)) {
     return null;
   }
+
+  logger.info('session_transfer_consume_success', {
+    targetHost: String(targetHost || '').trim().toLowerCase(),
+  });
 
   return { access_token, refresh_token, issued_at };
 }

@@ -11,6 +11,7 @@ import { getImpersonationExpiresAt, getImpersonationPayload, impersonateCompany,
 import { supabase } from '@/integrations/supabase/client';
 import { resolveOrRepairTenantHost } from '@/lib/tenantDomain';
 import { createSessionTransferHash } from '@/lib/sessionTransfer';
+import { logger } from '@/lib/logger';
 
 const SESSION_TRANSFER_REDIRECT_STORAGE_KEY = 'pcm.auth.session_transfer.redirect.v1';
 const AUTH_RETRY_COUNT_PARAM = 'retry_count';
@@ -167,7 +168,7 @@ export function AppLayout() {
     let isActive = true;
 
     const redirectTenantFromBaseDomain = async () => {
-      if (isLoading || isHydrating || authStatus === 'idle' || authStatus === 'loading' || authStatus === 'hydrating') return;
+      if (isLoading || isHydrating || authStatus === 'loading' || authStatus === 'hydrating') return;
       if (!isAuthenticated || authStatus !== 'authenticated' || !tenantId || !session) return;
 
       const isGlobalRole =
@@ -226,6 +227,11 @@ export function AppLayout() {
       if (!transferHash) {
         if (!isActive) return;
         setIsDomainRedirectRunning(false);
+        logger.warn('app_layout_redirect_missing_session_transfer', {
+          tenantId,
+          currentHost,
+          targetHost,
+        });
         return;
       }
 
@@ -246,7 +252,14 @@ export function AppLayout() {
           // noop
         }
       }
-      window.location.assign(`${window.location.protocol}//${targetHost}/login?next=${nextParam}&${AUTH_RETRY_COUNT_PARAM}=${retryCount}${transferHash}`);
+      logger.info('app_layout_redirect_to_tenant', {
+        tenantId,
+        currentHost,
+        targetHost,
+        retryCount,
+      });
+      const separator = transferHash ? '&' : '';
+      window.location.assign(`${window.location.protocol}//${targetHost}/login?next=${nextParam}&${AUTH_RETRY_COUNT_PARAM}=${retryCount}${separator}${transferHash}`);
     };
 
     void redirectTenantFromBaseDomain();

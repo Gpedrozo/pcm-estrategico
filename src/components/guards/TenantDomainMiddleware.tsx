@@ -4,6 +4,7 @@ import { AlertTriangle, Loader2 } from 'lucide-react'
 import { useTenant } from '@/contexts/TenantContext'
 import { useAuth } from '@/contexts/AuthContext'
 import { isOwnerDomain } from '@/lib/security'
+import { getSessionTransferFromUrl } from '@/lib/sessionTransfer'
 
 const TENANT_BASE_DOMAIN = (import.meta.env.VITE_TENANT_BASE_DOMAIN || 'gppis.com.br').toLowerCase()
 
@@ -20,10 +21,7 @@ function resolveHostContext(hostname: string) {
 }
 
 function hasSessionTransferHash() {
-  const rawHash = window.location.hash.startsWith('#') ? window.location.hash.slice(1) : ''
-  if (!rawHash) return false
-  const params = new URLSearchParams(rawHash)
-  return Boolean(params.get('session_transfer'))
+  return Boolean(getSessionTransferFromUrl().token)
 }
 
 export function TenantDomainMiddleware({ children }: { children: React.ReactNode }) {
@@ -38,7 +36,7 @@ export function TenantDomainMiddleware({ children }: { children: React.ReactNode
 
   useEffect(() => {
     if (!hostContext.isTenantSubdomain || isLoading || isAuthLoading || isHydrating) return
-    if (authStatus === 'idle' || authStatus === 'loading' || authStatus === 'hydrating') return
+    if (authStatus === 'loading' || authStatus === 'hydrating') return
     if (!error || !isAuthenticated) return
     if (isLoginRoute || hasSessionTransferHash()) return
     void logout()
@@ -46,7 +44,7 @@ export function TenantDomainMiddleware({ children }: { children: React.ReactNode
 
   useEffect(() => {
     if (!hostContext.isTenantSubdomain || isLoading || isAuthLoading || isHydrating) return
-    if (authStatus === 'idle' || authStatus === 'loading' || authStatus === 'hydrating') return
+    if (authStatus === 'loading' || authStatus === 'hydrating') return
     if (!isAuthenticated) return
     if (isLoginRoute || hasSessionTransferHash()) return
     if (!tenant?.id || !tenantId) return

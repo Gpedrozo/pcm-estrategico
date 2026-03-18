@@ -29,7 +29,7 @@ export function TenantQueryIsolationGuard() {
       queryClient.clear();
     };
 
-    if (isHydrating || authStatus === 'idle' || authStatus === 'loading' || authStatus === 'hydrating') {
+    if (isHydrating || authStatus === 'loading' || authStatus === 'hydrating') {
       return;
     }
 

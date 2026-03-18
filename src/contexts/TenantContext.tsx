@@ -2,6 +2,7 @@ import React, { createContext, useContext, useEffect, useMemo, useRef, useState 
 import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { resolveEmpresaSlug } from '@/lib/security';
+import { logger } from '@/lib/logger';
 
 const TENANT_SLUG_REGEX = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 
@@ -60,6 +61,10 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
       if (!isBaseDomainHost && hostname.endsWith(`.${baseDomain}`) && (tenantSlug === 'default' || !TENANT_SLUG_REGEX.test(tenantSlug))) {
         setTenant(null);
         setError('Subdominio invalido para tenant.');
+        logger.warn('tenant_resolution_invalid_subdomain', {
+          hostname,
+          tenantSlug,
+        });
         setIsLoading(false);
         return;
       }
@@ -143,6 +148,10 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
       if (!empresaId) {
         setTenant(null);
         setError('Domínio tenant não autorizado');
+        logger.warn('tenant_resolution_unauthorized_domain', {
+          hostname,
+          tenantSlug,
+        });
         setIsLoading(false);
         return;
       }
@@ -158,6 +167,12 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
       if (fetchError || !data) {
         setTenant(null);
         setError(fetchError?.message || 'Empresa não encontrada');
+        logger.warn('tenant_resolution_company_not_found', {
+          hostname,
+          tenantSlug,
+          empresaId,
+          error: fetchError?.message ?? null,
+        });
       } else {
         setTenant({
           id: data.id,
