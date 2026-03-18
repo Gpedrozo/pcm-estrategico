@@ -18,6 +18,7 @@ const SESSION_TRANSFER_CONSUMED_STORAGE_KEY = 'pcm.auth.session_transfer.consume
 const SESSION_TRANSFER_CONSUMED_MAX_AGE_MS = 2 * 60 * 1000;
 const AUTH_RETRY_COUNT_PARAM = 'retry_count';
 const AUTH_RETRY_COUNT_MAX = 2;
+const HANDOFF_FAILED_PARAM = 'handoff_failed';
 
 const TENANT_REDIRECT_TIMEOUT_MS = 6_000;
 
@@ -126,13 +127,26 @@ export default function Login() {
   }, []);
 
   useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const handoffFailed = params.get(HANDOFF_FAILED_PARAM) === '1';
+    if (!handoffFailed) return;
+
+    const emailParam = String(params.get('email') ?? '').trim().toLowerCase();
+    if (emailParam && !loginEmail.trim()) {
+      setLoginEmail(emailParam);
+    }
+  }, [loginEmail]);
+
+  useEffect(() => {
     if (isLoading || isHydrating || authStatus === 'loading' || authStatus === 'hydrating') return;
     if (isAuthenticated || authStatus !== 'unauthenticated') return;
 
     const isBaseHost = currentHost === tenantBaseDomain || currentHost === `www.${tenantBaseDomain}`;
     const isTenantSubdomain = !isBaseHost && currentHost.endsWith(`.${tenantBaseDomain}`);
+    const handoffFailed = new URLSearchParams(window.location.search).get(HANDOFF_FAILED_PARAM) === '1';
 
     if (!isTenantSubdomain) return;
+    if (handoffFailed) return;
     if (hasSessionTransferHash()) return;
     if (wasSessionTransferRecentlyConsumed()) return;
 
@@ -293,13 +307,19 @@ export default function Login() {
 
         if (!transferHash) {
           if (!isActive) return;
-          setIsRedirectingTenantDomain(false);
-          setLoginError('Não foi possível transferir sua sessão para o subdomínio. Tente novamente.');
+          const fallbackRetry = Math.min(AUTH_RETRY_COUNT_MAX, retryCount + 1);
+          const emailParam = encodeURIComponent(loginEmail.trim().toLowerCase());
+          const fallbackUrl = `${window.location.protocol}//${targetHost}/login?${HANDOFF_FAILED_PARAM}=1&${AUTH_RETRY_COUNT_PARAM}=${fallbackRetry}${emailParam ? `&email=${emailParam}` : ''}`;
+
           logger.warn('tenant_base_redirect_missing_session_transfer', {
             currentHost,
             targetHost,
             tenantId,
+            fallbackUrl,
           });
+
+          await supabase.auth.signOut().catch(() => null);
+          window.location.assign(fallbackUrl);
           return;
         }
 

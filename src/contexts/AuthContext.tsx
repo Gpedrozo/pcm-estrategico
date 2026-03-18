@@ -73,6 +73,7 @@ const SESSION_TRANSFER_REDIRECT_STORAGE_KEY = 'pcm.auth.session_transfer.redirec
 const SESSION_TRANSFER_REDIRECT_MAX_AGE_MS = 15_000;
 const SESSION_TRANSFER_CONSUMED_STORAGE_KEY = 'pcm.auth.session_transfer.consumed.v1';
 const SESSION_TRANSFER_PARAM = 'session_transfer';
+const HANDOFF_FAILED_PARAM = 'handoff_failed';
 const LOGIN_PROFILE_TIMEOUT_MS = 12_000;
 const TENANT_HOST_RESOLVE_TIMEOUT_MS = 6_000;
 const HYDRATION_TIMEOUT_MS = 3_000;
@@ -1367,13 +1368,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
             const transferHash = await buildSessionTransferHash(activeSession, targetHost);
             if (!transferHash) {
+              const retryCount = getRetryCountFromCurrentUrl();
+              const nextRetry = Math.min(AUTH_REDIRECT_RETRY_MAX, retryCount + 1);
+              const emailParam = encodeURIComponent(String(activeUser.email ?? '').trim().toLowerCase());
+              const fallbackUrl = `${window.location.protocol}//${targetHost}/login?${HANDOFF_FAILED_PARAM}=1&retry_count=${nextRetry}${emailParam ? `&email=${emailParam}` : ''}`;
+
               logger.warn('session_transfer_hash_missing_on_cross_domain_redirect', {
                 userId: activeUser.id,
                 tenantId: profileData.tenantId,
                 currentHostname,
                 targetHost,
+                fallbackUrl,
               });
-              return { error: 'Não foi possível transferir sua sessão para o subdomínio. Tente novamente.' };
+
+              markRedirectRetryAttempt();
+              await supabase.auth.signOut().catch(() => null);
+              window.location.assign(fallbackUrl);
+              return { error: null };
             }
             const retryCount = getRetryCountFromCurrentUrl();
             const separator = transferHash ? '&' : '';
