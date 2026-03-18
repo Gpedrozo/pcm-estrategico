@@ -4,22 +4,6 @@ import { logger } from '@/lib/logger';
 
 const SESSION_TRANSFER_PARAM = 'session_transfer';
 
-function buildLegacySessionTransferHash(sessionData: Session | null): string | null {
-  if (!sessionData?.access_token || !sessionData?.refresh_token) return null;
-
-  try {
-    const payload = {
-      access_token: sessionData.access_token,
-      refresh_token: sessionData.refresh_token,
-      issued_at: Date.now(),
-    };
-    const encoded = encodeURIComponent(window.btoa(JSON.stringify(payload)));
-    return `session_transfer=${encoded}`;
-  } catch {
-    return null;
-  }
-}
-
 export async function createSessionTransferCode(sessionData: Session | null, targetHost: string): Promise<string | null> {
   if (!sessionData?.access_token || !sessionData?.refresh_token) return null;
 
@@ -53,13 +37,10 @@ export async function createSessionTransferHash(sessionData: Session | null, tar
     return `${SESSION_TRANSFER_PARAM}=${encodeURIComponent(transferCode)}`;
   }
 
-  const legacyHash = buildLegacySessionTransferHash(sessionData);
-  if (legacyHash) {
-    logger.warn('session_transfer_fallback_legacy_hash', {
-      targetHost: String(targetHost || '').trim().toLowerCase(),
-    });
-  }
-  return legacyHash;
+  logger.warn('session_transfer_missing_token_abort_redirect', {
+    targetHost: String(targetHost || '').trim().toLowerCase(),
+  });
+  return null;
 }
 
 export function getSessionTransferFromUrl() {

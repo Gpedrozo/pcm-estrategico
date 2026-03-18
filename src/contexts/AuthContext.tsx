@@ -506,16 +506,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           'session_transfer_consume_timeout',
         );
 
-        // Backward compatibility while old token-in-hash links may still exist.
         if (!decoded) {
-          const decodedJson = window.atob(decodeURIComponent(encodedTransfer));
-          const legacy = JSON.parse(decodedJson) as { access_token?: string; refresh_token?: string; issued_at?: number };
-          if (!legacy?.access_token || !legacy?.refresh_token) return;
-          decoded = {
-            access_token: legacy.access_token,
-            refresh_token: legacy.refresh_token,
-            issued_at: Number(legacy.issued_at ?? 0),
-          };
+          transitionAuthStatus('error', 'session_transfer_token_invalid_or_unavailable', {
+            hydrationMs: Math.trunc(performance.now() - transferStartedAt),
+          });
+          stripAuthHandoffFromUrl();
+          return;
         }
 
         const issuedAt = Number(decoded.issued_at || 0);
