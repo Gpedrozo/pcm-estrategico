@@ -8,6 +8,10 @@ export async function createSessionTransferCode(sessionData: Session | null, tar
   if (!sessionData?.access_token || !sessionData?.refresh_token) return null;
 
   const { data, error } = await supabase.functions.invoke('session-transfer', {
+    headers: {
+      Authorization: `Bearer ${sessionData.access_token}`,
+      'x-allow-password-change': '1',
+    },
     body: {
       action: 'create',
       access_token: sessionData.access_token,
