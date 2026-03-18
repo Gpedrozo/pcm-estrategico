@@ -6,6 +6,12 @@ const SESSION_TRANSFER_PARAM = 'session_transfer';
 const SESSION_LOOKUP_RETRIES = 5;
 const SESSION_LOOKUP_DELAY_MS = 220;
 const SESSION_TRANSFER_CREATE_RETRIES = 3;
+const SUPABASE_FUNCTIONS_BASE_URL = String(import.meta.env.VITE_SUPABASE_URL ?? '').trim().replace(/\/$/, '');
+const SUPABASE_PUBLIC_KEY = String(
+  import.meta.env.VITE_SUPABASE_ANON_KEY
+  ?? import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY
+  ?? ''
+).trim();
 
 function sleep(ms: number) {
   return new Promise((resolve) => window.setTimeout(resolve, ms));
@@ -31,6 +37,66 @@ async function resolveActiveSession(initialSession: Session | null): Promise<Ses
   }
 
   return null;
+}
+
+async function createSessionTransferCodeViaHttpFallback(
+  session: Session,
+  targetHost: string,
+): Promise<string | null> {
+  if (!SUPABASE_FUNCTIONS_BASE_URL || !SUPABASE_PUBLIC_KEY) {
+    return null;
+  }
+
+  try {
+    const response = await fetch(`${SUPABASE_FUNCTIONS_BASE_URL}/functions/v1/session-transfer`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        apikey: SUPABASE_PUBLIC_KEY,
+        Authorization: `Bearer ${session.access_token}`,
+        'x-allow-password-change': '1',
+      },
+      body: JSON.stringify({
+        action: 'create',
+        access_token: session.access_token,
+        refresh_token: session.refresh_token,
+        target_host: targetHost,
+        ttl_seconds: 45,
+      }),
+    });
+
+    const rawText = await response.text().catch(() => '');
+    const payload = rawText ? JSON.parse(rawText) as { code?: string; error?: string } : null;
+
+    if (!response.ok) {
+      const fallbackErrorMessage = payload?.error ?? (rawText || `HTTP_${response.status}`);
+      logger.warn('session_transfer_create_http_fallback_failed', {
+        targetHost,
+        status: response.status,
+        error: fallbackErrorMessage,
+      });
+      return null;
+    }
+
+    const code = String(payload?.code ?? '').trim();
+    if (!code) {
+      logger.warn('session_transfer_create_http_fallback_empty_code', {
+        targetHost,
+      });
+      return null;
+    }
+
+    logger.info('session_transfer_create_http_fallback_success', {
+      targetHost,
+    });
+    return code;
+  } catch (error) {
+    logger.warn('session_transfer_create_http_fallback_exception', {
+      targetHost,
+      error: String((error as { message?: string })?.message ?? error),
+    });
+    return null;
+  }
 }
 
 export async function createSessionTransferCode(sessionData: Session | null, targetHost: string): Promise<string | null> {
@@ -68,6 +134,11 @@ export async function createSessionTransferCode(sessionData: Session | null, tar
         });
         return code;
       }
+    }
+
+    const fallbackCode = await createSessionTransferCodeViaHttpFallback(activeSession, normalizedTargetHost);
+    if (fallbackCode) {
+      return fallbackCode;
     }
 
     logger.warn('session_transfer_create_failed', {
