@@ -1315,102 +1315,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       if (!isOwnerDomain(window.location.hostname) && !isGlobalRole) {
         if (isBaseTenantHost) {
-          if (!profileData.tenantId) {
-            await supabase.auth.signOut();
-            return { error: 'Usuário sem vínculo de empresa. Acesso bloqueado.' };
-          }
+          // Base-domain login should only authenticate/hydrate.
+          // Cross-domain redirect is centralized in Login.tsx to avoid race/duplication.
+          logger.info('auth_login_base_domain_authenticated_waiting_login_page_redirect', {
+            userId: activeUser.id,
+            tenantId: profileData.tenantId,
+          });
+        } else {
+          let domainEmpresaId = await resolveDomainEmpresaId();
 
-          let targetHost = await withTimeout(
-            resolveTenantRedirectHost(profileData.tenantId, {
-              slugHint: extractEmpresaSlugFromMetadata({
-                app_metadata: activeUser.app_metadata,
-                user_metadata: activeUser.user_metadata,
-              }),
-            }),
-            TENANT_HOST_RESOLVE_TIMEOUT_MS,
-            'timeout_resolving_tenant_host',
-          ).catch(() => null);
-          if (!targetHost) {
-            const slugFromMetadata = extractEmpresaSlugFromMetadata({
-              app_metadata: activeUser.app_metadata,
-              user_metadata: activeUser.user_metadata,
-            });
-
-            if (slugFromMetadata) {
-              targetHost = `${slugFromMetadata}.${TENANT_BASE_DOMAIN}`;
-            }
-          }
-
-          if (!targetHost) {
-            logger.warn('tenant_redirect_host_missing_fallback_base_domain', {
-              userId: activeUser.id,
-              tenantId: profileData.tenantId,
-            });
-            await supabase.auth.signOut();
-            return { error: 'Nao foi possivel localizar o subdominio da sua empresa. Contate o suporte.' };
-          }
-
-          const currentHostname = window.location.hostname.toLowerCase();
-          if (targetHost !== currentHostname) {
-            if (shouldBlockCrossDomainRedirect()) {
-              logger.warn('cross_domain_redirect_blocked_by_retry_limit', {
-                userId: activeUser.id,
-                currentHostname,
-                targetHost,
-                retryCount: getRedirectRetryCount(),
-              });
-              await supabase.auth.signOut();
-              transitionAuthStatus('error', 'cross_domain_redirect_retry_limit_reached', {
-                userId: activeUser.id,
-              });
-              return { error: 'Foram detectadas tentativas repetidas de redirecionamento. Faça login novamente.' };
-            }
-
-            const transferHash = await buildSessionTransferHash(activeSession, targetHost);
-            if (!transferHash) {
-              const retryCount = getRetryCountFromCurrentUrl();
-              const nextRetry = Math.min(AUTH_REDIRECT_RETRY_MAX, retryCount + 1);
-              const emailParam = encodeURIComponent(String(activeUser.email ?? '').trim().toLowerCase());
-              const fallbackUrl = `${window.location.protocol}//${targetHost}/login?${HANDOFF_FAILED_PARAM}=1&retry_count=${nextRetry}${emailParam ? `&email=${emailParam}` : ''}`;
-
-              logger.warn('session_transfer_hash_missing_on_cross_domain_redirect', {
-                userId: activeUser.id,
-                tenantId: profileData.tenantId,
-                currentHostname,
-                targetHost,
-                fallbackUrl,
-              });
-
-              markRedirectRetryAttempt();
-              await supabase.auth.signOut().catch(() => null);
-              window.location.assign(fallbackUrl);
-              return { error: null };
-            }
-            const retryCount = getRetryCountFromCurrentUrl();
-            const separator = transferHash ? '&' : '';
-            const targetUrl = `${window.location.protocol}//${targetHost}/login?retry_count=${retryCount}${separator}${transferHash}`;
-            logger.info('auth_context_cross_domain_redirect', {
-              userId: activeUser.id,
-              currentHostname,
-              targetHost,
-              retryCount,
-            });
-            if (transferHash) {
-              markRedirectRetryAttempt();
-              markSessionTransferRedirectInProgress();
-            }
-            window.location.assign(targetUrl);
-            return { error: null };
-          }
-
-          return {
-            error: null,
-          };
-        }
-
-        let domainEmpresaId = await resolveDomainEmpresaId();
-
-        if (!domainEmpresaId) {
           const metadataEmpresaId = extractEmpresaIdFromMetadata({
             app_metadata: activeUser.app_metadata,
             user_metadata: activeUser.user_metadata,
@@ -1425,27 +1338,50 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             ? hostname.replace(`.${TENANT_BASE_DOMAIN}`, '').split('.')[0]?.trim().toLowerCase() || null
             : null;
 
-          if (metadataEmpresaId && metadataEmpresaSlug && hostSlug && hostSlug === metadataEmpresaSlug) {
+          if (!domainEmpresaId && metadataEmpresaId && metadataEmpresaSlug && hostSlug && hostSlug === metadataEmpresaSlug) {
             domainEmpresaId = metadataEmpresaId;
           }
-        }
 
-        if (!domainEmpresaId) {
-          await supabase.auth.signOut();
-          transitionAuthStatus('unauthenticated', 'login_blocked_domain_not_authorized', {
-            userId: activeUser.id,
-          });
-          return { error: 'Domínio não autorizado para login.' };
-        }
+          if (!domainEmpresaId) {
+            const isHandoffFailedTenantLogin =
+              window.location.pathname === '/login'
+              && new URLSearchParams(window.location.search).get(HANDOFF_FAILED_PARAM) === '1';
 
-        if (!profileData.tenantId || profileData.tenantId !== domainEmpresaId) {
-          await supabase.auth.signOut();
-          transitionAuthStatus('unauthenticated', 'login_blocked_tenant_mismatch', {
-            userId: activeUser.id,
-            domainEmpresaId,
-            profileTenantId: profileData.tenantId,
-          });
-          return { error: 'Usuário não pertence à empresa deste subdomínio.' };
+            const slugMatchesHost = Boolean(
+              hostSlug
+              && (
+                (profileData.tenantSlug && profileData.tenantSlug === hostSlug)
+                || (metadataEmpresaSlug && metadataEmpresaSlug === hostSlug)
+              ),
+            );
+
+            if (isHandoffFailedTenantLogin && slugMatchesHost && profileData.tenantId) {
+              domainEmpresaId = profileData.tenantId;
+              logger.warn('tenant_login_domain_resolve_fallback_by_profile_on_handoff_failed', {
+                userId: activeUser.id,
+                hostSlug,
+                tenantId: profileData.tenantId,
+              });
+            }
+          }
+
+          if (!domainEmpresaId) {
+            await supabase.auth.signOut();
+            transitionAuthStatus('unauthenticated', 'login_blocked_domain_not_authorized', {
+              userId: activeUser.id,
+            });
+            return { error: 'Domínio não autorizado para login.' };
+          }
+
+          if (!profileData.tenantId || profileData.tenantId !== domainEmpresaId) {
+            await supabase.auth.signOut();
+            transitionAuthStatus('unauthenticated', 'login_blocked_tenant_mismatch', {
+              userId: activeUser.id,
+              domainEmpresaId,
+              profileTenantId: profileData.tenantId,
+            });
+            return { error: 'Usuário não pertence à empresa deste subdomínio.' };
+          }
         }
       }
 
