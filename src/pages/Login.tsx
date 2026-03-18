@@ -5,6 +5,17 @@ import { getPostLoginPath } from '@/lib/security';
 import { supabase } from '@/integrations/supabase/client';
 import { resolveOrRepairTenantHost } from '@/lib/tenantDomain';
 import { createSessionTransferHash, getSessionTransferFromUrl } from '@/lib/sessionTransfer';
+import {
+  AUTH_RETRY_COUNT_MAX,
+  AUTH_RETRY_COUNT_PARAM,
+  HANDOFF_FAILED_PARAM,
+  buildTenantLoginUrl,
+  getRetryCountFromSearch,
+  getTenantBaseDomain,
+  isBaseTenantHost,
+  isHandoffFailedSearch,
+  isTenantSubdomainHost,
+} from '@/lib/tenantLoginFlow';
 import { useBranding } from '@/contexts/BrandingContext';
 import { logger } from '@/lib/logger';
 import { Button } from '@/components/ui/button';
@@ -16,9 +27,6 @@ import { z } from 'zod';
 const SESSION_TRANSFER_REDIRECT_STORAGE_KEY = 'pcm.auth.session_transfer.redirect.v1';
 const SESSION_TRANSFER_CONSUMED_STORAGE_KEY = 'pcm.auth.session_transfer.consumed.v1';
 const SESSION_TRANSFER_CONSUMED_MAX_AGE_MS = 2 * 60 * 1000;
-const AUTH_RETRY_COUNT_PARAM = 'retry_count';
-const AUTH_RETRY_COUNT_MAX = 2;
-const HANDOFF_FAILED_PARAM = 'handoff_failed';
 
 const TENANT_REDIRECT_TIMEOUT_MS = 6_000;
 
@@ -74,7 +82,7 @@ export default function Login() {
   const { login, isAuthenticated, isLoading, isHydrating, authStatus, effectiveRole, tenantId, forcePasswordChange } = useAuth();
   const navigate = useNavigate();
   const { branding } = useBranding();
-  const tenantBaseDomain = (import.meta.env.VITE_TENANT_BASE_DOMAIN || 'gppis.com.br').toLowerCase();
+  const tenantBaseDomain = getTenantBaseDomain();
   const currentHost = window.location.hostname.toLowerCase();
 
   const resolveSafeNextPath = () => {
@@ -85,10 +93,7 @@ export default function Login() {
   };
 
   const getRetryCountFromUrl = () => {
-    const raw = new URLSearchParams(window.location.search).get(AUTH_RETRY_COUNT_PARAM);
-    const parsed = Number(raw ?? 0);
-    if (!Number.isFinite(parsed) || parsed < 0) return 0;
-    return Math.trunc(parsed);
+    return getRetryCountFromSearch(window.location.search);
   };
 
   const hasSessionTransferHash = () => Boolean(getSessionTransferFromUrl().token);
@@ -128,7 +133,7 @@ export default function Login() {
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    const handoffFailed = params.get(HANDOFF_FAILED_PARAM) === '1';
+    const handoffFailed = isHandoffFailedSearch(window.location.search);
     if (!handoffFailed) return;
 
     const emailParam = String(params.get('email') ?? '').trim().toLowerCase();
@@ -142,8 +147,7 @@ export default function Login() {
     if (isLoading || isHydrating || authStatus === 'loading' || authStatus === 'hydrating') return;
     if (isAuthenticated || authStatus !== 'unauthenticated') return;
 
-    const isBaseHost = currentHost === tenantBaseDomain || currentHost === `www.${tenantBaseDomain}`;
-    const isTenantSubdomain = !isBaseHost && currentHost.endsWith(`.${tenantBaseDomain}`);
+    const isTenantSubdomain = isTenantSubdomainHost(currentHost);
     if (!isTenantSubdomain) return;
 
     logger.info('tenant_subdomain_direct_login_enabled', {
@@ -192,8 +196,7 @@ export default function Login() {
         effectiveRole === 'MASTER_TI';
 
       const isTenantBaseHost =
-        currentHost === tenantBaseDomain ||
-        currentHost === `www.${tenantBaseDomain}`;
+        isBaseTenantHost(currentHost);
 
       const nextPath = resolveSafeNextPath();
       const isManualAccountSwitchIntent =
@@ -291,8 +294,12 @@ export default function Login() {
         if (!transferHash) {
           if (!isActive) return;
           const fallbackRetry = Math.min(AUTH_RETRY_COUNT_MAX, retryCount + 1);
-          const emailParam = encodeURIComponent(loginEmail.trim().toLowerCase());
-          const fallbackUrl = `${window.location.protocol}//${targetHost}/login?${HANDOFF_FAILED_PARAM}=1&${AUTH_RETRY_COUNT_PARAM}=${fallbackRetry}${emailParam ? `&email=${emailParam}` : ''}`;
+          const fallbackUrl = buildTenantLoginUrl(targetHost, {
+            protocol: window.location.protocol,
+            retryCount: fallbackRetry,
+            handoffFailed: true,
+            email: loginEmail,
+          });
 
           logger.warn('tenant_base_redirect_missing_session_transfer', {
             currentHost,
@@ -322,8 +329,12 @@ export default function Login() {
           targetHost,
           retryCount,
         });
-        const separator = transferHash ? '&' : '';
-        window.location.assign(`${window.location.protocol}//${targetHost}/login?${AUTH_RETRY_COUNT_PARAM}=${retryCount}${separator}${transferHash}`);
+        const targetUrl = buildTenantLoginUrl(targetHost, {
+          protocol: window.location.protocol,
+          retryCount,
+          transferHash,
+        });
+        window.location.assign(targetUrl);
         return;
       }
 

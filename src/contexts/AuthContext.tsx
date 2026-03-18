@@ -9,10 +9,10 @@ import {
   resolveEmpresaSlug,
   type AppRole,
 } from '@/lib/security';
-import { resolveOrRepairTenantHost } from '@/lib/tenantDomain';
 import { logger } from '@/lib/logger';
 import { writeAuditLog } from '@/lib/audit';
-import { consumeSessionTransferCode, createSessionTransferHash, getSessionTransferFromUrl } from '@/lib/sessionTransfer';
+import { consumeSessionTransferCode, getSessionTransferFromUrl } from '@/lib/sessionTransfer';
+import { HANDOFF_FAILED_PARAM, resolveTenantHostSlug } from '@/lib/tenantLoginFlow';
 import { validateImpersonationSession } from '@/services/ownerPortal.service';
 
 export interface AuthUser {
@@ -73,7 +73,6 @@ const SESSION_TRANSFER_REDIRECT_STORAGE_KEY = 'pcm.auth.session_transfer.redirec
 const SESSION_TRANSFER_REDIRECT_MAX_AGE_MS = 15_000;
 const SESSION_TRANSFER_CONSUMED_STORAGE_KEY = 'pcm.auth.session_transfer.consumed.v1';
 const SESSION_TRANSFER_PARAM = 'session_transfer';
-const HANDOFF_FAILED_PARAM = 'handoff_failed';
 const LOGIN_PROFILE_TIMEOUT_MS = 12_000;
 const TENANT_HOST_RESOLVE_TIMEOUT_MS = 6_000;
 const HYDRATION_TIMEOUT_MS = 3_000;
@@ -461,10 +460,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
   }, [session, user]);
 
-  const buildSessionTransferHash = useCallback(async (sessionData: Session | null, targetHost: string) => {
-    return createSessionTransferHash(sessionData, targetHost);
-  }, []);
-
   useEffect(() => {
     const consumeSessionTransfer = async () => {
       const searchParams = new URLSearchParams(window.location.search);
@@ -627,17 +622,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
 
     return companyBySlug?.id ?? null;
-  }, []);
-
-  const resolveTenantRedirectHost = useCallback(async (
-    tenantId: string,
-    options?: { slugHint?: string | null },
-  ): Promise<string | null> => {
-    return resolveOrRepairTenantHost({
-      tenantId,
-      tenantBaseDomain: TENANT_BASE_DOMAIN,
-      slugHint: options?.slugHint,
-    });
   }, []);
 
   useEffect(() => {
@@ -959,9 +943,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const metadataEmpresaSlug = extractEmpresaSlugFromMetadata(metadata);
       const hostname = window.location.hostname.toLowerCase();
       const baseDomain = TENANT_BASE_DOMAIN.toLowerCase();
-      const hostSlug = hostname.endsWith(`.${baseDomain}`)
-        ? hostname.replace(`.${baseDomain}`, '').split('.')[0]?.trim().toLowerCase() || null
-        : null;
+      const hostSlug = resolveTenantHostSlug(hostname);
 
       if (metadataEmpresaId && metadataEmpresaSlug && hostSlug && hostSlug === metadataEmpresaSlug) {
         domainEmpresaId = metadataEmpresaId;
@@ -972,6 +954,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     if (!isOwnerDomain(window.location.hostname)) {
       const hostname = window.location.hostname.toLowerCase();
+      const hostSlug = resolveTenantHostSlug(hostname);
+      const metadataEmpresaSlug = extractEmpresaSlugFromMetadata(metadata);
       const isGlobalRole =
         profileData.tipo === 'SYSTEM_OWNER' ||
         profileData.tipo === 'SYSTEM_ADMIN' ||
@@ -988,6 +972,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return {
           ...profileData,
           tenantId: profileData.tenantId,
+        };
+      }
+
+      const slugMatchesTenant = Boolean(
+        hostSlug
+        && (
+          (profileData.tenantSlug && profileData.tenantSlug === hostSlug)
+          || (metadataEmpresaSlug && metadataEmpresaSlug === hostSlug)
+        ),
+      );
+
+      if (!domainEmpresaId && slugMatchesTenant && profileData.tenantId) {
+        logger.warn('tenant_profile_resolve_fallback_slug_match_without_domain_config', {
+          userId,
+          hostSlug,
+          tenantId: profileData.tenantId,
+        });
+
+        return {
+          ...profileData,
+          tenantId: profileData.tenantId,
+          tenantSlug: profileData.tenantSlug || hostSlug,
         };
       }
 
@@ -1026,7 +1032,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
 
     return profileData;
-  }, [elevateToSystemOwner, fetchUserProfile, resolveDomainEmpresaId, verifyOwnerBackendAccess]);
+  }, [elevateToSystemOwner, extractEmpresaSlugFromMetadata, fetchUserProfile, resolveDomainEmpresaId, verifyOwnerBackendAccess]);
 
   const resolveUserProfileWithRetry = useCallback(async (
     userId: string,
@@ -1418,7 +1424,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     });
 
     return { error: null };
-  }, [buildSessionTransferHash, extractEmpresaSlugFromMetadata, resolveDomainEmpresaId, resolveTenantRedirectHost, resolveUserProfileWithRetry, transitionAuthStatus]);
+  }, [extractEmpresaSlugFromMetadata, resolveDomainEmpresaId, resolveUserProfileWithRetry, transitionAuthStatus]);
 
   const changePassword = useCallback(async (newPassword: string): Promise<{ error: string | null }> => {
     const normalizedPassword = newPassword.trim();

@@ -6,14 +6,15 @@ import { useAuth } from '@/contexts/AuthContext'
 import { isOwnerDomain } from '@/lib/security'
 import { getSessionTransferFromUrl } from '@/lib/sessionTransfer'
 import { supabase } from '@/integrations/supabase/client'
+import { getTenantBaseDomain, isTenantSubdomainHost, resolveTenantHostSlug } from '@/lib/tenantLoginFlow'
 
-const TENANT_BASE_DOMAIN = (import.meta.env.VITE_TENANT_BASE_DOMAIN || 'gppis.com.br').toLowerCase()
+const TENANT_BASE_DOMAIN = getTenantBaseDomain()
 
 function resolveHostContext(hostname: string) {
   const host = hostname.toLowerCase()
-  const isBaseDomain = host === TENANT_BASE_DOMAIN || host === `www.${TENANT_BASE_DOMAIN}`
-  const isTenantSubdomain = !isBaseDomain && host.endsWith(`.${TENANT_BASE_DOMAIN}`)
-  const slug = isTenantSubdomain ? host.replace(`.${TENANT_BASE_DOMAIN}`, '').split('.')[0]?.trim().toLowerCase() || '' : ''
+  const isTenantSubdomain = isTenantSubdomainHost(host)
+  const isBaseDomain = !isTenantSubdomain
+  const slug = resolveTenantHostSlug(host) || ''
   return {
     isBaseDomain,
     isTenantSubdomain,
