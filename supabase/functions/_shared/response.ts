@@ -56,7 +56,7 @@ export function resolveCorsHeaders(
   const origin = req?.headers.get("origin") ?? null;
   const allowOrigin = origin && isAllowedOrigin(origin) ? origin : "";
 
-  const allowHeadersBase = "authorization, x-client-info, apikey, content-type";
+  const allowHeadersBase = "authorization, x-client-info, apikey, content-type, x-allow-password-change";
   const allowHeaders = extraHeaders
     ? `${allowHeadersBase}, ${extraHeaders}`
     : allowHeadersBase;

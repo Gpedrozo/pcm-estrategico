@@ -54,7 +54,6 @@ async function createSessionTransferCodeViaHttpFallback(
         'Content-Type': 'application/json',
         apikey: SUPABASE_PUBLIC_KEY,
         Authorization: `Bearer ${session.access_token}`,
-        'x-allow-password-change': '1',
       },
       body: JSON.stringify({
         action: 'create',
@@ -114,7 +113,6 @@ export async function createSessionTransferCode(sessionData: Session | null, tar
     const { data, error } = await supabase.functions.invoke('session-transfer', {
       headers: {
         Authorization: `Bearer ${activeSession.access_token}`,
-        'x-allow-password-change': '1',
       },
       body: {
         action: 'create',
