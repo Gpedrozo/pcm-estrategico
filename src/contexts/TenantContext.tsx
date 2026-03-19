@@ -213,7 +213,7 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
 
       const { data, error: fetchError } = await supabase
         .from('empresas')
-        .select('id, nome, ativo, slug')
+        .select('id, nome, status, slug')
         .eq('id', empresaId)
         .maybeSingle();
 
@@ -229,11 +229,12 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
           error: fetchError?.message ?? null,
         });
       } else {
+        const normalizedStatus = String((data as { status?: string | null })?.status ?? '').trim().toLowerCase();
         setTenant({
           id: data.id,
           slug: (data.slug || tenantSlug || 'default').toLowerCase(),
           name: data.nome,
-          is_active: data.ativo,
+          is_active: normalizedStatus === 'active' || normalizedStatus === 'ativo',
         });
       }
 
