@@ -220,11 +220,20 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
       if (!isMounted) return;
 
       if (fetchError || !data) {
-        setTenant(null);
-        setError(fetchError?.message || 'Empresa não encontrada');
-        logger.warn('tenant_resolution_company_not_found', {
+        // Fallback for first login / restrictive RLS: keep tenant context from resolved host/id.
+        // This prevents false negatives that block tenant login when empresa_id is already known.
+        const fallbackSlug = (hostSlug || tenantSlug || 'default').toLowerCase();
+        setTenant({
+          id: empresaId,
+          slug: fallbackSlug,
+          name: fallbackSlug,
+          is_active: true,
+        });
+        setError(null);
+        logger.warn('tenant_resolution_company_not_found_fallback_applied', {
           hostname,
           tenantSlug,
+          hostSlug,
           empresaId,
           error: fetchError?.message ?? null,
         });

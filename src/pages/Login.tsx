@@ -28,8 +28,8 @@ const SESSION_TRANSFER_REDIRECT_STORAGE_KEY = 'pcm.auth.session_transfer.redirec
 const SESSION_TRANSFER_CONSUMED_STORAGE_KEY = 'pcm.auth.session_transfer.consumed.v1';
 const SESSION_TRANSFER_CONSUMED_MAX_AGE_MS = 2 * 60 * 1000;
 const CROSS_DOMAIN_REDIRECT_MARKER_STORAGE_KEY = 'pcm.auth.cross_domain_redirect.v1';
-const TENANT_LOGIN_FALLBACK_REDIRECT_MARKER = 'pcm.auth.tenant_login_fallback_redirect.v1';
-const TENANT_LOGIN_FALLBACK_REDIRECT_MAX_AGE_MS = 45_000;
+const LOGIN_REDIRECT_LOCK_KEY = 'pcm.auth.login_redirect_lock.v2';
+const LOGIN_REDIRECT_LOCK_TTL_MS = 15_000;
 
 const TENANT_REDIRECT_TIMEOUT_MS = 6_000;
 
@@ -51,27 +51,33 @@ async function withTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T
   }
 }
 
-function hasRecentTenantFallbackRedirect(targetHost: string) {
+function hasActiveLoginRedirectLock() {
   try {
-    const raw = window.sessionStorage.getItem(TENANT_LOGIN_FALLBACK_REDIRECT_MARKER);
+    const raw = window.sessionStorage.getItem(LOGIN_REDIRECT_LOCK_KEY);
     if (!raw) return false;
-    const parsed = JSON.parse(raw) as { at?: number; targetHost?: string };
+    const parsed = JSON.parse(raw) as { at?: number };
     const markerAt = Number(parsed?.at ?? 0);
-    const markerTargetHost = String(parsed?.targetHost ?? '').trim().toLowerCase();
     if (!Number.isFinite(markerAt) || markerAt <= 0) return false;
-    if ((Date.now() - markerAt) > TENANT_LOGIN_FALLBACK_REDIRECT_MAX_AGE_MS) return false;
-    return markerTargetHost === String(targetHost).trim().toLowerCase();
+    return (Date.now() - markerAt) <= LOGIN_REDIRECT_LOCK_TTL_MS;
   } catch {
     return false;
   }
 }
 
-function markTenantFallbackRedirect(targetHost: string) {
+function markLoginRedirectLock() {
   try {
     window.sessionStorage.setItem(
-      TENANT_LOGIN_FALLBACK_REDIRECT_MARKER,
-      JSON.stringify({ at: Date.now(), targetHost: String(targetHost).trim().toLowerCase() }),
+      LOGIN_REDIRECT_LOCK_KEY,
+      JSON.stringify({ at: Date.now() }),
     );
+  } catch {
+    // noop
+  }
+}
+
+function clearLoginRedirectLock() {
+  try {
+    window.sessionStorage.removeItem(LOGIN_REDIRECT_LOCK_KEY);
   } catch {
     // noop
   }
@@ -106,8 +112,6 @@ export default function Login() {
   const [logoutNotice, setLogoutNotice] = useState('');
   const [isLoginLoading, setIsLoginLoading] = useState(false);
   const [isRedirectingTenantDomain, setIsRedirectingTenantDomain] = useState(false);
-  const allowPostLoginRedirectRef = useRef(false);
-  const tenantRedirectInFlightRef = useRef(false);
 
   const { login, isAuthenticated, isLoading, isHydrating, authStatus, effectiveRole, tenantId, forcePasswordChange } = useAuth();
   const navigate = useNavigate();
@@ -213,10 +217,11 @@ export default function Login() {
     const redirectAuthenticatedUser = async () => {
       if (isLoading || isHydrating || authStatus === 'loading' || authStatus === 'hydrating') return;
       if (!isAuthenticated || authStatus !== 'authenticated') return;
-      if (tenantRedirectInFlightRef.current) return;
+      if (hasActiveLoginRedirectLock()) return;
 
       if (forcePasswordChange) {
         setIsRedirectingTenantDomain(false);
+        clearLoginRedirectLock();
         navigate('/change-password', { replace: true });
         return;
       }
@@ -230,27 +235,12 @@ export default function Login() {
         isBaseTenantHost(currentHost);
 
       const nextPath = resolveSafeNextPath();
-      const isManualAccountSwitchIntent =
-        isTenantBaseHost
-        && window.location.pathname === '/login'
-        && !nextPath
-        && !hasSessionTransferHash()
-        && !allowPostLoginRedirectRef.current
-        && !tenantId
-        && !wasSessionTransferRecentlyConsumed();
-
-      // When user opens principal /login to switch account, do not auto-redirect
-      // using a stale authenticated context from previous tenant access.
-      if (isManualAccountSwitchIntent) {
-        setIsRedirectingTenantDomain(false);
-        return;
-      }
 
       if (!isGlobalRole && isTenantBaseHost) {
         const retryCount = getRetryCountFromUrl();
         if (retryCount >= AUTH_RETRY_COUNT_MAX) {
           if (!isActive) return;
-          tenantRedirectInFlightRef.current = false;
+          clearLoginRedirectLock();
           setIsRedirectingTenantDomain(false);
           setLoginError('Loop de redirecionamento detectado. Tente novamente em instantes.');
           logger.warn('tenant_base_redirect_blocked_retry_limit', {
@@ -262,11 +252,11 @@ export default function Login() {
         }
 
         if (!tenantId) {
-          tenantRedirectInFlightRef.current = false;
+          clearLoginRedirectLock();
           return;
         }
 
-        tenantRedirectInFlightRef.current = true;
+        markLoginRedirectLock();
         setIsRedirectingTenantDomain(true);
         setLoginError('');
 
@@ -306,7 +296,7 @@ export default function Login() {
 
         if (!targetHost) {
           if (!isActive) return;
-          tenantRedirectInFlightRef.current = false;
+          clearLoginRedirectLock();
           setIsRedirectingTenantDomain(false);
           navigate(nextPath || getPostLoginPath(effectiveRole), { replace: true });
           return;
@@ -314,7 +304,7 @@ export default function Login() {
 
         if (targetHost === currentHost) {
           if (!isActive) return;
-          tenantRedirectInFlightRef.current = false;
+          clearLoginRedirectLock();
           setIsRedirectingTenantDomain(false);
           navigate(nextPath || getPostLoginPath(effectiveRole), { replace: true });
           return;
@@ -327,11 +317,6 @@ export default function Login() {
           handoffFailed: true,
           email: loginEmail,
         });
-
-        if (hasRecentTenantFallbackRedirect(targetHost)) {
-          window.location.assign(fallbackUrl);
-          return;
-        }
 
         const { data: sessionData } = await supabase.auth.getSession();
         const activeSession = sessionData?.session;
@@ -350,8 +335,6 @@ export default function Login() {
             fallbackUrl,
           });
 
-          markTenantFallbackRedirect(targetHost);
-
           try {
             window.localStorage.setItem(
               CROSS_DOMAIN_REDIRECT_MARKER_STORAGE_KEY,
@@ -361,8 +344,7 @@ export default function Login() {
             // noop
           }
 
-          void supabase.auth.signOut({ scope: 'local' }).catch(() => null);
-          void supabase.auth.signOut().catch(() => null);
+          // Cross-domain handoff fallback: go directly to tenant login without waiting for any async cleanup.
           window.location.assign(fallbackUrl);
           return;
         }
@@ -402,7 +384,7 @@ export default function Login() {
         return;
       }
 
-      tenantRedirectInFlightRef.current = false;
+      clearLoginRedirectLock();
       setIsRedirectingTenantDomain(false);
       navigate(nextPath || getPostLoginPath(effectiveRole), { replace: true });
     };
@@ -431,7 +413,6 @@ export default function Login() {
     setLoginError('');
     setIsRedirectingTenantDomain(false);
     setIsLoginLoading(true);
-    allowPostLoginRedirectRef.current = true;
 
     try {
       const normalizedEmail = loginEmail.trim().toLowerCase();
@@ -445,11 +426,9 @@ export default function Login() {
       const { error } = await login(normalizedEmail, loginPassword);
 
       if (error) {
-        allowPostLoginRedirectRef.current = false;
         setLoginError(error);
       }
     } catch (err) {
-      allowPostLoginRedirectRef.current = false;
       setLoginError('Erro ao fazer login. Tente novamente.');
     } finally {
       setIsLoginLoading(false);
