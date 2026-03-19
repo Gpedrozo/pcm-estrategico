@@ -1,0 +1,104 @@
+﻿{
+  "ok": true,
+  "redirectedToBaseLogin": true,
+  "logoutMarkerObserved": true,
+  "blockedAfterLogout": true,
+  "afterLogoutUrl": "https://gppis.com.br/login",
+  "postAccessUrl": "https://cooper.gppis.com.br/login",
+  "transitions": [
+    {
+      "at": "2026-03-19T02:02:54.035Z",
+      "url": "https://cooper.gppis.com.br/login"
+    },
+    {
+      "at": "2026-03-19T02:02:54.282Z",
+      "url": "https://cooper.gppis.com.br/login"
+    },
+    {
+      "at": "2026-03-19T02:02:55.732Z",
+      "url": "https://cooper.gppis.com.br/dashboard"
+    },
+    {
+      "at": "2026-03-19T02:02:57.939Z",
+      "url": "https://cooper.gppis.com.br/login"
+    },
+    {
+      "at": "2026-03-19T02:02:58.161Z",
+      "url": "https://cooper.gppis.com.br/login"
+    },
+    {
+      "at": "2026-03-19T02:02:58.229Z",
+      "url": "https://gppis.com.br/login?logout=1"
+    },
+    {
+      "at": "2026-03-19T02:02:58.328Z",
+      "url": "https://gppis.com.br/login?logout=1"
+    },
+    {
+      "at": "2026-03-19T02:02:58.338Z",
+      "url": "https://gppis.com.br/login"
+    },
+    {
+      "at": "2026-03-19T02:03:03.973Z",
+      "url": "https://cooper.gppis.com.br/dashboard"
+    },
+    {
+      "at": "2026-03-19T02:03:04.035Z",
+      "url": "https://cooper.gppis.com.br/dashboard"
+    },
+    {
+      "at": "2026-03-19T02:03:04.649Z",
+      "url": "https://cooper.gppis.com.br/login"
+    }
+  ],
+  "consoleLogs": [
+    {
+      "type": "info",
+      "text": "{\"level\":\"info\",\"message\":\"auth_status_transition\",\"context\":{\"from\":\"loading\",\"to\":\"unauthenticated\",\"reason\":\"auth_state_change_without_session\",\"event\":\"INITIAL_SESSION\"},\"timestamp\":\"2026-03-19T02:02:54.321Z\"}"
+    },
+    {
+      "type": "info",
+      "text": "{\"level\":\"info\",\"message\":\"tenant_subdomain_direct_login_enabled\",\"context\":{\"host\":\"cooper.gppis.com.br\",\"has_transfer\":false,\"consumed_recently\":false},\"timestamp\":\"2026-03-19T02:02:54.362Z\"}"
+    },
+    {
+      "type": "info",
+      "text": "{\"level\":\"info\",\"message\":\"auth_status_transition\",\"context\":{\"from\":\"unauthenticated\",\"to\":\"loading\",\"reason\":\"login_started\",\"email\":\"coopertradicao@gmail.com\"},\"timestamp\":\"2026-03-19T02:02:54.456Z\"}"
+    },
+    {
+      "type": "info",
+      "text": "{\"level\":\"info\",\"message\":\"auth_status_transition\",\"context\":{\"from\":\"loading\",\"to\":\"hydrating\",\"reason\":\"auth_state_change_with_session\",\"event\":\"SIGNED_IN\",\"userId\":\"aa14e7cf-8a43-42fc-8999-5d3c9eb6a4f2\"},\"timestamp\":\"2026-03-19T02:02:54.782Z\"}"
+    },
+    {
+      "type": "warning",
+      "text": "{\"level\":\"warn\",\"message\":\"tenant_resolution_company_not_found_fallback_applied\",\"context\":{\"hostname\":\"cooper.gppis.com.br\",\"tenantSlug\":\"cooper\",\"hostSlug\":\"cooper\",\"empresaId\":\"b61ddab4-0066-4978-b5d6-fc2eb03c83c2\",\"error\":null},\"timestamp\":\"2026-03-19T02:02:55.464Z\"}"
+    },
+    {
+      "type": "info",
+      "text": "{\"level\":\"info\",\"message\":\"auth_status_transition\",\"context\":{\"from\":\"hydrating\",\"to\":\"authenticated\",\"reason\":\"profile_hydrated_from_auth_state_change\",\"userId\":\"aa14e7cf-8a43-42fc-8999-5d3c9eb6a4f2\"},\"timestamp\":\"2026-03-19T02:02:55.729Z\"}"
+    },
+    {
+      "type": "info",
+      "text": "{\"level\":\"info\",\"message\":\"auth_status_transition\",\"context\":{\"from\":\"authenticated\",\"to\":\"unauthenticated\",\"reason\":\"manual\"},\"timestamp\":\"2026-03-19T02:02:57.935Z\"}"
+    },
+    {
+      "type": "info",
+      "text": "{\"level\":\"info\",\"message\":\"tenant_subdomain_direct_login_enabled\",\"context\":{\"host\":\"cooper.gppis.com.br\",\"has_transfer\":false,\"consumed_recently\":false},\"timestamp\":\"2026-03-19T02:02:57.944Z\"}"
+    },
+    {
+      "type": "info",
+      "text": "{\"level\":\"info\",\"message\":\"auth_status_transition\",\"context\":{\"from\":\"loading\",\"to\":\"unauthenticated\",\"reason\":\"auth_state_change_without_session\",\"event\":\"INITIAL_SESSION\"},\"timestamp\":\"2026-03-19T02:02:58.349Z\"}"
+    },
+    {
+      "type": "info",
+      "text": "{\"level\":\"info\",\"message\":\"auth_status_transition\",\"context\":{\"from\":\"loading\",\"to\":\"unauthenticated\",\"reason\":\"auth_state_change_without_session\",\"event\":\"INITIAL_SESSION\"},\"timestamp\":\"2026-03-19T02:03:04.043Z\"}"
+    },
+    {
+      "type": "warning",
+      "text": "{\"level\":\"warn\",\"message\":\"tenant_resolution_company_not_found_fallback_applied\",\"context\":{\"hostname\":\"cooper.gppis.com.br\",\"tenantSlug\":\"cooper\",\"hostSlug\":\"cooper\",\"empresaId\":\"b61ddab4-0066-4978-b5d6-fc2eb03c83c2\",\"error\":null},\"timestamp\":\"2026-03-19T02:03:04.644Z\"}"
+    },
+    {
+      "type": "info",
+      "text": "{\"level\":\"info\",\"message\":\"tenant_subdomain_direct_login_enabled\",\"context\":{\"host\":\"cooper.gppis.com.br\",\"has_transfer\":false,\"consumed_recently\":false},\"timestamp\":\"2026-03-19T02:03:04.647Z\"}"
+    }
+  ]
+}
