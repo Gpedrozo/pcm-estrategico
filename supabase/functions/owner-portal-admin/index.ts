@@ -1136,13 +1136,25 @@ async function cleanupCompanyTenantRows(
 
 async function deleteAuthUsers(admin: ReturnType<typeof adminClient>, userIds: string[]) {
   let removed = 0;
+  const failed: Array<{ user_id: string; reason: string }> = [];
 
   for (const userId of userIds) {
     const { error } = await admin.auth.admin.deleteUser(userId);
-    if (!error) removed += 1;
+    if (!error) {
+      removed += 1;
+      continue;
+    }
+
+    failed.push({
+      user_id: userId,
+      reason: String(error.message ?? "delete_user_failed"),
+    });
   }
 
-  return removed;
+  return {
+    removed,
+    failed,
+  };
 }
 
 async function collectAuthUsersByCompanyMetadata(
@@ -1200,30 +1212,6 @@ async function collectAuthUsersByCompanyMetadata(
   }
 
   return Array.from(matchedUserIds);
-}
-
-async function findAuthUserByEmail(
-  admin: ReturnType<typeof adminClient>,
-  rawEmail: string,
-) {
-  const targetEmail = String(rawEmail ?? "").trim().toLowerCase();
-  if (!targetEmail) return null;
-
-  const perPage = 1000;
-  for (let page = 1; page <= 20; page += 1) {
-    const { data: pageData, error: pageError } = await admin.auth.admin.listUsers({ page, perPage });
-    if (pageError) break;
-
-    const users = Array.isArray(pageData?.users) ? pageData.users : [];
-    if (users.length === 0) break;
-
-    const found = users.find((user: any) => String(user?.email ?? "").trim().toLowerCase() === targetEmail);
-    if (found?.id) return found;
-
-    if (users.length < perPage) break;
-  }
-
-  return null;
 }
 
 async function bestEffortDeleteByEq(
@@ -1700,57 +1688,15 @@ Deno.serve(async (req) => {
       },
     });
 
-    let authMasterUserId = createdAuth?.user?.id ?? null;
-    let reusedExistingAuthUser = false;
+    const authMasterUserId = createdAuth?.user?.id ?? null;
 
     if (authError || !authMasterUserId) {
       const authMessage = authError?.message ?? "Failed to create company master user";
-      if (authMessage.toLowerCase().includes("already") || authMessage.toLowerCase().includes("registered") || authMessage.toLowerCase().includes("exists")) {
-        const existingAuthUser = await findAuthUserByEmail(admin, normalizedMasterEmail);
-
-        if (existingAuthUser?.id) {
-          authMasterUserId = existingAuthUser.id;
-          reusedExistingAuthUser = true;
-
-          const { error: updateExistingAuthError } = await admin.auth.admin.updateUserById(existingAuthUser.id, {
-            password,
-            email_confirm: true,
-            app_metadata: {
-              empresa_id: company.id,
-              empresa_slug: slug,
-              role: masterRole,
-              roles: [masterRole],
-              force_password_change: true,
-              must_change_password: true,
-            },
-            user_metadata: {
-              nome: body.user.nome,
-              empresa_id: company.id,
-              empresa_slug: slug,
-              force_password_change: true,
-              must_change_password: true,
-            },
-          });
-
-          if (updateExistingAuthError) {
-            const reason = await rollbackCreateCompany(updateExistingAuthError.message);
-            return fail("Falha ao reaproveitar usuário MASTER existente para a nova empresa.", 400, { reason }, req);
-          }
-        } else {
-          const reason = await rollbackCreateCompany(authMessage);
-          return fail("O email do usuário MASTER já está cadastrado e não pôde ser reaproveitado automaticamente.", 409, { reason }, req);
-        }
-      }
-
-      if (!authMasterUserId) {
-        const reason = await rollbackCreateCompany(authMessage);
-        return fail(authMessage, 400, { reason }, req);
-      }
+      const reason = await rollbackCreateCompany(authMessage);
+      return fail(authMessage, 400, { reason }, req);
     }
 
-    if (!reusedExistingAuthUser && authMasterUserId) {
-      createdAuthUserId = authMasterUserId;
-    }
+    createdAuthUserId = authMasterUserId;
 
     const { error: profileUpsertError } = await admin.from("profiles").upsert({
       id: authMasterUserId,
@@ -1893,7 +1839,6 @@ Deno.serve(async (req) => {
         id: authMasterUserId,
         email: normalizedMasterEmail,
         initial_password: password,
-        reused_existing_auth_user: reusedExistingAuthUser,
       },
       subscription: subscription
         ? {
@@ -3215,7 +3160,10 @@ Deno.serve(async (req) => {
 
     const expectedName = company.nome ?? company.slug ?? "";
 
-    const includeAuthUsers = Boolean(body.include_auth_users);
+    if (body.include_auth_users === false) {
+      return fail("Exclusão definitiva exige include_auth_users=true para remoção total do tenant.", 400, null, req);
+    }
+    const includeAuthUsers = true;
 
     const { data: beforeDeleteContracts } = await admin
       .from("contracts")
@@ -3259,7 +3207,19 @@ Deno.serve(async (req) => {
     const cleanupDeletedByTable = cleanupResult.deletedByTable ?? {};
     let deletedAuthUsers = 0;
     if (includeAuthUsers && userIds.length > 0) {
-      deletedAuthUsers = await deleteAuthUsers(admin, userIds);
+      const authDelete = await deleteAuthUsers(admin, userIds);
+      deletedAuthUsers = authDelete.removed;
+      if (authDelete.failed.length > 0) {
+        return fail(
+          "Falha ao excluir todos os usuários do Auth vinculados à empresa. Exclusão abortada para evitar resíduos.",
+          400,
+          {
+            operation_id: operationId,
+            failed_auth_users: authDelete.failed,
+          },
+          req,
+        );
+      }
     }
 
     if (contractIds.length > 0) {
@@ -3319,11 +3279,44 @@ Deno.serve(async (req) => {
     if (lastDeleteCompanyError) {
       const referencedTable = extractReferencedTableFromFkError(lastDeleteCompanyError.message);
       return fail(
-        `Falha ao excluir empresa por dependências de FK (${referencedTable ?? "empresa_id"}). Execute cleanup_company_data/delete_company no backend atualizado para remover dependências tenant antes da exclusão física. Detalhe: ${lastDeleteCompanyError.message}`,
+        `Falha ao excluir empresa por dependências de FK (${referencedTable ?? "empresa_id"}). A exclusão definitiva exige remoção total dos vínculos. Detalhe: ${lastDeleteCompanyError.message}`,
         400,
         {
           fk_table: referencedTable,
           reason: lastDeleteCompanyError.message,
+        },
+        req,
+      );
+    }
+
+    const residueTables = (await listDatabaseTables(admin, body.empresa_id))
+      .filter((table) => table.has_empresa_id && Number(table.total_rows ?? 0) > 0)
+      .map((table) => ({ table_name: table.table_name, total_rows: Number(table.total_rows ?? 0) }));
+
+    if (residueTables.length > 0) {
+      return fail(
+        "Exclusão incompleta detectada: ainda existem registros vinculados à empresa em tabelas tenant.",
+        400,
+        {
+          operation_id: operationId,
+          residue_tables: residueTables,
+        },
+        req,
+      );
+    }
+
+    const residualAuthMetadataUsers = await collectAuthUsersByCompanyMetadata(admin, {
+      empresaId: body.empresa_id,
+      empresaSlug: company.slug ?? null,
+    });
+
+    if (residualAuthMetadataUsers.length > 0) {
+      return fail(
+        "Exclusão incompleta detectada: ainda existem usuários Auth com metadata da empresa removida.",
+        400,
+        {
+          operation_id: operationId,
+          residual_auth_user_ids: residualAuthMetadataUsers,
         },
         req,
       );

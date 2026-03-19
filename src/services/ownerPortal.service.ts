@@ -555,7 +555,6 @@ export async function purgeTableData(payload: {
 
 export async function deleteCompanyByOwner(payload: {
   empresa_id: string
-  include_auth_users?: boolean
   auth_password: string
 }) {
   const health = await getOwnerBackendHealth().catch(() => null)
@@ -565,5 +564,5 @@ export async function deleteCompanyByOwner(payload: {
   }
 
   // Operacao destrutiva deve ocorrer apenas no backend owner-portal-admin.
-  return callOwnerAdmin({ action: 'delete_company', ...payload })
+  return callOwnerAdmin({ action: 'delete_company', ...payload, include_auth_users: true })
 }

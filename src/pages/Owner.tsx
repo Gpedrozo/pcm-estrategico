@@ -844,7 +844,6 @@ export default function Owner() {
       try {
         const output = await deleteCompanyByOwnerMutation.mutateAsync({
           empresa_id: companyId,
-          include_auth_users: true,
           auth_password: authPassword,
         })
         setSystemActionOutput(output)
@@ -1407,7 +1406,7 @@ export default function Owner() {
                 </tbody>
               </table>
             </div>
-            <p className="mt-2 text-[11px] text-rose-300">Excluir empresa remove todos os dados relacionados ao tenant (historico, contratos, assinaturas, usuarios, perfis e registros vinculados).</p>
+            <p className="mt-2 text-[11px] text-rose-300">Excluir empresa executa purge definitivo do tenant: remove historico, contratos, assinaturas, usuarios, perfis, metadata Auth e todos os registros vinculados.</p>
           </Card>
         </div>
       )}
@@ -2272,14 +2271,14 @@ export default function Owner() {
                 beginDeleteCompanyOverlay(systemForm.empresa_id)
                 const startedAt = Date.now()
                 try {
-                  const output = await deleteCompanyByOwnerMutation.mutateAsync({ empresa_id: systemForm.empresa_id, include_auth_users: systemForm.include_auth_users, auth_password: systemForm.auth_password })
+                  const output = await deleteCompanyByOwnerMutation.mutateAsync({ empresa_id: systemForm.empresa_id, auth_password: systemForm.auth_password })
                   setSystemActionOutput(output)
                   completeDeleteCompanyOverlay()
                   return output
                 } finally {
                   closeDeleteOverlayWithMinimumDelay(startedAt)
                 }
-              }, 'Empresa excluida definitivamente com sucesso.')}>Excluir empresa</button>
+              }, 'Empresa excluida definitivamente com purge total.')}>Excluir empresa</button>
             </div>
 
             {!isOwnerMaster && (
