@@ -1,5 +1,5 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { adminClient, requireEmpresaScope, requireUser } from "../_shared/auth.ts";
+import { adminClient, requireTenantContext, requireUser } from "../_shared/auth.ts";
 import { fail, ok, preflight, rejectIfOriginNotAllowed } from "../_shared/response.ts";
 
 interface PlanoPreventivo {
@@ -58,7 +58,7 @@ Deno.serve(async (req) => {
 
     const supabase = adminClient();
 
-    const scope = await requireEmpresaScope(supabase, auth.user.id, empresaId);
+    const scope = await requireTenantContext(supabase, req, auth.user.id, empresaId);
     if ("error" in scope) return fail(scope.error, scope.status, null, req);
 
     const today = new Date().toISOString().split("T")[0];

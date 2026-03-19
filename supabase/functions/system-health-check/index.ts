@@ -139,6 +139,15 @@ Deno.serve(async (req) => {
     });
   }
 
+  const url = new URL(req.url);
+  const empresaId = String(url.searchParams.get("empresa_id") ?? "").trim();
+  if (!empresaId) {
+    return new Response(JSON.stringify({ error: "empresa_id is required" }), {
+      status: 400,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+
   try {
     const supabase = adminClient();
 
@@ -149,6 +158,7 @@ Deno.serve(async (req) => {
     const { data: materiais } = await supabase
       .from("materiais")
       .select("id, codigo, nome, estoque_atual, estoque_minimo")
+      .eq("empresa_id", empresaId)
       .eq("ativo", true);
 
     if (materiais) {
@@ -177,6 +187,7 @@ Deno.serve(async (req) => {
     const { data: planosVencidos } = await supabase
       .from("planos_preventivos")
       .select("id, codigo, nome, proxima_execucao")
+      .eq("empresa_id", empresaId)
       .eq("ativo", true)
       .lt("proxima_execucao", today);
 
@@ -199,6 +210,7 @@ Deno.serve(async (req) => {
     const { data: medicoesCriticas } = await supabase
       .from("medicoes_preditivas")
       .select("id, tag, tipo_medicao, valor, limite_critico")
+      .eq("empresa_id", empresaId)
       .eq("status", "CRITICO");
 
     if (medicoesCriticas && medicoesCriticas.length > 0) {
@@ -221,6 +233,7 @@ Deno.serve(async (req) => {
     const { data: osUrgentes } = await supabase
       .from("ordens_servico")
       .select("id, numero_os, equipamento, data_solicitacao")
+      .eq("empresa_id", empresaId)
       .eq("prioridade", "URGENTE")
       .in("status", ["ABERTA", "EM_ANDAMENTO"]);
 
@@ -238,6 +251,7 @@ Deno.serve(async (req) => {
     const { count: backlogCount } = await supabase
       .from("ordens_servico")
       .select("id", { count: "exact", head: true })
+      .eq("empresa_id", empresaId)
       .in("status", ["ABERTA", "EM_ANDAMENTO", "AGUARDANDO_MATERIAL"]);
 
     if (backlogCount && backlogCount > 20) {
@@ -253,6 +267,7 @@ Deno.serve(async (req) => {
     return new Response(
       JSON.stringify({
         timestamp: new Date().toISOString(),
+        empresa_id: empresaId,
         total_alerts: alerts.length,
         alerts,
       }),

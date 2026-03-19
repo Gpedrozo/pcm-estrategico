@@ -1,5 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { adminClient, requireEmpresaScope, requireUser } from "../_shared/auth.ts";
+import { adminClient, requireTenantContext, requireUser } from "../_shared/auth.ts";
 import { fail, ok, preflight, rejectIfOriginNotAllowed } from "../_shared/response.ts";
 
 serve(async (req) => {
@@ -26,7 +26,7 @@ serve(async (req) => {
 
     const supabase = adminClient();
 
-    const scope = await requireEmpresaScope(supabase, auth.user.id, body?.empresa_id ?? null);
+    const scope = await requireTenantContext(supabase, req, auth.user.id, body?.empresa_id ?? null);
     if ("error" in scope) return fail(scope.error, scope.status, null, req);
 
     const AI_GATEWAY_API_KEY = Deno.env.get("AI_GATEWAY_API_KEY");

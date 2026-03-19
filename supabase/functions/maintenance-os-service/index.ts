@@ -1,6 +1,6 @@
 // @ts-nocheck
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { adminClient, ensureEmpresaAccess, requireUser } from "../_shared/auth.ts";
+import { adminClient, requireTenantContext, requireUser } from "../_shared/auth.ts";
 import { logAuditEvent, failRateLimited } from "../_shared/audit.ts";
 import { createRequestTrace, traceDurationMs, writeOperationalLog } from "../_shared/observability.ts";
 import { enforceRateLimit } from "../_shared/rateLimit.ts";
@@ -50,12 +50,13 @@ Deno.serve(async (req) => {
   });
   if (!rateLimit.allowed) return failRateLimited(req, "Rate limit exceeded for maintenance service");
 
-  const allowed = await ensureEmpresaAccess(admin, auth.user.id, payload.empresa_id);
-  if (!allowed) return fail("Forbidden for empresa", 403, null, req);
+  const scope = await requireTenantContext(admin, req, auth.user.id, payload.empresa_id);
+  if ("error" in scope) return fail(scope.error, scope.status, null, req);
+  const empresaId = scope.empresaId;
 
   if (payload.action === "open_os") {
     const { error: limitError } = await admin.rpc("check_company_plan_limit", {
-      p_empresa_id: payload.empresa_id,
+      p_empresa_id: empresaId,
       p_limit_type: "orders",
       p_increment: 1,
     });
@@ -64,7 +65,7 @@ Deno.serve(async (req) => {
     const { data, error } = await admin
       .from("ordens_servico")
       .insert({
-        empresa_id: payload.empresa_id,
+        empresa_id: empresaId,
         tipo: payload.tipo ?? "CORRETIVA",
         prioridade: payload.prioridade ?? "MEDIA",
         status: "ABERTA",
@@ -86,7 +87,7 @@ Deno.serve(async (req) => {
       action: "OPEN_OS",
       entityType: "ordens_servico",
       entityId: data?.id ?? null,
-      empresaId: payload.empresa_id,
+      empresaId,
       userId: auth.user.id,
       req,
       endpoint: trace.endpoint,
@@ -104,7 +105,7 @@ Deno.serve(async (req) => {
       endpoint: trace.endpoint,
       statusCode: 200,
       durationMs,
-      empresaId: payload.empresa_id,
+      empresaId,
       userId: auth.user.id,
       requestId: trace.requestId,
       metadata: { os_id: data?.id ?? null },
@@ -118,7 +119,7 @@ Deno.serve(async (req) => {
     const { data, error } = await admin
       .from("execucoes_os")
       .insert({
-        empresa_id: payload.empresa_id,
+        empresa_id: empresaId,
         os_id: payload.os_id,
         mecanico_nome: payload.mecanico_nome ?? auth.user.email ?? "executor",
         hora_inicio: new Date().toISOString().slice(11, 19),
@@ -136,14 +137,14 @@ Deno.serve(async (req) => {
       .from("ordens_servico")
       .update({ status: "EM_ANDAMENTO", updated_at: new Date().toISOString() })
       .eq("id", payload.os_id)
-      .eq("empresa_id", payload.empresa_id);
+      .eq("empresa_id", empresaId);
 
     const durationMs = traceDurationMs(trace);
     await logAuditEvent(admin, {
       action: "START_OS_EXECUTION",
       entityType: "execucoes_os",
       entityId: data?.id ?? null,
-      empresaId: payload.empresa_id,
+      empresaId,
       userId: auth.user.id,
       req,
       endpoint: trace.endpoint,
@@ -157,7 +158,7 @@ Deno.serve(async (req) => {
       endpoint: trace.endpoint,
       statusCode: 200,
       durationMs,
-      empresaId: payload.empresa_id,
+      empresaId,
       userId: auth.user.id,
       requestId: trace.requestId,
       metadata: { os_id: payload.os_id, execucao_id: data?.id ?? null },
@@ -173,12 +174,12 @@ Deno.serve(async (req) => {
       .from("ordens_servico")
       .update({ status: "FECHADA", data_fechamento: nowIso, updated_at: nowIso })
       .eq("id", payload.os_id)
-      .eq("empresa_id", payload.empresa_id);
+      .eq("empresa_id", empresaId);
 
     if (osError) return fail(osError.message, 400, null, req);
 
     await admin.from("historico_manutencao").insert({
-      empresa_id: payload.empresa_id,
+      empresa_id: empresaId,
       os_id: payload.os_id,
       tipo: "OS_FECHADA",
       descricao: payload.servico_executado ?? "Fechamento de O.S",
@@ -191,7 +192,7 @@ Deno.serve(async (req) => {
       action: "CLOSE_OS",
       entityType: "ordens_servico",
       entityId: payload.os_id,
-      empresaId: payload.empresa_id,
+      empresaId,
       userId: auth.user.id,
       req,
       endpoint: trace.endpoint,
@@ -205,7 +206,7 @@ Deno.serve(async (req) => {
       endpoint: trace.endpoint,
       statusCode: 200,
       durationMs,
-      empresaId: payload.empresa_id,
+      empresaId,
       userId: auth.user.id,
       requestId: trace.requestId,
       metadata: { os_id: payload.os_id },

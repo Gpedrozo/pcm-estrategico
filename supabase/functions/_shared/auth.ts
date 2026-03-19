@@ -145,3 +145,136 @@ export async function requireEmpresaScope(
 
   return { empresaId } as const;
 }
+
+function normalizeHost(input?: string | null) {
+  const value = String(input ?? "").trim().toLowerCase();
+  if (!value) return null;
+  return value.replace(/^https?:\/\//, "").replace(/\/.*$/, "");
+}
+
+function resolveRequestTenantHost(req: Request) {
+  const explicitHost = normalizeHost(req.headers.get("x-tenant-host") ?? req.headers.get("x-forwarded-host"));
+  if (explicitHost) return explicitHost;
+
+  const origin = req.headers.get("origin");
+  if (origin) {
+    try {
+      return normalizeHost(new URL(origin).hostname);
+    } catch {
+      // noop
+    }
+  }
+
+  const referer = req.headers.get("referer");
+  if (referer) {
+    try {
+      return normalizeHost(new URL(referer).hostname);
+    } catch {
+      // noop
+    }
+  }
+
+  return null;
+}
+
+export async function resolveEmpresaIdFromRequest(
+  admin: ReturnType<typeof adminClient>,
+  req: Request,
+  explicitEmpresaId?: string | null,
+) {
+  const directHeaderEmpresaId = String(
+    req.headers.get("x-empresa-id") ?? req.headers.get("x-tenant-id") ?? "",
+  ).trim();
+
+  const directEmpresaId = String(explicitEmpresaId ?? directHeaderEmpresaId).trim();
+  if (directEmpresaId) {
+    return { empresaId: directEmpresaId, source: "explicit" as const };
+  }
+
+  const tenantBaseDomain = normalizeHost(
+    Deno.env.get("TENANT_BASE_DOMAIN")
+      ?? Deno.env.get("VITE_TENANT_BASE_DOMAIN")
+      ?? "gppis.com.br",
+  ) ?? "gppis.com.br";
+
+  const host = resolveRequestTenantHost(req);
+  if (!host) return { empresaId: null, source: "none" as const };
+
+  const isBaseHost = host === tenantBaseDomain || host === `www.${tenantBaseDomain}`;
+  if (isBaseHost) return { empresaId: null, source: "base-domain" as const };
+  if (!host.endsWith(`.${tenantBaseDomain}`)) return { empresaId: null, source: "outside-tenant-domain" as const };
+
+  const slug = host.replace(`.${tenantBaseDomain}`, "").split(".")[0]?.trim().toLowerCase() || "";
+  if (!slug || slug === "www") return { empresaId: null, source: "invalid-slug" as const };
+
+  const { data: domainConfig, error: domainError } = await admin
+    .from("empresa_config")
+    .select("empresa_id")
+    .eq("dominio_custom", host)
+    .maybeSingle();
+
+  if (domainError) {
+    return { empresaId: null, source: "domain-error" as const };
+  }
+
+  const { data: companyBySlug, error: slugError } = await admin
+    .from("empresas")
+    .select("id")
+    .eq("slug", slug)
+    .maybeSingle();
+
+  if (slugError) {
+    return { empresaId: null, source: "slug-error" as const };
+  }
+
+  const domainEmpresaId = String(domainConfig?.empresa_id ?? "").trim() || null;
+  const slugEmpresaId = String(companyBySlug?.id ?? "").trim() || null;
+
+  if (domainEmpresaId && slugEmpresaId && domainEmpresaId !== slugEmpresaId) {
+    return { empresaId: null, source: "host-slug-mismatch" as const };
+  }
+
+  const empresaId = domainEmpresaId || slugEmpresaId;
+  return {
+    empresaId,
+    source: empresaId ? "host" as const : "not-found",
+  };
+}
+
+export async function requireTenantContext(
+  admin: ReturnType<typeof adminClient>,
+  req: Request,
+  userId: string,
+  explicitEmpresaId?: string | null,
+) {
+  const resolved = await resolveEmpresaIdFromRequest(admin, req, explicitEmpresaId);
+  if (!resolved.empresaId) {
+    return {
+      error: "Tenant context is required",
+      status: 400,
+      reason: resolved.source,
+    } as const;
+  }
+
+  if (explicitEmpresaId && String(explicitEmpresaId).trim() && String(explicitEmpresaId).trim() !== resolved.empresaId) {
+    return {
+      error: "Tenant mismatch between request and payload",
+      status: 403,
+      reason: "payload-host-mismatch",
+    } as const;
+  }
+
+  const allowed = await ensureEmpresaAccess(admin, userId, resolved.empresaId);
+  if (!allowed) {
+    return {
+      error: "Forbidden for tenant",
+      status: 403,
+      reason: "access-denied",
+    } as const;
+  }
+
+  return {
+    empresaId: resolved.empresaId,
+    source: resolved.source,
+  } as const;
+}

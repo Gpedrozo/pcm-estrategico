@@ -1,5 +1,5 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { adminClient, requireEmpresaScope, requireUser } from "../_shared/auth.ts";
+import { adminClient, requireTenantContext, requireUser } from "../_shared/auth.ts";
 import { fail, ok, preflight, rejectIfOriginNotAllowed } from "../_shared/response.ts";
 
 interface OrdemServico {
@@ -43,7 +43,7 @@ Deno.serve(async (req) => {
     const tag = url.searchParams.get("tag"); // optional filter by tag
     const empresaId = url.searchParams.get("empresa_id");
 
-    const scope = await requireEmpresaScope(supabase, auth.user.id, empresaId);
+    const scope = await requireTenantContext(supabase, req, auth.user.id, empresaId);
     if ("error" in scope) return fail(scope.error, scope.status, null, req);
 
     // Calculate date range
