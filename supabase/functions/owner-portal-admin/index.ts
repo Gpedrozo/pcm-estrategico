@@ -1145,6 +1145,63 @@ async function deleteAuthUsers(admin: ReturnType<typeof adminClient>, userIds: s
   return removed;
 }
 
+async function collectAuthUsersByCompanyMetadata(
+  admin: ReturnType<typeof adminClient>,
+  params: { empresaId: string; empresaSlug?: string | null },
+) {
+  const targetEmpresaId = String(params.empresaId ?? "").trim();
+  const targetEmpresaSlug = String(params.empresaSlug ?? "").trim().toLowerCase();
+  const matchedUserIds = new Set<string>();
+
+  if (!targetEmpresaId) {
+    return [] as string[];
+  }
+
+  const perPage = 1000;
+  for (let page = 1; page <= 20; page += 1) {
+    const { data: pageData, error: pageError } = await admin.auth.admin.listUsers({ page, perPage });
+    if (pageError) {
+      break;
+    }
+
+    const users = Array.isArray(pageData?.users) ? pageData.users : [];
+    if (users.length === 0) {
+      break;
+    }
+
+    for (const user of users) {
+      const appMetadata = (user?.app_metadata ?? {}) as Record<string, unknown>;
+      const userMetadata = (user?.user_metadata ?? {}) as Record<string, unknown>;
+
+      const metadataEmpresaId = String(
+        appMetadata.empresa_id
+        ?? userMetadata.empresa_id
+        ?? "",
+      ).trim();
+
+      const metadataEmpresaSlug = String(
+        appMetadata.empresa_slug
+        ?? userMetadata.empresa_slug
+        ?? "",
+      ).trim().toLowerCase();
+
+      const matchesEmpresaId = metadataEmpresaId && metadataEmpresaId === targetEmpresaId;
+      const matchesEmpresaSlug = targetEmpresaSlug && metadataEmpresaSlug && metadataEmpresaSlug === targetEmpresaSlug;
+
+      if (matchesEmpresaId || matchesEmpresaSlug) {
+        const userId = String(user?.id ?? "").trim();
+        if (userId) matchedUserIds.add(userId);
+      }
+    }
+
+    if (users.length < perPage) {
+      break;
+    }
+  }
+
+  return Array.from(matchedUserIds);
+}
+
 async function bestEffortDeleteByEq(
   admin: ReturnType<typeof adminClient>,
   tableName: string,
@@ -2916,6 +2973,12 @@ Deno.serve(async (req) => {
       return fail("Senha inválida para confirmar a operação.", 401, null, req);
     }
 
+    const { data: cleanupCompanyRef } = await admin
+      .from("empresas")
+      .select("id,slug")
+      .eq("id", body.empresa_id)
+      .maybeSingle();
+
     const keepCompanyCore = Boolean(body.keep_company_core);
     const keepBillingData = Boolean(body.keep_billing_data);
     const includeAuthUsers = Boolean(body.include_auth_users);
@@ -2933,7 +2996,17 @@ Deno.serve(async (req) => {
     }
 
     const deletedByTable = cleanupResult.deletedByTable ?? {};
-    const userIds = cleanupResult.userIds ?? [];
+    const authMetadataUserIds = includeAuthUsers
+      ? await collectAuthUsersByCompanyMetadata(admin, {
+        empresaId: body.empresa_id,
+        empresaSlug: cleanupCompanyRef?.slug ?? null,
+      })
+      : [];
+
+    const userIds = Array.from(new Set([
+      ...(cleanupResult.userIds ?? []),
+      ...authMetadataUserIds,
+    ]));
     const tableErrors = cleanupResult.tableErrors ?? [];
 
     let deletedAuthUsers = 0;
@@ -3104,7 +3177,17 @@ Deno.serve(async (req) => {
       }, req);
     }
 
-    const userIds = cleanupResult.userIds ?? [];
+    const authMetadataUserIds = includeAuthUsers
+      ? await collectAuthUsersByCompanyMetadata(admin, {
+        empresaId: body.empresa_id,
+        empresaSlug: company.slug ?? null,
+      })
+      : [];
+
+    const userIds = Array.from(new Set([
+      ...(cleanupResult.userIds ?? []),
+      ...authMetadataUserIds,
+    ]));
     const tableErrors = cleanupResult.tableErrors ?? [];
     const cleanupDeletedByTable = cleanupResult.deletedByTable ?? {};
     let deletedAuthUsers = 0;
