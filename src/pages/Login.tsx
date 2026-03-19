@@ -4,7 +4,12 @@ import { useAuth } from '@/contexts/AuthContext';
 import { getPostLoginPath } from '@/lib/security';
 import { supabase } from '@/integrations/supabase/client';
 import { resolveOrRepairTenantHost } from '@/lib/tenantDomain';
-import { createDirectSessionTransferHash, createSessionTransferHash, getSessionTransferFromUrl } from '@/lib/sessionTransfer';
+import {
+  createDirectSessionTransferHash,
+  createSessionTransferHash,
+  getSessionTransferFromUrl,
+  resolveSessionForCrossDomainRedirect,
+} from '@/lib/sessionTransfer';
 import {
   AUTH_RETRY_COUNT_MAX,
   AUTH_RETRY_COUNT_PARAM,
@@ -319,7 +324,33 @@ export default function Login() {
         });
 
         const { data: sessionData } = await supabase.auth.getSession();
-        const activeSession = sessionData?.session;
+        const activeSession = await resolveSessionForCrossDomainRedirect(sessionData?.session ?? null);
+
+        const directTransferHash = createDirectSessionTransferHash(activeSession ?? null);
+        if (directTransferHash) {
+          const appTargetPath = nextPath || getPostLoginPath(effectiveRole);
+          const normalizedAppPath = appTargetPath.startsWith('/') ? appTargetPath : `/${appTargetPath}`;
+          const directTargetUrl = `${window.location.protocol}//${targetHost}${normalizedAppPath}#${directTransferHash}`;
+
+          logger.info('tenant_base_redirect_using_direct_session_handoff', {
+            currentHost,
+            targetHost,
+            tenantId,
+            appTargetPath: normalizedAppPath,
+          });
+
+          try {
+            window.localStorage.setItem(
+              CROSS_DOMAIN_REDIRECT_MARKER_STORAGE_KEY,
+              JSON.stringify({ at: Date.now() }),
+            );
+          } catch {
+            // noop
+          }
+
+          window.location.assign(directTargetUrl);
+          return;
+        }
 
         let transferHash = '';
         const transferTokenHash = await createSessionTransferHash(activeSession ?? null, targetHost);
@@ -328,31 +359,6 @@ export default function Login() {
         }
 
         if (!transferHash) {
-          const directTransferHash = createDirectSessionTransferHash(activeSession ?? null);
-          if (directTransferHash) {
-            const appTargetPath = nextPath || getPostLoginPath(effectiveRole);
-            const normalizedAppPath = appTargetPath.startsWith('/') ? appTargetPath : `/${appTargetPath}`;
-            const directTargetUrl = `${window.location.protocol}//${targetHost}${normalizedAppPath}#${directTransferHash}`;
-
-            logger.warn('tenant_base_redirect_using_direct_session_handoff', {
-              currentHost,
-              targetHost,
-              tenantId,
-              appTargetPath: normalizedAppPath,
-            });
-
-            try {
-              window.localStorage.setItem(
-                CROSS_DOMAIN_REDIRECT_MARKER_STORAGE_KEY,
-                JSON.stringify({ at: Date.now() }),
-              );
-            } catch {
-              // noop
-            }
-
-            window.location.assign(directTargetUrl);
-            return;
-          }
 
           logger.warn('tenant_base_redirect_missing_session_transfer', {
             currentHost,

@@ -42,6 +42,21 @@ async function resolveActiveSession(initialSession: Session | null): Promise<Ses
   return null;
 }
 
+export async function resolveSessionForCrossDomainRedirect(initialSession: Session | null): Promise<Session | null> {
+  const resolved = await resolveActiveSession(initialSession);
+  if (resolved?.access_token && resolved?.refresh_token) {
+    return resolved;
+  }
+
+  const { data } = await supabase.auth.refreshSession();
+  const refreshed = data?.session ?? null;
+  if (refreshed?.access_token && refreshed?.refresh_token) {
+    return refreshed;
+  }
+
+  return null;
+}
+
 async function createSessionTransferCodeViaHttpFallback(
   session: Session,
   targetHost: string,
