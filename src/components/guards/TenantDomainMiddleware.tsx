@@ -85,7 +85,19 @@ export function TenantDomainMiddleware({ children }: { children: React.ReactNode
     )
   }
 
-  if (hostContext.isTenantSubdomain && (!tenant || error)) {
+  // Allow unauthenticated visitors to reach tenant routes (Index will route to /login).
+  // Blocking here causes false "Tenant inválido" on first direct access to subdomains.
+  if (
+    hostContext.isTenantSubdomain
+    && !isAuthenticated
+    && !isHydrating
+    && !isAuthLoading
+    && authStatus === 'unauthenticated'
+  ) {
+    return <>{children}</>
+  }
+
+  if (hostContext.isTenantSubdomain && isAuthenticated && (!tenant || error)) {
     return (
       <div className="min-h-screen flex items-center justify-center p-6 bg-background">
         <div className="max-w-lg rounded-lg border border-destructive/40 bg-card p-6 text-center space-y-3">
