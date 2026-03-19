@@ -211,7 +211,7 @@ export default function Owner() {
   const createCompanyElapsedLabel = `${String(Math.floor(createCompanyElapsedSeconds / 60)).padStart(2, '0')}:${String(createCompanyElapsedSeconds % 60).padStart(2, '0')}`
 
   const ownerMasterEmail = getOwnerMasterEmail()
-  const isOwnerMaster = normalizeEmail(user?.email || '') === ownerMasterEmail
+  const isOwnerMaster = isSystemOwner || normalizeEmail(user?.email || '') === ownerMasterEmail
 
   const dashboardActive = active === 'dashboard'
   const companiesActive = active === 'empresas'
@@ -807,11 +807,6 @@ export default function Owner() {
   const handleDeleteCompanyFromList = async (company: { id: string; nome?: string; slug?: string }) => {
     clearFeedback()
 
-    if (!isOwnerMaster) {
-      setError('Operacao restrita ao owner master configurado no ambiente.')
-      return
-    }
-
     openDeleteCompanyDialog(company)
   }
 
@@ -857,7 +852,7 @@ export default function Owner() {
       } finally {
         closeDeleteOverlayWithMinimumDelay(startedAt)
       }
-    }, `Empresa ${companyLabel} excluida definitivamente com todos os dados relacionados.`)
+    }, `Empresa ${companyLabel} excluida definitivamente com purge total do tenant.`)
   }
 
   const executeCreateCompany = async () => {
@@ -1017,12 +1012,6 @@ export default function Owner() {
   }
 
   const runOwnerMasterAction = async (fn: () => Promise<unknown>, success: string) => {
-    if (!isOwnerMaster) {
-      setFeedback(null)
-      setError('Operacao restrita ao owner master.')
-      return
-    }
-
     await runAction(fn, success)
   }
 
