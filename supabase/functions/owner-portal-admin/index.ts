@@ -1202,6 +1202,30 @@ async function collectAuthUsersByCompanyMetadata(
   return Array.from(matchedUserIds);
 }
 
+async function findAuthUserByEmail(
+  admin: ReturnType<typeof adminClient>,
+  rawEmail: string,
+) {
+  const targetEmail = String(rawEmail ?? "").trim().toLowerCase();
+  if (!targetEmail) return null;
+
+  const perPage = 1000;
+  for (let page = 1; page <= 20; page += 1) {
+    const { data: pageData, error: pageError } = await admin.auth.admin.listUsers({ page, perPage });
+    if (pageError) break;
+
+    const users = Array.isArray(pageData?.users) ? pageData.users : [];
+    if (users.length === 0) break;
+
+    const found = users.find((user: any) => String(user?.email ?? "").trim().toLowerCase() === targetEmail);
+    if (found?.id) return found;
+
+    if (users.length < perPage) break;
+  }
+
+  return null;
+}
+
 async function bestEffortDeleteByEq(
   admin: ReturnType<typeof adminClient>,
   tableName: string,
@@ -1653,8 +1677,10 @@ Deno.serve(async (req) => {
     const masterRole = body.user.role ?? "ADMIN";
     const password = body.user.password?.trim() || generateTemporaryPassword();
 
+    const normalizedMasterEmail = body.user.email.trim().toLowerCase();
+
     const { data: createdAuth, error: authError } = await admin.auth.admin.createUser({
-      email: body.user.email.trim().toLowerCase(),
+      email: normalizedMasterEmail,
       password,
       email_confirm: true,
       app_metadata: {
@@ -1674,23 +1700,63 @@ Deno.serve(async (req) => {
       },
     });
 
-    if (authError || !createdAuth?.user?.id) {
+    let authMasterUserId = createdAuth?.user?.id ?? null;
+    let reusedExistingAuthUser = false;
+
+    if (authError || !authMasterUserId) {
       const authMessage = authError?.message ?? "Failed to create company master user";
-      if (authMessage.toLowerCase().includes("already") || authMessage.toLowerCase().includes("registered")) {
-        const reason = await rollbackCreateCompany(authMessage);
-        return fail("O email do usuário MASTER já está cadastrado. Use outro email.", 409, { reason }, req);
+      if (authMessage.toLowerCase().includes("already") || authMessage.toLowerCase().includes("registered") || authMessage.toLowerCase().includes("exists")) {
+        const existingAuthUser = await findAuthUserByEmail(admin, normalizedMasterEmail);
+
+        if (existingAuthUser?.id) {
+          authMasterUserId = existingAuthUser.id;
+          reusedExistingAuthUser = true;
+
+          const { error: updateExistingAuthError } = await admin.auth.admin.updateUserById(existingAuthUser.id, {
+            password,
+            email_confirm: true,
+            app_metadata: {
+              empresa_id: company.id,
+              empresa_slug: slug,
+              role: masterRole,
+              roles: [masterRole],
+              force_password_change: true,
+              must_change_password: true,
+            },
+            user_metadata: {
+              nome: body.user.nome,
+              empresa_id: company.id,
+              empresa_slug: slug,
+              force_password_change: true,
+              must_change_password: true,
+            },
+          });
+
+          if (updateExistingAuthError) {
+            const reason = await rollbackCreateCompany(updateExistingAuthError.message);
+            return fail("Falha ao reaproveitar usuário MASTER existente para a nova empresa.", 400, { reason }, req);
+          }
+        } else {
+          const reason = await rollbackCreateCompany(authMessage);
+          return fail("O email do usuário MASTER já está cadastrado e não pôde ser reaproveitado automaticamente.", 409, { reason }, req);
+        }
       }
-      const reason = await rollbackCreateCompany(authMessage);
-      return fail(authMessage, 400, { reason }, req);
+
+      if (!authMasterUserId) {
+        const reason = await rollbackCreateCompany(authMessage);
+        return fail(authMessage, 400, { reason }, req);
+      }
     }
 
-    createdAuthUserId = createdAuth.user.id;
+    if (!reusedExistingAuthUser && authMasterUserId) {
+      createdAuthUserId = authMasterUserId;
+    }
 
     const { error: profileUpsertError } = await admin.from("profiles").upsert({
-      id: createdAuth.user.id,
+      id: authMasterUserId,
       empresa_id: company.id,
       nome: body.user.nome,
-      email: body.user.email.trim().toLowerCase(),
+      email: normalizedMasterEmail,
       force_password_change: true,
     }, { onConflict: "id" });
 
@@ -1700,7 +1766,7 @@ Deno.serve(async (req) => {
     }
 
     const { error: roleUpsertError } = await admin.from("user_roles").upsert({
-      user_id: createdAuth.user.id,
+      user_id: authMasterUserId,
       empresa_id: company.id,
       role: masterRole,
     }, { onConflict: "user_id,empresa_id,role" });
@@ -1824,9 +1890,10 @@ Deno.serve(async (req) => {
     return ok({
       company,
       master_user: {
-        id: createdAuth.user.id,
-        email: body.user.email,
+        id: authMasterUserId,
+        email: normalizedMasterEmail,
         initial_password: password,
+        reused_existing_auth_user: reusedExistingAuthUser,
       },
       subscription: subscription
         ? {
