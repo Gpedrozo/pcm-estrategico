@@ -11,7 +11,11 @@ import {
 } from '@/lib/security';
 import { logger } from '@/lib/logger';
 import { writeAuditLog } from '@/lib/audit';
-import { consumeSessionTransferCode, getSessionTransferFromUrl } from '@/lib/sessionTransfer';
+import {
+  consumeSessionTransferCode,
+  getDirectSessionTransferFromUrl,
+  getSessionTransferFromUrl,
+} from '@/lib/sessionTransfer';
 import { HANDOFF_FAILED_PARAM, resolveTenantHostSlug } from '@/lib/tenantLoginFlow';
 import { validateImpersonationSession } from '@/services/ownerPortal.service';
 
@@ -199,9 +203,15 @@ function stripAuthHandoffFromUrl() {
   queryParams.delete(LOGOUT_MARKER_PARAM);
   queryParams.delete(LOGOUT_REASON_PARAM);
   queryParams.delete(SESSION_TRANSFER_PARAM);
+  queryParams.delete('st_access');
+  queryParams.delete('st_refresh');
+  queryParams.delete('st_issued');
 
   const hashParams = new URLSearchParams(window.location.hash.startsWith('#') ? window.location.hash.slice(1) : '');
   hashParams.delete('session_transfer');
+  hashParams.delete('st_access');
+  hashParams.delete('st_refresh');
+  hashParams.delete('st_issued');
 
   const nextQuery = queryParams.toString();
   const nextHash = hashParams.toString();
@@ -499,11 +509,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const searchParams = new URLSearchParams(window.location.search);
       const hasLogoutMarker = searchParams.get(LOGOUT_MARKER_PARAM) === '1';
 
-      if (window.location.pathname !== '/login') return;
-
       const transfer = getSessionTransferFromUrl();
       const encodedTransfer = transfer.token;
-      if (!encodedTransfer) {
+      const directTransfer = getDirectSessionTransferFromUrl();
+
+      if (!encodedTransfer && !directTransfer) {
         if (hasLogoutMarker) {
           await supabase.auth.signOut({ scope: 'local' });
           stripAuthHandoffFromUrl();
@@ -512,9 +522,48 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
 
       transitionAuthStatus('hydrating', 'session_transfer_consume_started', {
-        source: transfer.source,
+        source: directTransfer ? directTransfer.source : transfer.source,
       });
       const transferStartedAt = performance.now();
+
+      if (directTransfer) {
+        const isFreshDirectTransfer = (Date.now() - directTransfer.issued_at) <= SESSION_TRANSFER_MAX_AGE_MS;
+        if (!isFreshDirectTransfer) {
+          transitionAuthStatus('error', 'session_transfer_direct_expired_or_invalid', {
+            hydrationMs: Math.trunc(performance.now() - transferStartedAt),
+          });
+          stripAuthHandoffFromUrl();
+          return;
+        }
+
+        const { error } = await supabase.auth.setSession({
+          access_token: directTransfer.access_token,
+          refresh_token: directTransfer.refresh_token,
+        });
+
+        if (error) {
+          logger.warn('session_transfer_direct_set_session_failed', {
+            error: error.message,
+          });
+          transitionAuthStatus('error', 'session_transfer_direct_set_session_failed', {
+            hydrationMs: Math.trunc(performance.now() - transferStartedAt),
+          });
+          clearSessionTransferRedirectInProgress();
+          stripAuthHandoffFromUrl();
+          return;
+        }
+
+        clearSessionTransferRedirectInProgress();
+        stripAuthHandoffFromUrl();
+        transitionAuthStatus('loading', 'session_transfer_direct_consumed_success', {
+          hydrationMs: Math.trunc(performance.now() - transferStartedAt),
+        });
+        return;
+      }
+
+      if (!encodedTransfer) {
+        return;
+      }
 
       if (wasSessionTransferAlreadyConsumed(encodedTransfer)) {
         const url = new URL(window.location.href);
