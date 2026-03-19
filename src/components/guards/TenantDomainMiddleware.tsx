@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import { useLocation } from 'react-router-dom'
 import { AlertTriangle, Loader2 } from 'lucide-react'
 import { useTenant } from '@/contexts/TenantContext'
@@ -30,6 +30,7 @@ export function TenantDomainMiddleware({ children }: { children: React.ReactNode
   const { tenant, isLoading, error } = useTenant()
   const { isAuthenticated, authStatus, isHydrating, tenantId, isLoading: isAuthLoading } = useAuth()
   const location = useLocation()
+  const mismatchTimerRef = useRef<number | null>(null)
 
   const hostname = window.location.hostname.toLowerCase()
   const isOwnerHost = isOwnerDomain(hostname)
@@ -59,13 +60,27 @@ export function TenantDomainMiddleware({ children }: { children: React.ReactNode
   }, [authStatus, error, hostContext.isTenantSubdomain, isAuthenticated, isHydrating, isLoading, isAuthLoading, isLoginRoute, location.pathname, location.search])
 
   useEffect(() => {
+    if (mismatchTimerRef.current !== null) {
+      window.clearTimeout(mismatchTimerRef.current)
+      mismatchTimerRef.current = null
+    }
+
     if (!hostContext.isTenantSubdomain || isLoading || isAuthLoading || isHydrating) return
-    if (authStatus === 'loading' || authStatus === 'hydrating') return
+    if (authStatus !== 'authenticated') return
     if (!isAuthenticated) return
     if (isLoginRoute || hasSessionTransferHash()) return
     if (!tenant?.id || !tenantId) return
+
     if (tenant.id !== tenantId) {
-      void forceTenantLocalReauth('tenant_mismatch')
+      mismatchTimerRef.current = window.setTimeout(() => {
+        void forceTenantLocalReauth('tenant_mismatch')
+      }, 1200)
+    }
+    return () => {
+      if (mismatchTimerRef.current !== null) {
+        window.clearTimeout(mismatchTimerRef.current)
+        mismatchTimerRef.current = null
+      }
     }
   }, [authStatus, hostContext.isTenantSubdomain, isAuthenticated, isHydrating, isLoading, isAuthLoading, isLoginRoute, tenant?.id, tenantId, location.pathname, location.search])
 

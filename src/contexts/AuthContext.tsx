@@ -73,6 +73,8 @@ const SESSION_TRANSFER_REDIRECT_STORAGE_KEY = 'pcm.auth.session_transfer.redirec
 const SESSION_TRANSFER_REDIRECT_MAX_AGE_MS = 15_000;
 const SESSION_TRANSFER_CONSUMED_STORAGE_KEY = 'pcm.auth.session_transfer.consumed.v1';
 const SESSION_TRANSFER_PARAM = 'session_transfer';
+const CROSS_DOMAIN_REDIRECT_MARKER_STORAGE_KEY = 'pcm.auth.cross_domain_redirect.v1';
+const CROSS_DOMAIN_REDIRECT_MARKER_MAX_AGE_MS = 60_000;
 const LOGIN_PROFILE_TIMEOUT_MS = 12_000;
 const TENANT_HOST_RESOLVE_TIMEOUT_MS = 6_000;
 const HYDRATION_TIMEOUT_MS = 3_000;
@@ -224,6 +226,17 @@ function shouldForceLogoutByClosedWindowMarker() {
       return false;
     }
 
+    const crossDomainRedirectRaw = window.localStorage.getItem(CROSS_DOMAIN_REDIRECT_MARKER_STORAGE_KEY);
+    if (crossDomainRedirectRaw) {
+      const parsed = JSON.parse(crossDomainRedirectRaw) as { at?: number };
+      const markerAt = Number(parsed?.at ?? 0);
+      window.localStorage.removeItem(CROSS_DOMAIN_REDIRECT_MARKER_STORAGE_KEY);
+      if (Number.isFinite(markerAt) && markerAt > 0 && (Date.now() - markerAt) <= CROSS_DOMAIN_REDIRECT_MARKER_MAX_AGE_MS) {
+        window.localStorage.removeItem(TAB_CLOSE_MARKER_STORAGE_KEY);
+        return false;
+      }
+    }
+
     const navigationType = getNavigationType();
     if (navigationType === 'reload' || navigationType === 'back_forward') {
       return false;
@@ -280,6 +293,26 @@ function clearSessionTransferRedirectInProgress() {
     window.sessionStorage.removeItem(SESSION_TRANSFER_REDIRECT_STORAGE_KEY);
   } catch {
     // noop
+  }
+}
+
+function isCrossDomainRedirectInProgress() {
+  try {
+    const raw = window.localStorage.getItem(CROSS_DOMAIN_REDIRECT_MARKER_STORAGE_KEY);
+    if (!raw) return false;
+    const parsed = JSON.parse(raw) as { at?: number };
+    const markerAt = Number(parsed?.at ?? 0);
+    if (!Number.isFinite(markerAt) || markerAt <= 0) {
+      window.localStorage.removeItem(CROSS_DOMAIN_REDIRECT_MARKER_STORAGE_KEY);
+      return false;
+    }
+    if ((Date.now() - markerAt) > CROSS_DOMAIN_REDIRECT_MARKER_MAX_AGE_MS) {
+      window.localStorage.removeItem(CROSS_DOMAIN_REDIRECT_MARKER_STORAGE_KEY);
+      return false;
+    }
+    return true;
+  } catch {
+    return false;
   }
 }
 
@@ -441,6 +474,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const markWindowClosed = () => {
       if (isIntentionalLogoutNavigationRef.current) return;
       if (isSessionTransferRedirectInProgress()) return;
+      if (isCrossDomainRedirectInProgress()) return;
       if (!session || !user) return;
 
       try {

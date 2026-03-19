@@ -27,6 +27,7 @@ import { z } from 'zod';
 const SESSION_TRANSFER_REDIRECT_STORAGE_KEY = 'pcm.auth.session_transfer.redirect.v1';
 const SESSION_TRANSFER_CONSUMED_STORAGE_KEY = 'pcm.auth.session_transfer.consumed.v1';
 const SESSION_TRANSFER_CONSUMED_MAX_AGE_MS = 2 * 60 * 1000;
+const CROSS_DOMAIN_REDIRECT_MARKER_STORAGE_KEY = 'pcm.auth.cross_domain_redirect.v1';
 
 const TENANT_REDIRECT_TIMEOUT_MS = 6_000;
 
@@ -204,7 +205,9 @@ export default function Login() {
         && window.location.pathname === '/login'
         && !nextPath
         && !hasSessionTransferHash()
-        && !allowPostLoginRedirectRef.current;
+        && !allowPostLoginRedirectRef.current
+        && !tenantId
+        && !wasSessionTransferRecentlyConsumed();
 
       // When user opens principal /login to switch account, do not auto-redirect
       // using a stale authenticated context from previous tenant access.
@@ -308,6 +311,15 @@ export default function Login() {
             fallbackUrl,
           });
 
+          try {
+            window.localStorage.setItem(
+              CROSS_DOMAIN_REDIRECT_MARKER_STORAGE_KEY,
+              JSON.stringify({ at: Date.now() }),
+            );
+          } catch {
+            // noop
+          }
+
           await supabase.auth.signOut().catch(() => null);
           window.location.assign(fallbackUrl);
           return;
@@ -329,6 +341,16 @@ export default function Login() {
           targetHost,
           retryCount,
         });
+
+        try {
+          window.localStorage.setItem(
+            CROSS_DOMAIN_REDIRECT_MARKER_STORAGE_KEY,
+            JSON.stringify({ at: Date.now() }),
+          );
+        } catch {
+          // noop
+        }
+
         const targetUrl = buildTenantLoginUrl(targetHost, {
           protocol: window.location.protocol,
           retryCount,
