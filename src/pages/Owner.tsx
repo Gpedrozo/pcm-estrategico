@@ -81,6 +81,7 @@ const emptyBillingForm = () => ({ subscription_id: '', amount: '', payment_statu
 const emptyContractForm = () => ({ contract_id: '', content: '', summary: '', status: '' })
 const emptySupportForm = () => ({ ticket_id: '', response: '', status: '' })
 const emptySettingsForm = () => ({ empresa_id: '', modules: '', limits: '', features: '' })
+const emptyUserInactivityTimeoutForm = () => ({ user_id: '', inactivity_timeout_minutes: '10' })
 const emptyOwnerMasterForm = () => ({ nome: '', email: '', password: '' })
 
 type OwnerTab =
@@ -466,6 +467,7 @@ export default function Owner() {
     deleteContractMutation,
     respondSupportMutation,
     updateCompanySettingsMutation,
+    setUserInactivityTimeoutMutation,
     createSystemAdminMutation,
     createPlatformOwnerMutation,
     cleanupCompanyDataMutation,
@@ -494,6 +496,7 @@ export default function Owner() {
   const [contractOnlyId, setContractOnlyId] = useState('')
   const [supportForm, setSupportForm] = useState(emptySupportForm)
   const [settingsForm, setSettingsForm] = useState(emptySettingsForm)
+  const [userInactivityTimeoutForm, setUserInactivityTimeoutForm] = useState(emptyUserInactivityTimeoutForm)
   const [ownerMasterForm, setOwnerMasterForm] = useState(emptyOwnerMasterForm)
 
   const resolveCompanyStatus = (value?: string) => {
@@ -508,6 +511,59 @@ export default function Owner() {
 
   const selectedSettingsQuery = useOwnerCompanySettings(settingsForm.empresa_id || null, settingsActive)
   const selectedSettings = toArray<{ chave: string; valor: Record<string, unknown> }>((selectedSettingsQuery.data as any)?.settings)
+
+  const usersWithCompany = useMemo(
+    () => users.filter((item) => Boolean(item.empresa_id || item.user_roles?.some((role) => role?.empresa_id))),
+    [users],
+  )
+
+  const selectedTimeoutUser = useMemo(
+    () => usersWithCompany.find((item) => item.id === userInactivityTimeoutForm.user_id) ?? null,
+    [userInactivityTimeoutForm.user_id, usersWithCompany],
+  )
+
+  const selectedSecurityPolicy = useMemo(() => {
+    const row = selectedSettings.find((item) => item.chave === 'owner.security_policy')
+    if (!row || !row.valor || typeof row.valor !== 'object' || Array.isArray(row.valor)) return {}
+    return row.valor as Record<string, unknown>
+  }, [selectedSettings])
+
+  const selectedCompanyInactivityMinutes = useMemo(() => {
+    const parsed = Number(selectedSecurityPolicy.inactivity_timeout_minutes ?? 0)
+    if (!Number.isFinite(parsed) || parsed <= 0) return 10
+    return Math.max(1, Math.min(1440, Math.trunc(parsed)))
+  }, [selectedSecurityPolicy])
+
+  useEffect(() => {
+    if (!selectedTimeoutUser) return
+
+    const userEmpresaId = String(
+      selectedTimeoutUser.empresa_id
+      ?? selectedTimeoutUser.user_roles?.find((role) => role?.empresa_id)?.empresa_id
+      ?? '',
+    ).trim()
+
+    if (!userEmpresaId) return
+    if (settingsForm.empresa_id === userEmpresaId) return
+
+    setSettingsForm((state) => ({ ...state, empresa_id: userEmpresaId }))
+  }, [selectedTimeoutUser, settingsForm.empresa_id])
+
+  useEffect(() => {
+    if (!settingsForm.empresa_id) return
+
+    setUserInactivityTimeoutForm((state) => {
+      if (state.user_id) return state
+      const currentValue = Number(state.inactivity_timeout_minutes ?? 0)
+      if (Number.isFinite(currentValue) && currentValue > 0 && Math.trunc(currentValue) === selectedCompanyInactivityMinutes) {
+        return state
+      }
+      return {
+        ...state,
+        inactivity_timeout_minutes: String(selectedCompanyInactivityMinutes),
+      }
+    })
+  }, [selectedCompanyInactivityMinutes, settingsForm.empresa_id])
 
   const clearFeedback = () => {
     setFeedback(null)
@@ -530,6 +586,7 @@ export default function Owner() {
     setContractOnlyId('')
     setSupportForm(emptySupportForm())
     setSettingsForm(emptySettingsForm())
+    setUserInactivityTimeoutForm(emptyUserInactivityTimeoutForm())
     setOwnerMasterForm(emptyOwnerMasterForm())
     setSystemForm(emptySystemForm())
     setSelectedTenantTables([])
@@ -1905,6 +1962,64 @@ export default function Owner() {
 
       {(active === 'configuracoes' || active === 'feature-flags') && (
         <div className="space-y-4">
+          <Card
+            title="Logout automático por usuário"
+            subtitle="Selecione qualquer usuário do sistema. O timeout será aplicado para a empresa vinculada a ele."
+          >
+            <div className="grid gap-2 md:grid-cols-2">
+              <select
+                className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm"
+                value={userInactivityTimeoutForm.user_id}
+                onChange={(e) => setUserInactivityTimeoutForm((s) => ({ ...s, user_id: e.target.value }))}
+              >
+                <option value="">Selecione usuário (qualquer permissão)</option>
+                {usersWithCompany.map((u) => {
+                  const userEmpresaId = String(
+                    u.empresa_id
+                    ?? u.user_roles?.find((role) => role?.empresa_id)?.empresa_id
+                    ?? '',
+                  ).trim()
+                  const userCompany = companies.find((company) => company.id === userEmpresaId)
+                  const userRoles = (u.user_roles ?? []).map((role) => String(role?.role ?? '').trim()).filter(Boolean)
+
+                  return (
+                    <option key={u.id} value={u.id}>
+                      {u.nome || u.email || u.id} • {u.email || '-'} • {userCompany?.nome || userEmpresaId || 'sem empresa'} • {userRoles.join(', ') || 'sem role'}
+                    </option>
+                  )
+                })}
+              </select>
+
+              <input
+                type="number"
+                min={1}
+                max={1440}
+                className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm"
+                placeholder="Minutos de inatividade"
+                value={userInactivityTimeoutForm.inactivity_timeout_minutes}
+                onChange={(e) => setUserInactivityTimeoutForm((s) => ({ ...s, inactivity_timeout_minutes: e.target.value }))}
+              />
+
+              <div className="rounded border border-slate-800 bg-slate-950 px-3 py-2 text-xs text-slate-400 md:col-span-2">
+                Empresa alvo: {settingsForm.empresa_id || '-'} • Timeout atual: {selectedCompanyInactivityMinutes} min
+              </div>
+
+              <button
+                className="rounded border border-emerald-500 px-3 py-2 text-sm text-emerald-300"
+                disabled={!userInactivityTimeoutForm.user_id || !userInactivityTimeoutForm.inactivity_timeout_minutes || setUserInactivityTimeoutMutation.isPending}
+                onClick={() => runAction(async () => {
+                  const minutes = parseRequiredNumber(userInactivityTimeoutForm.inactivity_timeout_minutes, 'Timeout de inatividade (minutos)')
+                  return setUserInactivityTimeoutMutation.mutateAsync({
+                    userId: userInactivityTimeoutForm.user_id,
+                    inactivityTimeoutMinutes: Math.max(1, Math.min(1440, Math.trunc(minutes))),
+                  })
+                }, 'Timeout de logout automático atualizado com sucesso.')}
+              >
+                Atualizar timeout por usuário
+              </button>
+            </div>
+          </Card>
+
           <Card title={active === 'configuracoes' ? 'Configuracoes por empresa' : 'Feature Flags por empresa'}>
             <div className="grid gap-2">
               <select className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm" value={settingsForm.empresa_id} onChange={(e) => setSettingsForm((s) => ({ ...s, empresa_id: e.target.value }))}>

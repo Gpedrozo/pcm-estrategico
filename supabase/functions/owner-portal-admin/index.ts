@@ -32,6 +32,7 @@ type Payload = {
     | "list_audit_logs"
     | "get_company_settings"
     | "update_company_settings"
+    | "set_user_inactivity_timeout"
     | "block_company"
     | "change_plan"
     | "platform_stats"
@@ -134,6 +135,7 @@ type Payload = {
   plano_codigo?: string;
   reason?: string;
   user_id?: string;
+  inactivity_timeout_minutes?: number;
   empresa_nome?: string;
   impersonation_session_id?: string;
   impersonation_session_token?: string;
@@ -243,6 +245,7 @@ const SUPPORTED_OWNER_ACTIONS: Payload["action"][] = [
   "list_audit_logs",
   "get_company_settings",
   "update_company_settings",
+  "set_user_inactivity_timeout",
   "block_company",
   "change_plan",
   "platform_stats",
@@ -324,6 +327,7 @@ function shouldEnforceRateLimit(action: Payload["action"]) {
     "delete_contract",
     "respond_support_ticket",
     "update_company_settings",
+    "set_user_inactivity_timeout",
     "block_company",
     "change_plan",
     "create_system_admin",
@@ -2470,7 +2474,7 @@ Deno.serve(async (req) => {
       .from("configuracoes_sistema")
       .select("chave,valor")
       .eq("empresa_id", body.empresa_id)
-      .in("chave", ["owner.features", "owner.limits", "owner.modules"]);
+      .in("chave", ["owner.features", "owner.limits", "owner.modules", "owner.security_policy"]);
     if (error) return fail(error.message, 400, null, req);
     return ok({ settings: data ?? [] }, 200, req);
   }
@@ -2486,6 +2490,99 @@ Deno.serve(async (req) => {
     const { error } = await admin.from("configuracoes_sistema").upsert(rows, { onConflict: "empresa_id,chave" });
     if (error) return fail(error.message, 400, null, req);
     return ok({ success: true }, 200, req);
+  }
+
+  if (body.action === "set_user_inactivity_timeout") {
+    if (!body.user_id) return fail("user_id is required", 400, null, req);
+
+    const parsedMinutes = Number(body.inactivity_timeout_minutes ?? 0);
+    if (!Number.isFinite(parsedMinutes) || parsedMinutes <= 0) {
+      return fail("inactivity_timeout_minutes must be a positive number", 400, null, req);
+    }
+
+    const inactivityTimeoutMinutes = Math.max(1, Math.min(1440, Math.trunc(parsedMinutes)));
+
+    const { data: profile, error: profileError } = await admin
+      .from("profiles")
+      .select("id,email,nome,empresa_id")
+      .eq("id", body.user_id)
+      .maybeSingle();
+
+    if (profileError) return fail(profileError.message, 400, null, req);
+    if (!profile?.id) return fail("Usuario nao encontrado para configuracao de timeout", 404, null, req);
+
+    let empresaId = String(profile.empresa_id ?? "").trim() || null;
+
+    if (!empresaId) {
+      const { data: roleRows, error: roleRowsError } = await admin
+        .from("user_roles")
+        .select("empresa_id")
+        .eq("user_id", profile.id)
+        .not("empresa_id", "is", null)
+        .limit(1);
+
+      if (roleRowsError) return fail(roleRowsError.message, 400, null, req);
+
+      const roleEmpresaId = Array.isArray(roleRows) && roleRows.length > 0
+        ? String(roleRows[0]?.empresa_id ?? "").trim()
+        : "";
+      empresaId = roleEmpresaId || null;
+    }
+
+    if (!empresaId) {
+      return fail("Nao foi possivel resolver a empresa do usuario selecionado", 400, null, req);
+    }
+
+    const { data: existingPolicyRow, error: existingPolicyError } = await admin
+      .from("configuracoes_sistema")
+      .select("valor")
+      .eq("empresa_id", empresaId)
+      .eq("chave", "owner.security_policy")
+      .maybeSingle();
+
+    if (existingPolicyError) return fail(existingPolicyError.message, 400, null, req);
+
+    const previousPolicy =
+      existingPolicyRow?.valor && typeof existingPolicyRow.valor === "object" && !Array.isArray(existingPolicyRow.valor)
+        ? existingPolicyRow.valor as Record<string, unknown>
+        : {};
+
+    const nextPolicy = {
+      ...previousPolicy,
+      inactivity_timeout_minutes: inactivityTimeoutMinutes,
+      updated_by_owner_user_id: auth.user.id,
+      updated_by_target_user_id: profile.id,
+      updated_at: new Date().toISOString(),
+    };
+
+    const { error: upsertPolicyError } = await admin
+      .from("configuracoes_sistema")
+      .upsert({
+        empresa_id: empresaId,
+        chave: "owner.security_policy",
+        valor: nextPolicy,
+      }, { onConflict: "empresa_id,chave" });
+
+    if (upsertPolicyError) return fail(upsertPolicyError.message, 400, null, req);
+
+    await logPlatformAudit(admin, {
+      actorId: auth.user.id,
+      actorEmail: auth.user.email,
+      empresaId,
+      actionType: "OWNER_SET_INACTIVITY_TIMEOUT",
+      details: {
+        user_id: profile.id,
+        user_email: profile.email ?? null,
+        inactivity_timeout_minutes: inactivityTimeoutMinutes,
+      },
+    });
+
+    return ok({
+      success: true,
+      empresa_id: empresaId,
+      user_id: profile.id,
+      inactivity_timeout_minutes: inactivityTimeoutMinutes,
+    }, 200, req);
   }
 
   if (body.action === "change_plan") {

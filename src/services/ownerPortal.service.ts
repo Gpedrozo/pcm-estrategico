@@ -28,6 +28,7 @@ export type OwnerAction =
   | 'list_audit_logs'
   | 'get_company_settings'
   | 'update_company_settings'
+  | 'set_user_inactivity_timeout'
   | 'change_plan'
   | 'create_system_admin'
   | 'impersonate_company'
@@ -421,6 +422,14 @@ export async function getCompanySettings(empresaId: string) {
 
 export async function updateCompanySettings(empresaId: string, settings: Record<string, unknown>) {
   return callOwnerAdmin({ action: 'update_company_settings', empresa_id: empresaId, settings })
+}
+
+export async function setUserInactivityTimeout(userId: string, inactivityTimeoutMinutes: number) {
+  return callOwnerAdmin({
+    action: 'set_user_inactivity_timeout',
+    user_id: userId,
+    inactivity_timeout_minutes: inactivityTimeoutMinutes,
+  })
 }
 
 export async function changePlan(params: { empresa_id: string; plano_codigo: string }) {

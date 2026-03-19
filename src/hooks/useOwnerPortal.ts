@@ -27,6 +27,7 @@ import {
   purgeTableData,
   regenerateContract,
   respondSupportTicket,
+  setUserInactivityTimeout,
   setCompanyStatus,
   setSubscriptionStatus,
   setUserStatus,
@@ -300,6 +301,12 @@ export function useOwnerCompanyActions() {
     onSuccess: () => invalidateOwnerReads(qc),
   })
 
+  const setUserInactivityTimeoutMutation = useMutation({
+    mutationFn: ({ userId, inactivityTimeoutMinutes }: { userId: string; inactivityTimeoutMinutes: number }) =>
+      setUserInactivityTimeout(userId, inactivityTimeoutMinutes),
+    onSuccess: () => invalidateOwnerReads(qc),
+  })
+
   const startImpersonationMutation = useMutation({
     mutationFn: ({ empresaId }: { empresaId: string }) => impersonateCompany(empresaId),
     onSuccess: () => invalidateOwnerReads(qc),
@@ -359,6 +366,7 @@ export function useOwnerCompanyActions() {
     deleteContractMutation,
     respondSupportMutation,
     updateCompanySettingsMutation,
+    setUserInactivityTimeoutMutation,
     startImpersonationMutation,
     stopImpersonationMutation,
     createSystemAdminMutation,
