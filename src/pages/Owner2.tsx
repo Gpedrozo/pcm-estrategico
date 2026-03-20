@@ -6,8 +6,11 @@ import {
   Clock,
   CreditCard,
   Database,
+  Download,
   FileText,
   LifeBuoy,
+  LogIn,
+  LogOut,
   Loader2,
   Settings2,
   ShieldCheck,
@@ -59,6 +62,16 @@ type CompanyCredentialNote = {
   initialPassword: string
   loginUrl: string
   noteText: string
+}
+
+type CriticalActionRequest = {
+  title: string
+  description: string
+  confirmText: string
+  action: any
+  payload: Record<string, unknown>
+  successMessage: string
+  masterOnly?: boolean
 }
 
 const TENANT_BASE_DOMAIN = (import.meta.env.VITE_TENANT_BASE_DOMAIN || 'gppis.com.br').toLowerCase()
@@ -176,6 +189,13 @@ export default function Owner2() {
   const [selectedTableName, setSelectedTableName] = useState('')
   const [logSearch, setLogSearch] = useState('')
   const [logSeverityFilter, setLogSeverityFilter] = useState<'todos' | 'info' | 'warn' | 'error' | 'critical'>('todos')
+  const [logModuleFilter, setLogModuleFilter] = useState('todos')
+  const [logActorFilter, setLogActorFilter] = useState('')
+  const [logDateFrom, setLogDateFrom] = useState('')
+  const [logDateTo, setLogDateTo] = useState('')
+
+  const [criticalRequest, setCriticalRequest] = useState<CriticalActionRequest | null>(null)
+  const [criticalConfirmValue, setCriticalConfirmValue] = useState('')
 
   const [moduleOs, setModuleOs] = useState(true)
   const [modulePreventiva, setModulePreventiva] = useState(true)
@@ -222,6 +242,11 @@ export default function Owner2() {
   const owners = useMemo(() => safeArray<Record<string, unknown>>((ownersQuery.data as any)?.owners), [ownersQuery.data])
   const tables = useMemo(() => safeArray<Record<string, unknown>>((tablesQuery.data as any)?.tables), [tablesQuery.data])
   const settings = useMemo(() => safeArray<Record<string, unknown>>((settingsQuery.data as any)?.settings), [settingsQuery.data])
+
+  const selectedCompany = useMemo(
+    () => companies.find((company) => String(company.id) === companyId) ?? null,
+    [companies, companyId],
+  )
 
   const busy = execute.isPending
 
@@ -372,21 +397,150 @@ export default function Owner2() {
       paid,
       late,
       total: subscriptions.length,
+      arpa: subscriptions.length > 0 ? totalMrr / subscriptions.length : 0,
     }
   }, [subscriptions])
 
+  const financeStatusData = useMemo(() => {
+    const grouped = subscriptions.reduce<Record<string, number>>((acc, sub) => {
+      const status = String(sub.payment_status ?? sub.status ?? 'unknown').toLowerCase()
+      acc[status] = (acc[status] || 0) + 1
+      return acc
+    }, {})
+    return Object.entries(grouped).map(([name, value]) => ({ name, value }))
+  }, [subscriptions])
+
+  const availableLogModules = useMemo(() => {
+    const modules = new Set<string>()
+    logs.forEach((log) => {
+      const moduleName = String(log.module ?? log.context_module ?? log.entity ?? '').trim()
+      if (moduleName) modules.add(moduleName)
+    })
+    return Array.from(modules).sort((a, b) => a.localeCompare(b))
+  }, [logs])
+
   const logsFiltered = useMemo(() => {
     const q = logSearch.trim().toLowerCase()
+    const actorQ = logActorFilter.trim().toLowerCase()
+    const fromDate = logDateFrom ? new Date(`${logDateFrom}T00:00:00`) : null
+    const toDate = logDateTo ? new Date(`${logDateTo}T23:59:59`) : null
+
     return logs.filter((log) => {
       const action = String(log.action ?? log.event ?? '').toLowerCase()
       const actor = String(log.actor_email ?? log.user_email ?? '').toLowerCase()
       const severity = String(log.severity ?? '').toLowerCase()
+      const moduleName = String(log.module ?? log.context_module ?? log.entity ?? '')
+      const logDateRaw = String(log.created_at ?? log.at ?? '')
+      const logDate = logDateRaw ? new Date(logDateRaw) : null
 
       const textOk = !q || action.includes(q) || actor.includes(q)
       const severityOk = logSeverityFilter === 'todos' || severity === logSeverityFilter
-      return textOk && severityOk
+      const actorOk = !actorQ || actor.includes(actorQ)
+      const moduleOk = logModuleFilter === 'todos' || moduleName === logModuleFilter
+      const fromOk = !fromDate || (logDate && !Number.isNaN(logDate.getTime()) && logDate >= fromDate)
+      const toOk = !toDate || (logDate && !Number.isNaN(logDate.getTime()) && logDate <= toDate)
+
+      return textOk && severityOk && actorOk && moduleOk && Boolean(fromOk) && Boolean(toOk)
     })
-  }, [logSearch, logSeverityFilter, logs])
+  }, [logActorFilter, logDateFrom, logDateTo, logModuleFilter, logSearch, logSeverityFilter, logs])
+
+  function downloadCsv(filename: string, headers: string[], rows: Array<Array<string | number>>) {
+    const escapeCell = (value: string | number) => {
+      const content = String(value ?? '')
+      return `"${content.replace(/"/g, '""')}"`
+    }
+
+    const csvContent = [headers, ...rows]
+      .map((row) => row.map(escapeCell).join(';'))
+      .join('\n')
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
+    const href = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = href
+    link.download = filename
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    URL.revokeObjectURL(href)
+  }
+
+  function exportUsersCsv() {
+    const rows = usersFiltered.map((u) => [
+      String(u.id ?? ''),
+      String(u.nome ?? ''),
+      String(u.email ?? ''),
+      String(u.role ?? u.perfil ?? ''),
+      String(u.status ?? ''),
+      String(u.empresa_id ?? ''),
+    ])
+    downloadCsv('owner2-usuarios.csv', ['id', 'nome', 'email', 'role', 'status', 'empresa_id'], rows)
+    setFeedback('Exportacao de usuarios gerada em CSV.')
+  }
+
+  function exportLogsCsv() {
+    const rows = logsFiltered.map((l) => [
+      String(l.id ?? ''),
+      String(l.action ?? l.event ?? ''),
+      String(l.severity ?? ''),
+      String(l.module ?? l.context_module ?? l.entity ?? ''),
+      String(l.actor_email ?? l.user_email ?? ''),
+      String(l.created_at ?? l.at ?? ''),
+    ])
+    downloadCsv('owner2-logs.csv', ['id', 'acao', 'severidade', 'modulo', 'ator', 'data'], rows)
+    setFeedback('Exportacao de logs gerada em CSV.')
+  }
+
+  function exportFinanceCsv() {
+    const rows = subscriptions.map((s) => [
+      String(s.id ?? ''),
+      String(s.empresa_id ?? ''),
+      String(s.plan_id ?? s.plano_id ?? ''),
+      asNumber(s.amount, 0),
+      String(s.payment_status ?? ''),
+      String(s.status ?? ''),
+    ])
+    downloadCsv('owner2-financeiro.csv', ['id', 'empresa_id', 'plano_id', 'valor', 'payment_status', 'status'], rows)
+    setFeedback('Exportacao financeira gerada em CSV.')
+  }
+
+  function openCriticalAction(request: CriticalActionRequest) {
+    setCriticalConfirmValue('')
+    setCriticalRequest(request)
+    setError(null)
+    setFeedback(null)
+  }
+
+  async function confirmCriticalAction() {
+    if (!criticalRequest) return
+    if (criticalRequest.masterOnly && !isOwnerMaster) {
+      setError('Acao disponivel apenas para OWNER_MASTER.')
+      return
+    }
+    if (criticalConfirmValue.trim() !== criticalRequest.confirmText) {
+      setError(`Confirme digitando exatamente: ${criticalRequest.confirmText}`)
+      return
+    }
+    if (!authPassword.trim()) {
+      setError('Informe a senha de confirmacao para continuar.')
+      return
+    }
+
+    await runAction(
+      criticalRequest.action,
+      { ...criticalRequest.payload, auth_password: authPassword },
+      criticalRequest.successMessage,
+    )
+
+    setCriticalRequest(null)
+    setCriticalConfirmValue('')
+  }
+
+  const selectedCompanyLoginUrl = useMemo(() => {
+    if (!selectedCompany) return ''
+    const slug = String(selectedCompany.slug ?? '').trim()
+    return slug ? `https://${slug}.${TENANT_BASE_DOMAIN}/login` : ''
+  }, [selectedCompany])
 
   async function runAction(action: any, payload: Record<string, unknown>, successMessage: string) {
     setError(null)
@@ -529,6 +683,31 @@ export default function Owner2() {
         </aside>
 
         <section className="space-y-4">
+          <div className="rounded-2xl border border-sky-200 bg-sky-50/90 p-3 shadow-sm">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <p className="text-sm text-sky-900">
+                Contexto ativo: <span className="font-semibold">{selectedCompany ? String(selectedCompany.nome ?? selectedCompany.slug ?? selectedCompany.id) : 'Global (todas as empresas)'}</span>
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {selectedCompanyLoginUrl && (
+                  <a className="inline-flex items-center gap-1 rounded-lg border border-sky-300 bg-white px-3 py-1.5 text-xs font-semibold text-sky-700" href={selectedCompanyLoginUrl} target="_blank" rel="noreferrer">
+                    <LogIn className="h-3.5 w-3.5" /> Abrir login tenant
+                  </a>
+                )}
+                <button
+                  className="inline-flex items-center gap-1 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700"
+                  disabled={!companyId}
+                  onClick={() => {
+                    setCompanyId('')
+                    setFeedback('Contexto de empresa removido. Voltou para visao global.')
+                  }}
+                >
+                  <LogOut className="h-3.5 w-3.5" /> Sair do contexto
+                </button>
+              </div>
+            </div>
+          </div>
+
           <div className="rounded-2xl border border-slate-200 bg-white/95 p-3 shadow-sm">
             <div className="grid gap-2 md:grid-cols-2">
               <select className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" value={companyId} onChange={(e) => setCompanyId(e.target.value)}>
@@ -711,8 +890,35 @@ export default function Owner2() {
                 <div className="grid gap-2 sm:grid-cols-2">
                   <button className="rounded-lg border border-slate-300 px-3 py-2 text-sm" disabled={busy || !companyId} onClick={() => runAction('set_company_status', { empresa_id: companyId, status: 'active' }, 'Empresa ativada.')}>Ativar</button>
                   <button className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-700" disabled={busy || !companyId} onClick={() => runAction('set_company_status', { empresa_id: companyId, status: 'blocked' }, 'Empresa bloqueada.')}>Bloquear</button>
-                  <button className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-700" disabled={busy || !companyId || !authPassword} onClick={() => runAction('cleanup_company_data', { empresa_id: companyId, auth_password: authPassword, keep_company_core: false, keep_billing_data: false, include_auth_users: true }, 'Limpeza completa executada.')}>Limpeza completa</button>
-                  <button className="rounded-lg border border-rose-300 bg-rose-50 px-3 py-2 text-sm text-rose-700" disabled={busy || !companyId || !authPassword || !isOwnerMaster} onClick={() => runAction('delete_company', { empresa_id: companyId, auth_password: authPassword, include_auth_users: true }, 'Empresa excluída definitivamente.')}>Excluir empresa</button>
+                  <button
+                    className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-700"
+                    disabled={busy || !companyId}
+                    onClick={() => openCriticalAction({
+                      title: 'Limpeza completa de dados',
+                      description: 'Remove dados operacionais da empresa. Mantenha apenas se tiver backup validado.',
+                      confirmText: 'LIMPAR',
+                      action: 'cleanup_company_data',
+                      payload: { empresa_id: companyId, keep_company_core: false, keep_billing_data: false, include_auth_users: true },
+                      successMessage: 'Limpeza completa executada.',
+                    })}
+                  >
+                    Limpeza completa
+                  </button>
+                  <button
+                    className="rounded-lg border border-rose-300 bg-rose-50 px-3 py-2 text-sm text-rose-700"
+                    disabled={busy || !companyId || !isOwnerMaster}
+                    onClick={() => openCriticalAction({
+                      title: 'Exclusao definitiva da empresa',
+                      description: 'Esta acao e irreversivel e remove dados da empresa selecionada.',
+                      confirmText: 'EXCLUIR',
+                      action: 'delete_company',
+                      payload: { empresa_id: companyId, include_auth_users: true },
+                      successMessage: 'Empresa excluida definitivamente.',
+                      masterOnly: true,
+                    })}
+                  >
+                    Excluir empresa
+                  </button>
                 </div>
               </SurfaceCard>
 
@@ -783,6 +989,12 @@ export default function Owner2() {
                   <MetricTile label="Ativos" value={userSummary.active} icon={ShieldCheck} tone="emerald" />
                   <MetricTile label="Inativos" value={userSummary.inactive} icon={AlertTriangle} tone="amber" />
                   <MetricTile label="Admins" value={userSummary.admins} icon={Settings2} tone="rose" />
+                </div>
+
+                <div className="mb-3 flex justify-end">
+                  <button className="inline-flex items-center gap-1 rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-700" onClick={exportUsersCsv}>
+                    <Download className="h-3.5 w-3.5" /> Exportar CSV
+                  </button>
                 </div>
 
                 <div className="mb-3 grid gap-2 sm:grid-cols-3">
@@ -931,7 +1143,27 @@ export default function Owner2() {
                   <MetricTile label="MRR" value={`R$ ${financeSummary.totalMrr.toLocaleString('pt-BR')}`} icon={CreditCard} tone="emerald" />
                   <MetricTile label="Assinaturas pagas" value={financeSummary.paid} icon={ShieldCheck} tone="sky" />
                   <MetricTile label="Assinaturas atrasadas" value={financeSummary.late} icon={AlertTriangle} tone="amber" />
-                  <MetricTile label="Total assinaturas" value={financeSummary.total} icon={Database} tone="rose" />
+                  <MetricTile label="ARPA" value={`R$ ${financeSummary.arpa.toLocaleString('pt-BR', { maximumFractionDigits: 2 })}`} icon={Database} tone="rose" />
+                </div>
+
+                <div className="mt-3 rounded-xl border border-slate-200 bg-white p-2">
+                  <div className="mb-2 flex items-center justify-between">
+                    <p className="text-xs text-slate-500">Status de pagamento</p>
+                    <button className="inline-flex items-center gap-1 rounded-lg border border-slate-300 bg-white px-2 py-1 text-[11px] font-semibold text-slate-700" onClick={exportFinanceCsv}>
+                      <Download className="h-3 w-3" /> Exportar CSV
+                    </button>
+                  </div>
+                  <div className="h-44">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={financeStatusData} margin={{ top: 10, right: 8, left: 0, bottom: 0 }}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                        <XAxis dataKey="name" tick={{ fontSize: 11 }} stroke="#64748b" />
+                        <YAxis allowDecimals={false} tick={{ fontSize: 11 }} stroke="#64748b" />
+                        <Tooltip />
+                        <Bar dataKey="value" fill="#0ea5e9" radius={[6, 6, 0, 0]} />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
                 </div>
               </SurfaceCard>
 
@@ -1107,8 +1339,35 @@ export default function Owner2() {
 
               <SurfaceCard title="Ações de segurança">
                 <div className="grid gap-2">
-                  <button className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-700" disabled={busy || !companyId || !authPassword} onClick={() => runAction('cleanup_company_data', { empresa_id: companyId, auth_password: authPassword, keep_company_core: false, keep_billing_data: false, include_auth_users: true }, 'Limpeza de dados executada com sucesso.')}>Executar limpeza completa</button>
-                  <button className="rounded-lg border border-rose-300 bg-rose-50 px-3 py-2 text-sm text-rose-700" disabled={busy || !companyId || !authPassword || !isOwnerMaster} onClick={() => runAction('delete_company', { empresa_id: companyId, auth_password: authPassword, include_auth_users: true }, 'Empresa excluída definitivamente.')}>Excluir empresa definitiva</button>
+                  <button
+                    className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-700"
+                    disabled={busy || !companyId}
+                    onClick={() => openCriticalAction({
+                      title: 'Limpeza completa de dados',
+                      description: 'Executa limpeza em massa de dados da empresa em escopo.',
+                      confirmText: 'LIMPAR',
+                      action: 'cleanup_company_data',
+                      payload: { empresa_id: companyId, keep_company_core: false, keep_billing_data: false, include_auth_users: true },
+                      successMessage: 'Limpeza de dados executada com sucesso.',
+                    })}
+                  >
+                    Executar limpeza completa
+                  </button>
+                  <button
+                    className="rounded-lg border border-rose-300 bg-rose-50 px-3 py-2 text-sm text-rose-700"
+                    disabled={busy || !companyId || !isOwnerMaster}
+                    onClick={() => openCriticalAction({
+                      title: 'Exclusao definitiva da empresa',
+                      description: 'Esta acao remove definitivamente empresa e autenticacoes vinculadas.',
+                      confirmText: 'EXCLUIR',
+                      action: 'delete_company',
+                      payload: { empresa_id: companyId, include_auth_users: true },
+                      successMessage: 'Empresa excluida definitivamente.',
+                      masterOnly: true,
+                    })}
+                  >
+                    Excluir empresa definitiva
+                  </button>
                 </div>
               </SurfaceCard>
             </div>
@@ -1189,6 +1448,12 @@ export default function Owner2() {
 
           {activeTab === 'logs' && (
             <SurfaceCard title="Logs" subtitle="Busca por ação/usuário e filtro de severidade">
+              <div className="mb-3 flex justify-end">
+                <button className="inline-flex items-center gap-1 rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-700" onClick={exportLogsCsv}>
+                  <Download className="h-3.5 w-3.5" /> Exportar CSV
+                </button>
+              </div>
+
               <div className="mb-3 grid gap-2 sm:grid-cols-3">
                 <input className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" placeholder="Buscar ação ou usuário" value={logSearch} onChange={(e) => setLogSearch(e.target.value)} />
                 <select className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" value={logSeverityFilter} onChange={(e) => setLogSeverityFilter(e.target.value as 'todos' | 'info' | 'warn' | 'error' | 'critical')}>
@@ -1198,7 +1463,19 @@ export default function Owner2() {
                   <option value="error">error</option>
                   <option value="critical">critical</option>
                 </select>
-                <button className="rounded-lg border border-slate-300 px-3 py-2 text-sm" onClick={() => { setLogSearch(''); setLogSeverityFilter('todos') }}>Limpar filtros</button>
+                <input className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" placeholder="Filtrar por ator (email)" value={logActorFilter} onChange={(e) => setLogActorFilter(e.target.value)} />
+              </div>
+
+              <div className="mb-3 grid gap-2 sm:grid-cols-4">
+                <select className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" value={logModuleFilter} onChange={(e) => setLogModuleFilter(e.target.value)}>
+                  <option value="todos">Modulo: Todos</option>
+                  {availableLogModules.map((moduleName) => (
+                    <option key={moduleName} value={moduleName}>{moduleName}</option>
+                  ))}
+                </select>
+                <input className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" type="date" value={logDateFrom} onChange={(e) => setLogDateFrom(e.target.value)} />
+                <input className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" type="date" value={logDateTo} onChange={(e) => setLogDateTo(e.target.value)} />
+                <button className="rounded-lg border border-slate-300 px-3 py-2 text-sm" onClick={() => { setLogSearch(''); setLogSeverityFilter('todos'); setLogActorFilter(''); setLogModuleFilter('todos'); setLogDateFrom(''); setLogDateTo('') }}>Limpar filtros</button>
               </div>
 
               <div className="max-h-[520px] overflow-auto rounded-xl border border-slate-200">
@@ -1272,8 +1549,15 @@ export default function Owner2() {
 
                   <button
                     className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-700"
-                    disabled={busy || !selectedTableName || !authPassword}
-                    onClick={() => runAction('purge_table_data', { table_name: selectedTableName, empresa_id: companyId || undefined, auth_password: authPassword }, 'Purge de tabela concluído.')}
+                    disabled={busy || !selectedTableName}
+                    onClick={() => openCriticalAction({
+                      title: 'Purge de tabela',
+                      description: `Remove dados da tabela ${selectedTableName}. Use com cautela e apenas com backup validado.`,
+                      confirmText: 'PURGE',
+                      action: 'purge_table_data',
+                      payload: { table_name: selectedTableName, empresa_id: companyId || undefined },
+                      successMessage: 'Purge de tabela concluido.',
+                    })}
                   >
                     Executar purge da tabela
                   </button>
@@ -1329,6 +1613,37 @@ export default function Owner2() {
 
           {feedback && <p className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-700">{feedback}</p>}
           {error && <p className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">{error}</p>}
+
+          {criticalRequest && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4">
+              <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-4 shadow-2xl">
+                <h3 className="text-base font-semibold text-slate-900">{criticalRequest.title}</h3>
+                <p className="mt-2 text-sm text-slate-600">{criticalRequest.description}</p>
+                <p className="mt-2 text-xs text-slate-500">Digite <span className="font-semibold text-slate-800">{criticalRequest.confirmText}</span> e informe a senha de confirmação para prosseguir.</p>
+
+                <div className="mt-3 grid gap-2">
+                  <input
+                    className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm"
+                    value={criticalConfirmValue}
+                    onChange={(e) => setCriticalConfirmValue(e.target.value)}
+                    placeholder={`Digite ${criticalRequest.confirmText}`}
+                  />
+                  <input
+                    className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm"
+                    type="password"
+                    value={authPassword}
+                    onChange={(e) => setAuthPassword(e.target.value)}
+                    placeholder="Senha de confirmacao"
+                  />
+                </div>
+
+                <div className="mt-4 flex justify-end gap-2">
+                  <button className="rounded-lg border border-slate-300 px-3 py-2 text-sm" onClick={() => setCriticalRequest(null)}>Cancelar</button>
+                  <button className="rounded-lg border border-rose-300 bg-rose-50 px-3 py-2 text-sm font-semibold text-rose-700" disabled={busy} onClick={confirmCriticalAction}>Confirmar acao</button>
+                </div>
+              </div>
+            </div>
+          )}
         </section>
       </main>
     </div>
