@@ -21,6 +21,7 @@ import OwnerLogin from '@/owner/OwnerLogin';
 import Login from './pages/Login';
 
 const Owner = lazy(() => import('./pages/Owner'))
+const Owner2 = lazy(() => import('./pages/Owner2'))
 
 const Index = lazy(() => import('./pages/Index'))
 const ChangePassword = lazy(() => import('./pages/ChangePassword'))
@@ -161,6 +162,17 @@ function OwnerRoutes() {
             <EnvironmentGuard allowOwner>
               <OwnerOnlyRoute>
                 <Owner />
+              </OwnerOnlyRoute>
+            </EnvironmentGuard>
+          }
+        />
+
+        <Route
+          path="/owner2"
+          element={
+            <EnvironmentGuard allowOwner>
+              <OwnerOnlyRoute>
+                <Owner2 />
               </OwnerOnlyRoute>
             </EnvironmentGuard>
           }
