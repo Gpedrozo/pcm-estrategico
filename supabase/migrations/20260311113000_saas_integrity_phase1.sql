@@ -7,6 +7,36 @@
 
 set check_function_bodies = off;
 
+do $$
+begin
+  if to_regprocedure('public.is_system_master()') is null then
+    execute $fn$
+      create function public.is_system_master()
+      returns boolean
+      language plpgsql
+      stable
+      security definer
+      set search_path = public
+      as $body$
+      declare
+        v_claims jsonb := coalesce(
+          nullif(current_setting('request.jwt.claims', true), '')::jsonb,
+          '{}'::jsonb
+        );
+        v_role text := coalesce(v_claims->>'role', '');
+        v_email text := lower(coalesce(v_claims->>'email', ''));
+      begin
+        return v_role in ('service_role', 'SUPABASE_ADMIN', 'OWNER_MASTER', 'SYSTEM_MASTER')
+          or v_email in ('gustavus82@gmail.com');
+      end;
+      $body$;
+    $fn$;
+
+    grant execute on function public.is_system_master() to anon, authenticated, service_role;
+  end if;
+end
+$$;
+
 -- -----------------------------------------------------------------------------
 -- Async notifications queue (outside browser session)
 -- -----------------------------------------------------------------------------
@@ -228,7 +258,7 @@ returns table (
 language plpgsql
 security definer
 set search_path = public
-as $$
+as $close_os$
 declare
   v_execucao_id uuid;
   v_os_exists boolean;
@@ -323,7 +353,7 @@ begin
     v_total_materiais,
     coalesce(p_custo_total, 0);
 end;
-$$;
+$close_os$;
 
 grant execute on function public.close_os_with_execution_atomic(
   uuid, uuid, text, text, text, integer, text, numeric, numeric, numeric, numeric, jsonb, uuid, text, text, text, text
