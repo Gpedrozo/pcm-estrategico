@@ -1,5 +1,19 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Loader2, ShieldCheck } from 'lucide-react'
+import {
+  Activity,
+  AlertTriangle,
+  Building2,
+  Clock,
+  CreditCard,
+  Database,
+  FileText,
+  LifeBuoy,
+  Loader2,
+  Settings2,
+  ShieldCheck,
+  Users,
+} from 'lucide-react'
+import { Bar, BarChart, CartesianGrid, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import { useAuth } from '@/contexts/AuthContext'
 import {
   useOwner2Actions,
@@ -11,14 +25,15 @@ import {
   useOwner2PlatformOwners,
   useOwner2Plans,
   useOwner2Settings,
-  useOwner2Tables,
   useOwner2Subscriptions,
+  useOwner2Tables,
   useOwner2Tickets,
   useOwner2Users,
 } from '@/hooks/useOwner2Portal'
 
 const OWNER2_TABS = [
   'dashboard',
+  'monitoramento',
   'empresas',
   'usuarios',
   'planos',
@@ -66,6 +81,37 @@ function statusColor(status: string) {
     return 'bg-rose-100 text-rose-700 border-rose-200'
   }
   return 'bg-amber-100 text-amber-700 border-amber-200'
+}
+
+function SurfaceCard({ title, subtitle, children }: { title: string; subtitle?: string; children: React.ReactNode }) {
+  return (
+    <section className="rounded-2xl border border-slate-200 bg-white/95 p-4 shadow-sm">
+      <div className="mb-3">
+        <h3 className="text-sm font-semibold text-slate-900">{title}</h3>
+        {subtitle ? <p className="mt-1 text-xs text-slate-500">{subtitle}</p> : null}
+      </div>
+      {children}
+    </section>
+  )
+}
+
+function MetricTile({ label, value, icon: Icon, tone = 'sky' }: { label: string; value: string | number; icon: any; tone?: 'sky' | 'emerald' | 'amber' | 'rose' }) {
+  const toneClass = {
+    sky: 'from-sky-50 to-cyan-50 border-sky-200 text-sky-800',
+    emerald: 'from-emerald-50 to-teal-50 border-emerald-200 text-emerald-800',
+    amber: 'from-amber-50 to-orange-50 border-amber-200 text-amber-800',
+    rose: 'from-rose-50 to-pink-50 border-rose-200 text-rose-800',
+  }[tone]
+
+  return (
+    <div className={`rounded-xl border bg-gradient-to-br p-4 ${toneClass}`}>
+      <div className="flex items-start justify-between">
+        <p className="text-xs font-medium opacity-80">{label}</p>
+        <Icon className="h-4 w-4 opacity-80" />
+      </div>
+      <p className="mt-2 text-2xl font-bold">{value}</p>
+    </div>
+  )
 }
 
 export default function Owner2() {
@@ -126,14 +172,14 @@ export default function Owner2() {
   const healthQuery = useOwner2Health(true)
   const dashboardQuery = useOwner2Dashboard(activeTab === 'dashboard')
   const companiesQuery = useOwner2Companies(activeTab !== 'owner-master')
-  const usersQuery = useOwner2Users(activeTab === 'usuarios' || activeTab === 'configuracoes' || activeTab === 'empresas')
-  const plansQuery = useOwner2Plans(activeTab === 'planos' || activeTab === 'assinaturas')
+  const usersQuery = useOwner2Users(activeTab === 'usuarios' || activeTab === 'configuracoes' || activeTab === 'empresas' || activeTab === 'dashboard')
+  const plansQuery = useOwner2Plans(activeTab === 'planos' || activeTab === 'assinaturas' || activeTab === 'dashboard')
   const subscriptionsQuery = useOwner2Subscriptions(activeTab === 'assinaturas' || activeTab === 'dashboard')
-  const contractsQuery = useOwner2Contracts(activeTab === 'contratos')
-  const ticketsQuery = useOwner2Tickets(activeTab === 'suporte')
-  const auditsQuery = useOwner2Audits(activeTab === 'auditoria')
+  const contractsQuery = useOwner2Contracts(activeTab === 'contratos' || activeTab === 'dashboard')
+  const ticketsQuery = useOwner2Tickets(activeTab === 'suporte' || activeTab === 'dashboard')
+  const auditsQuery = useOwner2Audits(activeTab === 'auditoria' || activeTab === 'monitoramento')
   const ownersQuery = useOwner2PlatformOwners(activeTab === 'owner-master')
-  const tablesQuery = useOwner2Tables(companyId || undefined, activeTab === 'dashboard')
+  const tablesQuery = useOwner2Tables(companyId || undefined, activeTab === 'dashboard' || activeTab === 'monitoramento')
   const settingsQuery = useOwner2Settings(companyId || undefined, activeTab === 'configuracoes')
   const { execute } = useOwner2Actions()
 
@@ -151,21 +197,15 @@ export default function Owner2() {
   const busy = execute.isPending
 
   useEffect(() => {
-    if (!selectedUserId && users.length > 0) {
-      setSelectedUserId(String(users[0]?.id ?? ''))
-    }
+    if (!selectedUserId && users.length > 0) setSelectedUserId(String(users[0]?.id ?? ''))
   }, [selectedUserId, users])
 
   useEffect(() => {
-    if (!selectedContractId && contracts.length > 0) {
-      setSelectedContractId(String(contracts[0]?.id ?? ''))
-    }
+    if (!selectedContractId && contracts.length > 0) setSelectedContractId(String(contracts[0]?.id ?? ''))
   }, [contracts, selectedContractId])
 
   useEffect(() => {
-    if (!selectedTicketId && tickets.length > 0) {
-      setSelectedTicketId(String(tickets[0]?.id ?? ''))
-    }
+    if (!selectedTicketId && tickets.length > 0) setSelectedTicketId(String(tickets[0]?.id ?? ''))
   }, [selectedTicketId, tickets])
 
   useEffect(() => {
@@ -189,6 +229,43 @@ export default function Owner2() {
     setFeatureSso(asBool(features.sso, false))
   }, [settings])
 
+  const companyStatusChartData = useMemo(() => {
+    const grouped = companies.reduce<Record<string, number>>((acc, company) => {
+      const status = String(company.status || 'desconhecido')
+      acc[status] = (acc[status] || 0) + 1
+      return acc
+    }, {})
+
+    return Object.entries(grouped).map(([name, value]) => ({ name, value }))
+  }, [companies])
+
+  const subscriptionStatusChartData = useMemo(() => {
+    const grouped = subscriptions.reduce<Record<string, number>>((acc, sub) => {
+      const status = String(sub.status || 'desconhecido')
+      acc[status] = (acc[status] || 0) + 1
+      return acc
+    }, {})
+
+    return Object.entries(grouped).map(([name, value]) => ({ name, value }))
+  }, [subscriptions])
+
+  const monitorSummary = useMemo(() => {
+    const totalTables = tables.length
+    const activeTables = tables.filter((table) => asNumber(table.total_rows, 0) > 0).length
+    const totalRecords = tables.reduce((acc, table) => acc + asNumber(table.total_rows, 0), 0)
+    const responseMs = asNumber((healthQuery.data as any)?.duration_ms, 0)
+    const availabilityPercent = totalTables > 0 ? Math.round((activeTables / totalTables) * 100) : 0
+
+    return {
+      totalTables,
+      activeTables,
+      totalRecords,
+      responseMs,
+      availabilityPercent,
+      healthy: !tablesQuery.isError && !healthQuery.isError,
+    }
+  }, [healthQuery.data, healthQuery.isError, tables, tablesQuery.isError])
+
   async function runAction(action: any, payload: Record<string, unknown>, successMessage: string) {
     setError(null)
     setFeedback(null)
@@ -198,15 +275,6 @@ export default function Owner2() {
     } catch (err: any) {
       setError(String(err?.message ?? err ?? 'Falha na operação do Owner2.'))
     }
-  }
-
-  function renderConnectionBadge(label: string, ok: boolean, qtd: number | string) {
-    return (
-      <div className={`rounded-lg border px-3 py-2 text-xs ${ok ? 'border-emerald-200 bg-emerald-50 text-emerald-700' : 'border-amber-200 bg-amber-50 text-amber-700'}`}>
-        <p className="font-medium">{label}</p>
-        <p>{ok ? 'Conectado' : 'Sem dados'} · {qtd}</p>
-      </div>
-    )
   }
 
   if (isLoading) {
@@ -232,27 +300,27 @@ export default function Owner2() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900">
-      <header className="border-b border-slate-200 bg-white px-6 py-4">
-        <div className="flex flex-wrap items-center justify-between gap-3">
+    <div className="min-h-screen bg-[radial-gradient(circle_at_top,_#dbeafe,_#f8fafc_45%)] text-slate-900">
+      <header className="border-b border-slate-200/90 bg-white/90 backdrop-blur">
+        <div className="mx-auto flex w-full max-w-[1600px] items-center justify-between px-6 py-4">
           <div>
-            <h1 className="text-xl font-semibold">Owner2</h1>
-            <p className="text-xs text-slate-600">Painel operacional da plataforma (modo simplificado)</p>
+            <h1 className="text-xl font-semibold tracking-tight">Owner2</h1>
+            <p className="text-xs text-slate-600">Centro operacional premium da plataforma</p>
           </div>
-          <div className="text-xs text-slate-600">
+          <div className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs text-slate-700 shadow-sm">
             <p>Usuário: {user?.email}</p>
             <p>Health: {String((healthQuery.data as any)?.status ?? 'n/a')}</p>
           </div>
         </div>
       </header>
 
-      <main className="mx-auto grid w-full max-w-[1600px] gap-4 p-4 lg:grid-cols-[220px,1fr]">
-        <aside className="rounded-lg border border-slate-200 bg-white p-3">
+      <main className="mx-auto grid w-full max-w-[1600px] gap-4 p-4 lg:grid-cols-[230px,1fr]">
+        <aside className="rounded-2xl border border-slate-200 bg-white/95 p-3 shadow-sm">
           <nav className="space-y-1">
             {OWNER2_TABS.map((tab) => (
               <button
                 key={tab}
-                className={`w-full rounded px-3 py-2 text-left text-sm ${activeTab === tab ? 'bg-sky-700 text-white' : 'text-slate-700 hover:bg-slate-100'}`}
+                className={`w-full rounded-lg px-3 py-2 text-left text-sm transition ${activeTab === tab ? 'bg-sky-700 font-semibold text-white shadow-sm' : 'text-slate-700 hover:bg-slate-100'}`}
                 onClick={() => setActiveTab(tab)}
               >
                 {tab}
@@ -262,89 +330,131 @@ export default function Owner2() {
         </aside>
 
         <section className="space-y-4">
-          <div className="rounded-lg border border-slate-200 bg-white p-3">
+          <div className="rounded-2xl border border-slate-200 bg-white/95 p-3 shadow-sm">
             <div className="grid gap-2 md:grid-cols-2">
-              <select className="rounded border border-slate-300 bg-white px-2 py-2 text-sm" value={companyId} onChange={(e) => setCompanyId(e.target.value)}>
+              <select className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" value={companyId} onChange={(e) => setCompanyId(e.target.value)}>
                 <option value="">Empresa (escopo)</option>
                 {companies.map((c) => (
                   <option key={String(c.id)} value={String(c.id)}>{String(c.nome ?? c.slug ?? c.id)}</option>
                 ))}
               </select>
-              <input className="rounded border border-slate-300 bg-white px-2 py-2 text-sm" type="password" value={authPassword} onChange={(e) => setAuthPassword(e.target.value)} placeholder="Senha de confirmação para ações críticas" />
+              <input className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" type="password" value={authPassword} onChange={(e) => setAuthPassword(e.target.value)} placeholder="Senha de confirmação para ações críticas" />
             </div>
           </div>
 
           {activeTab === 'dashboard' && (
             <div className="space-y-4">
+              <div className="rounded-2xl border border-sky-200 bg-gradient-to-r from-sky-600 to-cyan-600 p-5 text-white shadow-lg shadow-sky-200">
+                <p className="text-xs uppercase tracking-wider text-sky-100">Painel executivo</p>
+                <h2 className="mt-1 text-xl font-semibold">Visão geral da operação global</h2>
+                <p className="mt-1 text-sm text-sky-100">{String((dashboardQuery.data as any)?.message ?? 'Acompanhe indicadores e entre nas áreas operacionais com um clique.')}</p>
+              </div>
+
               <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-                <div className="rounded-lg border border-slate-200 bg-white p-4">
-                  <p className="text-xs text-slate-500">Empresas</p>
-                  <p className="mt-1 text-2xl font-semibold">{companies.length}</p>
-                </div>
-                <div className="rounded-lg border border-slate-200 bg-white p-4">
-                  <p className="text-xs text-slate-500">Usuários</p>
-                  <p className="mt-1 text-2xl font-semibold">{users.length}</p>
-                </div>
-                <div className="rounded-lg border border-slate-200 bg-white p-4">
-                  <p className="text-xs text-slate-500">Assinaturas</p>
-                  <p className="mt-1 text-2xl font-semibold">{subscriptions.length}</p>
-                </div>
-                <div className="rounded-lg border border-slate-200 bg-white p-4">
-                  <p className="text-xs text-slate-500">Tickets</p>
-                  <p className="mt-1 text-2xl font-semibold">{tickets.length}</p>
-                </div>
+                <MetricTile label="Empresas" value={companies.length} icon={Building2} tone="sky" />
+                <MetricTile label="Usuários" value={users.length} icon={Users} tone="emerald" />
+                <MetricTile label="Assinaturas" value={subscriptions.length} icon={CreditCard} tone="amber" />
+                <MetricTile label="Contratos" value={contracts.length} icon={FileText} tone="rose" />
               </div>
 
-              <div className="rounded-lg border border-slate-200 bg-white p-4">
-                <h2 className="text-base font-semibold">Conectividade das áreas</h2>
-                <div className="mt-3 grid gap-2 md:grid-cols-2 xl:grid-cols-4">
-                  {renderConnectionBadge('Empresas', !companiesQuery.isError, companies.length)}
-                  {renderConnectionBadge('Usuários', !usersQuery.isError, users.length)}
-                  {renderConnectionBadge('Planos', !plansQuery.isError, plans.length)}
-                  {renderConnectionBadge('Assinaturas', !subscriptionsQuery.isError, subscriptions.length)}
-                  {renderConnectionBadge('Contratos', !contractsQuery.isError, contracts.length)}
-                  {renderConnectionBadge('Suporte', !ticketsQuery.isError, tickets.length)}
-                  {renderConnectionBadge('Auditoria', !auditsQuery.isError, logs.length)}
-                  {renderConnectionBadge('Tabelas', !tablesQuery.isError, tables.length)}
-                  {renderConnectionBadge('Settings', !settingsQuery.isError, settings.length)}
-                </div>
-              </div>
+              <div className="grid gap-4 xl:grid-cols-2">
+                <SurfaceCard title="Empresas por status" subtitle="Distribuição operacional">
+                  <div className="h-64 rounded-xl border border-slate-200 bg-white p-2">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={companyStatusChartData} margin={{ top: 16, right: 8, left: 0, bottom: 0 }}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                        <XAxis dataKey="name" tick={{ fontSize: 11 }} stroke="#64748b" />
+                        <YAxis allowDecimals={false} tick={{ fontSize: 11 }} stroke="#64748b" />
+                        <Tooltip />
+                        <Bar dataKey="value" fill="#0284c7" radius={[6, 6, 0, 0]} />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                </SurfaceCard>
 
-              <div className="rounded-lg border border-slate-200 bg-white p-4">
-                <h2 className="text-base font-semibold">Tabelas conectadas (somente leitura)</h2>
-                <p className="mt-1 text-xs text-slate-600">Visibilidade operacional sem comandos SQL na tela.</p>
-                <div className="mt-3 max-h-[220px] overflow-auto rounded border border-slate-200 p-2">
-                  <div className="flex flex-wrap gap-2">
-                    {tables.length === 0 && <span className="text-xs text-slate-500">Sem tabelas para o escopo atual.</span>}
-                    {tables.map((t, idx) => (
-                      <span key={`${String(t.table_name ?? t.name ?? 'tbl')}-${idx}`} className="rounded-full border border-slate-200 bg-slate-100 px-2 py-1 text-xs text-slate-700">
-                        {String(t.table_name ?? t.name ?? '-')}
-                      </span>
-                    ))}
+                <SurfaceCard title="Assinaturas por status" subtitle="Saúde de receita recorrente">
+                  <div className="h-64 rounded-xl border border-slate-200 bg-white p-2">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Tooltip />
+                        <Pie data={subscriptionStatusChartData} dataKey="value" nameKey="name" outerRadius={90} fill="#14b8a6" label />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  </div>
+                </SurfaceCard>
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'monitoramento' && (
+            <div className="space-y-4">
+              <SurfaceCard title="Monitoramento em tempo real" subtitle="Visual inspirado no monitoramento do Owner">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div className="flex items-center gap-3">
+                    <div className={`h-3 w-3 rounded-full ${monitorSummary.healthy ? 'bg-emerald-500' : 'bg-rose-500'} animate-pulse`} />
+                    <p className="text-sm text-slate-700">{monitorSummary.healthy ? 'Operacional' : 'Atenção'} • atualização contínua</p>
+                  </div>
+                  <span className={`rounded-full border px-3 py-1 text-xs font-semibold ${monitorSummary.healthy ? 'border-emerald-200 bg-emerald-50 text-emerald-700' : 'border-rose-200 bg-rose-50 text-rose-700'}`}>
+                    {monitorSummary.availabilityPercent}% disponibilidade
+                  </span>
+                </div>
+
+                <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                  <MetricTile label="Tempo resposta" value={monitorSummary.responseMs > 0 ? `${monitorSummary.responseMs}ms` : '-'} icon={Clock} tone="sky" />
+                  <MetricTile label="Registros" value={monitorSummary.totalRecords.toLocaleString('pt-BR')} icon={Database} tone="emerald" />
+                  <MetricTile label="Tabelas ativas" value={`${monitorSummary.activeTables}/${monitorSummary.totalTables}`} icon={Activity} tone="amber" />
+                  <MetricTile label="Alertas" value={tablesQuery.isError || healthQuery.isError ? 1 : 0} icon={AlertTriangle} tone={(tablesQuery.isError || healthQuery.isError) ? 'rose' : 'emerald'} />
+                </div>
+
+                <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-3">
+                  <div className="mb-2 flex items-center justify-between text-xs text-slate-600">
+                    <span>Disponibilidade</span>
+                    <span className="font-semibold text-slate-900">{monitorSummary.availabilityPercent}%</span>
+                  </div>
+                  <div className="h-2 rounded bg-slate-200">
+                    <div className="h-2 rounded bg-sky-500" style={{ width: `${monitorSummary.availabilityPercent}%` }} />
                   </div>
                 </div>
-              </div>
+              </SurfaceCard>
 
-              <div className="rounded-lg border border-slate-200 bg-white p-4">
-                <h2 className="text-base font-semibold">Resumo executivo</h2>
-                <p className="mt-2 text-sm text-slate-600">
-                  {String((dashboardQuery.data as any)?.message ?? 'Painel operacional pronto. Use as abas para ações diretas sem edição técnica.')}
-                </p>
-              </div>
+              <SurfaceCard title="Tabelas conectadas" subtitle="Somente leitura, sem SQL na tela">
+                <div className="max-h-[280px] overflow-auto rounded-xl border border-slate-200">
+                  <table className="w-full text-xs">
+                    <thead className="bg-slate-100">
+                      <tr>
+                        <th className="px-2 py-2 text-left">Tabela</th>
+                        <th className="px-2 py-2 text-left">Registros</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {tables.map((table, idx) => (
+                        <tr key={`${String(table.table_name ?? table.name ?? 'tb')}-${idx}`} className="border-t border-slate-200">
+                          <td className="px-2 py-2">{String(table.table_name ?? table.name ?? '-')}</td>
+                          <td className="px-2 py-2">{asNumber(table.total_rows, 0).toLocaleString('pt-BR')}</td>
+                        </tr>
+                      ))}
+                      {tables.length === 0 && (
+                        <tr>
+                          <td className="px-2 py-3 text-slate-500" colSpan={2}>Sem tabelas para o escopo selecionado.</td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </SurfaceCard>
             </div>
           )}
 
           {activeTab === 'empresas' && (
             <div className="grid gap-4 xl:grid-cols-2">
-              <div className="rounded-lg border border-slate-200 bg-white p-4">
-                <h2 className="text-base font-semibold">Nova empresa</h2>
-                <div className="mt-3 grid gap-2">
-                  <input className="rounded border border-slate-300 bg-white px-2 py-2 text-sm" value={newCompanyName} onChange={(e) => setNewCompanyName(e.target.value)} placeholder="Nome da empresa" />
-                  <input className="rounded border border-slate-300 bg-white px-2 py-2 text-sm" value={newCompanySlug} onChange={(e) => setNewCompanySlug(e.target.value)} placeholder="Slug (opcional)" />
-                  <input className="rounded border border-slate-300 bg-white px-2 py-2 text-sm" value={newAdminName} onChange={(e) => setNewAdminName(e.target.value)} placeholder="Nome do administrador" />
-                  <input className="rounded border border-slate-300 bg-white px-2 py-2 text-sm" value={newAdminEmail} onChange={(e) => setNewAdminEmail(e.target.value)} placeholder="Email do administrador" />
+              <SurfaceCard title="Nova empresa">
+                <div className="grid gap-2">
+                  <input className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" value={newCompanyName} onChange={(e) => setNewCompanyName(e.target.value)} placeholder="Nome da empresa" />
+                  <input className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" value={newCompanySlug} onChange={(e) => setNewCompanySlug(e.target.value)} placeholder="Slug (opcional)" />
+                  <input className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" value={newAdminName} onChange={(e) => setNewAdminName(e.target.value)} placeholder="Nome do administrador" />
+                  <input className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" value={newAdminEmail} onChange={(e) => setNewAdminEmail(e.target.value)} placeholder="Email do administrador" />
                   <button
-                    className="rounded bg-sky-700 px-3 py-2 text-sm font-semibold text-white"
+                    className="rounded-lg bg-sky-700 px-3 py-2 text-sm font-semibold text-white"
                     disabled={busy || !newCompanyName || !newAdminName || !newAdminEmail}
                     onClick={() => runAction('create_company', {
                       company: { nome: newCompanyName, slug: newCompanySlug || undefined },
@@ -354,86 +464,80 @@ export default function Owner2() {
                     Criar empresa
                   </button>
                 </div>
-              </div>
+              </SurfaceCard>
 
-              <div className="rounded-lg border border-slate-200 bg-white p-4">
-                <h2 className="text-base font-semibold">Ações rápidas da empresa selecionada</h2>
-                <div className="mt-3 grid gap-2 sm:grid-cols-2">
-                  <button className="rounded border border-slate-300 px-3 py-2 text-sm" disabled={busy || !companyId} onClick={() => runAction('set_company_status', { empresa_id: companyId, status: 'active' }, 'Empresa ativada.')}>Ativar</button>
-                  <button className="rounded border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-700" disabled={busy || !companyId} onClick={() => runAction('set_company_status', { empresa_id: companyId, status: 'blocked' }, 'Empresa bloqueada.')}>Bloquear</button>
-                  <button className="rounded border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-700" disabled={busy || !companyId || !authPassword} onClick={() => runAction('cleanup_company_data', { empresa_id: companyId, auth_password: authPassword, keep_company_core: false, keep_billing_data: false, include_auth_users: true }, 'Limpeza completa executada.')}>Limpeza completa</button>
-                  <button className="rounded border border-rose-300 bg-rose-50 px-3 py-2 text-sm text-rose-700" disabled={busy || !companyId || !authPassword || !isOwnerMaster} onClick={() => runAction('delete_company', { empresa_id: companyId, auth_password: authPassword, include_auth_users: true }, 'Empresa excluída definitivamente.')}>Excluir empresa</button>
+              <SurfaceCard title="Ações rápidas da empresa selecionada">
+                <div className="grid gap-2 sm:grid-cols-2">
+                  <button className="rounded-lg border border-slate-300 px-3 py-2 text-sm" disabled={busy || !companyId} onClick={() => runAction('set_company_status', { empresa_id: companyId, status: 'active' }, 'Empresa ativada.')}>Ativar</button>
+                  <button className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-700" disabled={busy || !companyId} onClick={() => runAction('set_company_status', { empresa_id: companyId, status: 'blocked' }, 'Empresa bloqueada.')}>Bloquear</button>
+                  <button className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-700" disabled={busy || !companyId || !authPassword} onClick={() => runAction('cleanup_company_data', { empresa_id: companyId, auth_password: authPassword, keep_company_core: false, keep_billing_data: false, include_auth_users: true }, 'Limpeza completa executada.')}>Limpeza completa</button>
+                  <button className="rounded-lg border border-rose-300 bg-rose-50 px-3 py-2 text-sm text-rose-700" disabled={busy || !companyId || !authPassword || !isOwnerMaster} onClick={() => runAction('delete_company', { empresa_id: companyId, auth_password: authPassword, include_auth_users: true }, 'Empresa excluída definitivamente.')}>Excluir empresa</button>
                 </div>
-              </div>
+              </SurfaceCard>
 
-              <div className="xl:col-span-2 rounded-lg border border-slate-200 bg-white p-4">
-                <h2 className="text-base font-semibold">Empresas</h2>
-                <div className="mt-3 max-h-[420px] overflow-auto rounded border border-slate-200">
-                  <table className="w-full text-xs">
-                    <thead className="bg-slate-100">
-                      <tr>
-                        <th className="px-2 py-2 text-left">ID</th>
-                        <th className="px-2 py-2 text-left">Nome</th>
-                        <th className="px-2 py-2 text-left">Slug</th>
-                        <th className="px-2 py-2 text-left">Status</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {companies.map((c) => {
-                        const st = String(c.status ?? '-')
-                        return (
-                          <tr key={String(c.id)} className="border-t border-slate-200">
-                            <td className="px-2 py-2">{String(c.id ?? '-')}</td>
-                            <td className="px-2 py-2">{String(c.nome ?? '-')}</td>
-                            <td className="px-2 py-2">{String(c.slug ?? '-')}</td>
-                            <td className="px-2 py-2">
-                              <span className={`rounded border px-2 py-0.5 ${statusColor(st)}`}>{st}</span>
-                            </td>
-                          </tr>
-                        )
-                      })}
-                    </tbody>
-                  </table>
-                </div>
+              <div className="xl:col-span-2">
+                <SurfaceCard title="Empresas">
+                  <div className="max-h-[420px] overflow-auto rounded-xl border border-slate-200">
+                    <table className="w-full text-xs">
+                      <thead className="bg-slate-100">
+                        <tr>
+                          <th className="px-2 py-2 text-left">ID</th>
+                          <th className="px-2 py-2 text-left">Nome</th>
+                          <th className="px-2 py-2 text-left">Slug</th>
+                          <th className="px-2 py-2 text-left">Status</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {companies.map((c) => {
+                          const st = String(c.status ?? '-')
+                          return (
+                            <tr key={String(c.id)} className="border-t border-slate-200">
+                              <td className="px-2 py-2">{String(c.id ?? '-')}</td>
+                              <td className="px-2 py-2">{String(c.nome ?? '-')}</td>
+                              <td className="px-2 py-2">{String(c.slug ?? '-')}</td>
+                              <td className="px-2 py-2"><span className={`rounded border px-2 py-0.5 ${statusColor(st)}`}>{st}</span></td>
+                            </tr>
+                          )
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                </SurfaceCard>
               </div>
             </div>
           )}
 
           {activeTab === 'usuarios' && (
             <div className="grid gap-4 xl:grid-cols-2">
-              <div className="rounded-lg border border-slate-200 bg-white p-4">
-                <h2 className="text-base font-semibold">Novo usuário</h2>
-                <div className="mt-3 grid gap-2">
-                  <input className="rounded border border-slate-300 bg-white px-2 py-2 text-sm" value={newUserName} onChange={(e) => setNewUserName(e.target.value)} placeholder="Nome" />
-                  <input className="rounded border border-slate-300 bg-white px-2 py-2 text-sm" value={newUserEmail} onChange={(e) => setNewUserEmail(e.target.value)} placeholder="Email" />
-                  <select className="rounded border border-slate-300 bg-white px-2 py-2 text-sm" value={newUserRole} onChange={(e) => setNewUserRole(e.target.value)}>
+              <SurfaceCard title="Novo usuário">
+                <div className="grid gap-2">
+                  <input className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" value={newUserName} onChange={(e) => setNewUserName(e.target.value)} placeholder="Nome" />
+                  <input className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" value={newUserEmail} onChange={(e) => setNewUserEmail(e.target.value)} placeholder="Email" />
+                  <select className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" value={newUserRole} onChange={(e) => setNewUserRole(e.target.value)}>
                     <option value="ADMIN">ADMIN</option>
                     <option value="GESTOR">GESTOR</option>
                     <option value="TECNICO">TECNICO</option>
                     <option value="USUARIO">USUARIO</option>
                     <option value="SOLICITANTE">SOLICITANTE</option>
                   </select>
-                  <button className="rounded bg-sky-700 px-3 py-2 text-sm font-semibold text-white" disabled={busy || !companyId || !newUserName || !newUserEmail} onClick={() => runAction('create_user', { user: { nome: newUserName, email: newUserEmail, role: newUserRole, empresa_id: companyId } }, 'Usuário criado com sucesso.')}>Criar usuário</button>
+                  <button className="rounded-lg bg-sky-700 px-3 py-2 text-sm font-semibold text-white" disabled={busy || !companyId || !newUserName || !newUserEmail} onClick={() => runAction('create_user', { user: { nome: newUserName, email: newUserEmail, role: newUserRole, empresa_id: companyId } }, 'Usuário criado com sucesso.')}>Criar usuário</button>
                 </div>
 
-                <div className="mt-5 grid gap-2">
+                <div className="mt-4 grid gap-2">
                   <h3 className="text-sm font-semibold">Status do usuário</h3>
-                  <select className="rounded border border-slate-300 bg-white px-2 py-2 text-sm" value={selectedUserId} onChange={(e) => setSelectedUserId(e.target.value)}>
+                  <select className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" value={selectedUserId} onChange={(e) => setSelectedUserId(e.target.value)}>
                     <option value="">Selecione um usuário</option>
-                    {users.map((u) => (
-                      <option key={String(u.id)} value={String(u.id)}>{String(u.nome ?? u.email ?? u.id)}</option>
-                    ))}
+                    {users.map((u) => <option key={String(u.id)} value={String(u.id)}>{String(u.nome ?? u.email ?? u.id)}</option>)}
                   </select>
                   <div className="grid grid-cols-2 gap-2">
-                    <button className="rounded border border-slate-300 px-3 py-2 text-sm" disabled={busy || !selectedUserId} onClick={() => runAction('set_user_status', { user_id: selectedUserId, status: 'ativo' }, 'Usuário ativado.')}>Ativar</button>
-                    <button className="rounded border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-700" disabled={busy || !selectedUserId} onClick={() => runAction('set_user_status', { user_id: selectedUserId, status: 'inativo' }, 'Usuário inativado.')}>Inativar</button>
+                    <button className="rounded-lg border border-slate-300 px-3 py-2 text-sm" disabled={busy || !selectedUserId} onClick={() => runAction('set_user_status', { user_id: selectedUserId, status: 'ativo' }, 'Usuário ativado.')}>Ativar</button>
+                    <button className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-700" disabled={busy || !selectedUserId} onClick={() => runAction('set_user_status', { user_id: selectedUserId, status: 'inativo' }, 'Usuário inativado.')}>Inativar</button>
                   </div>
                 </div>
-              </div>
+              </SurfaceCard>
 
-              <div className="rounded-lg border border-slate-200 bg-white p-4">
-                <h2 className="text-base font-semibold">Usuários</h2>
-                <div className="mt-3 max-h-[420px] overflow-auto rounded border border-slate-200">
+              <SurfaceCard title="Usuários">
+                <div className="max-h-[420px] overflow-auto rounded-xl border border-slate-200">
                   <table className="w-full text-xs">
                     <thead className="bg-slate-100">
                       <tr>
@@ -456,25 +560,23 @@ export default function Owner2() {
                     </tbody>
                   </table>
                 </div>
-              </div>
+              </SurfaceCard>
             </div>
           )}
 
           {activeTab === 'planos' && (
             <div className="grid gap-4 xl:grid-cols-2">
-              <div className="rounded-lg border border-slate-200 bg-white p-4">
-                <h2 className="text-base font-semibold">Novo plano</h2>
-                <div className="mt-3 grid gap-2">
-                  <input className="rounded border border-slate-300 bg-white px-2 py-2 text-sm" value={planCode} onChange={(e) => setPlanCode(e.target.value)} placeholder="Código" />
-                  <input className="rounded border border-slate-300 bg-white px-2 py-2 text-sm" value={planName} onChange={(e) => setPlanName(e.target.value)} placeholder="Nome" />
-                  <input className="rounded border border-slate-300 bg-white px-2 py-2 text-sm" value={planPrice} onChange={(e) => setPlanPrice(e.target.value)} placeholder="Preço mensal" />
-                  <button className="rounded bg-sky-700 px-3 py-2 text-sm font-semibold text-white" disabled={busy || !planCode || !planName} onClick={() => runAction('create_plan', { plan: { code: planCode.toUpperCase(), name: planName, price_month: Number(planPrice || 0), user_limit: 10, data_limit_mb: 2048, active: true } }, 'Plano criado com sucesso.')}>Criar plano</button>
+              <SurfaceCard title="Novo plano">
+                <div className="grid gap-2">
+                  <input className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" value={planCode} onChange={(e) => setPlanCode(e.target.value)} placeholder="Código" />
+                  <input className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" value={planName} onChange={(e) => setPlanName(e.target.value)} placeholder="Nome" />
+                  <input className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" value={planPrice} onChange={(e) => setPlanPrice(e.target.value)} placeholder="Preço mensal" />
+                  <button className="rounded-lg bg-sky-700 px-3 py-2 text-sm font-semibold text-white" disabled={busy || !planCode || !planName} onClick={() => runAction('create_plan', { plan: { code: planCode.toUpperCase(), name: planName, price_month: Number(planPrice || 0), user_limit: 10, data_limit_mb: 2048, active: true } }, 'Plano criado com sucesso.')}>Criar plano</button>
                 </div>
-              </div>
+              </SurfaceCard>
 
-              <div className="rounded-lg border border-slate-200 bg-white p-4">
-                <h2 className="text-base font-semibold">Planos</h2>
-                <div className="mt-3 max-h-[420px] overflow-auto rounded border border-slate-200">
+              <SurfaceCard title="Planos">
+                <div className="max-h-[420px] overflow-auto rounded-xl border border-slate-200">
                   <table className="w-full text-xs">
                     <thead className="bg-slate-100">
                       <tr>
@@ -494,32 +596,28 @@ export default function Owner2() {
                     </tbody>
                   </table>
                 </div>
-              </div>
+              </SurfaceCard>
             </div>
           )}
 
           {activeTab === 'assinaturas' && (
             <div className="grid gap-4 xl:grid-cols-2">
-              <div className="rounded-lg border border-slate-200 bg-white p-4">
-                <h2 className="text-base font-semibold">Assinaturas</h2>
-                <div className="mt-3 grid gap-2">
-                  <select className="rounded border border-slate-300 bg-white px-2 py-2 text-sm" value={subscriptionPlanId} onChange={(e) => setSubscriptionPlanId(e.target.value)}>
+              <SurfaceCard title="Assinaturas">
+                <div className="grid gap-2">
+                  <select className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" value={subscriptionPlanId} onChange={(e) => setSubscriptionPlanId(e.target.value)}>
                     <option value="">Plano</option>
                     {plans.map((p) => <option key={String(p.id)} value={String(p.id)}>{String(p.name ?? p.code ?? p.id)}</option>)}
                   </select>
-                  <input className="rounded border border-slate-300 bg-white px-2 py-2 text-sm" value={subscriptionAmount} onChange={(e) => setSubscriptionAmount(e.target.value)} placeholder="Valor" />
-                  <button className="rounded bg-sky-700 px-3 py-2 text-sm font-semibold text-white" disabled={busy || !companyId || !subscriptionPlanId} onClick={() => runAction('create_subscription', { subscription: { empresa_id: companyId, plan_id: subscriptionPlanId, amount: Number(subscriptionAmount || 0), status: 'ativa' } }, 'Assinatura criada com sucesso.')}>Criar assinatura</button>
-
-                  <button className="rounded border border-slate-300 px-3 py-2 text-sm" disabled={busy || !companyId} onClick={() => runAction('set_subscription_status', { empresa_id: companyId, status: 'ativa' }, 'Assinatura ativada.')}>Ativar assinatura da empresa</button>
-
-                  <input className="rounded border border-slate-300 bg-white px-2 py-2 text-sm" value={planCodeToChange} onChange={(e) => setPlanCodeToChange(e.target.value)} placeholder="Código do novo plano" />
-                  <button className="rounded border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-700" disabled={busy || !companyId || !planCodeToChange} onClick={() => runAction('change_plan', { empresa_id: companyId, plano_codigo: planCodeToChange.toUpperCase() }, 'Plano da empresa alterado.')}>Trocar plano</button>
+                  <input className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" value={subscriptionAmount} onChange={(e) => setSubscriptionAmount(e.target.value)} placeholder="Valor" />
+                  <button className="rounded-lg bg-sky-700 px-3 py-2 text-sm font-semibold text-white" disabled={busy || !companyId || !subscriptionPlanId} onClick={() => runAction('create_subscription', { subscription: { empresa_id: companyId, plan_id: subscriptionPlanId, amount: Number(subscriptionAmount || 0), status: 'ativa' } }, 'Assinatura criada com sucesso.')}>Criar assinatura</button>
+                  <button className="rounded-lg border border-slate-300 px-3 py-2 text-sm" disabled={busy || !companyId} onClick={() => runAction('set_subscription_status', { empresa_id: companyId, status: 'ativa' }, 'Assinatura ativada.')}>Ativar assinatura da empresa</button>
+                  <input className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" value={planCodeToChange} onChange={(e) => setPlanCodeToChange(e.target.value)} placeholder="Código do novo plano" />
+                  <button className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-700" disabled={busy || !companyId || !planCodeToChange} onClick={() => runAction('change_plan', { empresa_id: companyId, plano_codigo: planCodeToChange.toUpperCase() }, 'Plano da empresa alterado.')}>Trocar plano</button>
                 </div>
-              </div>
+              </SurfaceCard>
 
-              <div className="rounded-lg border border-slate-200 bg-white p-4">
-                <h2 className="text-base font-semibold">Assinaturas ativas</h2>
-                <div className="mt-3 max-h-[420px] overflow-auto rounded border border-slate-200">
+              <SurfaceCard title="Assinaturas ativas">
+                <div className="max-h-[420px] overflow-auto rounded-xl border border-slate-200">
                   <table className="w-full text-xs">
                     <thead className="bg-slate-100">
                       <tr>
@@ -542,30 +640,28 @@ export default function Owner2() {
                     </tbody>
                   </table>
                 </div>
-              </div>
+              </SurfaceCard>
             </div>
           )}
 
           {activeTab === 'contratos' && (
             <div className="grid gap-4 xl:grid-cols-2">
-              <div className="rounded-lg border border-slate-200 bg-white p-4">
-                <h2 className="text-base font-semibold">Gerenciar contrato</h2>
-                <div className="mt-3 grid gap-2">
-                  <select className="rounded border border-slate-300 bg-white px-2 py-2 text-sm" value={selectedContractId} onChange={(e) => setSelectedContractId(e.target.value)}>
+              <SurfaceCard title="Gerenciar contrato">
+                <div className="grid gap-2">
+                  <select className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" value={selectedContractId} onChange={(e) => setSelectedContractId(e.target.value)}>
                     <option value="">Selecione o contrato</option>
                     {contracts.map((c) => <option key={String(c.id)} value={String(c.id)}>{String(c.summary ?? c.id)}</option>)}
                   </select>
-                  <textarea className="min-h-[120px] rounded border border-slate-300 bg-white px-2 py-2 text-sm" value={contractContent} onChange={(e) => setContractContent(e.target.value)} placeholder="Conteúdo do contrato" />
-                  <input className="rounded border border-slate-300 bg-white px-2 py-2 text-sm" value={contractSummary} onChange={(e) => setContractSummary(e.target.value)} placeholder="Resumo" />
-                  <button className="rounded bg-sky-700 px-3 py-2 text-sm font-semibold text-white" disabled={busy || !selectedContractId} onClick={() => runAction('update_contract', { contract_id: selectedContractId, content: contractContent, summary: contractSummary }, 'Contrato atualizado.')}>Salvar alterações</button>
-                  <button className="rounded border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-700" disabled={busy || !selectedContractId} onClick={() => runAction('regenerate_contract', { contract_id: selectedContractId }, 'Contrato regenerado.')}>Regenerar contrato</button>
-                  <button className="rounded border border-rose-300 bg-rose-50 px-3 py-2 text-sm text-rose-700" disabled={busy || !selectedContractId} onClick={() => runAction('delete_contract', { contract_id: selectedContractId }, 'Contrato excluído.')}>Excluir contrato</button>
+                  <textarea className="min-h-[120px] rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" value={contractContent} onChange={(e) => setContractContent(e.target.value)} placeholder="Conteúdo do contrato" />
+                  <input className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" value={contractSummary} onChange={(e) => setContractSummary(e.target.value)} placeholder="Resumo" />
+                  <button className="rounded-lg bg-sky-700 px-3 py-2 text-sm font-semibold text-white" disabled={busy || !selectedContractId} onClick={() => runAction('update_contract', { contract_id: selectedContractId, content: contractContent, summary: contractSummary }, 'Contrato atualizado.')}>Salvar alterações</button>
+                  <button className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-700" disabled={busy || !selectedContractId} onClick={() => runAction('regenerate_contract', { contract_id: selectedContractId }, 'Contrato regenerado.')}>Regenerar contrato</button>
+                  <button className="rounded-lg border border-rose-300 bg-rose-50 px-3 py-2 text-sm text-rose-700" disabled={busy || !selectedContractId} onClick={() => runAction('delete_contract', { contract_id: selectedContractId }, 'Contrato excluído.')}>Excluir contrato</button>
                 </div>
-              </div>
+              </SurfaceCard>
 
-              <div className="rounded-lg border border-slate-200 bg-white p-4">
-                <h2 className="text-base font-semibold">Contratos</h2>
-                <div className="mt-3 max-h-[420px] overflow-auto rounded border border-slate-200">
+              <SurfaceCard title="Contratos">
+                <div className="max-h-[420px] overflow-auto rounded-xl border border-slate-200">
                   <table className="w-full text-xs">
                     <thead className="bg-slate-100">
                       <tr>
@@ -585,27 +681,25 @@ export default function Owner2() {
                     </tbody>
                   </table>
                 </div>
-              </div>
+              </SurfaceCard>
             </div>
           )}
 
           {activeTab === 'suporte' && (
             <div className="grid gap-4 xl:grid-cols-2">
-              <div className="rounded-lg border border-slate-200 bg-white p-4">
-                <h2 className="text-base font-semibold">Responder ticket</h2>
-                <div className="mt-3 grid gap-2">
-                  <select className="rounded border border-slate-300 bg-white px-2 py-2 text-sm" value={selectedTicketId} onChange={(e) => setSelectedTicketId(e.target.value)}>
+              <SurfaceCard title="Responder ticket">
+                <div className="grid gap-2">
+                  <select className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" value={selectedTicketId} onChange={(e) => setSelectedTicketId(e.target.value)}>
                     <option value="">Selecione o ticket</option>
                     {tickets.map((t) => <option key={String(t.id)} value={String(t.id)}>{String(t.subject ?? t.id)}</option>)}
                   </select>
-                  <textarea className="min-h-[120px] rounded border border-slate-300 bg-white px-2 py-2 text-sm" value={ticketResponse} onChange={(e) => setTicketResponse(e.target.value)} placeholder="Resposta para o cliente" />
-                  <button className="rounded bg-sky-700 px-3 py-2 text-sm font-semibold text-white" disabled={busy || !selectedTicketId || !ticketResponse} onClick={() => runAction('respond_support_ticket', { ticket_id: selectedTicketId, response: ticketResponse, status: 'resolvido' }, 'Ticket respondido.')}>Enviar resposta</button>
+                  <textarea className="min-h-[120px] rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" value={ticketResponse} onChange={(e) => setTicketResponse(e.target.value)} placeholder="Resposta para o cliente" />
+                  <button className="rounded-lg bg-sky-700 px-3 py-2 text-sm font-semibold text-white" disabled={busy || !selectedTicketId || !ticketResponse} onClick={() => runAction('respond_support_ticket', { ticket_id: selectedTicketId, response: ticketResponse, status: 'resolvido' }, 'Ticket respondido.')}>Enviar resposta</button>
                 </div>
-              </div>
+              </SurfaceCard>
 
-              <div className="rounded-lg border border-slate-200 bg-white p-4">
-                <h2 className="text-base font-semibold">Tickets</h2>
-                <div className="mt-3 max-h-[420px] overflow-auto rounded border border-slate-200">
+              <SurfaceCard title="Tickets">
+                <div className="max-h-[420px] overflow-auto rounded-xl border border-slate-200">
                   <table className="w-full text-xs">
                     <thead className="bg-slate-100">
                       <tr>
@@ -628,17 +722,14 @@ export default function Owner2() {
                     </tbody>
                   </table>
                 </div>
-              </div>
+              </SurfaceCard>
             </div>
           )}
 
           {activeTab === 'configuracoes' && (
             <div className="grid gap-4 xl:grid-cols-2">
-              <div className="rounded-lg border border-slate-200 bg-white p-4">
-                <h2 className="text-base font-semibold">Configurações operacionais</h2>
-                <p className="mt-1 text-xs text-slate-600">Sem JSON/SQL. Ajustes por chave liga/desliga e limites simples.</p>
-
-                <div className="mt-4 space-y-3">
+              <SurfaceCard title="Configurações operacionais" subtitle="Sem JSON/SQL. Ajustes por chave liga/desliga e limites simples.">
+                <div className="space-y-3">
                   <h3 className="text-sm font-semibold">Módulos</h3>
                   <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={moduleOs} onChange={(e) => setModuleOs(e.target.checked)} /> Ordens de serviço</label>
                   <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={modulePreventiva} onChange={(e) => setModulePreventiva(e.target.checked)} /> Preventiva</label>
@@ -647,13 +738,13 @@ export default function Owner2() {
                   <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={moduleAuditoria} onChange={(e) => setModuleAuditoria(e.target.checked)} /> Auditoria</label>
                 </div>
 
-                <div className="mt-4 grid gap-2 sm:grid-cols-3">
-                  <input className="rounded border border-slate-300 bg-white px-2 py-2 text-sm" value={limitUsers} onChange={(e) => setLimitUsers(e.target.value)} placeholder="Limite usuários" />
-                  <input className="rounded border border-slate-300 bg-white px-2 py-2 text-sm" value={limitAssets} onChange={(e) => setLimitAssets(e.target.value)} placeholder="Limite equipamentos" />
-                  <input className="rounded border border-slate-300 bg-white px-2 py-2 text-sm" value={limitStorageMb} onChange={(e) => setLimitStorageMb(e.target.value)} placeholder="Armazenamento MB" />
+                <div className="mt-3 grid gap-2 sm:grid-cols-3">
+                  <input className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" value={limitUsers} onChange={(e) => setLimitUsers(e.target.value)} placeholder="Limite usuários" />
+                  <input className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" value={limitAssets} onChange={(e) => setLimitAssets(e.target.value)} placeholder="Limite equipamentos" />
+                  <input className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" value={limitStorageMb} onChange={(e) => setLimitStorageMb(e.target.value)} placeholder="Armazenamento MB" />
                 </div>
 
-                <div className="mt-4 space-y-3">
+                <div className="mt-3 space-y-2">
                   <h3 className="text-sm font-semibold">Recursos</h3>
                   <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={featureAi} onChange={(e) => setFeatureAi(e.target.checked)} /> IA</label>
                   <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={featureApi} onChange={(e) => setFeatureApi(e.target.checked)} /> API</label>
@@ -661,7 +752,7 @@ export default function Owner2() {
                 </div>
 
                 <button
-                  className="mt-4 rounded bg-sky-700 px-3 py-2 text-sm font-semibold text-white"
+                  className="mt-4 rounded-lg bg-sky-700 px-3 py-2 text-sm font-semibold text-white"
                   disabled={busy || !companyId}
                   onClick={() => runAction('update_company_settings', {
                     empresa_id: companyId,
@@ -688,23 +779,20 @@ export default function Owner2() {
                 >
                   Salvar configurações
                 </button>
-              </div>
+              </SurfaceCard>
 
-              <div className="rounded-lg border border-slate-200 bg-white p-4">
-                <h2 className="text-base font-semibold">Ações de segurança</h2>
-                <p className="mt-1 text-xs text-slate-600">Ações sensíveis exigem senha de confirmação.</p>
-                <div className="mt-3 grid gap-2">
-                  <button className="rounded border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-700" disabled={busy || !companyId || !authPassword} onClick={() => runAction('cleanup_company_data', { empresa_id: companyId, auth_password: authPassword, keep_company_core: false, keep_billing_data: false, include_auth_users: true }, 'Limpeza de dados executada com sucesso.')}>Executar limpeza completa</button>
-                  <button className="rounded border border-rose-300 bg-rose-50 px-3 py-2 text-sm text-rose-700" disabled={busy || !companyId || !authPassword || !isOwnerMaster} onClick={() => runAction('delete_company', { empresa_id: companyId, auth_password: authPassword, include_auth_users: true }, 'Empresa excluída definitivamente.')}>Excluir empresa definitiva</button>
+              <SurfaceCard title="Ações de segurança">
+                <div className="grid gap-2">
+                  <button className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-700" disabled={busy || !companyId || !authPassword} onClick={() => runAction('cleanup_company_data', { empresa_id: companyId, auth_password: authPassword, keep_company_core: false, keep_billing_data: false, include_auth_users: true }, 'Limpeza de dados executada com sucesso.')}>Executar limpeza completa</button>
+                  <button className="rounded-lg border border-rose-300 bg-rose-50 px-3 py-2 text-sm text-rose-700" disabled={busy || !companyId || !authPassword || !isOwnerMaster} onClick={() => runAction('delete_company', { empresa_id: companyId, auth_password: authPassword, include_auth_users: true }, 'Empresa excluída definitivamente.')}>Excluir empresa definitiva</button>
                 </div>
-              </div>
+              </SurfaceCard>
             </div>
           )}
 
           {activeTab === 'auditoria' && (
-            <div className="rounded-lg border border-slate-200 bg-white p-4">
-              <h2 className="text-base font-semibold">Auditoria</h2>
-              <div className="mt-3 max-h-[520px] overflow-auto rounded border border-slate-200">
+            <SurfaceCard title="Auditoria">
+              <div className="max-h-[520px] overflow-auto rounded-xl border border-slate-200">
                 <table className="w-full text-xs">
                   <thead className="bg-slate-100">
                     <tr>
@@ -724,24 +812,22 @@ export default function Owner2() {
                   </tbody>
                 </table>
               </div>
-            </div>
+            </SurfaceCard>
           )}
 
           {activeTab === 'owner-master' && (
             <div className="grid gap-4 xl:grid-cols-2">
-              <div className="rounded-lg border border-slate-200 bg-white p-4">
-                <h2 className="text-base font-semibold">Novo owner da plataforma</h2>
-                <div className="mt-3 grid gap-2">
-                  <input className="rounded border border-slate-300 bg-white px-2 py-2 text-sm" value={ownerName} onChange={(e) => setOwnerName(e.target.value)} placeholder="Nome" />
-                  <input className="rounded border border-slate-300 bg-white px-2 py-2 text-sm" value={ownerEmail} onChange={(e) => setOwnerEmail(e.target.value)} placeholder="Email" />
-                  <input className="rounded border border-slate-300 bg-white px-2 py-2 text-sm" type="password" value={ownerPassword} onChange={(e) => setOwnerPassword(e.target.value)} placeholder="Senha (opcional)" />
-                  <button className="rounded bg-sky-700 px-3 py-2 text-sm font-semibold text-white" disabled={busy || !isOwnerMaster || !ownerName || !ownerEmail} onClick={() => runAction('create_platform_owner', { owner_user: { nome: ownerName, email: ownerEmail, password: ownerPassword || undefined, role: 'SYSTEM_ADMIN' } }, 'Owner de plataforma criado com sucesso.')}>Criar owner</button>
+              <SurfaceCard title="Novo owner da plataforma">
+                <div className="grid gap-2">
+                  <input className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" value={ownerName} onChange={(e) => setOwnerName(e.target.value)} placeholder="Nome" />
+                  <input className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" value={ownerEmail} onChange={(e) => setOwnerEmail(e.target.value)} placeholder="Email" />
+                  <input className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" type="password" value={ownerPassword} onChange={(e) => setOwnerPassword(e.target.value)} placeholder="Senha (opcional)" />
+                  <button className="rounded-lg bg-sky-700 px-3 py-2 text-sm font-semibold text-white" disabled={busy || !isOwnerMaster || !ownerName || !ownerEmail} onClick={() => runAction('create_platform_owner', { owner_user: { nome: ownerName, email: ownerEmail, password: ownerPassword || undefined, role: 'SYSTEM_ADMIN' } }, 'Owner de plataforma criado com sucesso.')}>Criar owner</button>
                 </div>
-              </div>
+              </SurfaceCard>
 
-              <div className="rounded-lg border border-slate-200 bg-white p-4">
-                <h2 className="text-base font-semibold">Owners da plataforma</h2>
-                <div className="mt-3 max-h-[420px] overflow-auto rounded border border-slate-200">
+              <SurfaceCard title="Owners da plataforma">
+                <div className="max-h-[420px] overflow-auto rounded-xl border border-slate-200">
                   <table className="w-full text-xs">
                     <thead className="bg-slate-100">
                       <tr>
@@ -761,12 +847,12 @@ export default function Owner2() {
                     </tbody>
                   </table>
                 </div>
-              </div>
+              </SurfaceCard>
             </div>
           )}
 
-          {feedback && <p className="rounded border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-700">{feedback}</p>}
-          {error && <p className="rounded border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">{error}</p>}
+          {feedback && <p className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-700">{feedback}</p>}
+          {error && <p className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">{error}</p>}
         </section>
       </main>
     </div>
