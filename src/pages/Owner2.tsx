@@ -145,6 +145,8 @@ export default function Owner2() {
   const [newUserEmail, setNewUserEmail] = useState('')
   const [newUserRole, setNewUserRole] = useState('ADMIN')
   const [selectedUserId, setSelectedUserId] = useState('')
+  const [userSearch, setUserSearch] = useState('')
+  const [userStatusFilter, setUserStatusFilter] = useState<'todos' | 'ativo' | 'inativo'>('todos')
 
   const [planCode, setPlanCode] = useState('')
   const [planName, setPlanName] = useState('')
@@ -313,6 +315,34 @@ export default function Owner2() {
       valley,
     }
   }, [healthQuery.isError, monitorSummary.availabilityPercent, monitorSummary.totalTables, tablesQuery.isError])
+
+  const usersFiltered = useMemo(() => {
+    const query = userSearch.trim().toLowerCase()
+
+    return users.filter((u) => {
+      const name = String(u.nome ?? '').toLowerCase()
+      const email = String(u.email ?? '').toLowerCase()
+      const status = String(u.status ?? '').toLowerCase()
+
+      const matchesText = !query || name.includes(query) || email.includes(query)
+      const matchesStatus = userStatusFilter === 'todos' || status === userStatusFilter
+
+      return matchesText && matchesStatus
+    })
+  }, [userSearch, userStatusFilter, users])
+
+  const userSummary = useMemo(() => {
+    const active = users.filter((u) => String(u.status ?? '').toLowerCase() === 'ativo').length
+    const inactive = users.filter((u) => String(u.status ?? '').toLowerCase() === 'inativo').length
+    const admins = users.filter((u) => String(u.role ?? u.perfil ?? '').toUpperCase() === 'ADMIN').length
+
+    return {
+      total: users.length,
+      active,
+      inactive,
+      admins,
+    }
+  }, [users])
 
   async function runAction(action: any, payload: Record<string, unknown>, successMessage: string) {
     setError(null)
@@ -524,14 +554,14 @@ export default function Owner2() {
                   </span>
                 </div>
 
-                <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                <div className="mt-3 grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
                   <MetricTile label="Tempo resposta" value={monitorSummary.responseMs > 0 ? `${monitorSummary.responseMs}ms` : '-'} icon={Clock} tone="sky" />
                   <MetricTile label="Registros" value={monitorSummary.totalRecords.toLocaleString('pt-BR')} icon={Database} tone="emerald" />
                   <MetricTile label="Tabelas ativas" value={`${monitorSummary.activeTables}/${monitorSummary.totalTables}`} icon={Activity} tone="amber" />
                   <MetricTile label="Alertas" value={tablesQuery.isError || healthQuery.isError ? 1 : 0} icon={AlertTriangle} tone={(tablesQuery.isError || healthQuery.isError) ? 'rose' : 'emerald'} />
                 </div>
 
-                <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-3">
+                <div className="mt-3 rounded-xl border border-slate-200 bg-slate-50 p-2.5">
                   <div className="mb-2 flex items-center justify-between text-xs text-slate-600">
                     <span>Disponibilidade</span>
                     <span className="font-semibold text-slate-900">{monitorSummary.availabilityPercent}%</span>
@@ -542,8 +572,41 @@ export default function Owner2() {
                 </div>
               </SurfaceCard>
 
+              <SurfaceCard title="Disponibilidade por horário" subtitle="Picos e vales das últimas 24 horas">
+                <div className="rounded-xl border border-slate-200 bg-white p-2.5">
+                  <div className="mb-2 grid gap-2 sm:grid-cols-2">
+                    <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-800">
+                      <p className="font-semibold">Pico</p>
+                      <p>{availabilityTimeline.peak.hour} • {availabilityTimeline.peak.availability}%</p>
+                    </div>
+                    <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+                      <p className="font-semibold">Vale</p>
+                      <p>{availabilityTimeline.valley.hour} • {availabilityTimeline.valley.availability}%</p>
+                    </div>
+                  </div>
+
+                  <div className="h-56">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <AreaChart data={availabilityTimeline.data} margin={{ top: 12, right: 10, left: 0, bottom: 0 }}>
+                        <defs>
+                          <linearGradient id="availabilityFill" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="5%" stopColor="#0284c7" stopOpacity={0.35} />
+                            <stop offset="95%" stopColor="#0284c7" stopOpacity={0.03} />
+                          </linearGradient>
+                        </defs>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                        <XAxis dataKey="hour" tick={{ fontSize: 11 }} stroke="#64748b" interval={2} />
+                        <YAxis domain={[0, 100]} tick={{ fontSize: 11 }} stroke="#64748b" width={36} />
+                        <Tooltip formatter={(value: number) => `${value}%`} />
+                        <Area type="monotone" dataKey="availability" stroke="#0284c7" strokeWidth={2} fill="url(#availabilityFill)" />
+                      </AreaChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+              </SurfaceCard>
+
               <SurfaceCard title="Tabelas conectadas" subtitle="Somente leitura, sem SQL na tela">
-                <div className="max-h-[280px] overflow-auto rounded-xl border border-slate-200">
+                <div className="max-h-[240px] overflow-auto rounded-xl border border-slate-200">
                   <table className="w-full text-xs">
                     <thead className="bg-slate-100">
                       <tr>
@@ -565,39 +628,6 @@ export default function Owner2() {
                       )}
                     </tbody>
                   </table>
-                </div>
-              </SurfaceCard>
-
-              <SurfaceCard title="Disponibilidade por horário" subtitle="Picos e vales das últimas 24 horas">
-                <div className="rounded-xl border border-slate-200 bg-white p-3">
-                  <div className="mb-3 grid gap-2 sm:grid-cols-2">
-                    <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-800">
-                      <p className="font-semibold">Pico</p>
-                      <p>{availabilityTimeline.peak.hour} • {availabilityTimeline.peak.availability}%</p>
-                    </div>
-                    <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
-                      <p className="font-semibold">Vale</p>
-                      <p>{availabilityTimeline.valley.hour} • {availabilityTimeline.valley.availability}%</p>
-                    </div>
-                  </div>
-
-                  <div className="h-72">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <AreaChart data={availabilityTimeline.data} margin={{ top: 12, right: 10, left: 0, bottom: 0 }}>
-                        <defs>
-                          <linearGradient id="availabilityFill" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="5%" stopColor="#0284c7" stopOpacity={0.35} />
-                            <stop offset="95%" stopColor="#0284c7" stopOpacity={0.03} />
-                          </linearGradient>
-                        </defs>
-                        <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-                        <XAxis dataKey="hour" tick={{ fontSize: 11 }} stroke="#64748b" interval={2} />
-                        <YAxis domain={[0, 100]} tick={{ fontSize: 11 }} stroke="#64748b" width={36} />
-                        <Tooltip formatter={(value: number) => `${value}%`} />
-                        <Area type="monotone" dataKey="availability" stroke="#0284c7" strokeWidth={2} fill="url(#availabilityFill)" />
-                      </AreaChart>
-                    </ResponsiveContainer>
-                  </div>
                 </div>
               </SurfaceCard>
             </div>
@@ -703,7 +733,41 @@ export default function Owner2() {
                 </div>
               </SurfaceCard>
 
-              <SurfaceCard title="Usuários">
+              <SurfaceCard title="Usuários" subtitle="Painel operacional com busca e filtros">
+                <div className="mb-3 grid gap-2 sm:grid-cols-4">
+                  <MetricTile label="Total" value={userSummary.total} icon={Users} tone="sky" />
+                  <MetricTile label="Ativos" value={userSummary.active} icon={ShieldCheck} tone="emerald" />
+                  <MetricTile label="Inativos" value={userSummary.inactive} icon={AlertTriangle} tone="amber" />
+                  <MetricTile label="Admins" value={userSummary.admins} icon={Settings2} tone="rose" />
+                </div>
+
+                <div className="mb-3 grid gap-2 sm:grid-cols-3">
+                  <input
+                    className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm"
+                    placeholder="Buscar por nome ou email"
+                    value={userSearch}
+                    onChange={(e) => setUserSearch(e.target.value)}
+                  />
+                  <select
+                    className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm"
+                    value={userStatusFilter}
+                    onChange={(e) => setUserStatusFilter(e.target.value as 'todos' | 'ativo' | 'inativo')}
+                  >
+                    <option value="todos">Status: Todos</option>
+                    <option value="ativo">Somente ativos</option>
+                    <option value="inativo">Somente inativos</option>
+                  </select>
+                  <button
+                    className="rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                    onClick={() => {
+                      setUserSearch('')
+                      setUserStatusFilter('todos')
+                    }}
+                  >
+                    Limpar filtros
+                  </button>
+                </div>
+
                 <div className="max-h-[420px] overflow-auto rounded-xl border border-slate-200">
                   <table className="w-full text-xs">
                     <thead className="bg-slate-100">
@@ -714,7 +778,7 @@ export default function Owner2() {
                       </tr>
                     </thead>
                     <tbody>
-                      {users.map((u) => {
+                      {usersFiltered.map((u) => {
                         const st = String(u.status ?? '-')
                         return (
                           <tr key={String(u.id)} className="border-t border-slate-200">
@@ -724,6 +788,11 @@ export default function Owner2() {
                           </tr>
                         )
                       })}
+                      {usersFiltered.length === 0 && (
+                        <tr>
+                          <td className="px-2 py-3 text-slate-500" colSpan={3}>Nenhum usuário encontrado com os filtros atuais.</td>
+                        </tr>
+                      )}
                     </tbody>
                   </table>
                 </div>
