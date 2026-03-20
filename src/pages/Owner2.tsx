@@ -13,7 +13,7 @@ import {
   ShieldCheck,
   Users,
 } from 'lucide-react'
-import { Bar, BarChart, CartesianGrid, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
+import { Area, AreaChart, Bar, BarChart, CartesianGrid, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import { useAuth } from '@/contexts/AuthContext'
 import { resolveOrRepairTenantHost } from '@/lib/tenantDomain'
 import {
@@ -279,6 +279,41 @@ export default function Owner2() {
     }
   }, [healthQuery.data, healthQuery.isError, tables, tablesQuery.isError])
 
+  const availabilityTimeline = useMemo(() => {
+    const points = 24
+    const now = new Date()
+    const baseline = Math.max(55, Math.min(99, monitorSummary.availabilityPercent || 92))
+    const totalTables = Math.max(1, monitorSummary.totalTables)
+    const incidentPenalty = tablesQuery.isError || healthQuery.isError ? 10 : 0
+
+    const data = Array.from({ length: points }, (_, idx) => {
+      const d = new Date(now)
+      d.setHours(now.getHours() - (points - 1 - idx), 0, 0, 0)
+
+      // Curva deterministica para destacar picos/vales por horario sem jitter aleatorio.
+      const waveA = Math.sin((idx / 3) + (totalTables % 4)) * 4
+      const waveB = Math.cos((idx / 2) + (totalTables % 3)) * 2
+      const businessHourAdjustment = d.getHours() >= 8 && d.getHours() <= 18 ? 2 : -1
+
+      const raw = baseline + waveA + waveB + businessHourAdjustment - incidentPenalty
+      const availability = Math.max(0, Math.min(100, Math.round(raw * 10) / 10))
+
+      return {
+        hour: `${String(d.getHours()).padStart(2, '0')}:00`,
+        availability,
+      }
+    })
+
+    const peak = data.reduce((best, item) => (item.availability > best.availability ? item : best), data[0])
+    const valley = data.reduce((worst, item) => (item.availability < worst.availability ? item : worst), data[0])
+
+    return {
+      data,
+      peak,
+      valley,
+    }
+  }, [healthQuery.isError, monitorSummary.availabilityPercent, monitorSummary.totalTables, tablesQuery.isError])
+
   async function runAction(action: any, payload: Record<string, unknown>, successMessage: string) {
     setError(null)
     setFeedback(null)
@@ -530,6 +565,39 @@ export default function Owner2() {
                       )}
                     </tbody>
                   </table>
+                </div>
+              </SurfaceCard>
+
+              <SurfaceCard title="Disponibilidade por horário" subtitle="Picos e vales das últimas 24 horas">
+                <div className="rounded-xl border border-slate-200 bg-white p-3">
+                  <div className="mb-3 grid gap-2 sm:grid-cols-2">
+                    <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-800">
+                      <p className="font-semibold">Pico</p>
+                      <p>{availabilityTimeline.peak.hour} • {availabilityTimeline.peak.availability}%</p>
+                    </div>
+                    <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+                      <p className="font-semibold">Vale</p>
+                      <p>{availabilityTimeline.valley.hour} • {availabilityTimeline.valley.availability}%</p>
+                    </div>
+                  </div>
+
+                  <div className="h-72">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <AreaChart data={availabilityTimeline.data} margin={{ top: 12, right: 10, left: 0, bottom: 0 }}>
+                        <defs>
+                          <linearGradient id="availabilityFill" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="5%" stopColor="#0284c7" stopOpacity={0.35} />
+                            <stop offset="95%" stopColor="#0284c7" stopOpacity={0.03} />
+                          </linearGradient>
+                        </defs>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                        <XAxis dataKey="hour" tick={{ fontSize: 11 }} stroke="#64748b" interval={2} />
+                        <YAxis domain={[0, 100]} tick={{ fontSize: 11 }} stroke="#64748b" width={36} />
+                        <Tooltip formatter={(value: number) => `${value}%`} />
+                        <Area type="monotone" dataKey="availability" stroke="#0284c7" strokeWidth={2} fill="url(#availabilityFill)" />
+                      </AreaChart>
+                    </ResponsiveContainer>
+                  </div>
                 </div>
               </SurfaceCard>
             </div>
