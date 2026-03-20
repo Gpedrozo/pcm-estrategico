@@ -27,8 +27,12 @@ BEGIN
   FOR v_table IN
     SELECT c.table_schema, c.table_name
       FROM information_schema.columns c
+      JOIN information_schema.tables t
+        ON t.table_schema = c.table_schema
+       AND t.table_name = c.table_name
      WHERE c.table_schema = 'public'
        AND c.column_name = 'empresa_id'
+       AND t.table_type = 'BASE TABLE'
        AND c.table_name <> 'schema_migrations'
      GROUP BY c.table_schema, c.table_name
   LOOP

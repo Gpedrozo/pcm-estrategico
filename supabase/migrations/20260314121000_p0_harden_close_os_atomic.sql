@@ -1,7 +1,6 @@
-drop function if exists public.close_os_with_execution_atomic(
-  uuid, uuid, text, text, text, integer, text, numeric, numeric, numeric, numeric, jsonb, uuid, text, text, text, text, jsonb
-);
-
+do $do$
+begin
+  execute $close_os$
 create or replace function public.close_os_with_execution_atomic(
   p_os_id uuid,
   p_mecanico_id uuid,
@@ -280,6 +279,8 @@ begin
 end;
 $$;
 
+  $close_os$;
+
 revoke execute on function public.close_os_with_execution_atomic(
   uuid, uuid, text, text, text, integer, text, numeric, numeric, numeric, numeric, jsonb, uuid, text, text, text, text, jsonb
 ) from anon;
@@ -287,3 +288,5 @@ revoke execute on function public.close_os_with_execution_atomic(
 grant execute on function public.close_os_with_execution_atomic(
   uuid, uuid, text, text, text, integer, text, numeric, numeric, numeric, numeric, jsonb, uuid, text, text, text, text, jsonb
 ) to authenticated;
+end
+$do$;

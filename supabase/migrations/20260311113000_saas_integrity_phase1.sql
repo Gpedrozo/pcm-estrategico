@@ -229,135 +229,141 @@ from public.ordens_servico os;
 -- -----------------------------------------------------------------------------
 -- Atomic closing flow for OS
 -- -----------------------------------------------------------------------------
-create or replace function public.close_os_with_execution_atomic(
-  p_os_id uuid,
-  p_mecanico_id uuid,
-  p_mecanico_nome text,
-  p_hora_inicio text,
-  p_hora_fim text,
-  p_tempo_execucao integer,
-  p_servico_executado text,
-  p_custo_mao_obra numeric,
-  p_custo_materiais numeric,
-  p_custo_terceiros numeric,
-  p_custo_total numeric,
-  p_materiais jsonb default '[]'::jsonb,
-  p_usuario_fechamento uuid default null,
-  p_modo_falha text default null,
-  p_causa_raiz text default null,
-  p_acao_corretiva text default null,
-  p_licoes_aprendidas text default null
-)
-returns table (
-  os_id uuid,
-  execucao_id uuid,
-  os_status text,
-  total_materiais numeric,
-  total_custo numeric
-)
-language plpgsql
-security definer
-set search_path = public
-as $close_os$
-declare
-  v_execucao_id uuid;
-  v_os_exists boolean;
-  v_total_materiais numeric := 0;
-  v_item jsonb;
-  v_material_id uuid;
-  v_qtd numeric;
-  v_unit numeric;
-  v_item_total numeric;
+do $$
 begin
-  select exists(select 1 from public.ordens_servico where id = p_os_id) into v_os_exists;
-  if not v_os_exists then
-    raise exception 'os_not_found';
-  end if;
-
-  insert into public.execucoes_os (
-    os_id,
-    mecanico_id,
-    mecanico_nome,
-    hora_inicio,
-    hora_fim,
-    tempo_execucao,
-    servico_executado,
-    custo_mao_obra,
-    custo_materiais,
-    custo_terceiros,
-    custo_total
-  )
-  values (
-    p_os_id,
-    p_mecanico_id,
-    p_mecanico_nome,
-    p_hora_inicio,
-    p_hora_fim,
-    p_tempo_execucao,
-    p_servico_executado,
-    p_custo_mao_obra,
-    p_custo_materiais,
-    p_custo_terceiros,
-    p_custo_total
-  )
-  returning id into v_execucao_id;
-
-  if p_materiais is not null and jsonb_typeof(p_materiais) = 'array' then
-    for v_item in select value from jsonb_array_elements(p_materiais)
-    loop
-      v_material_id := nullif(v_item->>'material_id', '')::uuid;
-      v_qtd := coalesce((v_item->>'quantidade')::numeric, 0);
-      v_unit := coalesce((v_item->>'custo_unitario')::numeric, 0);
-      v_item_total := coalesce((v_item->>'custo_total')::numeric, v_qtd * v_unit);
-
-      if v_material_id is null or v_qtd <= 0 then
-        continue;
+  execute $close_os$
+    create or replace function public.close_os_with_execution_atomic(
+      p_os_id uuid,
+      p_mecanico_id uuid,
+      p_mecanico_nome text,
+      p_hora_inicio text,
+      p_hora_fim text,
+      p_tempo_execucao integer,
+      p_servico_executado text,
+      p_custo_mao_obra numeric,
+      p_custo_materiais numeric,
+      p_custo_terceiros numeric,
+      p_custo_total numeric,
+      p_materiais jsonb default '[]'::jsonb,
+      p_usuario_fechamento uuid default null,
+      p_modo_falha text default null,
+      p_causa_raiz text default null,
+      p_acao_corretiva text default null,
+      p_licoes_aprendidas text default null
+    )
+    returns table (
+      os_id uuid,
+      execucao_id uuid,
+      os_status text,
+      total_materiais numeric,
+      total_custo numeric
+    )
+    language plpgsql
+    security definer
+    set search_path = public
+    as $fn$
+    declare
+      v_execucao_id uuid;
+      v_os_exists boolean;
+      v_total_materiais numeric := 0;
+      v_item jsonb;
+      v_material_id uuid;
+      v_qtd numeric;
+      v_unit numeric;
+      v_item_total numeric;
+    begin
+      select exists(select 1 from public.ordens_servico where id = p_os_id) into v_os_exists;
+      if not v_os_exists then
+        raise exception 'os_not_found';
       end if;
 
-      insert into public.materiais_os (
+      insert into public.execucoes_os (
         os_id,
-        material_id,
-        quantidade,
-        custo_unitario,
+        mecanico_id,
+        mecanico_nome,
+        hora_inicio,
+        hora_fim,
+        tempo_execucao,
+        servico_executado,
+        custo_mao_obra,
+        custo_materiais,
+        custo_terceiros,
         custo_total
       )
       values (
         p_os_id,
-        v_material_id,
-        v_qtd,
-        v_unit,
-        v_item_total
-      );
+        p_mecanico_id,
+        p_mecanico_nome,
+        p_hora_inicio,
+        p_hora_fim,
+        p_tempo_execucao,
+        p_servico_executado,
+        p_custo_mao_obra,
+        p_custo_materiais,
+        p_custo_terceiros,
+        p_custo_total
+      )
+      returning id into v_execucao_id;
 
-      v_total_materiais := v_total_materiais + v_item_total;
-    end loop;
-  end if;
+      if p_materiais is not null and jsonb_typeof(p_materiais) = 'array' then
+        for v_item in select value from jsonb_array_elements(p_materiais)
+        loop
+          v_material_id := nullif(v_item->>'material_id', '')::uuid;
+          v_qtd := coalesce((v_item->>'quantidade')::numeric, 0);
+          v_unit := coalesce((v_item->>'custo_unitario')::numeric, 0);
+          v_item_total := coalesce((v_item->>'custo_total')::numeric, v_qtd * v_unit);
 
-  update public.ordens_servico
-  set
-    status = 'FECHADA',
-    data_fechamento = now(),
-    usuario_fechamento = p_usuario_fechamento,
-    modo_falha = p_modo_falha,
-    causa_raiz = p_causa_raiz,
-    acao_corretiva = p_acao_corretiva,
-    licoes_aprendidas = p_licoes_aprendidas,
-    updated_at = now()
-  where id = p_os_id;
+          if v_material_id is null or v_qtd <= 0 then
+            continue;
+          end if;
 
-  return query
-  select
-    p_os_id,
-    v_execucao_id,
-    'FECHADA'::text,
-    v_total_materiais,
-    coalesce(p_custo_total, 0);
-end;
-$close_os$;
+          insert into public.materiais_os (
+            os_id,
+            material_id,
+            quantidade,
+            custo_unitario,
+            custo_total
+          )
+          values (
+            p_os_id,
+            v_material_id,
+            v_qtd,
+            v_unit,
+            v_item_total
+          );
 
-grant execute on function public.close_os_with_execution_atomic(
-  uuid, uuid, text, text, text, integer, text, numeric, numeric, numeric, numeric, jsonb, uuid, text, text, text, text
-) to authenticated;
+          v_total_materiais := v_total_materiais + v_item_total;
+        end loop;
+      end if;
+
+      update public.ordens_servico
+      set
+        status = 'FECHADA',
+        data_fechamento = now(),
+        usuario_fechamento = p_usuario_fechamento,
+        modo_falha = p_modo_falha,
+        causa_raiz = p_causa_raiz,
+        acao_corretiva = p_acao_corretiva,
+        licoes_aprendidas = p_licoes_aprendidas,
+        updated_at = now()
+      where id = p_os_id;
+
+      return query
+      select
+        p_os_id,
+        v_execucao_id,
+        'FECHADA'::text,
+        v_total_materiais,
+        coalesce(p_custo_total, 0);
+    end;
+    $fn$;
+  $close_os$;
+
+  grant execute on function public.close_os_with_execution_atomic(
+    uuid, uuid, text, text, text, integer, text, numeric, numeric, numeric, numeric, jsonb, uuid, text, text, text, text
+  ) to authenticated;
+end
+$$;
 
 -- -----------------------------------------------------------------------------
 -- SLA notifications triggers
