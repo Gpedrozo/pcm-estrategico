@@ -211,7 +211,7 @@ export default function Owner() {
   const createCompanyElapsedLabel = `${String(Math.floor(createCompanyElapsedSeconds / 60)).padStart(2, '0')}:${String(createCompanyElapsedSeconds % 60).padStart(2, '0')}`
 
   const ownerMasterEmail = getOwnerMasterEmail()
-  const isOwnerMaster = isSystemOwner || normalizeEmail(user?.email || '') === ownerMasterEmail
+  const isOwnerMaster = normalizeEmail(user?.email || '') === ownerMasterEmail
 
   const dashboardActive = active === 'dashboard'
   const companiesActive = active === 'empresas'
