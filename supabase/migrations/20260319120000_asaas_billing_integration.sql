@@ -32,6 +32,24 @@ CREATE INDEX IF NOT EXISTS idx_subscriptions_asaas_customer_id
   ON public.subscriptions(asaas_customer_id)
   WHERE asaas_customer_id IS NOT NULL;
 
+DO $$
+BEGIN
+  IF to_regclass('public.subscription_payments') IS NULL THEN
+    CREATE TABLE public.subscription_payments (
+      id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+      subscription_id uuid NOT NULL REFERENCES public.subscriptions(id) ON DELETE CASCADE,
+      due_at timestamptz,
+      paid_at timestamptz,
+      amount numeric(14,2) NOT NULL DEFAULT 0,
+      method text,
+      status text NOT NULL DEFAULT 'pendente',
+      notes text,
+      created_at timestamptz NOT NULL DEFAULT now(),
+      updated_at timestamptz NOT NULL DEFAULT now()
+    );
+  END IF;
+END $$;
+
 ALTER TABLE public.subscription_payments
   ADD COLUMN IF NOT EXISTS provider text NOT NULL DEFAULT 'manual',
   ADD COLUMN IF NOT EXISTS provider_payment_id text,
@@ -60,13 +78,48 @@ BEGIN
   END IF;
 END $$;
 
-UPDATE public.subscriptions
-SET billing_provider = 'stripe'
-WHERE billing_provider = 'manual'
-  AND (
-    stripe_subscription_id IS NOT NULL
-    OR stripe_customer_id IS NOT NULL
-  );
+DO $$
+DECLARE
+  v_has_stripe_subscription_id boolean := false;
+  v_has_stripe_customer_id boolean := false;
+  v_condition text := '';
+BEGIN
+  SELECT EXISTS (
+    SELECT 1
+    FROM information_schema.columns
+    WHERE table_schema = 'public'
+      AND table_name = 'subscriptions'
+      AND column_name = 'stripe_subscription_id'
+  ) INTO v_has_stripe_subscription_id;
+
+  SELECT EXISTS (
+    SELECT 1
+    FROM information_schema.columns
+    WHERE table_schema = 'public'
+      AND table_name = 'subscriptions'
+      AND column_name = 'stripe_customer_id'
+  ) INTO v_has_stripe_customer_id;
+
+  IF v_has_stripe_subscription_id THEN
+    v_condition := v_condition || 'coalesce(stripe_subscription_id::text, '''''') <> '''''' ';
+  END IF;
+
+  IF v_has_stripe_customer_id THEN
+    IF v_condition <> '' THEN
+      v_condition := v_condition || ' OR ';
+    END IF;
+    v_condition := v_condition || 'coalesce(stripe_customer_id::text, '''''') <> '''''' ';
+  END IF;
+
+  IF v_condition <> '' THEN
+    EXECUTE format('
+      UPDATE public.subscriptions
+      SET billing_provider = ''stripe''
+      WHERE billing_provider = ''manual''
+        AND (%s)
+    ', v_condition);
+  END IF;
+END $$;
 
 UPDATE public.subscription_payments
 SET provider = 'stripe'
