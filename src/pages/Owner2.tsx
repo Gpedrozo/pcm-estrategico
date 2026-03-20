@@ -15,6 +15,7 @@ import {
 } from 'lucide-react'
 import { Bar, BarChart, CartesianGrid, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import { useAuth } from '@/contexts/AuthContext'
+import { resolveOrRepairTenantHost } from '@/lib/tenantDomain'
 import {
   useOwner2Actions,
   useOwner2Audits,
@@ -46,6 +47,17 @@ const OWNER2_TABS = [
 ] as const
 
 type Owner2Tab = (typeof OWNER2_TABS)[number]
+
+type CompanyCredentialNote = {
+  companyName: string
+  companySlug: string
+  masterEmail: string
+  initialPassword: string
+  loginUrl: string
+  noteText: string
+}
+
+const TENANT_BASE_DOMAIN = (import.meta.env.VITE_TENANT_BASE_DOMAIN || 'gppis.com.br').toLowerCase()
 
 function safeArray<T>(value: unknown): T[] {
   return Array.isArray(value) ? (value as T[]) : []
@@ -119,6 +131,7 @@ export default function Owner2() {
   const [activeTab, setActiveTab] = useState<Owner2Tab>('dashboard')
   const [feedback, setFeedback] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [companyCredentialNote, setCompanyCredentialNote] = useState<CompanyCredentialNote | null>(null)
 
   const [companyId, setCompanyId] = useState('')
   const [authPassword, setAuthPassword] = useState('')
@@ -274,6 +287,83 @@ export default function Owner2() {
       setFeedback(successMessage)
     } catch (err: any) {
       setError(String(err?.message ?? err ?? 'Falha na operação do Owner2.'))
+    }
+  }
+
+  async function handleCreateCompany() {
+    setError(null)
+    setFeedback(null)
+    setCompanyCredentialNote(null)
+
+    try {
+      const response: any = await execute.mutateAsync({
+        action: 'create_company',
+        payload: {
+          company: { nome: newCompanyName, slug: newCompanySlug || undefined },
+          user: { nome: newAdminName, email: newAdminEmail, role: 'ADMIN' },
+        },
+      })
+
+      const createdCompany = response?.company ?? {}
+      const masterUser = response?.master_user ?? {}
+      const initialPassword = String(masterUser?.initial_password ?? '').trim()
+      const companySlug = String(createdCompany?.slug ?? newCompanySlug ?? '').trim()
+      const companyName = String(createdCompany?.nome ?? newCompanyName).trim()
+      const masterEmail = String(masterUser?.email ?? newAdminEmail).trim().toLowerCase()
+
+      const resolvedHost = await resolveOrRepairTenantHost({
+        tenantId: String(createdCompany?.id ?? ''),
+        tenantBaseDomain: TENANT_BASE_DOMAIN,
+        slugHint: companySlug || undefined,
+      })
+
+      const loginHost = resolvedHost || (companySlug ? `${companySlug}.${TENANT_BASE_DOMAIN}` : '')
+      const loginUrl = loginHost ? `https://${loginHost}/login` : `https://${TENANT_BASE_DOMAIN}/login`
+
+      if (initialPassword) {
+        const noteText = [
+          'CREDENCIAIS INICIAIS DO CLIENTE',
+          `Empresa: ${companyName}`,
+          `Slug: ${companySlug || 'N/A'}`,
+          `Login: ${masterEmail}`,
+          `Senha temporaria: ${initialPassword}`,
+          `URL de acesso: ${loginUrl}`,
+          'Acao obrigatoria: alterar a senha no primeiro acesso.',
+        ].join('\n')
+
+        setCompanyCredentialNote({
+          companyName,
+          companySlug,
+          masterEmail,
+          initialPassword,
+          loginUrl,
+          noteText,
+        })
+      }
+
+      setFeedback(initialPassword ? 'Empresa criada com sucesso. Credenciais iniciais disponíveis para cópia.' : 'Empresa criada com sucesso.')
+      setNewCompanyName('')
+      setNewCompanySlug('')
+      setNewAdminName('')
+      setNewAdminEmail('')
+    } catch (err: any) {
+      setError(String(err?.message ?? err ?? 'Falha ao criar empresa no Owner2.'))
+    }
+  }
+
+  async function copyCompanyCredentialNote() {
+    if (!companyCredentialNote) return
+    if (!navigator?.clipboard?.writeText) {
+      setError('Clipboard indisponível neste navegador/contexto.')
+      return
+    }
+
+    try {
+      await navigator.clipboard.writeText(companyCredentialNote.noteText)
+      setFeedback('Nota de credenciais copiada para a área de transferência.')
+      setError(null)
+    } catch {
+      setError('Não foi possível copiar a nota automaticamente. Tente copiar manualmente.')
     }
   }
 
@@ -456,14 +546,23 @@ export default function Owner2() {
                   <button
                     className="rounded-lg bg-sky-700 px-3 py-2 text-sm font-semibold text-white"
                     disabled={busy || !newCompanyName || !newAdminName || !newAdminEmail}
-                    onClick={() => runAction('create_company', {
-                      company: { nome: newCompanyName, slug: newCompanySlug || undefined },
-                      user: { nome: newAdminName, email: newAdminEmail, role: 'ADMIN' },
-                    }, 'Empresa criada com sucesso.')}
+                    onClick={handleCreateCompany}
                   >
                     Criar empresa
                   </button>
                 </div>
+
+                {companyCredentialNote && (
+                  <div className="mt-4 rounded-xl border border-sky-200 bg-sky-50 p-4">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-sky-800">Credenciais iniciais do cliente</p>
+                    <p className="mt-1 text-xs text-sky-700">Informação exibida somente agora. Compartilhe com segurança.</p>
+                    <pre className="mt-3 whitespace-pre-wrap rounded-lg border border-sky-200 bg-white p-3 text-xs leading-relaxed text-slate-800">{companyCredentialNote.noteText}</pre>
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      <button className="rounded-lg border border-sky-300 bg-white px-3 py-2 text-xs font-semibold text-sky-700 hover:bg-sky-100" onClick={copyCompanyCredentialNote}>Copiar nota</button>
+                      <a className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-100" href={companyCredentialNote.loginUrl} target="_blank" rel="noreferrer">Abrir login do cliente</a>
+                    </div>
+                  </div>
+                )}
               </SurfaceCard>
 
               <SurfaceCard title="Ações rápidas da empresa selecionada">
