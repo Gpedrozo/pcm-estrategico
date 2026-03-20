@@ -47,7 +47,10 @@ type Payload = {
     | "list_database_tables"
     | "cleanup_company_data"
     | "delete_company"
-    | "purge_table_data";
+    | "purge_table_data"
+    | "asaas_link_subscription"
+    | "asaas_sync_subscription"
+    | "list_subscription_payments";
   empresa_id?: string;
   company?: {
     nome: string;
@@ -143,6 +146,8 @@ type Payload = {
   confirmation_phrase?: string;
   auth_password?: string;
   table_name?: string;
+  asaas_customer_id?: string;
+  asaas_subscription_id?: string;
   keep_company_core?: boolean;
   keep_billing_data?: boolean;
   include_auth_users?: boolean;
@@ -261,6 +266,9 @@ const SUPPORTED_OWNER_ACTIONS: Payload["action"][] = [
   "cleanup_company_data",
   "delete_company",
   "purge_table_data",
+  "asaas_link_subscription",
+  "asaas_sync_subscription",
+  "list_subscription_payments",
 ];
 
 function resolveRateLimitConfig(action: Payload["action"]) {
@@ -277,6 +285,7 @@ function resolveRateLimitConfig(action: Payload["action"]) {
     "get_company_settings",
     "list_platform_owners",
     "list_database_tables",
+    "list_subscription_payments",
   ]);
 
   const criticalWriteActions = new Set<Payload["action"]>([
@@ -285,6 +294,8 @@ function resolveRateLimitConfig(action: Payload["action"]) {
     "delete_company",
     "create_platform_owner",
     "create_system_admin",
+    "asaas_link_subscription",
+    "asaas_sync_subscription",
   ]);
 
   if (readHeavyActions.has(action)) {
@@ -339,6 +350,8 @@ function shouldEnforceRateLimit(action: Payload["action"]) {
     "cleanup_company_data",
     "delete_company",
     "purge_table_data",
+    "asaas_link_subscription",
+    "asaas_sync_subscription",
   ]);
 
   return writeOrSensitiveActions.has(action);
@@ -653,6 +666,274 @@ function contractTemplate(input: {
   const modulos = input.modulos ? JSON.stringify(input.modulos, null, 2) : "{}";
 
   return `CONTRATO DE LICENÇA DE USO DE SOFTWARE\n\nCONTRATANTE\nEmpresa: ${input.empresaNome}\nCNPJ: ${input.cnpj ?? "N/A"}\nResponsável: ${input.responsavel ?? "N/A"}\n\nCONTRATADA\nPCM Estratégio Sistemas\n\nOBJETO\nLicença de uso do sistema PCM Estratégico.\n\nPLANO CONTRATADO\nPlano: ${input.planoNome}\n\nVALOR\n${currency}\n\nFORMA DE PAGAMENTO\n${input.formaPagamento ?? "A definir"}\n\nVIGÊNCIA\nInício: ${input.inicio ?? "N/A"}\nTérmino: ${input.fim ?? "Indeterminado"}\n\nUSUÁRIOS PERMITIDOS\n${input.limiteUsuarios ?? "N/A"}\n\nMÓDULOS INCLUSOS\n${modulos}\n`;
+}
+
+const ASAAS_API_BASE_URL = (Deno.env.get("ASAAS_API_BASE_URL") ?? "https://api-sandbox.asaas.com/v3").trim().replace(/\/+$/, "");
+const ASAAS_API_KEY = (Deno.env.get("ASAAS_API_KEY") ?? "").trim();
+
+function isAsaasConfigured() {
+  return Boolean(ASAAS_API_KEY);
+}
+
+function normalizeDigits(value?: string | null) {
+  return String(value ?? "").replace(/\D+/g, "");
+}
+
+function normalizeLocalPeriodToAsaasCycle(period?: string | null) {
+  const normalized = String(period ?? "monthly").toLowerCase();
+  if (normalized === "monthly") return "MONTHLY";
+  if (normalized === "quarterly") return "QUARTERLY";
+  if (normalized === "yearly") return "YEARLY";
+  return "MONTHLY";
+}
+
+function normalizeLocalPaymentMethodToAsaasBillingType(paymentMethod?: string | null) {
+  const normalized = String(paymentMethod ?? "").toLowerCase();
+  if (normalized.includes("pix")) return "PIX";
+  if (normalized.includes("boleto")) return "BOLETO";
+  return "CREDIT_CARD";
+}
+
+function mapAsaasSubscriptionStatus(status?: string | null) {
+  const normalized = String(status ?? "").toUpperCase();
+  if (normalized === "ACTIVE") return { subscriptionStatus: "ativa", paymentStatus: "paid" };
+  if (normalized === "OVERDUE") return { subscriptionStatus: "atrasada", paymentStatus: "late" };
+  if (normalized === "INACTIVE" || normalized === "EXPIRED") return { subscriptionStatus: "cancelada", paymentStatus: "failed" };
+  return { subscriptionStatus: "teste", paymentStatus: "pending" };
+}
+
+function mapAsaasPaymentStatus(status?: string | null) {
+  const normalized = String(status ?? "").toUpperCase();
+  if (["RECEIVED", "CONFIRMED", "RECEIVED_IN_CASH"].includes(normalized)) return "paid";
+  if (normalized === "OVERDUE") return "late";
+  if (["PENDING", "AWAITING_RISK_ANALYSIS"].includes(normalized)) return "pending";
+  if (["REFUNDED", "REFUND_REQUESTED", "CHARGEBACK_REQUESTED", "CHARGEBACK_DISPUTE", "AWAITING_CHARGEBACK_REVERSAL", "DUNNING_REQUESTED"].includes(normalized)) return "refunded";
+  if (["CANCELED", "CHARGEBACK", "FAILED"].includes(normalized)) return "failed";
+  return "pending";
+}
+
+async function asaasRequest(path: string, init: RequestInit = {}) {
+  if (!isAsaasConfigured()) {
+    throw new Error("ASAAS_API_KEY nao configurada.");
+  }
+
+  const response = await fetch(`${ASAAS_API_BASE_URL}${path}`, {
+    ...init,
+    headers: {
+      access_token: ASAAS_API_KEY,
+      "Content-Type": "application/json",
+      ...(init.headers ?? {}),
+    },
+  });
+
+  const raw = await response.text().catch(() => "");
+  const payload = raw ? JSON.parse(raw) : null;
+
+  if (!response.ok) {
+    const message = payload?.errors?.[0]?.description
+      ?? payload?.errors?.[0]?.code
+      ?? payload?.message
+      ?? raw
+      ?? `HTTP ${response.status}`;
+    throw new Error(`Asaas API error: ${message}`);
+  }
+
+  return payload;
+}
+
+async function ensureAsaasCustomer(admin: ReturnType<typeof adminClient>, empresaId: string) {
+  const { data: existingSubscription } = await admin
+    .from("subscriptions")
+    .select("asaas_customer_id")
+    .eq("empresa_id", empresaId)
+    .maybeSingle();
+
+  const existingCustomerId = String(existingSubscription?.asaas_customer_id ?? "").trim();
+  if (existingCustomerId) return existingCustomerId;
+
+  const externalReference = `empresa:${empresaId}`;
+  const existingCustomerResponse = await asaasRequest(`/customers?externalReference=${encodeURIComponent(externalReference)}&limit=1`, {
+    method: "GET",
+  });
+
+  const existingCustomer = Array.isArray(existingCustomerResponse?.data) ? existingCustomerResponse.data[0] : null;
+  if (existingCustomer?.id) return String(existingCustomer.id);
+
+  const { data: empresa } = await admin
+    .from("empresas")
+    .select("id,nome")
+    .eq("id", empresaId)
+    .single();
+
+  const { data: dadosEmpresa } = await admin
+    .from("dados_empresa")
+    .select("razao_social,nome_fantasia,cnpj,email,telefone")
+    .eq("empresa_id", empresaId)
+    .maybeSingle();
+
+  const cpfCnpj = normalizeDigits(dadosEmpresa?.cnpj);
+  const phone = normalizeDigits(dadosEmpresa?.telefone);
+  const customerPayload: Record<string, unknown> = {
+    name: String(dadosEmpresa?.razao_social ?? dadosEmpresa?.nome_fantasia ?? empresa?.nome ?? `Empresa ${empresaId}`),
+    externalReference,
+    email: dadosEmpresa?.email ?? null,
+  };
+
+  if (cpfCnpj.length === 11 || cpfCnpj.length === 14) customerPayload.cpfCnpj = cpfCnpj;
+  if (phone.length >= 10) customerPayload.phone = phone;
+
+  const created = await asaasRequest("/customers", {
+    method: "POST",
+    body: JSON.stringify(customerPayload),
+  });
+
+  if (!created?.id) {
+    throw new Error("Asaas nao retornou id do cliente.");
+  }
+
+  return String(created.id);
+}
+
+async function syncAsaasSubscriptionSnapshot(admin: ReturnType<typeof adminClient>, subscriptionRow: any) {
+  const asaasSubscriptionId = String(subscriptionRow?.asaas_subscription_id ?? "").trim();
+  if (!asaasSubscriptionId) {
+    throw new Error("Assinatura sem asaas_subscription_id para sincronizar.");
+  }
+
+  const remoteSubscription = await asaasRequest(`/subscriptions/${encodeURIComponent(asaasSubscriptionId)}`, {
+    method: "GET",
+  });
+
+  const paymentList = await asaasRequest(`/payments?subscription=${encodeURIComponent(asaasSubscriptionId)}&limit=20`, {
+    method: "GET",
+  });
+
+  const payments = Array.isArray(paymentList?.data) ? paymentList.data : [];
+  const latestPayment = payments[0] ?? null;
+
+  const mappedSubscription = mapAsaasSubscriptionStatus(remoteSubscription?.status);
+  const mappedPaymentStatus = latestPayment ? mapAsaasPaymentStatus(latestPayment?.status) : mappedSubscription.paymentStatus;
+
+  const { error: updateSubscriptionError } = await admin
+    .from("subscriptions")
+    .update({
+      billing_provider: "asaas",
+      asaas_customer_id: remoteSubscription?.customer ?? subscriptionRow?.asaas_customer_id ?? null,
+      asaas_subscription_id: asaasSubscriptionId,
+      status: mappedSubscription.subscriptionStatus,
+      payment_status: mappedPaymentStatus,
+      renewal_at: remoteSubscription?.nextDueDate ?? subscriptionRow?.renewal_at ?? null,
+      billing_metadata: {
+        asaas: {
+          subscription_status: remoteSubscription?.status ?? null,
+          payment_status: latestPayment?.status ?? null,
+          cycle: remoteSubscription?.cycle ?? null,
+          next_due_date: remoteSubscription?.nextDueDate ?? null,
+        },
+      },
+      asaas_last_event_at: new Date().toISOString(),
+    })
+    .eq("id", subscriptionRow.id);
+
+  if (updateSubscriptionError) throw updateSubscriptionError;
+
+  if (latestPayment?.id) {
+    const paymentPayload = {
+      subscription_id: subscriptionRow.id,
+      due_at: latestPayment?.dueDate ?? null,
+      paid_at: latestPayment?.paymentDate ?? latestPayment?.clientPaymentDate ?? null,
+      amount: Number(latestPayment?.value ?? subscriptionRow.amount ?? 0),
+      method: latestPayment?.billingType ?? remoteSubscription?.billingType ?? subscriptionRow.payment_method ?? null,
+      status: mapAsaasPaymentStatus(latestPayment?.status),
+      notes: latestPayment?.description ?? null,
+      provider: "asaas",
+      provider_payment_id: String(latestPayment.id),
+      provider_event: "WEBHOOK_OR_SYNC",
+      raw_payload: latestPayment,
+      processed_at: new Date().toISOString(),
+    };
+
+    const { data: existingPayment } = await admin
+      .from("subscription_payments")
+      .select("id")
+      .eq("provider_payment_id", String(latestPayment.id))
+      .maybeSingle();
+
+    if (existingPayment?.id) {
+      await admin
+        .from("subscription_payments")
+        .update(paymentPayload)
+        .eq("id", existingPayment.id);
+    } else {
+      await admin
+        .from("subscription_payments")
+        .insert(paymentPayload);
+    }
+  }
+
+  return {
+    asaas_subscription_id: asaasSubscriptionId,
+    asaas_status: remoteSubscription?.status ?? null,
+    latest_payment_id: latestPayment?.id ?? null,
+    latest_payment_status: latestPayment?.status ?? null,
+  };
+}
+
+async function createOrSyncAsaasSubscription(admin: ReturnType<typeof adminClient>, subscriptionRow: any) {
+  const customerId = String(subscriptionRow?.asaas_customer_id ?? "").trim() || await ensureAsaasCustomer(admin, String(subscriptionRow.empresa_id));
+
+  const amount = Number(subscriptionRow?.amount ?? 0);
+  if (!Number.isFinite(amount) || amount <= 0) {
+    throw new Error("Valor da assinatura invalido para criar recorrencia no Asaas.");
+  }
+
+  const nextDueDate = String(subscriptionRow?.starts_at ?? new Date().toISOString().slice(0, 10));
+  const cycle = normalizeLocalPeriodToAsaasCycle(subscriptionRow?.period);
+  const billingType = normalizeLocalPaymentMethodToAsaasBillingType(subscriptionRow?.payment_method);
+
+  const createdRemote = await asaasRequest("/subscriptions", {
+    method: "POST",
+    body: JSON.stringify({
+      customer: customerId,
+      billingType,
+      value: amount,
+      nextDueDate,
+      cycle,
+      description: `PCM assinatura ${subscriptionRow?.id}`,
+      externalReference: `subscription:${subscriptionRow?.id}`,
+    }),
+  });
+
+  const mapped = mapAsaasSubscriptionStatus(createdRemote?.status);
+
+  const { error } = await admin
+    .from("subscriptions")
+    .update({
+      billing_provider: "asaas",
+      asaas_customer_id: customerId,
+      asaas_subscription_id: createdRemote?.id ?? null,
+      status: mapped.subscriptionStatus,
+      payment_status: mapped.paymentStatus,
+      renewal_at: createdRemote?.nextDueDate ?? subscriptionRow?.renewal_at ?? null,
+      asaas_last_event_at: new Date().toISOString(),
+      billing_metadata: {
+        asaas: {
+          cycle: createdRemote?.cycle ?? cycle,
+          billing_type: createdRemote?.billingType ?? billingType,
+          next_due_date: createdRemote?.nextDueDate ?? nextDueDate,
+          status: createdRemote?.status ?? null,
+        },
+      },
+    })
+    .eq("id", subscriptionRow.id);
+
+  if (error) throw error;
+
+  return {
+    asaas_customer_id: customerId,
+    asaas_subscription_id: createdRemote?.id ?? null,
+    asaas_status: createdRemote?.status ?? null,
+  };
 }
 
 async function createContractFromSubscription(
@@ -1333,6 +1614,11 @@ Deno.serve(async (req) => {
     || hasSystemOwnerRole(auth.user)
     || Boolean(ownerRoleRow?.user_id)
     || isKnownOwnerMasterEmail(auth.user.email ?? null);
+
+  const isStrictOwnerMaster =
+    isOwnerMasterEmail(auth.user.email ?? null, ownerMasterEmail)
+    || isKnownOwnerMasterEmail(auth.user.email ?? null);
+
   const ownerMasterOnlyActions = new Set<Payload["action"]>([
     "list_platform_owners",
     "create_platform_owner",
@@ -1341,6 +1627,9 @@ Deno.serve(async (req) => {
     "cleanup_company_data",
     "delete_company",
     "purge_table_data",
+    "asaas_link_subscription",
+    "asaas_sync_subscription",
+    "list_subscription_payments",
   ]);
 
   if (ownerMasterOnlyActions.has(body.action) && !isOwnerMaster) {
@@ -1348,6 +1637,26 @@ Deno.serve(async (req) => {
       level: "warn",
       source: "owner-portal-admin",
       event: "owner_master_forbidden",
+      expected_email: ownerMasterEmail,
+      received_email: auth.user.email ?? null,
+      trace_id: trace.requestId,
+      action: body.action,
+      timestamp: new Date().toISOString(),
+    }));
+    return forbiddenResponse(req, trace.requestId);
+  }
+
+  const asaasStrictActions = new Set<Payload["action"]>([
+    "asaas_link_subscription",
+    "asaas_sync_subscription",
+    "list_subscription_payments",
+  ]);
+
+  if (asaasStrictActions.has(body.action) && !isStrictOwnerMaster) {
+    console.error(JSON.stringify({
+      level: "warn",
+      source: "owner-portal-admin",
+      event: "asaas_owner_master_forbidden",
       expected_email: ownerMasterEmail,
       received_email: auth.user.email ?? null,
       trace_id: trace.requestId,
@@ -2270,6 +2579,36 @@ Deno.serve(async (req) => {
     return ok({ subscriptions: data ?? [] }, 200, req);
   }
 
+  if (body.action === "list_subscription_payments") {
+    const requestLimit = Number(body.limit ?? 300);
+    const safeLimit = Number.isFinite(requestLimit)
+      ? Math.max(1, Math.min(2000, Math.trunc(requestLimit)))
+      : 300;
+
+    let query = admin
+      .from("subscription_payments")
+      .select("*")
+      .order("created_at", { ascending: false })
+      .limit(safeLimit);
+
+    if (body.subscription_id) query = query.eq("subscription_id", body.subscription_id);
+    if (body.empresa_id) {
+      const { data: subsByCompany } = await admin
+        .from("subscriptions")
+        .select("id")
+        .eq("empresa_id", body.empresa_id)
+        .limit(2000);
+
+      const ids = (subsByCompany ?? []).map((item: any) => String(item.id));
+      if (ids.length === 0) return ok({ payments: [] }, 200, req);
+      query = query.in("subscription_id", ids);
+    }
+
+    const { data, error } = await query;
+    if (error) return fail(error.message, 400, null, req);
+    return ok({ payments: data ?? [] }, 200, req);
+  }
+
   if (body.action === "update_subscription_billing") {
     if (!body.subscription_id && !body.empresa_id) {
       return fail("subscription_id or empresa_id is required", 400, null, req);
@@ -2323,6 +2662,109 @@ Deno.serve(async (req) => {
     return ok({ success: true, subscription_id: updated.id }, 200, req);
   }
 
+  if (body.action === "asaas_link_subscription") {
+    if (!body.subscription_id && !body.empresa_id) {
+      return fail("subscription_id or empresa_id is required", 400, null, req);
+    }
+
+    const updatePayload: Record<string, unknown> = {
+      billing_provider: "asaas",
+      asaas_last_event_at: new Date().toISOString(),
+    };
+
+    if (body.asaas_customer_id !== undefined) updatePayload.asaas_customer_id = body.asaas_customer_id || null;
+    if (body.asaas_subscription_id !== undefined) updatePayload.asaas_subscription_id = body.asaas_subscription_id || null;
+
+    let query = admin
+      .from("subscriptions")
+      .update(updatePayload)
+      .select("id,empresa_id,asaas_subscription_id")
+      .limit(1);
+
+    if (body.subscription_id) query = query.eq("id", body.subscription_id);
+    else query = query.eq("empresa_id", body.empresa_id);
+
+    const { data, error } = await query;
+    if (error) return fail(error.message, 400, null, req);
+
+    const linked = (data ?? [])[0];
+    if (!linked?.id) return fail("Subscription not found", 404, null, req);
+
+    let sync: Record<string, unknown> | null = null;
+    if (isAsaasConfigured() && linked.asaas_subscription_id) {
+      try {
+        sync = await syncAsaasSubscriptionSnapshot(admin, linked);
+      } catch (syncError: any) {
+        await logPlatformAudit(admin, {
+          actorId: auth.user.id,
+          actorEmail: auth.user.email,
+          empresaId: linked.empresa_id,
+          actionType: "OWNER_ASAAS_SYNC_FAILED",
+          details: {
+            subscription_id: linked.id,
+            reason: String(syncError?.message ?? syncError ?? "unknown_error"),
+          },
+        });
+      }
+    }
+
+    await logPlatformAudit(admin, {
+      actorId: auth.user.id,
+      actorEmail: auth.user.email,
+      empresaId: linked.empresa_id,
+      actionType: "OWNER_ASAAS_LINK_SUBSCRIPTION",
+      details: {
+        subscription_id: linked.id,
+        asaas_customer_id: body.asaas_customer_id ?? null,
+        asaas_subscription_id: body.asaas_subscription_id ?? null,
+      },
+    });
+
+    return ok({ success: true, subscription_id: linked.id, sync }, 200, req);
+  }
+
+  if (body.action === "asaas_sync_subscription") {
+    if (!isAsaasConfigured()) {
+      return fail("ASAAS_API_KEY nao configurada.", 400, null, req);
+    }
+
+    let query = admin
+      .from("subscriptions")
+      .select("id,empresa_id,amount,payment_method,period,starts_at,renewal_at,asaas_customer_id,asaas_subscription_id")
+      .limit(1);
+
+    if (body.subscription_id) query = query.eq("id", body.subscription_id);
+    else if (body.empresa_id) query = query.eq("empresa_id", body.empresa_id);
+    else return fail("subscription_id or empresa_id is required", 400, null, req);
+
+    const { data, error } = await query;
+    if (error) return fail(error.message, 400, null, req);
+
+    const subscription = (data ?? [])[0];
+    if (!subscription?.id) return fail("Subscription not found", 404, null, req);
+
+    let sync: Record<string, unknown>;
+
+    if (subscription.asaas_subscription_id) {
+      sync = await syncAsaasSubscriptionSnapshot(admin, subscription);
+    } else {
+      sync = await createOrSyncAsaasSubscription(admin, subscription);
+    }
+
+    await logPlatformAudit(admin, {
+      actorId: auth.user.id,
+      actorEmail: auth.user.email,
+      empresaId: subscription.empresa_id,
+      actionType: "OWNER_ASAAS_SYNC_SUBSCRIPTION",
+      details: {
+        subscription_id: subscription.id,
+        sync,
+      },
+    });
+
+    return ok({ success: true, subscription_id: subscription.id, sync }, 200, req);
+  }
+
   if (body.action === "create_subscription") {
     if (!body.subscription?.empresa_id || !body.subscription?.plan_id) {
       return fail("subscription payload is required", 400, null, req);
@@ -2351,6 +2793,30 @@ Deno.serve(async (req) => {
 
     const contract = await createContractFromSubscription(admin, auth.user.id, data);
 
+    let asaas: Record<string, unknown> | null = null;
+    let asaasWarning: string | null = null;
+
+    if (isAsaasConfigured() && isStrictOwnerMaster) {
+      try {
+        asaas = await createOrSyncAsaasSubscription(admin, data);
+      } catch (asaasError: any) {
+        asaasWarning = String(asaasError?.message ?? asaasError ?? "Falha ao sincronizar com Asaas");
+
+        await logPlatformAudit(admin, {
+          actorId: auth.user.id,
+          actorEmail: auth.user.email,
+          empresaId: data.empresa_id,
+          actionType: "OWNER_ASAAS_CREATE_SUBSCRIPTION_FAILED",
+          details: {
+            subscription_id: data.id,
+            reason: asaasWarning,
+          },
+        });
+      }
+    } else if (isAsaasConfigured() && !isStrictOwnerMaster) {
+      asaasWarning = "Integracao Asaas restrita ao OWNER_MASTER configurado.";
+    }
+
     await logPlatformAudit(admin, {
       actorId: auth.user.id,
       actorEmail: auth.user.email,
@@ -2359,7 +2825,7 @@ Deno.serve(async (req) => {
       details: { subscription_id: data.id, contract_id: contract.id },
     });
 
-    return ok({ subscription: data, contract }, 200, req);
+    return ok({ subscription: data, contract, asaas, asaas_warning: asaasWarning }, 200, req);
   }
 
   if (body.action === "set_subscription_status") {

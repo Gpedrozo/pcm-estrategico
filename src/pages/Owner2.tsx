@@ -180,6 +180,8 @@ export default function Owner2() {
   const [billingSubscriptionId, setBillingSubscriptionId] = useState('')
   const [billingAmount, setBillingAmount] = useState('')
   const [billingPaymentStatus, setBillingPaymentStatus] = useState('paid')
+  const [asaasCustomerId, setAsaasCustomerId] = useState('')
+  const [asaasSubscriptionId, setAsaasSubscriptionId] = useState('')
 
   const [selectedTicketId, setSelectedTicketId] = useState('')
   const [ticketResponse, setTicketResponse] = useState('')
@@ -1195,6 +1197,46 @@ export default function Owner2() {
                   >
                     Atualizar cobrança
                   </button>
+
+                  {isOwnerMaster ? (
+                    <div className="mt-2 rounded-xl border border-slate-200 bg-slate-50 p-3">
+                      <p className="text-xs font-semibold text-slate-700">Integração Asaas</p>
+                      <p className="mt-1 text-xs text-slate-500">Vincule IDs ou sincronize automaticamente assinatura/cobrança.</p>
+                      <div className="mt-2 grid gap-2">
+                        <input className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" placeholder="Asaas customer id (opcional)" value={asaasCustomerId} onChange={(e) => setAsaasCustomerId(e.target.value)} />
+                        <input className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" placeholder="Asaas subscription id (opcional)" value={asaasSubscriptionId} onChange={(e) => setAsaasSubscriptionId(e.target.value)} />
+                        <div className="grid gap-2 sm:grid-cols-2">
+                          <button
+                            className="rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                            disabled={busy || (!billingSubscriptionId && !companyId)}
+                            onClick={() => runAction('asaas_link_subscription', {
+                              subscription_id: billingSubscriptionId || undefined,
+                              empresa_id: billingSubscriptionId ? undefined : (companyId || undefined),
+                              asaas_customer_id: asaasCustomerId || undefined,
+                              asaas_subscription_id: asaasSubscriptionId || undefined,
+                            }, 'Vínculo Asaas salvo com sucesso.')}
+                          >
+                            Salvar vínculo Asaas
+                          </button>
+                          <button
+                            className="rounded-lg border border-emerald-300 bg-emerald-50 px-3 py-2 text-sm text-emerald-700"
+                            disabled={busy || (!billingSubscriptionId && !companyId)}
+                            onClick={() => runAction('asaas_sync_subscription', {
+                              subscription_id: billingSubscriptionId || undefined,
+                              empresa_id: billingSubscriptionId ? undefined : (companyId || undefined),
+                            }, 'Sincronização Asaas concluída.')}
+                          >
+                            Sincronizar com Asaas
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="mt-2 rounded-xl border border-slate-200 bg-slate-50 p-3">
+                      <p className="text-xs font-semibold text-slate-700">Integração Asaas</p>
+                      <p className="mt-1 text-xs text-slate-500">Área restrita ao OWNER_MASTER.</p>
+                    </div>
+                  )}
                 </div>
               </SurfaceCard>
             </div>

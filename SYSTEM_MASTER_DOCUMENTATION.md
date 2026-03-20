@@ -253,6 +253,18 @@ Authorization gates:
 
 - Writes audit records to enterprise_audit_logs
 
+## 21.1 SaaS Billing Integration (Asaas)
+
+- Webhook function: asaas-webhook
+
+- Updates subscriptions and subscription_payments with provider metadata
+
+- Supports owner actions for manual link and sync: asaas_link_subscription, asaas_sync_subscription
+
+- Access restricted to OWNER_MASTER configured email for Asaas operational actions
+
+- Writes operational audit records to enterprise_audit_logs
+
 ## 22. Health Check Alerts
 
 - Low stock materials
@@ -301,6 +313,12 @@ Edge Functions:
 - STRIPE_SECRET_KEY (Stripe webhook)
 
 - STRIPE_WEBHOOK_SECRET (Stripe webhook)
+
+- ASAAS_API_KEY (Asaas API integration)
+
+- ASAAS_API_BASE_URL (default: https://api-sandbox.asaas.com/v3)
+
+- ASAAS_WEBHOOK_TOKEN (token validation for Asaas webhook)
 
 ## 24. Development and Build
 

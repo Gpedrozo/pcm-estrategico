@@ -1,3 +1,3 @@
 ﻿# Billing
 
-IntegraÃ§Ã£o de planos/assinaturas/limites (Stripe-ready).
+Integracao de planos/assinaturas/limites com provedores Stripe e Asaas.

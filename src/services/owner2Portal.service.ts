@@ -40,6 +40,9 @@ export type Owner2Action =
   | 'cleanup_company_data'
   | 'purge_table_data'
   | 'delete_company'
+  | 'asaas_link_subscription'
+  | 'asaas_sync_subscription'
+  | 'list_subscription_payments'
 
 export type Owner2Payload = {
   action: Owner2Action
