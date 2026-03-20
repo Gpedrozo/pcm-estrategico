@@ -11,12 +11,12 @@ import { EnvironmentGuard } from "@/components/guards/EnvironmentGuard";
 import { MasterTIGuard } from "@/components/guards/MasterTIGuard";
 import { TenantDomainMiddleware } from '@/components/guards/TenantDomainMiddleware';
 import { TenantQueryIsolationGuard } from '@/components/guards/TenantQueryIsolationGuard';
-import { SpeedInsights } from "@vercel/speed-insights/react";
 import { TenantProvider } from "@/contexts/TenantContext";
 import { BrandingProvider } from "@/contexts/BrandingContext";
 import { isOwnerDomain } from "@/lib/security";
 import { Loader2 } from 'lucide-react'
 import { AppErrorBoundary } from '@/components/runtime/AppErrorBoundary';
+import { TelemetryProvider } from '@/components/runtime/TelemetryProvider';
 import OwnerLogin from '@/owner/OwnerLogin';
 import Login from './pages/Login';
 
@@ -320,7 +320,7 @@ const App = () => (
           <BrowserRouter>
             {isOwnerDomain() ? <OwnerRoutes /> : <TenantRoutes />}
           </BrowserRouter>
-          <SpeedInsights />
+          <TelemetryProvider />
         </TooltipProvider>
       </AuthProvider>
     </QueryClientProvider>

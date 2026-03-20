@@ -51,6 +51,13 @@ Variaveis principais:
 - VITE_TENANT_BASE_DOMAIN
 - VITE_OWNER_DOMAIN
 
+Telemetry (migracao segura):
+
+- VITE_ANALYTICS_PROVIDER=cloudflare|vercel|none
+- VITE_CLOUDFLARE_WEB_ANALYTICS_TOKEN
+
+Observacao: o caminho legado da Vercel foi mantido para testes e rollback controlado.
+
 ## Estrutura principal
 
 - src/pages: paginas de modulo
