@@ -3,7 +3,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { usePermission } from "@/hooks/usePermission";
 import { AppLayout } from "@/components/layout/AppLayout";
@@ -93,12 +93,15 @@ const AdminOnlyRoute = ({ children }: { children: React.ReactNode }) => {
 };
 
 const OwnerOnlyRoute = ({ children }: { children: React.ReactNode }) => {
+  const location = useLocation();
   const { isAuthenticated, isLoading, isHydrating, authStatus, isSystemOwner, forcePasswordChange } = useAuth();
 
   if (isLoading || isHydrating || authStatus === 'loading' || authStatus === 'hydrating') return <RouteLoading />;
 
   if (!isAuthenticated || !isSystemOwner) {
-    return <Navigate to="/login" replace />;
+    const nextPath = `${location.pathname}${location.search}${location.hash}`;
+    const nextParam = encodeURIComponent(nextPath || '/');
+    return <Navigate to={`/login?next=${nextParam}`} replace state={{ from: location }} />;
   }
 
   if (forcePasswordChange) {

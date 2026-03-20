@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useEffect, useMemo, useState } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { Shield, Loader2, AlertCircle } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -38,8 +38,21 @@ export default function OwnerLogin() {
 
   const { login, logout, user, session, isAuthenticated, isLoading, isHydrating, authStatus, effectiveRole, forcePasswordChange, startImpersonationSession } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
 
   const isOwnerRole = effectiveRole === 'SYSTEM_OWNER' || effectiveRole === 'SYSTEM_ADMIN';
+
+  const ownerNextPath = useMemo(() => {
+    const stateFrom = (location.state as { from?: { pathname?: string; search?: string; hash?: string } } | null)?.from;
+    const fromState = `${stateFrom?.pathname ?? ''}${stateFrom?.search ?? ''}${stateFrom?.hash ?? ''}`;
+    const queryNext = new URLSearchParams(location.search).get('next') ?? '';
+    const candidate = (fromState || queryNext || '').trim();
+
+    if (!candidate.startsWith('/') || candidate.startsWith('//')) return '';
+    if (candidate === '/login' || candidate.startsWith('/login?')) return '';
+
+    return candidate;
+  }, [location.search, location.state]);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -97,7 +110,7 @@ export default function OwnerLogin() {
 
   const handleEnterOwnerPortal = () => {
     setShowAccessChooser(false);
-    navigate(getPostLoginPath(effectiveRole));
+    navigate(ownerNextPath || getPostLoginPath(effectiveRole), { replace: true });
   };
 
   const handleEnterCompany = async () => {
