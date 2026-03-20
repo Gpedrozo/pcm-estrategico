@@ -1632,7 +1632,7 @@ Deno.serve(async (req) => {
     "list_subscription_payments",
   ]);
 
-  if (ownerMasterOnlyActions.has(body.action) && !isOwnerMaster) {
+  if (ownerMasterOnlyActions.has(body.action) && !isStrictOwnerMaster) {
     console.error(JSON.stringify({
       level: "warn",
       source: "owner-portal-admin",
@@ -1646,27 +1646,7 @@ Deno.serve(async (req) => {
     return forbiddenResponse(req, trace.requestId);
   }
 
-  const asaasStrictActions = new Set<Payload["action"]>([
-    "asaas_link_subscription",
-    "asaas_sync_subscription",
-    "list_subscription_payments",
-  ]);
-
-  if (asaasStrictActions.has(body.action) && !isStrictOwnerMaster) {
-    console.error(JSON.stringify({
-      level: "warn",
-      source: "owner-portal-admin",
-      event: "asaas_owner_master_forbidden",
-      expected_email: ownerMasterEmail,
-      received_email: auth.user.email ?? null,
-      trace_id: trace.requestId,
-      action: body.action,
-      timestamp: new Date().toISOString(),
-    }));
-    return forbiddenResponse(req, trace.requestId);
-  }
-
-  if (!isOwnerMaster && body.action !== "list_audit_logs") {
+  if (!isStrictOwnerMaster && body.action !== "list_audit_logs") {
     await logOwnerMasterHiddenAudit(admin, {
       actorId: auth.user.id,
       actorEmail: auth.user.email,

@@ -76,6 +76,18 @@ type CriticalActionRequest = {
 
 const TENANT_BASE_DOMAIN = (import.meta.env.VITE_TENANT_BASE_DOMAIN || 'gppis.com.br').toLowerCase()
 
+const KNOWN_OWNER_MASTER_EMAILS = ['pedrozo@gppis.com.br', 'pedrozo@gppis.cm.br'] as const
+
+function normalizeEmail(value: string) {
+  return String(value || '').trim().toLowerCase()
+}
+
+function resolveOwnerMasterEmail() {
+  const configured = normalizeEmail(String(import.meta.env.VITE_OWNER_MASTER_EMAIL ?? ''))
+  if (configured) return configured
+  return KNOWN_OWNER_MASTER_EMAILS[0]
+}
+
 function safeArray<T>(value: unknown): T[] {
   return Array.isArray(value) ? (value as T[]) : []
 }
@@ -217,8 +229,13 @@ export default function Owner2() {
   const [ownerEmail, setOwnerEmail] = useState('')
   const [ownerPassword, setOwnerPassword] = useState('')
 
-  const ownerMasterEmail = String(import.meta.env.VITE_OWNER_MASTER_EMAIL ?? '').trim().toLowerCase()
-  const isOwnerMaster = String(user?.email ?? '').trim().toLowerCase() === ownerMasterEmail
+  const ownerMasterEmail = resolveOwnerMasterEmail()
+  const isOwnerMaster = (() => {
+    const currentEmail = normalizeEmail(String(user?.email ?? ''))
+    if (!currentEmail) return false
+    if (currentEmail === ownerMasterEmail) return true
+    return KNOWN_OWNER_MASTER_EMAILS.includes(currentEmail as (typeof KNOWN_OWNER_MASTER_EMAILS)[number])
+  })()
 
   const healthQuery = useOwner2Health(true)
   const dashboardQuery = useOwner2Dashboard(activeTab === 'dashboard')

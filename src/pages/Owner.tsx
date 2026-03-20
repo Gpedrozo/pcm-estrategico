@@ -20,8 +20,11 @@ import {
   useOwnerUsers,
 } from '@/hooks/useOwnerPortal'
 
+const KNOWN_OWNER_MASTER_EMAILS = ['pedrozo@gppis.com.br', 'pedrozo@gppis.cm.br'] as const
 const getOwnerMasterEmail = () => {
-  return String(import.meta.env.VITE_OWNER_MASTER_EMAIL ?? '').trim().toLowerCase()
+  const configured = String(import.meta.env.VITE_OWNER_MASTER_EMAIL ?? '').trim().toLowerCase()
+  if (configured) return configured
+  return KNOWN_OWNER_MASTER_EMAILS[0]
 }
 const TENANT_BASE_DOMAIN = (import.meta.env.VITE_TENANT_BASE_DOMAIN || 'gppis.com.br').toLowerCase()
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
@@ -211,7 +214,12 @@ export default function Owner() {
   const createCompanyElapsedLabel = `${String(Math.floor(createCompanyElapsedSeconds / 60)).padStart(2, '0')}:${String(createCompanyElapsedSeconds % 60).padStart(2, '0')}`
 
   const ownerMasterEmail = getOwnerMasterEmail()
-  const isOwnerMaster = normalizeEmail(user?.email || '') === ownerMasterEmail
+  const isOwnerMaster = (() => {
+    const currentEmail = normalizeEmail(user?.email || '')
+    if (!currentEmail) return false
+    if (currentEmail === ownerMasterEmail) return true
+    return KNOWN_OWNER_MASTER_EMAILS.includes(currentEmail as (typeof KNOWN_OWNER_MASTER_EMAILS)[number])
+  })()
 
   const dashboardActive = active === 'dashboard'
   const companiesActive = active === 'empresas'
