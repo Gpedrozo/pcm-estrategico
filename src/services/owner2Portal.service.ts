@@ -12,6 +12,8 @@ export type Owner2Action =
   | 'list_users'
   | 'create_user'
   | 'set_user_status'
+  | 'move_user_company'
+  | 'set_user_password'
   | 'list_plans'
   | 'create_plan'
   | 'update_plan'
@@ -43,6 +45,7 @@ export type Owner2Action =
   | 'asaas_link_subscription'
   | 'asaas_sync_subscription'
   | 'list_subscription_payments'
+  | 'enforce_subscription_expiry'
 
 export type Owner2Payload = {
   action: Owner2Action

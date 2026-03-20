@@ -17,6 +17,8 @@ type Payload = {
     | "list_users"
     | "create_user"
     | "set_user_status"
+    | "move_user_company"
+    | "set_user_password"
     | "list_plans"
     | "create_plan"
     | "update_plan"
@@ -50,7 +52,8 @@ type Payload = {
     | "purge_table_data"
     | "asaas_link_subscription"
     | "asaas_sync_subscription"
-    | "list_subscription_payments";
+    | "list_subscription_payments"
+    | "enforce_subscription_expiry";
   empresa_id?: string;
   company?: {
     nome: string;
@@ -58,6 +61,8 @@ type Payload = {
     razao_social?: string;
     nome_fantasia?: string;
     cnpj?: string;
+    tipo_pessoa?: "PF" | "PJ";
+    cpf_cnpj?: string;
     endereco?: string;
     telefone?: string;
     email?: string;
@@ -73,6 +78,7 @@ type Payload = {
     empresa_id: string;
     role: string;
     status?: string;
+    force_password_change?: boolean;
   };
   owner_user?: {
     nome: string;
@@ -139,6 +145,9 @@ type Payload = {
   reason?: string;
   user_id?: string;
   inactivity_timeout_minutes?: number;
+  force_password_change?: boolean;
+  new_empresa_id?: string;
+  new_password?: string;
   empresa_nome?: string;
   impersonation_session_id?: string;
   impersonation_session_token?: string;
@@ -235,6 +244,8 @@ const SUPPORTED_OWNER_ACTIONS: Payload["action"][] = [
   "list_users",
   "create_user",
   "set_user_status",
+  "move_user_company",
+  "set_user_password",
   "list_plans",
   "create_plan",
   "update_plan",
@@ -269,6 +280,7 @@ const SUPPORTED_OWNER_ACTIONS: Payload["action"][] = [
   "asaas_link_subscription",
   "asaas_sync_subscription",
   "list_subscription_payments",
+  "enforce_subscription_expiry",
 ];
 
 function resolveRateLimitConfig(action: Payload["action"]) {
@@ -296,6 +308,7 @@ function resolveRateLimitConfig(action: Payload["action"]) {
     "create_system_admin",
     "asaas_link_subscription",
     "asaas_sync_subscription",
+    "enforce_subscription_expiry",
   ]);
 
   if (readHeavyActions.has(action)) {
@@ -328,6 +341,8 @@ function shouldEnforceRateLimit(action: Payload["action"]) {
     "set_company_status",
     "create_user",
     "set_user_status",
+    "move_user_company",
+    "set_user_password",
     "create_plan",
     "update_plan",
     "create_subscription",
@@ -352,6 +367,7 @@ function shouldEnforceRateLimit(action: Payload["action"]) {
     "purge_table_data",
     "asaas_link_subscription",
     "asaas_sync_subscription",
+    "enforce_subscription_expiry",
   ]);
 
   return writeOrSensitiveActions.has(action);
@@ -1875,11 +1891,13 @@ Deno.serve(async (req) => {
       slug = ensuredSlug;
     }
 
+    const normalizedDocument = String(body.company.cpf_cnpj ?? body.company.cnpj ?? "").replace(/\D+/g, "");
+
     const { error: companyDataError } = await admin.from("dados_empresa").upsert({
       empresa_id: company.id,
       razao_social: body.company.razao_social ?? companyName,
       nome_fantasia: body.company.nome_fantasia ?? companyName,
-      cnpj: body.company.cnpj ?? null,
+      cnpj: normalizedDocument || null,
     }, { onConflict: "empresa_id" });
 
     if (companyDataError) {
@@ -1891,6 +1909,8 @@ Deno.serve(async (req) => {
       empresa_id: company.id,
       chave: "owner.company_profile",
       valor: {
+        tipo_pessoa: body.company.tipo_pessoa ?? (normalizedDocument.length === 11 ? "PF" : "PJ"),
+        cpf_cnpj: normalizedDocument || null,
         endereco: body.company.endereco ?? null,
         telefone: body.company.telefone ?? null,
         email: body.company.email ?? null,
@@ -2173,7 +2193,8 @@ Deno.serve(async (req) => {
     if (body.company.nome) updatePayload.nome = body.company.nome;
     if (nextSlug) updatePayload.slug = nextSlug;
     if (body.company.status) updatePayload.status = body.company.status;
-    if (body.company.cnpj !== undefined) updatePayload.cnpj = body.company.cnpj;
+    const normalizedDocument = String(body.company.cpf_cnpj ?? body.company.cnpj ?? "").replace(/\D+/g, "");
+    if (body.company.cnpj !== undefined || body.company.cpf_cnpj !== undefined) updatePayload.cnpj = normalizedDocument || null;
 
     const { error: empresaError } = await admin
       .from("empresas")
@@ -2190,13 +2211,15 @@ Deno.serve(async (req) => {
       empresa_id: body.empresa_id,
       razao_social: body.company.razao_social ?? null,
       nome_fantasia: body.company.nome_fantasia ?? null,
-      cnpj: body.company.cnpj ?? null,
+      cnpj: normalizedDocument || null,
     }, { onConflict: "empresa_id" });
 
     await admin.from("configuracoes_sistema").upsert({
       empresa_id: body.empresa_id,
       chave: "owner.company_profile",
       valor: {
+        tipo_pessoa: body.company.tipo_pessoa ?? (normalizedDocument.length === 11 ? "PF" : "PJ"),
+        cpf_cnpj: normalizedDocument || null,
         endereco: body.company.endereco ?? null,
         telefone: body.company.telefone ?? null,
         email: body.company.email ?? null,
@@ -2367,6 +2390,8 @@ Deno.serve(async (req) => {
 
     const password = body.user.password?.trim() || generateTemporaryPassword();
 
+    const forcePasswordChange = body.user.force_password_change !== false;
+
     const { data: createdAuth, error: createError } = await admin.auth.admin.createUser({
       email: normalizedUserEmail,
       password,
@@ -2376,11 +2401,15 @@ Deno.serve(async (req) => {
         empresa_slug: targetCompany.slug ?? null,
         role: normalizedRole,
         roles: [normalizedRole],
+        force_password_change: forcePasswordChange,
+        must_change_password: forcePasswordChange,
       },
       user_metadata: {
         nome: body.user.nome,
         empresa_id: body.user.empresa_id,
         empresa_slug: targetCompany.slug ?? null,
+        force_password_change: forcePasswordChange,
+        must_change_password: forcePasswordChange,
       },
     });
 
@@ -2391,6 +2420,7 @@ Deno.serve(async (req) => {
       empresa_id: body.user.empresa_id,
       nome: body.user.nome,
       email: normalizedUserEmail,
+      force_password_change: forcePasswordChange,
     }, { onConflict: "id" });
 
     if (profileError) {
@@ -2453,6 +2483,136 @@ Deno.serve(async (req) => {
     });
 
     return ok({ success: true, user_id: createdAuth.user.id, initial_password: password }, 200, req);
+  }
+
+  if (body.action === "move_user_company") {
+    const targetEmpresaId = String(body.new_empresa_id ?? body.empresa_id ?? "").trim();
+    if (!body.user_id || !targetEmpresaId) return fail("user_id and new_empresa_id are required", 400, null, req);
+
+    const { error: planLimitError } = await admin.rpc("check_company_plan_limit", {
+      p_empresa_id: targetEmpresaId,
+      p_limit_type: "users",
+      p_increment: 1,
+    });
+
+    if (planLimitError) {
+      return fail("Limite de usuários do plano da empresa destino atingido ou assinatura inválida.", 403, {
+        reason: planLimitError.message,
+      }, req);
+    }
+
+    const { data: targetCompany, error: targetCompanyError } = await admin
+      .from("empresas")
+      .select("id,slug")
+      .eq("id", targetEmpresaId)
+      .maybeSingle();
+
+    if (targetCompanyError) return fail(targetCompanyError.message, 400, null, req);
+    if (!targetCompany?.id) return fail("Empresa destino não encontrada.", 404, null, req);
+
+    const { data: existingRoles } = await admin
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", body.user_id)
+      .limit(1);
+
+    const roleToKeep = String(body.user?.role ?? existingRoles?.[0]?.role ?? "USUARIO").trim().toUpperCase();
+
+    const { error: profileError } = await admin
+      .from("profiles")
+      .update({ empresa_id: targetEmpresaId })
+      .eq("id", body.user_id);
+
+    if (profileError) return fail(profileError.message, 400, null, req);
+
+    await admin.from("user_roles").delete().eq("user_id", body.user_id);
+
+    const { error: roleError } = await admin.from("user_roles").insert({
+      user_id: body.user_id,
+      empresa_id: targetEmpresaId,
+      role: roleToKeep,
+    });
+
+    if (roleError) return fail(roleError.message, 400, null, req);
+
+    const { data: authUserData } = await admin.auth.admin.getUserById(body.user_id);
+    const existingApp = (authUserData?.user?.app_metadata ?? {}) as Record<string, unknown>;
+    const existingMeta = (authUserData?.user?.user_metadata ?? {}) as Record<string, unknown>;
+
+    const { error: authUpdateError } = await admin.auth.admin.updateUserById(body.user_id, {
+      app_metadata: {
+        ...existingApp,
+        empresa_id: targetEmpresaId,
+        empresa_slug: targetCompany.slug ?? null,
+        role: roleToKeep,
+        roles: [roleToKeep],
+      },
+      user_metadata: {
+        ...existingMeta,
+        empresa_id: targetEmpresaId,
+        empresa_slug: targetCompany.slug ?? null,
+      },
+    });
+
+    if (authUpdateError) return fail(authUpdateError.message, 400, null, req);
+
+    await logPlatformAudit(admin, {
+      actorId: auth.user.id,
+      actorEmail: auth.user.email,
+      empresaId: targetEmpresaId,
+      actionType: "OWNER_MOVE_USER_COMPANY",
+      details: {
+        user_id: body.user_id,
+        role: roleToKeep,
+      },
+    });
+
+    return ok({ success: true }, 200, req);
+  }
+
+  if (body.action === "set_user_password") {
+    const newPassword = String(body.new_password ?? body.user?.password ?? "").trim();
+    const forceChange = body.force_password_change !== false;
+    if (!body.user_id || newPassword.length < 8) {
+      return fail("user_id and new_password (min 8 chars) are required", 400, null, req);
+    }
+
+    const { data: authUserData } = await admin.auth.admin.getUserById(body.user_id);
+    const existingApp = (authUserData?.user?.app_metadata ?? {}) as Record<string, unknown>;
+    const existingMeta = (authUserData?.user?.user_metadata ?? {}) as Record<string, unknown>;
+
+    const { error: authUpdateError } = await admin.auth.admin.updateUserById(body.user_id, {
+      password: newPassword,
+      app_metadata: {
+        ...existingApp,
+        force_password_change: forceChange,
+        must_change_password: forceChange,
+      },
+      user_metadata: {
+        ...existingMeta,
+        force_password_change: forceChange,
+        must_change_password: forceChange,
+      },
+    });
+
+    if (authUpdateError) return fail(authUpdateError.message, 400, null, req);
+
+    await admin
+      .from("profiles")
+      .update({ force_password_change: forceChange })
+      .eq("id", body.user_id);
+
+    await logPlatformAudit(admin, {
+      actorId: auth.user.id,
+      actorEmail: auth.user.email,
+      actionType: "OWNER_SET_USER_PASSWORD",
+      details: {
+        user_id: body.user_id,
+        force_password_change: forceChange,
+      },
+    });
+
+    return ok({ success: true }, 200, req);
   }
 
   if (body.action === "set_user_status") {
@@ -2816,6 +2976,52 @@ Deno.serve(async (req) => {
       .eq("empresa_id", body.empresa_id);
     if (error) return fail(error.message, 400, null, req);
     return ok({ success: true }, 200, req);
+  }
+
+  if (body.action === "enforce_subscription_expiry") {
+    const today = new Date().toISOString().slice(0, 10);
+
+    const { data: expiredSubscriptions, error: expiredError } = await admin
+      .from("subscriptions")
+      .select("id,empresa_id,status,renewal_at,ends_at")
+      .in("status", ["ativa", "teste"])
+      .or(`renewal_at.lt.${today},ends_at.lt.${today}`)
+      .limit(2000);
+
+    if (expiredError) return fail(expiredError.message, 400, null, req);
+
+    const affected = expiredSubscriptions ?? [];
+    if (affected.length === 0) return ok({ success: true, affected_subscriptions: 0, blocked_companies: 0 }, 200, req);
+
+    const subscriptionIds = affected.map((item: any) => item.id).filter(Boolean);
+    const companyIds = Array.from(new Set(affected.map((item: any) => item.empresa_id).filter(Boolean)));
+
+    await admin
+      .from("subscriptions")
+      .update({ status: "atrasada", payment_status: "late" })
+      .in("id", subscriptionIds);
+
+    await admin
+      .from("empresas")
+      .update({ status: "blocked" })
+      .in("id", companyIds);
+
+    await logPlatformAudit(admin, {
+      actorId: auth.user.id,
+      actorEmail: auth.user.email,
+      actionType: "OWNER_ENFORCE_SUBSCRIPTION_EXPIRY",
+      details: {
+        affected_subscriptions: subscriptionIds.length,
+        blocked_companies: companyIds.length,
+        at: today,
+      },
+    });
+
+    return ok({
+      success: true,
+      affected_subscriptions: subscriptionIds.length,
+      blocked_companies: companyIds.length,
+    }, 200, req);
   }
 
   if (body.action === "list_contracts") {

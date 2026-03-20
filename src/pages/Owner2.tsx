@@ -40,8 +40,7 @@ const OWNER2_TABS = [
   'monitoramento',
   'empresas',
   'usuarios',
-  'planos',
-  'assinaturas',
+  'comercial',
   'financeiro',
   'contratos',
   'suporte',
@@ -156,7 +155,7 @@ function MetricTile({ label, value, icon: Icon, tone = 'sky' }: { label: string;
 }
 
 export default function Owner2() {
-  const { isSystemOwner, isLoading, user } = useAuth()
+  const { isSystemOwner, isLoading, user, logout } = useAuth()
   const [activeTab, setActiveTab] = useState<Owner2Tab>('dashboard')
   const [feedback, setFeedback] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -167,22 +166,41 @@ export default function Owner2() {
 
   const [newCompanyName, setNewCompanyName] = useState('')
   const [newCompanySlug, setNewCompanySlug] = useState('')
+  const [newCompanyPersonType, setNewCompanyPersonType] = useState<'PF' | 'PJ'>('PJ')
+  const [newCompanyDocument, setNewCompanyDocument] = useState('')
+  const [newCompanyRazaoSocial, setNewCompanyRazaoSocial] = useState('')
+  const [newCompanyNomeFantasia, setNewCompanyNomeFantasia] = useState('')
+  const [newCompanyAddress, setNewCompanyAddress] = useState('')
+  const [newCompanyPhone, setNewCompanyPhone] = useState('')
+  const [newCompanyEmail, setNewCompanyEmail] = useState('')
+  const [newCompanyResponsible, setNewCompanyResponsible] = useState('')
+  const [newCompanySegment, setNewCompanySegment] = useState('')
   const [newAdminName, setNewAdminName] = useState('')
   const [newAdminEmail, setNewAdminEmail] = useState('')
 
   const [newUserName, setNewUserName] = useState('')
   const [newUserEmail, setNewUserEmail] = useState('')
   const [newUserRole, setNewUserRole] = useState('ADMIN')
+  const [newUserRequirePasswordChange, setNewUserRequirePasswordChange] = useState(true)
   const [selectedUserId, setSelectedUserId] = useState('')
+  const [userTargetCompanyId, setUserTargetCompanyId] = useState('')
+  const [userTargetRole, setUserTargetRole] = useState('USUARIO')
+  const [userNewPassword, setUserNewPassword] = useState('')
   const [userSearch, setUserSearch] = useState('')
   const [userStatusFilter, setUserStatusFilter] = useState<'todos' | 'ativo' | 'inativo'>('todos')
 
   const [planCode, setPlanCode] = useState('')
   const [planName, setPlanName] = useState('')
   const [planPrice, setPlanPrice] = useState('0')
+  const [planDefaultPeriod, setPlanDefaultPeriod] = useState<'monthly' | 'quarterly' | 'yearly'>('monthly')
 
   const [subscriptionPlanId, setSubscriptionPlanId] = useState('')
   const [subscriptionAmount, setSubscriptionAmount] = useState('0')
+  const [subscriptionPeriod, setSubscriptionPeriod] = useState<'monthly' | 'quarterly' | 'yearly' | 'custom'>('monthly')
+  const [subscriptionStatus, setSubscriptionStatus] = useState<'ativa' | 'atrasada' | 'cancelada' | 'teste'>('teste')
+  const [subscriptionStartsAt, setSubscriptionStartsAt] = useState('')
+  const [subscriptionEndsAt, setSubscriptionEndsAt] = useState('')
+  const [subscriptionRenewalAt, setSubscriptionRenewalAt] = useState('')
   const [planCodeToChange, setPlanCodeToChange] = useState('')
 
   const [selectedContractId, setSelectedContractId] = useState('')
@@ -199,7 +217,6 @@ export default function Owner2() {
   const [ticketResponse, setTicketResponse] = useState('')
 
   const [systemUserId, setSystemUserId] = useState('')
-  const [timeoutMinutes, setTimeoutMinutes] = useState('10')
   const [selectedTableName, setSelectedTableName] = useState('')
   const [logSearch, setLogSearch] = useState('')
   const [logSeverityFilter, setLogSeverityFilter] = useState<'todos' | 'info' | 'warn' | 'error' | 'critical'>('todos')
@@ -241,8 +258,8 @@ export default function Owner2() {
   const dashboardQuery = useOwner2Dashboard(activeTab === 'dashboard')
   const companiesQuery = useOwner2Companies(activeTab !== 'owner-master')
   const usersQuery = useOwner2Users(activeTab === 'usuarios' || activeTab === 'configuracoes' || activeTab === 'empresas' || activeTab === 'dashboard')
-  const plansQuery = useOwner2Plans(activeTab === 'planos' || activeTab === 'assinaturas' || activeTab === 'dashboard')
-  const subscriptionsQuery = useOwner2Subscriptions(activeTab === 'assinaturas' || activeTab === 'dashboard')
+  const plansQuery = useOwner2Plans(activeTab === 'comercial' || activeTab === 'dashboard')
+  const subscriptionsQuery = useOwner2Subscriptions(activeTab === 'comercial' || activeTab === 'dashboard')
   const contractsQuery = useOwner2Contracts(activeTab === 'contratos' || activeTab === 'dashboard')
   const ticketsQuery = useOwner2Tickets(activeTab === 'suporte' || activeTab === 'dashboard')
   const auditsQuery = useOwner2Audits(activeTab === 'auditoria' || activeTab === 'monitoramento' || activeTab === 'logs')
@@ -271,6 +288,18 @@ export default function Owner2() {
 
   useEffect(() => {
     if (!selectedUserId && users.length > 0) setSelectedUserId(String(users[0]?.id ?? ''))
+  }, [selectedUserId, users])
+
+  useEffect(() => {
+    if (!selectedUserId) return
+    const selected = users.find((u) => String(u.id ?? '') === selectedUserId)
+    if (!selected) return
+
+    setUserTargetCompanyId(String(selected.empresa_id ?? ''))
+    const firstRole = Array.isArray(selected.user_roles)
+      ? String((selected.user_roles[0] as any)?.role ?? selected.role ?? 'USUARIO').toUpperCase()
+      : String(selected.role ?? 'USUARIO').toUpperCase()
+    setUserTargetRole(firstRole || 'USUARIO')
   }, [selectedUserId, users])
 
   useEffect(() => {
@@ -581,7 +610,20 @@ export default function Owner2() {
       const response: any = await execute.mutateAsync({
         action: 'create_company',
         payload: {
-          company: { nome: newCompanyName, slug: newCompanySlug || undefined },
+          company: {
+            nome: newCompanyName,
+            slug: newCompanySlug || undefined,
+            tipo_pessoa: newCompanyPersonType,
+            cpf_cnpj: newCompanyDocument || undefined,
+            cnpj: newCompanyDocument || undefined,
+            razao_social: newCompanyRazaoSocial || newCompanyName,
+            nome_fantasia: newCompanyNomeFantasia || newCompanyName,
+            endereco: newCompanyAddress || undefined,
+            telefone: newCompanyPhone || undefined,
+            email: newCompanyEmail || undefined,
+            responsavel: newCompanyResponsible || undefined,
+            segmento: newCompanySegment || undefined,
+          },
           user: { nome: newAdminName, email: newAdminEmail, role: 'ADMIN' },
         },
       })
@@ -626,6 +668,15 @@ export default function Owner2() {
       setFeedback(initialPassword ? 'Empresa criada com sucesso. Credenciais iniciais disponíveis para cópia.' : 'Empresa criada com sucesso.')
       setNewCompanyName('')
       setNewCompanySlug('')
+      setNewCompanyPersonType('PJ')
+      setNewCompanyDocument('')
+      setNewCompanyRazaoSocial('')
+      setNewCompanyNomeFantasia('')
+      setNewCompanyAddress('')
+      setNewCompanyPhone('')
+      setNewCompanyEmail('')
+      setNewCompanyResponsible('')
+      setNewCompanySegment('')
       setNewAdminName('')
       setNewAdminEmail('')
     } catch (err: any) {
@@ -679,9 +730,17 @@ export default function Owner2() {
             <h1 className="text-xl font-semibold tracking-tight">Owner2</h1>
             <p className="text-xs text-slate-600">Centro operacional premium da plataforma</p>
           </div>
-          <div className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs text-slate-700 shadow-sm">
-            <p>Usuário: {user?.email}</p>
-            <p>Health: {String((healthQuery.data as any)?.status ?? 'n/a')}</p>
+          <div className="flex items-center gap-2">
+            <div className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs text-slate-700 shadow-sm">
+              <p>Usuário: {user?.email}</p>
+              <p>Health: {String((healthQuery.data as any)?.status ?? 'n/a')}</p>
+            </div>
+            <button
+              className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-700 shadow-sm"
+              onClick={() => void logout({ reason: 'manual' })}
+            >
+              Logout
+            </button>
           </div>
         </div>
       </header>
@@ -879,13 +938,25 @@ export default function Owner2() {
             <div className="grid gap-4 xl:grid-cols-2">
               <SurfaceCard title="Nova empresa">
                 <div className="grid gap-2">
+                  <select className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" value={newCompanyPersonType} onChange={(e) => setNewCompanyPersonType(e.target.value as 'PF' | 'PJ')}>
+                    <option value="PJ">Pessoa juridica (PJ)</option>
+                    <option value="PF">Pessoa fisica (PF)</option>
+                  </select>
                   <input className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" value={newCompanyName} onChange={(e) => setNewCompanyName(e.target.value)} placeholder="Nome da empresa" />
                   <input className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" value={newCompanySlug} onChange={(e) => setNewCompanySlug(e.target.value)} placeholder="Slug (opcional)" />
+                  <input className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" value={newCompanyDocument} onChange={(e) => setNewCompanyDocument(e.target.value)} placeholder={newCompanyPersonType === 'PF' ? 'CPF' : 'CNPJ'} />
+                  <input className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" value={newCompanyRazaoSocial} onChange={(e) => setNewCompanyRazaoSocial(e.target.value)} placeholder={newCompanyPersonType === 'PF' ? 'Nome completo' : 'Razao social'} />
+                  <input className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" value={newCompanyNomeFantasia} onChange={(e) => setNewCompanyNomeFantasia(e.target.value)} placeholder={newCompanyPersonType === 'PF' ? 'Nome de exibicao' : 'Nome fantasia'} />
+                  <input className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" value={newCompanyAddress} onChange={(e) => setNewCompanyAddress(e.target.value)} placeholder="Endereco" />
+                  <input className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" value={newCompanyPhone} onChange={(e) => setNewCompanyPhone(e.target.value)} placeholder="Telefone" />
+                  <input className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" value={newCompanyEmail} onChange={(e) => setNewCompanyEmail(e.target.value)} placeholder="Email comercial" />
+                  <input className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" value={newCompanyResponsible} onChange={(e) => setNewCompanyResponsible(e.target.value)} placeholder="Responsavel" />
+                  <input className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" value={newCompanySegment} onChange={(e) => setNewCompanySegment(e.target.value)} placeholder="Segmento" />
                   <input className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" value={newAdminName} onChange={(e) => setNewAdminName(e.target.value)} placeholder="Nome do administrador" />
                   <input className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" value={newAdminEmail} onChange={(e) => setNewAdminEmail(e.target.value)} placeholder="Email do administrador" />
                   <button
                     className="rounded-lg bg-sky-700 px-3 py-2 text-sm font-semibold text-white"
-                    disabled={busy || !newCompanyName || !newAdminName || !newAdminEmail}
+                    disabled={busy || !newCompanyName || !newCompanyDocument || !newAdminName || !newAdminEmail}
                     onClick={handleCreateCompany}
                   >
                     Criar empresa
@@ -986,7 +1057,8 @@ export default function Owner2() {
                     <option value="USUARIO">USUARIO</option>
                     <option value="SOLICITANTE">SOLICITANTE</option>
                   </select>
-                  <button className="rounded-lg bg-sky-700 px-3 py-2 text-sm font-semibold text-white" disabled={busy || !companyId || !newUserName || !newUserEmail} onClick={() => runAction('create_user', { user: { nome: newUserName, email: newUserEmail, role: newUserRole, empresa_id: companyId } }, 'Usuário criado com sucesso.')}>Criar usuário</button>
+                  <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={newUserRequirePasswordChange} onChange={(e) => setNewUserRequirePasswordChange(e.target.checked)} /> Exigir troca de senha no 1º login</label>
+                  <button className="rounded-lg bg-sky-700 px-3 py-2 text-sm font-semibold text-white" disabled={busy || !companyId || !newUserName || !newUserEmail} onClick={() => runAction('create_user', { user: { nome: newUserName, email: newUserEmail, role: newUserRole, empresa_id: companyId, force_password_change: newUserRequirePasswordChange } }, 'Usuário criado com sucesso.')}>Criar usuário</button>
                 </div>
 
                 <div className="mt-4 grid gap-2">
@@ -999,6 +1071,37 @@ export default function Owner2() {
                     <button className="rounded-lg border border-slate-300 px-3 py-2 text-sm" disabled={busy || !selectedUserId} onClick={() => runAction('set_user_status', { user_id: selectedUserId, status: 'ativo' }, 'Usuário ativado.')}>Ativar</button>
                     <button className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-700" disabled={busy || !selectedUserId} onClick={() => runAction('set_user_status', { user_id: selectedUserId, status: 'inativo' }, 'Usuário inativado.')}>Inativar</button>
                   </div>
+                </div>
+
+                <div className="mt-4 grid gap-2">
+                  <h3 className="text-sm font-semibold">Editar usuário</h3>
+                  <select className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" value={userTargetCompanyId} onChange={(e) => setUserTargetCompanyId(e.target.value)}>
+                    <option value="">Empresa destino</option>
+                    {companies.map((c) => <option key={String(c.id)} value={String(c.id)}>{String(c.nome ?? c.slug ?? c.id)}</option>)}
+                  </select>
+                  <select className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" value={userTargetRole} onChange={(e) => setUserTargetRole(e.target.value)}>
+                    <option value="ADMIN">ADMIN</option>
+                    <option value="GESTOR">GESTOR</option>
+                    <option value="TECNICO">TECNICO</option>
+                    <option value="USUARIO">USUARIO</option>
+                    <option value="SOLICITANTE">SOLICITANTE</option>
+                  </select>
+                  <button
+                    className="rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                    disabled={busy || !selectedUserId || !userTargetCompanyId}
+                    onClick={() => runAction('move_user_company', { user_id: selectedUserId, new_empresa_id: userTargetCompanyId, user: { role: userTargetRole } }, 'Usuário movido para nova empresa com sucesso.')}
+                  >
+                    Mover para outra empresa
+                  </button>
+
+                  <input className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" type="password" value={userNewPassword} onChange={(e) => setUserNewPassword(e.target.value)} placeholder="Nova senha do usuário" />
+                  <button
+                    className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-700"
+                    disabled={busy || !selectedUserId || userNewPassword.length < 8}
+                    onClick={() => runAction('set_user_password', { user_id: selectedUserId, new_password: userNewPassword, force_password_change: true }, 'Senha redefinida. Usuário deverá trocar no 1º login.')}
+                  >
+                    Trocar senha e forçar troca no 1º login
+                  </button>
                 </div>
               </SurfaceCard>
 
@@ -1075,18 +1178,23 @@ export default function Owner2() {
             </div>
           )}
 
-          {activeTab === 'planos' && (
+          {activeTab === 'comercial' && (
             <div className="grid gap-4 xl:grid-cols-2">
-              <SurfaceCard title="Novo plano">
+              <SurfaceCard title="Planos" subtitle="Crie e ajuste planos base com periodicidade padrão">
                 <div className="grid gap-2">
                   <input className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" value={planCode} onChange={(e) => setPlanCode(e.target.value)} placeholder="Código" />
                   <input className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" value={planName} onChange={(e) => setPlanName(e.target.value)} placeholder="Nome" />
                   <input className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" value={planPrice} onChange={(e) => setPlanPrice(e.target.value)} placeholder="Preço mensal" />
-                  <button className="rounded-lg bg-sky-700 px-3 py-2 text-sm font-semibold text-white" disabled={busy || !planCode || !planName} onClick={() => runAction('create_plan', { plan: { code: planCode.toUpperCase(), name: planName, price_month: Number(planPrice || 0), user_limit: 10, data_limit_mb: 2048, active: true } }, 'Plano criado com sucesso.')}>Criar plano</button>
+                  <select className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" value={planDefaultPeriod} onChange={(e) => setPlanDefaultPeriod(e.target.value as 'monthly' | 'quarterly' | 'yearly')}>
+                    <option value="monthly">Periodicidade padrão: Mensal</option>
+                    <option value="quarterly">Periodicidade padrão: Trimestral</option>
+                    <option value="yearly">Periodicidade padrão: Anual</option>
+                  </select>
+                  <button className="rounded-lg bg-sky-700 px-3 py-2 text-sm font-semibold text-white" disabled={busy || !planCode || !planName} onClick={() => runAction('create_plan', { plan: { code: planCode.toUpperCase(), name: planName, description: `Periodicidade padrão: ${planDefaultPeriod}`, price_month: Number(planPrice || 0), user_limit: 10, data_limit_mb: 2048, module_flags: { default_periodicity: planDefaultPeriod }, active: true } }, 'Plano criado com sucesso.')}>Criar plano</button>
                 </div>
               </SurfaceCard>
 
-              <SurfaceCard title="Planos">
+              <SurfaceCard title="Catálogo de planos">
                 <div className="max-h-[420px] overflow-auto rounded-xl border border-slate-200">
                   <table className="w-full text-xs">
                     <thead className="bg-slate-100">
@@ -1111,17 +1219,33 @@ export default function Owner2() {
             </div>
           )}
 
-          {activeTab === 'assinaturas' && (
+          {activeTab === 'comercial' && (
             <div className="grid gap-4 xl:grid-cols-2">
-              <SurfaceCard title="Assinaturas">
+              <SurfaceCard title="Assinaturas por empresa" subtitle="Cada empresa com plano, valor e periodicidade próprios">
                 <div className="grid gap-2">
                   <select className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" value={subscriptionPlanId} onChange={(e) => setSubscriptionPlanId(e.target.value)}>
                     <option value="">Plano</option>
                     {plans.map((p) => <option key={String(p.id)} value={String(p.id)}>{String(p.name ?? p.code ?? p.id)}</option>)}
                   </select>
                   <input className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" value={subscriptionAmount} onChange={(e) => setSubscriptionAmount(e.target.value)} placeholder="Valor" />
-                  <button className="rounded-lg bg-sky-700 px-3 py-2 text-sm font-semibold text-white" disabled={busy || !companyId || !subscriptionPlanId} onClick={() => runAction('create_subscription', { subscription: { empresa_id: companyId, plan_id: subscriptionPlanId, amount: Number(subscriptionAmount || 0), status: 'ativa' } }, 'Assinatura criada com sucesso.')}>Criar assinatura</button>
+                  <select className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" value={subscriptionPeriod} onChange={(e) => setSubscriptionPeriod(e.target.value as 'monthly' | 'quarterly' | 'yearly' | 'custom')}>
+                    <option value="monthly">Periodicidade: Mensal</option>
+                    <option value="quarterly">Periodicidade: Trimestral</option>
+                    <option value="yearly">Periodicidade: Anual</option>
+                    <option value="custom">Periodicidade: Customizada</option>
+                  </select>
+                  <select className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" value={subscriptionStatus} onChange={(e) => setSubscriptionStatus(e.target.value as 'ativa' | 'atrasada' | 'cancelada' | 'teste')}>
+                    <option value="teste">Status inicial: TESTE</option>
+                    <option value="ativa">Status inicial: Ativa</option>
+                    <option value="atrasada">Status inicial: Atrasada</option>
+                    <option value="cancelada">Status inicial: Cancelada</option>
+                  </select>
+                  <input className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" type="date" value={subscriptionStartsAt} onChange={(e) => setSubscriptionStartsAt(e.target.value)} placeholder="Início" />
+                  <input className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" type="date" value={subscriptionRenewalAt} onChange={(e) => setSubscriptionRenewalAt(e.target.value)} placeholder="Próximo vencimento" />
+                  <input className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" type="date" value={subscriptionEndsAt} onChange={(e) => setSubscriptionEndsAt(e.target.value)} placeholder="Fim (opcional)" />
+                  <button className="rounded-lg bg-sky-700 px-3 py-2 text-sm font-semibold text-white" disabled={busy || !companyId || !subscriptionPlanId} onClick={() => runAction('create_subscription', { subscription: { empresa_id: companyId, plan_id: subscriptionPlanId, amount: Number(subscriptionAmount || 0), period: subscriptionPeriod, starts_at: subscriptionStartsAt || undefined, renewal_at: subscriptionRenewalAt || undefined, ends_at: subscriptionEndsAt || undefined, status: subscriptionStatus } }, 'Assinatura criada com sucesso.')}>Criar assinatura</button>
                   <button className="rounded-lg border border-slate-300 px-3 py-2 text-sm" disabled={busy || !companyId} onClick={() => runAction('set_subscription_status', { empresa_id: companyId, status: 'ativa' }, 'Assinatura ativada.')}>Ativar assinatura da empresa</button>
+                  <button className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-700" disabled={busy || !isOwnerMaster} onClick={() => runAction('enforce_subscription_expiry', {}, 'Vencimentos processados. Empresas vencidas foram bloqueadas.')}>Processar vencimentos e bloquear</button>
                   <input className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" value={planCodeToChange} onChange={(e) => setPlanCodeToChange(e.target.value)} placeholder="Código do novo plano" />
                   <button className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-700" disabled={busy || !companyId || !planCodeToChange} onClick={() => runAction('change_plan', { empresa_id: companyId, plano_codigo: planCodeToChange.toUpperCase() }, 'Plano da empresa alterado.')}>Trocar plano</button>
                 </div>
@@ -1586,16 +1710,7 @@ export default function Owner2() {
                     Conceder SYSTEM_ADMIN
                   </button>
 
-                  <div className="grid grid-cols-[1fr,140px] gap-2">
-                    <input className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" value={timeoutMinutes} onChange={(e) => setTimeoutMinutes(e.target.value)} placeholder="Timeout (min)" />
-                    <button
-                      className="rounded-lg border border-slate-300 px-3 py-2 text-sm"
-                      disabled={busy || !systemUserId || !timeoutMinutes}
-                      onClick={() => runAction('set_user_inactivity_timeout', { user_id: systemUserId, inactivity_timeout_minutes: Number(timeoutMinutes || 10) }, 'Timeout por usuário atualizado.')}
-                    >
-                      Aplicar timeout
-                    </button>
-                  </div>
+                  <p className="text-xs text-slate-500">Timeout de inatividade ocultado do Owner2 para simplificar a operação.</p>
 
                   <select className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" value={selectedTableName} onChange={(e) => setSelectedTableName(e.target.value)}>
                     <option value="">Tabela para purge</option>
