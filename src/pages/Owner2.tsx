@@ -39,10 +39,14 @@ const OWNER2_TABS = [
   'usuarios',
   'planos',
   'assinaturas',
+  'financeiro',
   'contratos',
   'suporte',
   'configuracoes',
+  'feature-flags',
   'auditoria',
+  'logs',
+  'sistema',
   'owner-master',
 ] as const
 
@@ -160,8 +164,18 @@ export default function Owner2() {
   const [contractContent, setContractContent] = useState('')
   const [contractSummary, setContractSummary] = useState('')
 
+  const [billingSubscriptionId, setBillingSubscriptionId] = useState('')
+  const [billingAmount, setBillingAmount] = useState('')
+  const [billingPaymentStatus, setBillingPaymentStatus] = useState('paid')
+
   const [selectedTicketId, setSelectedTicketId] = useState('')
   const [ticketResponse, setTicketResponse] = useState('')
+
+  const [systemUserId, setSystemUserId] = useState('')
+  const [timeoutMinutes, setTimeoutMinutes] = useState('10')
+  const [selectedTableName, setSelectedTableName] = useState('')
+  const [logSearch, setLogSearch] = useState('')
+  const [logSeverityFilter, setLogSeverityFilter] = useState<'todos' | 'info' | 'warn' | 'error' | 'critical'>('todos')
 
   const [moduleOs, setModuleOs] = useState(true)
   const [modulePreventiva, setModulePreventiva] = useState(true)
@@ -192,10 +206,10 @@ export default function Owner2() {
   const subscriptionsQuery = useOwner2Subscriptions(activeTab === 'assinaturas' || activeTab === 'dashboard')
   const contractsQuery = useOwner2Contracts(activeTab === 'contratos' || activeTab === 'dashboard')
   const ticketsQuery = useOwner2Tickets(activeTab === 'suporte' || activeTab === 'dashboard')
-  const auditsQuery = useOwner2Audits(activeTab === 'auditoria' || activeTab === 'monitoramento')
+  const auditsQuery = useOwner2Audits(activeTab === 'auditoria' || activeTab === 'monitoramento' || activeTab === 'logs')
   const ownersQuery = useOwner2PlatformOwners(activeTab === 'owner-master')
-  const tablesQuery = useOwner2Tables(companyId || undefined, activeTab === 'dashboard' || activeTab === 'monitoramento')
-  const settingsQuery = useOwner2Settings(companyId || undefined, activeTab === 'configuracoes')
+  const tablesQuery = useOwner2Tables(companyId || undefined, activeTab === 'dashboard' || activeTab === 'monitoramento' || activeTab === 'sistema')
+  const settingsQuery = useOwner2Settings(companyId || undefined, activeTab === 'configuracoes' || activeTab === 'feature-flags')
   const { execute } = useOwner2Actions()
 
   const companies = useMemo(() => safeArray<Record<string, unknown>>((companiesQuery.data as any)?.companies), [companiesQuery.data])
@@ -343,6 +357,36 @@ export default function Owner2() {
       admins,
     }
   }, [users])
+
+  const financeSummary = useMemo(() => {
+    const totalMrr = subscriptions.reduce((acc, sub) => acc + asNumber(sub.amount, 0), 0)
+    const paid = subscriptions.filter((sub) => String(sub.payment_status ?? '').toLowerCase() === 'paid').length
+    const late = subscriptions.filter((sub) => {
+      const paymentStatus = String(sub.payment_status ?? '').toLowerCase()
+      const subStatus = String(sub.status ?? '').toLowerCase()
+      return paymentStatus === 'late' || subStatus === 'atrasada'
+    }).length
+
+    return {
+      totalMrr,
+      paid,
+      late,
+      total: subscriptions.length,
+    }
+  }, [subscriptions])
+
+  const logsFiltered = useMemo(() => {
+    const q = logSearch.trim().toLowerCase()
+    return logs.filter((log) => {
+      const action = String(log.action ?? log.event ?? '').toLowerCase()
+      const actor = String(log.actor_email ?? log.user_email ?? '').toLowerCase()
+      const severity = String(log.severity ?? '').toLowerCase()
+
+      const textOk = !q || action.includes(q) || actor.includes(q)
+      const severityOk = logSeverityFilter === 'todos' || severity === logSeverityFilter
+      return textOk && severityOk
+    })
+  }, [logSearch, logSeverityFilter, logs])
 
   async function runAction(action: any, payload: Record<string, unknown>, successMessage: string) {
     setError(null)
@@ -880,6 +924,50 @@ export default function Owner2() {
             </div>
           )}
 
+          {activeTab === 'financeiro' && (
+            <div className="grid gap-4 xl:grid-cols-2">
+              <SurfaceCard title="Resumo financeiro" subtitle="Receita recorrente e status de pagamento">
+                <div className="grid gap-2 sm:grid-cols-2">
+                  <MetricTile label="MRR" value={`R$ ${financeSummary.totalMrr.toLocaleString('pt-BR')}`} icon={CreditCard} tone="emerald" />
+                  <MetricTile label="Assinaturas pagas" value={financeSummary.paid} icon={ShieldCheck} tone="sky" />
+                  <MetricTile label="Assinaturas atrasadas" value={financeSummary.late} icon={AlertTriangle} tone="amber" />
+                  <MetricTile label="Total assinaturas" value={financeSummary.total} icon={Database} tone="rose" />
+                </div>
+              </SurfaceCard>
+
+              <SurfaceCard title="Atualizar cobrança" subtitle="Sem editar dados técnicos direto">
+                <div className="grid gap-2">
+                  <select className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" value={billingSubscriptionId} onChange={(e) => setBillingSubscriptionId(e.target.value)}>
+                    <option value="">Selecione a assinatura</option>
+                    {subscriptions.map((s, idx) => (
+                      <option key={`${String(s.id ?? 'sub')}-${idx}`} value={String(s.id ?? '')}>
+                        {String(s.id ?? '-')} • {String(s.empresa_id ?? '-')}
+                      </option>
+                    ))}
+                  </select>
+                  <input className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" placeholder="Novo valor (opcional)" value={billingAmount} onChange={(e) => setBillingAmount(e.target.value)} />
+                  <select className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" value={billingPaymentStatus} onChange={(e) => setBillingPaymentStatus(e.target.value)}>
+                    <option value="paid">Pago</option>
+                    <option value="late">Atrasado</option>
+                    <option value="pending">Pendente</option>
+                    <option value="failed">Falhou</option>
+                  </select>
+                  <button
+                    className="rounded-lg bg-sky-700 px-3 py-2 text-sm font-semibold text-white"
+                    disabled={busy || !billingSubscriptionId || !billingPaymentStatus}
+                    onClick={() => runAction('update_subscription_billing', {
+                      subscription_id: billingSubscriptionId,
+                      amount: billingAmount ? Number(billingAmount) : undefined,
+                      payment_status: billingPaymentStatus,
+                    }, 'Cobrança atualizada com sucesso.')}
+                  >
+                    Atualizar cobrança
+                  </button>
+                </div>
+              </SurfaceCard>
+            </div>
+          )}
+
           {activeTab === 'contratos' && (
             <div className="grid gap-4 xl:grid-cols-2">
               <SurfaceCard title="Gerenciar contrato">
@@ -1026,6 +1114,54 @@ export default function Owner2() {
             </div>
           )}
 
+          {activeTab === 'feature-flags' && (
+            <div className="grid gap-4 xl:grid-cols-2">
+              <SurfaceCard title="Feature Flags por empresa" subtitle="Controle rápido de recursos premium">
+                <div className="space-y-2">
+                  <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={featureAi} onChange={(e) => setFeatureAi(e.target.checked)} /> IA habilitada</label>
+                  <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={featureApi} onChange={(e) => setFeatureApi(e.target.checked)} /> API habilitada</label>
+                  <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={featureSso} onChange={(e) => setFeatureSso(e.target.checked)} /> SSO habilitado</label>
+                </div>
+
+                <button
+                  className="mt-4 rounded-lg bg-sky-700 px-3 py-2 text-sm font-semibold text-white"
+                  disabled={busy || !companyId}
+                  onClick={() => runAction('update_company_settings', {
+                    empresa_id: companyId,
+                    settings: {
+                      modules: {
+                        os: moduleOs,
+                        preventiva: modulePreventiva,
+                        preditiva: modulePreditiva,
+                        materiais: moduleMateriais,
+                        auditoria: moduleAuditoria,
+                      },
+                      limits: {
+                        users: Number(limitUsers || 0),
+                        equipamentos: Number(limitAssets || 0),
+                        storage_mb: Number(limitStorageMb || 0),
+                      },
+                      features: {
+                        ai: featureAi,
+                        api: featureApi,
+                        sso: featureSso,
+                      },
+                    },
+                  }, 'Feature flags salvas com sucesso.')}
+                >
+                  Salvar feature flags
+                </button>
+              </SurfaceCard>
+
+              <SurfaceCard title="Estado atual" subtitle="Configuração carregada da empresa selecionada">
+                <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs text-slate-700">
+                  <p>Empresa selecionada: {companyId || 'Nenhuma'}</p>
+                  <p className="mt-1">Recursos atuais: AI {featureAi ? 'ON' : 'OFF'} • API {featureApi ? 'ON' : 'OFF'} • SSO {featureSso ? 'ON' : 'OFF'}</p>
+                </div>
+              </SurfaceCard>
+            </div>
+          )}
+
           {activeTab === 'auditoria' && (
             <SurfaceCard title="Auditoria">
               <div className="max-h-[520px] overflow-auto rounded-xl border border-slate-200">
@@ -1049,6 +1185,110 @@ export default function Owner2() {
                 </table>
               </div>
             </SurfaceCard>
+          )}
+
+          {activeTab === 'logs' && (
+            <SurfaceCard title="Logs" subtitle="Busca por ação/usuário e filtro de severidade">
+              <div className="mb-3 grid gap-2 sm:grid-cols-3">
+                <input className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" placeholder="Buscar ação ou usuário" value={logSearch} onChange={(e) => setLogSearch(e.target.value)} />
+                <select className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" value={logSeverityFilter} onChange={(e) => setLogSeverityFilter(e.target.value as 'todos' | 'info' | 'warn' | 'error' | 'critical')}>
+                  <option value="todos">Severidade: Todas</option>
+                  <option value="info">info</option>
+                  <option value="warn">warn</option>
+                  <option value="error">error</option>
+                  <option value="critical">critical</option>
+                </select>
+                <button className="rounded-lg border border-slate-300 px-3 py-2 text-sm" onClick={() => { setLogSearch(''); setLogSeverityFilter('todos') }}>Limpar filtros</button>
+              </div>
+
+              <div className="max-h-[520px] overflow-auto rounded-xl border border-slate-200">
+                <table className="w-full text-xs">
+                  <thead className="bg-slate-100">
+                    <tr>
+                      <th className="px-2 py-2 text-left">Ação</th>
+                      <th className="px-2 py-2 text-left">Severidade</th>
+                      <th className="px-2 py-2 text-left">Usuário</th>
+                      <th className="px-2 py-2 text-left">Data</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {logsFiltered.map((l, idx) => (
+                      <tr key={`${String(l.id ?? 'log')}-${idx}`} className="border-t border-slate-200">
+                        <td className="px-2 py-2">{String(l.action ?? l.event ?? '-')}</td>
+                        <td className="px-2 py-2">{String(l.severity ?? '-')}</td>
+                        <td className="px-2 py-2">{String(l.actor_email ?? l.user_email ?? '-')}</td>
+                        <td className="px-2 py-2">{String(l.created_at ?? l.at ?? '-')}</td>
+                      </tr>
+                    ))}
+                    {logsFiltered.length === 0 && (
+                      <tr>
+                        <td className="px-2 py-3 text-slate-500" colSpan={4}>Nenhum log encontrado com os filtros atuais.</td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </SurfaceCard>
+          )}
+
+          {activeTab === 'sistema' && (
+            <div className="grid gap-4 xl:grid-cols-2">
+              <SurfaceCard title="Ações de sistema" subtitle="Operações avançadas com segurança">
+                <div className="grid gap-2">
+                  <select className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" value={systemUserId} onChange={(e) => setSystemUserId(e.target.value)}>
+                    <option value="">Usuário para promoção/timeout</option>
+                    {users.map((u) => (
+                      <option key={String(u.id)} value={String(u.id)}>{String(u.nome ?? u.email ?? u.id)}</option>
+                    ))}
+                  </select>
+
+                  <button
+                    className="rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                    disabled={busy || !systemUserId}
+                    onClick={() => runAction('create_system_admin', { user_id: systemUserId }, 'Permissão SYSTEM_ADMIN concedida.')}
+                  >
+                    Conceder SYSTEM_ADMIN
+                  </button>
+
+                  <div className="grid grid-cols-[1fr,140px] gap-2">
+                    <input className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" value={timeoutMinutes} onChange={(e) => setTimeoutMinutes(e.target.value)} placeholder="Timeout (min)" />
+                    <button
+                      className="rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                      disabled={busy || !systemUserId || !timeoutMinutes}
+                      onClick={() => runAction('set_user_inactivity_timeout', { user_id: systemUserId, inactivity_timeout_minutes: Number(timeoutMinutes || 10) }, 'Timeout por usuário atualizado.')}
+                    >
+                      Aplicar timeout
+                    </button>
+                  </div>
+
+                  <select className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" value={selectedTableName} onChange={(e) => setSelectedTableName(e.target.value)}>
+                    <option value="">Tabela para purge</option>
+                    {tables.map((t, idx) => (
+                      <option key={`${String(t.table_name ?? t.name ?? 'tb')}-${idx}`} value={String(t.table_name ?? t.name ?? '')}>
+                        {String(t.table_name ?? t.name ?? '-')}
+                      </option>
+                    ))}
+                  </select>
+
+                  <button
+                    className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-700"
+                    disabled={busy || !selectedTableName || !authPassword}
+                    onClick={() => runAction('purge_table_data', { table_name: selectedTableName, empresa_id: companyId || undefined, auth_password: authPassword }, 'Purge de tabela concluído.')}
+                  >
+                    Executar purge da tabela
+                  </button>
+                </div>
+              </SurfaceCard>
+
+              <SurfaceCard title="Resumo operacional do sistema" subtitle="Visão rápida de segurança e manutenção">
+                <div className="grid gap-2 sm:grid-cols-2">
+                  <MetricTile label="Tabelas detectadas" value={tables.length} icon={Database} tone="sky" />
+                  <MetricTile label="Usuários globais" value={users.length} icon={Users} tone="emerald" />
+                  <MetricTile label="Empresa em escopo" value={companyId ? 'Selecionada' : 'Global'} icon={Building2} tone="amber" />
+                  <MetricTile label="Módulo" value="Sistema" icon={Settings2} tone="rose" />
+                </div>
+              </SurfaceCard>
+            </div>
           )}
 
           {activeTab === 'owner-master' && (
