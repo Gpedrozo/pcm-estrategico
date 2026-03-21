@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
 import { 
   Calendar,
@@ -27,6 +28,7 @@ import { format, addDays, startOfWeek, isSameDay, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
 type EventTone = 'executado' | 'vencido' | 'proximo' | 'futuro';
+type CalendarFilter = 'all' | 'preventiva' | 'lubrificacao' | 'pred-inspecao';
 
 function mapMaintenanceTipoToOsTipo(tipo: string) {
   if (tipo === 'preventiva') return 'PREVENTIVA';
@@ -44,6 +46,7 @@ export default function Programacao() {
   );
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
   const [rescheduleDate, setRescheduleDate] = useState('');
+  const [calendarFilter, setCalendarFilter] = useState<CalendarFilter>('all');
 
   const weekStartIso = currentWeekStart.toISOString();
   const weekEndIso = addDays(currentWeekStart, 6).toISOString();
@@ -92,19 +95,25 @@ export default function Programacao() {
 
   const eventosByDay = useMemo(() => {
     if (!eventos) return {};
+
+    const eventsFilteredByType = eventos.filter((evento) => {
+      if (calendarFilter === 'all') return true;
+      if (calendarFilter === 'pred-inspecao') return ['preditiva', 'inspecao'].includes(evento.tipo);
+      return evento.tipo === calendarFilter;
+    });
     
     const grouped: { [key: string]: typeof eventos } = {};
     
     weekDays.forEach(day => {
       const dayKey = format(day, 'yyyy-MM-dd');
-      grouped[dayKey] = eventos.filter((evento) => {
+      grouped[dayKey] = eventsFilteredByType.filter((evento) => {
         const eventDate = parseISO(evento.data_programada);
         return isSameDay(eventDate, day);
       });
     });
     
     return grouped;
-  }, [eventos, weekDays]);
+  }, [eventos, weekDays, calendarFilter]);
 
   const stats = useMemo(() => {
     const allEvents = Object.values(eventosByDay).flat();
@@ -324,6 +333,17 @@ export default function Programacao() {
             <p className="text-2xl font-bold text-yellow-500">{stats.proximas}</p>
           </CardContent>
         </Card>
+      </div>
+
+      <div className="bg-card border border-border rounded-lg p-3">
+        <Tabs value={calendarFilter} onValueChange={(value) => setCalendarFilter(value as CalendarFilter)}>
+          <TabsList className="w-full grid grid-cols-2 md:grid-cols-4 gap-2 h-auto bg-transparent p-0">
+            <TabsTrigger value="all">Todas</TabsTrigger>
+            <TabsTrigger value="preventiva">Preventiva</TabsTrigger>
+            <TabsTrigger value="lubrificacao">Lubrificação</TabsTrigger>
+            <TabsTrigger value="pred-inspecao">Preditiva/Inspeções</TabsTrigger>
+          </TabsList>
+        </Tabs>
       </div>
 
       <div className="flex items-center justify-between bg-card border border-border rounded-lg p-4">

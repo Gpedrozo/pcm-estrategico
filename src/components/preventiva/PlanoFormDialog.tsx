@@ -58,10 +58,14 @@ export default function PlanoFormDialog({ open, onOpenChange, equipamentos }: Pr
               <Input value={form.codigo} onChange={e => set('codigo', e.target.value.toUpperCase())} required placeholder="PP-001" />
             </div>
             <div className="space-y-2">
-              <Label>Equipamento *</Label>
+              <Label>Equipamento (opcional)</Label>
               <Select
-                value={form.equipamento_id}
+                value={form.equipamento_id || 'none'}
                 onValueChange={value => {
+                  if (value === 'none') {
+                    set('equipamento_id', '');
+                    return;
+                  }
                   const equipamento = equipamentos.find((item) => item.id === value);
                   set('equipamento_id', value);
                   set('tag', equipamento?.tag || '');
@@ -69,12 +73,17 @@ export default function PlanoFormDialog({ open, onOpenChange, equipamentos }: Pr
               >
                 <SelectTrigger><SelectValue placeholder="Selecionar" /></SelectTrigger>
                 <SelectContent>
+                  <SelectItem value="none">Não vincular agora</SelectItem>
                   {equipamentos.filter(e => e.ativo).map(e => (
                     <SelectItem key={e.id} value={e.id}>{e.tag} - {e.nome}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
+          </div>
+          <div className="space-y-2">
+            <Label>TAG (opcional)</Label>
+            <Input value={form.tag} onChange={e => set('tag', e.target.value.toUpperCase())} placeholder="Ex: EQ-1001" />
           </div>
           <div className="space-y-2">
             <Label>Nome do Plano *</Label>
@@ -110,7 +119,7 @@ export default function PlanoFormDialog({ open, onOpenChange, equipamentos }: Pr
             <Textarea value={form.instrucoes} onChange={e => set('instrucoes', e.target.value)} rows={3} placeholder="Instruções detalhadas para execução..." />
           </div>
           <div className="flex gap-3 pt-2">
-            <Button type="submit" className="flex-1" disabled={createMutation.isPending || !form.equipamento_id}>
+            <Button type="submit" className="flex-1" disabled={createMutation.isPending}>
               {createMutation.isPending ? 'Criando...' : 'Criar Plano'}
             </Button>
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>

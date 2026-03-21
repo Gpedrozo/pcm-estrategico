@@ -10,8 +10,10 @@ export interface ExecucaoOSRow {
   os_id: string;
   mecanico_id: string | null;
   mecanico_nome: string;
+  data_inicio?: string | null;
   data_execucao: string;
   hora_inicio: string;
+  data_fim?: string | null;
   hora_fim: string;
   tempo_execucao: number;
   tempo_execucao_bruto?: number | null;
@@ -29,7 +31,9 @@ export interface ExecucaoOSInsert {
   os_id: string;
   mecanico_id?: string | null;
   mecanico_nome: string;
+  data_inicio?: string;
   hora_inicio: string;
+  data_fim?: string;
   hora_fim: string;
   tempo_execucao: number;
   tempo_execucao_bruto?: number;
@@ -50,7 +54,9 @@ export interface MaterialFechamentoAtomic {
 }
 
 export interface PausaFechamentoAtomic {
+  data_inicio?: string;
   inicio: string;
+  data_fim?: string;
   fim: string;
   motivo?: string;
 }
@@ -59,7 +65,9 @@ export interface CloseOSAtomicParams {
   os_id: string;
   mecanico_id: string | null;
   mecanico_nome: string;
+  data_inicio: string;
   hora_inicio: string;
+  data_fim: string;
   hora_fim: string;
   tempo_execucao: number;
   servico_executado: string;
@@ -162,7 +170,9 @@ export function useCloseOSAtomic() {
         p_os_id: params.os_id,
         p_mecanico_id: params.mecanico_id,
         p_mecanico_nome: params.mecanico_nome,
+        p_data_inicio: params.data_inicio,
         p_hora_inicio: params.hora_inicio,
+        p_data_fim: params.data_fim,
         p_hora_fim: params.hora_fim,
         p_tempo_execucao: params.tempo_execucao,
         p_servico_executado: params.servico_executado,

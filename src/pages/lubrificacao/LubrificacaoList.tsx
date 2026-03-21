@@ -93,7 +93,13 @@ export function LubrificacaoList({
                   <tr key={plano.id}>
                     <td className="font-mono font-semibold text-primary">{plano.codigo}</td>
                     <td>{plano.nome}</td>
-                    <td>{equipamentoNome(plano.equipamento_id)}</td>
+                    <td>
+                      <div className="space-y-0.5">
+                        <p>{equipamentoNome(plano.equipamento_id)}</p>
+                        {plano.tag && <p className="text-[11px] text-muted-foreground font-mono">TAG: {plano.tag}</p>}
+                        {plano.localizacao && <p className="text-[11px] text-muted-foreground truncate">{plano.localizacao}</p>}
+                      </div>
+                    </td>
                     <td>
                       <Badge variant="outline">{plano.status || 'programado'}</Badge>
                     </td>

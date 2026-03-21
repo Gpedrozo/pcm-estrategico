@@ -38,6 +38,8 @@ export function LubrificacaoDetalhe({ plano, equipamentos, onEdit }: Lubrificaca
       <CardContent>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
           <div><span className="text-muted-foreground">Equipamento:</span> {equipamento ? `${equipamento.tag} - ${equipamento.nome}` : '—'}</div>
+          <div><span className="text-muted-foreground">TAG vinculada:</span> {plano.tag || equipamento?.tag || '—'}</div>
+          <div><span className="text-muted-foreground">Rota / Estrutura:</span> {plano.localizacao || equipamento?.localizacao || '—'}</div>
           <div><span className="text-muted-foreground">Ponto:</span> {plano.ponto_lubrificacao || plano.ponto || '—'}</div>
           <div><span className="text-muted-foreground">Lubrificante:</span> {plano.lubrificante || plano.tipo_lubrificante || '—'}</div>
           <div><span className="text-muted-foreground">Quantidade:</span> {plano.quantidade ?? '—'}</div>

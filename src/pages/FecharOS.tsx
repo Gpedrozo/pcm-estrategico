@@ -73,7 +73,9 @@ interface MaterialUsado {
 
 interface PausaExecucao {
   id: string;
+  data_inicio: string;
   inicio: string;
+  data_fim: string;
   fim: string;
   motivo: string;
 }
@@ -104,7 +106,9 @@ export default function FecharOS() {
   const [activeTab, setActiveTab] = useState('execucao');
   const [formData, setFormData] = useState({
     mecanicoId: '',
+    dataInicio: new Date().toISOString().slice(0, 10),
     horaInicio: '',
+    dataFim: new Date().toISOString().slice(0, 10),
     horaFim: '',
     servicoExecutado: '',
     custoTerceiros: '',
@@ -120,9 +124,12 @@ export default function FecharOS() {
   const [materialSelecionado, setMaterialSelecionado] = useState('');
   const [quantidadeMaterial, setQuantidadeMaterial] = useState('');
   const [pausaInicio, setPausaInicio] = useState('');
+  const [pausaDataInicio, setPausaDataInicio] = useState(new Date().toISOString().slice(0, 10));
   const [pausaFim, setPausaFim] = useState('');
+  const [pausaDataFim, setPausaDataFim] = useState(new Date().toISOString().slice(0, 10));
   const [pausaMotivo, setPausaMotivo] = useState('Intervalo');
   const [pausasExecucao, setPausasExecucao] = useState<PausaExecucao[]>([]);
+  const [teveIntervalos, setTeveIntervalos] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const selectedMecanico = mecanicos?.find(m => m.id === formData.mecanicoId);
@@ -130,16 +137,18 @@ export default function FecharOS() {
   // Determine if RCA is required based on OS type
   const isCorretiva = selectedOS?.tipo === 'CORRETIVA';
 
-  const calculateDuration = () => {
-    if (!formData.horaInicio || !formData.horaFim) return null;
-    
-    const [h1, m1] = formData.horaInicio.split(':').map(Number);
-    const [h2, m2] = formData.horaFim.split(':').map(Number);
-    
-    const minutes = (h2 * 60 + m2) - (h1 * 60 + m1);
-    if (minutes <= 0) return null;
+  const parseDateTime = (dateValue: string, timeValue: string) => {
+    if (!dateValue || !timeValue) return null;
+    const parsed = new Date(`${dateValue}T${timeValue}:00`);
+    if (Number.isNaN(parsed.getTime())) return null;
+    return parsed;
+  };
 
-    return minutes;
+  const calculateDuration = () => {
+    const inicio = parseDateTime(formData.dataInicio, formData.horaInicio);
+    const fim = parseDateTime(formData.dataFim, formData.horaFim);
+    if (!inicio || !fim || fim <= inicio) return null;
+    return Math.max(1, Math.floor((fim.getTime() - inicio.getTime()) / 60000));
   };
 
   const timeToMinutes = (time: string) => {
@@ -149,12 +158,12 @@ export default function FecharOS() {
 
   const calculatePauseMinutes = () => {
     const total = pausasExecucao.reduce((acc, pausa) => {
-      const inicio = timeToMinutes(pausa.inicio);
-      const fim = timeToMinutes(pausa.fim);
-      if (!Number.isFinite(inicio) || !Number.isFinite(fim) || fim <= inicio) {
+      const inicio = parseDateTime(pausa.data_inicio, pausa.inicio);
+      const fim = parseDateTime(pausa.data_fim, pausa.fim);
+      if (!inicio || !fim || fim <= inicio) {
         return acc;
       }
-      return acc + (fim - inicio);
+      return acc + Math.max(1, Math.floor((fim.getTime() - inicio.getTime()) / 60000));
     }, 0);
 
     return total;
@@ -181,10 +190,12 @@ export default function FecharOS() {
       return;
     }
 
-    if (formData.horaInicio && formData.horaFim) {
-      const inicioExec = timeToMinutes(formData.horaInicio);
-      const fimExec = timeToMinutes(formData.horaFim);
-      if (inicio < inicioExec || fim > fimExec) {
+    if (formData.horaInicio && formData.horaFim && formData.dataInicio && formData.dataFim) {
+      const inicioExec = parseDateTime(formData.dataInicio, formData.horaInicio);
+      const fimExec = parseDateTime(formData.dataFim, formData.horaFim);
+      const inicioPausa = parseDateTime(pausaDataInicio, pausaInicio);
+      const fimPausa = parseDateTime(pausaDataFim, pausaFim);
+      if (!inicioExec || !fimExec || !inicioPausa || !fimPausa || inicioPausa < inicioExec || fimPausa > fimExec) {
         toast({
           title: 'Pausa fora da execução',
           description: 'A pausa deve estar dentro do horário de início/fim da execução.',
@@ -195,9 +206,12 @@ export default function FecharOS() {
     }
 
     const intersectsExisting = pausasExecucao.some((p) => {
-      const pInicio = timeToMinutes(p.inicio);
-      const pFim = timeToMinutes(p.fim);
-      return !(fim <= pInicio || inicio >= pFim);
+      const pInicio = parseDateTime(p.data_inicio, p.inicio);
+      const pFim = parseDateTime(p.data_fim, p.fim);
+      const inicioPausa = parseDateTime(pausaDataInicio, pausaInicio);
+      const fimPausa = parseDateTime(pausaDataFim, pausaFim);
+      if (!pInicio || !pFim || !inicioPausa || !fimPausa) return false;
+      return !(fimPausa <= pInicio || inicioPausa >= pFim);
     });
 
     if (intersectsExisting) {
@@ -213,13 +227,18 @@ export default function FecharOS() {
       ...prev,
       {
         id: `${Date.now()}-${prev.length}`,
+        data_inicio: pausaDataInicio,
         inicio: pausaInicio,
+        data_fim: pausaDataFim,
         fim: pausaFim,
         motivo: pausaMotivo || 'Intervalo',
       },
     ]);
 
+    setTeveIntervalos(true);
+    setPausaDataInicio(formData.dataInicio || new Date().toISOString().slice(0, 10));
     setPausaInicio('');
+    setPausaDataFim(formData.dataFim || new Date().toISOString().slice(0, 10));
     setPausaFim('');
     setPausaMotivo('Intervalo');
   };
@@ -302,7 +321,9 @@ export default function FecharOS() {
           os_id: selectedOS.id,
           mecanico_id: formData.mecanicoId || null,
           mecanico_nome: selectedMecanico.nome,
+          data_inicio: formData.dataInicio,
           hora_inicio: formData.horaInicio,
+          data_fim: formData.dataFim,
           hora_fim: formData.horaFim,
           tempo_execucao: tempoExecucaoBruto,
           servico_executado: servicoExecutadoComPausas,
@@ -317,7 +338,9 @@ export default function FecharOS() {
             custo_total: item.quantidade * item.material.custo_unitario,
           })),
           pausas: pausasExecucao.map((p) => ({
+            data_inicio: p.data_inicio,
             inicio: p.inicio,
+            data_fim: p.data_fim,
             fim: p.fim,
             motivo: p.motivo,
           })),
@@ -328,19 +351,16 @@ export default function FecharOS() {
           licoes_aprendidas: rcaData.requireRCA && isCorretiva ? rcaData.licoesAprendidas : null,
         });
       } catch (atomicError: any) {
-        const message = String(atomicError?.message || '').toLowerCase();
-        const functionMissing = message.includes('close_os_with_execution_atomic') && message.includes('does not exist');
-
-        if (!functionMissing) {
-          throw atomicError;
-        }
+        console.warn('Falha no fechamento atômico, usando fallback compatível.', atomicError);
 
         // Backward compatibility fallback when migration is not applied yet.
         await createExecucaoMutation.mutateAsync({
           os_id: selectedOS.id,
           mecanico_id: formData.mecanicoId,
           mecanico_nome: selectedMecanico.nome,
+          data_inicio: formData.dataInicio,
           hora_inicio: formData.horaInicio,
+          data_fim: formData.dataFim,
           hora_fim: formData.horaFim,
           tempo_execucao: tempoExecucao,
           tempo_execucao_bruto: tempoExecucaoBruto,
@@ -373,6 +393,12 @@ export default function FecharOS() {
           acao_corretiva: rcaData.requireRCA && isCorretiva ? rcaData.acaoCorretiva : null,
           licoes_aprendidas: rcaData.requireRCA && isCorretiva ? rcaData.licoesAprendidas : null,
         });
+
+        toast({
+          title: 'Fechamento concluído com fallback',
+          description: 'O modo atômico falhou e o sistema finalizou usando o fluxo de compatibilidade.',
+          variant: 'default',
+        });
       }
 
       await log('FECHAR_OS', `Fechamento da O.S ${selectedOS.numero_os} - Custo total: ${formatCurrency(custoTotal)} - Tempo bruto: ${tempoExecucaoBruto} min - Pausas: ${tempoPausas} min - Tempo líquido: ${tempoExecucao} min${rcaData.requireRCA ? ' (com RCA)' : ''}`, selectedOS.tag);
@@ -385,6 +411,11 @@ export default function FecharOS() {
       navigate('/os/historico');
     } catch (error) {
       console.error('Erro ao fechar O.S:', error);
+      toast({
+        title: 'Erro ao fechar O.S',
+        description: error instanceof Error ? error.message : 'Falha inesperada ao concluir fechamento.',
+        variant: 'destructive',
+      });
     } finally {
       setIsSubmitting(false);
     }
@@ -395,7 +426,9 @@ export default function FecharOS() {
     setActiveTab('execucao');
     setFormData({
       mecanicoId: '',
+      dataInicio: new Date().toISOString().slice(0, 10),
       horaInicio: '',
+      dataFim: new Date().toISOString().slice(0, 10),
       horaFim: '',
       servicoExecutado: '',
       custoTerceiros: '',
@@ -409,7 +442,10 @@ export default function FecharOS() {
     });
     setMateriaisUsados([]);
     setPausasExecucao([]);
+    setTeveIntervalos(false);
+    setPausaDataInicio(new Date().toISOString().slice(0, 10));
     setPausaInicio('');
+    setPausaDataFim(new Date().toISOString().slice(0, 10));
     setPausaFim('');
     setPausaMotivo('Intervalo');
   };
@@ -512,7 +548,7 @@ export default function FecharOS() {
             </div>
 
             {/* Mechanic and Time */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
               <div className="space-y-2 rounded-xl border border-border/70 p-4 bg-background/70">
                 <Label htmlFor="mecanico">Mecânico *</Label>
                 <Select 
@@ -533,12 +569,34 @@ export default function FecharOS() {
               </div>
 
               <div className="space-y-2 rounded-xl border border-border/70 p-4 bg-background/70">
+                <Label htmlFor="dataInicio">Data Início *</Label>
+                <Input
+                  id="dataInicio"
+                  type="date"
+                  value={formData.dataInicio}
+                  onChange={(e) => setFormData({ ...formData, dataInicio: e.target.value })}
+                  required
+                />
+              </div>
+
+              <div className="space-y-2 rounded-xl border border-border/70 p-4 bg-background/70">
                 <Label htmlFor="horaInicio">Hora Início *</Label>
                 <Input
                   id="horaInicio"
                   type="time"
                   value={formData.horaInicio}
                   onChange={(e) => setFormData({ ...formData, horaInicio: e.target.value })}
+                  required
+                />
+              </div>
+
+              <div className="space-y-2 rounded-xl border border-border/70 p-4 bg-background/70">
+                <Label htmlFor="dataFim">Data Final *</Label>
+                <Input
+                  id="dataFim"
+                  type="date"
+                  value={formData.dataFim}
+                  onChange={(e) => setFormData({ ...formData, dataFim: e.target.value })}
                   required
                 />
               </div>
@@ -588,22 +646,43 @@ export default function FecharOS() {
                 <Label className="text-base font-semibold">Pausas durante a execução</Label>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-3 rounded-xl border border-border/70 p-4 bg-background/70">
-                <Input type="time" value={pausaInicio} onChange={(e) => setPausaInicio(e.target.value)} placeholder="Início pausa" />
-                <Input type="time" value={pausaFim} onChange={(e) => setPausaFim(e.target.value)} placeholder="Fim pausa" />
-                <Input value={pausaMotivo} onChange={(e) => setPausaMotivo(e.target.value)} placeholder="Motivo (ex.: almoço)" />
-                <Button type="button" variant="outline" onClick={handleAddPausa} disabled={!pausaInicio || !pausaFim}>
-                  <Plus className="h-4 w-4 mr-1" />
-                  Adicionar pausa
-                </Button>
+              <div className="rounded-xl border border-border/70 p-4 bg-background/70">
+                <p className="text-sm text-muted-foreground mb-3">Houve intervalos?</p>
+                <div className="flex gap-2">
+                  <Button type="button" variant={teveIntervalos ? 'default' : 'outline'} onClick={() => setTeveIntervalos(true)}>Sim</Button>
+                  <Button
+                    type="button"
+                    variant={!teveIntervalos ? 'default' : 'outline'}
+                    onClick={() => {
+                      setTeveIntervalos(false);
+                      setPausasExecucao([]);
+                    }}
+                  >
+                    Não
+                  </Button>
+                </div>
               </div>
+
+              {teveIntervalos && (
+                <div className="grid grid-cols-1 md:grid-cols-6 gap-3 rounded-xl border border-border/70 p-4 bg-background/70">
+                  <Input type="date" value={pausaDataInicio} onChange={(e) => setPausaDataInicio(e.target.value)} />
+                  <Input type="time" value={pausaInicio} onChange={(e) => setPausaInicio(e.target.value)} placeholder="Início pausa" />
+                  <Input type="date" value={pausaDataFim} onChange={(e) => setPausaDataFim(e.target.value)} />
+                  <Input type="time" value={pausaFim} onChange={(e) => setPausaFim(e.target.value)} placeholder="Fim pausa" />
+                  <Input value={pausaMotivo} onChange={(e) => setPausaMotivo(e.target.value)} placeholder="Motivo (ex.: almoço)" />
+                  <Button type="button" variant="outline" onClick={handleAddPausa} disabled={!pausaInicio || !pausaFim}>
+                    <Plus className="h-4 w-4 mr-1" />
+                    Adicionar pausa
+                  </Button>
+                </div>
+              )}
 
               {pausasExecucao.length > 0 && (
                 <div className="space-y-2">
                   {pausasExecucao.map((pausa) => (
                     <div key={pausa.id} className="flex items-center justify-between p-3 bg-muted/50 rounded-xl border border-border/60">
                       <div className="flex items-center gap-2">
-                        <Badge variant="outline">{pausa.inicio} - {pausa.fim}</Badge>
+                        <Badge variant="outline">{pausa.data_inicio} {pausa.inicio} - {pausa.data_fim} {pausa.fim}</Badge>
                         <span className="text-sm text-muted-foreground">{pausa.motivo}</span>
                       </div>
                       <Button
@@ -624,11 +703,15 @@ export default function FecharOS() {
             {/* Service Description */}
             <div className="space-y-2 rounded-xl border border-border/70 p-4 bg-background/70">
               <Label htmlFor="servico">Serviço Executado *</Label>
+              <div className="rounded-md border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-amber-700">
+                <p className="font-semibold">Atenção: o serviço executado deve ser descrito com o máximo de detalhes possível.</p>
+                <p className="mt-1">Informe o que foi feito passo a passo, quais componentes foram desmontados/trocados/ajustados, medições realizadas, testes de validação e condição final do equipamento após a intervenção.</p>
+              </div>
               <Textarea
                 id="servico"
                 value={formData.servicoExecutado}
                 onChange={(e) => setFormData({ ...formData, servicoExecutado: e.target.value })}
-                placeholder="Descreva o serviço executado..."
+                placeholder="Descreva tecnicamente a atividade executada (ações realizadas, componentes envolvidos, ajustes, testes e resultado final)."
                 rows={3}
                 required
               />
@@ -737,7 +820,7 @@ export default function FecharOS() {
             <Button 
               type="submit" 
               className="w-full gap-2 h-11"
-              disabled={isSubmitting || !formData.mecanicoId || !formData.horaInicio || !formData.horaFim || !formData.servicoExecutado}
+              disabled={isSubmitting || !formData.mecanicoId || !formData.dataInicio || !formData.horaInicio || !formData.dataFim || !formData.horaFim || !formData.servicoExecutado}
             >
               {isSubmitting ? (
                 <>

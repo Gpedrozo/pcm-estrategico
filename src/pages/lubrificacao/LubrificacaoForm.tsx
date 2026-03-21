@@ -7,6 +7,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import type { PlanoLubrificacao, PlanoLubrificacaoInsert } from '@/types/lubrificacao';
 import type { EquipamentoRow } from '@/hooks/useEquipamentos';
+import { useNextDocumentNumber } from '@/hooks/useDocumentEngine';
+import { Hash, Loader2 } from 'lucide-react';
 
 interface LubrificacaoFormProps {
   open: boolean;
@@ -26,10 +28,13 @@ const addPeriod = (baseIso: string, tipo: 'dias' | 'semanas' | 'meses' | 'horas'
 };
 
 export function LubrificacaoForm({ open, onOpenChange, equipamentos, initialData, onSubmit }: LubrificacaoFormProps) {
+  const nextNumber = useNextDocumentNumber();
   const [form, setForm] = useState<PlanoLubrificacaoInsert>({
     codigo: '',
     nome: '',
     equipamento_id: null,
+    tag: null,
+    localizacao: null,
     ponto_lubrificacao: '',
     descricao: '',
     lubrificante: '',
@@ -53,6 +58,8 @@ export function LubrificacaoForm({ open, onOpenChange, equipamentos, initialData
         codigo: '',
         nome: '',
         equipamento_id: null,
+        tag: null,
+        localizacao: null,
         ponto_lubrificacao: '',
         descricao: '',
         lubrificante: '',
@@ -74,6 +81,8 @@ export function LubrificacaoForm({ open, onOpenChange, equipamentos, initialData
       codigo: initialData.codigo,
       nome: initialData.nome,
       equipamento_id: initialData.equipamento_id,
+      tag: initialData.tag,
+      localizacao: initialData.localizacao,
       ponto_lubrificacao: initialData.ponto_lubrificacao || initialData.ponto || '',
       descricao: initialData.descricao || initialData.observacoes || '',
       lubrificante: initialData.lubrificante || initialData.tipo_lubrificante || '',
@@ -87,6 +96,15 @@ export function LubrificacaoForm({ open, onOpenChange, equipamentos, initialData
       proxima_execucao: initialData.proxima_execucao || new Date().toISOString(),
       status: initialData.status || 'programado',
       ativo: initialData.ativo,
+    });
+  }, [open, initialData]);
+
+  useEffect(() => {
+    if (!open || initialData) return;
+    nextNumber.mutate('LUBRIFICACAO', {
+      onSuccess: (codigo) => {
+        setForm((prev) => ({ ...prev, codigo }));
+      },
     });
   }, [open, initialData]);
 
@@ -110,6 +128,8 @@ export function LubrificacaoForm({ open, onOpenChange, equipamentos, initialData
 
     await onSubmit({
       ...form,
+      tag: form.tag || null,
+      localizacao: form.localizacao || null,
       periodicidade_valor: Number(form.periodicidade || 0),
       periodicidade_tipo: (form.tipo_periodicidade || 'dias').toUpperCase() as 'DIAS' | 'SEMANAS' | 'MESES' | 'HORAS',
       tempo_estimado_min: Number(form.tempo_estimado || 0),
@@ -131,7 +151,24 @@ export function LubrificacaoForm({ open, onOpenChange, equipamentos, initialData
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="space-y-2">
               <Label>Código *</Label>
-              <Input value={form.codigo || ''} onChange={(e) => setField('codigo', e.target.value.toUpperCase())} required />
+              <div className="flex gap-2">
+                <Input
+                  value={form.codigo || ''}
+                  onChange={(e) => setField('codigo', e.target.value.toUpperCase())}
+                  placeholder="LB-000001"
+                  required
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="icon"
+                  onClick={() => nextNumber.mutate('LUBRIFICACAO', { onSuccess: (codigo) => setField('codigo', codigo) })}
+                  disabled={nextNumber.isPending}
+                  title="Gerar próximo código"
+                >
+                  {nextNumber.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Hash className="h-4 w-4" />}
+                </Button>
+              </div>
             </div>
             <div className="space-y-2 md:col-span-2">
               <Label>Descrição do Plano *</Label>
@@ -142,7 +179,23 @@ export function LubrificacaoForm({ open, onOpenChange, equipamentos, initialData
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label>Equipamento</Label>
-              <Select value={form.equipamento_id || 'none'} onValueChange={(value) => setField('equipamento_id', value === 'none' ? null : value)}>
+              <Select
+                value={form.equipamento_id || 'none'}
+                onValueChange={(value) => {
+                  if (value === 'none') {
+                    setForm((prev) => ({ ...prev, equipamento_id: null }));
+                    return;
+                  }
+
+                  const equipamento = equipamentos.find((item) => item.id === value);
+                  setForm((prev) => ({
+                    ...prev,
+                    equipamento_id: value,
+                    tag: equipamento?.tag || prev.tag || null,
+                    localizacao: equipamento?.localizacao || prev.localizacao || null,
+                  }));
+                }}
+              >
                 <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="none">Não informado</SelectItem>
@@ -153,15 +206,26 @@ export function LubrificacaoForm({ open, onOpenChange, equipamentos, initialData
               </Select>
             </div>
             <div className="space-y-2">
-              <Label>Ponto de Lubrificação *</Label>
-              <Input value={form.ponto_lubrificacao || ''} onChange={(e) => setField('ponto_lubrificacao', e.target.value)} required />
+              <Label>TAG vinculada (opcional)</Label>
+              <Input value={form.tag || ''} onChange={(e) => setField('tag', e.target.value || null)} placeholder="Ex: EQ-1001" />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label>Rota / Setor / Estrutura (opcional)</Label>
+              <Input value={form.localizacao || ''} onChange={(e) => setField('localizacao', e.target.value || null)} placeholder="Ex: Linha 2 > Misturador > Mancal A" />
+            </div>
+            <div className="space-y-2">
+              <Label>Ponto de Lubrificação (opcional)</Label>
+              <Input value={form.ponto_lubrificacao || ''} onChange={(e) => setField('ponto_lubrificacao', e.target.value)} placeholder="Ex: Mancal lado acoplamento" />
             </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="space-y-2">
-              <Label>Lubrificante *</Label>
-              <Input value={form.lubrificante || ''} onChange={(e) => setField('lubrificante', e.target.value)} required />
+              <Label>Lubrificante (opcional)</Label>
+              <Input value={form.lubrificante || ''} onChange={(e) => setField('lubrificante', e.target.value)} />
             </div>
             <div className="space-y-2">
               <Label>Quantidade</Label>

@@ -25,7 +25,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useOrdensServico, type OrdemServicoRow } from '@/hooks/useOrdensServico';
 import { useEquipamentos } from '@/hooks/useEquipamentos';
-import { useExecucaoByOSId } from '@/hooks/useExecucoesOS';
+import { useExecucaoByOSId, useExecucoesOS } from '@/hooks/useExecucoesOS';
 import { OSStatusBadge } from '@/components/os/OSStatusBadge';
 import { OSTypeBadge } from '@/components/os/OSTypeBadge';
 import { OSPrintDialog } from '@/components/os/OSPrintDialog';
@@ -228,11 +228,26 @@ export default function HistoricoOS() {
   const [pageIndex, setPageIndex] = useState(0);
   const [pageSize, setPageSize] = useState(20);
   const [activeTab, setActiveTab] = useState('lista');
+  const [hoveredOS, setHoveredOS] = useState<OrdemServicoRow | null>(null);
+  const [hoverPoint, setHoverPoint] = useState<{ x: number; y: number } | null>(null);
 
   const { data: ordensServico, isLoading: loadingOS, error } = useOrdensServico();
   const { data: equipamentos } = useEquipamentos();
+  const { data: execucoes } = useExecucoesOS();
 
   const formatDate = (date: string) => new Date(date).toLocaleDateString('pt-BR');
+  const formatDateTime = (date?: string | null, hour?: string | null) => {
+    if (!date) return '-';
+    const day = new Date(date).toLocaleDateString('pt-BR');
+    return hour ? `${day} ${hour}` : day;
+  };
+  const formatDurationMinutes = (minutes?: number | null) => {
+    const value = Number(minutes || 0);
+    if (!Number.isFinite(value) || value <= 0) return '-';
+    const hours = Math.floor(value / 60);
+    const mins = value % 60;
+    return hours > 0 ? `${hours}h ${mins}min` : `${mins}min`;
+  };
 
   // Advanced filtering
   const filteredOS = useMemo(() => {
@@ -270,6 +285,46 @@ export default function HistoricoOS() {
     const start = pageIndex * pageSize;
     return filteredOS.slice(start, start + pageSize);
   }, [filteredOS, pageIndex, pageSize]);
+
+  const execucaoByOsId = useMemo(() => {
+    const map = new Map<string, (typeof execucoes)[number]>();
+    (execucoes || []).forEach((item) => {
+      map.set(item.os_id, item);
+    });
+    return map;
+  }, [execucoes]);
+
+  const equipamentoStatsByTag = useMemo(() => {
+    const map = new Map<string, { total: number; abertas: number; fechadas: number; tempoMedioMin: number }>();
+    const grouped = new Map<string, OrdemServicoRow[]>();
+
+    (ordensServico || []).forEach((os) => {
+      const current = grouped.get(os.tag) || [];
+      current.push(os);
+      grouped.set(os.tag, current);
+    });
+
+    grouped.forEach((items, tag) => {
+      const fechadas = items.filter((os) => os.status === 'FECHADA');
+      const abertas = items.filter((os) => os.status !== 'FECHADA' && os.status !== 'CANCELADA');
+      const tempos = fechadas
+        .map((os) => Number(execucaoByOsId.get(os.id)?.tempo_execucao || 0))
+        .filter((v) => Number.isFinite(v) && v > 0);
+
+      const tempoMedioMin = tempos.length > 0
+        ? Math.round(tempos.reduce((acc, value) => acc + value, 0) / tempos.length)
+        : 0;
+
+      map.set(tag, {
+        total: items.length,
+        abertas: abertas.length,
+        fechadas: fechadas.length,
+        tempoMedioMin,
+      });
+    });
+
+    return map;
+  }, [ordensServico, execucaoByOsId]);
 
   const pageCount = Math.ceil(filteredOS.length / pageSize);
 
@@ -606,7 +661,20 @@ export default function HistoricoOS() {
                     </tr>
                   ) : (
                     paginatedOS.map((os) => (
-                      <tr key={os.id}>
+                      <tr
+                        key={os.id}
+                        onMouseEnter={(event) => {
+                          setHoveredOS(os);
+                          setHoverPoint({ x: event.clientX, y: event.clientY });
+                        }}
+                        onMouseMove={(event) => {
+                          setHoverPoint({ x: event.clientX, y: event.clientY });
+                        }}
+                        onMouseLeave={() => {
+                          setHoveredOS(null);
+                          setHoverPoint(null);
+                        }}
+                      >
                         <td className="font-mono font-medium">{os.numero_os}</td>
                         <td className="font-mono text-primary font-medium">{os.tag}</td>
                         <td className="max-w-[200px] truncate">{os.equipamento}</td>
@@ -790,6 +858,90 @@ export default function HistoricoOS() {
             </>
           )}
         </TabsContent>
+
+        {hoveredOS && hoverPoint && (
+          <div
+            className="pointer-events-none fixed z-50 w-[360px] max-w-[calc(100vw-2rem)] rounded-lg border border-border bg-background/95 p-4 shadow-2xl backdrop-blur"
+            style={{
+              left: Math.min(hoverPoint.x + 14, window.innerWidth - 380),
+              top: Math.max(12, hoverPoint.y + 14),
+            }}
+          >
+            <div className="mb-3 flex items-center justify-between gap-2">
+              <span className="font-mono text-sm font-semibold">O.S {hoveredOS.numero_os}</span>
+              <OSStatusBadge status={normalizeOSStatus(hoveredOS.status)} />
+            </div>
+
+            <div className="space-y-2 text-sm">
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <p className="text-[11px] uppercase tracking-wide text-muted-foreground">TAG</p>
+                  <p className="font-mono font-medium text-primary">{hoveredOS.tag}</p>
+                </div>
+                <div>
+                  <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Tipo</p>
+                  <p>{hoveredOS.tipo}</p>
+                </div>
+              </div>
+
+              <div>
+                <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Equipamento</p>
+                <p className="truncate">{hoveredOS.equipamento}</p>
+              </div>
+
+              {hoveredOS.status === 'FECHADA' && execucaoByOsId.get(hoveredOS.id) ? (
+                <div className="rounded-md border border-emerald-500/30 bg-emerald-500/5 p-3">
+                  <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-emerald-700 dark:text-emerald-300">Resumo da execução</p>
+                  <div className="grid grid-cols-2 gap-2 text-xs">
+                    <div>
+                      <p className="text-muted-foreground">Mecânico</p>
+                      <p className="font-medium">{execucaoByOsId.get(hoveredOS.id)?.mecanico_nome || '-'}</p>
+                    </div>
+                    <div>
+                      <p className="text-muted-foreground">Duração</p>
+                      <p className="font-medium">{formatDurationMinutes(execucaoByOsId.get(hoveredOS.id)?.tempo_execucao)}</p>
+                    </div>
+                    <div>
+                      <p className="text-muted-foreground">Início</p>
+                      <p className="font-medium">{formatDateTime(execucaoByOsId.get(hoveredOS.id)?.data_inicio, execucaoByOsId.get(hoveredOS.id)?.hora_inicio)}</p>
+                    </div>
+                    <div>
+                      <p className="text-muted-foreground">Fim</p>
+                      <p className="font-medium">{formatDateTime(execucaoByOsId.get(hoveredOS.id)?.data_fim, execucaoByOsId.get(hoveredOS.id)?.hora_fim)}</p>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="rounded-md border border-amber-500/30 bg-amber-500/5 p-3 text-xs">
+                  <p className="font-semibold uppercase tracking-wide text-amber-700 dark:text-amber-300">O.S em aberto</p>
+                  <p className="mt-1 text-muted-foreground">Visualize detalhes completos para acompanhar execução e fechamento.</p>
+                </div>
+              )}
+
+              <div className="rounded-md border border-border/70 bg-muted/30 p-3 text-xs">
+                <p className="mb-2 font-semibold uppercase tracking-wide text-muted-foreground">Estatísticas do equipamento</p>
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <p className="text-muted-foreground">Total O.S</p>
+                    <p className="font-semibold">{equipamentoStatsByTag.get(hoveredOS.tag)?.total ?? 0}</p>
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground">Abertas</p>
+                    <p className="font-semibold text-amber-700 dark:text-amber-300">{equipamentoStatsByTag.get(hoveredOS.tag)?.abertas ?? 0}</p>
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground">Fechadas</p>
+                    <p className="font-semibold text-emerald-700 dark:text-emerald-300">{equipamentoStatsByTag.get(hoveredOS.tag)?.fechadas ?? 0}</p>
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground">Tempo médio</p>
+                    <p className="font-semibold">{formatDurationMinutes(equipamentoStatsByTag.get(hoveredOS.tag)?.tempoMedioMin)}</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </Tabs>
 
       {/* View OS Modal */}

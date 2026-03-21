@@ -7,7 +7,6 @@ import {
   PrintInfoGrid,
   PrintSectionHeader,
   PrintBlankLines,
-  PrintTimeRow,
   PrintStatusCheckboxes,
   PrintExecutorBlock,
 } from '@/components/print/DocumentPrintBase';
@@ -75,19 +74,47 @@ export const OSPrintTemplate = forwardRef<HTMLDivElement, OSPrintTemplateProps>(
         {/* ═══ MAINTAINERS ═══ */}
         <PrintExecutorBlock count={2} label="MANUTENTOR" />
 
-        {/* ═══ TIME ═══ */}
-        <PrintTimeRow />
+        {/* ═══ EXECUTION TIME ═══ */}
+        <div className="border-b-2 border-black">
+          <PrintSectionHeader label="DADOS DE FECHAMENTO DA EXECUÇÃO" />
+          <div className="grid grid-cols-6 text-[9px]">
+            {['DATA INÍCIO', 'HORA INÍCIO', 'DATA FINAL', 'HORA FINAL', 'HOUVE INTERVALOS?', 'TEMPO TOTAL'].map((label, i) => (
+              <div key={label} className={`p-2 ${i < 5 ? 'border-r border-black' : ''}`}>
+                <span className="font-bold text-gray-500 text-[8px]">{label}</span>
+                <div className="h-5 mt-1 border-b border-dashed border-gray-400"></div>
+              </div>
+            ))}
+          </div>
+          <div className="grid grid-cols-4 border-t border-black text-[9px]">
+            {['INTERVALO 1 (DATA/HORA INÍCIO)', 'INTERVALO 1 (DATA/HORA FIM)', 'INTERVALO 2 (DATA/HORA INÍCIO)', 'INTERVALO 2 (DATA/HORA FIM)'].map((label, i) => (
+              <div key={label} className={`p-2 ${i < 3 ? 'border-r border-black' : ''}`}>
+                <span className="font-bold text-gray-500 text-[8px]">{label}</span>
+                <div className="h-5 mt-1 border-b border-dashed border-gray-400"></div>
+              </div>
+            ))}
+          </div>
+        </div>
 
         {/* ═══ SERVICE ═══ */}
         <div className="border-b-2 border-black">
           <PrintSectionHeader label="SERVIÇO EXECUTADO" />
+          <div className="px-3 py-2 text-[8px] bg-amber-50 border-b border-black text-amber-900">
+            <span className="font-bold">Atenção:</span> descrever obrigatoriamente o serviço executado com o máximo de detalhes possível, incluindo etapas realizadas, componentes atendidos, ajustes efetuados, medições/testes e condição final do equipamento.
+          </div>
           <PrintBlankLines count={5} />
         </div>
 
         {/* ═══ PARTS ═══ */}
         <div className="border-b-2 border-black">
           <PrintSectionHeader label="PEÇAS / MATERIAIS UTILIZADOS" />
-          <PrintBlankLines count={3} />
+          <div className="grid grid-cols-5 text-[8px] font-bold bg-gray-50 border-b border-black">
+            <div className="p-1.5 border-r border-black">CÓDIGO</div>
+            <div className="p-1.5 border-r border-black">DESCRIÇÃO</div>
+            <div className="p-1.5 border-r border-black">QTD</div>
+            <div className="p-1.5 border-r border-black">UN</div>
+            <div className="p-1.5">OBS.</div>
+          </div>
+          <PrintBlankLines count={4} />
         </div>
 
         {/* ═══ STATUS ═══ */}
