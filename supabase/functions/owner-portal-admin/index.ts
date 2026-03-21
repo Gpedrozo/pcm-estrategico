@@ -1210,6 +1210,7 @@ const PLATFORM_TABLES = [
   "melhorias",
   "movimentacoes_materiais",
   "notificacoes",
+  "operational_logs",
   "orcamentos_manutencao",
   "ordens_servico",
   "permissoes_granulares",
@@ -3963,6 +3964,7 @@ Deno.serve(async (req) => {
     await admin.from("enterprise_impersonation_sessions").delete().eq("empresa_id", body.empresa_id);
     await admin.from("enterprise_subscriptions").delete().eq("empresa_id", body.empresa_id);
     await admin.from("enterprise_audit_logs").delete().eq("empresa_id", body.empresa_id);
+    await admin.from("operational_logs").delete().eq("empresa_id", body.empresa_id);
     await admin.from("contracts").delete().eq("empresa_id", body.empresa_id);
     await admin.from("subscriptions").delete().eq("empresa_id", body.empresa_id);
 
