@@ -23,8 +23,9 @@ export interface UserRoleRow {
 export interface UsuarioCompleto {
   id: string;
   nome: string;
-  email: string;
+  email: string | null;
   role: AppRole;
+  force_password_change: boolean;
   created_at: string;
 }
 
@@ -59,8 +60,9 @@ export function useUsuarios() {
         return {
           id: profile.id,
           nome: profile.nome,
-          email: '', // Email not available from profiles
+          email: profile.email ?? null,
           role: userRole?.role || 'USUARIO',
+          force_password_change: Boolean(profile.force_password_change),
           created_at: profile.created_at,
         };
       });
@@ -146,6 +148,48 @@ export function useUpdateUsuarioNome() {
       toast({
         title: 'Erro ao atualizar',
         description: error instanceof Error ? error.message : 'Ocorreu um erro ao atualizar o nome.',
+        variant: 'destructive',
+      });
+    },
+  });
+}
+
+export function useSetUsuarioForcePasswordChange() {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+  const { tenantId } = useAuth();
+
+  return useMutation({
+    mutationFn: async ({ userId, forcePasswordChange }: { userId: string; forcePasswordChange: boolean }) => {
+      const { error } = await supabase
+        .from('profiles')
+        .update({ force_password_change: forcePasswordChange })
+        .eq('id', userId)
+        .eq('empresa_id', tenantId);
+
+      if (error) throw error;
+
+      await writeAuditLog({
+        action: 'UPDATE_USER_FORCE_PASSWORD_CHANGE',
+        table: 'profiles',
+        recordId: userId,
+        source: 'use_set_usuario_force_password_change',
+        metadata: { user_id: userId, force_password_change: forcePasswordChange },
+      });
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['usuarios', tenantId] });
+      toast({
+        title: variables.forcePasswordChange ? 'Troca de senha habilitada' : 'Troca de senha desabilitada',
+        description: variables.forcePasswordChange
+          ? 'O usuário deverá trocar a senha no próximo login.'
+          : 'O usuário não terá troca obrigatória no próximo login.',
+      });
+    },
+    onError: (error: unknown) => {
+      toast({
+        title: 'Erro ao atualizar senha obrigatória',
+        description: error instanceof Error ? error.message : 'Não foi possível atualizar a política de senha.',
         variant: 'destructive',
       });
     },
