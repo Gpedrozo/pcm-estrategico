@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { resolveSlaHorasByClassificacao } from '@/hooks/useTenantPadronizacoes';
 import {
   insertWithColumnFallback,
   isMissingTableError,
@@ -78,7 +79,7 @@ export interface SolicitacaoRow {
   solicitante_setor: string | null;
   descricao_falha: string;
   impacto: 'ALTO' | 'MEDIO' | 'BAIXO';
-  classificacao: 'EMERGENCIAL' | 'URGENTE' | 'PROGRAMAVEL';
+  classificacao: string;
   status: 'PENDENTE' | 'APROVADA' | 'CONVERTIDA' | 'REJEITADA' | 'CANCELADA';
   os_id: string | null;
   sla_horas: number;
@@ -94,7 +95,7 @@ export interface SolicitacaoInsert {
   solicitante_setor?: string | null;
   descricao_falha: string;
   impacto?: 'ALTO' | 'MEDIO' | 'BAIXO';
-  classificacao?: 'EMERGENCIAL' | 'URGENTE' | 'PROGRAMAVEL';
+  classificacao?: string;
   equipamento_id?: string | null;
   observacoes?: string | null;
 }
@@ -119,8 +120,8 @@ export function useCreateSolicitacao() {
 
   return useMutation({
     mutationFn: async (solicitacao: SolicitacaoInsert) => {
-      const slaMap = { EMERGENCIAL: 2, URGENTE: 8, PROGRAMAVEL: 72 };
-      const slaHoras = slaMap[solicitacao.classificacao || 'PROGRAMAVEL'];
+      const classificacao = solicitacao.classificacao ?? 'PROGRAMAVEL';
+      const slaHoras = resolveSlaHorasByClassificacao(classificacao);
       const dataLimite = new Date();
       dataLimite.setHours(dataLimite.getHours() + slaHoras);
 
@@ -129,7 +130,7 @@ export function useCreateSolicitacao() {
         ...solicitacao,
         status: 'PENDENTE',
         impacto: solicitacao.impacto ?? 'MEDIO',
-        classificacao: solicitacao.classificacao ?? 'PROGRAMAVEL',
+        classificacao,
         sla_horas: slaHoras,
         data_limite: dataLimite.toISOString(),
       };

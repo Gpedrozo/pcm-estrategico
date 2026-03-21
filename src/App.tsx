@@ -85,9 +85,13 @@ const AdminOnlyRoute = ({ children }: { children: React.ReactNode }) => {
   const { isAdmin, tenantId } = useAuth();
   const { data: hasTenantAdminPermission, isLoading } = usePermission("tenant.admin", tenantId);
 
+  if (isAdmin) {
+    return <>{children}</>;
+  }
+
   if (isLoading) return null;
 
-  if (!isAdmin || !hasTenantAdminPermission) {
+  if (!hasTenantAdminPermission) {
     return <Navigate to="/dashboard" replace />;
   }
 

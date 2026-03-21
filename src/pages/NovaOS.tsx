@@ -25,13 +25,13 @@ import { useCreateOrdemServico } from '@/hooks/useOrdensServico';
 import { useMecanicosAtivos } from '@/hooks/useMecanicos';
 import { useLogAuditoria } from '@/hooks/useAuditoria';
 import { useUpdateSolicitacao, type SolicitacaoRow } from '@/hooks/useSolicitacoes';
+import { resolvePrioridadeFromClassificacao, useTenantPadronizacoes } from '@/hooks/useTenantPadronizacoes';
 import { useAuth } from '@/contexts/AuthContext';
 import { ArrowLeft, Check, Loader2, Printer, CheckCircle } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { OSPrintTemplate } from '@/components/os/OSPrintTemplate';
 
 type TipoOS = 'CORRETIVA' | 'PREVENTIVA' | 'PREDITIVA' | 'INSPECAO' | 'MELHORIA';
-type PrioridadeOS = 'URGENTE' | 'ALTA' | 'MEDIA' | 'BAIXA';
 
 export default function NovaOS() {
   const navigate = useNavigate();
@@ -42,8 +42,13 @@ export default function NovaOS() {
   
   const { data: equipamentos, isLoading: loadingEquipamentos } = useEquipamentos();
   const { data: mecanicosAtivos } = useMecanicosAtivos();
+  const { data: padronizacoes } = useTenantPadronizacoes();
   const createOSMutation = useCreateOrdemServico();
   const updateSolicitacaoMutation = useUpdateSolicitacao();
+
+  const prioridadesOS = padronizacoes?.prioridades_os?.length
+    ? padronizacoes.prioridades_os
+    : ['URGENTE', 'ALTA', 'MEDIA', 'BAIXA'];
 
   const solicitacaoOrigem = (location.state as { solicitacao?: SolicitacaoRow } | null)?.solicitacao ?? null;
   
@@ -52,7 +57,7 @@ export default function NovaOS() {
     solicitante: '',
     problema: '',
     tipo: '' as TipoOS | '',
-    prioridade: 'MEDIA' as PrioridadeOS,
+    prioridade: 'MEDIA' as string,
     tempoEstimado: '',
     mecanicoResponsavelId: '',
   });
@@ -86,12 +91,7 @@ export default function NovaOS() {
       tag: solicitacaoOrigem.tag || prev.tag,
       solicitante: solicitacaoOrigem.solicitante_nome || prev.solicitante,
       problema: solicitacaoOrigem.descricao_falha || prev.problema,
-      prioridade:
-        solicitacaoOrigem.classificacao === 'EMERGENCIAL'
-          ? 'URGENTE'
-          : solicitacaoOrigem.classificacao === 'URGENTE'
-          ? 'ALTA'
-          : prev.prioridade,
+      prioridade: resolvePrioridadeFromClassificacao(solicitacaoOrigem.classificacao) || prev.prioridade,
       tipo: prev.tipo || 'CORRETIVA',
     }));
   }, [solicitacaoOrigem, navigate]);
@@ -278,16 +278,17 @@ export default function NovaOS() {
               <Label htmlFor="prioridade">Prioridade</Label>
               <Select 
                 value={formData.prioridade} 
-                onValueChange={(value) => setFormData({ ...formData, prioridade: value as PrioridadeOS })}
+                onValueChange={(value) => setFormData({ ...formData, prioridade: value })}
               >
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="URGENTE">Urgente</SelectItem>
-                  <SelectItem value="ALTA">Alta</SelectItem>
-                  <SelectItem value="MEDIA">Média</SelectItem>
-                  <SelectItem value="BAIXA">Baixa</SelectItem>
+                  {prioridadesOS.map((prioridade) => (
+                    <SelectItem key={prioridade} value={prioridade}>
+                      {prioridade}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>

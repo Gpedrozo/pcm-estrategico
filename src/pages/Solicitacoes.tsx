@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -12,6 +12,7 @@ import { Plus, Search, Clock, GitBranch } from 'lucide-react';
 import { useSolicitacoes, useCreateSolicitacao, useUpdateSolicitacao, type SolicitacaoRow } from '@/hooks/useSolicitacoes';
 import { useEquipamentos } from '@/hooks/useEquipamentos';
 import { useAuth } from '@/contexts/AuthContext';
+import { resolveSlaHorasByClassificacao, useTenantPadronizacoes } from '@/hooks/useTenantPadronizacoes';
 
 export default function Solicitacoes() {
   const navigate = useNavigate();
@@ -24,13 +25,28 @@ export default function Solicitacoes() {
     solicitante_setor: '',
     descricao_falha: '',
     impacto: 'MEDIO' as 'ALTO' | 'MEDIO' | 'BAIXO',
-    classificacao: 'PROGRAMAVEL' as 'EMERGENCIAL' | 'URGENTE' | 'PROGRAMAVEL',
+    classificacao: 'PROGRAMAVEL' as string,
   });
 
   const { data: solicitacoes, isLoading } = useSolicitacoes();
   const { data: equipamentos } = useEquipamentos();
+  const { data: padronizacoes } = useTenantPadronizacoes();
   const createMutation = useCreateSolicitacao();
   const updateMutation = useUpdateSolicitacao();
+
+  const classificacoesOS = padronizacoes?.classificacoes_os?.length
+    ? padronizacoes.classificacoes_os
+    : ['EMERGENCIAL', 'URGENTE', 'PROGRAMAVEL'];
+
+  useEffect(() => {
+    if (!classificacoesOS.length) return;
+    if (classificacoesOS.includes(formData.classificacao)) return;
+
+    setFormData((prev) => ({
+      ...prev,
+      classificacao: classificacoesOS[0],
+    }));
+  }, [classificacoesOS, formData.classificacao]);
 
   const canReviewSolicitacao = user?.tipo !== 'SOLICITANTE';
 
@@ -76,7 +92,14 @@ export default function Solicitacoes() {
     e.preventDefault();
     await createMutation.mutateAsync(formData);
     setIsModalOpen(false);
-    setFormData({ tag: '', solicitante_nome: '', solicitante_setor: '', descricao_falha: '', impacto: 'MEDIO', classificacao: 'PROGRAMAVEL' });
+    setFormData({
+      tag: '',
+      solicitante_nome: '',
+      solicitante_setor: '',
+      descricao_falha: '',
+      impacto: 'MEDIO',
+      classificacao: classificacoesOS[0] ?? 'PROGRAMAVEL',
+    });
   };
 
   const getStatusBadge = (status: string) => {
@@ -240,12 +263,14 @@ export default function Solicitacoes() {
               </div>
               <div className="space-y-2">
                 <Label>Classificação</Label>
-                <Select value={formData.classificacao} onValueChange={(v: any) => setFormData({...formData, classificacao: v})}>
+                <Select value={formData.classificacao} onValueChange={(v) => setFormData({...formData, classificacao: v})}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="EMERGENCIAL">Emergencial (2h)</SelectItem>
-                    <SelectItem value="URGENTE">Urgente (8h)</SelectItem>
-                    <SelectItem value="PROGRAMAVEL">Programável (72h)</SelectItem>
+                    {classificacoesOS.map((classificacao) => (
+                      <SelectItem key={classificacao} value={classificacao}>
+                        {classificacao} ({resolveSlaHorasByClassificacao(classificacao)}h)
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
