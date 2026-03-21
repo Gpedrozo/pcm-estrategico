@@ -73,6 +73,13 @@ interface PadronizacoesConfig {
   tipos_falha: string[];
 }
 
+interface VisualConfig {
+  cor_primaria: string;
+  cor_acento: string;
+  cor_sidebar_primaria: string;
+  cor_sidebar_fundo: string;
+}
+
 const processoDefault: ProcessoConfig = {
   quem_pode_abrir_os: 'USUARIO',
   quem_pode_fechar_os: 'TECNICO',
@@ -106,6 +113,13 @@ const padronizacoesDefault: PadronizacoesConfig = {
   tipos_falha: ['ELETRICA', 'MECANICA', 'INSTRUMENTACAO', 'LUBRIFICACAO'],
 };
 
+const visualDefault: VisualConfig = {
+  cor_primaria: '#1b3f5f',
+  cor_acento: '#9cb2cc',
+  cor_sidebar_primaria: '#0ea5e9',
+  cor_sidebar_fundo: '#1f2937',
+};
+
 const ROLE_LABELS: Record<AppRole, string> = {
   ADMIN: 'Administrador',
   USUARIO: 'Usuario',
@@ -119,6 +133,7 @@ const linkCards = [
   { title: 'Padronizacoes', description: 'Tipos, status e prioridades operacionais', tab: 'padronizacoes', icon: SlidersHorizontal },
   { title: 'Alertas', description: 'Canais e gatilhos por criticidade', tab: 'alertas', icon: Bell },
   { title: 'Indicadores', description: 'Parametros de calculo e pesos KPI', tab: 'indicadores', icon: BarChart3 },
+  { title: 'Identidade Visual', description: 'Cores por tenant para interface', tab: 'visual', icon: Palette },
   { title: 'Integracoes', description: 'Roadmap e governanca de integracoes', tab: 'integracoes', icon: Plug },
   { title: 'Cadastro da Empresa', description: 'Dados legais e logomarca do tenant', to: '/empresa/configuracoes', icon: Building2 },
   { title: 'Estrutura Organizacional', description: 'Plantas, areas e sistemas', to: '/hierarquia', icon: Network },
@@ -130,7 +145,8 @@ export default function Administracao() {
   const { data: indicadoresConfig } = useTenantAdminConfig<IndicadoresConfig>('tenant.admin.indicadores', indicadoresDefault);
   const { data: alertasConfig } = useTenantAdminConfig<AlertasConfig>('tenant.admin.alertas', alertasDefault);
   const { data: padronizacoesConfig } = useTenantAdminConfig<PadronizacoesConfig>('tenant.admin.padronizacoes', padronizacoesDefault);
-  const saveConfig = useSaveTenantAdminConfig<ProcessoConfig | IndicadoresConfig | AlertasConfig | PadronizacoesConfig>();
+  const { data: visualConfig } = useTenantAdminConfig<VisualConfig>('tenant.admin.visual', visualDefault);
+  const saveConfig = useSaveTenantAdminConfig<ProcessoConfig | IndicadoresConfig | AlertasConfig | PadronizacoesConfig | VisualConfig>();
 
   const { data: usuarios = [], isLoading: usuariosLoading } = useUsuarios();
   const updateRole = useUpdateUsuarioRole();
@@ -140,12 +156,13 @@ export default function Administracao() {
   const [indicadoresForm, setIndicadoresForm] = useState<IndicadoresConfig>(indicadoresDefault);
   const [alertasForm, setAlertasForm] = useState<AlertasConfig>(alertasDefault);
   const [padronizacoesForm, setPadronizacoesForm] = useState<PadronizacoesConfig>(padronizacoesDefault);
+  const [visualForm, setVisualForm] = useState<VisualConfig>(visualDefault);
   const [usuariosSearch, setUsuariosSearch] = useState('');
   const [activeTab, setActiveTab] = useState('usuarios');
 
   useEffect(() => {
     const tab = searchParams.get('tab');
-    const validTabs = new Set(['usuarios', 'processo', 'padronizacoes', 'alertas', 'indicadores', 'integracoes']);
+    const validTabs = new Set(['usuarios', 'processo', 'padronizacoes', 'alertas', 'indicadores', 'visual', 'integracoes']);
     if (tab && validTabs.has(tab)) {
       setActiveTab(tab);
     }
@@ -167,6 +184,10 @@ export default function Administracao() {
     if (padronizacoesConfig) setPadronizacoesForm(padronizacoesConfig);
   }, [padronizacoesConfig]);
 
+  useEffect(() => {
+    if (visualConfig) setVisualForm(visualConfig);
+  }, [visualConfig]);
+
   const salvarProcesso = async () => {
     await saveConfig.mutateAsync({ configKey: 'tenant.admin.processo', value: processoForm });
     toast({ title: 'Configuracoes de processo salvas' });
@@ -185,6 +206,11 @@ export default function Administracao() {
   const salvarPadronizacoes = async () => {
     await saveConfig.mutateAsync({ configKey: 'tenant.admin.padronizacoes', value: padronizacoesForm });
     toast({ title: 'Padronizacoes salvas' });
+  };
+
+  const salvarVisual = async () => {
+    await saveConfig.mutateAsync({ configKey: 'tenant.admin.visual', value: visualForm });
+    toast({ title: 'Identidade visual salva para este tenant' });
   };
 
   const updateUserRole = async (userId: string, role: AppRole) => {
@@ -257,6 +283,7 @@ export default function Administracao() {
           <TabsTrigger value="padronizacoes" className="gap-2"><SlidersHorizontal className="h-4 w-4" /> Padronizacoes</TabsTrigger>
           <TabsTrigger value="alertas" className="gap-2"><Bell className="h-4 w-4" /> Alertas</TabsTrigger>
           <TabsTrigger value="indicadores" className="gap-2"><BarChart3 className="h-4 w-4" /> Indicadores</TabsTrigger>
+          <TabsTrigger value="visual" className="gap-2"><Palette className="h-4 w-4" /> Visual</TabsTrigger>
           <TabsTrigger value="integracoes" className="gap-2"><Plug className="h-4 w-4" /> Integracoes</TabsTrigger>
         </TabsList>
 
@@ -548,6 +575,70 @@ export default function Administracao() {
                 <Button onClick={() => void salvarIndicadores()} className="gap-2">
                   <Save className="h-4 w-4" />
                   Salvar Indicadores
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="visual">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Identidade Visual por Tenant</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <p className="text-sm text-muted-foreground">
+                As cores abaixo afetam somente esta empresa. Outros tenants nao sao impactados.
+              </p>
+
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                <div className="space-y-2">
+                  <Label>Cor primaria</Label>
+                  <div className="flex items-center gap-3">
+                    <Input type="color" value={visualForm.cor_primaria} onChange={(e) => setVisualForm((s) => ({ ...s, cor_primaria: e.target.value }))} className="h-10 w-14 p-1" />
+                    <Input value={visualForm.cor_primaria} onChange={(e) => setVisualForm((s) => ({ ...s, cor_primaria: e.target.value }))} />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Cor de acento</Label>
+                  <div className="flex items-center gap-3">
+                    <Input type="color" value={visualForm.cor_acento} onChange={(e) => setVisualForm((s) => ({ ...s, cor_acento: e.target.value }))} className="h-10 w-14 p-1" />
+                    <Input value={visualForm.cor_acento} onChange={(e) => setVisualForm((s) => ({ ...s, cor_acento: e.target.value }))} />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Cor primaria da sidebar</Label>
+                  <div className="flex items-center gap-3">
+                    <Input type="color" value={visualForm.cor_sidebar_primaria} onChange={(e) => setVisualForm((s) => ({ ...s, cor_sidebar_primaria: e.target.value }))} className="h-10 w-14 p-1" />
+                    <Input value={visualForm.cor_sidebar_primaria} onChange={(e) => setVisualForm((s) => ({ ...s, cor_sidebar_primaria: e.target.value }))} />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Cor de fundo da sidebar</Label>
+                  <div className="flex items-center gap-3">
+                    <Input type="color" value={visualForm.cor_sidebar_fundo} onChange={(e) => setVisualForm((s) => ({ ...s, cor_sidebar_fundo: e.target.value }))} className="h-10 w-14 p-1" />
+                    <Input value={visualForm.cor_sidebar_fundo} onChange={(e) => setVisualForm((s) => ({ ...s, cor_sidebar_fundo: e.target.value }))} />
+                  </div>
+                </div>
+              </div>
+
+              <div className="rounded-lg border border-border p-3">
+                <p className="text-xs text-muted-foreground">Pré-visualização rápida</p>
+                <div className="mt-2 flex items-center gap-2">
+                  <span className="inline-block h-6 w-6 rounded" style={{ backgroundColor: visualForm.cor_primaria }} />
+                  <span className="inline-block h-6 w-6 rounded" style={{ backgroundColor: visualForm.cor_acento }} />
+                  <span className="inline-block h-6 w-6 rounded" style={{ backgroundColor: visualForm.cor_sidebar_primaria }} />
+                  <span className="inline-block h-6 w-6 rounded" style={{ backgroundColor: visualForm.cor_sidebar_fundo }} />
+                </div>
+              </div>
+
+              <div className="flex justify-end">
+                <Button onClick={() => void salvarVisual()} className="gap-2">
+                  <Save className="h-4 w-4" />
+                  Salvar Identidade Visual
                 </Button>
               </div>
             </CardContent>

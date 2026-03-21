@@ -71,6 +71,7 @@ const LOGOUT_MARKER_PARAM = 'logout';
 const LOGOUT_REASON_PARAM = 'reason';
 const TAB_CLOSE_MARKER_STORAGE_KEY = 'pcm.auth.window_closed.v1';
 const TAB_CLOSE_MARKER_MAX_AGE_MS = 12 * 60 * 60 * 1000;
+const ENABLE_WINDOW_CLOSE_LOGOUT = false;
 const DEFAULT_INACTIVITY_TIMEOUT_MS = 10 * 60 * 1000;
 const SESSION_TRANSFER_MAX_AGE_MS = 2 * 60 * 1000;
 const SESSION_TRANSFER_REDIRECT_STORAGE_KEY = 'pcm.auth.session_transfer.redirect.v1';
@@ -443,6 +444,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [authStatus, transitionAuthStatus]);
 
   useEffect(() => {
+    if (!ENABLE_WINDOW_CLOSE_LOGOUT) return;
     if (!shouldForceLogoutByClosedWindowMarker()) return;
 
     const forceLogoutAfterClosedWindow = async () => {
@@ -481,6 +483,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   useEffect(() => {
+    if (!ENABLE_WINDOW_CLOSE_LOGOUT) return;
     const markWindowClosed = () => {
       if (isIntentionalLogoutNavigationRef.current) return;
       if (isSessionTransferRedirectInProgress()) return;
@@ -1700,16 +1703,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       ? `&${LOGOUT_REASON_PARAM}=${encodeURIComponent(reason)}`
       : '';
 
+    const timeoutMinutesQuery = reason === 'inactivity' && inactivityTimeoutMs
+      ? `&timeout=${encodeURIComponent(String(Math.max(1, Math.trunc(inactivityTimeoutMs / 60000))))}`
+      : '';
+
     isIntentionalLogoutNavigationRef.current = true;
     if (shouldRedirectToBaseDomain) {
-      const targetUrl = `${window.location.protocol}//${TENANT_BASE_DOMAIN}/login?${LOGOUT_MARKER_PARAM}=1${reasonQuery}`;
+      const targetUrl = `${window.location.protocol}//${TENANT_BASE_DOMAIN}/login?${LOGOUT_MARKER_PARAM}=1${reasonQuery}${timeoutMinutesQuery}`;
       window.location.assign(targetUrl);
       return;
     }
 
-    const fallbackLoginUrl = `/login?${LOGOUT_MARKER_PARAM}=1${reasonQuery}`;
+    const fallbackLoginUrl = `/login?${LOGOUT_MARKER_PARAM}=1${reasonQuery}${timeoutMinutesQuery}`;
     window.location.assign(fallbackLoginUrl);
-  }, [transitionAuthStatus, user]);
+  }, [inactivityTimeoutMs, transitionAuthStatus, user]);
 
   const currentTenantId = impersonation?.empresaId || user?.tenantId || null;
 
@@ -1751,8 +1758,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     void loadInactivityPolicy();
 
+    const interval = window.setInterval(() => {
+      void loadInactivityPolicy();
+    }, 60_000);
+
+    const onFocus = () => {
+      void loadInactivityPolicy();
+    };
+
+    window.addEventListener('focus', onFocus);
+
     return () => {
       isMounted = false;
+      window.clearInterval(interval);
+      window.removeEventListener('focus', onFocus);
     };
   }, [currentTenantId, session, user]);
 
@@ -1775,11 +1794,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       'scroll',
       'touchstart',
       'click',
+      'focus',
     ];
 
     activityEvents.forEach((eventName) => {
       window.addEventListener(eventName, markActivity, { passive: true });
     });
+
+    const onVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        markActivity();
+      }
+    };
+
+    document.addEventListener('visibilitychange', onVisibilityChange);
 
     const timer = window.setInterval(() => {
       if (isAutoLogoutRunningRef.current) return;
@@ -1802,6 +1830,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       activityEvents.forEach((eventName) => {
         window.removeEventListener(eventName, markActivity);
       });
+      document.removeEventListener('visibilitychange', onVisibilityChange);
     };
   }, [currentTenantId, inactivityTimeoutMs, logout, session, user]);
 

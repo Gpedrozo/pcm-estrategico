@@ -58,9 +58,10 @@ export default function OwnerLogin() {
     const params = new URLSearchParams(window.location.search);
     const hasLogoutMarker = params.get('logout') === '1';
     const reason = params.get('reason');
+    const timeoutMinutes = Math.max(1, Number(params.get('timeout') || 10));
 
     if (reason === 'inactivity') {
-      setLogoutNotice('Usuário desconectado por inatividade (10 minutos sem atividade). Faça login novamente.');
+      setLogoutNotice(`Usuário desconectado por inatividade (${timeoutMinutes} minutos sem atividade). Faça login novamente.`);
     } else if (reason === 'window_closed') {
       setLogoutNotice('Sessão encerrada ao fechar a página. Faça login novamente para continuar.');
     }
@@ -69,6 +70,7 @@ export default function OwnerLogin() {
 
     params.delete('logout');
     params.delete('reason');
+    params.delete('timeout');
     const nextQuery = params.toString();
     const cleanedUrl = `${window.location.pathname}${nextQuery ? `?${nextQuery}` : ''}${window.location.hash}`;
     window.history.replaceState({}, document.title, cleanedUrl);

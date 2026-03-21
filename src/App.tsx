@@ -13,6 +13,7 @@ import { TenantDomainMiddleware } from '@/components/guards/TenantDomainMiddlewa
 import { TenantQueryIsolationGuard } from '@/components/guards/TenantQueryIsolationGuard';
 import { TenantProvider } from "@/contexts/TenantContext";
 import { BrandingProvider } from "@/contexts/BrandingContext";
+import { TenantVisualThemeProvider } from '@/contexts/TenantVisualThemeProvider';
 import { isOwnerDomain } from "@/lib/security";
 import { Loader2 } from 'lucide-react'
 import { AppErrorBoundary } from '@/components/runtime/AppErrorBoundary';
@@ -235,6 +236,7 @@ function TenantRoutes() {
       <TenantProvider>
         <TenantDomainMiddleware>
           <BrandingProvider>
+            <TenantVisualThemeProvider>
             <Suspense fallback={<RouteLoading />}>
               <Routes>
                 <Route path="/" element={<Index />} />
@@ -318,6 +320,7 @@ function TenantRoutes() {
                 <Route path="*" element={<NotFound />} />
               </Routes>
             </Suspense>
+            </TenantVisualThemeProvider>
           </BrandingProvider>
         </TenantDomainMiddleware>
       </TenantProvider>

@@ -130,6 +130,14 @@
 }
 
 @layer components {
+  .pcm-page-content {
+    @apply rounded-xl border border-border/60 bg-gradient-to-b from-background via-background to-muted/20 shadow-sm;
+  }
+
+  .pcm-page-content > * {
+    @apply px-4 py-4 md:px-6;
+  }
+
   .card-industrial {
     @apply bg-card border border-border shadow-sm rounded-md;
   }
