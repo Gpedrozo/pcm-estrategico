@@ -16,7 +16,8 @@ const PRIORITY_OPTIONS = [
   { value: 'critica', label: 'Critica' },
 ]
 
-const isImageAttachmentUrl = (url: string) => {
+const isImageAttachmentUrl = (url: unknown) => {
+  if (typeof url !== 'string') return false
   const normalized = url.split('?')[0].toLowerCase()
   return ['.png', '.jpg', '.jpeg', '.webp', '.gif', '.bmp', '.svg'].some((extension) => normalized.endsWith(extension))
 }
