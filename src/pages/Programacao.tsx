@@ -24,6 +24,7 @@ import { useNavigate } from 'react-router-dom';
 import { useEquipamentos } from '@/hooks/useEquipamentos';
 import { useMaintenanceSchedule, useUpdateMaintenanceStatus } from '@/hooks/useMaintenanceSchedule';
 import { useCreateOrdemServico } from '@/hooks/useOrdensServico';
+import { useDadosEmpresa } from '@/hooks/useDadosEmpresa';
 import { format, addDays, startOfWeek, isSameDay, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
@@ -53,6 +54,7 @@ export default function Programacao() {
 
   const { data: eventos, isLoading } = useMaintenanceSchedule(weekStartIso, weekEndIso);
   const { data: equipamentos } = useEquipamentos();
+  const { data: empresa } = useDadosEmpresa();
   const updateSchedule = useUpdateMaintenanceStatus();
   const createOSMutation = useCreateOrdemServico();
 
@@ -191,6 +193,8 @@ export default function Programacao() {
     if (!printWindow) return;
 
     const tipoLabel = selectedEvent.tipo === 'lubrificacao' ? 'Lubrificação' : 'Preventiva';
+    const logoUrl = empresa?.logo_os_url || empresa?.logo_pdf_url || empresa?.logo_url || '';
+    const nomeEmpresa = empresa?.nome_fantasia || empresa?.razao_social || 'MANUTENÇÃO INDUSTRIAL';
     const doc = printWindow.document;
     doc.open();
     doc.write('<!doctype html><html><head><meta charset="utf-8"></head><body></body></html>');
@@ -212,8 +216,19 @@ export default function Programacao() {
 
     const body = doc.body;
 
+    if (logoUrl) {
+      const logo = doc.createElement('img');
+      logo.src = logoUrl;
+      logo.alt = 'Logo da empresa';
+      logo.style.maxHeight = '48px';
+      logo.style.maxWidth = '180px';
+      logo.style.objectFit = 'contain';
+      logo.style.marginBottom = '10px';
+      body.appendChild(logo);
+    }
+
     const title = doc.createElement('h1');
-    title.textContent = `Ficha de Execução - ${tipoLabel}`;
+    title.textContent = `${nomeEmpresa} - Ficha de Execução - ${tipoLabel}`;
     body.appendChild(title);
 
     const addLine = (label: string, value: string) => {

@@ -102,10 +102,6 @@ const ajudaMenuItems = [
 
 const adminMenuItems = [
   { title: 'Central Admin', url: '/administracao', icon: Settings },
-  { title: 'Config. Empresa', url: '/empresa/configuracoes', icon: Settings },
-  { title: 'Master TI', url: '/master-ti', icon: Shield },
-  { title: 'Usuários', url: '/usuarios', icon: Users },
-  { title: 'Auditoria', url: '/auditoria', icon: ClipboardList },
 ];
 
 export function AppSidebar() {

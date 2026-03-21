@@ -26,6 +26,7 @@ import { useMecanicosAtivos } from '@/hooks/useMecanicos';
 import { useLogAuditoria } from '@/hooks/useAuditoria';
 import { useUpdateSolicitacao, type SolicitacaoRow } from '@/hooks/useSolicitacoes';
 import { resolvePrioridadeFromClassificacao, useTenantPadronizacoes } from '@/hooks/useTenantPadronizacoes';
+import { useDadosEmpresa } from '@/hooks/useDadosEmpresa';
 import { useAuth } from '@/contexts/AuthContext';
 import { ArrowLeft, Check, Loader2, Printer, CheckCircle } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -43,6 +44,7 @@ export default function NovaOS() {
   const { data: equipamentos, isLoading: loadingEquipamentos } = useEquipamentos();
   const { data: mecanicosAtivos } = useMecanicosAtivos();
   const { data: padronizacoes } = useTenantPadronizacoes();
+  const { data: empresa } = useDadosEmpresa();
   const createOSMutation = useCreateOrdemServico();
   const updateSolicitacaoMutation = useUpdateSolicitacao();
 
@@ -427,7 +429,7 @@ export default function NovaOS() {
                 </div>
                 <div className="overflow-auto max-h-[400px] bg-gray-100 p-4">
                   <div className="transform scale-[0.5] origin-top-left" style={{ width: '200%' }}>
-                    <OSPrintTemplate ref={printRef} os={createdOS} nomeEmpresa={nomeEmpresa} />
+                    <OSPrintTemplate ref={printRef} os={createdOS} nomeEmpresa={nomeEmpresa} empresa={empresa} />
                   </div>
                 </div>
               </div>

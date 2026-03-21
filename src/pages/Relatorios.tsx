@@ -64,17 +64,17 @@ export default function Relatorios() {
         empresaTelefone: empresa?.telefone || '',
         empresaEmail: empresa?.email || '',
         empresaEndereco: empresa?.endereco || '',
-        logoUrl: empresa?.logo_relatorio_url || empresa?.logo_pdf_url || '',
+        logoUrl: empresa?.logo_relatorio_url || empresa?.logo_pdf_url || empresa?.logo_os_url || empresa?.logo_url || '',
         layoutVersion: '1.0',
       };
 
       if (fmt === 'pdf') {
         switch (selectedReport) {
           case 'indicadores':
-            generateIndicadoresPDF(indicadores, options);
+            await generateIndicadoresPDF(indicadores, options);
             break;
           default:
-            generateOSReportPDF(ordensServico || [], options);
+            await generateOSReportPDF(ordensServico || [], options);
             break;
         }
       } else {

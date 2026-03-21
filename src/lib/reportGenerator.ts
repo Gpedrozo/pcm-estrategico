@@ -18,15 +18,43 @@ interface ReportOptions {
   layoutVersion?: string;
 }
 
-function addProfessionalHeader(doc: jsPDF, options: ReportOptions, startY: number = 15): number {
+async function loadImageAsDataUrl(url: string): Promise<string | null> {
+  const normalizedUrl = String(url || '').trim();
+  if (!normalizedUrl) return null;
+
+  try {
+    const response = await fetch(normalizedUrl);
+    if (!response.ok) return null;
+
+    const blob = await response.blob();
+    return await new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve(typeof reader.result === 'string' ? reader.result : null);
+      reader.onerror = () => resolve(null);
+      reader.readAsDataURL(blob);
+    });
+  } catch {
+    return null;
+  }
+}
+
+async function addProfessionalHeader(doc: jsPDF, options: ReportOptions, startY: number = 15): Promise<number> {
   const { empresaNome, empresaCnpj, empresaTelefone, empresaEmail, title, layoutVersion } = options;
   const pageWidth = doc.internal.pageSize.getWidth();
   const now = format(new Date(), 'dd/MM/yyyy HH:mm', { locale: ptBR });
+  const logoDataUrl = await loadImageAsDataUrl(options.logoUrl || '');
+  const logoWidth = 20;
+  const logoHeight = 12;
+  const textStartX = logoDataUrl ? 38 : 14;
+
+  if (logoDataUrl) {
+    doc.addImage(logoDataUrl, 'PNG', 14, startY - 1, logoWidth, logoHeight);
+  }
 
   // Company name
   doc.setFontSize(14);
   doc.setFont('helvetica', 'bold');
-  doc.text(empresaNome || 'MANUTENÇÃO INDUSTRIAL', 14, startY);
+  doc.text(empresaNome || 'MANUTENÇÃO INDUSTRIAL', textStartX, startY);
 
   // Company details
   doc.setFontSize(7);
@@ -37,21 +65,21 @@ function addProfessionalHeader(doc: jsPDF, options: ReportOptions, startY: numbe
   if (empresaTelefone) details.push(`Tel: ${empresaTelefone}`);
   if (empresaEmail) details.push(empresaEmail);
   if (details.length > 0) {
-    doc.text(details.join('  •  '), 14, startY + 5);
+    doc.text(details.join('  •  '), textStartX, startY + 5);
   }
 
   // Title
   doc.setTextColor(0, 0, 0);
   doc.setFontSize(12);
   doc.setFont('helvetica', 'bold');
-  doc.text(title, 14, startY + 13);
+  doc.text(title, textStartX, startY + 13);
 
   // Period + generation info
   doc.setFontSize(8);
   doc.setFont('helvetica', 'normal');
   doc.setTextColor(80, 80, 80);
   if (options.dateFrom && options.dateTo) {
-    doc.text(`Período: ${options.dateFrom} a ${options.dateTo}`, 14, startY + 18);
+    doc.text(`Período: ${options.dateFrom} a ${options.dateTo}`, textStartX, startY + 18);
   }
   doc.text(`Emitido em: ${now}`, pageWidth - 14, startY + 18, { align: 'right' });
 
@@ -95,12 +123,12 @@ function addProfessionalFooter(doc: jsPDF, options: ReportOptions) {
   }
 }
 
-export function generateOSReportPDF(
+export async function generateOSReportPDF(
   ordensServico: any[],
   options: ReportOptions
 ) {
   const doc = new jsPDF();
-  const startY = addProfessionalHeader(doc, options);
+  const startY = await addProfessionalHeader(doc, options);
 
   const filtered = ordensServico.filter(os => {
     const d = os.data_solicitacao?.slice(0, 10);
@@ -136,12 +164,12 @@ export function generateOSReportPDF(
   doc.save(`${options.title.replace(/\s+/g, '_')}_${options.dateFrom}_${options.dateTo}.pdf`);
 }
 
-export function generateIndicadoresPDF(
+export async function generateIndicadoresPDF(
   indicadores: any,
   options: ReportOptions
 ) {
   const doc = new jsPDF();
-  const startY = addProfessionalHeader(doc, { ...options, dateFrom: '', dateTo: '' });
+  const startY = await addProfessionalHeader(doc, { ...options, dateFrom: '', dateTo: '' });
 
   autoTable(doc, {
     startY,
@@ -223,12 +251,12 @@ export function generateEquipmentTechnicalTemplate() {
   XLSX.writeFile(wb, 'Modelo_Tecnico_Ativos_Componentes.xlsx');
 }
 
-export function generateLubrificacaoPlanoPDF(
+export async function generateLubrificacaoPlanoPDF(
   planos: any[],
   options: ReportOptions
 ) {
   const doc = new jsPDF();
-  const startY = addProfessionalHeader(doc, options);
+  const startY = await addProfessionalHeader(doc, options);
 
   doc.setFontSize(10);
   doc.text(`Total de planos: ${planos.length}`, 14, startY);
