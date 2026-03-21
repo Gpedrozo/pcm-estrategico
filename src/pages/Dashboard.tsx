@@ -26,9 +26,11 @@ import { BacklogSummary } from '@/components/dashboard/BacklogSummary';
 import { OSStatusBadge } from '@/components/os/OSStatusBadge';
 import { OSTypeBadge } from '@/components/os/OSTypeBadge';
 import { normalizeOSStatus, normalizeOSType } from '@/lib/osBadges';
+import { getPriorityToneClass, useTenantPadronizacoes } from '@/hooks/useTenantPadronizacoes';
 
 export default function Dashboard() {
   const { user } = useAuth();
+  const { data: padronizacoes } = useTenantPadronizacoes();
   const { 
     indicadores, 
     osDistribuicaoPorTipo,
@@ -40,6 +42,10 @@ export default function Dashboard() {
     taxaCorretivaPreventiva,
     isLoading 
   } = useDashboardData();
+
+  const prioridadesOS = padronizacoes?.prioridades_os?.length
+    ? padronizacoes.prioridades_os
+    : ['URGENTE', 'ALTA', 'MEDIA', 'BAIXA'];
 
   const formatDate = (date: string) => {
     return new Date(date).toLocaleDateString('pt-BR');
@@ -357,12 +363,7 @@ export default function Dashboard() {
                       <td className="max-w-[150px] truncate">{os.equipamento}</td>
                       <td><OSTypeBadge tipo={normalizeOSType(os.tipo)} /></td>
                       <td>
-                        <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
-                          os.prioridade === 'URGENTE' ? 'bg-destructive/10 text-destructive' :
-                          os.prioridade === 'ALTA' ? 'bg-warning/10 text-warning' :
-                          os.prioridade === 'MEDIA' ? 'bg-info/10 text-info' :
-                          'bg-muted text-muted-foreground'
-                        }`}>
+                        <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${getPriorityToneClass(os.prioridade, prioridadesOS)}`}>
                           {os.prioridade}
                         </span>
                       </td>

@@ -39,3 +39,14 @@ export function resolvePrioridadeFromClassificacao(classificacao: string | null 
   if (key === 'URGENTE') return 'ALTA';
   return 'MEDIA';
 }
+
+export function getPriorityToneClass(priority: string, prioritiesOrder?: string[]): string {
+  const normalized = String(priority ?? '').trim().toUpperCase();
+  const order = (prioritiesOrder ?? TENANT_PADRONIZACOES_DEFAULT.prioridades_os).map((item) => item.toUpperCase());
+  const index = order.findIndex((item) => item === normalized);
+
+  if (index === 0) return 'bg-destructive/10 text-destructive';
+  if (index === 1) return 'bg-warning/10 text-warning';
+  if (index === 2) return 'bg-info/10 text-info';
+  return 'bg-muted text-muted-foreground';
+}

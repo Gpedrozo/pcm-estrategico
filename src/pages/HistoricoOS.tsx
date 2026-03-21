@@ -50,6 +50,7 @@ import { format, subDays, subMonths, isWithinInterval, parseISO } from 'date-fns
 import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import { normalizeOSStatus, normalizeOSType } from '@/lib/osBadges';
+import { getPriorityToneClass, useTenantPadronizacoes } from '@/hooks/useTenantPadronizacoes';
 import {
   BarChart,
   Bar,
@@ -66,7 +67,7 @@ import {
   Legend,
 } from 'recharts';
 
-type StatusOS = 'ABERTA' | 'EM_ANDAMENTO' | 'AGUARDANDO_MATERIAL' | 'FECHADA' | 'CANCELADA';
+type StatusOS = string;
 type TipoOS = 'CORRETIVA' | 'PREVENTIVA' | 'PREDITIVA' | 'INSPECAO' | 'MELHORIA';
 
 const COLORS = ['hsl(var(--primary))', 'hsl(var(--chart-2))', 'hsl(var(--chart-3))', 'hsl(var(--chart-4))', 'hsl(var(--chart-5))'];
@@ -234,6 +235,18 @@ export default function HistoricoOS() {
   const { data: ordensServico, isLoading: loadingOS, error } = useOrdensServico();
   const { data: equipamentos } = useEquipamentos();
   const { data: execucoes } = useExecucoesOS();
+  const { data: padronizacoes } = useTenantPadronizacoes();
+
+  const prioridadesOS = padronizacoes?.prioridades_os?.length
+    ? padronizacoes.prioridades_os
+    : ['URGENTE', 'ALTA', 'MEDIA', 'BAIXA'];
+  const statusPadrao = padronizacoes?.status_os?.length
+    ? padronizacoes.status_os
+    : ['ABERTA', 'EM_ANDAMENTO', 'AGUARDANDO_MATERIAL', 'FECHADA', 'CANCELADA'];
+  const statusOS = useMemo(() => {
+    const observed = Array.from(new Set((ordensServico || []).map((os) => os.status).filter(Boolean)));
+    return Array.from(new Set([...statusPadrao, ...observed]));
+  }, [ordensServico, statusPadrao]);
 
   const formatDate = (date: string) => new Date(date).toLocaleDateString('pt-BR');
   const formatDateTime = (date?: string | null, hour?: string | null) => {
@@ -549,18 +562,34 @@ export default function HistoricoOS() {
                 <Label>Status</Label>
                 <Select 
                   value={filters.status || 'all'} 
-                  onValueChange={(value) => setFilters({ ...filters, status: value === 'all' ? '' : value as StatusOS })}
+                  onValueChange={(value) => setFilters({ ...filters, status: value === 'all' ? '' : value })}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Todos" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">Todos</SelectItem>
-                    <SelectItem value="ABERTA">Aberta</SelectItem>
-                    <SelectItem value="EM_ANDAMENTO">Em Andamento</SelectItem>
-                    <SelectItem value="AGUARDANDO_MATERIAL">Aguard. Material</SelectItem>
-                    <SelectItem value="FECHADA">Fechada</SelectItem>
-                    <SelectItem value="CANCELADA">Cancelada</SelectItem>
+                    {statusOS.map((status) => (
+                      <SelectItem key={status} value={status}>{status}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Prioridade</Label>
+                <Select
+                  value={filters.prioridade || 'all'}
+                  onValueChange={(value) => setFilters({ ...filters, prioridade: value === 'all' ? '' : value })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Todas" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todas</SelectItem>
+                    {prioridadesOS.map((prioridade) => (
+                      <SelectItem key={prioridade} value={prioridade}>{prioridade}</SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
@@ -680,12 +709,7 @@ export default function HistoricoOS() {
                         <td className="max-w-[200px] truncate">{os.equipamento}</td>
                         <td><OSTypeBadge tipo={normalizeOSType(os.tipo)} /></td>
                         <td>
-                          <span className={`text-xs font-medium px-2 py-1 rounded ${
-                            os.prioridade === 'URGENTE' ? 'bg-destructive/10 text-destructive' :
-                            os.prioridade === 'ALTA' ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400' :
-                            os.prioridade === 'MEDIA' ? 'bg-blue-500/10 text-blue-600 dark:text-blue-400' :
-                            'bg-muted text-muted-foreground'
-                          }`}>
+                          <span className={`text-xs font-medium px-2 py-1 rounded ${getPriorityToneClass(os.prioridade, prioridadesOS)}`}>
                             {os.prioridade}
                           </span>
                         </td>

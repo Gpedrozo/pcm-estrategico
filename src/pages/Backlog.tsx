@@ -12,6 +12,7 @@ import { OSTypeBadge } from '@/components/os/OSTypeBadge';
 import { format, startOfWeek, addWeeks, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { normalizeOSStatus, normalizeOSType } from '@/lib/osBadges';
+import { getPriorityToneClass, useTenantPadronizacoes } from '@/hooks/useTenantPadronizacoes';
 
 export default function Backlog() {
   const [search, setSearch] = useState('');
@@ -19,6 +20,13 @@ export default function Backlog() {
   const [viewMode, setViewMode] = useState<'list' | 'grid'>('list');
   
   const { data: ordensServico, isLoading } = useOrdensServico();
+  const { data: padronizacoes } = useTenantPadronizacoes();
+
+  const prioridadesOS = padronizacoes?.prioridades_os?.length
+    ? padronizacoes.prioridades_os
+    : ['URGENTE', 'ALTA', 'MEDIA', 'BAIXA'];
+  const prioridadePrincipal = prioridadesOS[0] ?? 'URGENTE';
+  const prioridadeSecundaria = prioridadesOS[1] ?? 'ALTA';
 
   // Filter for open OS (backlog)
   const backlog = useMemo(() => {
@@ -78,21 +86,11 @@ export default function Backlog() {
   // Statistics
   const stats = useMemo(() => ({
     total: backlog.length,
-    urgente: backlog.filter(os => os.prioridade === 'URGENTE').length,
-    alta: backlog.filter(os => os.prioridade === 'ALTA').length,
+    principal: backlog.filter(os => os.prioridade === prioridadePrincipal).length,
+    secundaria: backlog.filter(os => os.prioridade === prioridadeSecundaria).length,
     atrasadas: weeklyGroups['Atrasadas']?.length || 0,
     horasEstimadas: backlog.reduce((acc, os) => acc + (os.tempo_estimado || 0), 0),
-  }), [backlog, weeklyGroups]);
-
-  const getPriorityColor = (priority: string) => {
-    switch (priority) {
-      case 'URGENTE': return 'bg-destructive text-destructive-foreground';
-      case 'ALTA': return 'bg-warning text-warning-foreground';
-      case 'MEDIA': return 'bg-info/10 text-info';
-      case 'BAIXA': return 'bg-muted text-muted-foreground';
-      default: return '';
-    }
-  };
+  }), [backlog, weeklyGroups, prioridadePrincipal, prioridadeSecundaria]);
 
   if (isLoading) {
     return (
@@ -132,18 +130,18 @@ export default function Backlog() {
           <CardContent className="p-4">
             <div className="flex items-center gap-2">
               <AlertTriangle className="h-5 w-5 text-destructive" />
-              <span className="text-sm text-destructive">Urgentes</span>
+              <span className="text-sm text-destructive">{prioridadePrincipal}</span>
             </div>
-            <p className="text-2xl font-bold text-destructive">{stats.urgente}</p>
+            <p className="text-2xl font-bold text-destructive">{stats.principal}</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center gap-2">
               <AlertTriangle className="h-5 w-5 text-warning" />
-              <span className="text-sm text-warning">Alta Prioridade</span>
+              <span className="text-sm text-warning">{prioridadeSecundaria}</span>
             </div>
-            <p className="text-2xl font-bold text-warning">{stats.alta}</p>
+            <p className="text-2xl font-bold text-warning">{stats.secundaria}</p>
           </CardContent>
         </Card>
         <Card>
@@ -183,10 +181,9 @@ export default function Backlog() {
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">Todas</SelectItem>
-            <SelectItem value="URGENTE">Urgente</SelectItem>
-            <SelectItem value="ALTA">Alta</SelectItem>
-            <SelectItem value="MEDIA">Média</SelectItem>
-            <SelectItem value="BAIXA">Baixa</SelectItem>
+            {prioridadesOS.map((prioridade) => (
+              <SelectItem key={prioridade} value={prioridade}>{prioridade}</SelectItem>
+            ))}
           </SelectContent>
         </Select>
         <div className="flex border border-border rounded-md">
@@ -242,7 +239,7 @@ export default function Backlog() {
                         <td className="max-w-[200px] truncate">{os.problema}</td>
                         <td><OSTypeBadge tipo={normalizeOSType(os.tipo)} /></td>
                         <td>
-                          <Badge className={getPriorityColor(os.prioridade)}>
+                          <Badge className={getPriorityToneClass(os.prioridade, prioridadesOS)}>
                             {os.prioridade}
                           </Badge>
                         </td>
