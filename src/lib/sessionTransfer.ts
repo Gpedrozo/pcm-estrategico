@@ -21,7 +21,7 @@ function sleep(ms: number) {
 }
 
 async function resolveActiveSession(initialSession: Session | null): Promise<Session | null> {
-  let current = initialSession;
+  const current = initialSession;
 
   if (current?.access_token && current?.refresh_token) {
     return current;

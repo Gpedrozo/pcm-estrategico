@@ -22,6 +22,7 @@ import {
 } from '@/components/ui/dialog';
 import { useEquipamentos } from '@/hooks/useEquipamentos';
 import { useCreateOrdemServico } from '@/hooks/useOrdensServico';
+import { useMecanicosAtivos } from '@/hooks/useMecanicos';
 import { useLogAuditoria } from '@/hooks/useAuditoria';
 import { useUpdateSolicitacao, type SolicitacaoRow } from '@/hooks/useSolicitacoes';
 import { useAuth } from '@/contexts/AuthContext';
@@ -40,6 +41,7 @@ export default function NovaOS() {
   const printRef = useRef<HTMLDivElement>(null);
   
   const { data: equipamentos, isLoading: loadingEquipamentos } = useEquipamentos();
+  const { data: mecanicosAtivos } = useMecanicosAtivos();
   const createOSMutation = useCreateOrdemServico();
   const updateSolicitacaoMutation = useUpdateSolicitacao();
 
@@ -52,6 +54,7 @@ export default function NovaOS() {
     tipo: '' as TipoOS | '',
     prioridade: 'MEDIA' as PrioridadeOS,
     tempoEstimado: '',
+    mecanicoResponsavelId: '',
   });
 
   const [createdOS, setCreatedOS] = useState<{
@@ -94,6 +97,7 @@ export default function NovaOS() {
   }, [solicitacaoOrigem, navigate]);
 
   const selectedEquipamento = equipamentos?.find(eq => eq.tag === formData.tag);
+  const selectedMecanico = mecanicosAtivos?.find((m) => m.id === formData.mecanicoResponsavelId);
   const equipamentosAtivos = equipamentos?.filter(eq => eq.ativo) || [];
 
   const handlePrint = useReactToPrint({
@@ -129,6 +133,8 @@ export default function NovaOS() {
       problema: formData.problema,
       tempo_estimado: formData.tempoEstimado ? parseInt(formData.tempoEstimado) : null,
       usuario_abertura: user?.id || null,
+      mecanico_responsavel_id: formData.mecanicoResponsavelId || null,
+      mecanico_responsavel_codigo: selectedMecanico?.codigo_acesso || null,
     });
 
     if (solicitacaoOrigem) {
@@ -288,15 +294,37 @@ export default function NovaOS() {
           </div>
 
           {/* Requester */}
-          <div className="space-y-2 rounded-xl border border-border/70 p-4 bg-background/70">
-            <Label htmlFor="solicitante">Solicitante *</Label>
-            <Input
-              id="solicitante"
-              value={formData.solicitante}
-              onChange={(e) => setFormData({ ...formData, solicitante: e.target.value })}
-              placeholder="Nome ou setor solicitante"
-              required
-            />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2 rounded-xl border border-border/70 p-4 bg-background/70">
+              <Label htmlFor="solicitante">Solicitante *</Label>
+              <Input
+                id="solicitante"
+                value={formData.solicitante}
+                onChange={(e) => setFormData({ ...formData, solicitante: e.target.value })}
+                placeholder="Nome ou setor solicitante"
+                required
+              />
+            </div>
+
+            <div className="space-y-2 rounded-xl border border-border/70 p-4 bg-background/70">
+              <Label>Mecânico responsável (opcional)</Label>
+              <Select
+                value={formData.mecanicoResponsavelId || 'none'}
+                onValueChange={(value) => setFormData({ ...formData, mecanicoResponsavelId: value === 'none' ? '' : value })}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecionar mecânico" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Não designar agora</SelectItem>
+                  {(mecanicosAtivos || []).map((mecanico) => (
+                    <SelectItem key={mecanico.id} value={mecanico.id}>
+                      {mecanico.nome}{mecanico.codigo_acesso ? ` • ${mecanico.codigo_acesso}` : ''}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
 
           {/* Problem Description */}

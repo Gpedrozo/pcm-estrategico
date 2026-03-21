@@ -27,6 +27,7 @@ export interface MelhoriaRow {
   data_aprovacao: string | null;
   data_implementacao: string | null;
   anexos: any;
+  padronizada?: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -45,6 +46,7 @@ export interface MelhoriaInsert {
   economia_anual?: number | null;
   proponente_nome: string;
   proponente_id?: string | null;
+  padronizada?: boolean;
 }
 
 export function useMelhorias() {

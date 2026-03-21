@@ -1,5 +1,3 @@
-// @ts-nocheck
-
 export function createRequestTrace(scope: string, req: Request, action?: string | null) {
   const incomingRequestId = req.headers.get("x-request-id") ?? req.headers.get("x-correlation-id") ?? null;
   return {

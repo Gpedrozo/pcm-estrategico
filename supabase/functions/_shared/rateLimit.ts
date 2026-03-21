@@ -1,5 +1,3 @@
-// @ts-nocheck
-
 export type RateLimitOptions = {
   scope: string;
   identifier?: string | null;
@@ -24,8 +22,9 @@ export async function enforceRateLimit(admin: any, options: RateLimitOptions) {
     };
   }
 
+  const allowed = data === true;
   return {
-    allowed: Boolean(data),
-    reason: Boolean(data) ? null : "rate_limited",
+    allowed,
+    reason: allowed ? null : "rate_limited",
   };
 }

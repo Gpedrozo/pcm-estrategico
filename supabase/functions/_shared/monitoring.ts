@@ -1,5 +1,3 @@
-// @ts-nocheck
-
 export type CaptureSystemErrorInput = {
   error: unknown;
   empresaId?: string | null;

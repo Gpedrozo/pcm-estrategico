@@ -1,6 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
+import { getSupabaseErrorMessage } from '@/lib/supabaseCompat';
 import {
   deleteMaintenanceSchedule,
   type MaintenanceScheduleRow,
@@ -9,20 +11,41 @@ import {
 } from '@/services/maintenanceSchedule';
 
 export function useMaintenanceSchedule(fromIso?: string, toIso?: string) {
+  const { tenantId } = useAuth();
+
   return useQuery({
-    queryKey: ['maintenance-schedule', fromIso, toIso],
+    queryKey: ['maintenance-schedule', tenantId, fromIso, toIso],
+    enabled: Boolean(tenantId),
     queryFn: async () => {
-      let query = supabase
+      if (!tenantId) return [];
+
+      let tenantQuery = supabase
+        .from('maintenance_schedule')
+        .select('*')
+        .eq('empresa_id', tenantId)
+        .order('data_programada', { ascending: true });
+
+      if (fromIso) tenantQuery = tenantQuery.gte('data_programada', fromIso);
+      if (toIso) tenantQuery = tenantQuery.lte('data_programada', toIso);
+
+      const { data, error } = await tenantQuery;
+      if (!error) return (data || []) as MaintenanceScheduleRow[];
+
+      const message = getSupabaseErrorMessage(error).toLowerCase();
+      const missingEmpresa = message.includes('empresa_id') && message.includes('column');
+      if (!missingEmpresa) throw error;
+
+      let legacyQuery = supabase
         .from('maintenance_schedule')
         .select('*')
         .order('data_programada', { ascending: true });
 
-      if (fromIso) query = query.gte('data_programada', fromIso);
-      if (toIso) query = query.lte('data_programada', toIso);
+      if (fromIso) legacyQuery = legacyQuery.gte('data_programada', fromIso);
+      if (toIso) legacyQuery = legacyQuery.lte('data_programada', toIso);
 
-      const { data, error } = await query;
-      if (error) throw error;
-      return (data || []) as MaintenanceScheduleRow[];
+      const legacyResult = await legacyQuery;
+      if (legacyResult.error) throw legacyResult.error;
+      return (legacyResult.data || []) as MaintenanceScheduleRow[];
     },
   });
 }

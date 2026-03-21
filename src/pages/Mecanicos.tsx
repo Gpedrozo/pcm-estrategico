@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -25,7 +25,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { Plus, Search, Edit, Phone, User, Trash2, Loader2, AlertTriangle, Wrench, DollarSign } from 'lucide-react';
+import { Plus, Search, Edit, Phone, User, Trash2, Loader2, AlertTriangle, Wrench, DollarSign, CalendarRange, ClipboardCheck } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Switch } from '@/components/ui/switch';
 import {
@@ -35,6 +35,8 @@ import {
   useDeleteMecanico,
   type MecanicoRow,
 } from '@/hooks/useMecanicos';
+import { useExecucoesOS } from '@/hooks/useExecucoesOS';
+import { useOrdensServico } from '@/hooks/useOrdensServico';
 import { useAuth } from '@/contexts/AuthContext';
 
 type TipoMecanico = 'PROPRIO' | 'TERCEIRIZADO';
@@ -45,6 +47,12 @@ interface FormData {
   tipo: TipoMecanico | '';
   especialidade: string;
   custo_hora: string;
+  codigo_acesso: string;
+  senha_acesso: string;
+  escala_trabalho: string;
+  folgas_planejadas: string;
+  ferias_inicio: string;
+  ferias_fim: string;
   ativo: boolean;
 }
 
@@ -54,6 +62,12 @@ const initialFormData: FormData = {
   tipo: '',
   especialidade: '',
   custo_hora: '',
+  codigo_acesso: '',
+  senha_acesso: '',
+  escala_trabalho: '',
+  folgas_planejadas: '',
+  ferias_inicio: '',
+  ferias_fim: '',
   ativo: true,
 };
 
@@ -68,6 +82,8 @@ export default function Mecanicos() {
   const [formData, setFormData] = useState<FormData>(initialFormData);
 
   const { data: mecanicos, isLoading, error } = useMecanicos();
+  const { data: execucoes } = useExecucoesOS();
+  const { data: ordens } = useOrdensServico();
   const createMutation = useCreateMecanico();
   const updateMutation = useUpdateMecanico();
   const deleteMutation = useDeleteMecanico();
@@ -79,6 +95,39 @@ export default function Mecanicos() {
            mec.especialidade?.toLowerCase().includes(search.toLowerCase());
   }) || [];
 
+  const indicadores = useMemo(() => {
+    const total = (mecanicos || []).length;
+    const ativos = (mecanicos || []).filter((m) => m.ativo).length;
+    const comFerias = (mecanicos || []).filter((m) => !!m.ferias_inicio && !!m.ferias_fim).length;
+
+    const byMecanico = new Map<string, { qtd: number; minutos: number }>();
+    (execucoes || []).forEach((exec) => {
+      const id = exec.mecanico_id || '';
+      if (!id) return;
+      const prev = byMecanico.get(id) || { qtd: 0, minutos: 0 };
+      prev.qtd += 1;
+      prev.minutos += Number(exec.tempo_execucao_liquido || exec.tempo_execucao || 0);
+      byMecanico.set(id, prev);
+    });
+
+    const ranking = (mecanicos || [])
+      .map((m) => {
+        const stat = byMecanico.get(m.id) || { qtd: 0, minutos: 0 };
+        const osAtribuidas = (ordens || []).filter((o) => o.mecanico_responsavel_id === m.id && !['FECHADA', 'CANCELADA'].includes((o.status || '').toUpperCase())).length;
+        return {
+          id: m.id,
+          nome: m.nome,
+          qtd: stat.qtd,
+          horas: stat.minutos / 60,
+          abertas: osAtribuidas,
+        };
+      })
+      .sort((a, b) => b.qtd - a.qtd)
+      .slice(0, 3);
+
+    return { total, ativos, comFerias, ranking };
+  }, [mecanicos, execucoes, ordens]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -88,6 +137,12 @@ export default function Mecanicos() {
       tipo: formData.tipo || 'PROPRIO',
       especialidade: formData.especialidade || null,
       custo_hora: formData.custo_hora ? parseFloat(formData.custo_hora) : null,
+      codigo_acesso: formData.codigo_acesso || null,
+      senha_acesso: formData.senha_acesso || null,
+      escala_trabalho: formData.escala_trabalho || null,
+      folgas_planejadas: formData.folgas_planejadas || null,
+      ferias_inicio: formData.ferias_inicio || null,
+      ferias_fim: formData.ferias_fim || null,
       ativo: formData.ativo,
     };
 
@@ -110,6 +165,12 @@ export default function Mecanicos() {
       tipo: mec.tipo as TipoMecanico,
       especialidade: mec.especialidade || '',
       custo_hora: mec.custo_hora?.toString() || '',
+      codigo_acesso: mec.codigo_acesso || '',
+      senha_acesso: mec.senha_acesso || '',
+      escala_trabalho: mec.escala_trabalho || '',
+      folgas_planejadas: mec.folgas_planejadas || '',
+      ferias_inicio: mec.ferias_inicio || '',
+      ferias_fim: mec.ferias_fim || '',
       ativo: mec.ativo,
     });
     setIsModalOpen(true);
@@ -180,6 +241,42 @@ export default function Mecanicos() {
         </Button>
       </div>
 
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div className="bg-card border border-border rounded-lg p-4">
+          <p className="text-sm text-muted-foreground">Mecânicos cadastrados</p>
+          <p className="text-2xl font-bold">{indicadores.total}</p>
+        </div>
+        <div className="bg-card border border-border rounded-lg p-4">
+          <p className="text-sm text-muted-foreground">Mecânicos ativos</p>
+          <p className="text-2xl font-bold text-success">{indicadores.ativos}</p>
+        </div>
+        <div className="bg-card border border-border rounded-lg p-4">
+          <p className="text-sm text-muted-foreground">Em férias planejadas</p>
+          <p className="text-2xl font-bold text-warning">{indicadores.comFerias}</p>
+        </div>
+        <div className="bg-card border border-border rounded-lg p-4">
+          <p className="text-sm text-muted-foreground">Top executor</p>
+          <p className="text-lg font-semibold truncate">{indicadores.ranking[0]?.nome || '-'}</p>
+        </div>
+      </div>
+
+      <div className="bg-card border border-border rounded-lg p-4">
+        <p className="text-sm font-medium mb-3">Ranking operacional (últimas execuções)</p>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+          {indicadores.ranking.map((item) => (
+            <div key={item.id} className="rounded-lg border p-3">
+              <p className="font-medium truncate">{item.nome}</p>
+              <p className="text-xs text-muted-foreground mt-1">Execuções: {item.qtd}</p>
+              <p className="text-xs text-muted-foreground">Horas produtivas: {item.horas.toFixed(1)}h</p>
+              <p className="text-xs text-muted-foreground">O.S atribuídas em aberto: {item.abertas}</p>
+            </div>
+          ))}
+          {indicadores.ranking.length === 0 && (
+            <div className="text-sm text-muted-foreground">Sem dados de execução suficientes.</div>
+          )}
+        </div>
+      </div>
+
       {/* Filters */}
       <div className="bg-card border border-border rounded-lg p-4">
         <div className="flex flex-col md:flex-row gap-4">
@@ -217,6 +314,9 @@ export default function Mecanicos() {
               {isAdmin && <th>Telefone</th>}
               <th>Tipo</th>
               <th>Especialidade</th>
+              <th>Código</th>
+              <th>Escala</th>
+              <th>Férias</th>
               <th>Custo/Hora</th>
               <th>Status</th>
               <th className="text-right">Ações</th>
@@ -225,7 +325,7 @@ export default function Mecanicos() {
           <tbody>
             {filteredMecanicos.length === 0 ? (
               <tr>
-                <td colSpan={isAdmin ? 7 : 6} className="text-center py-8 text-muted-foreground">
+                <td colSpan={isAdmin ? 10 : 9} className="text-center py-8 text-muted-foreground">
                   <Wrench className="h-8 w-8 mx-auto mb-2 opacity-50" />
                   Nenhum mecânico encontrado
                 </td>
@@ -264,6 +364,13 @@ export default function Mecanicos() {
                   </td>
                   <td className="text-muted-foreground">
                     {mec.especialidade || '-'}
+                  </td>
+                  <td className="font-mono text-xs">{mec.codigo_acesso || '-'}</td>
+                  <td className="text-xs text-muted-foreground">{mec.escala_trabalho || '-'}</td>
+                  <td className="text-xs text-muted-foreground">
+                    {mec.ferias_inicio && mec.ferias_fim
+                      ? `${new Date(mec.ferias_inicio).toLocaleDateString('pt-BR')} - ${new Date(mec.ferias_fim).toLocaleDateString('pt-BR')}`
+                      : '-'}
                   </td>
                   <td>
                     {mec.custo_hora ? (
@@ -350,6 +457,70 @@ export default function Mecanicos() {
                   value={formData.telefone}
                   onChange={(e) => setFormData({ ...formData, telefone: e.target.value })}
                   placeholder="(00) 00000-0000"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="codigo_acesso">Código de Acesso (portal)</Label>
+                <Input
+                  id="codigo_acesso"
+                  value={formData.codigo_acesso}
+                  onChange={(e) => setFormData({ ...formData, codigo_acesso: e.target.value.toUpperCase() })}
+                  placeholder="Ex: MEC-001"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="senha_acesso">Senha de Acesso (portal)</Label>
+                <Input
+                  id="senha_acesso"
+                  type="password"
+                  value={formData.senha_acesso}
+                  onChange={(e) => setFormData({ ...formData, senha_acesso: e.target.value })}
+                  placeholder="Somente para acesso operacional"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="escala_trabalho">Escala de trabalho</Label>
+                <Input
+                  id="escala_trabalho"
+                  value={formData.escala_trabalho}
+                  onChange={(e) => setFormData({ ...formData, escala_trabalho: e.target.value })}
+                  placeholder="Ex: 12x36, Seg-Sex 07:00-17:00"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="folgas_planejadas">Folgas/finais de semana/feriados</Label>
+                <Input
+                  id="folgas_planejadas"
+                  value={formData.folgas_planejadas}
+                  onChange={(e) => setFormData({ ...formData, folgas_planejadas: e.target.value })}
+                  placeholder="Ex: Domingos + feriados nacionais"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="ferias_inicio" className="flex items-center gap-2"><CalendarRange className="h-4 w-4" />Férias início</Label>
+                <Input
+                  id="ferias_inicio"
+                  type="date"
+                  value={formData.ferias_inicio}
+                  onChange={(e) => setFormData({ ...formData, ferias_inicio: e.target.value })}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="ferias_fim" className="flex items-center gap-2"><ClipboardCheck className="h-4 w-4" />Férias fim</Label>
+                <Input
+                  id="ferias_fim"
+                  type="date"
+                  value={formData.ferias_fim}
+                  onChange={(e) => setFormData({ ...formData, ferias_fim: e.target.value })}
                 />
               </div>
             </div>

@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
+import { insertWithColumnFallback } from '@/lib/supabaseCompat';
 
 function getCreateOrdemServicoErrorMessage(error: unknown) {
   const message =
@@ -48,6 +49,8 @@ export interface OrdemServicoRow {
   licoes_aprendidas: string | null;
   usuario_abertura: string | null;
   usuario_fechamento: string | null;
+  mecanico_responsavel_id?: string | null;
+  mecanico_responsavel_codigo?: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -61,6 +64,8 @@ export interface OrdemServicoInsert {
   problema: string;
   tempo_estimado?: number | null;
   usuario_abertura?: string | null;
+  mecanico_responsavel_id?: string | null;
+  mecanico_responsavel_codigo?: string | null;
 }
 
 export interface OrdemServicoUpdate {
@@ -160,15 +165,20 @@ export function useCreateOrdemServico() {
         problema: os.problema,
         tempo_estimado: os.tempo_estimado,
         usuario_abertura: os.usuario_abertura,
+        mecanico_responsavel_id: os.mecanico_responsavel_id ?? null,
+        mecanico_responsavel_codigo: os.mecanico_responsavel_codigo ?? null,
       };
 
-      const { data, error } = await supabase
-        .from('ordens_servico')
-        .insert(payload)
-        .select()
-        .single();
+      const data = await insertWithColumnFallback(
+        async (insertPayload) =>
+          supabase
+            .from('ordens_servico')
+            .insert(insertPayload)
+            .select()
+            .single(),
+        payload as Record<string, unknown>,
+      );
 
-      if (error) throw error;
       return data as OrdemServicoRow;
     },
     onSuccess: (data) => {

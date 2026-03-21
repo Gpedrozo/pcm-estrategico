@@ -579,7 +579,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
 
       try {
-        let decoded = await withTimeout(
+        const decoded = await withTimeout(
           consumeSessionTransferCode(encodedTransfer, window.location.hostname.toLowerCase()),
           HYDRATION_TIMEOUT_MS,
           'session_transfer_consume_timeout',

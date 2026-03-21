@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useEffect } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -90,6 +91,7 @@ interface RCAFormData {
 
 export default function FecharOS() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { user } = useAuth();
   const { toast } = useToast();
   const { log } = useLogAuditoria();
@@ -451,6 +453,20 @@ export default function FecharOS() {
   };
 
   const isLoading = loadingOS || loadingMecanicos;
+
+  useEffect(() => {
+    const osId = searchParams.get('osId');
+    const mecanicoId = searchParams.get('mecanicoId');
+    if (!osId || !pendingOS || pendingOS.length === 0) return;
+
+    const os = pendingOS.find((item) => item.id === osId);
+    if (!os) return;
+
+    handleSelectOS(os);
+    if (mecanicoId) {
+      setFormData((prev) => ({ ...prev, mecanicoId }));
+    }
+  }, [searchParams, pendingOS]);
 
   if (isLoading) {
     return (

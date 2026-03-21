@@ -3,6 +3,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import type { PlanoLubrificacao, PlanoLubrificacaoInsert } from '@/types/lubrificacao';
 import { deleteMaintenanceSchedule, upsertMaintenanceSchedule } from '@/services/maintenanceSchedule';
+import { getSupabaseErrorMessage } from '@/lib/supabaseCompat';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface ExecucaoRow {
   id: string;
@@ -14,9 +16,27 @@ interface OrdemServicoCreated {
 }
 
 export function usePlanosLubrificacao() {
+  const { tenantId } = useAuth();
+
   return useQuery({
-    queryKey: ['planos-lubrificacao'],
+    queryKey: ['planos-lubrificacao', tenantId],
+    enabled: Boolean(tenantId),
     queryFn: async () => {
+      if (!tenantId) return [];
+
+      const tenantQuery = await supabase
+        .from('planos_lubrificacao')
+        .select('*')
+        .eq('empresa_id', tenantId)
+        .order('codigo')
+        .limit(200);
+
+      if (!tenantQuery.error) return tenantQuery.data as PlanoLubrificacao[];
+
+      const message = getSupabaseErrorMessage(tenantQuery.error).toLowerCase();
+      const missingEmpresa = message.includes('empresa_id') && message.includes('column');
+      if (!missingEmpresa) throw tenantQuery.error;
+
       const { data, error } = await supabase
         .from('planos_lubrificacao')
         .select('*')
@@ -33,12 +53,15 @@ export function usePlanosLubrificacao() {
 export function useCreatePlanoLubrificacao() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const { tenantId } = useAuth();
 
   return useMutation({
     mutationFn: async (plano: PlanoLubrificacaoInsert) => {
+      if (!tenantId) throw new Error('Tenant não resolvido.');
+
       const { data, error } = await supabase
         .from('planos_lubrificacao')
-        .insert(plano)
+        .insert({ empresa_id: tenantId, ...plano })
         .select()
         .single();
 
@@ -58,7 +81,7 @@ export function useCreatePlanoLubrificacao() {
       return data as PlanoLubrificacao;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['planos-lubrificacao'] });
+      queryClient.invalidateQueries({ queryKey: ['planos-lubrificacao', tenantId] });
       queryClient.invalidateQueries({ queryKey: ['document-sequences'] });
       toast({ title: 'Plano criado', description: 'Plano de lubrificação criado.' });
     },
@@ -71,13 +94,17 @@ export function useCreatePlanoLubrificacao() {
 export function useUpdatePlanoLubrificacao() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const { tenantId } = useAuth();
 
   return useMutation({
     mutationFn: async ({ id, ...updates }: Partial<PlanoLubrificacao> & { id: string }) => {
+      if (!tenantId) throw new Error('Tenant não resolvido.');
+
       const { data, error } = await supabase
         .from('planos_lubrificacao')
         .update(updates)
         .eq('id', id)
+        .eq('empresa_id', tenantId)
         .select()
         .single();
 
@@ -97,7 +124,7 @@ export function useUpdatePlanoLubrificacao() {
       return data as PlanoLubrificacao;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['planos-lubrificacao'] });
+      queryClient.invalidateQueries({ queryKey: ['planos-lubrificacao', tenantId] });
       queryClient.invalidateQueries({ queryKey: ['maintenance-schedule'] });
       toast({ title: 'Plano atualizado', description: 'Plano de lubrificação atualizado com sucesso.' });
     },
@@ -110,20 +137,24 @@ export function useUpdatePlanoLubrificacao() {
 export function useDeletePlanoLubrificacao() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const { tenantId } = useAuth();
 
   return useMutation({
     mutationFn: async (id: string) => {
+      if (!tenantId) throw new Error('Tenant não resolvido.');
+
       await deleteMaintenanceSchedule('lubrificacao', id);
 
       const { error } = await supabase
         .from('planos_lubrificacao')
         .delete()
-        .eq('id', id);
+        .eq('id', id)
+        .eq('empresa_id', tenantId);
 
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['planos-lubrificacao'] });
+      queryClient.invalidateQueries({ queryKey: ['planos-lubrificacao', tenantId] });
       queryClient.invalidateQueries({ queryKey: ['maintenance-schedule'] });
       toast({ title: 'Plano excluído', description: 'Plano de lubrificação excluído com sucesso.' });
     },

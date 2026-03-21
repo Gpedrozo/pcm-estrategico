@@ -1,5 +1,5 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-// @ts-ignore Resolved by Deno runtime in Supabase Edge Functions.
+// @ts-expect-error Resolved by Deno runtime in Supabase Edge Functions.
 import { createClient } from "jsr:@supabase/supabase-js@2";
 
 declare const Deno: {

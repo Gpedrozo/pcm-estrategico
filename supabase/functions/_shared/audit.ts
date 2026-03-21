@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { fail } from "./response.ts";
 
 function requestIp(req?: Request | null) {

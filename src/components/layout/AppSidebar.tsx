@@ -57,6 +57,7 @@ const osMenuItems = [
   { title: 'Backlog', url: '/backlog', icon: Inbox },
   { title: 'Emitir O.S', url: '/os/nova', icon: FilePlus },
   { title: 'Fechar O.S', url: '/os/fechar', icon: FileCheck },
+  { title: 'Portal Mecânico', url: '/os/portal-mecanico', icon: Wrench },
   { title: 'Histórico', url: '/os/historico', icon: History },
 ];
 

@@ -2,7 +2,8 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { deleteMaintenanceSchedule, upsertMaintenanceSchedule } from '@/services/maintenanceSchedule';
-import { insertWithColumnFallback, updateWithColumnFallback } from '@/lib/supabaseCompat';
+import { getSupabaseErrorMessage, insertWithColumnFallback, updateWithColumnFallback } from '@/lib/supabaseCompat';
+import { useAuth } from '@/contexts/AuthContext';
 
 export interface PlanoPreventivo {
   id: string;
@@ -22,6 +23,8 @@ export interface PlanoPreventivo {
   instrucoes: string | null;
   checklist: any;
   materiais_previstos: any;
+  tolerancia_antes_dias?: number | null;
+  tolerancia_depois_dias?: number | null;
   ativo: boolean;
   created_at: string;
   updated_at: string;
@@ -39,12 +42,31 @@ export interface PlanoInsert {
   especialidade?: string | null;
   instrucoes?: string | null;
   checklist?: any;
+  tolerancia_antes_dias?: number | null;
+  tolerancia_depois_dias?: number | null;
 }
 
 export function usePlanosPreventivos() {
+  const { tenantId } = useAuth();
+
   return useQuery({
-    queryKey: ['planos-preventivos'],
+    queryKey: ['planos-preventivos', tenantId],
+    enabled: Boolean(tenantId),
     queryFn: async () => {
+      if (!tenantId) return [];
+
+      const tenantQuery = await supabase
+        .from('planos_preventivos')
+        .select('*')
+        .eq('empresa_id', tenantId)
+        .order('codigo');
+
+      if (!tenantQuery.error) return tenantQuery.data as PlanoPreventivo[];
+
+      const message = getSupabaseErrorMessage(tenantQuery.error).toLowerCase();
+      const missingEmpresa = message.includes('empresa_id') && message.includes('column');
+      if (!missingEmpresa) throw tenantQuery.error;
+
       const { data, error } = await supabase
         .from('planos_preventivos')
         .select('*')
@@ -57,9 +79,27 @@ export function usePlanosPreventivos() {
 }
 
 export function usePlanosPreventivosAtivos() {
+  const { tenantId } = useAuth();
+
   return useQuery({
-    queryKey: ['planos-preventivos', 'ativos'],
+    queryKey: ['planos-preventivos', tenantId, 'ativos'],
+    enabled: Boolean(tenantId),
     queryFn: async () => {
+      if (!tenantId) return [];
+
+      const tenantQuery = await supabase
+        .from('planos_preventivos')
+        .select('*')
+        .eq('empresa_id', tenantId)
+        .eq('ativo', true)
+        .order('proxima_execucao');
+
+      if (!tenantQuery.error) return tenantQuery.data as PlanoPreventivo[];
+
+      const message = getSupabaseErrorMessage(tenantQuery.error).toLowerCase();
+      const missingEmpresa = message.includes('empresa_id') && message.includes('column');
+      if (!missingEmpresa) throw tenantQuery.error;
+
       const { data, error } = await supabase
         .from('planos_preventivos')
         .select('*')
@@ -75,9 +115,12 @@ export function usePlanosPreventivosAtivos() {
 export function useCreatePlanoPreventivo() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const { tenantId } = useAuth();
 
   return useMutation({
     mutationFn: async (plano: PlanoInsert) => {
+      if (!tenantId) throw new Error('Tenant não resolvido.');
+
       // Calculate next execution date
       const proximaExecucao = new Date();
       if (plano.frequencia_dias) {
@@ -92,6 +135,7 @@ export function useCreatePlanoPreventivo() {
             .select()
             .single(),
         {
+          empresa_id: tenantId,
           ...plano,
           proxima_execucao: proximaExecucao.toISOString(),
         } as Record<string, unknown>,
@@ -110,7 +154,7 @@ export function useCreatePlanoPreventivo() {
       return data as PlanoPreventivo;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['planos-preventivos'] });
+      queryClient.invalidateQueries({ queryKey: ['planos-preventivos', tenantId] });
       queryClient.invalidateQueries({ queryKey: ['document-sequences'] });
       toast({
         title: 'Plano criado',
@@ -130,15 +174,19 @@ export function useCreatePlanoPreventivo() {
 export function useUpdatePlanoPreventivo() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const { tenantId } = useAuth();
 
   return useMutation({
     mutationFn: async ({ id, ...updates }: Partial<PlanoPreventivo> & { id: string }) => {
+      if (!tenantId) throw new Error('Tenant não resolvido.');
+
       const data = await updateWithColumnFallback(
         async (payload) =>
           supabase
             .from('planos_preventivos')
             .update(payload)
             .eq('id', id)
+            .eq('empresa_id', tenantId)
             .select()
             .single(),
         updates as Record<string, unknown>,
@@ -157,7 +205,7 @@ export function useUpdatePlanoPreventivo() {
       return data as PlanoPreventivo;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['planos-preventivos'] });
+      queryClient.invalidateQueries({ queryKey: ['planos-preventivos', tenantId] });
       toast({
         title: 'Plano atualizado',
         description: 'O plano preventivo foi atualizado com sucesso.',
@@ -176,20 +224,24 @@ export function useUpdatePlanoPreventivo() {
 export function useDeletePlanoPreventivo() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const { tenantId } = useAuth();
 
   return useMutation({
     mutationFn: async (id: string) => {
+      if (!tenantId) throw new Error('Tenant não resolvido.');
+
       await deleteMaintenanceSchedule('preventiva', id);
 
       const { error } = await supabase
         .from('planos_preventivos')
         .delete()
-        .eq('id', id);
+        .eq('id', id)
+        .eq('empresa_id', tenantId);
 
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['planos-preventivos'] });
+      queryClient.invalidateQueries({ queryKey: ['planos-preventivos', tenantId] });
       toast({
         title: 'Plano excluído',
         description: 'O plano preventivo foi excluído com sucesso.',

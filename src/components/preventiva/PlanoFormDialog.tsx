@@ -26,6 +26,8 @@ export default function PlanoFormDialog({ open, onOpenChange, equipamentos }: Pr
     tag: '',
     tipo_gatilho: 'TEMPO' as 'TEMPO' | 'CICLO' | 'CONDICAO',
     frequencia_dias: 30,
+    tolerancia_antes_dias: 0,
+    tolerancia_depois_dias: 0,
     tempo_estimado_min: 60,
     especialidade: '',
     instrucoes: '',
@@ -42,7 +44,7 @@ export default function PlanoFormDialog({ open, onOpenChange, equipamentos }: Pr
     });
 
     onOpenChange(false);
-    setForm({ codigo: '', nome: '', descricao: '', equipamento_id: '', tag: '', tipo_gatilho: 'TEMPO', frequencia_dias: 30, tempo_estimado_min: 60, especialidade: '', instrucoes: '' });
+    setForm({ codigo: '', nome: '', descricao: '', equipamento_id: '', tag: '', tipo_gatilho: 'TEMPO', frequencia_dias: 30, tolerancia_antes_dias: 0, tolerancia_depois_dias: 0, tempo_estimado_min: 60, especialidade: '', instrucoes: '' });
   };
 
   const set = (k: string, v: any) => setForm(prev => ({ ...prev, [k]: v }));
@@ -112,6 +114,17 @@ export default function PlanoFormDialog({ open, onOpenChange, equipamentos }: Pr
             <div className="space-y-2">
               <Label>Tempo Est. (min)</Label>
               <Input type="number" value={form.tempo_estimado_min} onChange={e => set('tempo_estimado_min', parseInt(e.target.value) || 0)} />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label>Tolerância antes (dias)</Label>
+              <Input type="number" value={form.tolerancia_antes_dias} onChange={e => set('tolerancia_antes_dias', parseInt(e.target.value) || 0)} />
+            </div>
+            <div className="space-y-2">
+              <Label>Tolerância depois (dias)</Label>
+              <Input type="number" value={form.tolerancia_depois_dias} onChange={e => set('tolerancia_depois_dias', parseInt(e.target.value) || 0)} />
             </div>
           </div>
           <div className="space-y-2">

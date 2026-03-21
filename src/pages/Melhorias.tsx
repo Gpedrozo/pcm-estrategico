@@ -79,6 +79,10 @@ export default function Melhorias() {
     await updateMutation.mutateAsync({ id: melhoria.id, status: next });
   };
 
+  const padronizar = async (melhoria: MelhoriaRow) => {
+    await updateMutation.mutateAsync({ id: melhoria.id, padronizada: true, status: 'IMPLEMENTADA' });
+  };
+
   const getStatusBadge = (status: string) => {
     const styles: Record<string, string> = {
       'PROPOSTA': 'bg-muted text-muted-foreground',
@@ -204,12 +208,13 @@ export default function Melhorias() {
               <th>Economia Anual</th>
               <th>ROI</th>
               <th>Data</th>
+              <th>Padronização</th>
               <th>Fluxo</th>
             </tr>
           </thead>
           <tbody>
             {filteredMelhorias.length === 0 ? (
-              <tr><td colSpan={9} className="text-center py-8 text-muted-foreground">Nenhuma melhoria encontrada</td></tr>
+              <tr><td colSpan={10} className="text-center py-8 text-muted-foreground">Nenhuma melhoria encontrada</td></tr>
             ) : (
               filteredMelhorias.map((melhoria) => (
                 <tr key={melhoria.id}>
@@ -221,6 +226,20 @@ export default function Melhorias() {
                   <td className="text-success font-medium">{formatCurrency(melhoria.economia_anual || 0)}</td>
                   <td>{melhoria.roi_meses ? `${melhoria.roi_meses} meses` : '-'}</td>
                   <td>{new Date(melhoria.created_at).toLocaleDateString('pt-BR')}</td>
+                  <td>
+                    {melhoria.padronizada ? (
+                      <Badge className="bg-success/10 text-success">Padronizada</Badge>
+                    ) : (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => padronizar(melhoria)}
+                        disabled={updateMutation.isPending || melhoria.status !== 'IMPLEMENTADA'}
+                      >
+                        Padronizar
+                      </Button>
+                    )}
+                  </td>
                   <td>
                     <Button
                       size="sm"

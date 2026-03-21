@@ -30,6 +30,7 @@ const ResetPassword = lazy(() => import('./pages/ResetPassword'))
 const Dashboard = lazy(() => import('./pages/Dashboard'))
 const NovaOS = lazy(() => import('./pages/NovaOS'))
 const FecharOS = lazy(() => import('./pages/FecharOS'))
+const PortalMecanicoOS = lazy(() => import('./pages/PortalMecanicoOS'))
 const HistoricoOS = lazy(() => import('./pages/HistoricoOS'))
 const Equipamentos = lazy(() => import('./pages/Equipamentos'))
 const Mecanicos = lazy(() => import('./pages/Mecanicos'))
@@ -243,6 +244,7 @@ function TenantRoutes() {
                 <Route path="/solicitacoes" element={<Solicitacoes />} />
                 <Route path="/os/nova" element={<NovaOS />} />
                 <Route path="/os/fechar" element={<FecharOS />} />
+                <Route path="/os/portal-mecanico" element={<PortalMecanicoOS />} />
                 <Route path="/os/historico" element={<HistoricoOS />} />
                 <Route path="/backlog" element={<Backlog />} />
                 <Route path="/programacao" element={<Programacao />} />

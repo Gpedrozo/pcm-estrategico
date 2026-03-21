@@ -109,6 +109,7 @@ async function clearClientCachesBeforeReload() {
 			await Promise.all(registrations.map((registration) => registration.unregister()));
 		}
 	} catch {
+		void 0;
 	}
 
 	try {
@@ -121,6 +122,7 @@ async function clearClientCachesBeforeReload() {
 			);
 		}
 	} catch {
+		void 0;
 	}
 }
 
@@ -209,6 +211,7 @@ async function hardenOwnerRuntime() {
 			window.localStorage.removeItem("supabase.auth.token");
 		}
 	} catch {
+		void 0;
 	}
 
 	try {
@@ -217,6 +220,7 @@ async function hardenOwnerRuntime() {
 			await Promise.all(registrations.map((registration) => registration.unregister()));
 		}
 	} catch {
+		void 0;
 	}
 
 	try {
@@ -233,6 +237,7 @@ async function hardenOwnerRuntime() {
 			);
 		}
 	} catch {
+		void 0;
 	}
 
 	try {
@@ -241,6 +246,7 @@ async function hardenOwnerRuntime() {
 			window.location.reload();
 		}
 	} catch {
+		void 0;
 	}
 }
 

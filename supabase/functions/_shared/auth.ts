@@ -1,5 +1,4 @@
-// @ts-nocheck
-// @ts-ignore: Deno JSR import is resolved at Supabase edge runtime
+// @ts-expect-error Deno JSR import is resolved at Supabase edge runtime.
 import { createClient } from "jsr:@supabase/supabase-js@2";
 import { resolveCorsHeaders } from "./response.ts";
 

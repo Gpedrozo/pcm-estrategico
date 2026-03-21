@@ -1,4 +1,3 @@
-// @ts-nocheck
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { adminClient, requireUser } from "../_shared/auth.ts";
 import { fail, ok, preflight, rejectIfOriginNotAllowed } from "../_shared/response.ts";

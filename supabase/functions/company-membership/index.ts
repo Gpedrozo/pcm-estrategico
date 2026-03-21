@@ -1,4 +1,3 @@
-// @ts-nocheck
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { adminClient, ensureEmpresaAccess, isSystemOperator, requireUser } from "../_shared/auth.ts";
 import { logAuditEvent, failRateLimited } from "../_shared/audit.ts";
