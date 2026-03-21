@@ -55,6 +55,7 @@ const Custos = lazy(() => import('./pages/Custos'))
 const Relatorios = lazy(() => import('./pages/Relatorios'))
 const DocumentosTecnicos = lazy(() => import('./pages/DocumentosTecnicos'))
 const ConfiguracoesEmpresa = lazy(() => import('./pages/ConfiguracoesEmpresa'))
+const Administracao = lazy(() => import('./pages/Administracao'))
 const MasterTI = lazy(() => import('./pages/MasterTI'))
 const Lubrificacao = lazy(() => import('./pages/Lubrificacao'))
 const NotFound = lazy(() => import('./pages/NotFound'))
@@ -268,6 +269,15 @@ function TenantRoutes() {
                 <Route path="/usuarios" element={<Usuarios />} />
                 <Route path="/auditoria" element={<Auditoria />} />
                 <Route path="/suporte" element={<Suporte />} />
+                <Route
+                  path="/administracao"
+                  element={
+                    <AdminOnlyRoute>
+                      <Administracao />
+                    </AdminOnlyRoute>
+                  }
+                />
+
                 <Route
                   path="/empresa/configuracoes"
                   element={

@@ -27,6 +27,8 @@ export interface DadosEmpresa {
   logo_os_url: string | null;
   logo_pdf_url: string | null;
   logo_relatorio_url: string | null;
+  logo_url: string | null;
+  logo_os_url: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -40,15 +42,47 @@ export function useDadosEmpresa() {
   return useQuery({
     queryKey: ['dados-empresa', tenant?.id],
     queryFn: async () => {
+      const tenantId = tenant?.id;
+      if (!tenantId) return null;
+
       const { data, error } = await supabase
         .from('dados_empresa')
         .select('*')
-        .eq('empresa_id', tenant?.id || '')
+        .eq('empresa_id', tenantId)
         .limit(1)
         .maybeSingle();
 
       if (error) throw error;
-      return data as DadosEmpresa | null;
+
+      if (data) {
+        return data as unknown as DadosEmpresa;
+      }
+
+      // Bootstrap tenant company profile from owner-side base company record when missing.
+      const { data: empresaBase, error: empresaError } = await supabase
+        .from('empresas')
+        .select('id,nome,cnpj')
+        .eq('id', tenantId)
+        .maybeSingle();
+
+      if (empresaError) throw empresaError;
+      if (!empresaBase) return null;
+
+      const payload = {
+        empresa_id: tenantId,
+        razao_social: empresaBase.nome,
+        nome_fantasia: empresaBase.nome,
+        cnpj: empresaBase.cnpj,
+      };
+
+      const { data: inserted, error: insertError } = await supabase
+        .from('dados_empresa')
+        .upsert(payload, { onConflict: 'empresa_id' })
+        .select('*')
+        .maybeSingle();
+
+      if (insertError) throw insertError;
+      return (inserted as unknown as DadosEmpresa) ?? null;
     },
     enabled: Boolean(tenant?.id),
   });

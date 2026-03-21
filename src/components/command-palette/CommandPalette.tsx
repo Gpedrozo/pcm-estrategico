@@ -121,6 +121,7 @@ export function CommandPalette() {
   ];
 
   const adminItems: CommandItem[] = [
+    { id: 'administracao', label: 'Central Admin', description: 'Governanca administrativa por tenant', icon: Settings, action: () => navigateTo('/administracao'), keywords: ['admin', 'central', 'governanca', 'configuracoes'], group: 'Administração' },
     { id: 'usuarios', label: 'Usuários', description: 'Gerenciar usuários do sistema', icon: Users, action: () => navigateTo('/usuarios'), keywords: ['pessoas', 'acessos', 'permissoes'], group: 'Administração' },
     { id: 'auditoria', label: 'Auditoria', description: 'Logs de auditoria', icon: ClipboardList, action: () => navigateTo('/auditoria'), keywords: ['logs', 'historico', 'acoes'], group: 'Administração' },
   ];

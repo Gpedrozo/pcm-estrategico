@@ -5,14 +5,16 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Skeleton } from '@/components/ui/skeleton'
-import { Building2, Lock, Save } from 'lucide-react'
-import { useDadosEmpresa } from '@/hooks/useDadosEmpresa'
+import { Building2, Lock, Save, Upload, Trash2 } from 'lucide-react'
+import { useDadosEmpresa, uploadLogo } from '@/hooks/useDadosEmpresa'
 import {
   useConfiguracoesOperacionaisEmpresa,
   useSalvarConfiguracoesOperacionaisEmpresa,
   type ConfiguracoesOperacionaisEmpresa,
 } from '@/hooks/useConfiguracoesOperacionaisEmpresa'
 import { toast } from '@/hooks/use-toast'
+import { supabase } from '@/integrations/supabase/client'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
 
 const emptyForm: ConfiguracoesOperacionaisEmpresa = {
   endereco: '',
@@ -28,8 +30,59 @@ export default function ConfiguracoesEmpresa() {
   const { data: dadosEmpresa, isLoading: loadingEmpresa } = useDadosEmpresa()
   const { data: operacionais, isLoading: loadingOperacionais } = useConfiguracoesOperacionaisEmpresa()
   const salvarOperacionais = useSalvarConfiguracoesOperacionaisEmpresa()
+  const queryClient = useQueryClient()
 
   const [form, setForm] = useState<ConfiguracoesOperacionaisEmpresa>(emptyForm)
+
+  const salvarLogoMutation = useMutation({
+    mutationFn: async ({ logoKey, url }: { logoKey: 'logo_url' | 'logo_os_url'; url: string | null }) => {
+      if (!dadosEmpresa?.id) throw new Error('Dados da empresa ainda nao carregados.')
+
+      const { error } = await supabase
+        .from('dados_empresa')
+        .update({ [logoKey]: url })
+        .eq('id', dadosEmpresa.id)
+
+      if (error) throw error
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['dados-empresa'] })
+      toast({
+        title: 'Logo atualizada',
+        description: 'Logomarca salva com sucesso.',
+      })
+    },
+    onError: (error: unknown) => {
+      const message = error instanceof Error ? error.message : 'Falha ao atualizar logomarca.'
+      toast({
+        title: 'Erro ao atualizar logo',
+        description: message,
+        variant: 'destructive',
+      })
+    },
+  })
+
+  const handleLogoUpload = async (logoKey: 'logo_url' | 'logo_os_url', file?: File | null) => {
+    if (!file) return
+
+    try {
+      const extension = file.name.split('.').pop() || 'png'
+      const filePath = `${logoKey.replace('_url', '')}-${Date.now()}.${extension}`
+      const publicUrl = await uploadLogo(file, filePath)
+      await salvarLogoMutation.mutateAsync({ logoKey, url: publicUrl })
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Falha no upload da logomarca.'
+      toast({
+        title: 'Erro no upload',
+        description: message,
+        variant: 'destructive',
+      })
+    }
+  }
+
+  const handleLogoRemove = async (logoKey: 'logo_url' | 'logo_os_url') => {
+    await salvarLogoMutation.mutateAsync({ logoKey, url: null })
+  }
 
   useEffect(() => {
     if (!operacionais?.valor) {
@@ -116,6 +169,90 @@ export default function ConfiguracoesEmpresa() {
           <div>
             <Label>CNPJ</Label>
             <Input value={dadosLegais.cnpj} readOnly disabled />
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-base">
+            <Building2 className="h-4 w-4" />
+            Logomarcas do Tenant (empresa cliente)
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+            <div className="space-y-2 rounded-lg border border-border p-4">
+              <Label>Logo Principal (menu/login)</Label>
+              <div className="h-24 rounded-md border border-dashed border-border bg-muted/30 flex items-center justify-center overflow-hidden">
+                {dadosEmpresa?.logo_url ? (
+                  <img src={dadosEmpresa.logo_url} alt="Logo principal" className="max-h-full max-w-full object-contain p-2" />
+                ) : (
+                  <span className="text-xs text-muted-foreground">Sem logomarca</span>
+                )}
+              </div>
+              <div className="flex gap-2">
+                <Button variant="outline" size="sm" className="gap-2" asChild>
+                  <label>
+                    <Upload className="h-3.5 w-3.5" />
+                    Upload
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={(e) => void handleLogoUpload('logo_url', e.target.files?.[0])}
+                    />
+                  </label>
+                </Button>
+                {dadosEmpresa?.logo_url && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => void handleLogoRemove('logo_url')}
+                    className="gap-2"
+                  >
+                    <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                    Remover
+                  </Button>
+                )}
+              </div>
+            </div>
+
+            <div className="space-y-2 rounded-lg border border-border p-4">
+              <Label>Logo para O.S / PDF</Label>
+              <div className="h-24 rounded-md border border-dashed border-border bg-muted/30 flex items-center justify-center overflow-hidden">
+                {dadosEmpresa?.logo_os_url ? (
+                  <img src={dadosEmpresa.logo_os_url} alt="Logo O.S" className="max-h-full max-w-full object-contain p-2" />
+                ) : (
+                  <span className="text-xs text-muted-foreground">Sem logomarca</span>
+                )}
+              </div>
+              <div className="flex gap-2">
+                <Button variant="outline" size="sm" className="gap-2" asChild>
+                  <label>
+                    <Upload className="h-3.5 w-3.5" />
+                    Upload
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={(e) => void handleLogoUpload('logo_os_url', e.target.files?.[0])}
+                    />
+                  </label>
+                </Button>
+                {dadosEmpresa?.logo_os_url && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => void handleLogoRemove('logo_os_url')}
+                    className="gap-2"
+                  >
+                    <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                    Remover
+                  </Button>
+                )}
+              </div>
+            </div>
           </div>
         </CardContent>
       </Card>

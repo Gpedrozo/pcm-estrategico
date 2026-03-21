@@ -42,7 +42,7 @@ export function BrandingProvider({ children }: { children: React.ReactNode }) {
 
       const { data, error: fetchError } = await supabase
         .from('dados_empresa')
-        .select('razao_social, nome_fantasia, logo_principal_url, logo_login_url, logo_menu_url, logo_os_url, logo_pdf_url, logo_relatorio_url')
+        .select('razao_social, nome_fantasia, logo_url, logo_os_url')
         .eq('empresa_id', tenant.id)
         .limit(1)
         .maybeSingle();
@@ -53,7 +53,23 @@ export function BrandingProvider({ children }: { children: React.ReactNode }) {
         setError(fetchError.message);
         setBranding(null);
       } else {
-        setBranding((data || null) as BrandingData | null);
+        if (!data) {
+          setBranding(null);
+        } else {
+          const logoPrincipal = data.logo_url ?? null;
+          const logoOS = data.logo_os_url ?? logoPrincipal;
+
+          setBranding({
+            razao_social: data.razao_social ?? '',
+            nome_fantasia: data.nome_fantasia ?? null,
+            logo_principal_url: logoPrincipal,
+            logo_login_url: logoPrincipal,
+            logo_menu_url: logoPrincipal,
+            logo_os_url: logoOS,
+            logo_pdf_url: logoOS,
+            logo_relatorio_url: logoOS,
+          });
+        }
       }
 
       setIsLoading(false);
