@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 import { PreventivaPrintTemplate } from './PreventivaPrintTemplate';
 
 describe('PreventivaPrintTemplate', () => {
-  it('não renderiza cabeçalho e rodapé padrão de impressão', () => {
+  it('renderiza cabeçalho e rodapé padrão de impressão', () => {
     render(
       <PreventivaPrintTemplate
         ref={createRef<HTMLDivElement>()}
@@ -34,8 +34,8 @@ describe('PreventivaPrintTemplate', () => {
       />
     );
 
-    expect(screen.queryByText('Nº Documento:')).not.toBeInTheDocument();
-    expect(screen.queryByText(/Página 1 \/ 1/i)).not.toBeInTheDocument();
+    expect(screen.getByText('Nº Documento:')).toBeInTheDocument();
+    expect(screen.getByText(/Página 1 \/ 1/i)).toBeInTheDocument();
     expect(screen.getByText('ATIVIDADES E SERVIÇOS')).toBeInTheDocument();
   });
 });
