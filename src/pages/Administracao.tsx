@@ -114,14 +114,14 @@ const ROLE_LABELS: Record<AppRole, string> = {
 };
 
 const linkCards = [
-  { title: 'Cadastro da Empresa', description: 'Dados legais e operacionais por tenant', to: '/empresa/configuracoes', icon: Building2 },
-  { title: 'Gestao de Usuarios', description: 'Perfis, edicao e ciclo de acesso', to: '/usuarios', icon: Users },
-  { title: 'Perfis e Permissoes', description: 'Controle granular por modulo e acao', to: '/master-ti', icon: Shield },
+  { title: 'Gestao de Usuarios', description: 'Perfis, edicao e ciclo de acesso', tab: 'usuarios', icon: Users },
+  { title: 'Processo e SLA', description: 'Regras de abertura, fechamento e SLA', tab: 'processo', icon: Workflow },
+  { title: 'Padronizacoes', description: 'Tipos, status e prioridades operacionais', tab: 'padronizacoes', icon: SlidersHorizontal },
+  { title: 'Alertas', description: 'Canais e gatilhos por criticidade', tab: 'alertas', icon: Bell },
+  { title: 'Indicadores', description: 'Parametros de calculo e pesos KPI', tab: 'indicadores', icon: BarChart3 },
+  { title: 'Integracoes', description: 'Roadmap e governanca de integracoes', tab: 'integracoes', icon: Plug },
+  { title: 'Cadastro da Empresa', description: 'Dados legais e logomarca do tenant', to: '/empresa/configuracoes', icon: Building2 },
   { title: 'Estrutura Organizacional', description: 'Plantas, areas e sistemas', to: '/hierarquia', icon: Network },
-  { title: 'Padronizacoes', description: 'Tipos, status e prioridades operacionais', to: '/programacao', icon: SlidersHorizontal },
-  { title: 'Auditoria e Seguranca', description: 'Logs e rastreabilidade de operacoes', to: '/auditoria', icon: FileCheck2 },
-  { title: 'Personalizacao', description: 'Logos e layout da empresa cliente', to: '/empresa/configuracoes', icon: Palette },
-  { title: 'Licenca e Limites', description: 'Plano, usuarios e capacidade contratada', to: '/owner2', icon: BadgeDollarSign },
 ];
 
 export default function Administracao() {
@@ -140,6 +140,7 @@ export default function Administracao() {
   const [alertasForm, setAlertasForm] = useState<AlertasConfig>(alertasDefault);
   const [padronizacoesForm, setPadronizacoesForm] = useState<PadronizacoesConfig>(padronizacoesDefault);
   const [usuariosSearch, setUsuariosSearch] = useState('');
+  const [activeTab, setActiveTab] = useState('usuarios');
 
   useEffect(() => {
     if (processoConfig) setProcessoForm(processoConfig);
@@ -226,15 +227,21 @@ export default function Administracao() {
                 </div>
                 <item.icon className="h-5 w-5 text-primary" />
               </div>
-              <Button asChild variant="outline" size="sm" className="mt-4 w-full">
-                <Link to={item.to}>Acessar</Link>
-              </Button>
+              {item.tab ? (
+                <Button variant="outline" size="sm" className="mt-4 w-full" onClick={() => setActiveTab(item.tab)}>
+                  Acessar
+                </Button>
+              ) : (
+                <Button asChild variant="outline" size="sm" className="mt-4 w-full">
+                  <Link to={item.to}>Acessar</Link>
+                </Button>
+              )}
             </CardContent>
           </Card>
         ))}
       </div>
 
-      <Tabs defaultValue="processo" className="space-y-4">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
         <TabsList className="flex flex-wrap h-auto">
           <TabsTrigger value="usuarios" className="gap-2"><Users className="h-4 w-4" /> Usuarios</TabsTrigger>
           <TabsTrigger value="processo" className="gap-2"><Workflow className="h-4 w-4" /> Processo</TabsTrigger>
@@ -259,10 +266,8 @@ export default function Administracao() {
                     placeholder="Nome, email ou perfil"
                   />
                 </div>
-                <div className="flex items-end justify-start md:justify-end">
-                  <Button asChild variant="outline">
-                    <Link to="/usuarios">Abrir Gestao Completa de Usuarios</Link>
-                  </Button>
+                <div className="flex items-end justify-start md:justify-end text-xs text-muted-foreground">
+                  Gestao unificada direto na Central Admin.
                 </div>
               </div>
 

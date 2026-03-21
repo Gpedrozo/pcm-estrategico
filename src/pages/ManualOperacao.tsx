@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { BookOpen, CheckCircle2, Loader2, PlayCircle, Printer } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNavigate, useParams } from 'react-router-dom';
+import { useBranding } from '@/contexts/BrandingContext';
 
 type RoleManual = 'USUARIO' | 'ADMIN' | 'MASTER_TI';
 
@@ -549,6 +550,7 @@ function buildDemoScenes(ops: OperacaoManual[]): ManualDemoScene[] {
 }
 
 export default function ManualOperacao() {
+  const { branding } = useBranding();
   const { user } = useAuth();
   const { perfil } = useParams();
   const navigate = useNavigate();
@@ -687,6 +689,13 @@ export default function ManualOperacao() {
     <div className="min-h-screen bg-[radial-gradient(circle_at_top,#101f35_0%,#0b1422_35%,#090f1a_100%)]">
       <div className="mx-auto max-w-7xl px-4 py-8 md:px-8">
         <header className="mb-6 rounded-xl border border-slate-700/70 bg-slate-900/80 p-6 backdrop-blur-sm">
+          {branding?.logo_menu_url && (
+            <img
+              src={branding.logo_menu_url}
+              alt={branding.nome_fantasia || branding.razao_social || 'Logo da empresa'}
+              className="mb-4 max-h-12 w-auto object-contain"
+            />
+          )}
           <div className="mb-2 flex items-center gap-2 text-primary">
             <BookOpen className="h-6 w-6" />
             <span className="text-sm font-semibold uppercase tracking-wide">Manuais de Operacao do Sistema</span>
