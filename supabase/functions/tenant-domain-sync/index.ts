@@ -2,6 +2,13 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { adminClient, unauthorizedResponse } from "../_shared/auth.ts";
 import { fail, ok, preflight, rejectIfOriginNotAllowed } from "../_shared/response.ts";
 
+declare const Deno: {
+  env: {
+    get(name: string): string | undefined;
+  };
+  serve(handler: (req: Request) => Response | Promise<Response>): void;
+};
+
 const TENANT_BASE_DOMAIN = (Deno.env.get("TENANT_BASE_DOMAIN")
   ?? Deno.env.get("VITE_TENANT_BASE_DOMAIN")
   ?? "gppis.com.br")
@@ -98,7 +105,7 @@ function ensureConfigured() {
   return null;
 }
 
-Deno.serve(async (req) => {
+Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") return preflight(req, "POST,OPTIONS", "x-domain-sync-secret");
 
   const denied = rejectIfOriginNotAllowed(req);
