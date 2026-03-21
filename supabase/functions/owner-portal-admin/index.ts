@@ -1546,6 +1546,22 @@ async function bestEffortDeleteByIn(
   return true;
 }
 
+function isMissingSupportTicketThreadColumns(error: unknown) {
+  if (!error || typeof error !== "object") return false;
+  const message = String((error as { message?: unknown }).message ?? "").toLowerCase();
+  if (!message.includes("support_tickets")) return false;
+
+  return [
+    "messages",
+    "unread_owner_messages",
+    "unread_client_messages",
+    "notification_email_pending",
+    "notification_whatsapp_pending",
+    "last_message_sender",
+    "last_message_at",
+  ].some((column) => message.includes(column));
+}
+
 Deno.serve(async (req) => {
   try {
   if (req.method === "OPTIONS") return preflight(req, "POST, OPTIONS");
@@ -3154,21 +3170,50 @@ Deno.serve(async (req) => {
 
   if (body.action === "respond_support_ticket") {
     if (!body.ticket_id || !body.response) return fail("ticket_id and response are required", 400, null, req);
-    const { data: currentTicket, error: currentTicketError } = await admin
+    let schemaHasThreadColumns = true;
+    let { data: currentTicket, error: currentTicketError } = await admin
       .from("support_tickets")
       .select("id,messages,unread_client_messages")
       .eq("id", body.ticket_id)
       .single();
 
+    if (currentTicketError && isMissingSupportTicketThreadColumns(currentTicketError)) {
+      schemaHasThreadColumns = false;
+      const legacyTicket = await admin
+        .from("support_tickets")
+        .select("id")
+        .eq("id", body.ticket_id)
+        .single();
+
+      currentTicket = legacyTicket.data as any;
+      currentTicketError = legacyTicket.error;
+    }
+
     if (currentTicketError || !currentTicket) {
       return fail(currentTicketError?.message ?? "ticket not found", 404, null, req);
+    }
+
+    const nowIso = new Date().toISOString();
+
+    if (!schemaHasThreadColumns) {
+      const { error } = await admin
+        .from("support_tickets")
+        .update({
+          owner_response: body.response,
+          owner_responder_id: auth.user.id,
+          responded_at: nowIso,
+          status: body.status ?? "resolvido",
+        })
+        .eq("id", body.ticket_id);
+
+      if (error) return fail(error.message, 400, null, req);
+      return ok({ success: true }, 200, req);
     }
 
     const existingMessages = Array.isArray((currentTicket as any).messages)
       ? ((currentTicket as any).messages as Array<Record<string, unknown>>)
       : [];
 
-    const nowIso = new Date().toISOString();
     const ownerMessage = {
       id: crypto.randomUUID(),
       sender: "owner",
