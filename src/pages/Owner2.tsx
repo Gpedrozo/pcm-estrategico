@@ -73,6 +73,11 @@ type CriticalActionRequest = {
   masterOnly?: boolean
 }
 
+const isImageAttachmentUrl = (url: string) => {
+  const normalized = url.split('?')[0].toLowerCase()
+  return ['.png', '.jpg', '.jpeg', '.webp', '.gif', '.bmp', '.svg'].some((extension) => normalized.endsWith(extension))
+}
+
 const TENANT_BASE_DOMAIN = (import.meta.env.VITE_TENANT_BASE_DOMAIN || 'gppis.com.br').toLowerCase()
 
 const KNOWN_OWNER_MASTER_EMAILS = ['pedrozo@gppis.com.br', 'pedrozo@gppis.cm.br'] as const
@@ -1503,9 +1508,21 @@ export default function Owner2() {
                             {attachments.length > 0 && (
                               <div className="mt-2 space-y-1">
                                 {attachments.map((url) => (
-                                  <a key={url} href={url} target="_blank" rel="noreferrer" className="block text-xs text-info underline">
-                                    Ver anexo
-                                  </a>
+                                  <div key={url} className="space-y-1">
+                                    {isImageAttachmentUrl(url) && (
+                                      <a href={url} target="_blank" rel="noreferrer" className="block">
+                                        <img
+                                          src={url}
+                                          alt="Anexo do chamado"
+                                          loading="lazy"
+                                          className="max-h-56 rounded-md border border-border object-contain"
+                                        />
+                                      </a>
+                                    )}
+                                    <a href={url} target="_blank" rel="noreferrer" className="block text-xs text-info underline">
+                                      Ver anexo
+                                    </a>
+                                  </div>
                                 ))}
                               </div>
                             )}

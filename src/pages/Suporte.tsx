@@ -16,6 +16,11 @@ const PRIORITY_OPTIONS = [
   { value: 'critica', label: 'Critica' },
 ]
 
+const isImageAttachmentUrl = (url: string) => {
+  const normalized = url.split('?')[0].toLowerCase()
+  return ['.png', '.jpg', '.jpeg', '.webp', '.gif', '.bmp', '.svg'].some((extension) => normalized.endsWith(extension))
+}
+
 export default function Suporte() {
   const { tenantId, user } = useAuth()
   const [subject, setSubject] = useState('')
@@ -285,9 +290,21 @@ export default function Suporte() {
                           {Array.isArray(entry.attachments) && entry.attachments.length > 0 && (
                             <div className="mt-2 space-y-1">
                               {entry.attachments.map((url) => (
-                                <a key={url} href={url} target="_blank" rel="noreferrer" className="block text-xs text-info underline">
-                                  Ver anexo
-                                </a>
+                                <div key={url} className="space-y-1">
+                                  {isImageAttachmentUrl(url) && (
+                                    <a href={url} target="_blank" rel="noreferrer" className="block">
+                                      <img
+                                        src={url}
+                                        alt="Anexo do chamado"
+                                        loading="lazy"
+                                        className="max-h-52 rounded-md border border-border object-contain"
+                                      />
+                                    </a>
+                                  )}
+                                  <a href={url} target="_blank" rel="noreferrer" className="block text-xs text-info underline">
+                                    Ver anexo
+                                  </a>
+                                </div>
                               ))}
                             </div>
                           )}

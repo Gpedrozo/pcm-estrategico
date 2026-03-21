@@ -29,6 +29,11 @@ const getOwnerMasterEmail = () => {
 const TENANT_BASE_DOMAIN = (import.meta.env.VITE_TENANT_BASE_DOMAIN || 'gppis.com.br').toLowerCase()
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
+const isImageAttachmentUrl = (url: string) => {
+  const normalized = url.split('?')[0].toLowerCase()
+  return ['.png', '.jpg', '.jpeg', '.webp', '.gif', '.bmp', '.svg'].some((extension) => normalized.endsWith(extension))
+}
+
 const toArray = <T,>(value: unknown): T[] => (Array.isArray(value) ? (value as T[]) : [])
 const normalizeEmail = (value: string) => value.trim().toLowerCase()
 const isValidEmail = (value: string) => EMAIL_REGEX.test(normalizeEmail(value))
@@ -433,6 +438,8 @@ export default function Owner() {
     [monitoringEmpresaId, tickets],
   )
 
+  const [supportForm, setSupportForm] = useState(emptySupportForm)
+
   const financeiroResumo = useMemo(() => {
     const activeSubs = scopedSubscriptions.filter((sub) => sub.status === 'ativa')
     const paidSubs = scopedSubscriptions.filter((sub) => sub.payment_status === 'paid')
@@ -565,7 +572,6 @@ export default function Owner() {
   const [billingForm, setBillingForm] = useState(emptyBillingForm)
   const [contractForm, setContractForm] = useState(emptyContractForm)
   const [contractOnlyId, setContractOnlyId] = useState('')
-  const [supportForm, setSupportForm] = useState(emptySupportForm)
   const [settingsForm, setSettingsForm] = useState(emptySettingsForm)
   const [userInactivityTimeoutForm, setUserInactivityTimeoutForm] = useState(emptyUserInactivityTimeoutForm)
   const [ownerMasterForm, setOwnerMasterForm] = useState(emptyOwnerMasterForm)
@@ -1993,9 +1999,21 @@ export default function Owner() {
                           {attachmentUrls.length > 0 && (
                             <div className="mt-2 space-y-1">
                               {attachmentUrls.map((url) => (
-                                <a key={url} href={url} target="_blank" rel="noreferrer" className="block text-xs text-info underline">
-                                  Anexo do cliente
-                                </a>
+                                <div key={url} className="space-y-1">
+                                  {isImageAttachmentUrl(url) && (
+                                    <a href={url} target="_blank" rel="noreferrer" className="block">
+                                      <img
+                                        src={url}
+                                        alt="Anexo enviado pelo cliente"
+                                        loading="lazy"
+                                        className="max-h-56 rounded-md border border-border object-contain"
+                                      />
+                                    </a>
+                                  )}
+                                  <a href={url} target="_blank" rel="noreferrer" className="block text-xs text-info underline">
+                                    Anexo do cliente
+                                  </a>
+                                </div>
                               ))}
                             </div>
                           )}
