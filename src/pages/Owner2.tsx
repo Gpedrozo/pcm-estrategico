@@ -196,6 +196,20 @@ export default function Owner2() {
   const [newAdminName, setNewAdminName] = useState('')
   const [newAdminEmail, setNewAdminEmail] = useState('')
 
+  const [editCompanyPersonType, setEditCompanyPersonType] = useState<'PF' | 'PJ'>('PJ')
+  const [editCompanyName, setEditCompanyName] = useState('')
+  const [editCompanySlug, setEditCompanySlug] = useState('')
+  const [editCompanyStatus, setEditCompanyStatus] = useState('active')
+  const [editCompanyDocument, setEditCompanyDocument] = useState('')
+  const [editCompanyRazaoSocial, setEditCompanyRazaoSocial] = useState('')
+  const [editCompanyNomeFantasia, setEditCompanyNomeFantasia] = useState('')
+  const [editCompanyAddress, setEditCompanyAddress] = useState('')
+  const [editCompanyPhone, setEditCompanyPhone] = useState('')
+  const [editCompanyEmail, setEditCompanyEmail] = useState('')
+  const [editCompanyResponsible, setEditCompanyResponsible] = useState('')
+  const [editCompanySegment, setEditCompanySegment] = useState('')
+  const [editCompanyInactivityMinutes, setEditCompanyInactivityMinutes] = useState('10')
+
   const [newUserName, setNewUserName] = useState('')
   const [newUserEmail, setNewUserEmail] = useState('')
   const [newUserRole, setNewUserRole] = useState('ADMIN')
@@ -359,6 +373,95 @@ export default function Owner2() {
   useEffect(() => {
     if (!selectedTicketId && tickets.length > 0) setSelectedTicketId(String(tickets[0]?.id ?? ''))
   }, [selectedTicketId, tickets])
+
+  useEffect(() => {
+    if (!selectedCompany) {
+      setEditCompanyPersonType('PJ')
+      setEditCompanyName('')
+      setEditCompanySlug('')
+      setEditCompanyStatus('active')
+      setEditCompanyDocument('')
+      setEditCompanyRazaoSocial('')
+      setEditCompanyNomeFantasia('')
+      setEditCompanyAddress('')
+      setEditCompanyPhone('')
+      setEditCompanyEmail('')
+      setEditCompanyResponsible('')
+      setEditCompanySegment('')
+      setEditCompanyInactivityMinutes('10')
+      return
+    }
+
+    const dadosEmpresaRaw = Array.isArray(selectedCompany.dados_empresa)
+      ? asObject(selectedCompany.dados_empresa[0])
+      : asObject(selectedCompany.dados_empresa)
+
+    const configRows = Array.isArray(selectedCompany.configuracoes_sistema)
+      ? (selectedCompany.configuracoes_sistema as Array<Record<string, unknown>>)
+      : []
+
+    const ownerProfileConfig = configRows.find((row) => String(row.chave ?? '') === 'owner.company_profile')
+    const ownerSecurityConfig = configRows.find((row) => String(row.chave ?? '') === 'owner.security_policy')
+    const ownerProfile = asObject(ownerProfileConfig?.valor)
+    const ownerSecurity = asObject(ownerSecurityConfig?.valor)
+
+    const documentValue = String(
+      selectedCompany.cnpj
+      ?? dadosEmpresaRaw.cnpj
+      ?? ownerProfile.cpf_cnpj
+      ?? '',
+    )
+
+    setEditCompanyPersonType(String(ownerProfile.tipo_pessoa ?? 'PJ').toUpperCase() === 'PF' ? 'PF' : 'PJ')
+    setEditCompanyName(String(selectedCompany.nome ?? ''))
+    setEditCompanySlug(String(selectedCompany.slug ?? ''))
+    setEditCompanyStatus(String(selectedCompany.status ?? 'active'))
+    setEditCompanyDocument(documentValue)
+    setEditCompanyRazaoSocial(String(dadosEmpresaRaw.razao_social ?? selectedCompany.nome ?? ''))
+    setEditCompanyNomeFantasia(String(dadosEmpresaRaw.nome_fantasia ?? selectedCompany.nome ?? ''))
+    setEditCompanyAddress(String(ownerProfile.endereco ?? ''))
+    setEditCompanyPhone(String(ownerProfile.telefone ?? ''))
+    setEditCompanyEmail(String(ownerProfile.email ?? ''))
+    setEditCompanyResponsible(String(ownerProfile.responsavel ?? ''))
+    setEditCompanySegment(String(ownerProfile.segmento ?? ''))
+    setEditCompanyInactivityMinutes(String(asNumber(ownerSecurity.inactivity_timeout_minutes, 10)))
+  }, [selectedCompany])
+
+  async function handleSaveCompany() {
+    if (!companyId) {
+      setError('Selecione uma empresa para salvar alterações.')
+      return
+    }
+
+    const inactivityMinutesRaw = Number(editCompanyInactivityMinutes)
+    const inactivityTimeout = Number.isFinite(inactivityMinutesRaw) && inactivityMinutesRaw >= 0
+      ? Math.trunc(inactivityMinutesRaw)
+      : 10
+
+    await runAction(
+      'update_company',
+      {
+        empresa_id: companyId,
+        company: {
+          nome: editCompanyName.trim(),
+          slug: editCompanySlug.trim() || undefined,
+          status: editCompanyStatus,
+          tipo_pessoa: editCompanyPersonType,
+          cpf_cnpj: editCompanyDocument.trim() || undefined,
+          cnpj: editCompanyDocument.trim() || undefined,
+          razao_social: editCompanyRazaoSocial.trim() || undefined,
+          nome_fantasia: editCompanyNomeFantasia.trim() || undefined,
+          endereco: editCompanyAddress.trim() || undefined,
+          telefone: editCompanyPhone.trim() || undefined,
+          email: editCompanyEmail.trim() || undefined,
+          responsavel: editCompanyResponsible.trim() || undefined,
+          segmento: editCompanySegment.trim() || undefined,
+          inactivity_timeout_minutes: inactivityTimeout,
+        },
+      },
+      'Empresa atualizada com sucesso.',
+    )
+  }
 
   useEffect(() => {
     const current = settings.length > 0 ? asObject(settings[0]) : {}
@@ -1062,6 +1165,39 @@ export default function Owner2() {
                 </div>
               </SurfaceCard>
 
+              <SurfaceCard title="Editar empresa selecionada" subtitle="Carrega automaticamente os dados ao selecionar a empresa">
+                <div className="grid gap-2">
+                  <select className="rounded-lg border border-border bg-background px-2 py-2 text-sm" value={editCompanyPersonType} onChange={(e) => setEditCompanyPersonType(e.target.value as 'PF' | 'PJ')}>
+                    <option value="PJ">Pessoa juridica (PJ)</option>
+                    <option value="PF">Pessoa fisica (PF)</option>
+                  </select>
+                  <input className="rounded-lg border border-border bg-background px-2 py-2 text-sm" value={editCompanyName} onChange={(e) => setEditCompanyName(e.target.value)} placeholder="Nome da empresa" />
+                  <input className="rounded-lg border border-border bg-background px-2 py-2 text-sm" value={editCompanySlug} onChange={(e) => setEditCompanySlug(e.target.value)} placeholder="Slug" />
+                  <select className="rounded-lg border border-border bg-background px-2 py-2 text-sm" value={editCompanyStatus} onChange={(e) => setEditCompanyStatus(e.target.value)}>
+                    <option value="active">Ativa</option>
+                    <option value="blocked">Bloqueada</option>
+                    <option value="inactive">Inativa</option>
+                    <option value="cancelled">Cancelada</option>
+                  </select>
+                  <input className="rounded-lg border border-border bg-background px-2 py-2 text-sm" value={editCompanyDocument} onChange={(e) => setEditCompanyDocument(e.target.value)} placeholder={editCompanyPersonType === 'PF' ? 'CPF' : 'CNPJ'} />
+                  <input className="rounded-lg border border-border bg-background px-2 py-2 text-sm" value={editCompanyRazaoSocial} onChange={(e) => setEditCompanyRazaoSocial(e.target.value)} placeholder={editCompanyPersonType === 'PF' ? 'Nome completo' : 'Razao social'} />
+                  <input className="rounded-lg border border-border bg-background px-2 py-2 text-sm" value={editCompanyNomeFantasia} onChange={(e) => setEditCompanyNomeFantasia(e.target.value)} placeholder={editCompanyPersonType === 'PF' ? 'Nome de exibicao' : 'Nome fantasia'} />
+                  <input className="rounded-lg border border-border bg-background px-2 py-2 text-sm" value={editCompanyAddress} onChange={(e) => setEditCompanyAddress(e.target.value)} placeholder="Endereco" />
+                  <input className="rounded-lg border border-border bg-background px-2 py-2 text-sm" value={editCompanyPhone} onChange={(e) => setEditCompanyPhone(e.target.value)} placeholder="Telefone" />
+                  <input className="rounded-lg border border-border bg-background px-2 py-2 text-sm" value={editCompanyEmail} onChange={(e) => setEditCompanyEmail(e.target.value)} placeholder="Email comercial" />
+                  <input className="rounded-lg border border-border bg-background px-2 py-2 text-sm" value={editCompanyResponsible} onChange={(e) => setEditCompanyResponsible(e.target.value)} placeholder="Responsavel" />
+                  <input className="rounded-lg border border-border bg-background px-2 py-2 text-sm" value={editCompanySegment} onChange={(e) => setEditCompanySegment(e.target.value)} placeholder="Segmento" />
+                  <input className="rounded-lg border border-border bg-background px-2 py-2 text-sm" value={editCompanyInactivityMinutes} onChange={(e) => setEditCompanyInactivityMinutes(e.target.value)} placeholder="Timeout inatividade (min)" />
+                  <button
+                    className="rounded-lg bg-sky-700 px-3 py-2 text-sm font-semibold text-white"
+                    disabled={busy || !companyId || !editCompanyName.trim()}
+                    onClick={handleSaveCompany}
+                  >
+                    Salvar alterações
+                  </button>
+                </div>
+              </SurfaceCard>
+
               <div className="xl:col-span-2">
                 <SurfaceCard title="Empresas">
                   <div className="max-h-[420px] overflow-auto rounded-xl border border-border">
@@ -1077,8 +1213,14 @@ export default function Owner2() {
                       <tbody>
                         {companies.map((c) => {
                           const st = String(c.status ?? '-')
+                          const rowId = String(c.id ?? '')
+                          const isSelected = companyId === rowId
                           return (
-                            <tr key={String(c.id)} className="border-t border-border">
+                            <tr
+                              key={String(c.id)}
+                              className={`border-t border-border cursor-pointer transition ${isSelected ? 'bg-sky-50/80' : 'hover:bg-muted/40'}`}
+                              onClick={() => setCompanyId(rowId)}
+                            >
                               <td className="px-2 py-2">{String(c.id ?? '-')}</td>
                               <td className="px-2 py-2">{String(c.nome ?? '-')}</td>
                               <td className="px-2 py-2">{String(c.slug ?? '-')}</td>
