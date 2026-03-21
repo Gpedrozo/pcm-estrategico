@@ -1,6 +1,7 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { AppLayout } from './AppLayout';
 import { AppSidebar } from './AppSidebar';
 import { createAuthContextValue } from '@/test/auth-context-mock';
@@ -31,6 +32,19 @@ import { useBranding } from '@/contexts/BrandingContext';
 
 const mockedUseAuth = vi.mocked(useAuth);
 const mockedUseBranding = vi.mocked(useBranding);
+
+function createTestQueryClient() {
+  return new QueryClient({
+    defaultOptions: {
+      queries: {
+        retry: false,
+      },
+      mutations: {
+        retry: false,
+      },
+    },
+  });
+}
 
 const modulePaths = [
   '/dashboard',
@@ -65,15 +79,19 @@ const modulePaths = [
 ];
 
 function renderProtectedRoute(path: string) {
+  const queryClient = createTestQueryClient();
+
   render(
-    <MemoryRouter initialEntries={[path]}>
-      <Routes>
-        <Route element={<AppLayout />}>
-          <Route path={path} element={<div>Módulo {path}</div>} />
-        </Route>
-        <Route path="/login" element={<div>Login page</div>} />
-      </Routes>
-    </MemoryRouter>
+    <QueryClientProvider client={queryClient}>
+      <MemoryRouter initialEntries={[path]}>
+        <Routes>
+          <Route element={<AppLayout />}>
+            <Route path={path} element={<div>Módulo {path}</div>} />
+          </Route>
+          <Route path="/login" element={<div>Login page</div>} />
+        </Routes>
+      </MemoryRouter>
+    </QueryClientProvider>
   );
 }
 
@@ -125,6 +143,7 @@ describe('Session and module route coverage', () => {
   });
 
   it('executes logout action from sidebar', () => {
+    const queryClient = createTestQueryClient();
     const logoutSpy = vi.fn().mockResolvedValue(undefined);
 
     mockedUseAuth.mockReturnValue(
@@ -138,11 +157,13 @@ describe('Session and module route coverage', () => {
     );
 
     render(
-      <MemoryRouter initialEntries={['/dashboard']}>
-        <SidebarProvider>
-          <AppSidebar />
-        </SidebarProvider>
-      </MemoryRouter>
+      <QueryClientProvider client={queryClient}>
+        <MemoryRouter initialEntries={['/dashboard']}>
+          <SidebarProvider>
+            <AppSidebar />
+          </SidebarProvider>
+        </MemoryRouter>
+      </QueryClientProvider>
     );
 
     fireEvent.click(screen.getByTitle('Sair'));
