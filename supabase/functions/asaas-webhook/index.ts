@@ -1,12 +1,20 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
+// @ts-ignore Resolved by Deno runtime in Supabase Edge Functions.
 import { createClient } from "jsr:@supabase/supabase-js@2";
+
+declare const Deno: {
+  env: {
+    get(name: string): string | undefined;
+  };
+  serve(handler: (req: Request) => Response | Promise<Response>): void;
+};
 
 type PaymentStatus = "pending" | "paid" | "late" | "failed" | "refunded";
 type SubscriptionStatus = "ativa" | "atrasada" | "cancelada" | "teste";
 
 const allowedOrigins = (Deno.env.get("CORS_ALLOWED_ORIGINS") ?? "")
   .split(",")
-  .map((origin) => origin.trim())
+  .map((origin: string) => origin.trim())
   .filter(Boolean);
 
 const asaasWebhookToken = (Deno.env.get("ASAAS_WEBHOOK_TOKEN") ?? "").trim();
@@ -196,7 +204,7 @@ async function upsertPayment(admin: ReturnType<typeof adminClient>, input: {
     .insert(paymentPayload);
 }
 
-Deno.serve(async (req) => {
+Deno.serve(async (req: Request) => {
   const origin = req.headers.get("origin");
   const corsHeaders = resolveCorsHeaders(origin);
 
