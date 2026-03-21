@@ -321,7 +321,10 @@ export default function Owner() {
     () => toArray<{ id: string; action_type?: string; source?: string; created_at?: string; severity?: string; actor_email?: string; actor_id?: string }>(auditData),
     [auditData],
   )
-  const tickets = useMemo(() => toArray<{ id: string; empresa_id?: string; subject?: string; status?: string; priority?: string }>(supportData), [supportData])
+  const tickets = useMemo(
+    () => toArray<{ id: string; empresa_id?: string; subject?: string; status?: string; priority?: string; unread_owner_messages?: number }>(supportData),
+    [supportData],
+  )
   const owners = useMemo(() => toArray<{ user_id: string; role?: string; profile?: { nome?: string; email?: string } }>(ownersData), [ownersData])
   const tables = useMemo(
     () =>
@@ -435,6 +438,7 @@ export default function Owner() {
       aberto: scopedTickets.filter((ticket) => ticket.status === 'aberto').length,
       andamento: scopedTickets.filter((ticket) => ticket.status === 'em_andamento').length,
       resolvido: scopedTickets.filter((ticket) => ticket.status === 'resolvido').length,
+      unreadOwnerMessages: scopedTickets.reduce((acc, ticket) => acc + Number(ticket.unread_owner_messages ?? 0), 0),
     }
   }, [scopedTickets])
 
@@ -1114,7 +1118,7 @@ export default function Owner() {
       { key: 'contratos', label: 'Contratos' },
       { key: 'auditoria', label: 'Auditoria' },
       { key: 'sistema', label: 'Sistema' },
-      { key: 'suporte', label: 'Suporte' },
+      { key: 'suporte', label: `Suporte${supportResumo.unreadOwnerMessages > 0 ? ` (${supportResumo.unreadOwnerMessages})` : ''}` },
       { key: 'financeiro', label: 'Financeiro' },
       { key: 'feature-flags', label: 'Feature Flags' },
       { key: 'monitoramento', label: 'Monitoramento' },
@@ -1122,7 +1126,7 @@ export default function Owner() {
       { key: 'configuracoes', label: 'Configuracoes' },
       ...(isOwnerMaster ? [{ key: 'owner-master', label: 'Owner Master' }] : []),
     ],
-    [isOwnerMaster],
+    [isOwnerMaster, supportResumo.unreadOwnerMessages],
   )
 
   const moduleSubtitle = useMemo(() => {
@@ -1871,7 +1875,16 @@ export default function Owner() {
                   {tickets.map((t) => (
                     <tr key={t.id} className="border-t border-slate-800">
                       <td className="px-3 py-2">{t.subject || t.id}</td>
-                      <td className="px-3 py-2">{t.status || '-'}</td>
+                      <td className="px-3 py-2">
+                        <div className="flex items-center gap-2">
+                          <span>{t.status || '-'}</span>
+                          {Number(t.unread_owner_messages ?? 0) > 0 && (
+                            <span className="rounded border border-primary/40 bg-primary/10 px-2 py-0.5 text-[11px] text-primary">
+                              {t.unread_owner_messages}
+                            </span>
+                          )}
+                        </div>
+                      </td>
                       <td className="px-3 py-2">{t.priority || '-'}</td>
                     </tr>
                   ))}

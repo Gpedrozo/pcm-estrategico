@@ -3154,13 +3154,44 @@ Deno.serve(async (req) => {
 
   if (body.action === "respond_support_ticket") {
     if (!body.ticket_id || !body.response) return fail("ticket_id and response are required", 400, null, req);
+    const { data: currentTicket, error: currentTicketError } = await admin
+      .from("support_tickets")
+      .select("id,messages,unread_client_messages")
+      .eq("id", body.ticket_id)
+      .single();
+
+    if (currentTicketError || !currentTicket) {
+      return fail(currentTicketError?.message ?? "ticket not found", 404, null, req);
+    }
+
+    const existingMessages = Array.isArray((currentTicket as any).messages)
+      ? ((currentTicket as any).messages as Array<Record<string, unknown>>)
+      : [];
+
+    const nowIso = new Date().toISOString();
+    const ownerMessage = {
+      id: crypto.randomUUID(),
+      sender: "owner",
+      message: body.response,
+      channel: "in_app",
+      created_at: nowIso,
+      sender_user_id: auth.user.id,
+    };
+
     const { error } = await admin
       .from("support_tickets")
       .update({
         owner_response: body.response,
         owner_responder_id: auth.user.id,
-        responded_at: new Date().toISOString(),
+        responded_at: nowIso,
         status: body.status ?? "resolvido",
+        messages: [...existingMessages, ownerMessage],
+        unread_owner_messages: 0,
+        unread_client_messages: Number((currentTicket as any).unread_client_messages ?? 0) + 1,
+        last_message_sender: "owner",
+        last_message_at: nowIso,
+        notification_email_pending: true,
+        notification_whatsapp_pending: true,
       })
       .eq("id", body.ticket_id);
     if (error) return fail(error.message, 400, null, req);

@@ -1,11 +1,11 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { AlertTriangle, LifeBuoy, Loader2, MessageSquarePlus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { toast } from '@/hooks/use-toast'
-import { useCreateSupportTicket, useSupportTickets } from '@/hooks/useSupportTickets'
+import { useAddSupportTicketMessage, useCreateSupportTicket, useMarkSupportMessagesReadByClient, useSupportTickets } from '@/hooks/useSupportTickets'
 
 const PRIORITY_OPTIONS = [
   { value: 'baixa', label: 'Baixa' },
@@ -18,9 +18,22 @@ export default function Suporte() {
   const [subject, setSubject] = useState('')
   const [message, setMessage] = useState('')
   const [priority, setPriority] = useState('media')
+  const [replyDrafts, setReplyDrafts] = useState<Record<string, string>>({})
 
   const { data: tickets, isLoading, error } = useSupportTickets()
   const createTicket = useCreateSupportTicket()
+  const addTicketMessage = useAddSupportTicketMessage()
+  const markMessagesRead = useMarkSupportMessagesReadByClient()
+
+  const unreadClientTotal = useMemo(
+    () => (tickets ?? []).reduce((acc, ticket) => acc + Number(ticket.unread_client_messages ?? 0), 0),
+    [tickets],
+  )
+
+  useEffect(() => {
+    if (unreadClientTotal <= 0 || markMessagesRead.isPending) return
+    markMessagesRead.mutate()
+  }, [markMessagesRead, unreadClientTotal])
 
   const totals = useMemo(() => {
     const all = tickets ?? []
@@ -70,6 +83,26 @@ export default function Suporte() {
     }
   }
 
+  const handleSendFollowUp = async (ticketId: string) => {
+    const content = (replyDrafts[ticketId] ?? '').trim()
+    if (!content) return
+
+    try {
+      await addTicketMessage.mutateAsync({ ticketId, message: content })
+      setReplyDrafts((current) => ({ ...current, [ticketId]: '' }))
+      toast({
+        title: 'Mensagem enviada',
+        description: 'Sua dúvida foi registrada no chamado.',
+      })
+    } catch (err: any) {
+      toast({
+        title: 'Falha ao enviar mensagem',
+        description: String(err?.message ?? 'Não foi possível registrar sua dúvida.'),
+        variant: 'destructive',
+      })
+    }
+  }
+
   if (error) {
     return (
       <div className="flex min-h-[40vh] items-center justify-center">
@@ -89,7 +122,7 @@ export default function Suporte() {
         <p className="text-muted-foreground">Abra chamados para erros, lentidao, indisponibilidade ou comportamento incorreto do sistema.</p>
       </div>
 
-      <section className="grid gap-3 md:grid-cols-3">
+      <section className="grid gap-3 md:grid-cols-4">
         <div className="rounded-lg border bg-card p-4">
           <p className="text-xs text-muted-foreground">Total de chamados</p>
           <p className="mt-1 text-xl font-semibold">{totals.total}</p>
@@ -101,6 +134,10 @@ export default function Suporte() {
         <div className="rounded-lg border bg-card p-4">
           <p className="text-xs text-muted-foreground">Resolvidos</p>
           <p className="mt-1 text-xl font-semibold text-emerald-600">{totals.resolvido}</p>
+        </div>
+        <div className="rounded-lg border bg-card p-4">
+          <p className="text-xs text-muted-foreground">Mensagens não lidas</p>
+          <p className="mt-1 text-xl font-semibold text-info">{unreadClientTotal}</p>
         </div>
       </section>
 
@@ -175,13 +212,65 @@ export default function Suporte() {
                   <p className="font-medium">{ticket.subject}</p>
                   <span className="rounded border px-2 py-0.5 text-xs uppercase">{ticket.status}</span>
                   <span className="rounded border px-2 py-0.5 text-xs uppercase">{ticket.priority ?? 'media'}</span>
+                  {Number(ticket.unread_client_messages ?? 0) > 0 && (
+                    <span className="rounded border border-primary/40 bg-primary/10 px-2 py-0.5 text-xs font-semibold text-primary">
+                      {ticket.unread_client_messages} nova(s)
+                    </span>
+                  )}
                 </div>
-                <p className="mt-2 text-sm text-muted-foreground whitespace-pre-wrap">{ticket.message}</p>
-                {ticket.owner_response && (
-                  <div className="mt-3 rounded-md border border-emerald-200 bg-emerald-50 p-2 text-sm text-emerald-900">
-                    <strong>Resposta do suporte:</strong> {ticket.owner_response}
+
+                <div className="mt-3 space-y-2">
+                  {(ticket.messages ?? []).length > 0 ? (
+                    (ticket.messages ?? []).map((entry) => {
+                      const isOwner = entry.sender === 'owner'
+                      return (
+                        <div
+                          key={entry.id}
+                          className={isOwner
+                            ? 'rounded-md border border-emerald-200 bg-emerald-50 p-2 text-sm text-emerald-900'
+                            : 'rounded-md border border-border bg-card p-2 text-sm text-foreground'}
+                        >
+                          <p className="text-[11px] font-semibold uppercase tracking-wide opacity-80">
+                            {isOwner ? 'Suporte' : 'Você'}
+                          </p>
+                          <p className="mt-1 whitespace-pre-wrap">{entry.message}</p>
+                          <p className="mt-1 text-[10px] opacity-70">
+                            {new Date(entry.created_at).toLocaleString('pt-BR')}
+                          </p>
+                        </div>
+                      )
+                    })
+                  ) : (
+                    <p className="text-sm text-muted-foreground whitespace-pre-wrap">{ticket.message}</p>
+                  )}
+                </div>
+
+                {ticket.status !== 'resolvido' && (
+                  <div className="mt-3 space-y-2">
+                    <Textarea
+                      rows={3}
+                      value={replyDrafts[ticket.id] ?? ''}
+                      onChange={(event) =>
+                        setReplyDrafts((current) => ({
+                          ...current,
+                          [ticket.id]: event.target.value,
+                        }))
+                      }
+                      placeholder="Enviar nova dúvida ou atualização neste chamado"
+                    />
+                    <div className="flex justify-end">
+                      <Button
+                        type="button"
+                        size="sm"
+                        disabled={addTicketMessage.isPending || !(replyDrafts[ticket.id] ?? '').trim()}
+                        onClick={() => void handleSendFollowUp(ticket.id)}
+                      >
+                        Enviar mensagem
+                      </Button>
+                    </div>
                   </div>
                 )}
+
                 <p className="mt-2 text-xs text-muted-foreground">
                   Atualizado em {new Date(ticket.updated_at).toLocaleString('pt-BR')}
                 </p>

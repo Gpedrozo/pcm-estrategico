@@ -274,6 +274,10 @@ export default function Owner2() {
   const subscriptions = useMemo(() => safeArray<Record<string, unknown>>((subscriptionsQuery.data as any)?.subscriptions), [subscriptionsQuery.data])
   const contracts = useMemo(() => safeArray<Record<string, unknown>>((contractsQuery.data as any)?.contracts), [contractsQuery.data])
   const tickets = useMemo(() => safeArray<Record<string, unknown>>((ticketsQuery.data as any)?.tickets), [ticketsQuery.data])
+  const unreadOwnerMessages = useMemo(
+    () => tickets.reduce((acc, ticket) => acc + Number(ticket.unread_owner_messages ?? 0), 0),
+    [tickets],
+  )
   const logs = useMemo(() => safeArray<Record<string, unknown>>((auditsQuery.data as any)?.logs), [auditsQuery.data])
   const owners = useMemo(() => safeArray<Record<string, unknown>>((ownersQuery.data as any)?.owners), [ownersQuery.data])
   const tables = useMemo(() => safeArray<Record<string, unknown>>((tablesQuery.data as any)?.tables), [tablesQuery.data])
@@ -754,7 +758,7 @@ export default function Owner2() {
                 className={`w-full rounded-lg px-3 py-2 text-left text-sm transition ${activeTab === tab ? 'bg-sky-700 font-semibold text-white shadow-sm' : 'text-muted-foreground hover:bg-muted'}`}
                 onClick={() => setActiveTab(tab)}
               >
-                {tab}
+                {tab === 'suporte' && unreadOwnerMessages > 0 ? `${tab} (${unreadOwnerMessages})` : tab}
               </button>
             ))}
           </nav>
@@ -1454,7 +1458,16 @@ export default function Owner2() {
                           <tr key={String(t.id)} className="border-t border-border">
                             <td className="px-2 py-2">{String(t.id ?? '-')}</td>
                             <td className="px-2 py-2">{String(t.subject ?? '-')}</td>
-                            <td className="px-2 py-2"><span className={`rounded border px-2 py-0.5 ${statusColor(st)}`}>{st}</span></td>
+                            <td className="px-2 py-2">
+                              <div className="flex items-center gap-2">
+                                <span className={`rounded border px-2 py-0.5 ${statusColor(st)}`}>{st}</span>
+                                {Number(t.unread_owner_messages ?? 0) > 0 && (
+                                  <span className="rounded border border-primary/40 bg-primary/10 px-2 py-0.5 text-[11px] text-primary">
+                                    {Number(t.unread_owner_messages)}
+                                  </span>
+                                )}
+                              </div>
+                            </td>
                           </tr>
                         )
                       })}
