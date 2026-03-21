@@ -322,7 +322,22 @@ export default function Owner() {
     [auditData],
   )
   const tickets = useMemo(
-    () => toArray<{ id: string; empresa_id?: string; subject?: string; status?: string; priority?: string; unread_owner_messages?: number }>(supportData),
+    () => toArray<{
+      id: string
+      empresa_id?: string
+      subject?: string
+      status?: string
+      priority?: string
+      unread_owner_messages?: number
+      unread_client_messages?: number
+      message?: string
+      owner_response?: string
+      messages?: Array<Record<string, unknown>>
+      updated_at?: string
+      created_at?: string
+      empresas?: { nome?: string }
+      profiles?: { nome?: string; email?: string }
+    }>(supportData),
     [supportData],
   )
   const owners = useMemo(() => toArray<{ user_id: string; role?: string; profile?: { nome?: string; email?: string } }>(ownersData), [ownersData])
@@ -441,6 +456,50 @@ export default function Owner() {
       unreadOwnerMessages: scopedTickets.reduce((acc, ticket) => acc + Number(ticket.unread_owner_messages ?? 0), 0),
     }
   }, [scopedTickets])
+
+  const selectedSupportTicket = useMemo(() => {
+    if (supportForm.ticket_id) {
+      return scopedTickets.find((ticket) => ticket.id === supportForm.ticket_id) ?? null
+    }
+    return scopedTickets[0] ?? null
+  }, [scopedTickets, supportForm.ticket_id])
+
+  const selectedSupportMessages = useMemo(() => {
+    if (!selectedSupportTicket) return [] as Array<Record<string, unknown>>
+
+    const rawMessages = Array.isArray(selectedSupportTicket.messages) ? selectedSupportTicket.messages : []
+    if (rawMessages.length > 0) return rawMessages
+
+    const fallback: Array<Record<string, unknown>> = []
+    const openedMessage = String(selectedSupportTicket.message ?? '').trim()
+    if (openedMessage) {
+      fallback.push({
+        id: `legacy-client-${selectedSupportTicket.id}`,
+        sender: 'client',
+        message: openedMessage,
+        created_at: selectedSupportTicket.created_at,
+      })
+    }
+
+    const ownerReply = String(selectedSupportTicket.owner_response ?? '').trim()
+    if (ownerReply) {
+      fallback.push({
+        id: `legacy-owner-${selectedSupportTicket.id}`,
+        sender: 'owner',
+        message: ownerReply,
+        created_at: selectedSupportTicket.updated_at ?? selectedSupportTicket.created_at,
+      })
+    }
+
+    return fallback
+  }, [selectedSupportTicket])
+
+  useEffect(() => {
+    if (active !== 'suporte') return
+    if (supportForm.ticket_id || scopedTickets.length === 0) return
+
+    setSupportForm((state) => ({ ...state, ticket_id: scopedTickets[0].id }))
+  }, [active, scopedTickets, supportForm.ticket_id])
 
   const companyStatusChartData = useMemo(() => {
     const grouped = companies.reduce<Record<string, number>>((acc, company) => {
@@ -1840,63 +1899,173 @@ export default function Owner() {
 
       {active === 'suporte' && (
         <div className="space-y-4">
-          <Card title="Responder ticket">
-            <div className="grid gap-2 md:grid-cols-4">
-              <select className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm" value={supportForm.ticket_id} onChange={(e) => setSupportForm((s) => ({ ...s, ticket_id: e.target.value }))}>
-                <option value="">Ticket</option>
-                {tickets.map((t) => (
-                  <option key={t.id} value={t.id}>
-                    {t.subject || t.id}
-                  </option>
-                ))}
-              </select>
-              <input className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm" placeholder="Resposta" value={supportForm.response} onChange={(e) => setSupportForm((s) => ({ ...s, response: e.target.value }))} />
-              <select className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm" value={supportForm.status} onChange={(e) => setSupportForm((s) => ({ ...s, status: e.target.value }))}>
-                <option value="">Selecione status</option>
-                <option value="resolvido">Resolvido</option>
-                <option value="em_andamento">Em andamento</option>
-                <option value="aberto">Aberto</option>
-              </select>
-              <button className="rounded border border-slate-600 px-3 py-2 text-sm" disabled={!supportForm.ticket_id || !supportForm.response || !supportForm.status || respondSupportMutation.isPending} onClick={() => runAction(() => respondSupportMutation.mutateAsync({ ticketId: supportForm.ticket_id, response: supportForm.response, status: supportForm.status }), 'Ticket respondido com sucesso.')}>Responder</button>
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+            <div className="rounded-lg border border-border bg-card p-4">
+              <p className="text-xs text-muted-foreground">Total</p>
+              <p className="mt-1 text-xl font-semibold">{supportResumo.total}</p>
             </div>
-          </Card>
+            <div className="rounded-lg border border-border bg-card p-4">
+              <p className="text-xs text-muted-foreground">Abertos</p>
+              <p className="mt-1 text-xl font-semibold text-amber-500">{supportResumo.aberto}</p>
+            </div>
+            <div className="rounded-lg border border-border bg-card p-4">
+              <p className="text-xs text-muted-foreground">Em andamento</p>
+              <p className="mt-1 text-xl font-semibold text-info">{supportResumo.andamento}</p>
+            </div>
+            <div className="rounded-lg border border-border bg-card p-4">
+              <p className="text-xs text-muted-foreground">Não lidas</p>
+              <p className="mt-1 text-xl font-semibold text-primary">{supportResumo.unreadOwnerMessages}</p>
+            </div>
+          </div>
 
-          <Card title="Chamados de suporte">
-            <div className="max-h-72 overflow-auto rounded border border-slate-800">
-              <table className="w-full text-xs">
-                <thead className="bg-slate-950">
-                  <tr>
-                    <th className="px-3 py-2 text-left">Assunto</th>
-                    <th className="px-3 py-2 text-left">Status</th>
-                    <th className="px-3 py-2 text-left">Prioridade</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {tickets.map((t) => (
-                    <tr key={t.id} className="border-t border-slate-800">
-                      <td className="px-3 py-2">{t.subject || t.id}</td>
-                      <td className="px-3 py-2">
-                        <div className="flex items-center gap-2">
-                          <span>{t.status || '-'}</span>
-                          {Number(t.unread_owner_messages ?? 0) > 0 && (
-                            <span className="rounded border border-primary/40 bg-primary/10 px-2 py-0.5 text-[11px] text-primary">
-                              {t.unread_owner_messages}
-                            </span>
+          <div className="grid gap-4 xl:grid-cols-[360px,1fr]">
+            <Card title="Fila de chamados" subtitle="Clique em um ticket para abrir a conversa completa.">
+              <div className="max-h-[620px] space-y-2 overflow-auto pr-1">
+                {scopedTickets.map((ticket) => {
+                  const isSelected = selectedSupportTicket?.id === ticket.id
+                  return (
+                    <button
+                      key={ticket.id}
+                      type="button"
+                      onClick={() => setSupportForm((state) => ({ ...state, ticket_id: ticket.id }))}
+                      className={`w-full rounded-lg border p-3 text-left transition ${isSelected ? 'border-primary/40 bg-primary/10' : 'border-border bg-background hover:bg-muted/40'}`}
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <p className="line-clamp-2 text-sm font-semibold">{ticket.subject || ticket.id}</p>
+                        {Number(ticket.unread_owner_messages ?? 0) > 0 && (
+                          <span className="rounded border border-primary/40 bg-primary/10 px-2 py-0.5 text-[11px] font-semibold text-primary">
+                            {ticket.unread_owner_messages}
+                          </span>
+                        )}
+                      </div>
+                      <p className="mt-1 text-xs text-muted-foreground">{ticket.empresas?.nome || ticket.empresa_id || 'Empresa não identificada'}</p>
+                      <div className="mt-2 flex flex-wrap gap-2 text-[11px] uppercase">
+                        <span className="rounded border px-2 py-0.5">{ticket.status || 'aberto'}</span>
+                        <span className="rounded border px-2 py-0.5">{ticket.priority || 'media'}</span>
+                      </div>
+                    </button>
+                  )
+                })}
+                {isLoadingSupport && <p className="py-3 text-sm text-muted-foreground">Carregando chamados...</p>}
+                {!isLoadingSupport && scopedTickets.length === 0 && <p className="py-3 text-sm text-muted-foreground">Nenhum chamado encontrado.</p>}
+              </div>
+            </Card>
+
+            <Card title="Atendimento do chamado" subtitle="Conversa completa entre cliente e técnico para diagnóstico e encerramento.">
+              {!selectedSupportTicket ? (
+                <div className="rounded-lg border border-dashed border-border p-6 text-sm text-muted-foreground">
+                  Selecione um ticket na fila para iniciar o atendimento.
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  <div className="rounded-lg border border-border bg-background p-3">
+                    <p className="text-sm font-semibold">{selectedSupportTicket.subject || selectedSupportTicket.id}</p>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      Cliente: {selectedSupportTicket.profiles?.nome || selectedSupportTicket.profiles?.email || selectedSupportTicket.empresa_id || '-'}
+                    </p>
+                    <div className="mt-2 flex flex-wrap gap-2 text-[11px] uppercase">
+                      <span className="rounded border px-2 py-0.5">Status: {selectedSupportTicket.status || 'aberto'}</span>
+                      <span className="rounded border px-2 py-0.5">Prioridade: {selectedSupportTicket.priority || 'media'}</span>
+                    </div>
+                  </div>
+
+                  <div className="max-h-[340px] space-y-2 overflow-auto rounded-lg border border-border bg-background p-3">
+                    {selectedSupportMessages.map((entry, index) => {
+                      const sender = String(entry.sender ?? 'client').toLowerCase()
+                      const isOwner = sender === 'owner' || sender === 'system'
+                      const text = String(entry.message ?? '')
+                      const createdAt = String(entry.created_at ?? selectedSupportTicket.updated_at ?? '')
+                      const attachmentUrls = Array.isArray(entry.attachments)
+                        ? entry.attachments.map((item) => String(item)).filter(Boolean)
+                        : []
+
+                      return (
+                        <div
+                          key={String(entry.id ?? `${sender}-${index}`)}
+                          className={isOwner
+                            ? 'rounded-md border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-900'
+                            : 'rounded-md border border-border bg-card p-3 text-sm text-foreground'}
+                        >
+                          <p className="text-[11px] font-semibold uppercase tracking-wide opacity-80">
+                            {isOwner ? 'Técnico / Suporte' : 'Cliente'}
+                          </p>
+                          <p className="mt-1 whitespace-pre-wrap">{text || '-'}</p>
+                          {attachmentUrls.length > 0 && (
+                            <div className="mt-2 space-y-1">
+                              {attachmentUrls.map((url) => (
+                                <a key={url} href={url} target="_blank" rel="noreferrer" className="block text-xs text-info underline">
+                                  Anexo do cliente
+                                </a>
+                              ))}
+                            </div>
                           )}
+                          <p className="mt-2 text-[10px] opacity-70">
+                            {createdAt ? new Date(createdAt).toLocaleString('pt-BR') : 'Sem data'}
+                          </p>
                         </div>
-                      </td>
-                      <td className="px-3 py-2">{t.priority || '-'}</td>
-                    </tr>
-                  ))}
-                  {isLoadingSupport && (
-                    <tr>
-                      <td className="px-3 py-3 text-slate-400" colSpan={3}>Carregando chamados...</td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </Card>
+                      )
+                    })}
+                    {selectedSupportMessages.length === 0 && (
+                      <p className="text-sm text-muted-foreground">Ainda não há mensagens nesta conversa.</p>
+                    )}
+                  </div>
+
+                  <div className="space-y-2 rounded-lg border border-border bg-card p-3">
+                    <div className="grid gap-2 sm:grid-cols-3">
+                      <select
+                        className="rounded border border-border bg-background px-3 py-2 text-sm"
+                        value={supportForm.status}
+                        onChange={(e) => setSupportForm((state) => ({ ...state, status: e.target.value }))}
+                      >
+                        <option value="">Definir status</option>
+                        <option value="em_andamento">Em andamento</option>
+                        <option value="aberto">Aberto</option>
+                        <option value="resolvido">Resolvido</option>
+                      </select>
+                      <button
+                        type="button"
+                        className="rounded border border-border px-3 py-2 text-sm"
+                        onClick={() => setSupportForm((state) => ({ ...state, status: 'em_andamento' }))}
+                      >
+                        Marcar em andamento
+                      </button>
+                      <button
+                        type="button"
+                        className="rounded border border-emerald-500/40 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-700"
+                        onClick={() => setSupportForm((state) => ({ ...state, status: 'resolvido' }))}
+                      >
+                        Preparar encerramento
+                      </button>
+                    </div>
+
+                    <textarea
+                      className="min-h-[120px] w-full rounded border border-border bg-background px-3 py-2 text-sm"
+                      placeholder="Responda ao cliente, peça detalhes e finalize quando o chamado estiver resolvido."
+                      value={supportForm.response}
+                      onChange={(e) => setSupportForm((state) => ({ ...state, response: e.target.value }))}
+                    />
+
+                    <div className="flex justify-end">
+                      <button
+                        className="rounded border border-slate-600 px-4 py-2 text-sm"
+                        disabled={!selectedSupportTicket?.id || !supportForm.response.trim() || !supportForm.status || respondSupportMutation.isPending}
+                        onClick={() => runAction(
+                          () => respondSupportMutation.mutateAsync({
+                            ticketId: selectedSupportTicket.id,
+                            response: supportForm.response.trim(),
+                            status: supportForm.status,
+                          }),
+                          'Mensagem enviada ao cliente com sucesso.',
+                        )}
+                      >
+                        {respondSupportMutation.isPending ? 'Enviando...' : 'Enviar resposta'}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </Card>
+          </div>
         </div>
       )}
 

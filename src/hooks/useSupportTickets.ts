@@ -6,6 +6,7 @@ export interface SupportTicketMessage {
   id: string
   sender: 'client' | 'owner' | 'system'
   message: string
+  attachments?: string[]
   channel?: 'in_app' | 'email' | 'whatsapp' | 'system'
   created_at: string
   sender_user_id?: string | null
@@ -60,6 +61,9 @@ const normalizeMessages = (value: unknown): SupportTicketMessage[] => {
       return {
         id: String(row?.id ?? `${sender}-${index}`),
         sender,
+        attachments: Array.isArray(row?.attachments)
+          ? row.attachments.map((item) => String(item)).filter(Boolean)
+          : [],
         channel: String(row?.channel ?? 'in_app') as SupportTicketMessage['channel'],
         message,
         created_at: String(row?.created_at ?? new Date().toISOString()),
@@ -161,17 +165,22 @@ export function useCreateSupportTicket() {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: async (payload: { subject: string; message: string; priority: string }) => {
+    mutationFn: async (payload: { subject: string; message: string; priority: string; attachments?: string[] }) => {
       if (!tenantId || !user?.id) {
         throw new Error('Sessão inválida para abrir chamado.')
       }
+
+      const attachments = (payload.attachments ?? []).map((item) => String(item).trim()).filter(Boolean)
+      const messageWithAttachments = attachments.length > 0
+        ? `${payload.message}\n\nAnexos:\n${attachments.map((url) => `- ${url}`).join('\n')}`
+        : payload.message
 
       const nowIso = new Date().toISOString()
       const basePayload = {
         empresa_id: tenantId,
         user_id: user.id,
         subject: payload.subject,
-        message: payload.message,
+        message: messageWithAttachments,
         priority: payload.priority,
         status: 'aberto',
       }
@@ -183,6 +192,7 @@ export function useCreateSupportTicket() {
             id: crypto.randomUUID(),
             sender: 'client',
             message: payload.message,
+            attachments,
             channel: 'in_app',
             created_at: nowIso,
             sender_user_id: user.id,
@@ -224,8 +234,12 @@ export function useAddSupportTicketMessage() {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: async (payload: { ticketId: string; message: string }) => {
+    mutationFn: async (payload: { ticketId: string; message: string; attachments?: string[] }) => {
       const content = payload.message.trim()
+      const attachments = (payload.attachments ?? []).map((item) => String(item).trim()).filter(Boolean)
+      const contentWithAttachments = attachments.length > 0
+        ? `${content}\n\nAnexos:\n${attachments.map((url) => `- ${url}`).join('\n')}`
+        : content
       if (!tenantId || !user?.id) {
         throw new Error('Sessão inválida para enviar mensagem no chamado.')
       }
@@ -271,6 +285,7 @@ export function useAddSupportTicketMessage() {
           id: crypto.randomUUID(),
           sender: 'client',
           message: content,
+          attachments,
           channel: 'in_app',
           created_at: nowIso,
           sender_user_id: user.id,
@@ -296,8 +311,8 @@ export function useAddSupportTicketMessage() {
 
       const previous = String((current as any).message ?? '').trim()
       const messageWithLog = previous
-        ? `${previous}\n\n[${new Date(nowIso).toLocaleString('pt-BR')}] ${content}`
-        : content
+        ? `${previous}\n\n[${new Date(nowIso).toLocaleString('pt-BR')}] ${contentWithAttachments}`
+        : contentWithAttachments
 
       const { error } = await supabase
         .from('support_tickets')

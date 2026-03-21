@@ -5,7 +5,9 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { toast } from '@/hooks/use-toast'
+import { useAuth } from '@/contexts/AuthContext'
 import { useAddSupportTicketMessage, useCreateSupportTicket, useMarkSupportMessagesReadByClient, useSupportTickets } from '@/hooks/useSupportTickets'
+import { uploadToStorage } from '@/services/storage'
 
 const PRIORITY_OPTIONS = [
   { value: 'baixa', label: 'Baixa' },
@@ -15,10 +17,16 @@ const PRIORITY_OPTIONS = [
 ]
 
 export default function Suporte() {
+  const { tenantId, user } = useAuth()
   const [subject, setSubject] = useState('')
   const [message, setMessage] = useState('')
   const [priority, setPriority] = useState('media')
   const [replyDrafts, setReplyDrafts] = useState<Record<string, string>>({})
+  const [createAttachments, setCreateAttachments] = useState<File[]>([])
+  const [replyAttachments, setReplyAttachments] = useState<Record<string, File[]>>({})
+  const [uploading, setUploading] = useState(false)
+
+  const canUploadAttachment = Boolean(tenantId && user?.id)
 
   const { data: tickets, isLoading, error } = useSupportTickets()
   const createTicket = useCreateSupportTicket()
@@ -60,15 +68,19 @@ export default function Suporte() {
     }
 
     try {
+      setUploading(true)
+      const uploadedAttachments = await uploadSupportFiles(createAttachments, 'new-ticket')
       await createTicket.mutateAsync({
         subject: trimmedSubject,
         message: trimmedMessage,
         priority,
+        attachments: uploadedAttachments,
       })
 
       setSubject('')
       setMessage('')
       setPriority('media')
+      setCreateAttachments([])
 
       toast({
         title: 'Chamado aberto',
@@ -80,16 +92,38 @@ export default function Suporte() {
         description: String(err?.message ?? 'Falha ao registrar chamado.'),
         variant: 'destructive',
       })
+    } finally {
+      setUploading(false)
     }
+  }
+
+  const uploadSupportFiles = async (files: File[], ticketId: string) => {
+    if (!canUploadAttachment || files.length === 0 || !tenantId || !user?.id) return [] as string[]
+
+    const validFiles = files.filter((file) => file.type.startsWith('image/'))
+    const urls: string[] = []
+
+    for (const file of validFiles) {
+      const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_')
+      const filePath = `${tenantId}/${user.id}/${ticketId}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}-${safeName}`
+      const publicUrl = await uploadToStorage('support-attachments', filePath, file)
+      urls.push(publicUrl)
+    }
+
+    return urls
   }
 
   const handleSendFollowUp = async (ticketId: string) => {
     const content = (replyDrafts[ticketId] ?? '').trim()
-    if (!content) return
+    const files = replyAttachments[ticketId] ?? []
+    if (!content && files.length === 0) return
 
     try {
-      await addTicketMessage.mutateAsync({ ticketId, message: content })
+      setUploading(true)
+      const uploadedAttachments = await uploadSupportFiles(files, ticketId)
+      await addTicketMessage.mutateAsync({ ticketId, message: content || 'Anexo enviado pelo cliente.', attachments: uploadedAttachments })
       setReplyDrafts((current) => ({ ...current, [ticketId]: '' }))
+      setReplyAttachments((current) => ({ ...current, [ticketId]: [] }))
       toast({
         title: 'Mensagem enviada',
         description: 'Sua dúvida foi registrada no chamado.',
@@ -100,6 +134,8 @@ export default function Suporte() {
         description: String(err?.message ?? 'Não foi possível registrar sua dúvida.'),
         variant: 'destructive',
       })
+    } finally {
+      setUploading(false)
     }
   }
 
@@ -185,9 +221,21 @@ export default function Suporte() {
             />
           </div>
 
+          <div className="grid gap-2">
+            <Label htmlFor="support-attachment">Anexo de imagem (opcional)</Label>
+            <Input
+              id="support-attachment"
+              type="file"
+              accept="image/*"
+              multiple
+              onChange={(event) => setCreateAttachments(Array.from(event.target.files ?? []))}
+            />
+            <p className="text-xs text-muted-foreground">Envie print do erro para acelerar o diagnóstico.</p>
+          </div>
+
           <div className="flex justify-end">
-            <Button type="submit" disabled={createTicket.isPending} className="gap-2">
-              {createTicket.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
+            <Button type="submit" disabled={createTicket.isPending || uploading} className="gap-2">
+              {(createTicket.isPending || uploading) && <Loader2 className="h-4 w-4 animate-spin" />}
               Enviar chamado
             </Button>
           </div>
@@ -234,6 +282,15 @@ export default function Suporte() {
                             {isOwner ? 'Suporte' : 'Você'}
                           </p>
                           <p className="mt-1 whitespace-pre-wrap">{entry.message}</p>
+                          {Array.isArray(entry.attachments) && entry.attachments.length > 0 && (
+                            <div className="mt-2 space-y-1">
+                              {entry.attachments.map((url) => (
+                                <a key={url} href={url} target="_blank" rel="noreferrer" className="block text-xs text-info underline">
+                                  Ver anexo
+                                </a>
+                              ))}
+                            </div>
+                          )}
                           <p className="mt-1 text-[10px] opacity-70">
                             {new Date(entry.created_at).toLocaleString('pt-BR')}
                           </p>
@@ -258,11 +315,22 @@ export default function Suporte() {
                       }
                       placeholder="Enviar nova dúvida ou atualização neste chamado"
                     />
+                    <Input
+                      type="file"
+                      accept="image/*"
+                      multiple
+                      onChange={(event) =>
+                        setReplyAttachments((current) => ({
+                          ...current,
+                          [ticket.id]: Array.from(event.target.files ?? []),
+                        }))
+                      }
+                    />
                     <div className="flex justify-end">
                       <Button
                         type="button"
                         size="sm"
-                        disabled={addTicketMessage.isPending || !(replyDrafts[ticket.id] ?? '').trim()}
+                        disabled={addTicketMessage.isPending || uploading || (!(replyDrafts[ticket.id] ?? '').trim() && (replyAttachments[ticket.id] ?? []).length === 0)}
                         onClick={() => void handleSendFollowUp(ticket.id)}
                       >
                         Enviar mensagem

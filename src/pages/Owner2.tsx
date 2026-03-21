@@ -215,6 +215,7 @@ export default function Owner2() {
 
   const [selectedTicketId, setSelectedTicketId] = useState('')
   const [ticketResponse, setTicketResponse] = useState('')
+  const [ticketStatus, setTicketStatus] = useState<'aberto' | 'em_andamento' | 'resolvido'>('em_andamento')
 
   const [systemUserId, setSystemUserId] = useState('')
   const [selectedTableName, setSelectedTableName] = useState('')
@@ -278,6 +279,27 @@ export default function Owner2() {
     () => tickets.reduce((acc, ticket) => acc + Number(ticket.unread_owner_messages ?? 0), 0),
     [tickets],
   )
+  const selectedTicket = useMemo(
+    () => tickets.find((ticket) => String(ticket.id ?? '') === selectedTicketId) ?? tickets[0] ?? null,
+    [selectedTicketId, tickets],
+  )
+
+  const selectedTicketMessages = useMemo(() => {
+    if (!selectedTicket) return [] as Array<Record<string, unknown>>
+    const rawMessages = Array.isArray(selectedTicket.messages) ? selectedTicket.messages : []
+    if (rawMessages.length > 0) return rawMessages as Array<Record<string, unknown>>
+
+    const fallback: Array<Record<string, unknown>> = []
+    const opened = String(selectedTicket.message ?? '').trim()
+    if (opened) {
+      fallback.push({ id: `legacy-client-${String(selectedTicket.id ?? '')}`, sender: 'client', message: opened, created_at: selectedTicket.created_at })
+    }
+    const replied = String(selectedTicket.owner_response ?? '').trim()
+    if (replied) {
+      fallback.push({ id: `legacy-owner-${String(selectedTicket.id ?? '')}`, sender: 'owner', message: replied, created_at: selectedTicket.updated_at ?? selectedTicket.created_at })
+    }
+    return fallback
+  }, [selectedTicket])
   const logs = useMemo(() => safeArray<Record<string, unknown>>((auditsQuery.data as any)?.logs), [auditsQuery.data])
   const owners = useMemo(() => safeArray<Record<string, unknown>>((ownersQuery.data as any)?.owners), [ownersQuery.data])
   const tables = useMemo(() => safeArray<Record<string, unknown>>((tablesQuery.data as any)?.tables), [tablesQuery.data])
@@ -1429,51 +1451,92 @@ export default function Owner2() {
           )}
 
           {activeTab === 'suporte' && (
-            <div className="grid gap-4 xl:grid-cols-2">
-              <SurfaceCard title="Responder ticket">
-                <div className="grid gap-2">
-                  <select className="rounded-lg border border-border bg-background px-2 py-2 text-sm" value={selectedTicketId} onChange={(e) => setSelectedTicketId(e.target.value)}>
-                    <option value="">Selecione o ticket</option>
-                    {tickets.map((t) => <option key={String(t.id)} value={String(t.id)}>{String(t.subject ?? t.id)}</option>)}
-                  </select>
-                  <textarea className="min-h-[120px] rounded-lg border border-border bg-background px-2 py-2 text-sm" value={ticketResponse} onChange={(e) => setTicketResponse(e.target.value)} placeholder="Resposta para o cliente" />
-                  <button className="rounded-lg bg-sky-700 px-3 py-2 text-sm font-semibold text-white" disabled={busy || !selectedTicketId || !ticketResponse} onClick={() => runAction('respond_support_ticket', { ticket_id: selectedTicketId, response: ticketResponse, status: 'resolvido' }, 'Ticket respondido.')}>Enviar resposta</button>
+            <div className="grid gap-4 xl:grid-cols-[320px,1fr]">
+              <SurfaceCard title="Fila de chamados" subtitle="Selecione um ticket para abrir o histórico completo.">
+                <div className="max-h-[620px] space-y-2 overflow-auto pr-1">
+                  {tickets.map((ticket) => {
+                    const isSelected = String(ticket.id ?? '') === String(selectedTicket?.id ?? '')
+                    return (
+                      <button
+                        key={String(ticket.id)}
+                        type="button"
+                        onClick={() => setSelectedTicketId(String(ticket.id ?? ''))}
+                        className={`w-full rounded-lg border p-3 text-left transition ${isSelected ? 'border-sky-400 bg-sky-50/60' : 'border-border bg-background hover:bg-muted/40'}`}
+                      >
+                        <div className="flex items-start justify-between gap-2">
+                          <p className="line-clamp-2 text-sm font-semibold">{String(ticket.subject ?? ticket.id ?? '-')}</p>
+                          {Number(ticket.unread_owner_messages ?? 0) > 0 && (
+                            <span className="rounded border border-primary/40 bg-primary/10 px-2 py-0.5 text-[11px] text-primary">
+                              {Number(ticket.unread_owner_messages)}
+                            </span>
+                          )}
+                        </div>
+                        <p className="mt-1 text-xs text-muted-foreground">{String((ticket as any)?.empresas?.nome ?? ticket.empresa_id ?? 'empresa')}</p>
+                        <p className="mt-2 text-[11px] uppercase text-muted-foreground">{String(ticket.status ?? 'aberto')} • {String(ticket.priority ?? 'media')}</p>
+                      </button>
+                    )
+                  })}
                 </div>
               </SurfaceCard>
 
-              <SurfaceCard title="Tickets">
-                <div className="max-h-[420px] overflow-auto rounded-xl border border-border">
-                  <table className="w-full text-xs">
-                    <thead className="bg-muted/40">
-                      <tr>
-                        <th className="px-2 py-2 text-left">ID</th>
-                        <th className="px-2 py-2 text-left">Assunto</th>
-                        <th className="px-2 py-2 text-left">Status</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {tickets.map((t) => {
-                        const st = String(t.status ?? '-')
+              <SurfaceCard title="Conversa do chamado" subtitle="Atendimento contínuo entre cliente e técnico até encerramento.">
+                {!selectedTicket ? (
+                  <p className="text-sm text-muted-foreground">Selecione um ticket para responder.</p>
+                ) : (
+                  <div className="space-y-3">
+                    <div className="rounded-xl border border-border bg-background p-3">
+                      <p className="text-sm font-semibold">{String(selectedTicket.subject ?? selectedTicket.id ?? '-')}</p>
+                      <p className="mt-1 text-xs text-muted-foreground">Empresa: {String((selectedTicket as any)?.empresas?.nome ?? selectedTicket.empresa_id ?? '-')}</p>
+                    </div>
+
+                    <div className="max-h-[340px] space-y-2 overflow-auto rounded-xl border border-border bg-background p-3">
+                      {selectedTicketMessages.map((entry, index) => {
+                        const sender = String(entry.sender ?? 'client').toLowerCase()
+                        const isOwner = sender === 'owner' || sender === 'system'
+                        const attachments = Array.isArray(entry.attachments)
+                          ? entry.attachments.map((item) => String(item)).filter(Boolean)
+                          : []
                         return (
-                          <tr key={String(t.id)} className="border-t border-border">
-                            <td className="px-2 py-2">{String(t.id ?? '-')}</td>
-                            <td className="px-2 py-2">{String(t.subject ?? '-')}</td>
-                            <td className="px-2 py-2">
-                              <div className="flex items-center gap-2">
-                                <span className={`rounded border px-2 py-0.5 ${statusColor(st)}`}>{st}</span>
-                                {Number(t.unread_owner_messages ?? 0) > 0 && (
-                                  <span className="rounded border border-primary/40 bg-primary/10 px-2 py-0.5 text-[11px] text-primary">
-                                    {Number(t.unread_owner_messages)}
-                                  </span>
-                                )}
+                          <div key={String(entry.id ?? `${sender}-${index}`)} className={isOwner ? 'rounded-md border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-900' : 'rounded-md border border-border bg-card p-3 text-sm'}>
+                            <p className="text-[11px] font-semibold uppercase tracking-wide opacity-80">{isOwner ? 'Técnico' : 'Cliente'}</p>
+                            <p className="mt-1 whitespace-pre-wrap">{String(entry.message ?? '-')}</p>
+                            {attachments.length > 0 && (
+                              <div className="mt-2 space-y-1">
+                                {attachments.map((url) => (
+                                  <a key={url} href={url} target="_blank" rel="noreferrer" className="block text-xs text-info underline">
+                                    Ver anexo
+                                  </a>
+                                ))}
                               </div>
-                            </td>
-                          </tr>
+                            )}
+                            <p className="mt-1 text-[10px] opacity-70">{String(entry.created_at ?? '') ? new Date(String(entry.created_at)).toLocaleString('pt-BR') : 'Sem data'}</p>
+                          </div>
                         )
                       })}
-                    </tbody>
-                  </table>
-                </div>
+                    </div>
+
+                    <div className="grid gap-2 sm:grid-cols-3">
+                      <select className="rounded-lg border border-border bg-background px-2 py-2 text-sm" value={ticketStatus} onChange={(e) => setTicketStatus(e.target.value as 'aberto' | 'em_andamento' | 'resolvido')}>
+                        <option value="em_andamento">Em andamento</option>
+                        <option value="aberto">Aberto</option>
+                        <option value="resolvido">Resolvido</option>
+                      </select>
+                      <button className="rounded-lg border border-border bg-background px-3 py-2 text-sm" type="button" onClick={() => setTicketStatus('em_andamento')}>Marcar em andamento</button>
+                      <button className="rounded-lg border border-emerald-300 bg-emerald-50 px-3 py-2 text-sm text-emerald-700" type="button" onClick={() => setTicketStatus('resolvido')}>Encerrar chamado</button>
+                    </div>
+
+                    <textarea className="min-h-[120px] rounded-lg border border-border bg-background px-2 py-2 text-sm" value={ticketResponse} onChange={(e) => setTicketResponse(e.target.value)} placeholder="Digite a próxima mensagem para o cliente" />
+                    <div className="flex justify-end">
+                      <button
+                        className="rounded-lg bg-sky-700 px-3 py-2 text-sm font-semibold text-white"
+                        disabled={busy || !selectedTicket?.id || !ticketResponse.trim()}
+                        onClick={() => runAction('respond_support_ticket', { ticket_id: String(selectedTicket.id), response: ticketResponse.trim(), status: ticketStatus }, 'Mensagem enviada ao cliente.')}
+                      >
+                        Enviar resposta
+                      </button>
+                    </div>
+                  </div>
+                )}
               </SurfaceCard>
             </div>
           )}
