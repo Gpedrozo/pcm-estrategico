@@ -270,7 +270,7 @@ function TenantRoutes() {
                 <Route path="/custos" element={<Custos />} />
                 <Route path="/relatorios" element={<Relatorios />} />
                 <Route path="/ssma" element={<SSMA />} />
-                <Route path="/usuarios" element={<Usuarios />} />
+                <Route path="/usuarios" element={<Navigate to="/administracao?tab=usuarios" replace />} />
                 <Route path="/auditoria" element={<Auditoria />} />
                 <Route path="/suporte" element={<Suporte />} />
                 <Route

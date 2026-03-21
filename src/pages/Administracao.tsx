@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -125,6 +125,7 @@ const linkCards = [
 ];
 
 export default function Administracao() {
+  const [searchParams] = useSearchParams();
   const { data: processoConfig } = useTenantAdminConfig<ProcessoConfig>('tenant.admin.processo', processoDefault);
   const { data: indicadoresConfig } = useTenantAdminConfig<IndicadoresConfig>('tenant.admin.indicadores', indicadoresDefault);
   const { data: alertasConfig } = useTenantAdminConfig<AlertasConfig>('tenant.admin.alertas', alertasDefault);
@@ -141,6 +142,14 @@ export default function Administracao() {
   const [padronizacoesForm, setPadronizacoesForm] = useState<PadronizacoesConfig>(padronizacoesDefault);
   const [usuariosSearch, setUsuariosSearch] = useState('');
   const [activeTab, setActiveTab] = useState('usuarios');
+
+  useEffect(() => {
+    const tab = searchParams.get('tab');
+    const validTabs = new Set(['usuarios', 'processo', 'padronizacoes', 'alertas', 'indicadores', 'integracoes']);
+    if (tab && validTabs.has(tab)) {
+      setActiveTab(tab);
+    }
+  }, [searchParams]);
 
   useEffect(() => {
     if (processoConfig) setProcessoForm(processoConfig);

@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useReactToPrint } from 'react-to-print';
@@ -24,11 +24,11 @@ import { useEquipamentos } from '@/hooks/useEquipamentos';
 import { useCreateOrdemServico } from '@/hooks/useOrdensServico';
 import { useMecanicosAtivos } from '@/hooks/useMecanicos';
 import { useLogAuditoria } from '@/hooks/useAuditoria';
-import { useUpdateSolicitacao, type SolicitacaoRow } from '@/hooks/useSolicitacoes';
+import { useSolicitacoesPendentes, useUpdateSolicitacao, type SolicitacaoRow } from '@/hooks/useSolicitacoes';
 import { resolvePrioridadeFromClassificacao, useTenantPadronizacoes } from '@/hooks/useTenantPadronizacoes';
 import { useDadosEmpresa } from '@/hooks/useDadosEmpresa';
 import { useAuth } from '@/contexts/AuthContext';
-import { ArrowLeft, Check, Loader2, Printer, CheckCircle } from 'lucide-react';
+import { ArrowLeft, Check, Loader2, Printer, CheckCircle, AlertTriangle } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { OSPrintTemplate } from '@/components/os/OSPrintTemplate';
 
@@ -45,6 +45,7 @@ export default function NovaOS() {
   const { data: mecanicosAtivos } = useMecanicosAtivos();
   const { data: padronizacoes } = useTenantPadronizacoes();
   const { data: empresa } = useDadosEmpresa();
+  const { data: solicitacoesPendentes = [] } = useSolicitacoesPendentes();
   const createOSMutation = useCreateOrdemServico();
   const updateSolicitacaoMutation = useUpdateSolicitacao();
 
@@ -53,6 +54,7 @@ export default function NovaOS() {
     : ['URGENTE', 'ALTA', 'MEDIA', 'BAIXA'];
 
   const solicitacaoOrigem = (location.state as { solicitacao?: SolicitacaoRow } | null)?.solicitacao ?? null;
+  const [solicitacaoVinculada, setSolicitacaoVinculada] = useState<SolicitacaoRow | null>(solicitacaoOrigem);
   
   const [formData, setFormData] = useState({
     tag: '',
@@ -77,6 +79,17 @@ export default function NovaOS() {
   } | null>(null);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [nomeEmpresa, setNomeEmpresa] = useState('MANUTENÇÃO INDUSTRIAL');
+  const [showSolicitacoesModal, setShowSolicitacoesModal] = useState(false);
+  const [dismissedTagWarnings, setDismissedTagWarnings] = useState<Record<string, boolean>>({});
+
+  const solicitacoesAbertasDaTag = useMemo(() => {
+    if (!formData.tag) return [];
+    return solicitacoesPendentes.filter((ss) => ss.tag === formData.tag && !ss.os_id);
+  }, [solicitacoesPendentes, formData.tag]);
+
+  useEffect(() => {
+    setSolicitacaoVinculada(solicitacaoOrigem);
+  }, [solicitacaoOrigem]);
 
   useEffect(() => {
     if (!solicitacaoOrigem) {
@@ -98,9 +111,41 @@ export default function NovaOS() {
     }));
   }, [solicitacaoOrigem, navigate]);
 
+  useEffect(() => {
+    if (!formData.tag) return;
+    if (dismissedTagWarnings[formData.tag]) return;
+    if (solicitacoesAbertasDaTag.length === 0) return;
+    setShowSolicitacoesModal(true);
+  }, [formData.tag, dismissedTagWarnings, solicitacoesAbertasDaTag]);
+
   const selectedEquipamento = equipamentos?.find(eq => eq.tag === formData.tag);
   const selectedMecanico = mecanicosAtivos?.find((m) => m.id === formData.mecanicoResponsavelId);
   const equipamentosAtivos = equipamentos?.filter(eq => eq.ativo) || [];
+
+  const handleTagChange = (tag: string) => {
+    setFormData((prev) => ({ ...prev, tag }));
+  };
+
+  const handleContinuarSemSS = () => {
+    if (formData.tag) {
+      setDismissedTagWarnings((prev) => ({ ...prev, [formData.tag]: true }));
+    }
+    setShowSolicitacoesModal(false);
+  };
+
+  const handleGerarAPartirDaSS = (ss: SolicitacaoRow) => {
+    setSolicitacaoVinculada(ss);
+    setFormData((prev) => ({
+      ...prev,
+      tag: ss.tag || prev.tag,
+      solicitante: ss.solicitante_nome || prev.solicitante,
+      problema: ss.descricao_falha || prev.problema,
+      prioridade: resolvePrioridadeFromClassificacao(ss.classificacao) || prev.prioridade,
+      tipo: prev.tipo || 'CORRETIVA',
+    }));
+    setDismissedTagWarnings((prev) => ({ ...prev, [ss.tag]: true }));
+    setShowSolicitacoesModal(false);
+  };
 
   const handlePrint = useReactToPrint({
     contentRef: printRef,
@@ -139,9 +184,9 @@ export default function NovaOS() {
       mecanico_responsavel_codigo: selectedMecanico?.codigo_acesso || null,
     });
 
-    if (solicitacaoOrigem) {
+    if (solicitacaoVinculada) {
       await updateSolicitacaoMutation.mutateAsync({
-        id: solicitacaoOrigem.id,
+        id: solicitacaoVinculada.id,
         status: 'CONVERTIDA',
         os_id: result.id,
       });
@@ -200,9 +245,16 @@ export default function NovaOS() {
         </div>
       </div>
 
-      {solicitacaoOrigem && (
+      {solicitacaoVinculada && (
         <div className="rounded-lg border border-info/30 bg-info/5 p-3 text-sm text-info">
-          Solicitação vinculada: #{solicitacaoOrigem.numero_solicitacao} • TAG {solicitacaoOrigem.tag}. Ao salvar, a solicitação será marcada como CONVERTIDA automaticamente.
+          Solicitação vinculada: #{solicitacaoVinculada.numero_solicitacao} • TAG {solicitacaoVinculada.tag}. Ao salvar, a solicitação será marcada como CONVERTIDA automaticamente.
+        </div>
+      )}
+
+      {formData.tag && solicitacoesAbertasDaTag.length > 0 && (
+        <div className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">
+          <p className="font-semibold">Esta TAG possui {solicitacoesAbertasDaTag.length} solicitacao(oes) em aberto.</p>
+          <p>Verifique antes de emitir uma nova Ordem de Servico.</p>
         </div>
       )}
 
@@ -229,7 +281,7 @@ export default function NovaOS() {
               <Label htmlFor="tag">TAG do Equipamento *</Label>
               <Select 
                 value={formData.tag} 
-                onValueChange={(value) => setFormData({ ...formData, tag: value })}
+                onValueChange={handleTagChange}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Selecione a TAG" />
@@ -445,6 +497,42 @@ export default function NovaOS() {
                 Fechar sem Imprimir
               </Button>
             </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={showSolicitacoesModal} onOpenChange={setShowSolicitacoesModal}>
+        <DialogContent className="max-w-3xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-amber-700">
+              <AlertTriangle className="h-5 w-5" />
+              Esta TAG possui solicitações em aberto
+            </DialogTitle>
+            <DialogDescription>
+              TAG: {formData.tag}. Verifique antes de emitir uma nova Ordem de Serviço.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-3 max-h-[320px] overflow-auto">
+            {solicitacoesAbertasDaTag.map((ss) => (
+              <div key={ss.id} className="rounded-lg border border-border p-3">
+                <p className="text-sm font-semibold">SS-{ss.numero_solicitacao} • {ss.status}</p>
+                <p className="text-sm text-muted-foreground mt-1">{ss.descricao_falha}</p>
+                <p className="text-xs text-muted-foreground mt-1">{new Date(ss.created_at).toLocaleDateString('pt-BR')}</p>
+                <div className="mt-3 flex justify-end">
+                  <Button size="sm" variant="outline" onClick={() => handleGerarAPartirDaSS(ss)}>
+                    Gerar O.S a partir da SS
+                  </Button>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+            <Button variant="outline" onClick={() => navigate('/solicitacoes')}>
+              Abrir Solicitações
+            </Button>
+            <Button onClick={handleContinuarSemSS}>Continuar emissão</Button>
           </div>
         </DialogContent>
       </Dialog>
