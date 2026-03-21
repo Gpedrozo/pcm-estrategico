@@ -571,6 +571,11 @@ export default function Owner2() {
     })
   }, [userSearch, userStatusFilter, users])
 
+  const selectedUser = useMemo(
+    () => users.find((u) => String(u.id ?? '') === selectedUserId) ?? null,
+    [selectedUserId, users],
+  )
+
   const userSummary = useMemo(() => {
     const active = users.filter((u) => String(u.status ?? '').toLowerCase() === 'ativo').length
     const inactive = users.filter((u) => String(u.status ?? '').toLowerCase() === 'inativo').length
@@ -1237,67 +1242,8 @@ export default function Owner2() {
           )}
 
           {activeTab === 'usuarios' && (
-            <div className="grid gap-4 xl:grid-cols-2">
-              <SurfaceCard title="Novo usuário">
-                <div className="grid gap-2">
-                  <input className="rounded-lg border border-border bg-background px-2 py-2 text-sm" value={newUserName} onChange={(e) => setNewUserName(e.target.value)} placeholder="Nome" />
-                  <input className="rounded-lg border border-border bg-background px-2 py-2 text-sm" value={newUserEmail} onChange={(e) => setNewUserEmail(e.target.value)} placeholder="Email" />
-                  <select className="rounded-lg border border-border bg-background px-2 py-2 text-sm" value={newUserRole} onChange={(e) => setNewUserRole(e.target.value)}>
-                    <option value="ADMIN">ADMIN</option>
-                    <option value="GESTOR">GESTOR</option>
-                    <option value="TECNICO">TECNICO</option>
-                    <option value="USUARIO">USUARIO</option>
-                    <option value="SOLICITANTE">SOLICITANTE</option>
-                  </select>
-                  <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={newUserRequirePasswordChange} onChange={(e) => setNewUserRequirePasswordChange(e.target.checked)} /> Exigir troca de senha no 1º login</label>
-                  <button className="rounded-lg bg-sky-700 px-3 py-2 text-sm font-semibold text-white" disabled={busy || !companyId || !newUserName || !newUserEmail} onClick={() => runAction('create_user', { user: { nome: newUserName, email: newUserEmail, role: newUserRole, empresa_id: companyId, force_password_change: newUserRequirePasswordChange } }, 'Usuário criado com sucesso.')}>Criar usuário</button>
-                </div>
-
-                <div className="mt-4 grid gap-2">
-                  <h3 className="text-sm font-semibold">Status do usuário</h3>
-                  <select className="rounded-lg border border-border bg-background px-2 py-2 text-sm" value={selectedUserId} onChange={(e) => setSelectedUserId(e.target.value)}>
-                    <option value="">Selecione um usuário</option>
-                    {users.map((u) => <option key={String(u.id)} value={String(u.id)}>{String(u.nome ?? u.email ?? u.id)}</option>)}
-                  </select>
-                  <div className="grid grid-cols-2 gap-2">
-                    <button className="rounded-lg border border-border bg-background px-3 py-2 text-sm" disabled={busy || !selectedUserId} onClick={() => runAction('set_user_status', { user_id: selectedUserId, status: 'ativo' }, 'Usuário ativado.')}>Ativar</button>
-                    <button className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-700" disabled={busy || !selectedUserId} onClick={() => runAction('set_user_status', { user_id: selectedUserId, status: 'inativo' }, 'Usuário inativado.')}>Inativar</button>
-                  </div>
-                </div>
-
-                <div className="mt-4 grid gap-2">
-                  <h3 className="text-sm font-semibold">Editar usuário</h3>
-                  <select className="rounded-lg border border-border bg-background px-2 py-2 text-sm" value={userTargetCompanyId} onChange={(e) => setUserTargetCompanyId(e.target.value)}>
-                    <option value="">Empresa destino</option>
-                    {companies.map((c) => <option key={String(c.id)} value={String(c.id)}>{String(c.nome ?? c.slug ?? c.id)}</option>)}
-                  </select>
-                  <select className="rounded-lg border border-border bg-background px-2 py-2 text-sm" value={userTargetRole} onChange={(e) => setUserTargetRole(e.target.value)}>
-                    <option value="ADMIN">ADMIN</option>
-                    <option value="GESTOR">GESTOR</option>
-                    <option value="TECNICO">TECNICO</option>
-                    <option value="USUARIO">USUARIO</option>
-                    <option value="SOLICITANTE">SOLICITANTE</option>
-                  </select>
-                  <button
-                    className="rounded-lg border border-border bg-background px-3 py-2 text-sm"
-                    disabled={busy || !selectedUserId || !userTargetCompanyId}
-                    onClick={() => runAction('move_user_company', { user_id: selectedUserId, new_empresa_id: userTargetCompanyId, user: { role: userTargetRole } }, 'Usuário movido para nova empresa com sucesso.')}
-                  >
-                    Mover para outra empresa
-                  </button>
-
-                  <input className="rounded-lg border border-border bg-background px-2 py-2 text-sm" type="password" value={userNewPassword} onChange={(e) => setUserNewPassword(e.target.value)} placeholder="Nova senha do usuário" />
-                  <button
-                    className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-700"
-                    disabled={busy || !selectedUserId || userNewPassword.length < 8}
-                    onClick={() => runAction('set_user_password', { user_id: selectedUserId, new_password: userNewPassword, force_password_change: true }, 'Senha redefinida. Usuário deverá trocar no 1º login.')}
-                  >
-                    Trocar senha e forçar troca no 1º login
-                  </button>
-                </div>
-              </SurfaceCard>
-
-              <SurfaceCard title="Usuários" subtitle="Painel operacional com busca e filtros">
+            <div className="grid gap-4 xl:grid-cols-[1.35fr,1fr]">
+              <SurfaceCard title="Usuários" subtitle="Selecione um usuário na lista para gerenciar status, empresa e segurança.">
                 <div className="mb-3 grid gap-2 sm:grid-cols-4">
                   <MetricTile label="Total" value={userSummary.total} icon={Users} tone="sky" />
                   <MetricTile label="Ativos" value={userSummary.active} icon={ShieldCheck} tone="emerald" />
@@ -1305,68 +1251,149 @@ export default function Owner2() {
                   <MetricTile label="Admins" value={userSummary.admins} icon={Settings2} tone="rose" />
                 </div>
 
-                <div className="mb-3 flex justify-end">
-                  <button className="inline-flex items-center gap-1 rounded-lg border border-border bg-background px-3 py-2 text-xs font-semibold text-foreground" onClick={exportUsersCsv}>
-                    <Download className="h-3.5 w-3.5" /> Exportar CSV
-                  </button>
+                <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+                  <div className="grid flex-1 gap-2 sm:grid-cols-2">
+                    <input
+                      className="rounded-lg border border-border bg-background px-2 py-2 text-sm"
+                      placeholder="Buscar por nome ou email"
+                      value={userSearch}
+                      onChange={(e) => setUserSearch(e.target.value)}
+                    />
+                    <select
+                      className="rounded-lg border border-border bg-background px-2 py-2 text-sm"
+                      value={userStatusFilter}
+                      onChange={(e) => setUserStatusFilter(e.target.value as 'todos' | 'ativo' | 'inativo')}
+                    >
+                      <option value="todos">Status: Todos</option>
+                      <option value="ativo">Somente ativos</option>
+                      <option value="inativo">Somente inativos</option>
+                    </select>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      className="rounded-lg border border-border bg-background px-3 py-2 text-sm"
+                      onClick={() => {
+                        setUserSearch('')
+                        setUserStatusFilter('todos')
+                      }}
+                    >
+                      Limpar filtros
+                    </button>
+                    <button className="inline-flex items-center gap-1 rounded-lg border border-border bg-background px-3 py-2 text-xs font-semibold text-foreground" onClick={exportUsersCsv}>
+                      <Download className="h-3.5 w-3.5" /> Exportar CSV
+                    </button>
+                  </div>
                 </div>
 
-                <div className="mb-3 grid gap-2 sm:grid-cols-3">
-                  <input
-                    className="rounded-lg border border-border bg-background px-2 py-2 text-sm"
-                    placeholder="Buscar por nome ou email"
-                    value={userSearch}
-                    onChange={(e) => setUserSearch(e.target.value)}
-                  />
-                  <select
-                    className="rounded-lg border border-border bg-background px-2 py-2 text-sm"
-                    value={userStatusFilter}
-                    onChange={(e) => setUserStatusFilter(e.target.value as 'todos' | 'ativo' | 'inativo')}
-                  >
-                    <option value="todos">Status: Todos</option>
-                    <option value="ativo">Somente ativos</option>
-                    <option value="inativo">Somente inativos</option>
-                  </select>
-                  <button
-                    className="rounded-lg border border-border bg-background px-3 py-2 text-sm"
-                    onClick={() => {
-                      setUserSearch('')
-                      setUserStatusFilter('todos')
-                    }}
-                  >
-                    Limpar filtros
-                  </button>
-                </div>
-
-                <div className="max-h-[420px] overflow-auto rounded-xl border border-border">
+                <div className="max-h-[520px] overflow-auto rounded-xl border border-border">
                   <table className="w-full text-xs">
                     <thead className="bg-muted/40">
                       <tr>
                         <th className="px-2 py-2 text-left">Nome</th>
                         <th className="px-2 py-2 text-left">Email</th>
+                        <th className="px-2 py-2 text-left">Empresa</th>
                         <th className="px-2 py-2 text-left">Status</th>
                       </tr>
                     </thead>
                     <tbody>
                       {usersFiltered.map((u) => {
                         const st = String(u.status ?? '-')
+                        const rowId = String(u.id ?? '')
+                        const isSelected = rowId === selectedUserId
                         return (
-                          <tr key={String(u.id)} className="border-t border-border">
+                          <tr
+                            key={rowId}
+                            className={`border-t border-border cursor-pointer transition ${isSelected ? 'bg-sky-50/80' : 'hover:bg-muted/40'}`}
+                            onClick={() => setSelectedUserId(rowId)}
+                          >
                             <td className="px-2 py-2">{String(u.nome ?? '-')}</td>
                             <td className="px-2 py-2">{String(u.email ?? '-')}</td>
+                            <td className="px-2 py-2">{String(u.empresa_id ?? '-')}</td>
                             <td className="px-2 py-2"><span className={`rounded border px-2 py-0.5 ${statusColor(st)}`}>{st}</span></td>
                           </tr>
                         )
                       })}
                       {usersFiltered.length === 0 && (
                         <tr>
-                          <td className="px-2 py-3 text-muted-foreground" colSpan={3}>Nenhum usuário encontrado com os filtros atuais.</td>
+                          <td className="px-2 py-3 text-muted-foreground" colSpan={4}>Nenhum usuário encontrado com os filtros atuais.</td>
                         </tr>
                       )}
                     </tbody>
                   </table>
                 </div>
               </SurfaceCard>
+
+              <div className="space-y-4">
+                <SurfaceCard title="Novo usuário" subtitle="Cria usuário já vinculado à empresa selecionada no contexto.">
+                  <div className="grid gap-2">
+                    <input className="rounded-lg border border-border bg-background px-2 py-2 text-sm" value={newUserName} onChange={(e) => setNewUserName(e.target.value)} placeholder="Nome" />
+                    <input className="rounded-lg border border-border bg-background px-2 py-2 text-sm" value={newUserEmail} onChange={(e) => setNewUserEmail(e.target.value)} placeholder="Email" />
+                    <select className="rounded-lg border border-border bg-background px-2 py-2 text-sm" value={newUserRole} onChange={(e) => setNewUserRole(e.target.value)}>
+                      <option value="ADMIN">ADMIN</option>
+                      <option value="GESTOR">GESTOR</option>
+                      <option value="TECNICO">TECNICO</option>
+                      <option value="USUARIO">USUARIO</option>
+                      <option value="SOLICITANTE">SOLICITANTE</option>
+                    </select>
+                    <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={newUserRequirePasswordChange} onChange={(e) => setNewUserRequirePasswordChange(e.target.checked)} /> Exigir troca de senha no 1º login</label>
+                    <button className="rounded-lg bg-sky-700 px-3 py-2 text-sm font-semibold text-white" disabled={busy || !companyId || !newUserName || !newUserEmail} onClick={() => runAction('create_user', { user: { nome: newUserName, email: newUserEmail, role: newUserRole, empresa_id: companyId, force_password_change: newUserRequirePasswordChange } }, 'Usuário criado com sucesso.')}>Criar usuário</button>
+                  </div>
+                </SurfaceCard>
+
+                <SurfaceCard title="Usuário selecionado" subtitle="Primeiro selecione um usuário na tabela à esquerda.">
+                  <div className="grid gap-2">
+                    <select className="rounded-lg border border-border bg-background px-2 py-2 text-sm" value={selectedUserId} onChange={(e) => setSelectedUserId(e.target.value)}>
+                      <option value="">Selecione um usuário</option>
+                      {users.map((u) => <option key={String(u.id)} value={String(u.id)}>{String(u.nome ?? u.email ?? u.id)}</option>)}
+                    </select>
+                    <div className="rounded-lg border border-border bg-muted/20 p-3 text-xs text-muted-foreground">
+                      <p><span className="font-semibold text-foreground">Nome:</span> {String(selectedUser?.nome ?? '-')}</p>
+                      <p><span className="font-semibold text-foreground">Email:</span> {String(selectedUser?.email ?? '-')}</p>
+                      <p><span className="font-semibold text-foreground">Empresa:</span> {String(selectedUser?.empresa_id ?? '-')}</p>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <button className="rounded-lg border border-border bg-background px-3 py-2 text-sm" disabled={busy || !selectedUserId} onClick={() => runAction('set_user_status', { user_id: selectedUserId, status: 'ativo' }, 'Usuário ativado.')}>Ativar</button>
+                      <button className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-700" disabled={busy || !selectedUserId} onClick={() => runAction('set_user_status', { user_id: selectedUserId, status: 'inativo' }, 'Usuário inativado.')}>Inativar</button>
+                    </div>
+                  </div>
+                </SurfaceCard>
+
+                <SurfaceCard title="Transferir usuário" subtitle="Muda empresa e perfil operacional do usuário selecionado.">
+                  <div className="grid gap-2">
+                    <select className="rounded-lg border border-border bg-background px-2 py-2 text-sm" value={userTargetCompanyId} onChange={(e) => setUserTargetCompanyId(e.target.value)}>
+                      <option value="">Empresa destino</option>
+                      {companies.map((c) => <option key={String(c.id)} value={String(c.id)}>{String(c.nome ?? c.slug ?? c.id)}</option>)}
+                    </select>
+                    <select className="rounded-lg border border-border bg-background px-2 py-2 text-sm" value={userTargetRole} onChange={(e) => setUserTargetRole(e.target.value)}>
+                      <option value="ADMIN">ADMIN</option>
+                      <option value="GESTOR">GESTOR</option>
+                      <option value="TECNICO">TECNICO</option>
+                      <option value="USUARIO">USUARIO</option>
+                      <option value="SOLICITANTE">SOLICITANTE</option>
+                    </select>
+                    <button
+                      className="rounded-lg border border-border bg-background px-3 py-2 text-sm"
+                      disabled={busy || !selectedUserId || !userTargetCompanyId}
+                      onClick={() => runAction('move_user_company', { user_id: selectedUserId, new_empresa_id: userTargetCompanyId, user: { role: userTargetRole } }, 'Usuário movido para nova empresa com sucesso.')}
+                    >
+                      Mover para outra empresa
+                    </button>
+                  </div>
+                </SurfaceCard>
+
+                <SurfaceCard title="Segurança" subtitle="Redefine senha e força troca no próximo login.">
+                  <div className="grid gap-2">
+                    <input className="rounded-lg border border-border bg-background px-2 py-2 text-sm" type="password" value={userNewPassword} onChange={(e) => setUserNewPassword(e.target.value)} placeholder="Nova senha do usuário" />
+                    <button
+                      className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-700"
+                      disabled={busy || !selectedUserId || userNewPassword.length < 8}
+                      onClick={() => runAction('set_user_password', { user_id: selectedUserId, new_password: userNewPassword, force_password_change: true }, 'Senha redefinida. Usuário deverá trocar no 1º login.')}
+                    >
+                      Trocar senha e forçar troca no 1º login
+                    </button>
+                  </div>
+                </SurfaceCard>
+              </div>
             </div>
           )}
 

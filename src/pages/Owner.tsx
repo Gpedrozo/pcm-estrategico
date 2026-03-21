@@ -635,6 +635,11 @@ export default function Owner() {
     [userInactivityTimeoutForm.user_id, usersWithCompany],
   )
 
+  const selectedCompanyForUpdate = useMemo(
+    () => companies.find((company) => company.id === updateCompanyForm.empresa_id) ?? null,
+    [companies, updateCompanyForm.empresa_id],
+  )
+
   const selectedSecurityPolicy = useMemo(() => {
     const row = selectedSettings.find((item) => item.chave === 'owner.security_policy')
     if (!row || !row.valor || typeof row.valor !== 'object' || Array.isArray(row.valor)) return {}
@@ -1418,12 +1423,11 @@ export default function Owner() {
                 onChange={(e) => {
                   const selectedId = e.target.value
                   const selectedCompany = companies.find((company) => company.id === selectedId)
-                  setUpdateCompanyForm((s) => ({
-                    ...s,
-                    empresa_id: selectedId,
-                    nome: selectedCompany?.nome || '',
-                    status: resolveCompanyStatus(selectedCompany?.status),
-                  }))
+                  if (!selectedCompany) {
+                    setUpdateCompanyForm((s) => ({ ...s, empresa_id: selectedId }))
+                    return
+                  }
+                  prepareCompanyForEdit(selectedCompany)
                 }}
               >
                 <option value="">Selecione empresa</option>
@@ -1441,14 +1445,19 @@ export default function Owner() {
                 <option value="suspended">Suspensa</option>
               </select>
             </div>
+            <div className="mt-3 rounded border border-slate-800 bg-slate-950/60 p-3 text-xs text-slate-300">
+              <p><span className="font-semibold text-slate-100">Empresa selecionada:</span> {selectedCompanyForUpdate?.nome || selectedCompanyForUpdate?.id || '-'}</p>
+              <p><span className="font-semibold text-slate-100">Slug:</span> {selectedCompanyForUpdate?.slug || '-'}</p>
+              <p><span className="font-semibold text-slate-100">Status atual:</span> {selectedCompanyForUpdate?.status || '-'}</p>
+            </div>
             <div className="mt-3 flex gap-2">
               <button className="rounded border border-slate-600 px-3 py-2 text-sm" disabled={!updateCompanyForm.empresa_id || updateCompanyMutation.isPending} onClick={() => runAction(async () => {
                 const response = await updateCompanyMutation.mutateAsync({ empresaId: updateCompanyForm.empresa_id, company: { nome: updateCompanyForm.nome || undefined } })
-                setUpdateCompanyForm((s) => ({ ...s, nome: '' }))
                 return response
               }, 'Empresa atualizada.')}>Salvar</button>
               <button className="rounded border border-amber-500 px-3 py-2 text-sm text-amber-300" disabled={!updateCompanyForm.empresa_id || !updateCompanyForm.status || setCompanyLifecycle.isPending} onClick={() => runAction(() => setCompanyLifecycle.mutateAsync({ empresaId: updateCompanyForm.empresa_id, status: updateCompanyForm.status }), 'Status da empresa atualizado.')}>Aplicar status</button>
             </div>
+            <p className="mt-2 text-[11px] text-slate-400">Dica: clique em uma linha da tabela para carregar automaticamente os dados de edição.</p>
           </Card>
 
           <Card title="Empresas globais">
@@ -1464,7 +1473,11 @@ export default function Owner() {
                 </thead>
                 <tbody>
                   {companies.map((c) => (
-                    <tr key={c.id} className="border-t border-slate-800">
+                    <tr
+                      key={c.id}
+                      className={`border-t border-slate-800 cursor-pointer transition ${updateCompanyForm.empresa_id === c.id ? 'bg-sky-950/30' : 'hover:bg-slate-900/60'}`}
+                      onClick={() => prepareCompanyForEdit(c)}
+                    >
                       <td className="px-3 py-2">{c.nome || c.id}</td>
                       <td className="px-3 py-2">{c.slug || '-'}</td>
                       <td className="px-3 py-2">{c.status || '-'}</td>
