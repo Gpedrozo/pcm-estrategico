@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { getPostLoginPath } from '@/lib/security';
+import { consumePreferredPostLoginPath } from '@/lib/navigationState';
 import { supabase } from '@/integrations/supabase/client';
 import { resolveOrRepairTenantHost } from '@/lib/tenantDomain';
 import {
@@ -230,6 +231,8 @@ export default function Login() {
     logo_menu_url: null,
   };
 
+  const resolvePreferredPath = () => consumePreferredPostLoginPath(effectiveRole);
+
   // Redireciona para dashboard se já estiver logado
   useEffect(() => {
     let isActive = true;
@@ -318,7 +321,7 @@ export default function Login() {
           if (!isActive) return;
           clearLoginRedirectLock();
           setIsRedirectingTenantDomain(false);
-          navigate(nextPath || getPostLoginPath(effectiveRole), { replace: true });
+          navigate(nextPath || resolvePreferredPath(), { replace: true });
           return;
         }
 
@@ -326,7 +329,7 @@ export default function Login() {
           if (!isActive) return;
           clearLoginRedirectLock();
           setIsRedirectingTenantDomain(false);
-          navigate(nextPath || getPostLoginPath(effectiveRole), { replace: true });
+          navigate(nextPath || resolvePreferredPath(), { replace: true });
           return;
         }
 
@@ -343,7 +346,7 @@ export default function Login() {
 
         const directTransferHash = createDirectSessionTransferHash(activeSession ?? null);
         if (directTransferHash) {
-          const appTargetPath = nextPath || getPostLoginPath(effectiveRole);
+          const appTargetPath = nextPath || resolvePreferredPath();
           const normalizedAppPath = appTargetPath.startsWith('/') ? appTargetPath : `/${appTargetPath}`;
           const directTargetUrl = `${window.location.protocol}//${targetHost}${normalizedAppPath}#${directTransferHash}`;
 
@@ -433,7 +436,7 @@ export default function Login() {
 
       clearLoginRedirectLock();
       setIsRedirectingTenantDomain(false);
-      navigate(nextPath || getPostLoginPath(effectiveRole), { replace: true });
+      navigate(nextPath || resolvePreferredPath(), { replace: true });
     };
 
     void redirectAuthenticatedUser();

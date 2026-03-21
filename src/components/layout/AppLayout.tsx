@@ -290,7 +290,8 @@ export function AppLayout() {
   }
 
   if (!isAuthenticated) {
-    return <Navigate to="/login" replace />;
+    const nextPath = encodeURIComponent(`${location.pathname}${location.search}` || '/dashboard');
+    return <Navigate to={`/login?next=${nextPath}`} replace />;
   }
 
   if (forcePasswordChange && location.pathname !== '/change-password') {
@@ -375,7 +376,9 @@ export function AppLayout() {
           )}
           <main className="pcm-module-main flex-1 overflow-auto bg-gradient-to-b from-background via-background to-muted/20">
             <div className="pcm-module-shell mx-auto w-full max-w-[1400px] px-4 py-6 md:px-6 md:py-7">
-              <Outlet />
+              <div className="module-page">
+                <Outlet />
+              </div>
             </div>
           </main>
 
