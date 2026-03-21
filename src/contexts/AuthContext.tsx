@@ -71,8 +71,8 @@ const LOGOUT_MARKER_PARAM = 'logout';
 const LOGOUT_REASON_PARAM = 'reason';
 const TAB_CLOSE_MARKER_STORAGE_KEY = 'pcm.auth.window_closed.v1';
 const TAB_CLOSE_MARKER_MAX_AGE_MS = 12 * 60 * 60 * 1000;
-const ENABLE_WINDOW_CLOSE_LOGOUT = false;
 const DEFAULT_INACTIVITY_TIMEOUT_MS = 10 * 60 * 1000;
+const INACTIVITY_NOTICE_STORAGE_KEY = 'pcm.auth.inactivity.notice.v1';
 const SESSION_TRANSFER_MAX_AGE_MS = 2 * 60 * 1000;
 const SESSION_TRANSFER_REDIRECT_STORAGE_KEY = 'pcm.auth.session_transfer.redirect.v1';
 const SESSION_TRANSFER_REDIRECT_MAX_AGE_MS = 15_000;
@@ -82,7 +82,7 @@ const CROSS_DOMAIN_REDIRECT_MARKER_STORAGE_KEY = 'pcm.auth.cross_domain_redirect
 const CROSS_DOMAIN_REDIRECT_MARKER_MAX_AGE_MS = 60_000;
 const LOGIN_PROFILE_TIMEOUT_MS = 12_000;
 const TENANT_HOST_RESOLVE_TIMEOUT_MS = 6_000;
-const HYDRATION_TIMEOUT_MS = 3_000;
+const HYDRATION_TIMEOUT_MS = 12_000;
 const LOGIN_RATE_LIMIT_STORAGE_KEY = 'pcm.auth.login.rate_limit.v1';
 const LOGIN_RATE_LIMIT_MAX_ATTEMPTS = 5;
 const LOGIN_RATE_LIMIT_WINDOW_MS = 5 * 60 * 1000;
@@ -444,7 +444,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [authStatus, transitionAuthStatus]);
 
   useEffect(() => {
-    if (!ENABLE_WINDOW_CLOSE_LOGOUT) return;
     if (!shouldForceLogoutByClosedWindowMarker()) return;
 
     const forceLogoutAfterClosedWindow = async () => {
@@ -483,7 +482,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   useEffect(() => {
-    if (!ENABLE_WINDOW_CLOSE_LOGOUT) return;
     const markWindowClosed = () => {
       if (isIntentionalLogoutNavigationRef.current) return;
       if (isSessionTransferRedirectInProgress()) return;
@@ -1703,20 +1701,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       ? `&${LOGOUT_REASON_PARAM}=${encodeURIComponent(reason)}`
       : '';
 
-    const timeoutMinutesQuery = reason === 'inactivity' && inactivityTimeoutMs
-      ? `&timeout=${encodeURIComponent(String(Math.max(1, Math.trunc(inactivityTimeoutMs / 60000))))}`
-      : '';
-
     isIntentionalLogoutNavigationRef.current = true;
     if (shouldRedirectToBaseDomain) {
-      const targetUrl = `${window.location.protocol}//${TENANT_BASE_DOMAIN}/login?${LOGOUT_MARKER_PARAM}=1${reasonQuery}${timeoutMinutesQuery}`;
+      const targetUrl = `${window.location.protocol}//${TENANT_BASE_DOMAIN}/login?${LOGOUT_MARKER_PARAM}=1${reasonQuery}`;
       window.location.assign(targetUrl);
       return;
     }
 
-    const fallbackLoginUrl = `/login?${LOGOUT_MARKER_PARAM}=1${reasonQuery}${timeoutMinutesQuery}`;
+    const fallbackLoginUrl = `/login?${LOGOUT_MARKER_PARAM}=1${reasonQuery}`;
     window.location.assign(fallbackLoginUrl);
-  }, [inactivityTimeoutMs, transitionAuthStatus, user]);
+  }, [transitionAuthStatus, user]);
 
   const currentTenantId = impersonation?.empresaId || user?.tenantId || null;
 
@@ -1731,10 +1725,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       const { data, error } = await supabase
         .from('configuracoes_sistema')
-        .select('valor')
+        .select('chave,valor')
         .eq('empresa_id', currentTenantId)
-        .eq('chave', 'owner.security_policy')
-        .maybeSingle();
+        .in('chave', ['owner.security_policy', 'tenant.security_policy'])
+        .order('updated_at', { ascending: false });
 
       if (!isMounted) return;
 
@@ -1747,7 +1741,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return;
       }
 
-      const minutesValue = Number((data?.valor as Record<string, unknown> | null)?.inactivity_timeout_minutes ?? 0);
+      const rows = Array.isArray(data) ? data as Array<{ chave?: string; valor?: Record<string, unknown> | null }> : [];
+      const ownerPolicy = rows.find((row) => row.chave === 'owner.security_policy')?.valor ?? null;
+      const tenantPolicy = rows.find((row) => row.chave === 'tenant.security_policy')?.valor ?? null;
+
+      const minutesValue = Number(
+        ownerPolicy?.inactivity_timeout_minutes
+        ?? tenantPolicy?.inactivity_timeout_minutes
+        ?? 0,
+      );
       if (!Number.isFinite(minutesValue) || minutesValue <= 0) {
         setInactivityTimeoutMs(DEFAULT_INACTIVITY_TIMEOUT_MS);
         return;
@@ -1758,20 +1760,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     void loadInactivityPolicy();
 
-    const interval = window.setInterval(() => {
-      void loadInactivityPolicy();
-    }, 60_000);
-
-    const onFocus = () => {
-      void loadInactivityPolicy();
-    };
-
-    window.addEventListener('focus', onFocus);
-
     return () => {
       isMounted = false;
-      window.clearInterval(interval);
-      window.removeEventListener('focus', onFocus);
     };
   }, [currentTenantId, session, user]);
 
@@ -1794,20 +1784,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       'scroll',
       'touchstart',
       'click',
-      'focus',
     ];
 
     activityEvents.forEach((eventName) => {
       window.addEventListener(eventName, markActivity, { passive: true });
     });
-
-    const onVisibilityChange = () => {
-      if (document.visibilityState === 'visible') {
-        markActivity();
-      }
-    };
-
-    document.addEventListener('visibilitychange', onVisibilityChange);
 
     const timer = window.setInterval(() => {
       if (isAutoLogoutRunningRef.current) return;
@@ -1816,6 +1797,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (inactiveForMs < inactivityTimeoutMs) return;
 
       isAutoLogoutRunningRef.current = true;
+      const configuredMinutes = Math.max(1, Math.trunc(inactivityTimeoutMs / 60_000));
+      try {
+        window.localStorage.setItem(
+          INACTIVITY_NOTICE_STORAGE_KEY,
+          JSON.stringify({ minutes: configuredMinutes, at: Date.now() }),
+        );
+      } catch {
+        // noop
+      }
       logger.info('auto_logout_by_inactivity', {
         userId: user.id,
         empresaId: currentTenantId,
@@ -1830,7 +1820,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       activityEvents.forEach((eventName) => {
         window.removeEventListener(eventName, markActivity);
       });
-      document.removeEventListener('visibilitychange', onVisibilityChange);
     };
   }, [currentTenantId, inactivityTimeoutMs, logout, session, user]);
 

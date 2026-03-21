@@ -136,9 +136,9 @@ export default function Contratos() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="module-page space-y-6">
 
-      <div className="flex items-center justify-between">
+      <div className="module-page-header flex items-center justify-between">
         <h1 className="text-2xl font-bold">Contratos e Terceiros</h1>
         <Button onClick={() => {
           setEditingContrato(null);

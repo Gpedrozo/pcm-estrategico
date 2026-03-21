@@ -122,7 +122,7 @@ export default function Relatorios() {
 
   if (isLoading) {
     return (
-      <div className="space-y-6">
+      <div className="module-page space-y-6">
         <Skeleton className="h-8 w-64" />
         <div className="grid grid-cols-3 gap-4">
           {[1, 2, 3, 4, 5, 6].map(i => <Skeleton key={i} className="h-32" />)}
@@ -132,8 +132,8 @@ export default function Relatorios() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="module-page space-y-6">
+      <div className="module-page-header flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-foreground">Central de Relatórios</h1>
           <p className="text-muted-foreground">Geração de relatórios operacionais, gerenciais e executivos</p>

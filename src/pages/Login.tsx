@@ -35,6 +35,7 @@ const SESSION_TRANSFER_CONSUMED_MAX_AGE_MS = 2 * 60 * 1000;
 const CROSS_DOMAIN_REDIRECT_MARKER_STORAGE_KEY = 'pcm.auth.cross_domain_redirect.v1';
 const LOGIN_REDIRECT_LOCK_KEY = 'pcm.auth.login_redirect_lock.v2';
 const LOGIN_REDIRECT_LOCK_TTL_MS = 15_000;
+const INACTIVITY_NOTICE_STORAGE_KEY = 'pcm.auth.inactivity.notice.v1';
 
 const TENANT_REDIRECT_TIMEOUT_MS = 6_000;
 
@@ -154,10 +155,23 @@ export default function Login() {
     const params = new URLSearchParams(window.location.search);
     const hasLogoutMarker = params.get('logout') === '1';
     const reason = params.get('reason');
-    const timeoutMinutes = Math.max(1, Number(params.get('timeout') || 10));
 
     if (reason === 'inactivity') {
-      setLogoutNotice(`Usuário desconectado por inatividade (${timeoutMinutes} minutos sem atividade). Faça login novamente.`);
+      let configuredMinutes = 10;
+      try {
+        const rawNotice = window.localStorage.getItem(INACTIVITY_NOTICE_STORAGE_KEY);
+        if (rawNotice) {
+          const parsed = JSON.parse(rawNotice) as { minutes?: number };
+          const minutes = Number(parsed?.minutes ?? 10);
+          if (Number.isFinite(minutes) && minutes > 0) {
+            configuredMinutes = Math.trunc(minutes);
+          }
+        }
+        window.localStorage.removeItem(INACTIVITY_NOTICE_STORAGE_KEY);
+      } catch {
+        // noop
+      }
+      setLogoutNotice(`Usuário desconectado por inatividade (${configuredMinutes} minuto${configuredMinutes > 1 ? 's' : ''} sem atividade). Faça login novamente.`);
     } else if (reason === 'window_closed') {
       setLogoutNotice('Sessão encerrada ao fechar a página. Faça login novamente para continuar.');
     }
@@ -166,7 +180,6 @@ export default function Login() {
 
     params.delete('logout');
     params.delete('reason');
-    params.delete('timeout');
     const nextQuery = params.toString();
     const cleanedUrl = `${window.location.pathname}${nextQuery ? `?${nextQuery}` : ''}${window.location.hash}`;
     window.history.replaceState({}, document.title, cleanedUrl);

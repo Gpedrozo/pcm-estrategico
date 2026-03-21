@@ -433,7 +433,7 @@ export default function HistoricoOS() {
 
   if (loadingOS) {
     return (
-      <div className="space-y-6">
+      <div className="module-page space-y-6">
         <div>
           <Skeleton className="h-8 w-64 mb-2" />
           <Skeleton className="h-4 w-48" />
@@ -459,9 +459,9 @@ export default function HistoricoOS() {
   const uniqueTags = [...new Set(equipamentos?.map(eq => eq.tag) || [])];
 
   return (
-    <div className="space-y-6">
+    <div className="module-page space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      <div className="module-page-header flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-foreground">Histórico de Ordens de Serviço</h1>
           <p className="text-muted-foreground">Consulte, analise e exporte todas as O.S do sistema</p>

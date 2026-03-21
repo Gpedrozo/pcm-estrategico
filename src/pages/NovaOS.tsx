@@ -224,9 +224,9 @@ export default function NovaOS() {
   }
 
   return (
-    <div className="max-w-5xl mx-auto space-y-6 pb-6">
+    <div className="module-page max-w-5xl mx-auto space-y-6 pb-6">
       {/* Header */}
-      <div className="relative overflow-hidden rounded-2xl border border-primary/20 bg-gradient-to-br from-primary/10 via-background to-info/10 p-5 md:p-7">
+      <div className="module-page-header relative overflow-hidden rounded-2xl border border-primary/20 bg-gradient-to-br from-primary/10 via-background to-info/10 p-5 md:p-7">
         <div className="pointer-events-none absolute -top-10 -right-10 h-32 w-32 rounded-full bg-primary/20 blur-2xl" />
         <div className="pointer-events-none absolute -bottom-10 -left-10 h-32 w-32 rounded-full bg-info/20 blur-2xl" />
 

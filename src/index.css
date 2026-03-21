@@ -130,14 +130,6 @@
 }
 
 @layer components {
-  .pcm-page-content {
-    @apply rounded-xl border border-border/60 bg-gradient-to-b from-background via-background to-muted/20 shadow-sm;
-  }
-
-  .pcm-page-content > * {
-    @apply px-4 py-4 md:px-6;
-  }
-
   .card-industrial {
     @apply bg-card border border-border shadow-sm rounded-md;
   }
@@ -183,6 +175,46 @@
 
   .table-industrial tr:hover {
     @apply bg-muted/50;
+  }
+}
+
+@layer components {
+  .pcm-module-main {
+    background-image:
+      radial-gradient(circle at 0% 0%, hsl(var(--primary) / 0.04) 0, transparent 32%),
+      radial-gradient(circle at 100% 100%, hsl(var(--accent) / 0.06) 0, transparent 26%);
+  }
+
+  .pcm-module-shell > * {
+    @apply space-y-6;
+  }
+
+  .pcm-module-shell :where(h1) {
+    @apply text-2xl md:text-3xl font-semibold tracking-tight text-foreground;
+  }
+
+  .pcm-module-shell :where(h2) {
+    @apply text-xl font-semibold tracking-tight text-foreground;
+  }
+
+  .pcm-module-shell :where(.module-page) {
+    @apply space-y-6;
+  }
+
+  .pcm-module-shell :where(.module-page > .module-page-header) {
+    @apply rounded-lg border border-border/80 bg-card/90 p-4 md:p-5 shadow-sm;
+  }
+
+  .pcm-module-shell :where(.module-page > .module-page-header p) {
+    @apply mt-1 text-sm text-muted-foreground;
+  }
+
+  .pcm-module-shell :where(.module-page .card, .module-page [class*='rounded-lg border']) {
+    @apply border-border/80;
+  }
+
+  .pcm-module-shell :where(.module-page input, .module-page textarea, .module-page [role='combobox']) {
+    @apply h-10;
   }
 }
 

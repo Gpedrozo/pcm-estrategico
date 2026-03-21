@@ -197,7 +197,7 @@ export default function Mecanicos() {
 
   if (isLoading) {
     return (
-      <div className="space-y-6">
+      <div className="module-page space-y-6">
         <div className="flex items-center justify-between">
           <div>
             <Skeleton className="h-8 w-48 mb-2" />
@@ -226,9 +226,9 @@ export default function Mecanicos() {
   const isPending = createMutation.isPending || updateMutation.isPending;
 
   return (
-    <div className="space-y-6">
+    <div className="module-page space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="module-page-header flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-foreground">Mecânicos</h1>
           <p className="text-muted-foreground">

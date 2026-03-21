@@ -1,6 +1,6 @@
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { getPostLoginPath } from '@/lib/security';
+import { consumePreferredPostLoginPath } from '@/lib/navigationState';
 import { useEffect, useState } from 'react';
 import logo from '@/assets/gppis-logo.png';
 
@@ -74,7 +74,7 @@ const Index = () => {
     return <Navigate to="/change-password" replace />;
   }
 
-  return <Navigate to={authStatus === 'authenticated' && isAuthenticated ? getPostLoginPath(effectiveRole) : '/login'} replace />;
+  return <Navigate to={authStatus === 'authenticated' && isAuthenticated ? consumePreferredPostLoginPath(effectiveRole) : '/login'} replace />;
 };
 
 export default Index;

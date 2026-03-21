@@ -124,7 +124,7 @@ export default function Solicitacoes() {
 
   if (isLoading) {
     return (
-      <div className="space-y-6">
+      <div className="module-page space-y-6">
         <Skeleton className="h-8 w-64" />
         <Skeleton className="h-96 w-full" />
       </div>
@@ -132,8 +132,8 @@ export default function Solicitacoes() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="module-page space-y-6">
+      <div className="module-page-header flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-foreground">Solicitações de Manutenção</h1>
           <p className="text-muted-foreground">Gerencie as solicitações da produção • {solicitacoes?.length || 0} registros</p>
