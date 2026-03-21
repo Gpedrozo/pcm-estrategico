@@ -1266,6 +1266,12 @@ function extractReferencedTableFromFkError(message?: string | null) {
     return onTableMatches[onTableMatches.length - 1];
   }
 
+  const constraintMatch = text.match(/constraint\s+"([a-zA-Z0-9_]+)"/i);
+  const constraintName = constraintMatch?.[1] ?? "";
+  if (constraintName.endsWith("_empresa_id_fkey")) {
+    return constraintName.replace(/_empresa_id_fkey$/i, "");
+  }
+
   const allQuoted = Array.from(text.matchAll(/"([a-zA-Z0-9_]+)"/g)).map((m) => m[1]);
   if (allQuoted.length > 1) {
     return allQuoted[allQuoted.length - 1];
@@ -1432,6 +1438,20 @@ async function cleanupCompanyTenantRows(
     userIds,
     tableErrors,
   };
+}
+
+async function bestEffortSweepCompanyRows(
+  admin: ReturnType<typeof adminClient>,
+  empresaId: string,
+) {
+  const tables = await listDatabaseTables(admin);
+  const tenantTables = tables
+    .filter((table) => table.has_empresa_id && table.table_name !== "empresas")
+    .map((table) => table.table_name);
+
+  for (const tableName of tenantTables) {
+    await bestEffortDeleteByEq(admin, tableName, "empresa_id", empresaId);
+  }
 }
 
 async function deleteAuthUsers(admin: ReturnType<typeof adminClient>, userIds: string[]) {
@@ -3990,6 +4010,7 @@ Deno.serve(async (req) => {
 
     let lastDeleteCompanyError: { message?: string; code?: string } | null = null;
     for (let attempt = 0; attempt < 8; attempt += 1) {
+      await bestEffortSweepCompanyRows(admin, body.empresa_id);
       await bestEffortDeleteByEq(admin, "operational_logs", "empresa_id", body.empresa_id);
 
       const { error: deleteCompanyError } = await admin
@@ -4009,7 +4030,8 @@ Deno.serve(async (req) => {
         break;
       }
 
-      const referencedTable = extractReferencedTableFromFkError(deleteCompanyError.message);
+      const rawReferencedTable = extractReferencedTableFromFkError(deleteCompanyError.message);
+      const referencedTable = rawReferencedTable === "empresas" ? "operational_logs" : rawReferencedTable;
       if (!referencedTable) {
         break;
       }
