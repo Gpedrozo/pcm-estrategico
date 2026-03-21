@@ -1538,7 +1538,31 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     });
 
     if (changeError) {
-      return { error: changeError.message || 'Falha ao atualizar senha.' };
+      logger.warn('auth_change_password_function_failed_fallback_to_update_user', {
+        error: changeError.message ?? 'invoke_failed',
+      });
+
+      const { error: fallbackChangeError } = await supabase.auth.updateUser({
+        password: normalizedPassword,
+        data: {
+          force_password_change: false,
+        },
+      });
+
+      if (fallbackChangeError) {
+        return { error: fallbackChangeError.message || changeError.message || 'Falha ao atualizar senha.' };
+      }
+
+      const { data: fallbackUserResult } = await supabase.auth.getUser();
+      const fallbackUser = fallbackUserResult.user;
+      if (fallbackUser?.id) {
+        await supabase
+          .from('profiles')
+          .update({ force_password_change: false })
+          .eq('id', fallbackUser.id)
+          .then(() => null)
+          .catch(() => null);
+      }
     }
 
     const { data: userResult } = await supabase.auth.getUser();
