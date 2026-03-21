@@ -83,8 +83,8 @@ export default function Suporte() {
   }
 
   return (
-    <div className="space-y-6">
-      <div>
+    <div className="module-page space-y-6">
+      <div className="module-page-header">
         <h1 className="text-2xl font-bold">Suporte do Sistema</h1>
         <p className="text-muted-foreground">Abra chamados para erros, lentidao, indisponibilidade ou comportamento incorreto do sistema.</p>
       </div>

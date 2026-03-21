@@ -53,7 +53,7 @@ export default function Lubrificacao() {
 
   if (isLoading) {
     return (
-      <div className="space-y-4">
+      <div className="module-page space-y-4">
         <Skeleton className="h-10 w-64" />
         <Skeleton className="h-[600px] w-full" />
       </div>
@@ -62,7 +62,7 @@ export default function Lubrificacao() {
 
   if (isError) {
     return (
-      <div className="p-6">
+      <div className="module-page p-6">
         <h2 className="text-lg font-bold text-destructive">Erro ao carregar planos</h2>
         {missingTableError ? (
           <div className="mt-3 space-y-3 text-sm">
@@ -105,8 +105,8 @@ export default function Lubrificacao() {
   };
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
+    <div className="module-page space-y-4">
+      <div className="module-page-header flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
             <Droplet className="h-6 w-6 text-primary" />

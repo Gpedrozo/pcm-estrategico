@@ -199,7 +199,7 @@ export default function DocumentosTecnicos() {
 
   if (isLoading) {
     return (
-      <div className="space-y-6">
+      <div className="module-page space-y-6">
         <Skeleton className="h-8 w-64" />
         <Skeleton className="h-96 w-full" />
       </div>
@@ -207,8 +207,8 @@ export default function DocumentosTecnicos() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="module-page space-y-6">
+      <div className="module-page-header flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-foreground">Documentação Técnica</h1>
           <p className="text-muted-foreground">POPs, manuais, desenhos e procedimentos</p>

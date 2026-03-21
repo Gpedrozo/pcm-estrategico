@@ -66,7 +66,7 @@ export default function FMEA() {
 
   if (isLoading) {
     return (
-      <div className="space-y-6">
+      <div className="module-page space-y-6">
         <Skeleton className="h-8 w-64" />
         <Skeleton className="h-96 w-full" />
       </div>
@@ -79,8 +79,8 @@ export default function FMEA() {
   const altoCount = fmeas?.filter(f => (f.rpn || 0) >= 100 && (f.rpn || 0) < 200).length || 0;
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="module-page space-y-6">
+      <div className="module-page-header flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-foreground">Análise FMEA</h1>
           <p className="text-muted-foreground">Análise de Modos e Efeitos de Falha • {totalFMEAs} registros</p>

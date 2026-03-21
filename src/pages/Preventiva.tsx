@@ -64,7 +64,7 @@ export default function Preventiva() {
 
   if (isLoading) {
     return (
-      <div className="space-y-4">
+      <div className="module-page space-y-4">
         <Skeleton className="h-10 w-64" />
         <Skeleton className="h-[600px] w-full" />
       </div>
@@ -74,7 +74,7 @@ export default function Preventiva() {
   if (isError) {
     const errorMessage = error instanceof Error ? error.message : String(error || '');
     return (
-      <div className="p-6">
+      <div className="module-page p-6">
         <h2 className="text-lg font-bold text-destructive">Erro ao carregar planos</h2>
         <pre className="mt-2 text-sm text-muted-foreground">{errorMessage}</pre>
       </div>
@@ -82,9 +82,9 @@ export default function Preventiva() {
   }
 
   return (
-    <div className="flex flex-col h-[calc(100vh-4rem)] overflow-hidden">
+    <div className="module-page flex flex-col h-[calc(100vh-4rem)] overflow-hidden">
       {/* Header */}
-      <div className="flex items-center justify-between px-1 py-3 flex-shrink-0">
+      <div className="module-page-header flex items-center justify-between px-1 py-3 flex-shrink-0">
         <div>
           <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
             <Wrench className="h-6 w-6 text-primary" />

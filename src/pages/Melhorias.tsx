@@ -111,7 +111,7 @@ export default function Melhorias() {
 
   if (isLoading) {
     return (
-      <div className="space-y-6">
+      <div className="module-page space-y-6">
         <Skeleton className="h-8 w-64" />
         <Skeleton className="h-96 w-full" />
       </div>
@@ -123,8 +123,8 @@ export default function Melhorias() {
   const totalCusto = melhorias?.filter(m => m.status === 'IMPLEMENTADA').reduce((acc, m) => acc + (m.custo_implementacao || 0), 0) || 0;
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="module-page space-y-6">
+      <div className="module-page-header flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-foreground">Gestão de Melhorias</h1>
           <p className="text-muted-foreground">Propostas e projetos de melhoria contínua • {melhorias?.length || 0} registros</p>

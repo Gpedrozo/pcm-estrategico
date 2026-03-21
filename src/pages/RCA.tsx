@@ -67,7 +67,7 @@ export default function RCA() {
 
   if (isLoading) {
     return (
-      <div className="space-y-6">
+      <div className="module-page space-y-6">
         <Skeleton className="h-8 w-64" />
         <Skeleton className="h-96 w-full" />
       </div>
@@ -75,8 +75,8 @@ export default function RCA() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="module-page space-y-6">
+      <div className="module-page-header flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-foreground">Análise de Causa Raiz</h1>
           <p className="text-muted-foreground">Metodologias 5 Porquês, Ishikawa e Árvore de Falhas • {rcas?.length || 0} análises</p>
