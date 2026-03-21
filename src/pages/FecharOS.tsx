@@ -478,24 +478,20 @@ export default function FecharOS() {
   }
 
   return (
-    <div className="max-w-6xl mx-auto space-y-6 pb-8">
+    <div className="module-page max-w-6xl mx-auto space-y-6 pb-8">
       {/* Header */}
-      <div className="relative overflow-hidden rounded-2xl border border-primary/20 bg-gradient-to-br from-primary/10 via-background to-success/10 p-5 md:p-7">
-        <div className="pointer-events-none absolute -top-10 -right-10 h-32 w-32 rounded-full bg-primary/20 blur-2xl" />
-        <div className="pointer-events-none absolute -bottom-10 -left-10 h-32 w-32 rounded-full bg-success/20 blur-2xl" />
-        <div className="relative flex items-start gap-4">
-          <Button variant="outline" size="icon" className="shrink-0 bg-background/70" onClick={() => navigate(-1)}>
+      <div className="module-page-header flex items-start gap-4">
+        <Button variant="outline" size="icon" className="shrink-0" onClick={() => navigate(-1)}>
             <ArrowLeft className="h-5 w-5" />
-          </Button>
-          <div className="space-y-1.5">
-            <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-foreground">Fechamento de Ordem de Servico</h1>
-            <p className="text-sm md:text-base text-muted-foreground max-w-3xl">Consolide execucao, pausas, materiais e RCA para encerrar a O.S com rastreabilidade tecnica e custo apurado.</p>
-          </div>
+        </Button>
+        <div className="space-y-1">
+          <h1 className="text-2xl font-bold text-foreground">Fechamento de Ordem de Servico</h1>
+          <p className="text-muted-foreground max-w-3xl">Consolide execucao, pausas, materiais e RCA para encerrar a O.S com rastreabilidade tecnica e custo apurado.</p>
         </div>
       </div>
 
       {/* Select OS */}
-      <div className="bg-card border border-border rounded-2xl p-5 md:p-6 shadow-industrial">
+      <div className="bg-card border border-border rounded-lg p-4 md:p-6">
         <Label className="text-base font-semibold">Selecione a O.S para fechar</Label>
         <div className="mt-4 space-y-2 max-h-64 overflow-y-auto">
           {!pendingOS || pendingOS.length === 0 ? (
@@ -510,7 +506,7 @@ export default function FecharOS() {
                 onClick={() => handleSelectOS(os)}
                 className={`w-full p-4 rounded-xl border text-left transition-all ${
                   selectedOS?.id === os.id
-                    ? 'border-primary bg-gradient-to-r from-primary/10 to-info/10'
+                    ? 'border-primary bg-primary/10'
                     : 'border-border hover:border-muted-foreground/30 hover:bg-muted/30'
                 }`}
               >
@@ -536,7 +532,7 @@ export default function FecharOS() {
 
       {/* Execution Form */}
       {selectedOS && (
-        <div className="bg-card border border-border rounded-2xl p-5 md:p-7 shadow-industrial animate-slide-in">
+        <div className="bg-card border border-border rounded-lg p-4 md:p-6">
           <div className="flex items-center gap-2 mb-6">
             <FileCheck className="h-5 w-5 text-primary" />
             <h2 className="text-lg font-semibold">Dados da Execução</h2>
@@ -544,7 +540,7 @@ export default function FecharOS() {
 
           <form onSubmit={handleSubmit} className="space-y-6">
             {/* OS Details */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 p-4 bg-gradient-to-r from-muted/70 to-muted/40 rounded-xl border border-border/60">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 p-4 bg-muted/40 rounded-lg border border-border/60">
               <div>
                 <Label className="text-xs text-muted-foreground">O.S</Label>
                 <p className="font-mono font-bold">{selectedOS.numero_os}</p>
