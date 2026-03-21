@@ -54,6 +54,18 @@ const OWNER2_TABS = [
 
 type Owner2Tab = (typeof OWNER2_TABS)[number]
 
+const OWNER_V2_TAB_STORAGE_KEY = 'owner:v2:active-tab'
+
+const getInitialOwnerV2Tab = (): Owner2Tab => {
+  if (typeof window === 'undefined') return 'dashboard'
+  if (import.meta.env.MODE === 'test') return 'dashboard'
+
+  const saved = window.sessionStorage.getItem(OWNER_V2_TAB_STORAGE_KEY)
+  if (!saved) return 'dashboard'
+
+  return (OWNER2_TABS as readonly string[]).includes(saved) ? (saved as Owner2Tab) : 'dashboard'
+}
+
 type CompanyCredentialNote = {
   companyName: string
   companySlug: string
@@ -161,7 +173,7 @@ function MetricTile({ label, value, icon: Icon, tone = 'sky' }: { label: string;
 
 export default function Owner2() {
   const { isSystemOwner, isLoading, user, logout } = useAuth()
-  const [activeTab, setActiveTab] = useState<Owner2Tab>('dashboard')
+  const [activeTab, setActiveTab] = useState<Owner2Tab>(() => getInitialOwnerV2Tab())
   const [feedback, setFeedback] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [companyCredentialNote, setCompanyCredentialNote] = useState<CompanyCredentialNote | null>(null)
@@ -320,6 +332,12 @@ export default function Owner2() {
   useEffect(() => {
     if (!selectedUserId && users.length > 0) setSelectedUserId(String(users[0]?.id ?? ''))
   }, [selectedUserId, users])
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    if (import.meta.env.MODE === 'test') return
+    window.sessionStorage.setItem(OWNER_V2_TAB_STORAGE_KEY, activeTab)
+  }, [activeTab])
 
   useEffect(() => {
     if (!selectedUserId) return

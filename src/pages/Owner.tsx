@@ -109,6 +109,35 @@ type OwnerTab =
   | 'configuracoes'
   | 'owner-master'
 
+const OWNER_V1_TAB_STORAGE_KEY = 'owner:v1:active-tab'
+const OWNER_V1_TAB_VALUES: OwnerTab[] = [
+  'dashboard',
+  'empresas',
+  'usuarios',
+  'planos',
+  'assinaturas',
+  'contratos',
+  'auditoria',
+  'sistema',
+  'suporte',
+  'financeiro',
+  'feature-flags',
+  'monitoramento',
+  'logs',
+  'configuracoes',
+  'owner-master',
+]
+
+const getInitialOwnerV1Tab = (): OwnerTab => {
+  if (typeof window === 'undefined') return 'dashboard'
+  if (import.meta.env.MODE === 'test') return 'dashboard'
+
+  const saved = window.sessionStorage.getItem(OWNER_V1_TAB_STORAGE_KEY)
+  if (!saved) return 'dashboard'
+
+  return OWNER_V1_TAB_VALUES.includes(saved as OwnerTab) ? (saved as OwnerTab) : 'dashboard'
+}
+
 type CompanyCredentialNote = {
   companyName: string
   companySlug: string
@@ -180,7 +209,7 @@ function Metric({ label, value }: { label: string; value: string | number }) {
 
 export default function Owner() {
   const { isSystemOwner, isLoading, user } = useAuth()
-  const [active, setActive] = useState<OwnerTab>('dashboard')
+  const [active, setActive] = useState<OwnerTab>(() => getInitialOwnerV1Tab())
   const [isDocumentVisible, setIsDocumentVisible] = useState(() =>
     typeof document === 'undefined' ? true : document.visibilityState !== 'hidden',
   )
@@ -295,6 +324,12 @@ export default function Owner() {
       document.removeEventListener('visibilitychange', syncVisibility)
     }
   }, [])
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    if (import.meta.env.MODE === 'test') return
+    window.sessionStorage.setItem(OWNER_V1_TAB_STORAGE_KEY, active)
+  }, [active])
 
   const companies = useMemo(
     () => toArray<{ id: string; nome?: string; slug?: string; status?: string }>((companiesData as any)?.companies),
