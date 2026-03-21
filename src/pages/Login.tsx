@@ -101,16 +101,6 @@ const loginSchema = z.object({
   password: z.string().min(6, 'Senha deve ter pelo menos 6 caracteres').max(100, 'Senha muito longa'),
 });
 
-const getContrastTextColor = (backgroundColor: string) => {
-  const hex = backgroundColor.replace('#', '');
-  if (hex.length !== 6) return '#ffffff';
-  const r = parseInt(hex.slice(0, 2), 16);
-  const g = parseInt(hex.slice(2, 4), 16);
-  const b = parseInt(hex.slice(4, 6), 16);
-  const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
-  return luminance > 0.6 ? '#111827' : '#ffffff';
-};
-
 export default function Login() {
   // Login form
   const [loginEmail, setLoginEmail] = useState('');
@@ -488,38 +478,35 @@ export default function Login() {
   // Loading inicial
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[#090f1a]">
-        <Loader2 className="h-8 w-8 animate-spin text-sky-300" />
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-background via-background to-muted/20">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-[#090f1a] bg-gradient-to-b from-[#0b1220] via-[#0a111d] to-[#090f1a] p-4">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-background via-background to-muted/20 p-4">
       <div className="w-full max-w-md">
         {/* Logo e Header */}
         <div className="text-center mb-8">
-          <div
-            className="inline-flex items-center justify-center w-16 h-16 rounded-xl mb-4 overflow-hidden"
-            style={{ backgroundColor: '#111827' }}
-          >
+          <div className="inline-flex items-center justify-center w-16 h-16 rounded-xl mb-4 overflow-hidden border border-border bg-card">
             {activeBranding.logo_login_url ? (
               <img src={activeBranding.logo_login_url} alt={activeBranding.nome_fantasia || 'Logo'} className="w-full h-full object-cover" />
             ) : (
-              <Settings className="h-8 w-8 text-primary-foreground" />
+              <Settings className="h-8 w-8 text-primary" />
             )}
           </div>
           <h1 className="text-2xl font-bold text-foreground">
             {activeBranding.nome_fantasia || activeBranding.razao_social || 'PCM ESTRATÉGICO'}
           </h1>
-          <p className="mt-1 text-slate-400">Sistema de Gestão de Manutenção Industrial</p>
+          <p className="mt-1 text-muted-foreground">Sistema de Gestão de Manutenção Industrial</p>
         </div>
 
         {/* Login Form */}
-        <div className="rounded-lg border border-slate-700 bg-slate-900/95 p-6 shadow-industrial">
+        <div className="rounded-lg border border-border bg-card/95 p-6 shadow-industrial">
           <form onSubmit={handleLogin} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="login-email" className="text-slate-200">Email</Label>
+              <Label htmlFor="login-email">Email</Label>
               <Input
                 id="login-email"
                 type="email"
@@ -527,13 +514,13 @@ export default function Login() {
                 value={loginEmail}
                 onChange={(e) => setLoginEmail(e.target.value)}
                 required
-                className="h-11 border-slate-600 bg-slate-800 text-slate-100 placeholder:text-slate-500"
+                className="h-11"
                 autoComplete="off"
               />
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="login-password" className="text-slate-200">Senha</Label>
+              <Label htmlFor="login-password">Senha</Label>
               <Input
                 id="login-password"
                 type="password"
@@ -541,20 +528,20 @@ export default function Login() {
                 value={loginPassword}
                 onChange={(e) => setLoginPassword(e.target.value)}
                 required
-                className="h-11 border-slate-600 bg-slate-800 text-slate-100 placeholder:text-slate-500"
+                className="h-11"
                 autoComplete="off"
               />
             </div>
 
             {loginError && (
-              <div className="flex items-center gap-2 rounded-md border border-rose-500/50 bg-rose-950/40 p-3 text-sm text-rose-200">
+              <div className="flex items-center gap-2 rounded-md border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
                 <AlertCircle className="h-4 w-4 flex-shrink-0" />
                 <span>{loginError}</span>
               </div>
             )}
 
             {logoutNotice && (
-              <div className="rounded-md border border-amber-500/40 bg-amber-950/30 p-3 text-sm text-amber-100">
+              <div className="rounded-md border border-warning/40 bg-warning/10 p-3 text-sm text-warning">
                 {logoutNotice}
               </div>
             )}
@@ -563,7 +550,6 @@ export default function Login() {
               type="submit" 
               className="w-full h-11 font-medium"
               disabled={isLoginLoading || isRedirectingTenantDomain}
-              style={{ backgroundColor: '#111827', color: getContrastTextColor('#111827') }}
             >
               {isLoginLoading ? (
                 <>
@@ -583,7 +569,7 @@ export default function Login() {
             <div className="text-right">
               <Link
                 to="/forgot-password"
-                className="text-sm text-slate-400 transition-colors hover:text-slate-200"
+                className="text-sm text-muted-foreground transition-colors hover:text-foreground"
               >
                 Esqueci minha senha
               </Link>
@@ -592,7 +578,7 @@ export default function Login() {
         </div>
 
         {/* Footer */}
-        <p className="mt-6 text-center text-xs text-slate-500">
+        <p className="mt-6 text-center text-xs text-muted-foreground">
           © 2024 PCM ESTRATÉGICO • v2.0
         </p>
       </div>
