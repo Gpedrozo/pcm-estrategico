@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Plus, Search, Lightbulb, TrendingUp, DollarSign } from 'lucide-react';
-import { useMelhorias, useCreateMelhoria, type MelhoriaRow } from '@/hooks/useMelhorias';
+import { useMelhorias, useCreateMelhoria, useUpdateMelhoria, type MelhoriaRow } from '@/hooks/useMelhorias';
 import { useEquipamentos } from '@/hooks/useEquipamentos';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -16,6 +16,8 @@ export default function Melhorias() {
   const { user } = useAuth();
   const [search, setSearch] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [impactoFilter, setImpactoFilter] = useState('all');
   const [formData, setFormData] = useState({
     titulo: '',
     descricao: '',
@@ -25,6 +27,9 @@ export default function Melhorias() {
     situacao_antes: '',
     situacao_depois: '',
     beneficios: '',
+    impacto: 'MEDIO',
+    urgencia: 'MEDIA',
+    origem: 'OPERADOR',
     custo_implementacao: 0,
     economia_anual: 0,
   });
@@ -32,8 +37,12 @@ export default function Melhorias() {
   const { data: melhorias, isLoading } = useMelhorias();
   const { data: equipamentos } = useEquipamentos();
   const createMutation = useCreateMelhoria();
+  const updateMutation = useUpdateMelhoria();
 
   const filteredMelhorias = melhorias?.filter(m => {
+    if (statusFilter !== 'all' && m.status !== statusFilter) return false;
+    if (impactoFilter !== 'all' && !((m.beneficios || '').toUpperCase().includes(`IMPACTO:${impactoFilter}`))) return false;
+
     if (!search) return true;
     const searchLower = search.toLowerCase();
     return m.titulo.toLowerCase().includes(searchLower) ||
@@ -45,14 +54,29 @@ export default function Melhorias() {
     e.preventDefault();
     await createMutation.mutateAsync({
       ...formData,
+      beneficios: [
+        formData.beneficios,
+        `IMPACTO:${formData.impacto}`,
+        `URGENCIA:${formData.urgencia}`,
+        `ORIGEM:${formData.origem}`,
+      ].filter(Boolean).join(' | '),
       proponente_id: user?.id,
       proponente_nome: user?.nome || '',
     });
     setIsModalOpen(false);
     setFormData({
       titulo: '', descricao: '', tag: '', tipo: 'KAIZEN', area: '',
-      situacao_antes: '', situacao_depois: '', beneficios: '', custo_implementacao: 0, economia_anual: 0
+      situacao_antes: '', situacao_depois: '', beneficios: '', impacto: 'MEDIO', urgencia: 'MEDIA', origem: 'OPERADOR', custo_implementacao: 0, economia_anual: 0
     });
+  };
+
+  const fluxoStatus: Array<MelhoriaRow['status']> = ['PROPOSTA', 'EM_AVALIACAO', 'APROVADA', 'EM_IMPLEMENTACAO', 'IMPLEMENTADA'];
+
+  const avancarStatus = async (melhoria: MelhoriaRow) => {
+    const currentIndex = fluxoStatus.indexOf(melhoria.status);
+    const next = currentIndex >= 0 && currentIndex < fluxoStatus.length - 1 ? fluxoStatus[currentIndex + 1] : melhoria.status;
+    if (next === melhoria.status) return;
+    await updateMutation.mutateAsync({ id: melhoria.id, status: next });
   };
 
   const getStatusBadge = (status: string) => {
@@ -139,9 +163,32 @@ export default function Melhorias() {
       </div>
 
       <div className="bg-card border border-border rounded-lg p-4">
-        <div className="relative max-w-md">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input placeholder="Buscar melhorias..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9" />
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+          <div className="relative md:col-span-2">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input placeholder="Buscar melhorias..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9" />
+          </div>
+          <Select value={statusFilter} onValueChange={setStatusFilter}>
+            <SelectTrigger><SelectValue placeholder="Status" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos os status</SelectItem>
+              <SelectItem value="PROPOSTA">PROPOSTA</SelectItem>
+              <SelectItem value="EM_AVALIACAO">EM_AVALIACAO</SelectItem>
+              <SelectItem value="APROVADA">APROVADA</SelectItem>
+              <SelectItem value="EM_IMPLEMENTACAO">EM_IMPLEMENTACAO</SelectItem>
+              <SelectItem value="IMPLEMENTADA">IMPLEMENTADA</SelectItem>
+              <SelectItem value="REJEITADA">REJEITADA</SelectItem>
+            </SelectContent>
+          </Select>
+          <Select value={impactoFilter} onValueChange={setImpactoFilter}>
+            <SelectTrigger><SelectValue placeholder="Impacto" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos impactos</SelectItem>
+              <SelectItem value="ALTO">Alto</SelectItem>
+              <SelectItem value="MEDIO">Médio</SelectItem>
+              <SelectItem value="BAIXO">Baixo</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
       </div>
 
@@ -157,11 +204,12 @@ export default function Melhorias() {
               <th>Economia Anual</th>
               <th>ROI</th>
               <th>Data</th>
+              <th>Fluxo</th>
             </tr>
           </thead>
           <tbody>
             {filteredMelhorias.length === 0 ? (
-              <tr><td colSpan={8} className="text-center py-8 text-muted-foreground">Nenhuma melhoria encontrada</td></tr>
+              <tr><td colSpan={9} className="text-center py-8 text-muted-foreground">Nenhuma melhoria encontrada</td></tr>
             ) : (
               filteredMelhorias.map((melhoria) => (
                 <tr key={melhoria.id}>
@@ -173,6 +221,16 @@ export default function Melhorias() {
                   <td className="text-success font-medium">{formatCurrency(melhoria.economia_anual || 0)}</td>
                   <td>{melhoria.roi_meses ? `${melhoria.roi_meses} meses` : '-'}</td>
                   <td>{new Date(melhoria.created_at).toLocaleDateString('pt-BR')}</td>
+                  <td>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => avancarStatus(melhoria)}
+                      disabled={updateMutation.isPending || melhoria.status === 'IMPLEMENTADA' || melhoria.status === 'REJEITADA'}
+                    >
+                      Avançar
+                    </Button>
+                  </td>
                 </tr>
               ))
             )}
@@ -234,6 +292,42 @@ export default function Melhorias() {
             <div className="space-y-2">
               <Label>Benefícios Esperados</Label>
               <Textarea value={formData.beneficios} onChange={(e) => setFormData({...formData, beneficios: e.target.value})} rows={2} />
+            </div>
+
+            <div className="grid grid-cols-3 gap-4">
+              <div className="space-y-2">
+                <Label>Impacto</Label>
+                <Select value={formData.impacto} onValueChange={(v) => setFormData({ ...formData, impacto: v })}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="ALTO">Alto</SelectItem>
+                    <SelectItem value="MEDIO">Médio</SelectItem>
+                    <SelectItem value="BAIXO">Baixo</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Urgência</Label>
+                <Select value={formData.urgencia} onValueChange={(v) => setFormData({ ...formData, urgencia: v })}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="ALTA">Alta</SelectItem>
+                    <SelectItem value="MEDIA">Média</SelectItem>
+                    <SelectItem value="BAIXA">Baixa</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Origem</Label>
+                <Select value={formData.origem} onValueChange={(v) => setFormData({ ...formData, origem: v })}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="OPERADOR">Operador</SelectItem>
+                    <SelectItem value="MANUTENCAO">Manutenção</SelectItem>
+                    <SelectItem value="ENGENHARIA">Engenharia</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
 
             <div className="grid grid-cols-2 gap-4">

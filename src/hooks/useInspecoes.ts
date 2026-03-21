@@ -2,7 +2,8 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { upsertMaintenanceSchedule } from '@/services/maintenanceSchedule';
-import { insertWithColumnFallback, updateWithColumnFallback } from '@/lib/supabaseCompat';
+import { getSupabaseErrorMessage, insertWithColumnFallback, updateWithColumnFallback } from '@/lib/supabaseCompat';
+import { useAuth } from '@/contexts/AuthContext';
 
 export interface InspecaoRow {
   id: string;
@@ -47,33 +48,68 @@ export interface AnomaliaRow {
 }
 
 export function useInspecoes() {
+  const { tenantId } = useAuth();
+
   return useQuery({
-    queryKey: ['inspecoes'],
+    queryKey: ['inspecoes', tenantId],
+    enabled: Boolean(tenantId),
     queryFn: async () => {
-      const { data, error } = await supabase
+      if (!tenantId) return [];
+
+      const tenantQuery = await supabase
+        .from('inspecoes')
+        .select('*')
+        .eq('empresa_id', tenantId)
+        .order('data_inspecao', { ascending: false });
+
+      if (!tenantQuery.error) return (tenantQuery.data || []) as InspecaoRow[];
+
+      const errorMessage = getSupabaseErrorMessage(tenantQuery.error).toLowerCase();
+      const missingEmpresa = errorMessage.includes('empresa_id') && errorMessage.includes('column');
+      if (!missingEmpresa) throw tenantQuery.error;
+
+      // Fallback em schema legado sem empresa_id.
+      const allRows = await supabase
         .from('inspecoes')
         .select('*')
         .order('data_inspecao', { ascending: false });
 
-      if (error) throw error;
-      return data as InspecaoRow[];
+      if (allRows.error) throw allRows.error;
+      return (allRows.data || []) as InspecaoRow[];
     },
   });
 }
 
 export function useInspecoesHoje() {
+  const { tenantId } = useAuth();
+
   return useQuery({
-    queryKey: ['inspecoes', 'hoje'],
+    queryKey: ['inspecoes', tenantId, 'hoje'],
+    enabled: Boolean(tenantId),
     queryFn: async () => {
+      if (!tenantId) return [];
       const hoje = new Date().toISOString().split('T')[0];
-      const { data, error } = await supabase
+      const tenantQuery = await supabase
+        .from('inspecoes')
+        .select('*')
+        .eq('empresa_id', tenantId)
+        .eq('data_inspecao', hoje)
+        .order('hora_inicio');
+
+      if (!tenantQuery.error) return (tenantQuery.data || []) as InspecaoRow[];
+
+      const errorMessage = getSupabaseErrorMessage(tenantQuery.error).toLowerCase();
+      const missingEmpresa = errorMessage.includes('empresa_id') && errorMessage.includes('column');
+      if (!missingEmpresa) throw tenantQuery.error;
+
+      const allRows = await supabase
         .from('inspecoes')
         .select('*')
         .eq('data_inspecao', hoje)
         .order('hora_inicio');
 
-      if (error) throw error;
-      return data as InspecaoRow[];
+      if (allRows.error) throw allRows.error;
+      return (allRows.data || []) as InspecaoRow[];
     },
   });
 }
@@ -81,9 +117,12 @@ export function useInspecoesHoje() {
 export function useCreateInspecao() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const { tenantId } = useAuth();
 
   return useMutation({
     mutationFn: async (inspecao: InspecaoInsert) => {
+      if (!tenantId) throw new Error('Tenant não resolvido.');
+
       const data = await insertWithColumnFallback(
         async (payload) =>
           supabase
@@ -92,6 +131,7 @@ export function useCreateInspecao() {
             .select()
             .single(),
         {
+          empresa_id: tenantId,
           ...inspecao,
           status: 'EM_ANDAMENTO',
         } as Record<string, unknown>,
@@ -110,7 +150,7 @@ export function useCreateInspecao() {
       return data as InspecaoRow;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['inspecoes'] });
+      queryClient.invalidateQueries({ queryKey: ['inspecoes', tenantId] });
       queryClient.invalidateQueries({ queryKey: ['document-sequences'] });
       toast({
         title: 'Inspeção iniciada',
@@ -130,15 +170,19 @@ export function useCreateInspecao() {
 export function useUpdateInspecao() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const { tenantId } = useAuth();
 
   return useMutation({
     mutationFn: async ({ id, ...updates }: Partial<InspecaoRow> & { id: string }) => {
+      if (!tenantId) throw new Error('Tenant não resolvido.');
+
       const data = await updateWithColumnFallback(
         async (payload) =>
           supabase
             .from('inspecoes')
             .update(payload)
             .eq('id', id)
+            .eq('empresa_id', tenantId)
             .select()
             .single(),
         updates as Record<string, unknown>,
@@ -157,7 +201,7 @@ export function useUpdateInspecao() {
       return data as InspecaoRow;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['inspecoes'] });
+      queryClient.invalidateQueries({ queryKey: ['inspecoes', tenantId] });
       toast({
         title: 'Inspeção atualizada',
         description: 'A inspeção foi atualizada com sucesso.',
@@ -174,10 +218,15 @@ export function useUpdateInspecao() {
 }
 
 export function useAnomalias(inspecaoId?: string) {
+  const { tenantId } = useAuth();
+
   return useQuery({
-    queryKey: ['anomalias', inspecaoId],
+    queryKey: ['anomalias', tenantId, inspecaoId],
+    enabled: (Boolean(tenantId) && !!inspecaoId) || (Boolean(tenantId) && inspecaoId === undefined),
     queryFn: async () => {
+      if (!tenantId) return [];
       let query = supabase.from('anomalias_inspecao').select('*');
+      query = query.eq('empresa_id', tenantId);
       
       if (inspecaoId) {
         query = query.eq('inspecao_id', inspecaoId);
@@ -188,16 +237,18 @@ export function useAnomalias(inspecaoId?: string) {
       if (error) throw error;
       return data as AnomaliaRow[];
     },
-    enabled: !!inspecaoId || inspecaoId === undefined,
   });
 }
 
 export function useCreateAnomalia() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const { tenantId } = useAuth();
 
   return useMutation({
     mutationFn: async (anomalia: Omit<AnomaliaRow, 'id' | 'created_at' | 'os_gerada_id' | 'status'>) => {
+      if (!tenantId) throw new Error('Tenant não resolvido.');
+
       return insertWithColumnFallback(
         async (payload) =>
           supabase
@@ -205,7 +256,11 @@ export function useCreateAnomalia() {
             .insert(payload)
             .select()
             .single(),
-        anomalia as Record<string, unknown>,
+        {
+          ...anomalia,
+          empresa_id: tenantId,
+          status: 'ABERTA',
+        } as Record<string, unknown>,
       ) as Promise<AnomaliaRow>;
     },
     onSuccess: () => {

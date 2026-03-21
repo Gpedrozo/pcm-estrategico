@@ -25,6 +25,7 @@ import { ptBR } from 'date-fns/locale';
 export default function Custos() {
   const [activeTab, setActiveTab] = useState('resumo');
   const [selectedPeriod, setSelectedPeriod] = useState('3');
+  const [comparePeriod, setComparePeriod] = useState('anterior');
   
   const { data: ordensServico, isLoading: loadingOS } = useOrdensServico();
   const { data: execucoes, isLoading: loadingExec } = useExecucoesOS();
@@ -52,6 +53,22 @@ export default function Custos() {
       terceiros,
       total: maoObra + materiais + terceiros,
     };
+  }, [execucoes, selectedPeriod]);
+
+  const custosPeriodoAnterior = useMemo(() => {
+    if (!execucoes) return { total: 0 };
+
+    const months = parseInt(selectedPeriod, 10);
+    const endPrev = startOfMonth(subMonths(new Date(), months));
+    const startPrev = startOfMonth(subMonths(new Date(), (months * 2) - 1));
+
+    const filteredExec = execucoes.filter((exec) => {
+      const execDate = parseISO(exec.data_execucao);
+      return execDate >= startPrev && execDate < endPrev;
+    });
+
+    const total = filteredExec.reduce((acc, e) => acc + (e.custo_total || e.custo_mao_obra || 0) + (e.custo_materiais || 0) + (e.custo_terceiros || 0), 0);
+    return { total };
   }, [execucoes, selectedPeriod]);
 
   // Calculate cost by equipment
@@ -112,6 +129,31 @@ export default function Custos() {
     }));
   }, [execucoes]);
 
+  const indicadoresExecutivos = useMemo(() => {
+    const fechadas = (ordensServico || []).filter((os) => os.status === 'FECHADA');
+    const totalFechadas = fechadas.length;
+
+    const custoMedioPorOS = totalFechadas > 0 ? custos.total / totalFechadas : 0;
+    const variacaoPercentual = custosPeriodoAnterior.total > 0
+      ? ((custos.total - custosPeriodoAnterior.total) / custosPeriodoAnterior.total) * 100
+      : 0;
+
+    const execFiltered = (execucoes || []).filter((exec) => {
+      const months = parseInt(selectedPeriod, 10);
+      const startDate = startOfMonth(subMonths(new Date(), months - 1));
+      return parseISO(exec.data_execucao) >= startDate;
+    });
+    const totalMinutosParada = execFiltered.reduce((acc, e) => acc + Number(e.tempo_execucao || 0), 0);
+    const mediaParadaMin = totalFechadas > 0 ? totalMinutosParada / totalFechadas : 0;
+
+    return {
+      custoMedioPorOS,
+      variacaoPercentual,
+      totalMinutosParada,
+      mediaParadaMin,
+    };
+  }, [ordensServico, custos.total, custosPeriodoAnterior.total, execucoes, selectedPeriod]);
+
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('pt-BR', { 
       style: 'currency', 
@@ -152,6 +194,15 @@ export default function Custos() {
               <SelectItem value="3">Últimos 3 meses</SelectItem>
               <SelectItem value="6">Últimos 6 meses</SelectItem>
               <SelectItem value="12">Último ano</SelectItem>
+            </SelectContent>
+          </Select>
+          <Select value={comparePeriod} onValueChange={setComparePeriod}>
+            <SelectTrigger className="w-48">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="anterior">Comparar com período anterior</SelectItem>
+              <SelectItem value="none">Sem comparação</SelectItem>
             </SelectContent>
           </Select>
           <Button variant="outline" className="gap-2">
@@ -207,6 +258,35 @@ export default function Custos() {
             <p className="text-xs text-muted-foreground">
               {custos.total > 0 ? ((custos.terceiros / custos.total) * 100).toFixed(0) : 0}% do total
             </p>
+          </CardContent>
+        </Card>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <Card>
+          <CardHeader className="pb-2"><CardTitle className="text-sm">Custo Médio por O.S</CardTitle></CardHeader>
+          <CardContent>
+            <p className="text-2xl font-bold">{formatCurrency(indicadoresExecutivos.custoMedioPorOS)}</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2"><CardTitle className="text-sm">Variação vs período anterior</CardTitle></CardHeader>
+          <CardContent>
+            <p className={`text-2xl font-bold ${indicadoresExecutivos.variacaoPercentual > 0 ? 'text-destructive' : 'text-success'}`}>
+              {comparePeriod === 'none' ? '-' : `${indicadoresExecutivos.variacaoPercentual >= 0 ? '+' : ''}${indicadoresExecutivos.variacaoPercentual.toFixed(1)}%`}
+            </p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2"><CardTitle className="text-sm">Tempo Total de Parada</CardTitle></CardHeader>
+          <CardContent>
+            <p className="text-2xl font-bold">{Math.round(indicadoresExecutivos.totalMinutosParada)} min</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2"><CardTitle className="text-sm">Parada Média por O.S</CardTitle></CardHeader>
+          <CardContent>
+            <p className="text-2xl font-bold">{Math.round(indicadoresExecutivos.mediaParadaMin)} min</p>
           </CardContent>
         </Card>
       </div>

@@ -1,9 +1,19 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -16,14 +26,27 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import { upsertMaintenanceSchedule } from '@/services/maintenanceSchedule';
-import { getSupabaseErrorMessage } from '@/lib/supabaseCompat';
+import { getSupabaseErrorMessage, insertWithColumnFallback } from '@/lib/supabaseCompat';
+import { useCreateOrdemServico } from '@/hooks/useOrdensServico';
+import {
+  CartesianGrid,
+  Legend,
+  Line,
+  LineChart,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from 'recharts';
 
 interface MedicaoPreditiva {
   id: string;
+  empresa_id?: string;
+  equipamento_id?: string | null;
   tag: string;
   tipo_medicao: string;
   valor: number;
-  unidade: string;
+  unidade?: string | null;
   limite_alerta: number | null;
   limite_critico: number | null;
   status: string;
@@ -32,16 +55,61 @@ interface MedicaoPreditiva {
   created_at: string;
 }
 
-const useMedicoesPreditivas = () => {
+interface OSSuggestionPayload {
+  tag: string;
+  tipo_medicao: string;
+  valor: number;
+  unidade?: string | null;
+  limite_alerta: number | null;
+  limite_critico: number | null;
+  status: string;
+  observacoes?: string | null;
+}
+
+const useMedicoesPreditivas = (tenantId: string | null, allowedTags: string[], allowedEquipamentoIds: string[]) => {
   return useQuery({
-    queryKey: ['medicoes_preditivas'],
+    queryKey: ['medicoes_preditivas', tenantId],
+    enabled: Boolean(tenantId),
     queryFn: async () => {
-      const { data, error } = await supabase
+      if (!tenantId) return [];
+
+      const byTenantQuery = supabase
+        .from('medicoes_preditivas')
+        .select('*')
+        .eq('empresa_id', tenantId)
+        .order('created_at', { ascending: false });
+
+      const byTenant = await byTenantQuery;
+
+      if (!byTenant.error) {
+        return (byTenant.data || []) as MedicaoPreditiva[];
+      }
+
+      const message = getSupabaseErrorMessage(byTenant.error).toLowerCase();
+      const missingEmpresaIdColumn =
+        message.includes("could not find the 'empresa_id' column") ||
+        (message.includes('column') && message.includes('empresa_id') && message.includes('does not exist'));
+
+      if (!missingEmpresaIdColumn) {
+        throw byTenant.error;
+      }
+
+      // Fallback para esquemas antigos sem empresa_id: filtra em memória pelos ativos do tenant.
+      const allRows = await supabase
         .from('medicoes_preditivas')
         .select('*')
         .order('created_at', { ascending: false });
-      if (error) throw error;
-      return data as MedicaoPreditiva[];
+
+      if (allRows.error) throw allRows.error;
+
+      const tagSet = new Set(allowedTags.map((tag) => tag.toUpperCase()));
+      const eqSet = new Set(allowedEquipamentoIds);
+
+      return ((allRows.data || []) as MedicaoPreditiva[]).filter((item) => {
+        const byEquipamento = item.equipamento_id ? eqSet.has(item.equipamento_id) : false;
+        const byTag = item.tag ? tagSet.has(item.tag.toUpperCase()) : false;
+        return byEquipamento || byTag;
+      });
     },
   });
 };
@@ -49,18 +117,33 @@ const useMedicoesPreditivas = () => {
 const useCreateMedicao = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (data: { tag: string; tipo_medicao: string; valor: number; unidade: string; status: string; limite_alerta?: number; limite_critico?: number; observacoes?: string; responsavel_nome?: string; equipamento_id?: string | null }) => {
-      const { data: result, error } = await supabase
-        .from('medicoes_preditivas')
-        .insert([data])
-        .select()
-        .single();
-      if (error) throw error;
+    mutationFn: async (data: {
+      empresa_id: string;
+      tag: string;
+      tipo_medicao: string;
+      valor: number;
+      unidade?: string;
+      status: string;
+      limite_alerta?: number | null;
+      limite_critico?: number | null;
+      observacoes?: string;
+      responsavel_nome?: string;
+      equipamento_id?: string | null;
+    }) => {
+      const result = await insertWithColumnFallback(
+        (payload) =>
+          supabase
+            .from('medicoes_preditivas')
+            .insert(payload)
+            .select()
+            .single(),
+        data as Record<string, unknown>,
+      );
 
       await upsertMaintenanceSchedule({
         tipo: 'preditiva',
         origemId: result.id,
-        equipamentoId: result.equipamento_id,
+        equipamentoId: result.equipamento_id || null,
         titulo: `${result.tag} • ${result.tipo_medicao}`,
         descricao: result.observacoes,
         dataProgramada: result.created_at || new Date().toISOString(),
@@ -85,54 +168,200 @@ const useCreateMedicao = () => {
 };
 
 export default function Preditiva() {
-  const { user } = useAuth();
+  const { user, tenantId } = useAuth();
   const [search, setSearch] = useState('');
   const [activeTab, setActiveTab] = useState('medicoes');
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [tipoFilter, setTipoFilter] = useState('all');
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [criticidadeFilter, setCriticidadeFilter] = useState('all');
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
+  const [trendTag, setTrendTag] = useState('all');
+  const [trendTipo, setTrendTipo] = useState('all');
   const [formData, setFormData] = useState({
     tag: '',
     tipo_medicao: 'VIBRACAO',
     valor: 0,
     unidade: 'mm/s',
-    limite_alerta: 0,
-    limite_critico: 0,
+    limite_alerta: '' as number | '',
+    limite_critico: '' as number | '',
     observacoes: '',
   });
 
-  const { data: medicoes, isLoading } = useMedicoesPreditivas();
   const { data: equipamentos } = useEquipamentos();
+  const allowedTags = useMemo(() => (equipamentos || []).map((item) => item.tag), [equipamentos]);
+  const allowedEquipamentoIds = useMemo(() => (equipamentos || []).map((item) => item.id), [equipamentos]);
+  const { data: medicoes, isLoading } = useMedicoesPreditivas(tenantId, allowedTags, allowedEquipamentoIds);
   const createMutation = useCreateMedicao();
+  const createOSMutation = useCreateOrdemServico();
+  const [osSuggestion, setOsSuggestion] = useState<OSSuggestionPayload | null>(null);
 
-  const filteredMedicoes = medicoes?.filter(m => {
-    if (!search) return true;
-    const searchLower = search.toLowerCase();
-    return m.tag.toLowerCase().includes(searchLower) ||
-           m.tipo_medicao.toLowerCase().includes(searchLower);
-  }) || [];
+  const equipamentoByTag = useMemo(() => {
+    const map = new Map<string, (typeof equipamentos)[number]>();
+    (equipamentos || []).forEach((item) => map.set(item.tag.toUpperCase(), item));
+    return map;
+  }, [equipamentos]);
+
+  const tiposDisponiveis = useMemo(() => {
+    return Array.from(new Set((medicoes || []).map((m) => m.tipo_medicao).filter(Boolean)));
+  }, [medicoes]);
+
+  const filteredMedicoes = useMemo(() => {
+    return (medicoes || []).filter((m) => {
+      const equipamento = equipamentoByTag.get((m.tag || '').toUpperCase());
+      const criticidade = (equipamento?.criticidade || '').toUpperCase();
+
+      if (tipoFilter !== 'all' && m.tipo_medicao !== tipoFilter) return false;
+      if (statusFilter !== 'all' && m.status !== statusFilter) return false;
+      if (criticidadeFilter !== 'all' && criticidade !== criticidadeFilter) return false;
+
+      if (dateFrom) {
+        const from = new Date(`${dateFrom}T00:00:00`);
+        if (new Date(m.created_at) < from) return false;
+      }
+      if (dateTo) {
+        const to = new Date(`${dateTo}T23:59:59`);
+        if (new Date(m.created_at) > to) return false;
+      }
+
+      if (!search) return true;
+      const searchLower = search.toLowerCase();
+      return (
+        m.tag.toLowerCase().includes(searchLower) ||
+        m.tipo_medicao.toLowerCase().includes(searchLower) ||
+        (m.observacoes || '').toLowerCase().includes(searchLower)
+      );
+    });
+  }, [medicoes, equipamentoByTag, tipoFilter, statusFilter, criticidadeFilter, dateFrom, dateTo, search]);
+
+  const trendData = useMemo(() => {
+    return filteredMedicoes
+      .filter((item) => (trendTag === 'all' || item.tag === trendTag) && (trendTipo === 'all' || item.tipo_medicao === trendTipo))
+      .slice()
+      .reverse()
+      .map((item) => ({
+        data: new Date(item.created_at).toLocaleDateString('pt-BR'),
+        valor: Number(item.valor || 0),
+        limite_alerta: Number(item.limite_alerta || 0),
+        limite_critico: Number(item.limite_critico || 0),
+        tag: item.tag,
+      }));
+  }, [filteredMedicoes, trendTag, trendTipo]);
+
+  const topCriticos = useMemo(() => {
+    const points = new Map<string, { tag: string; critico: number; alerta: number; ultimaData: string | null }>();
+    filteredMedicoes.forEach((item) => {
+      const current = points.get(item.tag) || { tag: item.tag, critico: 0, alerta: 0, ultimaData: null };
+      if (item.status === 'CRITICO') current.critico += 1;
+      if (item.status === 'ALERTA') current.alerta += 1;
+      if (!current.ultimaData || new Date(item.created_at) > new Date(current.ultimaData)) {
+        current.ultimaData = item.created_at;
+      }
+      points.set(item.tag, current);
+    });
+
+    return Array.from(points.values())
+      .sort((a, b) => (b.critico * 3 + b.alerta) - (a.critico * 3 + a.alerta))
+      .slice(0, 3);
+  }, [filteredMedicoes]);
+
+  const alertasAtivos = useMemo(() => {
+    return filteredMedicoes.filter((item) => item.status === 'ALERTA' || item.status === 'CRITICO');
+  }, [filteredMedicoes]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    if (!tenantId) {
+      toast({ title: 'Tenant não identificado', variant: 'destructive' });
+      return;
+    }
+
+    if (!formData.tag) {
+      toast({ title: 'TAG obrigatória', description: 'Selecione o equipamento para registrar a medição.', variant: 'destructive' });
+      return;
+    }
+
+    if (formData.limite_alerta !== '' && formData.limite_critico !== '' && Number(formData.limite_critico) < Number(formData.limite_alerta)) {
+      toast({
+        title: 'Limites inválidos',
+        description: 'O limite crítico deve ser maior ou igual ao limite de alerta.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
     const equipamento = equipamentos?.find((item) => item.tag === formData.tag);
-    
+
     // Determine status based on value and limits
     let status = 'NORMAL';
-    if (formData.limite_critico && formData.valor >= formData.limite_critico) {
+    const limiteAlerta = formData.limite_alerta === '' ? null : Number(formData.limite_alerta);
+    const limiteCritico = formData.limite_critico === '' ? null : Number(formData.limite_critico);
+    if (limiteCritico !== null && formData.valor >= limiteCritico) {
       status = 'CRITICO';
-    } else if (formData.limite_alerta && formData.valor >= formData.limite_alerta) {
+    } else if (limiteAlerta !== null && formData.valor >= limiteAlerta) {
       status = 'ALERTA';
     }
-    
+
     await createMutation.mutateAsync({
+      empresa_id: tenantId,
       ...formData,
       status,
+      unidade: formData.unidade || undefined,
+      limite_alerta: limiteAlerta,
+      limite_critico: limiteCritico,
       responsavel_nome: user?.nome,
       equipamento_id: equipamento?.id ?? null,
     });
+
+    if (status === 'ALERTA' || status === 'CRITICO') {
+      setOsSuggestion({
+        tag: formData.tag,
+        tipo_medicao: formData.tipo_medicao,
+        valor: formData.valor,
+        unidade: formData.unidade,
+        limite_alerta: limiteAlerta,
+        limite_critico: limiteCritico,
+        status,
+        observacoes: formData.observacoes || null,
+      });
+    }
+
     setIsModalOpen(false);
     setFormData({
       tag: '', tipo_medicao: 'VIBRACAO', valor: 0, unidade: 'mm/s',
-      limite_alerta: 0, limite_critico: 0, observacoes: ''
+      limite_alerta: '', limite_critico: '', observacoes: ''
+    });
+  };
+
+  const openOSSuggestion = async (med: OSSuggestionPayload) => {
+    const equipamento = equipamentos?.find((item) => item.tag === med.tag);
+    if (!equipamento) {
+      toast({
+        title: 'Não foi possível abrir O.S',
+        description: 'Equipamento da medição não encontrado no tenant atual.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    await createOSMutation.mutateAsync({
+      tipo: 'PREDITIVA',
+      prioridade: med.status === 'CRITICO' ? 'URGENTE' : 'ALTA',
+      tag: med.tag,
+      equipamento: equipamento.nome,
+      solicitante: 'Monitoramento Preditivo',
+      problema: [
+        `Alerta de condição detectado em medição preditiva (${med.status}).`,
+        `Tipo: ${med.tipo_medicao}`,
+        `Valor medido: ${med.valor} ${med.unidade || '-'}`,
+        `Limite alerta: ${med.limite_alerta ?? '-'}`,
+        `Limite crítico: ${med.limite_critico ?? '-'}`,
+        med.observacoes ? `Observações: ${med.observacoes}` : null,
+      ].filter(Boolean).join('\n'),
+      tempo_estimado: null,
+      usuario_abertura: user?.id ?? null,
     });
   };
 
@@ -227,19 +456,56 @@ export default function Preditiva() {
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList>
           <TabsTrigger value="medicoes">Medições</TabsTrigger>
-          <TabsTrigger value="tendencias">Tendências</TabsTrigger>
+          <TabsTrigger value="tendencias">Tendência</TabsTrigger>
           <TabsTrigger value="alertas">Alertas Ativos</TabsTrigger>
         </TabsList>
 
         <div className="bg-card border border-border rounded-lg p-4 mt-4">
-          <div className="relative max-w-md">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input 
-              placeholder="Buscar por TAG, tipo..." 
-              value={search} 
-              onChange={(e) => setSearch(e.target.value)} 
-              className="pl-9" 
-            />
+          <div className="grid grid-cols-1 md:grid-cols-6 gap-3">
+            <div className="relative md:col-span-2">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Buscar por TAG, tipo, observação..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="pl-9"
+              />
+            </div>
+
+            <Select value={tipoFilter} onValueChange={setTipoFilter}>
+              <SelectTrigger><SelectValue placeholder="Tipo" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos os tipos</SelectItem>
+                {tiposDisponiveis.map((tipo) => (
+                  <SelectItem key={tipo} value={tipo}>{tipo}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <SelectTrigger><SelectValue placeholder="Status" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos os status</SelectItem>
+                <SelectItem value="NORMAL">NORMAL</SelectItem>
+                <SelectItem value="ALERTA">ALERTA</SelectItem>
+                <SelectItem value="CRITICO">CRITICO</SelectItem>
+              </SelectContent>
+            </Select>
+
+            <Select value={criticidadeFilter} onValueChange={setCriticidadeFilter}>
+              <SelectTrigger><SelectValue placeholder="Criticidade" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todas criticidades</SelectItem>
+                <SelectItem value="A">A</SelectItem>
+                <SelectItem value="B">B</SelectItem>
+                <SelectItem value="C">C</SelectItem>
+              </SelectContent>
+            </Select>
+
+            <div className="grid grid-cols-2 gap-2 md:col-span-1">
+              <Input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} />
+              <Input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} />
+            </div>
           </div>
         </div>
 
@@ -286,26 +552,80 @@ export default function Preditiva() {
         </TabsContent>
 
         <TabsContent value="tendencias" className="mt-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Análise de Tendências</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-center py-12 text-muted-foreground">
-                <TrendingUp className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                <p>Gráficos de tendência serão exibidos aqui</p>
-                <p className="text-sm">Selecione um equipamento para visualizar o histórico de medições</p>
-              </div>
-            </CardContent>
-          </Card>
+          <div className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <Card className="md:col-span-2">
+                <CardHeader>
+                  <CardTitle className="flex items-center justify-between gap-3">
+                    <span>Linha de Tendência</span>
+                    <div className="flex gap-2 w-full max-w-md">
+                      <Select value={trendTag} onValueChange={setTrendTag}>
+                        <SelectTrigger><SelectValue placeholder="TAG" /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">Todas as TAGs</SelectItem>
+                          {Array.from(new Set(filteredMedicoes.map((item) => item.tag))).map((tag) => (
+                            <SelectItem key={tag} value={tag}>{tag}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <Select value={trendTipo} onValueChange={setTrendTipo}>
+                        <SelectTrigger><SelectValue placeholder="Tipo" /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">Todos os tipos</SelectItem>
+                          {tiposDisponiveis.map((tipo) => (
+                            <SelectItem key={tipo} value={tipo}>{tipo}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {trendData.length === 0 ? (
+                    <div className="text-center py-10 text-muted-foreground">Sem dados para os filtros selecionados.</div>
+                  ) : (
+                    <ResponsiveContainer width="100%" height={300}>
+                      <LineChart data={trendData}>
+                        <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                        <XAxis dataKey="data" />
+                        <YAxis />
+                        <Tooltip />
+                        <Legend />
+                        <Line type="monotone" dataKey="valor" name="Valor medido" stroke="hsl(var(--primary))" strokeWidth={2} dot={false} />
+                        <Line type="monotone" dataKey="limite_alerta" name="Limite alerta" stroke="hsl(var(--chart-4))" strokeWidth={2} dot={false} />
+                        <Line type="monotone" dataKey="limite_critico" name="Limite crítico" stroke="hsl(var(--destructive))" strokeWidth={2} dot={false} />
+                      </LineChart>
+                    </ResponsiveContainer>
+                  )}
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle>Top 3 Ativos Críticos</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  {topCriticos.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">Sem ativos críticos no período filtrado.</p>
+                  ) : topCriticos.map((item, idx) => (
+                    <div key={item.tag} className="rounded-lg border border-border p-3">
+                      <p className="font-mono font-semibold text-primary">#{idx + 1} {item.tag}</p>
+                      <p className="text-xs text-muted-foreground">Críticos: {item.critico} • Alertas: {item.alerta}</p>
+                      <p className="text-xs text-muted-foreground">Última medição: {item.ultimaData ? new Date(item.ultimaData).toLocaleString('pt-BR') : '-'}</p>
+                    </div>
+                  ))}
+                </CardContent>
+              </Card>
+            </div>
+          </div>
         </TabsContent>
 
         <TabsContent value="alertas" className="mt-4">
           <div className="space-y-4">
-            {medicoes?.filter(m => m.status === 'ALERTA' || m.status === 'CRITICO').map(med => (
+            {alertasAtivos.map(med => (
               <Card key={med.id} className={med.status === 'CRITICO' ? 'border-destructive' : 'border-warning'}>
                 <CardContent className="p-4">
-                  <div className="flex items-center justify-between">
+                  <div className="flex items-center justify-between gap-4">
                     <div className="flex items-center gap-4">
                       <div className={`p-3 rounded-lg ${med.status === 'CRITICO' ? 'bg-destructive/10' : 'bg-warning/10'}`}>
                         {getTipoIcon(med.tipo_medicao)}
@@ -313,17 +633,36 @@ export default function Preditiva() {
                       <div>
                         <p className="font-mono text-primary font-bold">{med.tag}</p>
                         <p className="text-sm text-muted-foreground">{med.tipo_medicao}</p>
+                        <p className="text-xs text-muted-foreground">{med.observacoes || 'Sem observações'}</p>
                       </div>
                     </div>
                     <div className="text-right">
-                      <p className="text-2xl font-bold">{med.valor} {med.unidade}</p>
+                      <p className="text-2xl font-bold">{med.valor} {med.unidade || '-'}</p>
+                      <p className="text-xs text-muted-foreground">Alerta: {med.limite_alerta ?? '-'} • Crítico: {med.limite_critico ?? '-'}</p>
                       <Badge className={getStatusBadge(med.status)}>{med.status}</Badge>
+                      <div className="mt-2">
+                        <Button
+                          size="sm"
+                          onClick={() => setOsSuggestion({
+                            tag: med.tag,
+                            tipo_medicao: med.tipo_medicao,
+                            valor: Number(med.valor || 0),
+                            unidade: med.unidade,
+                            limite_alerta: med.limite_alerta,
+                            limite_critico: med.limite_critico,
+                            status: med.status,
+                            observacoes: med.observacoes,
+                          })}
+                        >
+                          Sugerir abertura de O.S
+                        </Button>
+                      </div>
                     </div>
                   </div>
                 </CardContent>
               </Card>
             ))}
-            {medicoes?.filter(m => m.status === 'ALERTA' || m.status === 'CRITICO').length === 0 && (
+            {alertasAtivos.length === 0 && (
               <div className="text-center py-12 text-muted-foreground">
                 <CheckCircle className="h-12 w-12 mx-auto mb-4 text-success" />
                 <p className="text-lg">Nenhum alerta ativo</p>
@@ -400,7 +739,7 @@ export default function Preditiva() {
                   type="number" 
                   step="0.01"
                   value={formData.limite_alerta} 
-                  onChange={(e) => setFormData({...formData, limite_alerta: parseFloat(e.target.value) || 0})} 
+                  onChange={(e) => setFormData({...formData, limite_alerta: e.target.value === '' ? '' : (parseFloat(e.target.value) || 0)})}
                 />
               </div>
               <div className="space-y-2">
@@ -409,7 +748,7 @@ export default function Preditiva() {
                   type="number" 
                   step="0.01"
                   value={formData.limite_critico} 
-                  onChange={(e) => setFormData({...formData, limite_critico: parseFloat(e.target.value) || 0})} 
+                  onChange={(e) => setFormData({...formData, limite_critico: e.target.value === '' ? '' : (parseFloat(e.target.value) || 0)})}
                 />
               </div>
             </div>
@@ -434,6 +773,37 @@ export default function Preditiva() {
           </form>
         </DialogContent>
       </Dialog>
+
+      <AlertDialog open={!!osSuggestion} onOpenChange={(open) => !open && setOsSuggestion(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirmar abertura de O.S preditiva</AlertDialogTitle>
+            <AlertDialogDescription>
+              Será criada uma O.S já preenchida com os dados da medição para a TAG {osSuggestion?.tag}.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="rounded-md border border-border bg-muted/40 p-3 text-sm space-y-1">
+            <p><strong>Tipo:</strong> {osSuggestion?.tipo_medicao}</p>
+            <p><strong>Status:</strong> {osSuggestion?.status}</p>
+            <p><strong>Valor:</strong> {osSuggestion?.valor} {osSuggestion?.unidade || '-'}</p>
+            <p><strong>Limite alerta:</strong> {osSuggestion?.limite_alerta ?? '-'}</p>
+            <p><strong>Limite crítico:</strong> {osSuggestion?.limite_critico ?? '-'}</p>
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={async () => {
+                if (!osSuggestion) return;
+                await openOSSuggestion(osSuggestion);
+                setOsSuggestion(null);
+              }}
+              disabled={createOSMutation.isPending}
+            >
+              {createOSMutation.isPending ? 'Abrindo...' : 'Abrir O.S pré-preenchida'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

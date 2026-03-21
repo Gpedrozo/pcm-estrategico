@@ -198,6 +198,31 @@ export function generateEquipmentTemplate() {
   XLSX.writeFile(wb, 'Modelo_Cadastro_Equipamentos.xlsx');
 }
 
+export function generateEquipmentTechnicalTemplate() {
+  const headers = [
+    'ITEM', 'SUBITEM', 'COMPONENTE', 'ESPECIFICAÇÃO TÉCNICA', 'MATERIAL',
+    'DIMENSÃO / MODELO', 'NORMA / FABRICANTE', 'QTD', 'UNIDADE', 'TAG_ATIVO', 'OBSERVAÇÕES',
+  ];
+  const sample = [
+    '1',
+    '1.1',
+    'Rolamento do Mancal',
+    'Rolamento autocompensador',
+    'Aço',
+    '22210',
+    'SKF',
+    '2',
+    'un',
+    'ELV-001',
+    'Componente crítico de inspeção semanal',
+  ];
+  const ws = XLSX.utils.aoa_to_sheet([headers, sample]);
+  ws['!cols'] = headers.map((h) => ({ wch: Math.max(h.length + 2, 22) }));
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'ComponentesTecnicos');
+  XLSX.writeFile(wb, 'Modelo_Tecnico_Ativos_Componentes.xlsx');
+}
+
 export function generateLubrificacaoPlanoPDF(
   planos: any[],
   options: ReportOptions
@@ -236,7 +261,7 @@ export function generateLubrificacaoConsumptionExcel(
   XLSX.writeFile(wb, `${fileName}.xlsx`);
 }
 
-export function parseEquipmentFile(file: File): Promise<{ valid: any[]; errors: { row: number; reason: string }[] }> {
+export function parseEquipmentFile(file: File): Promise<{ valid: any[]; componentesByTag: Record<string, any[]>; errors: { row: number; reason: string }[] }> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = (e) => {
@@ -251,7 +276,69 @@ export function parseEquipmentFile(file: File): Promise<{ valid: any[]; errors: 
         }
 
         const valid: any[] = [];
+        const componentesByTag: Record<string, any[]> = {};
         const errors: { row: number; reason: string }[] = [];
+
+        const firstRowHeaders = rows[0].map((c) => String(c || '').trim().toUpperCase());
+        const isTechnicalModel =
+          firstRowHeaders.includes('ITEM') &&
+          firstRowHeaders.includes('SUBITEM') &&
+          firstRowHeaders.includes('COMPONENTE') &&
+          firstRowHeaders.includes('TAG_ATIVO');
+
+        if (isTechnicalModel) {
+          const equipmentByTag = new Map<string, any>();
+
+          for (let i = 1; i < rows.length; i++) {
+            const row = rows[i];
+            if (!row || row.length === 0) continue;
+
+            const componenteNome = String(row[2] || '').trim();
+            const tag = String(row[9] || '').trim().toUpperCase();
+            if (!componenteNome && !tag) continue;
+
+            if (!tag) {
+              errors.push({ row: i + 1, reason: 'TAG_ATIVO vazio no modelo técnico' });
+              continue;
+            }
+
+            if (!equipmentByTag.has(tag)) {
+              equipmentByTag.set(tag, {
+                tag,
+                nome: `Ativo ${tag}`,
+                localizacao: null,
+                fabricante: null,
+                modelo: null,
+                numero_serie: null,
+                criticidade: 'C',
+                nivel_risco: 'BAIXO',
+              });
+            }
+
+            if (componenteNome) {
+              if (!componentesByTag[tag]) componentesByTag[tag] = [];
+              componentesByTag[tag].push({
+                codigo: `${String(row[0] || '').trim()}-${String(row[1] || '').trim()}`.replace(/^[-]+|[-]+$/g, '') || `${tag}-${i}`,
+                nome: componenteNome,
+                tipo: 'OUTRO',
+                fabricante: String(row[6] || '').trim() || null,
+                modelo: String(row[5] || '').trim() || null,
+                quantidade: Number(row[7] || 1) || 1,
+                observacoes: String(row[10] || '').trim() || null,
+                especificacoes: {
+                  especificacao_tecnica: String(row[3] || '').trim(),
+                  material: String(row[4] || '').trim(),
+                  unidade: String(row[8] || '').trim(),
+                  item: String(row[0] || '').trim(),
+                  subitem: String(row[1] || '').trim(),
+                },
+              });
+            }
+          }
+
+          resolve({ valid: Array.from(equipmentByTag.values()), componentesByTag, errors });
+          return;
+        }
 
         for (let i = 1; i < rows.length; i++) {
           const row = rows[i];
@@ -281,7 +368,7 @@ export function parseEquipmentFile(file: File): Promise<{ valid: any[]; errors: 
           });
         }
 
-        resolve({ valid, errors });
+        resolve({ valid, componentesByTag, errors });
       } catch (err) {
         reject(err);
       }

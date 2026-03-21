@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -50,8 +50,11 @@ import {
 import { useSistemas } from '@/hooks/useHierarquia';
 import { useAuth } from '@/contexts/AuthContext';
 import { ComponentesPanel } from '@/components/equipamentos/ComponentesPanel';
-import { generateEquipmentTemplate, parseEquipmentFile } from '@/lib/reportGenerator';
+import { generateEquipmentTemplate, generateEquipmentTechnicalTemplate, parseEquipmentFile } from '@/lib/reportGenerator';
 import { useToast } from '@/hooks/use-toast';
+import { useCreateComponente } from '@/hooks/useComponentesEquipamento';
+import { useOrdensServico } from '@/hooks/useOrdensServico';
+import { useExecucoesOS } from '@/hooks/useExecucoesOS';
 
 interface FormData {
   tag: string;
@@ -95,6 +98,9 @@ export default function Equipamentos() {
   const createMutation = useCreateEquipamento();
   const updateMutation = useUpdateEquipamento();
   const deleteMutation = useDeleteEquipamento();
+  const createComponenteMutation = useCreateComponente();
+  const { data: ordensServico } = useOrdensServico();
+  const { data: execucoesOS } = useExecucoesOS();
 
   const filteredEquipamentos = equipamentos?.filter(eq => {
     if (!search) return true;
@@ -259,29 +265,56 @@ export default function Equipamentos() {
         <div className="flex items-center gap-2">
           <Button variant="outline" onClick={() => generateEquipmentTemplate()} className="gap-2">
             <Download className="h-4 w-4" />
-            Baixar Modelo
+            Modelo Padrão
+          </Button>
+          <Button variant="outline" onClick={() => generateEquipmentTechnicalTemplate()} className="gap-2">
+            <Download className="h-4 w-4" />
+            Modelo Técnico
           </Button>
           <input ref={fileInputRef} type="file" accept=".xlsx,.xls" className="hidden" onChange={async (e) => {
             const file = e.target.files?.[0];
             if (!file) return;
             setImporting(true);
             try {
-              const { valid, errors } = await parseEquipmentFile(file);
+              const { valid, componentesByTag, errors } = await parseEquipmentFile(file);
               // Check for duplicate TAGs
               const existingTags = new Set(equipamentos?.map(eq => eq.tag) || []);
+              const equipMap = new Map<string, EquipamentoRow>();
+              (equipamentos || []).forEach((eq) => equipMap.set(eq.tag, eq));
               const toInsert = valid.filter(v => {
                 if (existingTags.has(v.tag)) {
-                  errors.push({ row: 0, reason: `TAG ${v.tag} já existe` });
-                  return false;
+                  return true;
                 }
                 return true;
               });
               for (const eq of toInsert) {
-                await createMutation.mutateAsync(eq);
+                if (!existingTags.has(eq.tag)) {
+                  const created = await createMutation.mutateAsync(eq);
+                  equipMap.set(created.tag, created);
+                  existingTags.add(created.tag);
+                }
+
+                const targetEquip = equipMap.get(eq.tag);
+                const comps = componentesByTag[eq.tag] || [];
+                if (targetEquip && comps.length > 0) {
+                  for (const comp of comps) {
+                    await createComponenteMutation.mutateAsync({
+                      equipamento_id: targetEquip.id,
+                      codigo: comp.codigo,
+                      nome: comp.nome,
+                      tipo: comp.tipo || 'OUTRO',
+                      fabricante: comp.fabricante,
+                      modelo: comp.modelo,
+                      quantidade: comp.quantidade,
+                      observacoes: comp.observacoes,
+                      especificacoes: comp.especificacoes,
+                    });
+                  }
+                }
               }
               toast({
                 title: 'Importação Concluída',
-                description: `${toInsert.length} importados, ${errors.length} rejeitados.${errors.length > 0 ? '\n' + errors.map(e => `Linha ${e.row}: ${e.reason}`).join('; ') : ''}`,
+                description: `${toInsert.length} ativos processados, ${Object.values(componentesByTag).flat().length} componentes processados, ${errors.length} rejeitados.${errors.length > 0 ? '\n' + errors.map(e => `Linha ${e.row}: ${e.reason}`).join('; ') : ''}`,
               });
             } catch (err: any) {
               toast({ title: 'Erro na importação', description: err.message, variant: 'destructive' });
@@ -292,7 +325,7 @@ export default function Equipamentos() {
           }} />
           <Button variant="outline" onClick={() => fileInputRef.current?.click()} disabled={importing} className="gap-2">
             {importing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
-            Importar Planilha
+            Importar (Padrão/Técnico)
           </Button>
           <Button onClick={handleNew} className="gap-2">
             <Plus className="h-4 w-4" />
@@ -406,6 +439,42 @@ export default function Equipamentos() {
         <SheetContent side="right" className="w-full sm:max-w-4xl overflow-y-auto">
           {selectedEquip && (
             <>
+              {(() => {
+                const osDoEquip = (ordensServico || []).filter((os) => os.tag === selectedEquip.tag);
+                const execByOs = new Map((execucoesOS || []).map((exec) => [exec.os_id, exec]));
+                const total = osDoEquip.length;
+                const abertas = osDoEquip.filter((os) => os.status !== 'FECHADA' && os.status !== 'CANCELADA').length;
+                const fechadas = osDoEquip.filter((os) => os.status === 'FECHADA').length;
+                const preventivas = osDoEquip.filter((os) => os.tipo === 'PREVENTIVA').length;
+                const corretivas = osDoEquip.filter((os) => os.tipo === 'CORRETIVA').length;
+
+                const minutosTotal = osDoEquip.reduce((acc, os) => acc + Number(execByOs.get(os.id)?.tempo_execucao || 0), 0);
+                const minutosPreventiva = osDoEquip
+                  .filter((os) => os.tipo === 'PREVENTIVA')
+                  .reduce((acc, os) => acc + Number(execByOs.get(os.id)?.tempo_execucao || 0), 0);
+                const minutosCorretiva = osDoEquip
+                  .filter((os) => os.tipo === 'CORRETIVA')
+                  .reduce((acc, os) => acc + Number(execByOs.get(os.id)?.tempo_execucao || 0), 0);
+
+                const allByTag = new Map<string, number>();
+                (ordensServico || [])
+                  .filter((os) => os.tipo === 'CORRETIVA')
+                  .forEach((os) => allByTag.set(os.tag, (allByTag.get(os.tag) || 0) + 1));
+
+                const totalCorretivasEmpresa = Array.from(allByTag.values()).reduce((acc, v) => acc + v, 0);
+                const percentualFalhas = totalCorretivasEmpresa > 0 ? ((corretivas / totalCorretivasEmpresa) * 100) : 0;
+                const ranking = Array.from(allByTag.entries())
+                  .sort((a, b) => b[1] - a[1])
+                  .findIndex(([tag]) => tag === selectedEquip.tag) + 1;
+
+                const toDuration = (minutes: number) => {
+                  const h = Math.floor(minutes / 60);
+                  const m = minutes % 60;
+                  return h > 0 ? `${h}h ${m}min` : `${m}min`;
+                };
+
+                return (
+              <>
               <SheetHeader className="pb-4 border-b">
                 <div className="flex items-center gap-3">
                   <div className="p-3 rounded-lg bg-primary/10">
@@ -505,15 +574,77 @@ export default function Equipamentos() {
                 </TabsContent>
 
                 <TabsContent value="manutencao" className="mt-4">
-                  <Card>
-                    <CardContent className="pt-6 text-center text-muted-foreground">
-                      <Wrench className="h-12 w-12 mx-auto mb-3 opacity-30" />
-                      <p>Histórico de manutenções será exibido aqui</p>
-                      <p className="text-sm">Vinculado às Ordens de Serviço deste equipamento</p>
-                    </CardContent>
-                  </Card>
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                      <Card>
+                        <CardHeader className="pb-2"><CardTitle className="text-sm">O.S do Ativo</CardTitle></CardHeader>
+                        <CardContent>
+                          <p className="text-2xl font-bold">{total}</p>
+                          <p className="text-xs text-muted-foreground">Abertas: {abertas} • Fechadas: {fechadas}</p>
+                          <p className="text-xs text-muted-foreground">Taxa fechamento: {total > 0 ? ((fechadas / total) * 100).toFixed(1) : '0.0'}%</p>
+                        </CardContent>
+                      </Card>
+                      <Card>
+                        <CardHeader className="pb-2"><CardTitle className="text-sm">Tempo de Parada</CardTitle></CardHeader>
+                        <CardContent>
+                          <p className="text-2xl font-bold">{toDuration(minutosTotal)}</p>
+                          <p className="text-xs text-muted-foreground">Preventiva: {toDuration(minutosPreventiva)}</p>
+                          <p className="text-xs text-muted-foreground">Corretiva: {toDuration(minutosCorretiva)}</p>
+                        </CardContent>
+                      </Card>
+                      <Card>
+                        <CardHeader className="pb-2"><CardTitle className="text-sm">Falhas no Contexto da Empresa</CardTitle></CardHeader>
+                        <CardContent>
+                          <p className="text-2xl font-bold">{percentualFalhas.toFixed(1)}%</p>
+                          <p className="text-xs text-muted-foreground">Participação em corretivas</p>
+                          <p className="text-xs text-muted-foreground">Ranking de criticidade: #{ranking > 0 ? ranking : '-'}</p>
+                        </CardContent>
+                      </Card>
+                    </div>
+
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="text-base">Resumo de O.S por Tipo</CardTitle>
+                      </CardHeader>
+                      <CardContent className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
+                        <div className="rounded-md border border-border p-3"><p className="text-muted-foreground">Corretivas</p><p className="font-semibold">{corretivas}</p></div>
+                        <div className="rounded-md border border-border p-3"><p className="text-muted-foreground">Preventivas</p><p className="font-semibold">{preventivas}</p></div>
+                        <div className="rounded-md border border-border p-3"><p className="text-muted-foreground">Abertas</p><p className="font-semibold">{abertas}</p></div>
+                        <div className="rounded-md border border-border p-3"><p className="text-muted-foreground">Fechadas</p><p className="font-semibold">{fechadas}</p></div>
+                      </CardContent>
+                    </Card>
+
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="text-base">Últimas O.S do Ativo</CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        {osDoEquip.length === 0 ? (
+                          <p className="text-sm text-muted-foreground">Sem O.S vinculadas a esta TAG.</p>
+                        ) : (
+                          <div className="space-y-2">
+                            {osDoEquip.slice(0, 8).map((os) => (
+                              <div key={os.id} className="flex items-center justify-between rounded-md border border-border p-3 text-sm">
+                                <div>
+                                  <p className="font-mono font-semibold text-primary">OS {os.numero_os}</p>
+                                  <p className="text-muted-foreground">{os.tipo} • {os.status}</p>
+                                </div>
+                                <div className="text-right">
+                                  <p>{new Date(os.data_solicitacao).toLocaleDateString('pt-BR')}</p>
+                                  <p className="text-xs text-muted-foreground">{Number(execByOs.get(os.id)?.tempo_execucao || 0)} min</p>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </CardContent>
+                    </Card>
+                  </div>
                 </TabsContent>
               </Tabs>
+              </>
+              );
+              })()}
             </>
           )}
         </SheetContent>

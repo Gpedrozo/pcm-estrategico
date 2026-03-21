@@ -29,6 +29,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
+import { uploadToStorage } from '@/services/storage';
 
 interface DocumentoTecnico {
   id: string;
@@ -98,6 +99,7 @@ export default function DocumentosTecnicos() {
   const [search, setSearch] = useState('');
   const [activeTab, setActiveTab] = useState('todos');
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [arquivo, setArquivo] = useState<File | null>(null);
   const [formData, setFormData] = useState({
     codigo: '',
     titulo: '',
@@ -124,14 +126,48 @@ export default function DocumentosTecnicos() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    let arquivo_url: string | undefined;
+    let arquivo_nome: string | undefined;
+
+    if (arquivo) {
+      const path = `documentos-tecnicos/${Date.now()}-${arquivo.name}`;
+      arquivo_url = await uploadToStorage('public', path, arquivo);
+      arquivo_nome = arquivo.name;
+    }
+
     await createMutation.mutateAsync({
       ...formData,
       status: 'RASCUNHO',
+      arquivo_url,
+      arquivo_nome,
     });
     setIsModalOpen(false);
+    setArquivo(null);
     setFormData({
       codigo: '', titulo: '', tipo: 'POP', tag: '', descricao: '', versao: '1.0'
     });
+  };
+
+  const handleVisualizar = (doc: DocumentoTecnico) => {
+    if (!doc.arquivo_url) return;
+    window.open(doc.arquivo_url, '_blank', 'noopener,noreferrer');
+  };
+
+  const handleImprimir = (doc: DocumentoTecnico) => {
+    if (!doc.arquivo_url) return;
+    const win = window.open(doc.arquivo_url, '_blank', 'noopener,noreferrer');
+    if (!win) return;
+    const tryPrint = () => {
+      try {
+        win.focus();
+        win.print();
+      } catch {
+        // noop
+      }
+    };
+    win.onload = tryPrint;
+    setTimeout(tryPrint, 1200);
   };
 
   const getTipoIcon = (tipo: string) => {
@@ -285,11 +321,14 @@ export default function DocumentosTecnicos() {
                     </div>
 
                     <div className="flex gap-2 mt-3">
-                      <Button variant="outline" size="sm" className="flex-1 gap-1">
+                      <Button variant="outline" size="sm" className="flex-1 gap-1" onClick={() => handleVisualizar(doc)} disabled={!doc.arquivo_url}>
                         <Eye className="h-3 w-3" />
                         Visualizar
                       </Button>
-                      <Button variant="ghost" size="sm">
+                      <Button variant="ghost" size="sm" onClick={() => handleImprimir(doc)} disabled={!doc.arquivo_url}>
+                        <FileText className="h-3 w-3" />
+                      </Button>
+                      <Button variant="ghost" size="sm" onClick={() => handleVisualizar(doc)} disabled={!doc.arquivo_url}>
                         <Download className="h-3 w-3" />
                       </Button>
                     </div>
@@ -369,6 +408,12 @@ export default function DocumentosTecnicos() {
                 rows={3}
                 placeholder="Breve descrição do documento..."
               />
+            </div>
+
+            <div className="space-y-2">
+              <Label>Arquivo</Label>
+              <Input type="file" onChange={(e) => setArquivo(e.target.files?.[0] || null)} />
+              {arquivo && <p className="text-xs text-muted-foreground">Selecionado: {arquivo.name}</p>}
             </div>
 
             <div className="flex gap-3 pt-4">
