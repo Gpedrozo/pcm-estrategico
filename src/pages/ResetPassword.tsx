@@ -102,10 +102,10 @@ export default function ResetPassword() {
 
   if (urlErrorMessage) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[#090f1a] p-4">
-        <div className="w-full max-w-md rounded-lg border border-rose-500/40 bg-slate-900 p-6">
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-background via-background to-muted/20 p-4">
+        <div className="w-full max-w-md rounded-lg border border-destructive/40 bg-card p-6">
           <p className="text-sm text-rose-200">{urlErrorMessage}</p>
-          <Link to="/forgot-password" className="mt-4 inline-block text-sm text-slate-300 hover:text-slate-100">
+          <Link to="/forgot-password" className="mt-4 inline-block text-sm text-muted-foreground hover:text-foreground">
             Solicitar novo link
           </Link>
         </div>
@@ -147,45 +147,45 @@ export default function ResetPassword() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-[#090f1a] bg-gradient-to-b from-[#0b1220] via-[#0a111d] to-[#090f1a] p-4">
-      <div className="w-full max-w-md rounded-lg border border-slate-700 bg-slate-900/95 p-6 shadow-industrial">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-background via-background to-muted/20 p-4">
+      <div className="w-full max-w-md rounded-lg border border-border bg-card/95 p-6 shadow-industrial">
         <div className="mb-6 text-center">
-          <div className="inline-flex h-12 w-12 items-center justify-center rounded-full bg-emerald-950/40 border border-emerald-500/40 mb-3">
-            <ShieldCheck className="h-6 w-6 text-emerald-300" />
+          <div className="mb-3 inline-flex h-12 w-12 items-center justify-center rounded-full border border-primary/30 bg-primary/10">
+            <ShieldCheck className="h-6 w-6 text-primary" />
           </div>
-          <h1 className="text-xl font-semibold text-slate-100">Redefinir senha</h1>
-          <p className="mt-1 text-sm text-slate-400">
+          <h1 className="text-xl font-semibold text-foreground">Redefinir senha</h1>
+          <p className="mt-1 text-sm text-muted-foreground">
             Defina sua nova senha para continuar no sistema.
           </p>
         </div>
 
         {(isPreparingRecovery || isLoading) ? (
           <div className="flex justify-center py-8">
-            <Loader2 className="h-6 w-6 animate-spin text-slate-300" />
+            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
           </div>
         ) : (
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="reset-password" className="text-slate-200">Nova senha</Label>
+              <Label htmlFor="reset-password" className="text-foreground">Nova senha</Label>
               <Input
                 id="reset-password"
                 type="password"
                 value={password}
                 onChange={(event) => setPassword(event.target.value)}
-                className="h-11 border-slate-600 bg-slate-800 text-slate-100"
+                className="h-11 border-border bg-background text-foreground"
                 autoComplete="new-password"
                 required
               />
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="reset-password-confirm" className="text-slate-200">Confirmar senha</Label>
+              <Label htmlFor="reset-password-confirm" className="text-foreground">Confirmar senha</Label>
               <Input
                 id="reset-password-confirm"
                 type="password"
                 value={confirmPassword}
                 onChange={(event) => setConfirmPassword(event.target.value)}
-                className="h-11 border-slate-600 bg-slate-800 text-slate-100"
+                className="h-11 border-border bg-background text-foreground"
                 autoComplete="new-password"
                 required
               />
