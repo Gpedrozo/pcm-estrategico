@@ -108,6 +108,31 @@ Interpretacao da segunda rodada:
 - Isso indica que a quebra nao esta mais no fluxo owner/frontend nem no ajuste simples de hook publico.
 - O problema remanescente esta dentro do servico Auth (schema interno/objeto interno/estado do tenant Auth).
 
+## Terceira rodada (diagnostico estrutural profundo do Auth)
+- Inventario de schema via views diagnosticas publicas:
+  - 78 tabelas
+  - 861 colunas
+  - 129 FKs
+  - 51 funcoes
+- Tabelas reais do schema auth identificadas: 23 (incluindo auth.instances e auth.schema_migrations).
+- Diagnostico de contagem no auth:
+  - users_count=7
+  - identities_count=7
+  - sessions_count=0
+  - refresh_tokens_count=0
+  - instances_count=0 (antes da correcao)
+- Correcao aplicada automaticamente:
+  - semeadura idempotente de auth.instances quando vazio.
+  - apos correcao: instances_count=1.
+
+Resultado apos seed de auth.instances:
+- /auth/v1/token ainda retorna 500 Database error querying schema.
+- /functions/v1/auth-login ainda retorna 502 por falha upstream do Auth.
+
+Interpretacao da terceira rodada:
+- A ausencia de auth.instances era um problema real e foi corrigida.
+- Mesmo assim, o erro de schema persiste, indicando drift mais profundo no schema interno gerido pelo servico Auth.
+
 Interpretacao:
 - O erro de schema do Auth persiste apos desativacao por config/hooks que foi possivel aplicar.
 - O problema remanescente esta em camada interna de Auth nao corrigivel apenas por migration SQL com permissoes atuais do role de migração.
@@ -117,6 +142,7 @@ Interpretacao:
 - O role de migration remoto nao possui permissao para criar/alterar objetos necessarios no schema auth (exemplo: custom_access_token_hook).
 - Sem privilegio admin de Auth, nao e possivel aplicar automaticamente o reparo estrutural completo pelo terminal atual.
 - Comandos de dump/inspecao profunda de schema auth via CLI tambem ficaram bloqueados pelo ambiente local (dependencia de Docker para certas operacoes), sem ganho adicional de diagnostico interno.
+- A reconciliacao final do schema interno do Auth deve ser tratada no nivel da plataforma (Supabase Auth service), nao apenas por migrations de aplicacao.
 
 ## Artefato adicional criado
 - Script de diagnostico para reutilizacao no repositorio:
