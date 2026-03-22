@@ -3,7 +3,10 @@ import { z } from 'zod';
 export const mecanicoSchema = z.object({
   nome: z.string().min(3, 'Nome é obrigatório (mínimo 3 caracteres)'),
   telefone: z.string().optional().nullable(),
-  tipo: z.enum(['INTERNO', 'TERCEIRIZADO']).default('INTERNO'),
+  tipo: z
+    .enum(['INTERNO', 'PROPRIO', 'TERCEIRIZADO'])
+    .default('PROPRIO')
+    .transform((value) => (value === 'PROPRIO' ? 'INTERNO' : value)),
   especialidade: z.string().optional().nullable(),
   custo_hora: z.number().min(0, 'Custo/hora deve ser >= 0').optional().nullable(),
   ativo: z.boolean().default(true),
