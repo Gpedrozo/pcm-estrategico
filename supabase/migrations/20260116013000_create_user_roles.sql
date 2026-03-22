@@ -61,14 +61,14 @@ BEGIN
   END IF;
 END $$;
 
-CREATE OR REPLACE FUNCTION public.has_role(_user_id uuid, _role public.app_role)
+CREATE OR REPLACE FUNCTION public.has_role(p_user_id uuid, p_role public.app_role)
 RETURNS boolean
 LANGUAGE sql STABLE SECURITY DEFINER
 SET search_path TO 'public'
 AS $$
   SELECT EXISTS (
     SELECT 1 FROM public.user_roles
-    WHERE user_id = _user_id AND role = _role
+    WHERE user_id = p_user_id AND role = p_role
   )
 $$;
 
@@ -93,3 +93,5 @@ CREATE POLICY "Users can view their own roles"
 ALTER TABLE public.user_roles ENABLE ROW LEVEL SECURITY;
 
 COMMIT;
+
+
