@@ -57,120 +57,76 @@ begin
 	 order by u.created_at desc
 	 limit 1;
 
-	if v_user_id is null then
-		v_user_id := gen_random_uuid();
-
-		insert into auth.users (
-			id,
-			instance_id,
-			aud,
-			role,
-			email,
-			encrypted_password,
-			email_confirmed_at,
-			confirmation_sent_at,
-			raw_app_meta_data,
-			raw_user_meta_data,
-			created_at,
-			updated_at
-		)
-		values (
-			v_user_id,
-			'00000000-0000-0000-0000-000000000000',
-			'authenticated',
-			'authenticated',
-			lower(target_email),
-			extensions.crypt(target_password, extensions.gen_salt('bf')),
-			now(),
-			now(),
-			jsonb_build_object(
-				'provider','email',
-				'providers', jsonb_build_array('email'),
-				'role', 'SYSTEM_OWNER',
-				'roles', jsonb_build_array('SYSTEM_OWNER', 'SYSTEM_ADMIN')
-			),
-			jsonb_build_object('nome', target_nome),
-			now(),
-			now()
-		);
-
-		if not exists (
-			select 1
-				from auth.identities i
-			 where i.user_id = v_user_id
-					or lower(i.provider_id) = lower(target_email)
-		) then
-			insert into auth.identities (
-				id,
-				user_id,
-				provider_id,
-				identity_data,
-				provider,
-				created_at,
-				updated_at,
-				last_sign_in_at
-			)
-			values (
-				gen_random_uuid(),
-				v_user_id,
-				lower(target_email),
-				jsonb_build_object('sub', v_user_id::text, 'email', lower(target_email)),
-				'email',
-				now(),
-				now(),
-				now()
-			);
+	-- Evita usuario de auth corrompido: sempre recria o owner_master de forma limpa.
+	if v_user_id is not null then
+		delete from public.user_roles where user_id = v_user_id;
+		delete from public.profiles where id = v_user_id;
+		if to_regclass('public.rbac_user_roles') is not null then
+			delete from public.rbac_user_roles where user_id = v_user_id;
 		end if;
-	else
-		-- Usuario existe: atualiza dados essenciais + senha
-		update auth.users
-			 set email = lower(target_email),
-					 encrypted_password = extensions.crypt(target_password, extensions.gen_salt('bf')),
-					 email_confirmed_at = coalesce(email_confirmed_at, now()),
-					 confirmation_sent_at = coalesce(confirmation_sent_at, now()),
-					 raw_app_meta_data = jsonb_set(
-						 jsonb_set(
-							 coalesce(raw_app_meta_data, '{}'::jsonb),
-							 '{role}',
-							 to_jsonb('SYSTEM_OWNER'::text),
-							 true
-						 ),
-						 '{roles}',
-						 to_jsonb(array['SYSTEM_OWNER','SYSTEM_ADMIN']::text[]),
-						 true
-					 ),
-					 raw_user_meta_data = coalesce(raw_user_meta_data, '{}'::jsonb) || jsonb_build_object('nome', target_nome),
-					 updated_at = now()
-		 where id = v_user_id;
 
-		if not exists (
-			select 1
-				from auth.identities i
-			 where i.user_id = v_user_id
-					or lower(i.provider_id) = lower(target_email)
-		) then
-			insert into auth.identities (
-				id,
-				user_id,
-				provider_id,
-				identity_data,
-				provider,
-				created_at,
-				updated_at,
-				last_sign_in_at
-			)
-			values (
-				gen_random_uuid(),
-				v_user_id,
-				lower(target_email),
-				jsonb_build_object('sub', v_user_id::text, 'email', lower(target_email)),
-				'email',
-				now(),
-				now(),
-				now()
-			);
-		end if;
+		delete from auth.identities where user_id = v_user_id or lower(provider_id) = lower(target_email);
+		delete from auth.sessions where user_id = v_user_id;
+		delete from auth.refresh_tokens where user_id = v_user_id::text;
+		delete from auth.users where id = v_user_id;
 	end if;
+
+	v_user_id := gen_random_uuid();
+
+	insert into auth.users (
+		id,
+		instance_id,
+		aud,
+		role,
+		email,
+		encrypted_password,
+		email_confirmed_at,
+		confirmation_sent_at,
+		raw_app_meta_data,
+		raw_user_meta_data,
+		created_at,
+		updated_at
+	)
+	values (
+		v_user_id,
+		'00000000-0000-0000-0000-000000000000',
+		'authenticated',
+		'authenticated',
+		lower(target_email),
+		extensions.crypt(target_password, extensions.gen_salt('bf')),
+		now(),
+		now(),
+		jsonb_build_object(
+			'provider','email',
+			'providers', jsonb_build_array('email'),
+			'role', 'SYSTEM_OWNER',
+			'roles', jsonb_build_array('SYSTEM_OWNER', 'SYSTEM_ADMIN')
+		),
+		jsonb_build_object('nome', target_nome),
+		now(),
+		now()
+	);
+
+	insert into auth.identities (
+		id,
+		user_id,
+		provider_id,
+		identity_data,
+		provider,
+		created_at,
+		updated_at,
+		last_sign_in_at
+	)
+	values (
+		gen_random_uuid(),
+		v_user_id,
+		lower(target_email),
+		jsonb_build_object('sub', v_user_id::text, 'email', lower(target_email)),
+		'email',
+		now(),
+		now(),
+		now()
+	);
 
 	-- 3) Garante profile com empresa GPPIS
 	select exists (

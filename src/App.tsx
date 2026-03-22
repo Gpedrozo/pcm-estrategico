@@ -1,4 +1,4 @@
-import { Suspense, lazy } from 'react'
+import { Suspense, lazy, useEffect, useRef } from 'react'
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -101,6 +101,35 @@ const AdminOnlyRoute = ({ children }: { children: React.ReactNode }) => {
 const OwnerOnlyRoute = ({ children }: { children: React.ReactNode }) => {
   const location = useLocation();
   const { isAuthenticated, isLoading, isHydrating, authStatus, isSystemOwner, forcePasswordChange } = useAuth();
+  const lastTraceRef = useRef<string>('');
+
+  useEffect(() => {
+    const isOwner2Path = location.pathname.startsWith('/owner2');
+    const traceKey = [
+      location.pathname,
+      isAuthenticated ? '1' : '0',
+      isLoading ? '1' : '0',
+      isHydrating ? '1' : '0',
+      authStatus,
+      isSystemOwner ? '1' : '0',
+      forcePasswordChange ? '1' : '0',
+    ].join('|');
+
+    if (!isOwner2Path || lastTraceRef.current === traceKey) return;
+    lastTraceRef.current = traceKey;
+
+    logger.info('owner2_route_guard_trace', {
+      path: location.pathname,
+      search: location.search,
+      hash: location.hash,
+      isAuthenticated,
+      isLoading,
+      isHydrating,
+      authStatus,
+      isSystemOwner,
+      forcePasswordChange,
+    });
+  }, [authStatus, forcePasswordChange, isAuthenticated, isHydrating, isLoading, isSystemOwner, location.hash, location.pathname, location.search]);
 
   if (isLoading || isHydrating || authStatus === 'loading' || authStatus === 'hydrating') return <RouteLoading />;
 

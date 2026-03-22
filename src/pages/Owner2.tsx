@@ -19,6 +19,8 @@ import {
 import { Area, AreaChart, Bar, BarChart, CartesianGrid, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import { useAuth } from '@/contexts/AuthContext'
 import { resolveOrRepairTenantHost } from '@/lib/tenantDomain'
+import { logger } from '@/lib/logger'
+import { useLocation } from 'react-router-dom'
 import {
   useOwner2Actions,
   useOwner2Audits,
@@ -174,6 +176,7 @@ function MetricTile({ label, value, icon: Icon, tone = 'sky' }: { label: string;
 
 export default function Owner2() {
   const { isSystemOwner, isLoading, user, logout } = useAuth()
+  const location = useLocation()
   const [activeTab, setActiveTab] = useState<Owner2Tab>(() => getInitialOwnerV2Tab())
   const [feedback, setFeedback] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -344,9 +347,64 @@ export default function Owner2() {
 
   const busy = execute.isPending
 
+  const owner2QueryErrors = useMemo(() => {
+    return {
+      health: (healthQuery.error as any)?.message ?? null,
+      dashboard: (dashboardQuery.error as any)?.message ?? null,
+      companies: (companiesQuery.error as any)?.message ?? null,
+      users: (usersQuery.error as any)?.message ?? null,
+      plans: (plansQuery.error as any)?.message ?? null,
+      subscriptions: (subscriptionsQuery.error as any)?.message ?? null,
+      contracts: (contractsQuery.error as any)?.message ?? null,
+      tickets: (ticketsQuery.error as any)?.message ?? null,
+      audits: (auditsQuery.error as any)?.message ?? null,
+      owners: (ownersQuery.error as any)?.message ?? null,
+      tables: (tablesQuery.error as any)?.message ?? null,
+      settings: (settingsQuery.error as any)?.message ?? null,
+    }
+  }, [
+    auditsQuery.error,
+    companiesQuery.error,
+    contractsQuery.error,
+    dashboardQuery.error,
+    healthQuery.error,
+    ownersQuery.error,
+    plansQuery.error,
+    settingsQuery.error,
+    subscriptionsQuery.error,
+    tablesQuery.error,
+    ticketsQuery.error,
+    usersQuery.error,
+  ])
+
   useEffect(() => {
     if (!selectedUserId && users.length > 0) setSelectedUserId(String(users[0]?.id ?? ''))
   }, [selectedUserId, users])
+
+  useEffect(() => {
+    logger.info('owner2_page_trace', {
+      path: location.pathname,
+      search: location.search,
+      isLoading,
+      isSystemOwner,
+      userId: user?.id ?? null,
+      userEmail: user?.email ?? null,
+      activeTab,
+      companyId: companyId || null,
+    })
+  }, [activeTab, companyId, isLoading, isSystemOwner, location.pathname, location.search, user?.email, user?.id])
+
+  useEffect(() => {
+    const hasAnyError = Object.values(owner2QueryErrors).some(Boolean)
+    if (!hasAnyError) return
+
+    logger.warn('owner2_query_errors', {
+      path: location.pathname,
+      activeTab,
+      companyId: companyId || null,
+      errors: owner2QueryErrors,
+    })
+  }, [activeTab, companyId, location.pathname, owner2QueryErrors])
 
   useEffect(() => {
     if (typeof window === 'undefined') return
@@ -867,6 +925,15 @@ export default function Owner2() {
   }
 
   if (!isSystemOwner) {
+    logger.warn('owner2_access_denied_component_guard', {
+      path: location.pathname,
+      search: location.search,
+      isLoading,
+      isSystemOwner,
+      userId: user?.id ?? null,
+      userEmail: user?.email ?? null,
+    })
+
     return (
       <div className="flex h-[60vh] items-center justify-center">
         <div className="max-w-md rounded-xl border border-rose-200 bg-card p-6 text-center shadow-sm">
