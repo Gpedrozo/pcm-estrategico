@@ -1,5 +1,6 @@
 import { usePaginatedQuery, FilterState } from './usePaginatedQuery';
 import { OrdemServicoRow } from './useOrdensServico';
+import { useAuth } from '@/contexts/AuthContext';
 
 export interface UseOrdensServicoPaginatedOptions {
   pageSize?: number;
@@ -11,9 +12,13 @@ export interface UseOrdensServicoPaginatedOptions {
 
 export function useOrdensServicoPaginated(options: UseOrdensServicoPaginatedOptions = {}) {
   const { pageSize = 20, status, tipo, prioridade, searchTerm } = options;
+  const { tenantId } = useAuth();
 
   const filters: FilterState = {};
-  
+
+  if (tenantId) {
+    filters.empresa_id = tenantId;
+  }
   if (status && status.length > 0) {
     filters.status = status;
   }
@@ -28,24 +33,29 @@ export function useOrdensServicoPaginated(options: UseOrdensServicoPaginatedOpti
   }
 
   return usePaginatedQuery<OrdemServicoRow>({
-    queryKey: ['ordens-servico'],
+    queryKey: ['ordens-servico', tenantId],
     tableName: 'ordens_servico',
     select: '*',
     defaultPageSize: pageSize,
     defaultSorting: { column: 'numero_os', direction: 'desc' },
     filters,
+    enabled: !!tenantId,
   });
 }
 
 export function useBacklogPaginated(pageSize = 20) {
+  const { tenantId } = useAuth();
+
   return usePaginatedQuery<OrdemServicoRow>({
-    queryKey: ['backlog'],
+    queryKey: ['backlog', tenantId],
     tableName: 'ordens_servico',
     select: '*',
     defaultPageSize: pageSize,
     defaultSorting: { column: 'data_solicitacao', direction: 'asc' },
     filters: {
+      empresa_id: tenantId || '',
       status: ['ABERTA', 'EM_ANDAMENTO', 'AGUARDANDO_MATERIAL', 'AGUARDANDO_APROVACAO'],
     },
+    enabled: !!tenantId,
   });
 }

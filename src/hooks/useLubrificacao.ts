@@ -3,7 +3,6 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import type { PlanoLubrificacao, PlanoLubrificacaoInsert } from '@/types/lubrificacao';
 import { deleteMaintenanceSchedule, upsertMaintenanceSchedule } from '@/services/maintenanceSchedule';
-import { getSupabaseErrorMessage } from '@/lib/supabaseCompat';
 import { useAuth } from '@/contexts/AuthContext';
 
 interface ExecucaoRow {
@@ -24,22 +23,10 @@ export function usePlanosLubrificacao() {
     queryFn: async () => {
       if (!tenantId) return [];
 
-      const tenantQuery = await supabase
-        .from('planos_lubrificacao')
-        .select('*')
-        .eq('empresa_id', tenantId)
-        .order('codigo')
-        .limit(200);
-
-      if (!tenantQuery.error) return tenantQuery.data as PlanoLubrificacao[];
-
-      const message = getSupabaseErrorMessage(tenantQuery.error).toLowerCase();
-      const missingEmpresa = message.includes('empresa_id') && message.includes('column');
-      if (!missingEmpresa) throw tenantQuery.error;
-
       const { data, error } = await supabase
         .from('planos_lubrificacao')
         .select('*')
+        .eq('empresa_id', tenantId)
         .order('codigo')
         .limit(200);
 
