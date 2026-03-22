@@ -59,6 +59,10 @@ vi.mock('@/hooks/use-toast', () => ({
   }),
 }));
 
+vi.mock('@/contexts/AuthContext', () => ({
+  useAuth: () => ({ tenantId: 'tenant-test-id' }),
+}));
+
 function createWrapper() {
   const queryClient = new QueryClient({
     defaultOptions: {
@@ -125,7 +129,7 @@ describe('useCreateSolicitacao integration', () => {
     expect(insertPayload.sla_horas).toBe(8);
     expect(typeof insertPayload.data_limite).toBe('string');
 
-    expect(invalidateQueriesSpy).toHaveBeenCalledWith({ queryKey: ['solicitacoes'] });
+    expect(invalidateQueriesSpy).toHaveBeenCalledWith({ queryKey: ['solicitacoes', 'tenant-test-id'] });
     expect(toastSpy).toHaveBeenCalledWith(
       expect.objectContaining({ title: 'Solicitação criada' }),
     );
