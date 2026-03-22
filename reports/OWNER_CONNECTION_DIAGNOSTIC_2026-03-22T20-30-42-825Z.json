@@ -1,0 +1,66 @@
+{
+  "generated_at": "2026-03-22T20:30:42.822Z",
+  "supabase": {
+    "url": "https://dvwsferonoczgmvfubgu.supabase.co",
+    "anon_key": "eyJhb...5G44",
+    "project_ref": "dvwsferonoczgmvfubgu",
+    "owner_env_present": false,
+    "tenant_base_domain": null
+  },
+  "tests": [
+    {
+      "name": "auth_health",
+      "ok": true,
+      "status": 200,
+      "detail": {
+        "version": "v2.188.1",
+        "name": "GoTrue",
+        "description": "GoTrue is a user registration and authentication API"
+      },
+      "ms": 337
+    },
+    {
+      "name": "auth_password_invalid_probe",
+      "ok": true,
+      "status": 400,
+      "detail": {
+        "message": "Invalid login credentials",
+        "payload": {
+          "code": 400,
+          "error_code": "invalid_credentials",
+          "msg": "Invalid login credentials"
+        }
+      },
+      "ms": 325
+    },
+    {
+      "name": "edge_auth_login_probe",
+      "ok": true,
+      "status": 401,
+      "detail": {
+        "message": "Invalid credentials",
+        "payload": {
+          "error": "Invalid credentials",
+          "details": null
+        }
+      },
+      "ms": 1387
+    },
+    {
+      "name": "edge_owner_portal_health_unauth",
+      "ok": true,
+      "status": 401,
+      "detail": {
+        "success": false,
+        "error": "unauthorized"
+      },
+      "ms": 207
+    }
+  ],
+  "summary": {
+    "total": 4,
+    "failed": 0,
+    "healthy": true,
+    "likely_root_cause": "none"
+  }
+}
