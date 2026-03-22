@@ -1,3 +1,5 @@
+<!-- markdownlint-disable -->
+
 # Auditoria de Uso de Tabelas por Modulo
 
 Gerado em: 2026-03-22T20:48:40.197Z
@@ -68,7 +70,6 @@ Gerado em: 2026-03-22T20:48:40.197Z
 - empresas: select
 - profiles: select, update
 - user_roles: select, update
-
 ### ArquivosOwner
 
 - Entrada: src/pages/ArquivosOwner.tsx
