@@ -153,6 +153,11 @@ CREATE TRIGGER update_equipamentos_updated_at
 -- RLS
 ALTER TABLE public.equipamentos ENABLE ROW LEVEL SECURITY;
 
+-- Grants explicitos para evitar invisibilidade da tabela no schema cache do PostgREST
+GRANT USAGE ON SCHEMA public TO anon, authenticated, service_role;
+GRANT SELECT ON TABLE public.equipamentos TO anon;
+GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.equipamentos TO authenticated, service_role;
+
 DO $$
 BEGIN
   IF NOT EXISTS (
