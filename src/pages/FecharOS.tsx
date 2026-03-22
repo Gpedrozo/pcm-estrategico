@@ -516,14 +516,14 @@ export default function FecharOS() {
         </Button>
         <div className="space-y-1">
           <h1 className="text-2xl font-bold text-foreground">Fechamento de Ordem de Servico</h1>
-          <p className="text-muted-foreground max-w-3xl">Consolide execucao, pausas, materiais e RCA para encerrar a O.S com rastreabilidade tecnica e custo apurado.</p>
+          <p className="text-muted-foreground max-w-3xl">Registre execução, custos e RCA para concluir a O.S com rastreabilidade.</p>
         </div>
       </div>
 
       {/* Select OS */}
-      <div className="bg-card border border-border rounded-lg p-4 md:p-6">
+      <div className="bg-card border border-border rounded-lg p-4 md:p-5">
         <Label className="text-base font-semibold">Selecione a O.S para fechar</Label>
-        <div className="mt-4 space-y-2 max-h-64 overflow-y-auto">
+        <div className="mt-3 space-y-2 max-h-56 overflow-y-auto">
           {!pendingOS || pendingOS.length === 0 ? (
             <p className="text-muted-foreground py-8 text-center">
               Não há ordens de serviço pendentes.
@@ -534,15 +534,15 @@ export default function FecharOS() {
                 key={os.id}
                 type="button"
                 onClick={() => handleSelectOS(os)}
-                className={`w-full p-4 rounded-xl border text-left transition-all ${
+                className={`w-full p-3 rounded-lg border text-left transition-all ${
                   selectedOS?.id === os.id
                     ? 'border-primary bg-primary/10'
                     : 'border-border hover:border-muted-foreground/30 hover:bg-muted/30'
                 }`}
               >
                 <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-4 flex-wrap">
-                    <span className="font-mono font-bold text-lg">{os.numero_os}</span>
+                  <div className="flex items-center gap-3 flex-wrap">
+                    <span className="font-mono font-bold">{os.numero_os}</span>
                     <span className="font-mono text-primary font-medium">{os.tag}</span>
                     <OSTypeBadge tipo={normalizeOSType(os.tipo)} />
                     <OSStatusBadge status={normalizeOSStatus(os.status)} />
@@ -551,7 +551,7 @@ export default function FecharOS() {
                     <Check className="h-5 w-5 text-primary flex-shrink-0" />
                   )}
                 </div>
-                <p className="text-sm text-muted-foreground mt-2 line-clamp-1">
+                <p className="text-xs text-muted-foreground mt-1 line-clamp-1">
                   {os.problema}
                 </p>
               </button>
@@ -570,7 +570,7 @@ export default function FecharOS() {
             </div>
 
             <form id="close-os-form" onSubmit={handleSubmit} className="space-y-6">
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 p-4 bg-muted/40 rounded-lg border border-border/60">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 p-3 bg-muted/30 rounded-lg border border-border/50">
                 <div>
                   <Label className="text-xs text-muted-foreground">O.S</Label>
                   <p className="font-mono font-bold">{selectedOS.numero_os}</p>
@@ -585,7 +585,7 @@ export default function FecharOS() {
                 </div>
                 <div>
                   <Label className="text-xs text-muted-foreground">Progresso</Label>
-                  <p className="font-medium">{progressoChecklist}% concluído</p>
+                  <p className="font-medium">{progressoChecklist}%</p>
                 </div>
               </div>
 
@@ -598,7 +598,7 @@ export default function FecharOS() {
 
                 <TabsContent value="execucao" className="space-y-6 mt-6">
                   <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-                    <div className="space-y-2 rounded-xl border border-border/70 p-4 bg-background/70">
+                    <div className="space-y-2">
                       <Label htmlFor="mecanico">Mecânico *</Label>
                       <Select
                         value={formData.mecanicoId}
@@ -617,7 +617,7 @@ export default function FecharOS() {
                       </Select>
                     </div>
 
-                    <div className="space-y-2 rounded-xl border border-border/70 p-4 bg-background/70">
+                    <div className="space-y-2">
                       <Label htmlFor="dataInicio">Data Início *</Label>
                       <Input
                         id="dataInicio"
@@ -628,7 +628,7 @@ export default function FecharOS() {
                       />
                     </div>
 
-                    <div className="space-y-2 rounded-xl border border-border/70 p-4 bg-background/70">
+                    <div className="space-y-2">
                       <Label htmlFor="horaInicio">Hora Início *</Label>
                       <Input
                         id="horaInicio"
@@ -639,7 +639,7 @@ export default function FecharOS() {
                       />
                     </div>
 
-                    <div className="space-y-2 rounded-xl border border-border/70 p-4 bg-background/70">
+                    <div className="space-y-2">
                       <Label htmlFor="dataFim">Data Fim *</Label>
                       <Input
                         id="dataFim"
@@ -650,7 +650,7 @@ export default function FecharOS() {
                       />
                     </div>
 
-                    <div className="space-y-2 rounded-xl border border-border/70 p-4 bg-background/70">
+                    <div className="space-y-2">
                       <Label htmlFor="horaFim">Hora Fim *</Label>
                       <Input
                         id="horaFim"
@@ -669,19 +669,10 @@ export default function FecharOS() {
                   )}
 
                   {duracaoBruta && (
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                      <div className="p-3 bg-success/10 border border-success/20 rounded-lg">
-                        <span className="text-sm text-muted-foreground">Tempo bruto: </span>
-                        <span className="font-bold text-success">{formatDuration(duracaoBruta)}</span>
-                      </div>
-                      <div className="p-3 bg-warning/10 border border-warning/20 rounded-lg">
-                        <span className="text-sm text-muted-foreground">Pausas: </span>
-                        <span className="font-bold text-warning">{formatDuration(minutosPausas) || '0min'}</span>
-                      </div>
-                      <div className="p-3 bg-primary/10 border border-primary/20 rounded-lg">
-                        <span className="text-sm text-muted-foreground">Tempo líquido: </span>
-                        <span className="font-bold text-primary">{formatDuration(duracaoLiquida) || '0min'}</span>
-                      </div>
+                    <div className="rounded-lg bg-muted/40 border border-border/60 p-3 text-sm flex flex-wrap gap-4">
+                      <span>Bruto: <strong>{formatDuration(duracaoBruta)}</strong></span>
+                      <span>Pausas: <strong>{formatDuration(minutosPausas) || '0min'}</strong></span>
+                      <span>Líquido: <strong>{formatDuration(duracaoLiquida) || '0min'}</strong></span>
                     </div>
                   )}
 
@@ -691,7 +682,7 @@ export default function FecharOS() {
                       <Label className="text-base font-semibold">Pausas durante a execução</Label>
                     </div>
 
-                    <div className="rounded-xl border border-border/70 p-4 bg-background/70">
+                    <div className="rounded-lg border border-border/60 p-3 bg-background/50">
                       <p className="text-sm text-muted-foreground mb-3">Houve intervalos?</p>
                       <div className="flex gap-2">
                         <Button type="button" variant={teveIntervalos ? 'default' : 'outline'} onClick={() => setTeveIntervalos(true)}>Sim</Button>
@@ -709,7 +700,7 @@ export default function FecharOS() {
                     </div>
 
                     {teveIntervalos && (
-                      <div className="grid grid-cols-1 md:grid-cols-6 gap-3 rounded-xl border border-border/70 p-4 bg-background/70">
+                      <div className="grid grid-cols-1 md:grid-cols-6 gap-3 rounded-lg border border-border/60 p-3 bg-background/50">
                         <Input type="date" value={pausaDataInicio} onChange={(e) => setPausaDataInicio(e.target.value)} />
                         <Input type="time" value={pausaInicio} onChange={(e) => setPausaInicio(e.target.value)} placeholder="Início pausa" />
                         <Input type="date" value={pausaDataFim} onChange={(e) => setPausaDataFim(e.target.value)} />
@@ -725,7 +716,7 @@ export default function FecharOS() {
                     {pausasExecucao.length > 0 && (
                       <div className="space-y-2">
                         {pausasExecucao.map((pausa) => (
-                          <div key={pausa.id} className="flex items-center justify-between p-3 bg-muted/50 rounded-xl border border-border/60">
+                          <div key={pausa.id} className="flex items-center justify-between p-2 bg-muted/40 rounded-lg border border-border/50">
                             <div className="flex items-center gap-2">
                               <Badge variant="outline">{pausa.data_inicio} {pausa.inicio} - {pausa.data_fim} {pausa.fim}</Badge>
                               <span className="text-sm text-muted-foreground">{pausa.motivo}</span>
@@ -745,10 +736,10 @@ export default function FecharOS() {
                     )}
                   </div>
 
-                  <div className="space-y-2 rounded-xl border border-border/70 p-4 bg-background/70">
+                  <div className="space-y-2 rounded-lg border border-border/60 p-3 bg-background/50">
                     <Label htmlFor="servico">Serviço Executado *</Label>
-                    <div className="rounded-md border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-amber-700">
-                      <p className="font-semibold">Descreva o passo a passo da execução e o estado final do equipamento.</p>
+                    <div className="rounded-md border border-amber-500/30 bg-amber-500/10 p-2 text-xs text-amber-700">
+                      <p className="font-semibold">Descreva passo a passo e estado final do equipamento.</p>
                     </div>
                     <Textarea
                       id="servico"
@@ -776,7 +767,7 @@ export default function FecharOS() {
                       <Label className="text-base font-semibold">Materiais Utilizados</Label>
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3 rounded-xl border border-border/70 p-4 bg-background/70">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3 rounded-lg border border-border/60 p-3 bg-background/50">
                       <div className="md:col-span-1">
                         <Select
                           value={materialSelecionado}
@@ -818,7 +809,7 @@ export default function FecharOS() {
                     {materiaisUsados.length > 0 && (
                       <div className="space-y-2">
                         {materiaisUsados.map((item, index) => (
-                          <div key={index} className="flex items-center justify-between p-3 bg-muted/50 rounded-xl border border-border/60">
+                          <div key={index} className="flex items-center justify-between p-2 bg-muted/40 rounded-lg border border-border/50">
                             <div className="flex items-center gap-3">
                               <Badge variant="outline">{item.material.codigo}</Badge>
                               <span className="text-sm">{item.material.nome}</span>
@@ -844,7 +835,7 @@ export default function FecharOS() {
                     )}
                   </div>
 
-                  <div className="space-y-2 rounded-xl border border-border/70 p-4 bg-background/70">
+                  <div className="space-y-2 rounded-lg border border-border/60 p-3 bg-background/50">
                     <Label htmlFor="custoTerceiros">Custo Terceiros (R$)</Label>
                     <Input
                       id="custoTerceiros"
@@ -933,7 +924,7 @@ export default function FecharOS() {
                 </TabsContent>
               </Tabs>
 
-              <div className="p-3 bg-muted/50 rounded-xl text-sm border border-border/60">
+              <div className="p-3 bg-muted/40 rounded-lg text-sm border border-border/50">
                 <span className="text-muted-foreground">Usuário de fechamento: </span>
                 <span className="font-medium">{user?.nome}</span>
               </div>
@@ -943,7 +934,7 @@ export default function FecharOS() {
           <div className="space-y-4 xl:sticky xl:top-24">
             <Card>
               <CardHeader>
-                <CardTitle className="text-base">Resumo em Tempo Real</CardTitle>
+                <CardTitle className="text-base">Resumo e Validação</CardTitle>
               </CardHeader>
               <CardContent className="space-y-3 text-sm">
                 <div className="flex items-center justify-between"><span>Tempo bruto</span><strong>{formatDuration(duracaoBruta) || '-'}</strong></div>
@@ -954,14 +945,9 @@ export default function FecharOS() {
                 <div className="flex items-center justify-between"><span>Terceiros</span><strong>{formatCurrency(custoTerceirosValor)}</strong></div>
                 <div className="h-px bg-border" />
                 <div className="flex items-center justify-between text-base"><span>Total estimado</span><strong className="text-primary">{formatCurrency(custoTotalEstimado)}</strong></div>
-              </CardContent>
-            </Card>
 
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-base">Checklist de Fechamento</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
+                <div className="h-px bg-border my-1" />
+                <p className="text-xs text-muted-foreground">Checklist</p>
                 <div className="h-2 bg-muted rounded-full overflow-hidden">
                   <div className="h-full bg-primary transition-all" style={{ width: `${progressoChecklist}%` }} />
                 </div>
