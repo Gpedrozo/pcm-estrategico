@@ -18,7 +18,7 @@ async function ensureEquipamentosTable() {
 
   if (isMissingTableError(error)) {
     throw new Error(
-      'A tabela public.equipamentos não existe neste ambiente. Execute as migrations pendentes (incluindo 20260322193000_restore_equipamentos_table.sql) para restaurar o módulo de ativos.',
+      'A tabela public.equipamentos não existe neste ambiente. Execute as migrations pendentes (incluindo 20260322193000_restore_equipamentos_table.sql e 20260322235930_guard_equipamentos_table_presence.sql) para restaurar o módulo de ativos.',
     );
   }
 
