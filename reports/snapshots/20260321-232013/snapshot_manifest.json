@@ -1,0 +1,5 @@
+﻿{
+    "generated_at":  "2026-03-21T23:20:16.2420050-03:00",
+    "snapshot_dir":  "reports\\snapshots\\20260321-232013",
+    "note":  "Schema SQL dump via CLI requires Docker; fallback snapshot uses schema_inventory_* views."
+}

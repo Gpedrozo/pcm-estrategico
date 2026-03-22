@@ -1,0 +1,1163 @@
+﻿[
+    {
+        "constraint_name":  "identities_user_id_fkey",
+        "table_schema":  "auth",
+        "table_name":  "identities",
+        "column_name":  "user_id",
+        "foreign_table_schema":  "auth",
+        "foreign_table_name":  "users",
+        "foreign_column_name":  "id"
+    },
+    {
+        "constraint_name":  "mfa_amr_claims_session_id_fkey",
+        "table_schema":  "auth",
+        "table_name":  "mfa_amr_claims",
+        "column_name":  "session_id",
+        "foreign_table_schema":  "auth",
+        "foreign_table_name":  "sessions",
+        "foreign_column_name":  "id"
+    },
+    {
+        "constraint_name":  "mfa_challenges_auth_factor_id_fkey",
+        "table_schema":  "auth",
+        "table_name":  "mfa_challenges",
+        "column_name":  "factor_id",
+        "foreign_table_schema":  "auth",
+        "foreign_table_name":  "mfa_factors",
+        "foreign_column_name":  "id"
+    },
+    {
+        "constraint_name":  "mfa_factors_user_id_fkey",
+        "table_schema":  "auth",
+        "table_name":  "mfa_factors",
+        "column_name":  "user_id",
+        "foreign_table_schema":  "auth",
+        "foreign_table_name":  "users",
+        "foreign_column_name":  "id"
+    },
+    {
+        "constraint_name":  "oauth_authorizations_client_id_fkey",
+        "table_schema":  "auth",
+        "table_name":  "oauth_authorizations",
+        "column_name":  "client_id",
+        "foreign_table_schema":  "auth",
+        "foreign_table_name":  "oauth_clients",
+        "foreign_column_name":  "id"
+    },
+    {
+        "constraint_name":  "oauth_authorizations_user_id_fkey",
+        "table_schema":  "auth",
+        "table_name":  "oauth_authorizations",
+        "column_name":  "user_id",
+        "foreign_table_schema":  "auth",
+        "foreign_table_name":  "users",
+        "foreign_column_name":  "id"
+    },
+    {
+        "constraint_name":  "oauth_consents_client_id_fkey",
+        "table_schema":  "auth",
+        "table_name":  "oauth_consents",
+        "column_name":  "client_id",
+        "foreign_table_schema":  "auth",
+        "foreign_table_name":  "oauth_clients",
+        "foreign_column_name":  "id"
+    },
+    {
+        "constraint_name":  "oauth_consents_user_id_fkey",
+        "table_schema":  "auth",
+        "table_name":  "oauth_consents",
+        "column_name":  "user_id",
+        "foreign_table_schema":  "auth",
+        "foreign_table_name":  "users",
+        "foreign_column_name":  "id"
+    },
+    {
+        "constraint_name":  "one_time_tokens_user_id_fkey",
+        "table_schema":  "auth",
+        "table_name":  "one_time_tokens",
+        "column_name":  "user_id",
+        "foreign_table_schema":  "auth",
+        "foreign_table_name":  "users",
+        "foreign_column_name":  "id"
+    },
+    {
+        "constraint_name":  "refresh_tokens_session_id_fkey",
+        "table_schema":  "auth",
+        "table_name":  "refresh_tokens",
+        "column_name":  "session_id",
+        "foreign_table_schema":  "auth",
+        "foreign_table_name":  "sessions",
+        "foreign_column_name":  "id"
+    },
+    {
+        "constraint_name":  "saml_providers_sso_provider_id_fkey",
+        "table_schema":  "auth",
+        "table_name":  "saml_providers",
+        "column_name":  "sso_provider_id",
+        "foreign_table_schema":  "auth",
+        "foreign_table_name":  "sso_providers",
+        "foreign_column_name":  "id"
+    },
+    {
+        "constraint_name":  "saml_relay_states_flow_state_id_fkey",
+        "table_schema":  "auth",
+        "table_name":  "saml_relay_states",
+        "column_name":  "flow_state_id",
+        "foreign_table_schema":  "auth",
+        "foreign_table_name":  "flow_state",
+        "foreign_column_name":  "id"
+    },
+    {
+        "constraint_name":  "saml_relay_states_sso_provider_id_fkey",
+        "table_schema":  "auth",
+        "table_name":  "saml_relay_states",
+        "column_name":  "sso_provider_id",
+        "foreign_table_schema":  "auth",
+        "foreign_table_name":  "sso_providers",
+        "foreign_column_name":  "id"
+    },
+    {
+        "constraint_name":  "sessions_oauth_client_id_fkey",
+        "table_schema":  "auth",
+        "table_name":  "sessions",
+        "column_name":  "oauth_client_id",
+        "foreign_table_schema":  "auth",
+        "foreign_table_name":  "oauth_clients",
+        "foreign_column_name":  "id"
+    },
+    {
+        "constraint_name":  "sessions_user_id_fkey",
+        "table_schema":  "auth",
+        "table_name":  "sessions",
+        "column_name":  "user_id",
+        "foreign_table_schema":  "auth",
+        "foreign_table_name":  "users",
+        "foreign_column_name":  "id"
+    },
+    {
+        "constraint_name":  "sso_domains_sso_provider_id_fkey",
+        "table_schema":  "auth",
+        "table_name":  "sso_domains",
+        "column_name":  "sso_provider_id",
+        "foreign_table_schema":  "auth",
+        "foreign_table_name":  "sso_providers",
+        "foreign_column_name":  "id"
+    },
+    {
+        "constraint_name":  "webauthn_challenges_user_id_fkey",
+        "table_schema":  "auth",
+        "table_name":  "webauthn_challenges",
+        "column_name":  "user_id",
+        "foreign_table_schema":  "auth",
+        "foreign_table_name":  "users",
+        "foreign_column_name":  "id"
+    },
+    {
+        "constraint_name":  "webauthn_credentials_user_id_fkey",
+        "table_schema":  "auth",
+        "table_name":  "webauthn_credentials",
+        "column_name":  "user_id",
+        "foreign_table_schema":  "auth",
+        "foreign_table_name":  "users",
+        "foreign_column_name":  "id"
+    },
+    {
+        "constraint_name":  "acoes_corretivas_empresa_id_fkey",
+        "table_schema":  "public",
+        "table_name":  "acoes_corretivas",
+        "column_name":  "empresa_id",
+        "foreign_table_schema":  "public",
+        "foreign_table_name":  "empresas",
+        "foreign_column_name":  "id"
+    },
+    {
+        "constraint_name":  "acoes_corretivas_rca_id_fkey",
+        "table_schema":  "public",
+        "table_name":  "acoes_corretivas",
+        "column_name":  "rca_id",
+        "foreign_table_schema":  "public",
+        "foreign_table_name":  "analise_causa_raiz",
+        "foreign_column_name":  "id"
+    },
+    {
+        "constraint_name":  "ai_root_cause_analysis_empresa_id_fkey",
+        "table_schema":  "public",
+        "table_name":  "ai_root_cause_analysis",
+        "column_name":  "empresa_id",
+        "foreign_table_schema":  "public",
+        "foreign_table_name":  "empresas",
+        "foreign_column_name":  "id"
+    },
+    {
+        "constraint_name":  "ai_root_cause_analysis_equipamento_id_fkey",
+        "table_schema":  "public",
+        "table_name":  "ai_root_cause_analysis",
+        "column_name":  "equipamento_id",
+        "foreign_table_schema":  "public",
+        "foreign_table_name":  "equipamentos",
+        "foreign_column_name":  "id"
+    },
+    {
+        "constraint_name":  "analise_causa_raiz_empresa_id_fkey",
+        "table_schema":  "public",
+        "table_name":  "analise_causa_raiz",
+        "column_name":  "empresa_id",
+        "foreign_table_schema":  "public",
+        "foreign_table_name":  "empresas",
+        "foreign_column_name":  "id"
+    },
+    {
+        "constraint_name":  "analise_causa_raiz_os_id_fkey",
+        "table_schema":  "public",
+        "table_name":  "analise_causa_raiz",
+        "column_name":  "os_id",
+        "foreign_table_schema":  "public",
+        "foreign_table_name":  "ordens_servico",
+        "foreign_column_name":  "id"
+    },
+    {
+        "constraint_name":  "anomalias_inspecao_empresa_id_fkey",
+        "table_schema":  "public",
+        "table_name":  "anomalias_inspecao",
+        "column_name":  "empresa_id",
+        "foreign_table_schema":  "public",
+        "foreign_table_name":  "empresas",
+        "foreign_column_name":  "id"
+    },
+    {
+        "constraint_name":  "anomalias_inspecao_inspecao_id_fkey",
+        "table_schema":  "public",
+        "table_name":  "anomalias_inspecao",
+        "column_name":  "inspecao_id",
+        "foreign_table_schema":  "public",
+        "foreign_table_name":  "inspecoes",
+        "foreign_column_name":  "id"
+    },
+    {
+        "constraint_name":  "areas_empresa_id_fkey",
+        "table_schema":  "public",
+        "table_name":  "areas",
+        "column_name":  "empresa_id",
+        "foreign_table_schema":  "public",
+        "foreign_table_name":  "empresas",
+        "foreign_column_name":  "id"
+    },
+    {
+        "constraint_name":  "areas_planta_id_fkey",
+        "table_schema":  "public",
+        "table_name":  "areas",
+        "column_name":  "planta_id",
+        "foreign_table_schema":  "public",
+        "foreign_table_name":  "plantas",
+        "foreign_column_name":  "id"
+    },
+    {
+        "constraint_name":  "atividades_lubrificacao_empresa_id_fkey",
+        "table_schema":  "public",
+        "table_name":  "atividades_lubrificacao",
+        "column_name":  "empresa_id",
+        "foreign_table_schema":  "public",
+        "foreign_table_name":  "empresas",
+        "foreign_column_name":  "id"
+    },
+    {
+        "constraint_name":  "atividades_lubrificacao_plano_id_fkey",
+        "table_schema":  "public",
+        "table_name":  "atividades_lubrificacao",
+        "column_name":  "plano_id",
+        "foreign_table_schema":  "public",
+        "foreign_table_name":  "planos_lubrificacao",
+        "foreign_column_name":  "id"
+    },
+    {
+        "constraint_name":  "atividades_preventivas_empresa_id_fkey",
+        "table_schema":  "public",
+        "table_name":  "atividades_preventivas",
+        "column_name":  "empresa_id",
+        "foreign_table_schema":  "public",
+        "foreign_table_name":  "empresas",
+        "foreign_column_name":  "id"
+    },
+    {
+        "constraint_name":  "atividades_preventivas_plano_id_fkey",
+        "table_schema":  "public",
+        "table_name":  "atividades_preventivas",
+        "column_name":  "plano_id",
+        "foreign_table_schema":  "public",
+        "foreign_table_name":  "planos_preventivos",
+        "foreign_column_name":  "id"
+    },
+    {
+        "constraint_name":  "audit_logs_empresa_id_fkey",
+        "table_schema":  "public",
+        "table_name":  "audit_logs",
+        "column_name":  "empresa_id",
+        "foreign_table_schema":  "public",
+        "foreign_table_name":  "empresas",
+        "foreign_column_name":  "id"
+    },
+    {
+        "constraint_name":  "billing_customers_empresa_id_fkey",
+        "table_schema":  "public",
+        "table_name":  "billing_customers",
+        "column_name":  "empresa_id",
+        "foreign_table_schema":  "public",
+        "foreign_table_name":  "empresas",
+        "foreign_column_name":  "id"
+    },
+    {
+        "constraint_name":  "billing_invoices_company_subscription_id_fkey",
+        "table_schema":  "public",
+        "table_name":  "billing_invoices",
+        "column_name":  "company_subscription_id",
+        "foreign_table_schema":  "public",
+        "foreign_table_name":  "company_subscriptions",
+        "foreign_column_name":  "id"
+    },
+    {
+        "constraint_name":  "billing_invoices_empresa_id_fkey",
+        "table_schema":  "public",
+        "table_name":  "billing_invoices",
+        "column_name":  "empresa_id",
+        "foreign_table_schema":  "public",
+        "foreign_table_name":  "empresas",
+        "foreign_column_name":  "id"
+    },
+    {
+        "constraint_name":  "billing_invoices_plan_id_fkey",
+        "table_schema":  "public",
+        "table_name":  "billing_invoices",
+        "column_name":  "plan_id",
+        "foreign_table_schema":  "public",
+        "foreign_table_name":  "plans",
+        "foreign_column_name":  "id"
+    },
+    {
+        "constraint_name":  "company_subscriptions_empresa_id_fkey",
+        "table_schema":  "public",
+        "table_name":  "company_subscriptions",
+        "column_name":  "empresa_id",
+        "foreign_table_schema":  "public",
+        "foreign_table_name":  "empresas",
+        "foreign_column_name":  "id"
+    },
+    {
+        "constraint_name":  "company_subscriptions_plan_id_fkey",
+        "table_schema":  "public",
+        "table_name":  "company_subscriptions",
+        "column_name":  "plan_id",
+        "foreign_table_schema":  "public",
+        "foreign_table_name":  "plans",
+        "foreign_column_name":  "id"
+    },
+    {
+        "constraint_name":  "company_usage_metrics_empresa_id_fkey",
+        "table_schema":  "public",
+        "table_name":  "company_usage_metrics",
+        "column_name":  "empresa_id",
+        "foreign_table_schema":  "public",
+        "foreign_table_name":  "empresas",
+        "foreign_column_name":  "id"
+    },
+    {
+        "constraint_name":  "componentes_equipamento_empresa_id_fkey",
+        "table_schema":  "public",
+        "table_name":  "componentes_equipamento",
+        "column_name":  "empresa_id",
+        "foreign_table_schema":  "public",
+        "foreign_table_name":  "empresas",
+        "foreign_column_name":  "id"
+    },
+    {
+        "constraint_name":  "componentes_equipamento_equipamento_id_fkey",
+        "table_schema":  "public",
+        "table_name":  "componentes_equipamento",
+        "column_name":  "equipamento_id",
+        "foreign_table_schema":  "public",
+        "foreign_table_name":  "equipamentos",
+        "foreign_column_name":  "id"
+    },
+    {
+        "constraint_name":  "configuracoes_sistema_empresa_id_fkey",
+        "table_schema":  "public",
+        "table_name":  "configuracoes_sistema",
+        "column_name":  "empresa_id",
+        "foreign_table_schema":  "public",
+        "foreign_table_name":  "empresas",
+        "foreign_column_name":  "id"
+    },
+    {
+        "constraint_name":  "contract_versions_contract_id_fkey",
+        "table_schema":  "public",
+        "table_name":  "contract_versions",
+        "column_name":  "contract_id",
+        "foreign_table_schema":  "public",
+        "foreign_table_name":  "contracts",
+        "foreign_column_name":  "id"
+    },
+    {
+        "constraint_name":  "contract_versions_empresa_id_fkey",
+        "table_schema":  "public",
+        "table_name":  "contract_versions",
+        "column_name":  "empresa_id",
+        "foreign_table_schema":  "public",
+        "foreign_table_name":  "empresas",
+        "foreign_column_name":  "id"
+    },
+    {
+        "constraint_name":  "contracts_empresa_id_fkey",
+        "table_schema":  "public",
+        "table_name":  "contracts",
+        "column_name":  "empresa_id",
+        "foreign_table_schema":  "public",
+        "foreign_table_name":  "empresas",
+        "foreign_column_name":  "id"
+    },
+    {
+        "constraint_name":  "contracts_plan_id_fkey",
+        "table_schema":  "public",
+        "table_name":  "contracts",
+        "column_name":  "plan_id",
+        "foreign_table_schema":  "public",
+        "foreign_table_name":  "plans",
+        "foreign_column_name":  "id"
+    },
+    {
+        "constraint_name":  "contracts_subscription_id_fkey",
+        "table_schema":  "public",
+        "table_name":  "contracts",
+        "column_name":  "subscription_id",
+        "foreign_table_schema":  "public",
+        "foreign_table_name":  "subscriptions",
+        "foreign_column_name":  "id"
+    },
+    {
+        "constraint_name":  "contratos_empresa_id_fkey",
+        "table_schema":  "public",
+        "table_name":  "contratos",
+        "column_name":  "empresa_id",
+        "foreign_table_schema":  "public",
+        "foreign_table_name":  "empresas",
+        "foreign_column_name":  "id"
+    },
+    {
+        "constraint_name":  "contratos_fornecedor_id_fkey",
+        "table_schema":  "public",
+        "table_name":  "contratos",
+        "column_name":  "fornecedor_id",
+        "foreign_table_schema":  "public",
+        "foreign_table_name":  "fornecedores",
+        "foreign_column_name":  "id"
+    },
+    {
+        "constraint_name":  "dados_empresa_empresa_id_fkey",
+        "table_schema":  "public",
+        "table_name":  "dados_empresa",
+        "column_name":  "empresa_id",
+        "foreign_table_schema":  "public",
+        "foreign_table_name":  "empresas",
+        "foreign_column_name":  "id"
+    },
+    {
+        "constraint_name":  "db_cleanup_run_items_run_id_fkey",
+        "table_schema":  "public",
+        "table_name":  "db_cleanup_run_items",
+        "column_name":  "run_id",
+        "foreign_table_schema":  "public",
+        "foreign_table_name":  "db_cleanup_runs",
+        "foreign_column_name":  "id"
+    },
+    {
+        "constraint_name":  "document_layouts_empresa_id_fkey",
+        "table_schema":  "public",
+        "table_name":  "document_layouts",
+        "column_name":  "empresa_id",
+        "foreign_table_schema":  "public",
+        "foreign_table_name":  "empresas",
+        "foreign_column_name":  "id"
+    },
+    {
+        "constraint_name":  "document_sequences_empresa_id_fkey",
+        "table_schema":  "public",
+        "table_name":  "document_sequences",
+        "column_name":  "empresa_id",
+        "foreign_table_schema":  "public",
+        "foreign_table_name":  "empresas",
+        "foreign_column_name":  "id"
+    },
+    {
+        "constraint_name":  "documentos_tecnicos_empresa_id_fkey",
+        "table_schema":  "public",
+        "table_name":  "documentos_tecnicos",
+        "column_name":  "empresa_id",
+        "foreign_table_schema":  "public",
+        "foreign_table_name":  "empresas",
+        "foreign_column_name":  "id"
+    },
+    {
+        "constraint_name":  "documentos_tecnicos_equipamento_id_fkey",
+        "table_schema":  "public",
+        "table_name":  "documentos_tecnicos",
+        "column_name":  "equipamento_id",
+        "foreign_table_schema":  "public",
+        "foreign_table_name":  "equipamentos",
+        "foreign_column_name":  "id"
+    },
+    {
+        "constraint_name":  "empresa_config_empresa_id_fkey",
+        "table_schema":  "public",
+        "table_name":  "empresa_config",
+        "column_name":  "empresa_id",
+        "foreign_table_schema":  "public",
+        "foreign_table_name":  "empresas",
+        "foreign_column_name":  "id"
+    },
+    {
+        "constraint_name":  "enterprise_audit_logs_empresa_id_fkey",
+        "table_schema":  "public",
+        "table_name":  "enterprise_audit_logs",
+        "column_name":  "empresa_id",
+        "foreign_table_schema":  "public",
+        "foreign_table_name":  "empresas",
+        "foreign_column_name":  "id"
+    },
+    {
+        "constraint_name":  "equipamentos_empresa_id_fkey",
+        "table_schema":  "public",
+        "table_name":  "equipamentos",
+        "column_name":  "empresa_id",
+        "foreign_table_schema":  "public",
+        "foreign_table_name":  "empresas",
+        "foreign_column_name":  "id"
+    },
+    {
+        "constraint_name":  "equipamentos_sistema_id_fkey",
+        "table_schema":  "public",
+        "table_name":  "equipamentos",
+        "column_name":  "sistema_id",
+        "foreign_table_schema":  "public",
+        "foreign_table_name":  "sistemas",
+        "foreign_column_name":  "id"
+    },
+    {
+        "constraint_name":  "execucoes_lubrificacao_empresa_id_fkey",
+        "table_schema":  "public",
+        "table_name":  "execucoes_lubrificacao",
+        "column_name":  "empresa_id",
+        "foreign_table_schema":  "public",
+        "foreign_table_name":  "empresas",
+        "foreign_column_name":  "id"
+    },
+    {
+        "constraint_name":  "execucoes_lubrificacao_os_gerada_id_fkey",
+        "table_schema":  "public",
+        "table_name":  "execucoes_lubrificacao",
+        "column_name":  "os_gerada_id",
+        "foreign_table_schema":  "public",
+        "foreign_table_name":  "ordens_servico",
+        "foreign_column_name":  "id"
+    },
+    {
+        "constraint_name":  "execucoes_lubrificacao_plano_id_fkey",
+        "table_schema":  "public",
+        "table_name":  "execucoes_lubrificacao",
+        "column_name":  "plano_id",
+        "foreign_table_schema":  "public",
+        "foreign_table_name":  "planos_lubrificacao",
+        "foreign_column_name":  "id"
+    },
+    {
+        "constraint_name":  "execucoes_os_empresa_id_fkey",
+        "table_schema":  "public",
+        "table_name":  "execucoes_os",
+        "column_name":  "empresa_id",
+        "foreign_table_schema":  "public",
+        "foreign_table_name":  "empresas",
+        "foreign_column_name":  "id"
+    },
+    {
+        "constraint_name":  "execucoes_os_mecanico_id_fkey",
+        "table_schema":  "public",
+        "table_name":  "execucoes_os",
+        "column_name":  "mecanico_id",
+        "foreign_table_schema":  "public",
+        "foreign_table_name":  "mecanicos",
+        "foreign_column_name":  "id"
+    },
+    {
+        "constraint_name":  "execucoes_os_os_id_fkey",
+        "table_schema":  "public",
+        "table_name":  "execucoes_os",
+        "column_name":  "os_id",
+        "foreign_table_schema":  "public",
+        "foreign_table_name":  "ordens_servico",
+        "foreign_column_name":  "id"
+    },
+    {
+        "constraint_name":  "execucoes_os_pausas_execucao_id_fkey",
+        "table_schema":  "public",
+        "table_name":  "execucoes_os_pausas",
+        "column_name":  "execucao_id",
+        "foreign_table_schema":  "public",
+        "foreign_table_name":  "execucoes_os",
+        "foreign_column_name":  "id"
+    },
+    {
+        "constraint_name":  "execucoes_os_pausas_os_id_fkey",
+        "table_schema":  "public",
+        "table_name":  "execucoes_os_pausas",
+        "column_name":  "os_id",
+        "foreign_table_schema":  "public",
+        "foreign_table_name":  "ordens_servico",
+        "foreign_column_name":  "id"
+    },
+    {
+        "constraint_name":  "execucoes_preventivas_empresa_id_fkey",
+        "table_schema":  "public",
+        "table_name":  "execucoes_preventivas",
+        "column_name":  "empresa_id",
+        "foreign_table_schema":  "public",
+        "foreign_table_name":  "empresas",
+        "foreign_column_name":  "id"
+    },
+    {
+        "constraint_name":  "execucoes_preventivas_os_gerada_id_fkey",
+        "table_schema":  "public",
+        "table_name":  "execucoes_preventivas",
+        "column_name":  "os_gerada_id",
+        "foreign_table_schema":  "public",
+        "foreign_table_name":  "ordens_servico",
+        "foreign_column_name":  "id"
+    },
+    {
+        "constraint_name":  "execucoes_preventivas_plano_id_fkey",
+        "table_schema":  "public",
+        "table_name":  "execucoes_preventivas",
+        "column_name":  "plano_id",
+        "foreign_table_schema":  "public",
+        "foreign_table_name":  "planos_preventivos",
+        "foreign_column_name":  "id"
+    },
+    {
+        "constraint_name":  "feature_flags_empresa_id_fkey",
+        "table_schema":  "public",
+        "table_name":  "feature_flags",
+        "column_name":  "empresa_id",
+        "foreign_table_schema":  "public",
+        "foreign_table_name":  "empresas",
+        "foreign_column_name":  "id"
+    },
+    {
+        "constraint_name":  "fmea_empresa_id_fkey",
+        "table_schema":  "public",
+        "table_name":  "fmea",
+        "column_name":  "empresa_id",
+        "foreign_table_schema":  "public",
+        "foreign_table_name":  "empresas",
+        "foreign_column_name":  "id"
+    },
+    {
+        "constraint_name":  "fmea_equipamento_id_fkey",
+        "table_schema":  "public",
+        "table_name":  "fmea",
+        "column_name":  "equipamento_id",
+        "foreign_table_schema":  "public",
+        "foreign_table_name":  "equipamentos",
+        "foreign_column_name":  "id"
+    },
+    {
+        "constraint_name":  "fornecedores_empresa_id_fkey",
+        "table_schema":  "public",
+        "table_name":  "fornecedores",
+        "column_name":  "empresa_id",
+        "foreign_table_schema":  "public",
+        "foreign_table_name":  "empresas",
+        "foreign_column_name":  "id"
+    },
+    {
+        "constraint_name":  "incidentes_ssma_empresa_id_fkey",
+        "table_schema":  "public",
+        "table_name":  "incidentes_ssma",
+        "column_name":  "empresa_id",
+        "foreign_table_schema":  "public",
+        "foreign_table_name":  "empresas",
+        "foreign_column_name":  "id"
+    },
+    {
+        "constraint_name":  "incidentes_ssma_rca_id_fkey",
+        "table_schema":  "public",
+        "table_name":  "incidentes_ssma",
+        "column_name":  "rca_id",
+        "foreign_table_schema":  "public",
+        "foreign_table_name":  "analise_causa_raiz",
+        "foreign_column_name":  "id"
+    },
+    {
+        "constraint_name":  "inspecoes_empresa_id_fkey",
+        "table_schema":  "public",
+        "table_name":  "inspecoes",
+        "column_name":  "empresa_id",
+        "foreign_table_schema":  "public",
+        "foreign_table_name":  "empresas",
+        "foreign_column_name":  "id"
+    },
+    {
+        "constraint_name":  "avaliacoes_fornecedores_contrato_id_fkey",
+        "table_schema":  "public",
+        "table_name":  "legacy_avaliacoes_fornecedores_20260313",
+        "column_name":  "contrato_id",
+        "foreign_table_schema":  "public",
+        "foreign_table_name":  "contratos",
+        "foreign_column_name":  "id"
+    },
+    {
+        "constraint_name":  "avaliacoes_fornecedores_empresa_id_fkey",
+        "table_schema":  "public",
+        "table_name":  "legacy_avaliacoes_fornecedores_20260313",
+        "column_name":  "empresa_id",
+        "foreign_table_schema":  "public",
+        "foreign_table_name":  "empresas",
+        "foreign_column_name":  "id"
+    },
+    {
+        "constraint_name":  "rate_limits_empresa_id_fkey",
+        "table_schema":  "public",
+        "table_name":  "legacy_rate_limits_20260313",
+        "column_name":  "empresa_id",
+        "foreign_table_schema":  "public",
+        "foreign_table_name":  "empresas",
+        "foreign_column_name":  "id"
+    },
+    {
+        "constraint_name":  "rbac_role_permissions_permission_id_fkey",
+        "table_schema":  "public",
+        "table_name":  "legacy_rbac_role_permissions_20260313",
+        "column_name":  "permission_id",
+        "foreign_table_schema":  "public",
+        "foreign_table_name":  "legacy_rbac_permissions_20260313",
+        "foreign_column_name":  "id"
+    },
+    {
+        "constraint_name":  "rbac_role_permissions_role_id_fkey",
+        "table_schema":  "public",
+        "table_name":  "legacy_rbac_role_permissions_20260313",
+        "column_name":  "role_id",
+        "foreign_table_schema":  "public",
+        "foreign_table_name":  "legacy_rbac_roles_20260313",
+        "foreign_column_name":  "id"
+    },
+    {
+        "constraint_name":  "subscription_payments_empresa_id_fkey",
+        "table_schema":  "public",
+        "table_name":  "legacy_subscription_payments_20260313",
+        "column_name":  "empresa_id",
+        "foreign_table_schema":  "public",
+        "foreign_table_name":  "empresas",
+        "foreign_column_name":  "id"
+    },
+    {
+        "constraint_name":  "subscription_payments_subscription_id_fkey",
+        "table_schema":  "public",
+        "table_name":  "legacy_subscription_payments_20260313",
+        "column_name":  "subscription_id",
+        "foreign_table_schema":  "public",
+        "foreign_table_name":  "subscriptions",
+        "foreign_column_name":  "id"
+    },
+    {
+        "constraint_name":  "maintenance_schedule_empresa_id_fkey",
+        "table_schema":  "public",
+        "table_name":  "maintenance_schedule",
+        "column_name":  "empresa_id",
+        "foreign_table_schema":  "public",
+        "foreign_table_name":  "empresas",
+        "foreign_column_name":  "id"
+    },
+    {
+        "constraint_name":  "maintenance_schedule_equipamento_id_fkey",
+        "table_schema":  "public",
+        "table_name":  "maintenance_schedule",
+        "column_name":  "equipamento_id",
+        "foreign_table_schema":  "public",
+        "foreign_table_name":  "equipamentos",
+        "foreign_column_name":  "id"
+    },
+    {
+        "constraint_name":  "materiais_empresa_id_fkey",
+        "table_schema":  "public",
+        "table_name":  "materiais",
+        "column_name":  "empresa_id",
+        "foreign_table_schema":  "public",
+        "foreign_table_name":  "empresas",
+        "foreign_column_name":  "id"
+    },
+    {
+        "constraint_name":  "materiais_os_empresa_id_fkey",
+        "table_schema":  "public",
+        "table_name":  "materiais_os",
+        "column_name":  "empresa_id",
+        "foreign_table_schema":  "public",
+        "foreign_table_name":  "empresas",
+        "foreign_column_name":  "id"
+    },
+    {
+        "constraint_name":  "materiais_os_material_id_fkey",
+        "table_schema":  "public",
+        "table_name":  "materiais_os",
+        "column_name":  "material_id",
+        "foreign_table_schema":  "public",
+        "foreign_table_name":  "materiais",
+        "foreign_column_name":  "id"
+    },
+    {
+        "constraint_name":  "materiais_os_os_id_fkey",
+        "table_schema":  "public",
+        "table_name":  "materiais_os",
+        "column_name":  "os_id",
+        "foreign_table_schema":  "public",
+        "foreign_table_name":  "ordens_servico",
+        "foreign_column_name":  "id"
+    },
+    {
+        "constraint_name":  "mecanicos_empresa_id_fkey",
+        "table_schema":  "public",
+        "table_name":  "mecanicos",
+        "column_name":  "empresa_id",
+        "foreign_table_schema":  "public",
+        "foreign_table_name":  "empresas",
+        "foreign_column_name":  "id"
+    },
+    {
+        "constraint_name":  "medicoes_preditivas_empresa_id_fkey",
+        "table_schema":  "public",
+        "table_name":  "medicoes_preditivas",
+        "column_name":  "empresa_id",
+        "foreign_table_schema":  "public",
+        "foreign_table_name":  "empresas",
+        "foreign_column_name":  "id"
+    },
+    {
+        "constraint_name":  "medicoes_preditivas_equipamento_id_fkey",
+        "table_schema":  "public",
+        "table_name":  "medicoes_preditivas",
+        "column_name":  "equipamento_id",
+        "foreign_table_schema":  "public",
+        "foreign_table_name":  "equipamentos",
+        "foreign_column_name":  "id"
+    },
+    {
+        "constraint_name":  "melhorias_empresa_id_fkey",
+        "table_schema":  "public",
+        "table_name":  "melhorias",
+        "column_name":  "empresa_id",
+        "foreign_table_schema":  "public",
+        "foreign_table_name":  "empresas",
+        "foreign_column_name":  "id"
+    },
+    {
+        "constraint_name":  "melhorias_equipamento_id_fkey",
+        "table_schema":  "public",
+        "table_name":  "melhorias",
+        "column_name":  "equipamento_id",
+        "foreign_table_schema":  "public",
+        "foreign_table_name":  "equipamentos",
+        "foreign_column_name":  "id"
+    },
+    {
+        "constraint_name":  "movimentacoes_materiais_empresa_id_fkey",
+        "table_schema":  "public",
+        "table_name":  "movimentacoes_materiais",
+        "column_name":  "empresa_id",
+        "foreign_table_schema":  "public",
+        "foreign_table_name":  "empresas",
+        "foreign_column_name":  "id"
+    },
+    {
+        "constraint_name":  "movimentacoes_materiais_material_id_fkey",
+        "table_schema":  "public",
+        "table_name":  "movimentacoes_materiais",
+        "column_name":  "material_id",
+        "foreign_table_schema":  "public",
+        "foreign_table_name":  "materiais",
+        "foreign_column_name":  "id"
+    },
+    {
+        "constraint_name":  "movimentacoes_materiais_os_id_fkey",
+        "table_schema":  "public",
+        "table_name":  "movimentacoes_materiais",
+        "column_name":  "os_id",
+        "foreign_table_schema":  "public",
+        "foreign_table_name":  "ordens_servico",
+        "foreign_column_name":  "id"
+    },
+    {
+        "constraint_name":  "operational_logs_empresa_id_fkey",
+        "table_schema":  "public",
+        "table_name":  "operational_logs",
+        "column_name":  "empresa_id",
+        "foreign_table_schema":  "public",
+        "foreign_table_name":  "empresas",
+        "foreign_column_name":  "id"
+    },
+    {
+        "constraint_name":  "ordens_servico_empresa_id_fkey",
+        "table_schema":  "public",
+        "table_name":  "ordens_servico",
+        "column_name":  "empresa_id",
+        "foreign_table_schema":  "public",
+        "foreign_table_name":  "empresas",
+        "foreign_column_name":  "id"
+    },
+    {
+        "constraint_name":  "ordens_servico_mecanico_responsavel_fk",
+        "table_schema":  "public",
+        "table_name":  "ordens_servico",
+        "column_name":  "mecanico_responsavel_id",
+        "foreign_table_schema":  "public",
+        "foreign_table_name":  "mecanicos",
+        "foreign_column_name":  "id"
+    },
+    {
+        "constraint_name":  "owner_impersonation_sessions_empresa_id_fkey",
+        "table_schema":  "public",
+        "table_name":  "owner_impersonation_sessions",
+        "column_name":  "empresa_id",
+        "foreign_table_schema":  "public",
+        "foreign_table_name":  "empresas",
+        "foreign_column_name":  "id"
+    },
+    {
+        "constraint_name":  "permissoes_granulares_empresa_id_fkey",
+        "table_schema":  "public",
+        "table_name":  "permissoes_granulares",
+        "column_name":  "empresa_id",
+        "foreign_table_schema":  "public",
+        "foreign_table_name":  "empresas",
+        "foreign_column_name":  "id"
+    },
+    {
+        "constraint_name":  "permissoes_trabalho_empresa_id_fkey",
+        "table_schema":  "public",
+        "table_name":  "permissoes_trabalho",
+        "column_name":  "empresa_id",
+        "foreign_table_schema":  "public",
+        "foreign_table_name":  "empresas",
+        "foreign_column_name":  "id"
+    },
+    {
+        "constraint_name":  "permissoes_trabalho_os_id_fkey",
+        "table_schema":  "public",
+        "table_name":  "permissoes_trabalho",
+        "column_name":  "os_id",
+        "foreign_table_schema":  "public",
+        "foreign_table_name":  "ordens_servico",
+        "foreign_column_name":  "id"
+    },
+    {
+        "constraint_name":  "planos_lubrificacao_empresa_id_fkey",
+        "table_schema":  "public",
+        "table_name":  "planos_lubrificacao",
+        "column_name":  "empresa_id",
+        "foreign_table_schema":  "public",
+        "foreign_table_name":  "empresas",
+        "foreign_column_name":  "id"
+    },
+    {
+        "constraint_name":  "planos_lubrificacao_equipamento_id_fkey",
+        "table_schema":  "public",
+        "table_name":  "planos_lubrificacao",
+        "column_name":  "equipamento_id",
+        "foreign_table_schema":  "public",
+        "foreign_table_name":  "equipamentos",
+        "foreign_column_name":  "id"
+    },
+    {
+        "constraint_name":  "planos_preventivos_empresa_id_fkey",
+        "table_schema":  "public",
+        "table_name":  "planos_preventivos",
+        "column_name":  "empresa_id",
+        "foreign_table_schema":  "public",
+        "foreign_table_name":  "empresas",
+        "foreign_column_name":  "id"
+    },
+    {
+        "constraint_name":  "planos_preventivos_equipamento_id_fkey",
+        "table_schema":  "public",
+        "table_name":  "planos_preventivos",
+        "column_name":  "equipamento_id",
+        "foreign_table_schema":  "public",
+        "foreign_table_name":  "equipamentos",
+        "foreign_column_name":  "id"
+    },
+    {
+        "constraint_name":  "plantas_empresa_id_fkey",
+        "table_schema":  "public",
+        "table_name":  "plantas",
+        "column_name":  "empresa_id",
+        "foreign_table_schema":  "public",
+        "foreign_table_name":  "empresas",
+        "foreign_column_name":  "id"
+    },
+    {
+        "constraint_name":  "profiles_empresa_id_fkey",
+        "table_schema":  "public",
+        "table_name":  "profiles",
+        "column_name":  "empresa_id",
+        "foreign_table_schema":  "public",
+        "foreign_table_name":  "empresas",
+        "foreign_column_name":  "id"
+    },
+    {
+        "constraint_name":  "rbac_user_roles_empresa_id_fkey",
+        "table_schema":  "public",
+        "table_name":  "rbac_user_roles",
+        "column_name":  "empresa_id",
+        "foreign_table_schema":  "public",
+        "foreign_table_name":  "empresas",
+        "foreign_column_name":  "id"
+    },
+    {
+        "constraint_name":  "rbac_user_roles_role_id_fkey",
+        "table_schema":  "public",
+        "table_name":  "rbac_user_roles",
+        "column_name":  "role_id",
+        "foreign_table_schema":  "public",
+        "foreign_table_name":  "legacy_rbac_roles_20260313",
+        "foreign_column_name":  "id"
+    },
+    {
+        "constraint_name":  "security_logs_empresa_id_fkey",
+        "table_schema":  "public",
+        "table_name":  "security_logs",
+        "column_name":  "empresa_id",
+        "foreign_table_schema":  "public",
+        "foreign_table_name":  "empresas",
+        "foreign_column_name":  "id"
+    },
+    {
+        "constraint_name":  "servicos_preventivos_atividade_id_fkey",
+        "table_schema":  "public",
+        "table_name":  "servicos_preventivos",
+        "column_name":  "atividade_id",
+        "foreign_table_schema":  "public",
+        "foreign_table_name":  "atividades_preventivas",
+        "foreign_column_name":  "id"
+    },
+    {
+        "constraint_name":  "servicos_preventivos_empresa_id_fkey",
+        "table_schema":  "public",
+        "table_name":  "servicos_preventivos",
+        "column_name":  "empresa_id",
+        "foreign_table_schema":  "public",
+        "foreign_table_name":  "empresas",
+        "foreign_column_name":  "id"
+    },
+    {
+        "constraint_name":  "sistemas_area_id_fkey",
+        "table_schema":  "public",
+        "table_name":  "sistemas",
+        "column_name":  "area_id",
+        "foreign_table_schema":  "public",
+        "foreign_table_name":  "areas",
+        "foreign_column_name":  "id"
+    },
+    {
+        "constraint_name":  "sistemas_empresa_id_fkey",
+        "table_schema":  "public",
+        "table_name":  "sistemas",
+        "column_name":  "empresa_id",
+        "foreign_table_schema":  "public",
+        "foreign_table_name":  "empresas",
+        "foreign_column_name":  "id"
+    },
+    {
+        "constraint_name":  "solicitacoes_empresa_id_fkey",
+        "table_schema":  "public",
+        "table_name":  "solicitacoes",
+        "column_name":  "empresa_id",
+        "foreign_table_schema":  "public",
+        "foreign_table_name":  "empresas",
+        "foreign_column_name":  "id"
+    },
+    {
+        "constraint_name":  "solicitacoes_manutencao_empresa_id_fkey",
+        "table_schema":  "public",
+        "table_name":  "solicitacoes_manutencao",
+        "column_name":  "empresa_id",
+        "foreign_table_schema":  "public",
+        "foreign_table_name":  "empresas",
+        "foreign_column_name":  "id"
+    },
+    {
+        "constraint_name":  "subscription_payments_subscription_id_fkey1",
+        "table_schema":  "public",
+        "table_name":  "subscription_payments",
+        "column_name":  "subscription_id",
+        "foreign_table_schema":  "public",
+        "foreign_table_name":  "subscriptions",
+        "foreign_column_name":  "id"
+    },
+    {
+        "constraint_name":  "subscriptions_empresa_id_fkey",
+        "table_schema":  "public",
+        "table_name":  "subscriptions",
+        "column_name":  "empresa_id",
+        "foreign_table_schema":  "public",
+        "foreign_table_name":  "empresas",
+        "foreign_column_name":  "id"
+    },
+    {
+        "constraint_name":  "subscriptions_plan_id_fkey",
+        "table_schema":  "public",
+        "table_name":  "subscriptions",
+        "column_name":  "plan_id",
+        "foreign_table_schema":  "public",
+        "foreign_table_name":  "plans",
+        "foreign_column_name":  "id"
+    },
+    {
+        "constraint_name":  "support_tickets_empresa_id_fkey",
+        "table_schema":  "public",
+        "table_name":  "support_tickets",
+        "column_name":  "empresa_id",
+        "foreign_table_schema":  "public",
+        "foreign_table_name":  "empresas",
+        "foreign_column_name":  "id"
+    },
+    {
+        "constraint_name":  "support_tickets_user_id_fkey",
+        "table_schema":  "public",
+        "table_name":  "support_tickets",
+        "column_name":  "user_id",
+        "foreign_table_schema":  "auth",
+        "foreign_table_name":  "users",
+        "foreign_column_name":  "id"
+    },
+    {
+        "constraint_name":  "system_error_events_empresa_id_fkey",
+        "table_schema":  "public",
+        "table_name":  "system_error_events",
+        "column_name":  "empresa_id",
+        "foreign_table_schema":  "public",
+        "foreign_table_name":  "empresas",
+        "foreign_column_name":  "id"
+    },
+    {
+        "constraint_name":  "templates_preventivos_empresa_id_fkey",
+        "table_schema":  "public",
+        "table_name":  "templates_preventivos",
+        "column_name":  "empresa_id",
+        "foreign_table_schema":  "public",
+        "foreign_table_name":  "empresas",
+        "foreign_column_name":  "id"
+    },
+    {
+        "constraint_name":  "user_roles_empresa_id_fkey",
+        "table_schema":  "public",
+        "table_name":  "user_roles",
+        "column_name":  "empresa_id",
+        "foreign_table_schema":  "public",
+        "foreign_table_name":  "empresas",
+        "foreign_column_name":  "id"
+    }
+]

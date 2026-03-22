@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+﻿import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Activity, AlertTriangle, CheckCircle, Clock, Database, Gauge, Loader2, ShieldCheck } from 'lucide-react'
 import { Bar, BarChart, CartesianGrid, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import { useAuth } from '@/contexts/AuthContext'
@@ -1269,18 +1269,18 @@ export default function Owner() {
         <div className="space-y-4">
           <Card title="Criar empresa" subtitle="Fluxo completo de onboarding: empresa, dados base e administrador inicial.">
             <div className="grid gap-2 md:grid-cols-4">
-              <input className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm" placeholder="Nome" value={createCompanyForm.nome} onChange={(e) => setCreateCompanyForm((s) => ({ ...s, nome: e.target.value }))} />
-              <input className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm" placeholder="Slug" value={createCompanyForm.slug} onChange={(e) => setCreateCompanyForm((s) => ({ ...s, slug: e.target.value }))} />
-              <input className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm" placeholder="Nome admin" value={createCompanyForm.admin_nome} onChange={(e) => setCreateCompanyForm((s) => ({ ...s, admin_nome: e.target.value }))} />
-              <input className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm" type="email" placeholder="Email admin" value={createCompanyForm.admin_email} onChange={(e) => setCreateCompanyForm((s) => ({ ...s, admin_email: e.target.value }))} />
-              <input className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm" placeholder="Razao social" value={createCompanyForm.razao_social} onChange={(e) => setCreateCompanyForm((s) => ({ ...s, razao_social: e.target.value }))} />
-              <input className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm" placeholder="Nome fantasia" value={createCompanyForm.nome_fantasia} onChange={(e) => setCreateCompanyForm((s) => ({ ...s, nome_fantasia: e.target.value }))} />
-              <input className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm" placeholder="CNPJ" value={createCompanyForm.cnpj} onChange={(e) => setCreateCompanyForm((s) => ({ ...s, cnpj: e.target.value }))} />
-              <input className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm" placeholder="Telefone" value={createCompanyForm.telefone} onChange={(e) => setCreateCompanyForm((s) => ({ ...s, telefone: e.target.value }))} />
-              <input className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm md:col-span-2" placeholder="Endereco" value={createCompanyForm.endereco} onChange={(e) => setCreateCompanyForm((s) => ({ ...s, endereco: e.target.value }))} />
-              <input className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm" type="email" placeholder="Email operacional" value={createCompanyForm.email} onChange={(e) => setCreateCompanyForm((s) => ({ ...s, email: e.target.value }))} />
-              <input className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm" placeholder="Responsavel" value={createCompanyForm.responsavel} onChange={(e) => setCreateCompanyForm((s) => ({ ...s, responsavel: e.target.value }))} />
-              <input className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm" placeholder="Segmento" value={createCompanyForm.segmento} onChange={(e) => setCreateCompanyForm((s) => ({ ...s, segmento: e.target.value }))} />
+              <input className="rounded border border-border bg-background px-3 py-2 text-sm" placeholder="Nome" value={createCompanyForm.nome} onChange={(e) => setCreateCompanyForm((s) => ({ ...s, nome: e.target.value }))} />
+              <input className="rounded border border-border bg-background px-3 py-2 text-sm" placeholder="Slug" value={createCompanyForm.slug} onChange={(e) => setCreateCompanyForm((s) => ({ ...s, slug: e.target.value }))} />
+              <input className="rounded border border-border bg-background px-3 py-2 text-sm" placeholder="Nome admin" value={createCompanyForm.admin_nome} onChange={(e) => setCreateCompanyForm((s) => ({ ...s, admin_nome: e.target.value }))} />
+              <input className="rounded border border-border bg-background px-3 py-2 text-sm" type="email" placeholder="Email admin" value={createCompanyForm.admin_email} onChange={(e) => setCreateCompanyForm((s) => ({ ...s, admin_email: e.target.value }))} />
+              <input className="rounded border border-border bg-background px-3 py-2 text-sm" placeholder="Razao social" value={createCompanyForm.razao_social} onChange={(e) => setCreateCompanyForm((s) => ({ ...s, razao_social: e.target.value }))} />
+              <input className="rounded border border-border bg-background px-3 py-2 text-sm" placeholder="Nome fantasia" value={createCompanyForm.nome_fantasia} onChange={(e) => setCreateCompanyForm((s) => ({ ...s, nome_fantasia: e.target.value }))} />
+              <input className="rounded border border-border bg-background px-3 py-2 text-sm" placeholder="CNPJ" value={createCompanyForm.cnpj} onChange={(e) => setCreateCompanyForm((s) => ({ ...s, cnpj: e.target.value }))} />
+              <input className="rounded border border-border bg-background px-3 py-2 text-sm" placeholder="Telefone" value={createCompanyForm.telefone} onChange={(e) => setCreateCompanyForm((s) => ({ ...s, telefone: e.target.value }))} />
+              <input className="rounded border border-border bg-background px-3 py-2 text-sm md:col-span-2" placeholder="Endereco" value={createCompanyForm.endereco} onChange={(e) => setCreateCompanyForm((s) => ({ ...s, endereco: e.target.value }))} />
+              <input className="rounded border border-border bg-background px-3 py-2 text-sm" type="email" placeholder="Email operacional" value={createCompanyForm.email} onChange={(e) => setCreateCompanyForm((s) => ({ ...s, email: e.target.value }))} />
+              <input className="rounded border border-border bg-background px-3 py-2 text-sm" placeholder="Responsavel" value={createCompanyForm.responsavel} onChange={(e) => setCreateCompanyForm((s) => ({ ...s, responsavel: e.target.value }))} />
+              <input className="rounded border border-border bg-background px-3 py-2 text-sm" placeholder="Segmento" value={createCompanyForm.segmento} onChange={(e) => setCreateCompanyForm((s) => ({ ...s, segmento: e.target.value }))} />
             </div>
             <button
               className="mt-3 rounded bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground"
@@ -1308,7 +1308,7 @@ export default function Owner() {
           <Card title="Atualizar empresa">
             <div className="grid gap-2 md:grid-cols-3">
               <select
-                className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm"
+                className="rounded border border-border bg-background px-3 py-2 text-sm"
                 value={updateCompanyForm.empresa_id}
                 onChange={(e) => {
                   const selectedId = e.target.value
@@ -1328,8 +1328,8 @@ export default function Owner() {
                   </option>
                 ))}
               </select>
-              <input className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm" placeholder="Novo nome" value={updateCompanyForm.nome} onChange={(e) => setUpdateCompanyForm((s) => ({ ...s, nome: e.target.value }))} />
-              <select className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm" value={updateCompanyForm.status} onChange={(e) => setUpdateCompanyForm((s) => ({ ...s, status: e.target.value }))}>
+              <input className="rounded border border-border bg-background px-3 py-2 text-sm" placeholder="Novo nome" value={updateCompanyForm.nome} onChange={(e) => setUpdateCompanyForm((s) => ({ ...s, nome: e.target.value }))} />
+              <select className="rounded border border-border bg-background px-3 py-2 text-sm" value={updateCompanyForm.status} onChange={(e) => setUpdateCompanyForm((s) => ({ ...s, status: e.target.value }))}>
                 <option value="">Selecione status</option>
                 <option value="active">Ativa</option>
                 <option value="blocked">Bloqueada</option>
@@ -1412,10 +1412,10 @@ export default function Owner() {
         <div className="space-y-4">
           <Card title="Criar usuario">
             <div className="grid gap-2 md:grid-cols-5">
-              <input className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm" placeholder="Nome" value={createUserForm.nome} onChange={(e) => setCreateUserForm((s) => ({ ...s, nome: e.target.value }))} />
-              <input className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm" type="email" placeholder="Email" value={createUserForm.email} onChange={(e) => setCreateUserForm((s) => ({ ...s, email: e.target.value }))} />
-              <input className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm" type="password" placeholder="Senha" value={createUserForm.password} onChange={(e) => setCreateUserForm((s) => ({ ...s, password: e.target.value }))} />
-              <select className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm" value={createUserForm.role} onChange={(e) => setCreateUserForm((s) => ({ ...s, role: e.target.value }))}>
+              <input className="rounded border border-border bg-background px-3 py-2 text-sm" placeholder="Nome" value={createUserForm.nome} onChange={(e) => setCreateUserForm((s) => ({ ...s, nome: e.target.value }))} />
+              <input className="rounded border border-border bg-background px-3 py-2 text-sm" type="email" placeholder="Email" value={createUserForm.email} onChange={(e) => setCreateUserForm((s) => ({ ...s, email: e.target.value }))} />
+              <input className="rounded border border-border bg-background px-3 py-2 text-sm" type="password" placeholder="Senha" value={createUserForm.password} onChange={(e) => setCreateUserForm((s) => ({ ...s, password: e.target.value }))} />
+              <select className="rounded border border-border bg-background px-3 py-2 text-sm" value={createUserForm.role} onChange={(e) => setCreateUserForm((s) => ({ ...s, role: e.target.value }))}>
                 <option value="">Perfil</option>
                 <option value="ADMIN">ADMIN</option>
                 <option value="GESTOR">GESTOR</option>
@@ -1423,7 +1423,7 @@ export default function Owner() {
                 <option value="USUARIO">USUARIO</option>
                 <option value="SOLICITANTE">SOLICITANTE</option>
               </select>
-              <select className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm" value={createUserForm.empresa_id} onChange={(e) => setCreateUserForm((s) => ({ ...s, empresa_id: e.target.value }))}>
+              <select className="rounded border border-border bg-background px-3 py-2 text-sm" value={createUserForm.empresa_id} onChange={(e) => setCreateUserForm((s) => ({ ...s, empresa_id: e.target.value }))}>
                 <option value="">Empresa</option>
                 {companies.map((c) => (
                   <option key={c.id} value={c.id}>
@@ -1457,7 +1457,7 @@ export default function Owner() {
 
           <Card title="Alterar status do usuario">
             <div className="grid gap-2 md:grid-cols-3">
-              <select className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm" value={userStatusForm.user_id} onChange={(e) => setUserStatusForm((s) => ({ ...s, user_id: e.target.value }))}>
+              <select className="rounded border border-border bg-background px-3 py-2 text-sm" value={userStatusForm.user_id} onChange={(e) => setUserStatusForm((s) => ({ ...s, user_id: e.target.value }))}>
                 <option value="">Selecione usuario</option>
                 {users.map((u) => (
                   <option key={u.id} value={u.id}>
@@ -1465,7 +1465,7 @@ export default function Owner() {
                   </option>
                 ))}
               </select>
-              <select className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm" value={userStatusForm.status} onChange={(e) => setUserStatusForm((s) => ({ ...s, status: e.target.value }))}>
+              <select className="rounded border border-border bg-background px-3 py-2 text-sm" value={userStatusForm.status} onChange={(e) => setUserStatusForm((s) => ({ ...s, status: e.target.value }))}>
                 <option value="">Selecione status</option>
                 <option value="ativo">Ativo</option>
                 <option value="inativo">Inativo</option>
@@ -1512,31 +1512,31 @@ export default function Owner() {
         <div className="space-y-4">
           <Card title="Criar plano">
             <div className="grid gap-2 md:grid-cols-4">
-              <input className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm" placeholder="Codigo" value={createPlanForm.code} onChange={(e) => setCreatePlanForm((s) => ({ ...s, code: e.target.value }))} />
-              <input className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm" placeholder="Nome" value={createPlanForm.name} onChange={(e) => setCreatePlanForm((s) => ({ ...s, name: e.target.value }))} />
-              <input className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm" placeholder="Limite usuarios" value={createPlanForm.user_limit} onChange={(e) => setCreatePlanForm((s) => ({ ...s, user_limit: e.target.value }))} />
-              <input className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm" placeholder="Preco mensal" value={createPlanForm.price_month} onChange={(e) => setCreatePlanForm((s) => ({ ...s, price_month: e.target.value }))} />
+              <input className="rounded border border-border bg-background px-3 py-2 text-sm" placeholder="Codigo" value={createPlanForm.code} onChange={(e) => setCreatePlanForm((s) => ({ ...s, code: e.target.value }))} />
+              <input className="rounded border border-border bg-background px-3 py-2 text-sm" placeholder="Nome" value={createPlanForm.name} onChange={(e) => setCreatePlanForm((s) => ({ ...s, name: e.target.value }))} />
+              <input className="rounded border border-border bg-background px-3 py-2 text-sm" placeholder="Limite usuarios" value={createPlanForm.user_limit} onChange={(e) => setCreatePlanForm((s) => ({ ...s, user_limit: e.target.value }))} />
+              <input className="rounded border border-border bg-background px-3 py-2 text-sm" placeholder="Preco mensal" value={createPlanForm.price_month} onChange={(e) => setCreatePlanForm((s) => ({ ...s, price_month: e.target.value }))} />
             </div>
             <div className="mt-2 grid gap-2 md:grid-cols-4">
-              <input className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm" placeholder="Storage MB" value={createPlanForm.data_limit_mb} onChange={(e) => setCreatePlanForm((s) => ({ ...s, data_limit_mb: e.target.value }))} />
-              <input className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm" placeholder="Limite empresas (opcional)" value={createPlanForm.company_limit} onChange={(e) => setCreatePlanForm((s) => ({ ...s, company_limit: e.target.value }))} />
-              <label className="flex items-center gap-2 rounded border border-slate-700 bg-slate-950 px-3 py-2 text-xs text-slate-300">
+              <input className="rounded border border-border bg-background px-3 py-2 text-sm" placeholder="Storage MB" value={createPlanForm.data_limit_mb} onChange={(e) => setCreatePlanForm((s) => ({ ...s, data_limit_mb: e.target.value }))} />
+              <input className="rounded border border-border bg-background px-3 py-2 text-sm" placeholder="Limite empresas (opcional)" value={createPlanForm.company_limit} onChange={(e) => setCreatePlanForm((s) => ({ ...s, company_limit: e.target.value }))} />
+              <label className="flex items-center gap-2 rounded border border-border bg-background px-3 py-2 text-xs text-slate-300">
                 <input type="checkbox" checked={createPlanForm.active} onChange={(e) => setCreatePlanForm((s) => ({ ...s, active: e.target.checked }))} />
                 Plano ativo
               </label>
               <button className="rounded bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground" disabled={createPlanMutation.isPending || !createPlanForm.name || !createPlanForm.code} onClick={() => runAction(() => createPlanMutation.mutateAsync(buildPlanPayload(createPlanForm)), 'Plano criado com sucesso.')}>Criar plano</button>
             </div>
-            <textarea className="mt-2 min-h-[70px] w-full rounded border border-slate-700 bg-slate-950 px-3 py-2 text-xs" placeholder="Descricao" value={createPlanForm.description} onChange={(e) => setCreatePlanForm((s) => ({ ...s, description: e.target.value }))} />
+            <textarea className="mt-2 min-h-[70px] w-full rounded border border-border bg-background px-3 py-2 text-xs" placeholder="Descricao" value={createPlanForm.description} onChange={(e) => setCreatePlanForm((s) => ({ ...s, description: e.target.value }))} />
             <div className="mt-2 grid gap-2 md:grid-cols-2">
-              <textarea className="min-h-[90px] w-full rounded border border-slate-700 bg-slate-950 px-3 py-2 text-xs font-mono" placeholder='Modulos JSON, ex: {"dashboard": true}' value={createPlanForm.module_flags_json} onChange={(e) => setCreatePlanForm((s) => ({ ...s, module_flags_json: e.target.value }))} />
-              <textarea className="min-h-[90px] w-full rounded border border-slate-700 bg-slate-950 px-3 py-2 text-xs font-mono" placeholder='Premium features JSON, ex: ["analytics"]' value={createPlanForm.premium_features_json} onChange={(e) => setCreatePlanForm((s) => ({ ...s, premium_features_json: e.target.value }))} />
+              <textarea className="min-h-[90px] w-full rounded border border-border bg-background px-3 py-2 text-xs font-mono" placeholder='Modulos JSON, ex: {"dashboard": true}' value={createPlanForm.module_flags_json} onChange={(e) => setCreatePlanForm((s) => ({ ...s, module_flags_json: e.target.value }))} />
+              <textarea className="min-h-[90px] w-full rounded border border-border bg-background px-3 py-2 text-xs font-mono" placeholder='Premium features JSON, ex: ["analytics"]' value={createPlanForm.premium_features_json} onChange={(e) => setCreatePlanForm((s) => ({ ...s, premium_features_json: e.target.value }))} />
             </div>
           </Card>
 
           <Card title="Atualizar plano">
             <div className="grid gap-2 md:grid-cols-4">
               <select
-                className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm"
+                className="rounded border border-border bg-background px-3 py-2 text-sm"
                 value={updatePlanForm.id}
                 onChange={(e) => {
                   const selectedId = e.target.value
@@ -1564,20 +1564,20 @@ export default function Owner() {
                   </option>
                 ))}
               </select>
-              <input className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm" placeholder="Novo codigo" value={updatePlanForm.code} onChange={(e) => setUpdatePlanForm((s) => ({ ...s, code: e.target.value }))} />
-              <input className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm" placeholder="Novo nome" value={updatePlanForm.name} onChange={(e) => setUpdatePlanForm((s) => ({ ...s, name: e.target.value }))} />
+              <input className="rounded border border-border bg-background px-3 py-2 text-sm" placeholder="Novo codigo" value={updatePlanForm.code} onChange={(e) => setUpdatePlanForm((s) => ({ ...s, code: e.target.value }))} />
+              <input className="rounded border border-border bg-background px-3 py-2 text-sm" placeholder="Novo nome" value={updatePlanForm.name} onChange={(e) => setUpdatePlanForm((s) => ({ ...s, name: e.target.value }))} />
               <button className="rounded border border-slate-600 px-3 py-2 text-sm" disabled={!updatePlanForm.id || updatePlanMutation.isPending} onClick={() => runAction(() => updatePlanMutation.mutateAsync({ id: updatePlanForm.id, ...buildPlanPayload(updatePlanForm) }), 'Plano atualizado com sucesso.')}>Salvar</button>
             </div>
             <div className="mt-2 grid gap-2 md:grid-cols-4">
-              <input className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm" placeholder="Preco mensal" value={updatePlanForm.price_month} onChange={(e) => setUpdatePlanForm((s) => ({ ...s, price_month: e.target.value }))} />
-              <input className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm" placeholder="Limite usuarios" value={updatePlanForm.user_limit} onChange={(e) => setUpdatePlanForm((s) => ({ ...s, user_limit: e.target.value }))} />
-              <input className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm" placeholder="Storage MB" value={updatePlanForm.data_limit_mb} onChange={(e) => setUpdatePlanForm((s) => ({ ...s, data_limit_mb: e.target.value }))} />
-              <input className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm" placeholder="Limite empresas (opcional)" value={updatePlanForm.company_limit} onChange={(e) => setUpdatePlanForm((s) => ({ ...s, company_limit: e.target.value }))} />
+              <input className="rounded border border-border bg-background px-3 py-2 text-sm" placeholder="Preco mensal" value={updatePlanForm.price_month} onChange={(e) => setUpdatePlanForm((s) => ({ ...s, price_month: e.target.value }))} />
+              <input className="rounded border border-border bg-background px-3 py-2 text-sm" placeholder="Limite usuarios" value={updatePlanForm.user_limit} onChange={(e) => setUpdatePlanForm((s) => ({ ...s, user_limit: e.target.value }))} />
+              <input className="rounded border border-border bg-background px-3 py-2 text-sm" placeholder="Storage MB" value={updatePlanForm.data_limit_mb} onChange={(e) => setUpdatePlanForm((s) => ({ ...s, data_limit_mb: e.target.value }))} />
+              <input className="rounded border border-border bg-background px-3 py-2 text-sm" placeholder="Limite empresas (opcional)" value={updatePlanForm.company_limit} onChange={(e) => setUpdatePlanForm((s) => ({ ...s, company_limit: e.target.value }))} />
             </div>
-            <textarea className="mt-2 min-h-[70px] w-full rounded border border-slate-700 bg-slate-950 px-3 py-2 text-xs" placeholder="Descricao" value={updatePlanForm.description} onChange={(e) => setUpdatePlanForm((s) => ({ ...s, description: e.target.value }))} />
+            <textarea className="mt-2 min-h-[70px] w-full rounded border border-border bg-background px-3 py-2 text-xs" placeholder="Descricao" value={updatePlanForm.description} onChange={(e) => setUpdatePlanForm((s) => ({ ...s, description: e.target.value }))} />
             <div className="mt-2 grid gap-2 md:grid-cols-2">
-              <textarea className="min-h-[90px] w-full rounded border border-slate-700 bg-slate-950 px-3 py-2 text-xs font-mono" placeholder='Modulos JSON, ex: {"dashboard": true}' value={updatePlanForm.module_flags_json} onChange={(e) => setUpdatePlanForm((s) => ({ ...s, module_flags_json: e.target.value }))} />
-              <textarea className="min-h-[90px] w-full rounded border border-slate-700 bg-slate-950 px-3 py-2 text-xs font-mono" placeholder='Premium features JSON, ex: ["analytics"]' value={updatePlanForm.premium_features_json} onChange={(e) => setUpdatePlanForm((s) => ({ ...s, premium_features_json: e.target.value }))} />
+              <textarea className="min-h-[90px] w-full rounded border border-border bg-background px-3 py-2 text-xs font-mono" placeholder='Modulos JSON, ex: {"dashboard": true}' value={updatePlanForm.module_flags_json} onChange={(e) => setUpdatePlanForm((s) => ({ ...s, module_flags_json: e.target.value }))} />
+              <textarea className="min-h-[90px] w-full rounded border border-border bg-background px-3 py-2 text-xs font-mono" placeholder='Premium features JSON, ex: ["analytics"]' value={updatePlanForm.premium_features_json} onChange={(e) => setUpdatePlanForm((s) => ({ ...s, premium_features_json: e.target.value }))} />
             </div>
             <div className="mt-2 flex items-center gap-3">
               <label className="flex items-center gap-2 text-xs text-slate-300">
@@ -1631,7 +1631,7 @@ export default function Owner() {
         <div className="space-y-4">
           <Card title="Criar assinatura">
             <div className="grid gap-2 md:grid-cols-4">
-              <select className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm" value={createSubscriptionForm.empresa_id} onChange={(e) => setCreateSubscriptionForm((s) => ({ ...s, empresa_id: e.target.value }))}>
+              <select className="rounded border border-border bg-background px-3 py-2 text-sm" value={createSubscriptionForm.empresa_id} onChange={(e) => setCreateSubscriptionForm((s) => ({ ...s, empresa_id: e.target.value }))}>
                 <option value="">Empresa</option>
                 {companies.map((c) => (
                   <option key={c.id} value={c.id}>
@@ -1639,7 +1639,7 @@ export default function Owner() {
                   </option>
                 ))}
               </select>
-              <select className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm" value={createSubscriptionForm.plan_id} onChange={(e) => setCreateSubscriptionForm((s) => ({ ...s, plan_id: e.target.value }))}>
+              <select className="rounded border border-border bg-background px-3 py-2 text-sm" value={createSubscriptionForm.plan_id} onChange={(e) => setCreateSubscriptionForm((s) => ({ ...s, plan_id: e.target.value }))}>
                 <option value="">Plano</option>
                 {plans.map((p) => (
                   <option key={p.id} value={p.id}>
@@ -1647,14 +1647,14 @@ export default function Owner() {
                   </option>
                 ))}
               </select>
-              <input className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm" placeholder="Valor" value={createSubscriptionForm.amount} onChange={(e) => setCreateSubscriptionForm((s) => ({ ...s, amount: e.target.value }))} />
+              <input className="rounded border border-border bg-background px-3 py-2 text-sm" placeholder="Valor" value={createSubscriptionForm.amount} onChange={(e) => setCreateSubscriptionForm((s) => ({ ...s, amount: e.target.value }))} />
               <button className="rounded bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground" disabled={!createSubscriptionForm.empresa_id || !createSubscriptionForm.plan_id || createSubscriptionMutation.isPending} onClick={() => runAction(() => createSubscriptionMutation.mutateAsync({ empresa_id: createSubscriptionForm.empresa_id, plan_id: createSubscriptionForm.plan_id, amount: createSubscriptionForm.amount ? Number(createSubscriptionForm.amount) : undefined, status: createSubscriptionForm.status || undefined }), 'Assinatura criada com sucesso.')}>Criar assinatura</button>
             </div>
           </Card>
 
           <Card title="Alterar status da assinatura">
             <div className="grid gap-2 md:grid-cols-3">
-              <select className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm" value={subscriptionStatusForm.empresa_id} onChange={(e) => setSubscriptionStatusForm((s) => ({ ...s, empresa_id: e.target.value }))}>
+              <select className="rounded border border-border bg-background px-3 py-2 text-sm" value={subscriptionStatusForm.empresa_id} onChange={(e) => setSubscriptionStatusForm((s) => ({ ...s, empresa_id: e.target.value }))}>
                 <option value="">Empresa</option>
                 {companies.map((c) => (
                   <option key={c.id} value={c.id}>
@@ -1662,7 +1662,7 @@ export default function Owner() {
                   </option>
                 ))}
               </select>
-              <select className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm" value={subscriptionStatusForm.status} onChange={(e) => setSubscriptionStatusForm((s) => ({ ...s, status: e.target.value }))}>
+              <select className="rounded border border-border bg-background px-3 py-2 text-sm" value={subscriptionStatusForm.status} onChange={(e) => setSubscriptionStatusForm((s) => ({ ...s, status: e.target.value }))}>
                 <option value="">Selecione status</option>
                 <option value="ativa">Ativa</option>
                 <option value="atrasada">Atrasada</option>
@@ -1675,7 +1675,7 @@ export default function Owner() {
 
           <Card title="Trocar plano por codigo">
             <div className="grid gap-2 md:grid-cols-3">
-              <select className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm" value={changePlanForm.empresa_id} onChange={(e) => setChangePlanForm((s) => ({ ...s, empresa_id: e.target.value }))}>
+              <select className="rounded border border-border bg-background px-3 py-2 text-sm" value={changePlanForm.empresa_id} onChange={(e) => setChangePlanForm((s) => ({ ...s, empresa_id: e.target.value }))}>
                 <option value="">Empresa</option>
                 {companies.map((c) => (
                   <option key={c.id} value={c.id}>
@@ -1683,7 +1683,7 @@ export default function Owner() {
                   </option>
                 ))}
               </select>
-              <input className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm" placeholder="Codigo do plano" value={changePlanForm.plano_codigo} onChange={(e) => setChangePlanForm((s) => ({ ...s, plano_codigo: e.target.value }))} />
+              <input className="rounded border border-border bg-background px-3 py-2 text-sm" placeholder="Codigo do plano" value={changePlanForm.plano_codigo} onChange={(e) => setChangePlanForm((s) => ({ ...s, plano_codigo: e.target.value }))} />
               <button className="rounded border border-amber-500 px-3 py-2 text-sm text-amber-300" disabled={!changePlanForm.empresa_id || !changePlanForm.plano_codigo || changePlan.isPending} onClick={() => runAction(() => changePlan.mutateAsync({ empresa_id: changePlanForm.empresa_id, plano_codigo: changePlanForm.plano_codigo }), 'Plano alterado com sucesso.')}>Trocar plano</button>
             </div>
           </Card>
@@ -1734,9 +1734,9 @@ export default function Owner() {
 
           <Card title="Atualizacao de cobranca por assinatura">
             <div className="grid gap-2 md:grid-cols-4">
-              <input className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm" placeholder="Subscription ID" value={billingForm.subscription_id} onChange={(e) => setBillingForm((s) => ({ ...s, subscription_id: e.target.value }))} />
-              <input className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm" placeholder="Novo valor" value={billingForm.amount} onChange={(e) => setBillingForm((s) => ({ ...s, amount: e.target.value }))} />
-              <select className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm" value={billingForm.payment_status} onChange={(e) => setBillingForm((s) => ({ ...s, payment_status: e.target.value }))}>
+              <input className="rounded border border-border bg-background px-3 py-2 text-sm" placeholder="Subscription ID" value={billingForm.subscription_id} onChange={(e) => setBillingForm((s) => ({ ...s, subscription_id: e.target.value }))} />
+              <input className="rounded border border-border bg-background px-3 py-2 text-sm" placeholder="Novo valor" value={billingForm.amount} onChange={(e) => setBillingForm((s) => ({ ...s, amount: e.target.value }))} />
+              <select className="rounded border border-border bg-background px-3 py-2 text-sm" value={billingForm.payment_status} onChange={(e) => setBillingForm((s) => ({ ...s, payment_status: e.target.value }))}>
                 <option value="">Selecione pagamento</option>
                 <option value="paid">Pago</option>
                 <option value="pending">Pendente</option>
@@ -1784,11 +1784,11 @@ export default function Owner() {
         <div className="space-y-4">
           <Card title="Atualizar contrato">
             <div className="grid gap-2">
-              <input className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm" placeholder="Contract ID" value={contractForm.contract_id} onChange={(e) => setContractForm((s) => ({ ...s, contract_id: e.target.value }))} />
-              <textarea className="min-h-[120px] rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm" placeholder="Conteudo" value={contractForm.content} onChange={(e) => setContractForm((s) => ({ ...s, content: e.target.value }))} />
+              <input className="rounded border border-border bg-background px-3 py-2 text-sm" placeholder="Contract ID" value={contractForm.contract_id} onChange={(e) => setContractForm((s) => ({ ...s, contract_id: e.target.value }))} />
+              <textarea className="min-h-[120px] rounded border border-border bg-background px-3 py-2 text-sm" placeholder="Conteudo" value={contractForm.content} onChange={(e) => setContractForm((s) => ({ ...s, content: e.target.value }))} />
               <div className="grid gap-2 md:grid-cols-3">
-                <input className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm" placeholder="Resumo" value={contractForm.summary} onChange={(e) => setContractForm((s) => ({ ...s, summary: e.target.value }))} />
-                <input className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm" placeholder="Status" value={contractForm.status} onChange={(e) => setContractForm((s) => ({ ...s, status: e.target.value }))} />
+                <input className="rounded border border-border bg-background px-3 py-2 text-sm" placeholder="Resumo" value={contractForm.summary} onChange={(e) => setContractForm((s) => ({ ...s, summary: e.target.value }))} />
+                <input className="rounded border border-border bg-background px-3 py-2 text-sm" placeholder="Status" value={contractForm.status} onChange={(e) => setContractForm((s) => ({ ...s, status: e.target.value }))} />
                 <button className="rounded border border-slate-600 px-3 py-2 text-sm" disabled={!contractForm.contract_id || updateContractMutation.isPending} onClick={() => runAction(() => updateContractMutation.mutateAsync({ contractId: contractForm.contract_id, content: contractForm.content, summary: contractForm.summary || undefined, status: contractForm.status || undefined }), 'Contrato atualizado com sucesso.')}>Salvar contrato</button>
               </div>
             </div>
@@ -1796,7 +1796,7 @@ export default function Owner() {
 
           <Card title="Acoes de contrato">
             <div className="grid gap-2 md:grid-cols-3">
-              <input className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm" placeholder="Contract ID" value={contractOnlyId} onChange={(e) => setContractOnlyId(e.target.value)} />
+              <input className="rounded border border-border bg-background px-3 py-2 text-sm" placeholder="Contract ID" value={contractOnlyId} onChange={(e) => setContractOnlyId(e.target.value)} />
               <button className="rounded border border-amber-500 px-3 py-2 text-sm text-amber-300" disabled={!contractOnlyId || regenerateContractMutation.isPending} onClick={() => runAction(() => regenerateContractMutation.mutateAsync(contractOnlyId), 'Contrato regenerado com sucesso.')}>Regenerar</button>
               <button className="rounded border border-rose-600 px-3 py-2 text-sm text-rose-300" disabled={!contractOnlyId || deleteContractMutation.isPending} onClick={() => runAction(() => deleteContractMutation.mutateAsync(contractOnlyId), 'Contrato removido com sucesso.')}>Excluir</button>
             </div>
@@ -1838,7 +1838,7 @@ export default function Owner() {
         <div className="space-y-4">
           <Card title="Responder ticket">
             <div className="grid gap-2 md:grid-cols-4">
-              <select className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm" value={supportForm.ticket_id} onChange={(e) => setSupportForm((s) => ({ ...s, ticket_id: e.target.value }))}>
+              <select className="rounded border border-border bg-background px-3 py-2 text-sm" value={supportForm.ticket_id} onChange={(e) => setSupportForm((s) => ({ ...s, ticket_id: e.target.value }))}>
                 <option value="">Ticket</option>
                 {tickets.map((t) => (
                   <option key={t.id} value={t.id}>
@@ -1846,8 +1846,8 @@ export default function Owner() {
                   </option>
                 ))}
               </select>
-              <input className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm" placeholder="Resposta" value={supportForm.response} onChange={(e) => setSupportForm((s) => ({ ...s, response: e.target.value }))} />
-              <select className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm" value={supportForm.status} onChange={(e) => setSupportForm((s) => ({ ...s, status: e.target.value }))}>
+              <input className="rounded border border-border bg-background px-3 py-2 text-sm" placeholder="Resposta" value={supportForm.response} onChange={(e) => setSupportForm((s) => ({ ...s, response: e.target.value }))} />
+              <select className="rounded border border-border bg-background px-3 py-2 text-sm" value={supportForm.status} onChange={(e) => setSupportForm((s) => ({ ...s, status: e.target.value }))}>
                 <option value="">Selecione status</option>
                 <option value="resolvido">Resolvido</option>
                 <option value="em_andamento">Em andamento</option>
@@ -1890,22 +1890,22 @@ export default function Owner() {
       {(active === 'auditoria' || active === 'logs') && (
         <Card title={active === 'auditoria' ? 'Auditoria' : 'Logs'} subtitle="Eventos e trilha tecnica da plataforma">
           <div className="mb-4 grid gap-2 md:grid-cols-4">
-            <select className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm" value={auditFilters.empresa_id} onChange={(e) => setAuditFilters((s) => ({ ...s, empresa_id: e.target.value }))}>
+            <select className="rounded border border-border bg-background px-3 py-2 text-sm" value={auditFilters.empresa_id} onChange={(e) => setAuditFilters((s) => ({ ...s, empresa_id: e.target.value }))}>
               <option value="">Empresa (todas)</option>
               {companies.map((company) => (
                 <option key={company.id} value={company.id}>{company.nome || company.slug || company.id}</option>
               ))}
             </select>
 
-            <select className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm" value={auditFilters.user_id} onChange={(e) => setAuditFilters((s) => ({ ...s, user_id: e.target.value }))}>
+            <select className="rounded border border-border bg-background px-3 py-2 text-sm" value={auditFilters.user_id} onChange={(e) => setAuditFilters((s) => ({ ...s, user_id: e.target.value }))}>
               <option value="">Usuario (todos)</option>
               {users.map((u) => (
                 <option key={u.id} value={u.id}>{u.nome || u.email || u.id}</option>
               ))}
             </select>
 
-            <input className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm" placeholder="Modulo/origem (ex: owner)" value={auditFilters.module} onChange={(e) => setAuditFilters((s) => ({ ...s, module: e.target.value }))} />
-            <select className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm" value={auditFilters.severity} onChange={(e) => setAuditFilters((s) => ({ ...s, severity: e.target.value }))}>
+            <input className="rounded border border-border bg-background px-3 py-2 text-sm" placeholder="Modulo/origem (ex: owner)" value={auditFilters.module} onChange={(e) => setAuditFilters((s) => ({ ...s, module: e.target.value }))} />
+            <select className="rounded border border-border bg-background px-3 py-2 text-sm" value={auditFilters.severity} onChange={(e) => setAuditFilters((s) => ({ ...s, severity: e.target.value }))}>
               <option value="">Severidade (todas)</option>
               <option value="info">info</option>
               <option value="warning">warning</option>
@@ -1913,9 +1913,9 @@ export default function Owner() {
               <option value="critical">critical</option>
             </select>
 
-            <input type="datetime-local" className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm" value={auditFilters.from} onChange={(e) => setAuditFilters((s) => ({ ...s, from: e.target.value }))} />
-            <input type="datetime-local" className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm" value={auditFilters.to} onChange={(e) => setAuditFilters((s) => ({ ...s, to: e.target.value }))} />
-            <input className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm" placeholder="Acao exata (opcional)" value={auditFilters.action_type} onChange={(e) => setAuditFilters((s) => ({ ...s, action_type: e.target.value }))} />
+            <input type="datetime-local" className="rounded border border-border bg-background px-3 py-2 text-sm" value={auditFilters.from} onChange={(e) => setAuditFilters((s) => ({ ...s, from: e.target.value }))} />
+            <input type="datetime-local" className="rounded border border-border bg-background px-3 py-2 text-sm" value={auditFilters.to} onChange={(e) => setAuditFilters((s) => ({ ...s, to: e.target.value }))} />
+            <input className="rounded border border-border bg-background px-3 py-2 text-sm" placeholder="Acao exata (opcional)" value={auditFilters.action_type} onChange={(e) => setAuditFilters((s) => ({ ...s, action_type: e.target.value }))} />
             <button className="rounded border border-slate-600 px-3 py-2 text-sm" onClick={() => setAuditFilters({ empresa_id: '', user_id: '', module: '', from: '', to: '', action_type: '', severity: '' })}>Limpar filtros</button>
           </div>
 
@@ -1959,16 +1959,16 @@ export default function Owner() {
       {(active === 'configuracoes' || active === 'feature-flags') && (
         <div className="space-y-4">
           <Card
-            title="Logout automático por usuário"
-            subtitle="Selecione qualquer usuário do sistema. O timeout será aplicado para a empresa vinculada a ele."
+            title="Logout automÃ¡tico por usuÃ¡rio"
+            subtitle="Selecione qualquer usuÃ¡rio do sistema. O timeout serÃ¡ aplicado para a empresa vinculada a ele."
           >
             <div className="grid gap-2 md:grid-cols-2">
               <select
-                className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm"
+                className="rounded border border-border bg-background px-3 py-2 text-sm"
                 value={userInactivityTimeoutForm.user_id}
                 onChange={(e) => setUserInactivityTimeoutForm((s) => ({ ...s, user_id: e.target.value }))}
               >
-                <option value="">Selecione usuário (qualquer permissão)</option>
+                <option value="">Selecione usuÃ¡rio (qualquer permissÃ£o)</option>
                 {usersWithCompany.map((u) => {
                   const userEmpresaId = String(
                     u.empresa_id
@@ -1980,7 +1980,7 @@ export default function Owner() {
 
                   return (
                     <option key={u.id} value={u.id}>
-                      {u.nome || u.email || u.id} • {u.email || '-'} • {userCompany?.nome || userEmpresaId || 'sem empresa'} • {userRoles.join(', ') || 'sem role'}
+                      {u.nome || u.email || u.id} â€¢ {u.email || '-'} â€¢ {userCompany?.nome || userEmpresaId || 'sem empresa'} â€¢ {userRoles.join(', ') || 'sem role'}
                     </option>
                   )
                 })}
@@ -1990,14 +1990,14 @@ export default function Owner() {
                 type="number"
                 min={1}
                 max={1440}
-                className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm"
+                className="rounded border border-border bg-background px-3 py-2 text-sm"
                 placeholder="Minutos de inatividade"
                 value={userInactivityTimeoutForm.inactivity_timeout_minutes}
                 onChange={(e) => setUserInactivityTimeoutForm((s) => ({ ...s, inactivity_timeout_minutes: e.target.value }))}
               />
 
               <div className="rounded border border-slate-800 bg-slate-950 px-3 py-2 text-xs text-slate-400 md:col-span-2">
-                Empresa alvo: {settingsForm.empresa_id || '-'} • Timeout atual: {selectedCompanyInactivityMinutes} min
+                Empresa alvo: {settingsForm.empresa_id || '-'} â€¢ Timeout atual: {selectedCompanyInactivityMinutes} min
               </div>
 
               <button
@@ -2009,16 +2009,16 @@ export default function Owner() {
                     userId: userInactivityTimeoutForm.user_id,
                     inactivityTimeoutMinutes: Math.max(1, Math.min(1440, Math.trunc(minutes))),
                   })
-                }, 'Timeout de logout automático atualizado com sucesso.')}
+                }, 'Timeout de logout automÃ¡tico atualizado com sucesso.')}
               >
-                Atualizar timeout por usuário
+                Atualizar timeout por usuÃ¡rio
               </button>
             </div>
           </Card>
 
           <Card title={active === 'configuracoes' ? 'Configuracoes por empresa' : 'Feature Flags por empresa'}>
             <div className="grid gap-2">
-              <select className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm" value={settingsForm.empresa_id} onChange={(e) => setSettingsForm((s) => ({ ...s, empresa_id: e.target.value }))}>
+              <select className="rounded border border-border bg-background px-3 py-2 text-sm" value={settingsForm.empresa_id} onChange={(e) => setSettingsForm((s) => ({ ...s, empresa_id: e.target.value }))}>
                 <option value="">Selecione empresa</option>
                 {companies.map((c) => (
                   <option key={c.id} value={c.id}>
@@ -2026,9 +2026,9 @@ export default function Owner() {
                   </option>
                 ))}
               </select>
-              <textarea className="min-h-[90px] rounded border border-slate-700 bg-slate-950 px-3 py-2 text-xs" placeholder="JSON modules" value={settingsForm.modules} onChange={(e) => setSettingsForm((s) => ({ ...s, modules: e.target.value }))} />
-              <textarea className="min-h-[90px] rounded border border-slate-700 bg-slate-950 px-3 py-2 text-xs" placeholder="JSON limits" value={settingsForm.limits} onChange={(e) => setSettingsForm((s) => ({ ...s, limits: e.target.value }))} />
-              <textarea className="min-h-[90px] rounded border border-slate-700 bg-slate-950 px-3 py-2 text-xs" placeholder="JSON features" value={settingsForm.features} onChange={(e) => setSettingsForm((s) => ({ ...s, features: e.target.value }))} />
+              <textarea className="min-h-[90px] rounded border border-border bg-background px-3 py-2 text-xs" placeholder="JSON modules" value={settingsForm.modules} onChange={(e) => setSettingsForm((s) => ({ ...s, modules: e.target.value }))} />
+              <textarea className="min-h-[90px] rounded border border-border bg-background px-3 py-2 text-xs" placeholder="JSON limits" value={settingsForm.limits} onChange={(e) => setSettingsForm((s) => ({ ...s, limits: e.target.value }))} />
+              <textarea className="min-h-[90px] rounded border border-border bg-background px-3 py-2 text-xs" placeholder="JSON features" value={settingsForm.features} onChange={(e) => setSettingsForm((s) => ({ ...s, features: e.target.value }))} />
               <button className="rounded border border-slate-600 px-3 py-2 text-sm" disabled={!settingsForm.empresa_id || updateCompanySettingsMutation.isPending} onClick={() => runAction(async () => {
                 const modules = settingsForm.modules.trim() ? JSON.parse(settingsForm.modules) : {}
                 const limits = settingsForm.limits.trim() ? JSON.parse(settingsForm.limits) : {}
@@ -2048,7 +2048,7 @@ export default function Owner() {
         <Card title="Monitoramento" subtitle="Saude do backend e cobertura de acoes">
           <div className="mb-4 grid gap-2 md:grid-cols-2">
             <select
-              className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm"
+              className="rounded border border-border bg-background px-3 py-2 text-sm"
               value={monitoringEmpresaId}
               onChange={(e) => setMonitoringEmpresaId(e.target.value)}
             >
@@ -2072,7 +2072,7 @@ export default function Owner() {
                 <div className={`h-3 w-3 rounded-full ${monitorSummary.status === 'healthy' ? 'bg-emerald-400' : monitorSummary.status === 'warning' ? 'bg-amber-400' : 'bg-rose-400'} animate-pulse`} />
                 <div>
                   <p className="text-sm font-semibold text-slate-100">Status Geral do Sistema</p>
-                  <p className="text-xs text-slate-400">Monitoramento em tempo real • Atualizacao a cada 5s</p>
+                  <p className="text-xs text-slate-400">Monitoramento em tempo real â€¢ Atualizacao a cada 5s</p>
                 </div>
               </div>
               <span className={`rounded-full px-3 py-1 text-[11px] font-semibold ${monitorSummary.status === 'healthy' ? 'bg-emerald-900/40 text-emerald-300 border border-emerald-600/40' : monitorSummary.status === 'warning' ? 'bg-amber-900/40 text-amber-300 border border-amber-600/40' : 'bg-rose-900/40 text-rose-300 border border-rose-600/40'}`}>
@@ -2139,7 +2139,7 @@ export default function Owner() {
               <p className="text-xs text-slate-400">Status dos bancos/tabelas (refresh: 0,25s)</p>
               <p className="text-[11px] text-slate-500">
                 {isFetchingTables ? 'Atualizando...' : 'Atualizacao concluida'}
-                {tablesUpdatedAt ? ` • ${new Date(tablesUpdatedAt).toLocaleTimeString('pt-BR')}` : ''}
+                {tablesUpdatedAt ? ` â€¢ ${new Date(tablesUpdatedAt).toLocaleTimeString('pt-BR')}` : ''}
               </p>
             </div>
 
@@ -2201,14 +2201,14 @@ export default function Owner() {
         <div className="space-y-4">
           <Card title="Promover usuario para SYSTEM_ADMIN">
             <div className="flex flex-col gap-2 md:flex-row">
-              <input className="w-full rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm" placeholder="UUID do usuario" value={systemForm.user_id} onChange={(e) => setSystemForm((s) => ({ ...s, user_id: e.target.value }))} />
+              <input className="w-full rounded border border-border bg-background px-3 py-2 text-sm" placeholder="UUID do usuario" value={systemForm.user_id} onChange={(e) => setSystemForm((s) => ({ ...s, user_id: e.target.value }))} />
               <button className="rounded bg-emerald-500 px-4 py-2 text-sm font-semibold text-slate-900" disabled={!systemForm.user_id || createSystemAdminMutation.isPending} onClick={() => runAction(() => createSystemAdminMutation.mutateAsync({ userId: systemForm.user_id }), 'Permissao SYSTEM_ADMIN concedida com sucesso.')}>Conceder SYSTEM_ADMIN</button>
             </div>
           </Card>
 
           <Card title="Data Control (Owner Master)" subtitle="Visualize tabelas por tenant e exclua somente os dados desejados da empresa selecionada.">
             <div className="grid gap-2 md:grid-cols-2">
-              <select className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm" value={systemForm.empresa_id} onChange={(e) => setSystemForm((s) => ({ ...s, empresa_id: e.target.value }))}>
+              <select className="rounded border border-border bg-background px-3 py-2 text-sm" value={systemForm.empresa_id} onChange={(e) => setSystemForm((s) => ({ ...s, empresa_id: e.target.value }))}>
                 <option value="">Empresa alvo</option>
                 {companies.map((c) => (
                   <option key={c.id} value={c.id}>
@@ -2216,7 +2216,7 @@ export default function Owner() {
                   </option>
                 ))}
               </select>
-              <select className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm" value={systemForm.table_name} onChange={(e) => setSystemForm((s) => ({ ...s, table_name: e.target.value }))}>
+              <select className="rounded border border-border bg-background px-3 py-2 text-sm" value={systemForm.table_name} onChange={(e) => setSystemForm((s) => ({ ...s, table_name: e.target.value }))}>
                 <option value="">Tabela (manual)</option>
                 {tenantScopedTables.map((table) => (
                   <option key={table.table_name} value={table.table_name}>
@@ -2224,7 +2224,7 @@ export default function Owner() {
                   </option>
                 ))}
               </select>
-              <input className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm md:col-span-2" type="password" placeholder="Senha de confirmacao" value={systemForm.auth_password} onChange={(e) => setSystemForm((s) => ({ ...s, auth_password: e.target.value }))} />
+              <input className="rounded border border-border bg-background px-3 py-2 text-sm md:col-span-2" type="password" placeholder="Senha de confirmacao" value={systemForm.auth_password} onChange={(e) => setSystemForm((s) => ({ ...s, auth_password: e.target.value }))} />
             </div>
 
             <div className="mt-3 grid gap-2 md:grid-cols-3">
@@ -2341,9 +2341,9 @@ export default function Owner() {
         <div className="space-y-4">
           <Card title="Criar owner/admin da plataforma">
             <div className="grid gap-2 md:grid-cols-4">
-              <input className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm" placeholder="Nome" value={ownerMasterForm.nome} onChange={(e) => setOwnerMasterForm((s) => ({ ...s, nome: e.target.value }))} />
-              <input className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm" type="email" placeholder="Email" value={ownerMasterForm.email} onChange={(e) => setOwnerMasterForm((s) => ({ ...s, email: e.target.value }))} />
-              <input className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm" type="password" placeholder="Senha (opcional)" value={ownerMasterForm.password} onChange={(e) => setOwnerMasterForm((s) => ({ ...s, password: e.target.value }))} />
+              <input className="rounded border border-border bg-background px-3 py-2 text-sm" placeholder="Nome" value={ownerMasterForm.nome} onChange={(e) => setOwnerMasterForm((s) => ({ ...s, nome: e.target.value }))} />
+              <input className="rounded border border-border bg-background px-3 py-2 text-sm" type="email" placeholder="Email" value={ownerMasterForm.email} onChange={(e) => setOwnerMasterForm((s) => ({ ...s, email: e.target.value }))} />
+              <input className="rounded border border-border bg-background px-3 py-2 text-sm" type="password" placeholder="Senha (opcional)" value={ownerMasterForm.password} onChange={(e) => setOwnerMasterForm((s) => ({ ...s, password: e.target.value }))} />
               <button className="rounded bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground" disabled={!ownerMasterForm.nome || !isValidEmail(ownerMasterForm.email) || createPlatformOwnerMutation.isPending} onClick={() => isValidEmail(ownerMasterForm.email) ? runAction(() => createPlatformOwnerMutation.mutateAsync({ nome: ownerMasterForm.nome, email: normalizeEmail(ownerMasterForm.email), password: ownerMasterForm.password || undefined }), 'Conta de plataforma criada com sucesso.') : setError('Email de owner invalido. Use um email completo.')}>Criar conta</button>
             </div>
           </Card>
@@ -2579,3 +2579,4 @@ export default function Owner() {
     </OwnerPortalLayout>
   )
 }
+

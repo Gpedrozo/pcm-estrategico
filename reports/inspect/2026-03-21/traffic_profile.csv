@@ -1,0 +1,45 @@
+schemaname,table_name,blocks_read,write_tuples,blocks_write,activity_ratio
+auth,sessions,9,3045,9135,1015.0:1 (Write-Heavy)
+auth,mfa_amr_claims,2,2024,4048,2024.0:1 (Write-Heavy)
+auth,users,20,3501,1400.4,70.0:1 (Write-Heavy)
+public,audit_logs,20,1258,822.538461538462,41.1:1 (Write-Heavy)
+public,user_roles,6,451,676.5,112.8:1 (Write-Heavy)
+public,empresas,6,651,651,108.5:1 (Write-Heavy)
+public,configuracoes_sistema,8,873,436.5,54.6:1 (Write-Heavy)
+auth,identities,7,540,360,51.4:1 (Write-Heavy)
+public,profiles,4,470,235,58.8:1 (Write-Heavy)
+public,dados_empresa,8,352,88,11.0:1 (Write-Heavy)
+public,empresa_config,20,96,24,1.2:1 (Write-Heavy)
+public,support_tickets,16,19,19,1.2:1 (Write-Heavy)
+public,ordens_servico,17,12,6,0.4:1 (Write-Heavy)
+public,enterprise_audit_logs,20,42,-0,Read-Only
+public,contract_versions,20,478,-0,Read-Only
+public,planos_preventivos,20,12,-0,Read-Only
+public,subscriptions,19,356,-0,Read-Only
+public,maintenance_schedule,16,10,-0,Read-Only
+public,solicitacoes_manutencao,15,30,-0,Read-Only
+public,plans,13,226,-0,Read-Only
+supabase_migrations,schema_migrations,1,95,11.875,11.9:1 (Write-Heavy)
+public,equipamentos,12,33,-0,Read-Only
+auth,refresh_tokens,12,5080,0,Read-Only
+public,mecanicos,6,4,4,0.7:1 (Write-Heavy)
+public,contracts,8,412,-0,Read-Only
+public,document_sequences,8,11,-0,Read-Only
+auth,one_time_tokens,8,25,-0,Read-Only
+public,permissoes_granulares,8,50,-0,Read-Only
+auth,schema_migrations,6,69,0.932432432432432,1:6.4 (Read-Heavy)
+realtime,schema_migrations,4,68,1.01492537313433,0.3:1 (Write-Heavy)
+storage,objects,5,14,-0,Read-Only
+public,operational_logs,4,8,-0,Read-Only
+public,execucoes_os,4,2,-0,Read-Only
+public,legacy_edge_refactor_contract_20260313,4,5,-0,Read-Only
+public,billing_customers,3,1,-0,Read-Only
+public,login_attempts,3,9,-0,Read-Only
+public,owner_impersonation_sessions,3,4,-0,Read-Only
+storage,migrations,2,57,1,0.5:1 (Write-Heavy)
+storage,buckets,2,4,-0,Read-Only
+public,legacy_rbac_roles_20260313,2,4,-0,Read-Only
+public,legacy_rbac_permissions_20260313,2,7,-0,Read-Only
+public,db_cleanup_run_items,1,70,-0,Read-Only
+public,db_cleanup_runs,1,3,-0,Read-Only
+public,legacy_rbac_role_permissions_20260313,1,15,-0,Read-Only

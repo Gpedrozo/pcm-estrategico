@@ -1,0 +1,4 @@
+name,index,index_size,index_scans
+public.audit_logs,idx_audit_logs_user_created_at,32 kB,0
+public.audit_logs,idx_audit_logs_entity,32 kB,0
+public.audit_logs,idx_audit_logs_action_created_at,16 kB,0

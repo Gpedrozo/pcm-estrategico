@@ -1,0 +1,117 @@
+﻿[
+    {
+        "schema_name":  "auth",
+        "table_name":  "audit_log_entries",
+        "relkind":  "r"
+    },
+    {
+        "schema_name":  "auth",
+        "table_name":  "custom_oauth_providers",
+        "relkind":  "r"
+    },
+    {
+        "schema_name":  "auth",
+        "table_name":  "flow_state",
+        "relkind":  "r"
+    },
+    {
+        "schema_name":  "auth",
+        "table_name":  "identities",
+        "relkind":  "r"
+    },
+    {
+        "schema_name":  "auth",
+        "table_name":  "instances",
+        "relkind":  "r"
+    },
+    {
+        "schema_name":  "auth",
+        "table_name":  "mfa_amr_claims",
+        "relkind":  "r"
+    },
+    {
+        "schema_name":  "auth",
+        "table_name":  "mfa_challenges",
+        "relkind":  "r"
+    },
+    {
+        "schema_name":  "auth",
+        "table_name":  "mfa_factors",
+        "relkind":  "r"
+    },
+    {
+        "schema_name":  "auth",
+        "table_name":  "oauth_authorizations",
+        "relkind":  "r"
+    },
+    {
+        "schema_name":  "auth",
+        "table_name":  "oauth_client_states",
+        "relkind":  "r"
+    },
+    {
+        "schema_name":  "auth",
+        "table_name":  "oauth_clients",
+        "relkind":  "r"
+    },
+    {
+        "schema_name":  "auth",
+        "table_name":  "oauth_consents",
+        "relkind":  "r"
+    },
+    {
+        "schema_name":  "auth",
+        "table_name":  "one_time_tokens",
+        "relkind":  "r"
+    },
+    {
+        "schema_name":  "auth",
+        "table_name":  "refresh_tokens",
+        "relkind":  "r"
+    },
+    {
+        "schema_name":  "auth",
+        "table_name":  "saml_providers",
+        "relkind":  "r"
+    },
+    {
+        "schema_name":  "auth",
+        "table_name":  "saml_relay_states",
+        "relkind":  "r"
+    },
+    {
+        "schema_name":  "auth",
+        "table_name":  "schema_migrations",
+        "relkind":  "r"
+    },
+    {
+        "schema_name":  "auth",
+        "table_name":  "sessions",
+        "relkind":  "r"
+    },
+    {
+        "schema_name":  "auth",
+        "table_name":  "sso_domains",
+        "relkind":  "r"
+    },
+    {
+        "schema_name":  "auth",
+        "table_name":  "sso_providers",
+        "relkind":  "r"
+    },
+    {
+        "schema_name":  "auth",
+        "table_name":  "users",
+        "relkind":  "r"
+    },
+    {
+        "schema_name":  "auth",
+        "table_name":  "webauthn_challenges",
+        "relkind":  "r"
+    },
+    {
+        "schema_name":  "auth",
+        "table_name":  "webauthn_credentials",
+        "relkind":  "r"
+    }
+]

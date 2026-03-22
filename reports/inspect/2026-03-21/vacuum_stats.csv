@@ -1,0 +1,82 @@
+name,last_vacuum,last_autovacuum,last_analyze,last_autoanalyze,rowcount,dead_rowcount,autovacuum_threshold,expect_autovacuum,autoanalyze_threshold,expect_autoanalyze
+public.audit_logs,"",2026-03-21 23:28,"",2026-03-21 23:28,            26,             0,            55,no,            53,no
+public.configuracoes_sistema,"",2026-03-20 01:06,"",2026-03-20 01:36,             2,            21,            50,no,            50,no
+public.dados_empresa,"",2026-03-07 03:14,"",2026-03-17 02:41,             4,            37,            51,no,            50,no
+public.empresa_config,"","","",2026-03-17 02:41,             4,            36,            51,no,            50,no
+public.empresas,"",2026-03-20 00:02,"",2026-03-20 01:58,             1,            12,            50,no,            50,no
+public.mecanicos,"","","","",             1,             2,            50,no,            50,no
+public.ordens_servico,"","","","",             2,             5,            50,no,            50,no
+public.profiles,"",2026-03-15 22:41,"",2026-03-21 22:57,             2,            36,            50,no,            50,no
+public.support_tickets,"","","","",             1,            11,            50,no,            50,no
+public.user_roles,"",2026-03-19 23:50,"",2026-03-22 00:41,             2,            20,            50,no,            50,no
+public.acoes_corretivas,"","","","",            -1,             0,            50,no,            50,no
+public.ai_root_cause_analysis,"","","","",            -1,             0,            50,no,            50,no
+public.analise_causa_raiz,"","","","",            -1,             0,            50,no,            50,no
+public.anomalias_inspecao,"","","","",            -1,             0,            50,no,            50,no
+public.areas,"","","","",            -1,             0,            50,no,            50,no
+public.atividades_lubrificacao,"","","","",            -1,             0,            50,no,            50,no
+public.atividades_preventivas,"","","","",            -1,             0,            50,no,            50,no
+public.auth_session_transfer_tokens,"","","","",            -1,             0,            50,no,            50,no
+public.billing_customers,"","","","",            -1,             0,            50,no,            50,no
+public.billing_invoices,"","","","",            -1,             0,            50,no,            50,no
+public.company_subscriptions,"","","","",            -1,             0,            50,no,            50,no
+public.company_usage_metrics,"","","","",            -1,             0,            50,no,            50,no
+public.componentes_equipamento,"","","","",            -1,             0,            50,no,            50,no
+public.contract_versions,"",2026-03-07 10:39,"",2026-03-08 20:02,            -1,             0,            50,no,            50,no
+public.contracts,"",2026-03-07 03:17,"",2026-03-15 19:15,            -1,             5,            50,no,            50,no
+public.contratos,"","","","",            -1,             0,            50,no,            50,no
+public.db_cleanup_run_items,"","","",2026-03-15 19:18,            -1,             0,            50,no,            50,no
+public.db_cleanup_runs,"","","","",            -1,             0,            50,no,            50,no
+public.document_layouts,"","","","",            -1,             0,            50,no,            50,no
+public.document_sequences,"","","","",            -1,            10,            50,no,            50,no
+public.documentos_tecnicos,"","","","",            -1,             0,            50,no,            50,no
+public.enterprise_audit_logs,"","","","",            -1,            21,            50,no,            50,no
+public.equipamentos,"","","","",            -1,             9,            50,no,            50,no
+public.execucoes_lubrificacao,"","","","",            -1,             0,            50,no,            50,no
+public.execucoes_os,"","","","",            -1,             1,            50,no,            50,no
+public.execucoes_os_pausas,"","","","",            -1,             0,            50,no,            50,no
+public.execucoes_preventivas,"","","","",            -1,             0,            50,no,            50,no
+public.feature_flags,"","","","",            -1,             0,            50,no,            50,no
+public.fmea,"","","","",            -1,             0,            50,no,            50,no
+public.fornecedores,"","","","",            -1,             0,            50,no,            50,no
+public.incidentes_ssma,"","","","",            -1,             0,            50,no,            50,no
+public.inspecoes,"","","","",            -1,             0,            50,no,            50,no
+public.ip_rate_limits,"","","","",            -1,             0,            50,no,            50,no
+public.legacy_avaliacoes_fornecedores_20260313,"","","","",            -1,             0,            50,no,            50,no
+public.legacy_edge_refactor_contract_20260313,"","","","",            -1,             0,            50,no,            50,no
+public.legacy_rate_limits_20260313,"","","","",            -1,             0,            50,no,            50,no
+public.legacy_rbac_permissions_20260313,"","","","",            -1,             0,            50,no,            50,no
+public.legacy_rbac_role_permissions_20260313,"","","","",            -1,             0,            50,no,            50,no
+public.legacy_rbac_roles_20260313,"","","","",            -1,             0,            50,no,            50,no
+public.legacy_subscription_payments_20260313,"","","","",            -1,             0,            50,no,            50,no
+public.login_attempts,"","","","",            -1,             8,            50,no,            50,no
+public.maintenance_action_suggestions,"","","","",            -1,             0,            50,no,            50,no
+public.maintenance_schedule,"","","","",            -1,             2,            50,no,            50,no
+public.materiais,"","","","",            -1,             0,            50,no,            50,no
+public.materiais_os,"","","","",            -1,             0,            50,no,            50,no
+public.medicoes_preditivas,"","","","",            -1,             0,            50,no,            50,no
+public.melhorias,"","","","",            -1,             0,            50,no,            50,no
+public.movimentacoes_materiais,"","","","",            -1,             0,            50,no,            50,no
+public.operational_logs,"","","","",            -1,             4,            50,no,            50,no
+public.orcamentos_manutencao,"","","","",            -1,             0,            50,no,            50,no
+public.owner_impersonation_sessions,"","","","",            -1,             2,            50,no,            50,no
+public.permissoes_granulares,"","","","",            -1,             0,            50,no,            50,no
+public.permissoes_trabalho,"","","","",            -1,             0,            50,no,            50,no
+public.planos_lubrificacao,"","","","",            -1,             0,            50,no,            50,no
+public.planos_preventivos,"","","","",            -1,             4,            50,no,            50,no
+public.plans,"",2026-03-07 03:18,"",2026-03-15 16:15,            -1,             1,            50,no,            50,no
+public.plantas,"","","","",            -1,             0,            50,no,            50,no
+public.rbac_user_roles,"","","","",            -1,             0,            50,no,            50,no
+public.saas_metrics_daily,"","","","",            -1,             0,            50,no,            50,no
+public.security_logs,"","","","",            -1,             0,            50,no,            50,no
+public.servicos_preventivos,"","","","",            -1,             0,            50,no,            50,no
+public.sistemas,"","","","",            -1,             0,            50,no,            50,no
+public.solicitacoes,"","","","",            -1,             0,            50,no,            50,no
+public.solicitacoes_manutencao,"","","","",            -1,            15,            50,no,            50,no
+public.subscription_payments,"","","","",            -1,             0,            50,no,            50,no
+public.subscriptions,"",2026-03-08 20:05,"",2026-03-15 16:16,            -1,             2,            50,no,            50,no
+public.system_error_events,"","","","",            -1,             0,            50,no,            50,no
+public.system_notifications,"","","","",            -1,             0,            50,no,            50,no
+public.templates_preventivos,"","","","",            -1,             0,            50,no,            50,no
+public.tenant_users,"","","","",            -1,             0,            50,no,            50,no
+public.tenants,"","","","",            -1,             0,            50,no,            50,no

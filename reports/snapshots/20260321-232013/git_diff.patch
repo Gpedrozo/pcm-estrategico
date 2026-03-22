@@ -1,0 +1,1122 @@
+﻿diff --git a/src/pages/Owner.tsx b/src/pages/Owner.tsx
+index 6dae11c..7d230ac 100644
+--- a/src/pages/Owner.tsx
++++ b/src/pages/Owner.tsx
+@@ -1,4 +1,4 @@
+-import { useCallback, useEffect, useMemo, useState } from 'react'
++´╗┐import { useCallback, useEffect, useMemo, useState } from 'react'
+ import { Activity, AlertTriangle, CheckCircle, Clock, Database, Gauge, Loader2, ShieldCheck } from 'lucide-react'
+ import { Bar, BarChart, CartesianGrid, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
+ import { useAuth } from '@/contexts/AuthContext'
+@@ -1269,18 +1269,18 @@ export default function Owner() {
+         <div className="space-y-4">
+           <Card title="Criar empresa" subtitle="Fluxo completo de onboarding: empresa, dados base e administrador inicial.">
+             <div className="grid gap-2 md:grid-cols-4">
+-              <input className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm" placeholder="Nome" value={createCompanyForm.nome} onChange={(e) => setCreateCompanyForm((s) => ({ ...s, nome: e.target.value }))} />
+-              <input className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm" placeholder="Slug" value={createCompanyForm.slug} onChange={(e) => setCreateCompanyForm((s) => ({ ...s, slug: e.target.value }))} />
+-              <input className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm" placeholder="Nome admin" value={createCompanyForm.admin_nome} onChange={(e) => setCreateCompanyForm((s) => ({ ...s, admin_nome: e.target.value }))} />
+-              <input className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm" type="email" placeholder="Email admin" value={createCompanyForm.admin_email} onChange={(e) => setCreateCompanyForm((s) => ({ ...s, admin_email: e.target.value }))} />
+-              <input className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm" placeholder="Razao social" value={createCompanyForm.razao_social} onChange={(e) => setCreateCompanyForm((s) => ({ ...s, razao_social: e.target.value }))} />
+-              <input className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm" placeholder="Nome fantasia" value={createCompanyForm.nome_fantasia} onChange={(e) => setCreateCompanyForm((s) => ({ ...s, nome_fantasia: e.target.value }))} />
+-              <input className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm" placeholder="CNPJ" value={createCompanyForm.cnpj} onChange={(e) => setCreateCompanyForm((s) => ({ ...s, cnpj: e.target.value }))} />
+-              <input className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm" placeholder="Telefone" value={createCompanyForm.telefone} onChange={(e) => setCreateCompanyForm((s) => ({ ...s, telefone: e.target.value }))} />
+-              <input className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm md:col-span-2" placeholder="Endereco" value={createCompanyForm.endereco} onChange={(e) => setCreateCompanyForm((s) => ({ ...s, endereco: e.target.value }))} />
+-              <input className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm" type="email" placeholder="Email operacional" value={createCompanyForm.email} onChange={(e) => setCreateCompanyForm((s) => ({ ...s, email: e.target.value }))} />
+-              <input className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm" placeholder="Responsavel" value={createCompanyForm.responsavel} onChange={(e) => setCreateCompanyForm((s) => ({ ...s, responsavel: e.target.value }))} />
+-              <input className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm" placeholder="Segmento" value={createCompanyForm.segmento} onChange={(e) => setCreateCompanyForm((s) => ({ ...s, segmento: e.target.value }))} />
++              <input className="rounded border border-border bg-background px-3 py-2 text-sm" placeholder="Nome" value={createCompanyForm.nome} onChange={(e) => setCreateCompanyForm((s) => ({ ...s, nome: e.target.value }))} />
++              <input className="rounded border border-border bg-background px-3 py-2 text-sm" placeholder="Slug" value={createCompanyForm.slug} onChange={(e) => setCreateCompanyForm((s) => ({ ...s, slug: e.target.value }))} />
++              <input className="rounded border border-border bg-background px-3 py-2 text-sm" placeholder="Nome admin" value={createCompanyForm.admin_nome} onChange={(e) => setCreateCompanyForm((s) => ({ ...s, admin_nome: e.target.value }))} />
++              <input className="rounded border border-border bg-background px-3 py-2 text-sm" type="email" placeholder="Email admin" value={createCompanyForm.admin_email} onChange={(e) => setCreateCompanyForm((s) => ({ ...s, admin_email: e.target.value }))} />
++              <input className="rounded border border-border bg-background px-3 py-2 text-sm" placeholder="Razao social" value={createCompanyForm.razao_social} onChange={(e) => setCreateCompanyForm((s) => ({ ...s, razao_social: e.target.value }))} />
++              <input className="rounded border border-border bg-background px-3 py-2 text-sm" placeholder="Nome fantasia" value={createCompanyForm.nome_fantasia} onChange={(e) => setCreateCompanyForm((s) => ({ ...s, nome_fantasia: e.target.value }))} />
++              <input className="rounded border border-border bg-background px-3 py-2 text-sm" placeholder="CNPJ" value={createCompanyForm.cnpj} onChange={(e) => setCreateCompanyForm((s) => ({ ...s, cnpj: e.target.value }))} />
++              <input className="rounded border border-border bg-background px-3 py-2 text-sm" placeholder="Telefone" value={createCompanyForm.telefone} onChange={(e) => setCreateCompanyForm((s) => ({ ...s, telefone: e.target.value }))} />
++              <input className="rounded border border-border bg-background px-3 py-2 text-sm md:col-span-2" placeholder="Endereco" value={createCompanyForm.endereco} onChange={(e) => setCreateCompanyForm((s) => ({ ...s, endereco: e.target.value }))} />
++              <input className="rounded border border-border bg-background px-3 py-2 text-sm" type="email" placeholder="Email operacional" value={createCompanyForm.email} onChange={(e) => setCreateCompanyForm((s) => ({ ...s, email: e.target.value }))} />
++              <input className="rounded border border-border bg-background px-3 py-2 text-sm" placeholder="Responsavel" value={createCompanyForm.responsavel} onChange={(e) => setCreateCompanyForm((s) => ({ ...s, responsavel: e.target.value }))} />
++              <input className="rounded border border-border bg-background px-3 py-2 text-sm" placeholder="Segmento" value={createCompanyForm.segmento} onChange={(e) => setCreateCompanyForm((s) => ({ ...s, segmento: e.target.value }))} />
+             </div>
+             <button
+               className="mt-3 rounded bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground"
+@@ -1308,7 +1308,7 @@ export default function Owner() {
+           <Card title="Atualizar empresa">
+             <div className="grid gap-2 md:grid-cols-3">
+               <select
+-                className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm"
++                className="rounded border border-border bg-background px-3 py-2 text-sm"
+                 value={updateCompanyForm.empresa_id}
+                 onChange={(e) => {
+                   const selectedId = e.target.value
+@@ -1328,8 +1328,8 @@ export default function Owner() {
+                   </option>
+                 ))}
+               </select>
+-              <input className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm" placeholder="Novo nome" value={updateCompanyForm.nome} onChange={(e) => setUpdateCompanyForm((s) => ({ ...s, nome: e.target.value }))} />
+-              <select className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm" value={updateCompanyForm.status} onChange={(e) => setUpdateCompanyForm((s) => ({ ...s, status: e.target.value }))}>
++              <input className="rounded border border-border bg-background px-3 py-2 text-sm" placeholder="Novo nome" value={updateCompanyForm.nome} onChange={(e) => setUpdateCompanyForm((s) => ({ ...s, nome: e.target.value }))} />
++              <select className="rounded border border-border bg-background px-3 py-2 text-sm" value={updateCompanyForm.status} onChange={(e) => setUpdateCompanyForm((s) => ({ ...s, status: e.target.value }))}>
+                 <option value="">Selecione status</option>
+                 <option value="active">Ativa</option>
+                 <option value="blocked">Bloqueada</option>
+@@ -1412,10 +1412,10 @@ export default function Owner() {
+         <div className="space-y-4">
+           <Card title="Criar usuario">
+             <div className="grid gap-2 md:grid-cols-5">
+-              <input className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm" placeholder="Nome" value={createUserForm.nome} onChange={(e) => setCreateUserForm((s) => ({ ...s, nome: e.target.value }))} />
+-              <input className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm" type="email" placeholder="Email" value={createUserForm.email} onChange={(e) => setCreateUserForm((s) => ({ ...s, email: e.target.value }))} />
+-              <input className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm" type="password" placeholder="Senha" value={createUserForm.password} onChange={(e) => setCreateUserForm((s) => ({ ...s, password: e.target.value }))} />
+-              <select className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm" value={createUserForm.role} onChange={(e) => setCreateUserForm((s) => ({ ...s, role: e.target.value }))}>
++              <input className="rounded border border-border bg-background px-3 py-2 text-sm" placeholder="Nome" value={createUserForm.nome} onChange={(e) => setCreateUserForm((s) => ({ ...s, nome: e.target.value }))} />
++              <input className="rounded border border-border bg-background px-3 py-2 text-sm" type="email" placeholder="Email" value={createUserForm.email} onChange={(e) => setCreateUserForm((s) => ({ ...s, email: e.target.value }))} />
++              <input className="rounded border border-border bg-background px-3 py-2 text-sm" type="password" placeholder="Senha" value={createUserForm.password} onChange={(e) => setCreateUserForm((s) => ({ ...s, password: e.target.value }))} />
++              <select className="rounded border border-border bg-background px-3 py-2 text-sm" value={createUserForm.role} onChange={(e) => setCreateUserForm((s) => ({ ...s, role: e.target.value }))}>
+                 <option value="">Perfil</option>
+                 <option value="ADMIN">ADMIN</option>
+                 <option value="GESTOR">GESTOR</option>
+@@ -1423,7 +1423,7 @@ export default function Owner() {
+                 <option value="USUARIO">USUARIO</option>
+                 <option value="SOLICITANTE">SOLICITANTE</option>
+               </select>
+-              <select className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm" value={createUserForm.empresa_id} onChange={(e) => setCreateUserForm((s) => ({ ...s, empresa_id: e.target.value }))}>
++              <select className="rounded border border-border bg-background px-3 py-2 text-sm" value={createUserForm.empresa_id} onChange={(e) => setCreateUserForm((s) => ({ ...s, empresa_id: e.target.value }))}>
+                 <option value="">Empresa</option>
+                 {companies.map((c) => (
+                   <option key={c.id} value={c.id}>
+@@ -1457,7 +1457,7 @@ export default function Owner() {
+ 
+           <Card title="Alterar status do usuario">
+             <div className="grid gap-2 md:grid-cols-3">
+-              <select className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm" value={userStatusForm.user_id} onChange={(e) => setUserStatusForm((s) => ({ ...s, user_id: e.target.value }))}>
++              <select className="rounded border border-border bg-background px-3 py-2 text-sm" value={userStatusForm.user_id} onChange={(e) => setUserStatusForm((s) => ({ ...s, user_id: e.target.value }))}>
+                 <option value="">Selecione usuario</option>
+                 {users.map((u) => (
+                   <option key={u.id} value={u.id}>
+@@ -1465,7 +1465,7 @@ export default function Owner() {
+                   </option>
+                 ))}
+               </select>
+-              <select className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm" value={userStatusForm.status} onChange={(e) => setUserStatusForm((s) => ({ ...s, status: e.target.value }))}>
++              <select className="rounded border border-border bg-background px-3 py-2 text-sm" value={userStatusForm.status} onChange={(e) => setUserStatusForm((s) => ({ ...s, status: e.target.value }))}>
+                 <option value="">Selecione status</option>
+                 <option value="ativo">Ativo</option>
+                 <option value="inativo">Inativo</option>
+@@ -1512,31 +1512,31 @@ export default function Owner() {
+         <div className="space-y-4">
+           <Card title="Criar plano">
+             <div className="grid gap-2 md:grid-cols-4">
+-              <input className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm" placeholder="Codigo" value={createPlanForm.code} onChange={(e) => setCreatePlanForm((s) => ({ ...s, code: e.target.value }))} />
+-              <input className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm" placeholder="Nome" value={createPlanForm.name} onChange={(e) => setCreatePlanForm((s) => ({ ...s, name: e.target.value }))} />
+-              <input className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm" placeholder="Limite usuarios" value={createPlanForm.user_limit} onChange={(e) => setCreatePlanForm((s) => ({ ...s, user_limit: e.target.value }))} />
+-              <input className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm" placeholder="Preco mensal" value={createPlanForm.price_month} onChange={(e) => setCreatePlanForm((s) => ({ ...s, price_month: e.target.value }))} />
++              <input className="rounded border border-border bg-background px-3 py-2 text-sm" placeholder="Codigo" value={createPlanForm.code} onChange={(e) => setCreatePlanForm((s) => ({ ...s, code: e.target.value }))} />
++              <input className="rounded border border-border bg-background px-3 py-2 text-sm" placeholder="Nome" value={createPlanForm.name} onChange={(e) => setCreatePlanForm((s) => ({ ...s, name: e.target.value }))} />
++              <input className="rounded border border-border bg-background px-3 py-2 text-sm" placeholder="Limite usuarios" value={createPlanForm.user_limit} onChange={(e) => setCreatePlanForm((s) => ({ ...s, user_limit: e.target.value }))} />
++              <input className="rounded border border-border bg-background px-3 py-2 text-sm" placeholder="Preco mensal" value={createPlanForm.price_month} onChange={(e) => setCreatePlanForm((s) => ({ ...s, price_month: e.target.value }))} />
+             </div>
+             <div className="mt-2 grid gap-2 md:grid-cols-4">
+-              <input className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm" placeholder="Storage MB" value={createPlanForm.data_limit_mb} onChange={(e) => setCreatePlanForm((s) => ({ ...s, data_limit_mb: e.target.value }))} />
+-              <input className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm" placeholder="Limite empresas (opcional)" value={createPlanForm.company_limit} onChange={(e) => setCreatePlanForm((s) => ({ ...s, company_limit: e.target.value }))} />
+-              <label className="flex items-center gap-2 rounded border border-slate-700 bg-slate-950 px-3 py-2 text-xs text-slate-300">
++              <input className="rounded border border-border bg-background px-3 py-2 text-sm" placeholder="Storage MB" value={createPlanForm.data_limit_mb} onChange={(e) => setCreatePlanForm((s) => ({ ...s, data_limit_mb: e.target.value }))} />
++              <input className="rounded border border-border bg-background px-3 py-2 text-sm" placeholder="Limite empresas (opcional)" value={createPlanForm.company_limit} onChange={(e) => setCreatePlanForm((s) => ({ ...s, company_limit: e.target.value }))} />
++              <label className="flex items-center gap-2 rounded border border-border bg-background px-3 py-2 text-xs text-slate-300">
+                 <input type="checkbox" checked={createPlanForm.active} onChange={(e) => setCreatePlanForm((s) => ({ ...s, active: e.target.checked }))} />
+                 Plano ativo
+               </label>
+               <button className="rounded bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground" disabled={createPlanMutation.isPending || !createPlanForm.name || !createPlanForm.code} onClick={() => runAction(() => createPlanMutation.mutateAsync(buildPlanPayload(createPlanForm)), 'Plano criado com sucesso.')}>Criar plano</button>
+             </div>
+-            <textarea className="mt-2 min-h-[70px] w-full rounded border border-slate-700 bg-slate-950 px-3 py-2 text-xs" placeholder="Descricao" value={createPlanForm.description} onChange={(e) => setCreatePlanForm((s) => ({ ...s, description: e.target.value }))} />
++            <textarea className="mt-2 min-h-[70px] w-full rounded border border-border bg-background px-3 py-2 text-xs" placeholder="Descricao" value={createPlanForm.description} onChange={(e) => setCreatePlanForm((s) => ({ ...s, description: e.target.value }))} />
+             <div className="mt-2 grid gap-2 md:grid-cols-2">
+-              <textarea className="min-h-[90px] w-full rounded border border-slate-700 bg-slate-950 px-3 py-2 text-xs font-mono" placeholder='Modulos JSON, ex: {"dashboard": true}' value={createPlanForm.module_flags_json} onChange={(e) => setCreatePlanForm((s) => ({ ...s, module_flags_json: e.target.value }))} />
+-              <textarea className="min-h-[90px] w-full rounded border border-slate-700 bg-slate-950 px-3 py-2 text-xs font-mono" placeholder='Premium features JSON, ex: ["analytics"]' value={createPlanForm.premium_features_json} onChange={(e) => setCreatePlanForm((s) => ({ ...s, premium_features_json: e.target.value }))} />
++              <textarea className="min-h-[90px] w-full rounded border border-border bg-background px-3 py-2 text-xs font-mono" placeholder='Modulos JSON, ex: {"dashboard": true}' value={createPlanForm.module_flags_json} onChange={(e) => setCreatePlanForm((s) => ({ ...s, module_flags_json: e.target.value }))} />
++              <textarea className="min-h-[90px] w-full rounded border border-border bg-background px-3 py-2 text-xs font-mono" placeholder='Premium features JSON, ex: ["analytics"]' value={createPlanForm.premium_features_json} onChange={(e) => setCreatePlanForm((s) => ({ ...s, premium_features_json: e.target.value }))} />
+             </div>
+           </Card>
+ 
+           <Card title="Atualizar plano">
+             <div className="grid gap-2 md:grid-cols-4">
+               <select
+-                className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm"
++                className="rounded border border-border bg-background px-3 py-2 text-sm"
+                 value={updatePlanForm.id}
+                 onChange={(e) => {
+                   const selectedId = e.target.value
+@@ -1564,20 +1564,20 @@ export default function Owner() {
+                   </option>
+                 ))}
+               </select>
+-              <input className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm" placeholder="Novo codigo" value={updatePlanForm.code} onChange={(e) => setUpdatePlanForm((s) => ({ ...s, code: e.target.value }))} />
+-              <input className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm" placeholder="Novo nome" value={updatePlanForm.name} onChange={(e) => setUpdatePlanForm((s) => ({ ...s, name: e.target.value }))} />
++              <input className="rounded border border-border bg-background px-3 py-2 text-sm" placeholder="Novo codigo" value={updatePlanForm.code} onChange={(e) => setUpdatePlanForm((s) => ({ ...s, code: e.target.value }))} />
++              <input className="rounded border border-border bg-background px-3 py-2 text-sm" placeholder="Novo nome" value={updatePlanForm.name} onChange={(e) => setUpdatePlanForm((s) => ({ ...s, name: e.target.value }))} />
+               <button className="rounded border border-slate-600 px-3 py-2 text-sm" disabled={!updatePlanForm.id || updatePlanMutation.isPending} onClick={() => runAction(() => updatePlanMutation.mutateAsync({ id: updatePlanForm.id, ...buildPlanPayload(updatePlanForm) }), 'Plano atualizado com sucesso.')}>Salvar</button>
+             </div>
+             <div className="mt-2 grid gap-2 md:grid-cols-4">
+-              <input className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm" placeholder="Preco mensal" value={updatePlanForm.price_month} onChange={(e) => setUpdatePlanForm((s) => ({ ...s, price_month: e.target.value }))} />
+-              <input className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm" placeholder="Limite usuarios" value={updatePlanForm.user_limit} onChange={(e) => setUpdatePlanForm((s) => ({ ...s, user_limit: e.target.value }))} />
+-              <input className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm" placeholder="Storage MB" value={updatePlanForm.data_limit_mb} onChange={(e) => setUpdatePlanForm((s) => ({ ...s, data_limit_mb: e.target.value }))} />
+-              <input className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm" placeholder="Limite empresas (opcional)" value={updatePlanForm.company_limit} onChange={(e) => setUpdatePlanForm((s) => ({ ...s, company_limit: e.target.value }))} />
++              <input className="rounded border border-border bg-background px-3 py-2 text-sm" placeholder="Preco mensal" value={updatePlanForm.price_month} onChange={(e) => setUpdatePlanForm((s) => ({ ...s, price_month: e.target.value }))} />
++              <input className="rounded border border-border bg-background px-3 py-2 text-sm" placeholder="Limite usuarios" value={updatePlanForm.user_limit} onChange={(e) => setUpdatePlanForm((s) => ({ ...s, user_limit: e.target.value }))} />
++              <input className="rounded border border-border bg-background px-3 py-2 text-sm" placeholder="Storage MB" value={updatePlanForm.data_limit_mb} onChange={(e) => setUpdatePlanForm((s) => ({ ...s, data_limit_mb: e.target.value }))} />
++              <input className="rounded border border-border bg-background px-3 py-2 text-sm" placeholder="Limite empresas (opcional)" value={updatePlanForm.company_limit} onChange={(e) => setUpdatePlanForm((s) => ({ ...s, company_limit: e.target.value }))} />
+             </div>
+-            <textarea className="mt-2 min-h-[70px] w-full rounded border border-slate-700 bg-slate-950 px-3 py-2 text-xs" placeholder="Descricao" value={updatePlanForm.description} onChange={(e) => setUpdatePlanForm((s) => ({ ...s, description: e.target.value }))} />
++            <textarea className="mt-2 min-h-[70px] w-full rounded border border-border bg-background px-3 py-2 text-xs" placeholder="Descricao" value={updatePlanForm.description} onChange={(e) => setUpdatePlanForm((s) => ({ ...s, description: e.target.value }))} />
+             <div className="mt-2 grid gap-2 md:grid-cols-2">
+-              <textarea className="min-h-[90px] w-full rounded border border-slate-700 bg-slate-950 px-3 py-2 text-xs font-mono" placeholder='Modulos JSON, ex: {"dashboard": true}' value={updatePlanForm.module_flags_json} onChange={(e) => setUpdatePlanForm((s) => ({ ...s, module_flags_json: e.target.value }))} />
+-              <textarea className="min-h-[90px] w-full rounded border border-slate-700 bg-slate-950 px-3 py-2 text-xs font-mono" placeholder='Premium features JSON, ex: ["analytics"]' value={updatePlanForm.premium_features_json} onChange={(e) => setUpdatePlanForm((s) => ({ ...s, premium_features_json: e.target.value }))} />
++              <textarea className="min-h-[90px] w-full rounded border border-border bg-background px-3 py-2 text-xs font-mono" placeholder='Modulos JSON, ex: {"dashboard": true}' value={updatePlanForm.module_flags_json} onChange={(e) => setUpdatePlanForm((s) => ({ ...s, module_flags_json: e.target.value }))} />
++              <textarea className="min-h-[90px] w-full rounded border border-border bg-background px-3 py-2 text-xs font-mono" placeholder='Premium features JSON, ex: ["analytics"]' value={updatePlanForm.premium_features_json} onChange={(e) => setUpdatePlanForm((s) => ({ ...s, premium_features_json: e.target.value }))} />
+             </div>
+             <div className="mt-2 flex items-center gap-3">
+               <label className="flex items-center gap-2 text-xs text-slate-300">
+@@ -1631,7 +1631,7 @@ export default function Owner() {
+         <div className="space-y-4">
+           <Card title="Criar assinatura">
+             <div className="grid gap-2 md:grid-cols-4">
+-              <select className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm" value={createSubscriptionForm.empresa_id} onChange={(e) => setCreateSubscriptionForm((s) => ({ ...s, empresa_id: e.target.value }))}>
++              <select className="rounded border border-border bg-background px-3 py-2 text-sm" value={createSubscriptionForm.empresa_id} onChange={(e) => setCreateSubscriptionForm((s) => ({ ...s, empresa_id: e.target.value }))}>
+                 <option value="">Empresa</option>
+                 {companies.map((c) => (
+                   <option key={c.id} value={c.id}>
+@@ -1639,7 +1639,7 @@ export default function Owner() {
+                   </option>
+                 ))}
+               </select>
+-              <select className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm" value={createSubscriptionForm.plan_id} onChange={(e) => setCreateSubscriptionForm((s) => ({ ...s, plan_id: e.target.value }))}>
++              <select className="rounded border border-border bg-background px-3 py-2 text-sm" value={createSubscriptionForm.plan_id} onChange={(e) => setCreateSubscriptionForm((s) => ({ ...s, plan_id: e.target.value }))}>
+                 <option value="">Plano</option>
+                 {plans.map((p) => (
+                   <option key={p.id} value={p.id}>
+@@ -1647,14 +1647,14 @@ export default function Owner() {
+                   </option>
+                 ))}
+               </select>
+-              <input className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm" placeholder="Valor" value={createSubscriptionForm.amount} onChange={(e) => setCreateSubscriptionForm((s) => ({ ...s, amount: e.target.value }))} />
++              <input className="rounded border border-border bg-background px-3 py-2 text-sm" placeholder="Valor" value={createSubscriptionForm.amount} onChange={(e) => setCreateSubscriptionForm((s) => ({ ...s, amount: e.target.value }))} />
+               <button className="rounded bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground" disabled={!createSubscriptionForm.empresa_id || !createSubscriptionForm.plan_id || createSubscriptionMutation.isPending} onClick={() => runAction(() => createSubscriptionMutation.mutateAsync({ empresa_id: createSubscriptionForm.empresa_id, plan_id: createSubscriptionForm.plan_id, amount: createSubscriptionForm.amount ? Number(createSubscriptionForm.amount) : undefined, status: createSubscriptionForm.status || undefined }), 'Assinatura criada com sucesso.')}>Criar assinatura</button>
+             </div>
+           </Card>
+ 
+           <Card title="Alterar status da assinatura">
+             <div className="grid gap-2 md:grid-cols-3">
+-              <select className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm" value={subscriptionStatusForm.empresa_id} onChange={(e) => setSubscriptionStatusForm((s) => ({ ...s, empresa_id: e.target.value }))}>
++              <select className="rounded border border-border bg-background px-3 py-2 text-sm" value={subscriptionStatusForm.empresa_id} onChange={(e) => setSubscriptionStatusForm((s) => ({ ...s, empresa_id: e.target.value }))}>
+                 <option value="">Empresa</option>
+                 {companies.map((c) => (
+                   <option key={c.id} value={c.id}>
+@@ -1662,7 +1662,7 @@ export default function Owner() {
+                   </option>
+                 ))}
+               </select>
+-              <select className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm" value={subscriptionStatusForm.status} onChange={(e) => setSubscriptionStatusForm((s) => ({ ...s, status: e.target.value }))}>
++              <select className="rounded border border-border bg-background px-3 py-2 text-sm" value={subscriptionStatusForm.status} onChange={(e) => setSubscriptionStatusForm((s) => ({ ...s, status: e.target.value }))}>
+                 <option value="">Selecione status</option>
+                 <option value="ativa">Ativa</option>
+                 <option value="atrasada">Atrasada</option>
+@@ -1675,7 +1675,7 @@ export default function Owner() {
+ 
+           <Card title="Trocar plano por codigo">
+             <div className="grid gap-2 md:grid-cols-3">
+-              <select className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm" value={changePlanForm.empresa_id} onChange={(e) => setChangePlanForm((s) => ({ ...s, empresa_id: e.target.value }))}>
++              <select className="rounded border border-border bg-background px-3 py-2 text-sm" value={changePlanForm.empresa_id} onChange={(e) => setChangePlanForm((s) => ({ ...s, empresa_id: e.target.value }))}>
+                 <option value="">Empresa</option>
+                 {companies.map((c) => (
+                   <option key={c.id} value={c.id}>
+@@ -1683,7 +1683,7 @@ export default function Owner() {
+                   </option>
+                 ))}
+               </select>
+-              <input className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm" placeholder="Codigo do plano" value={changePlanForm.plano_codigo} onChange={(e) => setChangePlanForm((s) => ({ ...s, plano_codigo: e.target.value }))} />
++              <input className="rounded border border-border bg-background px-3 py-2 text-sm" placeholder="Codigo do plano" value={changePlanForm.plano_codigo} onChange={(e) => setChangePlanForm((s) => ({ ...s, plano_codigo: e.target.value }))} />
+               <button className="rounded border border-amber-500 px-3 py-2 text-sm text-amber-300" disabled={!changePlanForm.empresa_id || !changePlanForm.plano_codigo || changePlan.isPending} onClick={() => runAction(() => changePlan.mutateAsync({ empresa_id: changePlanForm.empresa_id, plano_codigo: changePlanForm.plano_codigo }), 'Plano alterado com sucesso.')}>Trocar plano</button>
+             </div>
+           </Card>
+@@ -1734,9 +1734,9 @@ export default function Owner() {
+ 
+           <Card title="Atualizacao de cobranca por assinatura">
+             <div className="grid gap-2 md:grid-cols-4">
+-              <input className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm" placeholder="Subscription ID" value={billingForm.subscription_id} onChange={(e) => setBillingForm((s) => ({ ...s, subscription_id: e.target.value }))} />
+-              <input className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm" placeholder="Novo valor" value={billingForm.amount} onChange={(e) => setBillingForm((s) => ({ ...s, amount: e.target.value }))} />
+-              <select className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm" value={billingForm.payment_status} onChange={(e) => setBillingForm((s) => ({ ...s, payment_status: e.target.value }))}>
++              <input className="rounded border border-border bg-background px-3 py-2 text-sm" placeholder="Subscription ID" value={billingForm.subscription_id} onChange={(e) => setBillingForm((s) => ({ ...s, subscription_id: e.target.value }))} />
++              <input className="rounded border border-border bg-background px-3 py-2 text-sm" placeholder="Novo valor" value={billingForm.amount} onChange={(e) => setBillingForm((s) => ({ ...s, amount: e.target.value }))} />
++              <select className="rounded border border-border bg-background px-3 py-2 text-sm" value={billingForm.payment_status} onChange={(e) => setBillingForm((s) => ({ ...s, payment_status: e.target.value }))}>
+                 <option value="">Selecione pagamento</option>
+                 <option value="paid">Pago</option>
+                 <option value="pending">Pendente</option>
+@@ -1784,11 +1784,11 @@ export default function Owner() {
+         <div className="space-y-4">
+           <Card title="Atualizar contrato">
+             <div className="grid gap-2">
+-              <input className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm" placeholder="Contract ID" value={contractForm.contract_id} onChange={(e) => setContractForm((s) => ({ ...s, contract_id: e.target.value }))} />
+-              <textarea className="min-h-[120px] rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm" placeholder="Conteudo" value={contractForm.content} onChange={(e) => setContractForm((s) => ({ ...s, content: e.target.value }))} />
++              <input className="rounded border border-border bg-background px-3 py-2 text-sm" placeholder="Contract ID" value={contractForm.contract_id} onChange={(e) => setContractForm((s) => ({ ...s, contract_id: e.target.value }))} />
++              <textarea className="min-h-[120px] rounded border border-border bg-background px-3 py-2 text-sm" placeholder="Conteudo" value={contractForm.content} onChange={(e) => setContractForm((s) => ({ ...s, content: e.target.value }))} />
+               <div className="grid gap-2 md:grid-cols-3">
+-                <input className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm" placeholder="Resumo" value={contractForm.summary} onChange={(e) => setContractForm((s) => ({ ...s, summary: e.target.value }))} />
+-                <input className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm" placeholder="Status" value={contractForm.status} onChange={(e) => setContractForm((s) => ({ ...s, status: e.target.value }))} />
++                <input className="rounded border border-border bg-background px-3 py-2 text-sm" placeholder="Resumo" value={contractForm.summary} onChange={(e) => setContractForm((s) => ({ ...s, summary: e.target.value }))} />
++                <input className="rounded border border-border bg-background px-3 py-2 text-sm" placeholder="Status" value={contractForm.status} onChange={(e) => setContractForm((s) => ({ ...s, status: e.target.value }))} />
+                 <button className="rounded border border-slate-600 px-3 py-2 text-sm" disabled={!contractForm.contract_id || updateContractMutation.isPending} onClick={() => runAction(() => updateContractMutation.mutateAsync({ contractId: contractForm.contract_id, content: contractForm.content, summary: contractForm.summary || undefined, status: contractForm.status || undefined }), 'Contrato atualizado com sucesso.')}>Salvar contrato</button>
+               </div>
+             </div>
+@@ -1796,7 +1796,7 @@ export default function Owner() {
+ 
+           <Card title="Acoes de contrato">
+             <div className="grid gap-2 md:grid-cols-3">
+-              <input className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm" placeholder="Contract ID" value={contractOnlyId} onChange={(e) => setContractOnlyId(e.target.value)} />
++              <input className="rounded border border-border bg-background px-3 py-2 text-sm" placeholder="Contract ID" value={contractOnlyId} onChange={(e) => setContractOnlyId(e.target.value)} />
+               <button className="rounded border border-amber-500 px-3 py-2 text-sm text-amber-300" disabled={!contractOnlyId || regenerateContractMutation.isPending} onClick={() => runAction(() => regenerateContractMutation.mutateAsync(contractOnlyId), 'Contrato regenerado com sucesso.')}>Regenerar</button>
+               <button className="rounded border border-rose-600 px-3 py-2 text-sm text-rose-300" disabled={!contractOnlyId || deleteContractMutation.isPending} onClick={() => runAction(() => deleteContractMutation.mutateAsync(contractOnlyId), 'Contrato removido com sucesso.')}>Excluir</button>
+             </div>
+@@ -1838,7 +1838,7 @@ export default function Owner() {
+         <div className="space-y-4">
+           <Card title="Responder ticket">
+             <div className="grid gap-2 md:grid-cols-4">
+-              <select className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm" value={supportForm.ticket_id} onChange={(e) => setSupportForm((s) => ({ ...s, ticket_id: e.target.value }))}>
++              <select className="rounded border border-border bg-background px-3 py-2 text-sm" value={supportForm.ticket_id} onChange={(e) => setSupportForm((s) => ({ ...s, ticket_id: e.target.value }))}>
+                 <option value="">Ticket</option>
+                 {tickets.map((t) => (
+                   <option key={t.id} value={t.id}>
+@@ -1846,8 +1846,8 @@ export default function Owner() {
+                   </option>
+                 ))}
+               </select>
+-              <input className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm" placeholder="Resposta" value={supportForm.response} onChange={(e) => setSupportForm((s) => ({ ...s, response: e.target.value }))} />
+-              <select className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm" value={supportForm.status} onChange={(e) => setSupportForm((s) => ({ ...s, status: e.target.value }))}>
++              <input className="rounded border border-border bg-background px-3 py-2 text-sm" placeholder="Resposta" value={supportForm.response} onChange={(e) => setSupportForm((s) => ({ ...s, response: e.target.value }))} />
++              <select className="rounded border border-border bg-background px-3 py-2 text-sm" value={supportForm.status} onChange={(e) => setSupportForm((s) => ({ ...s, status: e.target.value }))}>
+                 <option value="">Selecione status</option>
+                 <option value="resolvido">Resolvido</option>
+                 <option value="em_andamento">Em andamento</option>
+@@ -1890,22 +1890,22 @@ export default function Owner() {
+       {(active === 'auditoria' || active === 'logs') && (
+         <Card title={active === 'auditoria' ? 'Auditoria' : 'Logs'} subtitle="Eventos e trilha tecnica da plataforma">
+           <div className="mb-4 grid gap-2 md:grid-cols-4">
+-            <select className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm" value={auditFilters.empresa_id} onChange={(e) => setAuditFilters((s) => ({ ...s, empresa_id: e.target.value }))}>
++            <select className="rounded border border-border bg-background px-3 py-2 text-sm" value={auditFilters.empresa_id} onChange={(e) => setAuditFilters((s) => ({ ...s, empresa_id: e.target.value }))}>
+               <option value="">Empresa (todas)</option>
+               {companies.map((company) => (
+                 <option key={company.id} value={company.id}>{company.nome || company.slug || company.id}</option>
+               ))}
+             </select>
+ 
+-            <select className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm" value={auditFilters.user_id} onChange={(e) => setAuditFilters((s) => ({ ...s, user_id: e.target.value }))}>
++            <select className="rounded border border-border bg-background px-3 py-2 text-sm" value={auditFilters.user_id} onChange={(e) => setAuditFilters((s) => ({ ...s, user_id: e.target.value }))}>
+               <option value="">Usuario (todos)</option>
+               {users.map((u) => (
+                 <option key={u.id} value={u.id}>{u.nome || u.email || u.id}</option>
+               ))}
+             </select>
+ 
+-            <input className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm" placeholder="Modulo/origem (ex: owner)" value={auditFilters.module} onChange={(e) => setAuditFilters((s) => ({ ...s, module: e.target.value }))} />
+-            <select className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm" value={auditFilters.severity} onChange={(e) => setAuditFilters((s) => ({ ...s, severity: e.target.value }))}>
++            <input className="rounded border border-border bg-background px-3 py-2 text-sm" placeholder="Modulo/origem (ex: owner)" value={auditFilters.module} onChange={(e) => setAuditFilters((s) => ({ ...s, module: e.target.value }))} />
++            <select className="rounded border border-border bg-background px-3 py-2 text-sm" value={auditFilters.severity} onChange={(e) => setAuditFilters((s) => ({ ...s, severity: e.target.value }))}>
+               <option value="">Severidade (todas)</option>
+               <option value="info">info</option>
+               <option value="warning">warning</option>
+@@ -1913,9 +1913,9 @@ export default function Owner() {
+               <option value="critical">critical</option>
+             </select>
+ 
+-            <input type="datetime-local" className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm" value={auditFilters.from} onChange={(e) => setAuditFilters((s) => ({ ...s, from: e.target.value }))} />
+-            <input type="datetime-local" className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm" value={auditFilters.to} onChange={(e) => setAuditFilters((s) => ({ ...s, to: e.target.value }))} />
+-            <input className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm" placeholder="Acao exata (opcional)" value={auditFilters.action_type} onChange={(e) => setAuditFilters((s) => ({ ...s, action_type: e.target.value }))} />
++            <input type="datetime-local" className="rounded border border-border bg-background px-3 py-2 text-sm" value={auditFilters.from} onChange={(e) => setAuditFilters((s) => ({ ...s, from: e.target.value }))} />
++            <input type="datetime-local" className="rounded border border-border bg-background px-3 py-2 text-sm" value={auditFilters.to} onChange={(e) => setAuditFilters((s) => ({ ...s, to: e.target.value }))} />
++            <input className="rounded border border-border bg-background px-3 py-2 text-sm" placeholder="Acao exata (opcional)" value={auditFilters.action_type} onChange={(e) => setAuditFilters((s) => ({ ...s, action_type: e.target.value }))} />
+             <button className="rounded border border-slate-600 px-3 py-2 text-sm" onClick={() => setAuditFilters({ empresa_id: '', user_id: '', module: '', from: '', to: '', action_type: '', severity: '' })}>Limpar filtros</button>
+           </div>
+ 
+@@ -1959,16 +1959,16 @@ export default function Owner() {
+       {(active === 'configuracoes' || active === 'feature-flags') && (
+         <div className="space-y-4">
+           <Card
+-            title="Logout autom├ítico por usu├írio"
+-            subtitle="Selecione qualquer usu├írio do sistema. O timeout ser├í aplicado para a empresa vinculada a ele."
++            title="Logout autom├â┬ítico por usu├â┬írio"
++            subtitle="Selecione qualquer usu├â┬írio do sistema. O timeout ser├â┬í aplicado para a empresa vinculada a ele."
+           >
+             <div className="grid gap-2 md:grid-cols-2">
+               <select
+-                className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm"
++                className="rounded border border-border bg-background px-3 py-2 text-sm"
+                 value={userInactivityTimeoutForm.user_id}
+                 onChange={(e) => setUserInactivityTimeoutForm((s) => ({ ...s, user_id: e.target.value }))}
+               >
+-                <option value="">Selecione usu├írio (qualquer permiss├úo)</option>
++                <option value="">Selecione usu├â┬írio (qualquer permiss├â┬úo)</option>
+                 {usersWithCompany.map((u) => {
+                   const userEmpresaId = String(
+                     u.empresa_id
+@@ -1980,7 +1980,7 @@ export default function Owner() {
+ 
+                   return (
+                     <option key={u.id} value={u.id}>
+-                      {u.nome || u.email || u.id} ÔÇó {u.email || '-'} ÔÇó {userCompany?.nome || userEmpresaId || 'sem empresa'} ÔÇó {userRoles.join(', ') || 'sem role'}
++                      {u.nome || u.email || u.id} ├óÔé¼┬ó {u.email || '-'} ├óÔé¼┬ó {userCompany?.nome || userEmpresaId || 'sem empresa'} ├óÔé¼┬ó {userRoles.join(', ') || 'sem role'}
+                     </option>
+                   )
+                 })}
+@@ -1990,14 +1990,14 @@ export default function Owner() {
+                 type="number"
+                 min={1}
+                 max={1440}
+-                className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm"
++                className="rounded border border-border bg-background px-3 py-2 text-sm"
+                 placeholder="Minutos de inatividade"
+                 value={userInactivityTimeoutForm.inactivity_timeout_minutes}
+                 onChange={(e) => setUserInactivityTimeoutForm((s) => ({ ...s, inactivity_timeout_minutes: e.target.value }))}
+               />
+ 
+               <div className="rounded border border-slate-800 bg-slate-950 px-3 py-2 text-xs text-slate-400 md:col-span-2">
+-                Empresa alvo: {settingsForm.empresa_id || '-'} ÔÇó Timeout atual: {selectedCompanyInactivityMinutes} min
++                Empresa alvo: {settingsForm.empresa_id || '-'} ├óÔé¼┬ó Timeout atual: {selectedCompanyInactivityMinutes} min
+               </div>
+ 
+               <button
+@@ -2009,16 +2009,16 @@ export default function Owner() {
+                     userId: userInactivityTimeoutForm.user_id,
+                     inactivityTimeoutMinutes: Math.max(1, Math.min(1440, Math.trunc(minutes))),
+                   })
+-                }, 'Timeout de logout autom├ítico atualizado com sucesso.')}
++                }, 'Timeout de logout autom├â┬ítico atualizado com sucesso.')}
+               >
+-                Atualizar timeout por usu├írio
++                Atualizar timeout por usu├â┬írio
+               </button>
+             </div>
+           </Card>
+ 
+           <Card title={active === 'configuracoes' ? 'Configuracoes por empresa' : 'Feature Flags por empresa'}>
+             <div className="grid gap-2">
+-              <select className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm" value={settingsForm.empresa_id} onChange={(e) => setSettingsForm((s) => ({ ...s, empresa_id: e.target.value }))}>
++              <select className="rounded border border-border bg-background px-3 py-2 text-sm" value={settingsForm.empresa_id} onChange={(e) => setSettingsForm((s) => ({ ...s, empresa_id: e.target.value }))}>
+                 <option value="">Selecione empresa</option>
+                 {companies.map((c) => (
+                   <option key={c.id} value={c.id}>
+@@ -2026,9 +2026,9 @@ export default function Owner() {
+                   </option>
+                 ))}
+               </select>
+-              <textarea className="min-h-[90px] rounded border border-slate-700 bg-slate-950 px-3 py-2 text-xs" placeholder="JSON modules" value={settingsForm.modules} onChange={(e) => setSettingsForm((s) => ({ ...s, modules: e.target.value }))} />
+-              <textarea className="min-h-[90px] rounded border border-slate-700 bg-slate-950 px-3 py-2 text-xs" placeholder="JSON limits" value={settingsForm.limits} onChange={(e) => setSettingsForm((s) => ({ ...s, limits: e.target.value }))} />
+-              <textarea className="min-h-[90px] rounded border border-slate-700 bg-slate-950 px-3 py-2 text-xs" placeholder="JSON features" value={settingsForm.features} onChange={(e) => setSettingsForm((s) => ({ ...s, features: e.target.value }))} />
++              <textarea className="min-h-[90px] rounded border border-border bg-background px-3 py-2 text-xs" placeholder="JSON modules" value={settingsForm.modules} onChange={(e) => setSettingsForm((s) => ({ ...s, modules: e.target.value }))} />
++              <textarea className="min-h-[90px] rounded border border-border bg-background px-3 py-2 text-xs" placeholder="JSON limits" value={settingsForm.limits} onChange={(e) => setSettingsForm((s) => ({ ...s, limits: e.target.value }))} />
++              <textarea className="min-h-[90px] rounded border border-border bg-background px-3 py-2 text-xs" placeholder="JSON features" value={settingsForm.features} onChange={(e) => setSettingsForm((s) => ({ ...s, features: e.target.value }))} />
+               <button className="rounded border border-slate-600 px-3 py-2 text-sm" disabled={!settingsForm.empresa_id || updateCompanySettingsMutation.isPending} onClick={() => runAction(async () => {
+                 const modules = settingsForm.modules.trim() ? JSON.parse(settingsForm.modules) : {}
+                 const limits = settingsForm.limits.trim() ? JSON.parse(settingsForm.limits) : {}
+@@ -2048,7 +2048,7 @@ export default function Owner() {
+         <Card title="Monitoramento" subtitle="Saude do backend e cobertura de acoes">
+           <div className="mb-4 grid gap-2 md:grid-cols-2">
+             <select
+-              className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm"
++              className="rounded border border-border bg-background px-3 py-2 text-sm"
+               value={monitoringEmpresaId}
+               onChange={(e) => setMonitoringEmpresaId(e.target.value)}
+             >
+@@ -2072,7 +2072,7 @@ export default function Owner() {
+                 <div className={`h-3 w-3 rounded-full ${monitorSummary.status === 'healthy' ? 'bg-emerald-400' : monitorSummary.status === 'warning' ? 'bg-amber-400' : 'bg-rose-400'} animate-pulse`} />
+                 <div>
+                   <p className="text-sm font-semibold text-slate-100">Status Geral do Sistema</p>
+-                  <p className="text-xs text-slate-400">Monitoramento em tempo real ÔÇó Atualizacao a cada 5s</p>
++                  <p className="text-xs text-slate-400">Monitoramento em tempo real ├óÔé¼┬ó Atualizacao a cada 5s</p>
+                 </div>
+               </div>
+               <span className={`rounded-full px-3 py-1 text-[11px] font-semibold ${monitorSummary.status === 'healthy' ? 'bg-emerald-900/40 text-emerald-300 border border-emerald-600/40' : monitorSummary.status === 'warning' ? 'bg-amber-900/40 text-amber-300 border border-amber-600/40' : 'bg-rose-900/40 text-rose-300 border border-rose-600/40'}`}>
+@@ -2139,7 +2139,7 @@ export default function Owner() {
+               <p className="text-xs text-slate-400">Status dos bancos/tabelas (refresh: 0,25s)</p>
+               <p className="text-[11px] text-slate-500">
+                 {isFetchingTables ? 'Atualizando...' : 'Atualizacao concluida'}
+-                {tablesUpdatedAt ? ` ÔÇó ${new Date(tablesUpdatedAt).toLocaleTimeString('pt-BR')}` : ''}
++                {tablesUpdatedAt ? ` ├óÔé¼┬ó ${new Date(tablesUpdatedAt).toLocaleTimeString('pt-BR')}` : ''}
+               </p>
+             </div>
+ 
+@@ -2201,14 +2201,14 @@ export default function Owner() {
+         <div className="space-y-4">
+           <Card title="Promover usuario para SYSTEM_ADMIN">
+             <div className="flex flex-col gap-2 md:flex-row">
+-              <input className="w-full rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm" placeholder="UUID do usuario" value={systemForm.user_id} onChange={(e) => setSystemForm((s) => ({ ...s, user_id: e.target.value }))} />
++              <input className="w-full rounded border border-border bg-background px-3 py-2 text-sm" placeholder="UUID do usuario" value={systemForm.user_id} onChange={(e) => setSystemForm((s) => ({ ...s, user_id: e.target.value }))} />
+               <button className="rounded bg-emerald-500 px-4 py-2 text-sm font-semibold text-slate-900" disabled={!systemForm.user_id || createSystemAdminMutation.isPending} onClick={() => runAction(() => createSystemAdminMutation.mutateAsync({ userId: systemForm.user_id }), 'Permissao SYSTEM_ADMIN concedida com sucesso.')}>Conceder SYSTEM_ADMIN</button>
+             </div>
+           </Card>
+ 
+           <Card title="Data Control (Owner Master)" subtitle="Visualize tabelas por tenant e exclua somente os dados desejados da empresa selecionada.">
+             <div className="grid gap-2 md:grid-cols-2">
+-              <select className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm" value={systemForm.empresa_id} onChange={(e) => setSystemForm((s) => ({ ...s, empresa_id: e.target.value }))}>
++              <select className="rounded border border-border bg-background px-3 py-2 text-sm" value={systemForm.empresa_id} onChange={(e) => setSystemForm((s) => ({ ...s, empresa_id: e.target.value }))}>
+                 <option value="">Empresa alvo</option>
+                 {companies.map((c) => (
+                   <option key={c.id} value={c.id}>
+@@ -2216,7 +2216,7 @@ export default function Owner() {
+                   </option>
+                 ))}
+               </select>
+-              <select className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm" value={systemForm.table_name} onChange={(e) => setSystemForm((s) => ({ ...s, table_name: e.target.value }))}>
++              <select className="rounded border border-border bg-background px-3 py-2 text-sm" value={systemForm.table_name} onChange={(e) => setSystemForm((s) => ({ ...s, table_name: e.target.value }))}>
+                 <option value="">Tabela (manual)</option>
+                 {tenantScopedTables.map((table) => (
+                   <option key={table.table_name} value={table.table_name}>
+@@ -2224,7 +2224,7 @@ export default function Owner() {
+                   </option>
+                 ))}
+               </select>
+-              <input className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm md:col-span-2" type="password" placeholder="Senha de confirmacao" value={systemForm.auth_password} onChange={(e) => setSystemForm((s) => ({ ...s, auth_password: e.target.value }))} />
++              <input className="rounded border border-border bg-background px-3 py-2 text-sm md:col-span-2" type="password" placeholder="Senha de confirmacao" value={systemForm.auth_password} onChange={(e) => setSystemForm((s) => ({ ...s, auth_password: e.target.value }))} />
+             </div>
+ 
+             <div className="mt-3 grid gap-2 md:grid-cols-3">
+@@ -2341,9 +2341,9 @@ export default function Owner() {
+         <div className="space-y-4">
+           <Card title="Criar owner/admin da plataforma">
+             <div className="grid gap-2 md:grid-cols-4">
+-              <input className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm" placeholder="Nome" value={ownerMasterForm.nome} onChange={(e) => setOwnerMasterForm((s) => ({ ...s, nome: e.target.value }))} />
+-              <input className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm" type="email" placeholder="Email" value={ownerMasterForm.email} onChange={(e) => setOwnerMasterForm((s) => ({ ...s, email: e.target.value }))} />
+-              <input className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm" type="password" placeholder="Senha (opcional)" value={ownerMasterForm.password} onChange={(e) => setOwnerMasterForm((s) => ({ ...s, password: e.target.value }))} />
++              <input className="rounded border border-border bg-background px-3 py-2 text-sm" placeholder="Nome" value={ownerMasterForm.nome} onChange={(e) => setOwnerMasterForm((s) => ({ ...s, nome: e.target.value }))} />
++              <input className="rounded border border-border bg-background px-3 py-2 text-sm" type="email" placeholder="Email" value={ownerMasterForm.email} onChange={(e) => setOwnerMasterForm((s) => ({ ...s, email: e.target.value }))} />
++              <input className="rounded border border-border bg-background px-3 py-2 text-sm" type="password" placeholder="Senha (opcional)" value={ownerMasterForm.password} onChange={(e) => setOwnerMasterForm((s) => ({ ...s, password: e.target.value }))} />
+               <button className="rounded bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground" disabled={!ownerMasterForm.nome || !isValidEmail(ownerMasterForm.email) || createPlatformOwnerMutation.isPending} onClick={() => isValidEmail(ownerMasterForm.email) ? runAction(() => createPlatformOwnerMutation.mutateAsync({ nome: ownerMasterForm.nome, email: normalizeEmail(ownerMasterForm.email), password: ownerMasterForm.password || undefined }), 'Conta de plataforma criada com sucesso.') : setError('Email de owner invalido. Use um email completo.')}>Criar conta</button>
+             </div>
+           </Card>
+@@ -2579,3 +2579,4 @@ export default function Owner() {
+     </OwnerPortalLayout>
+   )
+ }
++
+diff --git a/src/pages/Owner2.tsx b/src/pages/Owner2.tsx
+index f15b9fd..e6a2843 100644
+--- a/src/pages/Owner2.tsx
++++ b/src/pages/Owner2.tsx
+@@ -1,4 +1,4 @@
+-import { useEffect, useMemo, useState } from 'react'
++´╗┐import { useEffect, useMemo, useState } from 'react'
+ import {
+   Activity,
+   AlertTriangle,
+@@ -102,7 +102,7 @@ function asBool(value: unknown, fallback = false): boolean {
+   if (typeof value === 'string') {
+     const normalized = value.trim().toLowerCase()
+     if (normalized === 'true' || normalized === '1' || normalized === 'sim') return true
+-    if (normalized === 'false' || normalized === '0' || normalized === 'nao' || normalized === 'n├úo') return false
++    if (normalized === 'false' || normalized === '0' || normalized === 'nao' || normalized === 'n├â┬úo') return false
+   }
+   return fallback
+ }
+@@ -125,7 +125,7 @@ function statusColor(status: string) {
+ 
+ function SurfaceCard({ title, subtitle, children }: { title: string; subtitle?: string; children: React.ReactNode }) {
+   return (
+-    <section className="rounded-2xl border border-slate-200 bg-white/95 p-4 shadow-sm">
++    <section className="rounded-2xl border border-border bg-card/95 p-4 shadow-sm">
+       <div className="mb-3">
+         <h3 className="text-sm font-semibold text-slate-900">{title}</h3>
+         {subtitle ? <p className="mt-1 text-xs text-slate-500">{subtitle}</p> : null}
+@@ -597,7 +597,7 @@ export default function Owner2() {
+       await execute.mutateAsync({ action, payload })
+       setFeedback(successMessage)
+     } catch (err: any) {
+-      setError(String(err?.message ?? err ?? 'Falha na opera├º├úo do Owner2.'))
++      setError(String(err?.message ?? err ?? 'Falha na opera├â┬º├â┬úo do Owner2.'))
+     }
+   }
+ 
+@@ -665,7 +665,7 @@ export default function Owner2() {
+         })
+       }
+ 
+-      setFeedback(initialPassword ? 'Empresa criada com sucesso. Credenciais iniciais dispon├¡veis para c├│pia.' : 'Empresa criada com sucesso.')
++      setFeedback(initialPassword ? 'Empresa criada com sucesso. Credenciais iniciais dispon├â┬¡veis para c├â┬│pia.' : 'Empresa criada com sucesso.')
+       setNewCompanyName('')
+       setNewCompanySlug('')
+       setNewCompanyPersonType('PJ')
+@@ -687,16 +687,16 @@ export default function Owner2() {
+   async function copyCompanyCredentialNote() {
+     if (!companyCredentialNote) return
+     if (!navigator?.clipboard?.writeText) {
+-      setError('Clipboard indispon├¡vel neste navegador/contexto.')
++      setError('Clipboard indispon├â┬¡vel neste navegador/contexto.')
+       return
+     }
+ 
+     try {
+       await navigator.clipboard.writeText(companyCredentialNote.noteText)
+-      setFeedback('Nota de credenciais copiada para a ├írea de transfer├¬ncia.')
++      setFeedback('Nota de credenciais copiada para a ├â┬írea de transfer├â┬¬ncia.')
+       setError(null)
+     } catch {
+-      setError('N├úo foi poss├¡vel copiar a nota automaticamente. Tente copiar manualmente.')
++      setError('N├â┬úo foi poss├â┬¡vel copiar a nota automaticamente. Tente copiar manualmente.')
+     }
+   }
+ 
+@@ -716,7 +716,7 @@ export default function Owner2() {
+             <ShieldCheck className="h-6 w-6 text-rose-600" />
+           </div>
+           <h2 className="mt-4 text-lg font-semibold text-slate-900">Acesso negado</h2>
+-          <p className="mt-2 text-sm text-slate-600">O Owner2 ├® exclusivo para SYSTEM_OWNER.</p>
++          <p className="mt-2 text-sm text-slate-600">O Owner2 ├â┬® exclusivo para SYSTEM_OWNER.</p>
+         </div>
+       </div>
+     )
+@@ -732,7 +732,7 @@ export default function Owner2() {
+           </div>
+           <div className="flex items-center gap-2">
+             <div className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs text-slate-700 shadow-sm">
+-              <p>Usu├írio: {user?.email}</p>
++              <p>Usu├â┬írio: {user?.email}</p>
+               <p>Health: {String((healthQuery.data as any)?.status ?? 'n/a')}</p>
+             </div>
+             <button
+@@ -794,7 +794,7 @@ export default function Owner2() {
+                   <option key={String(c.id)} value={String(c.id)}>{String(c.nome ?? c.slug ?? c.id)}</option>
+                 ))}
+               </select>
+-              <input className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" type="password" value={authPassword} onChange={(e) => setAuthPassword(e.target.value)} placeholder="Senha de confirma├º├úo para a├º├Áes cr├¡ticas" />
++              <input className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" type="password" value={authPassword} onChange={(e) => setAuthPassword(e.target.value)} placeholder="Senha de confirma├â┬º├â┬úo para a├â┬º├â┬Áes cr├â┬¡ticas" />
+             </div>
+           </div>
+ 
+@@ -802,19 +802,19 @@ export default function Owner2() {
+             <div className="space-y-4">
+               <div className="rounded-2xl border border-sky-200 bg-gradient-to-r from-sky-600 to-cyan-600 p-5 text-white shadow-lg shadow-sky-200">
+                 <p className="text-xs uppercase tracking-wider text-sky-100">Painel executivo</p>
+-                <h2 className="mt-1 text-xl font-semibold">Vis├úo geral da opera├º├úo global</h2>
+-                <p className="mt-1 text-sm text-sky-100">{String((dashboardQuery.data as any)?.message ?? 'Acompanhe indicadores e entre nas ├íreas operacionais com um clique.')}</p>
++                <h2 className="mt-1 text-xl font-semibold">Vis├â┬úo geral da opera├â┬º├â┬úo global</h2>
++                <p className="mt-1 text-sm text-sky-100">{String((dashboardQuery.data as any)?.message ?? 'Acompanhe indicadores e entre nas ├â┬íreas operacionais com um clique.')}</p>
+               </div>
+ 
+               <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                 <MetricTile label="Empresas" value={companies.length} icon={Building2} tone="sky" />
+-                <MetricTile label="Usu├írios" value={users.length} icon={Users} tone="emerald" />
++                <MetricTile label="Usu├â┬írios" value={users.length} icon={Users} tone="emerald" />
+                 <MetricTile label="Assinaturas" value={subscriptions.length} icon={CreditCard} tone="amber" />
+                 <MetricTile label="Contratos" value={contracts.length} icon={FileText} tone="rose" />
+               </div>
+ 
+               <div className="grid gap-4 xl:grid-cols-2">
+-                <SurfaceCard title="Empresas por status" subtitle="Distribui├º├úo operacional">
++                <SurfaceCard title="Empresas por status" subtitle="Distribui├â┬º├â┬úo operacional">
+                   <div className="h-64 rounded-xl border border-slate-200 bg-white p-2">
+                     <ResponsiveContainer width="100%" height="100%">
+                       <BarChart data={companyStatusChartData} margin={{ top: 16, right: 8, left: 0, bottom: 0 }}>
+@@ -828,7 +828,7 @@ export default function Owner2() {
+                   </div>
+                 </SurfaceCard>
+ 
+-                <SurfaceCard title="Assinaturas por status" subtitle="Sa├║de de receita recorrente">
++                <SurfaceCard title="Assinaturas por status" subtitle="Sa├â┬║de de receita recorrente">
+                   <div className="h-64 rounded-xl border border-slate-200 bg-white p-2">
+                     <ResponsiveContainer width="100%" height="100%">
+                       <PieChart>
+@@ -848,7 +848,7 @@ export default function Owner2() {
+                 <div className="flex flex-wrap items-center justify-between gap-3">
+                   <div className="flex items-center gap-3">
+                     <div className={`h-3 w-3 rounded-full ${monitorSummary.healthy ? 'bg-emerald-500' : 'bg-rose-500'} animate-pulse`} />
+-                    <p className="text-sm text-slate-700">{monitorSummary.healthy ? 'Operacional' : 'Aten├º├úo'} ÔÇó atualiza├º├úo cont├¡nua</p>
++                    <p className="text-sm text-slate-700">{monitorSummary.healthy ? 'Operacional' : 'Aten├â┬º├â┬úo'} ├óÔé¼┬ó atualiza├â┬º├â┬úo cont├â┬¡nua</p>
+                   </div>
+                   <span className={`rounded-full border px-3 py-1 text-xs font-semibold ${monitorSummary.healthy ? 'border-emerald-200 bg-emerald-50 text-emerald-700' : 'border-rose-200 bg-rose-50 text-rose-700'}`}>
+                     {monitorSummary.availabilityPercent}% disponibilidade
+@@ -873,16 +873,16 @@ export default function Owner2() {
+                 </div>
+               </SurfaceCard>
+ 
+-              <SurfaceCard title="Disponibilidade por hor├írio" subtitle="Picos e vales das ├║ltimas 24 horas">
++              <SurfaceCard title="Disponibilidade por hor├â┬írio" subtitle="Picos e vales das ├â┬║ltimas 24 horas">
+                 <div className="rounded-xl border border-slate-200 bg-white p-2.5">
+                   <div className="mb-2 grid gap-2 sm:grid-cols-2">
+                     <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-800">
+                       <p className="font-semibold">Pico</p>
+-                      <p>{availabilityTimeline.peak.hour} ÔÇó {availabilityTimeline.peak.availability}%</p>
++                      <p>{availabilityTimeline.peak.hour} ├óÔé¼┬ó {availabilityTimeline.peak.availability}%</p>
+                     </div>
+                     <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+                       <p className="font-semibold">Vale</p>
+-                      <p>{availabilityTimeline.valley.hour} ÔÇó {availabilityTimeline.valley.availability}%</p>
++                      <p>{availabilityTimeline.valley.hour} ├óÔé¼┬ó {availabilityTimeline.valley.availability}%</p>
+                     </div>
+                   </div>
+ 
+@@ -966,7 +966,7 @@ export default function Owner2() {
+                 {companyCredentialNote && (
+                   <div className="mt-4 rounded-xl border border-sky-200 bg-sky-50 p-4">
+                     <p className="text-xs font-semibold uppercase tracking-wide text-sky-800">Credenciais iniciais do cliente</p>
+-                    <p className="mt-1 text-xs text-sky-700">Informa├º├úo exibida somente agora. Compartilhe com seguran├ºa.</p>
++                    <p className="mt-1 text-xs text-sky-700">Informa├â┬º├â┬úo exibida somente agora. Compartilhe com seguran├â┬ºa.</p>
+                     <pre className="mt-3 whitespace-pre-wrap rounded-lg border border-sky-200 bg-white p-3 text-xs leading-relaxed text-slate-800">{companyCredentialNote.noteText}</pre>
+                     <div className="mt-3 flex flex-wrap gap-2">
+                       <button className="rounded-lg border border-sky-300 bg-white px-3 py-2 text-xs font-semibold text-sky-700 hover:bg-sky-100" onClick={copyCompanyCredentialNote}>Copiar nota</button>
+@@ -976,7 +976,7 @@ export default function Owner2() {
+                 )}
+               </SurfaceCard>
+ 
+-              <SurfaceCard title="A├º├Áes r├ípidas da empresa selecionada">
++              <SurfaceCard title="A├â┬º├â┬Áes r├â┬ípidas da empresa selecionada">
+                 <div className="grid gap-2 sm:grid-cols-2">
+                   <button className="rounded-lg border border-slate-300 px-3 py-2 text-sm" disabled={busy || !companyId} onClick={() => runAction('set_company_status', { empresa_id: companyId, status: 'active' }, 'Empresa ativada.')}>Ativar</button>
+                   <button className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-700" disabled={busy || !companyId} onClick={() => runAction('set_company_status', { empresa_id: companyId, status: 'blocked' }, 'Empresa bloqueada.')}>Bloquear</button>
+@@ -1046,7 +1046,7 @@ export default function Owner2() {
+ 
+           {activeTab === 'usuarios' && (
+             <div className="grid gap-4 xl:grid-cols-2">
+-              <SurfaceCard title="Novo usu├írio">
++              <SurfaceCard title="Novo usu├â┬írio">
+                 <div className="grid gap-2">
+                   <input className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" value={newUserName} onChange={(e) => setNewUserName(e.target.value)} placeholder="Nome" />
+                   <input className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" value={newUserEmail} onChange={(e) => setNewUserEmail(e.target.value)} placeholder="Email" />
+@@ -1057,24 +1057,24 @@ export default function Owner2() {
+                     <option value="USUARIO">USUARIO</option>
+                     <option value="SOLICITANTE">SOLICITANTE</option>
+                   </select>
+-                  <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={newUserRequirePasswordChange} onChange={(e) => setNewUserRequirePasswordChange(e.target.checked)} /> Exigir troca de senha no 1┬║ login</label>
+-                  <button className="rounded-lg bg-sky-700 px-3 py-2 text-sm font-semibold text-white" disabled={busy || !companyId || !newUserName || !newUserEmail} onClick={() => runAction('create_user', { user: { nome: newUserName, email: newUserEmail, role: newUserRole, empresa_id: companyId, force_password_change: newUserRequirePasswordChange } }, 'Usu├írio criado com sucesso.')}>Criar usu├írio</button>
++                  <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={newUserRequirePasswordChange} onChange={(e) => setNewUserRequirePasswordChange(e.target.checked)} /> Exigir troca de senha no 1├é┬║ login</label>
++                  <button className="rounded-lg bg-sky-700 px-3 py-2 text-sm font-semibold text-white" disabled={busy || !companyId || !newUserName || !newUserEmail} onClick={() => runAction('create_user', { user: { nome: newUserName, email: newUserEmail, role: newUserRole, empresa_id: companyId, force_password_change: newUserRequirePasswordChange } }, 'Usu├â┬írio criado com sucesso.')}>Criar usu├â┬írio</button>
+                 </div>
+ 
+                 <div className="mt-4 grid gap-2">
+-                  <h3 className="text-sm font-semibold">Status do usu├írio</h3>
++                  <h3 className="text-sm font-semibold">Status do usu├â┬írio</h3>
+                   <select className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" value={selectedUserId} onChange={(e) => setSelectedUserId(e.target.value)}>
+-                    <option value="">Selecione um usu├írio</option>
++                    <option value="">Selecione um usu├â┬írio</option>
+                     {users.map((u) => <option key={String(u.id)} value={String(u.id)}>{String(u.nome ?? u.email ?? u.id)}</option>)}
+                   </select>
+                   <div className="grid grid-cols-2 gap-2">
+-                    <button className="rounded-lg border border-slate-300 px-3 py-2 text-sm" disabled={busy || !selectedUserId} onClick={() => runAction('set_user_status', { user_id: selectedUserId, status: 'ativo' }, 'Usu├írio ativado.')}>Ativar</button>
+-                    <button className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-700" disabled={busy || !selectedUserId} onClick={() => runAction('set_user_status', { user_id: selectedUserId, status: 'inativo' }, 'Usu├írio inativado.')}>Inativar</button>
++                    <button className="rounded-lg border border-slate-300 px-3 py-2 text-sm" disabled={busy || !selectedUserId} onClick={() => runAction('set_user_status', { user_id: selectedUserId, status: 'ativo' }, 'Usu├â┬írio ativado.')}>Ativar</button>
++                    <button className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-700" disabled={busy || !selectedUserId} onClick={() => runAction('set_user_status', { user_id: selectedUserId, status: 'inativo' }, 'Usu├â┬írio inativado.')}>Inativar</button>
+                   </div>
+                 </div>
+ 
+                 <div className="mt-4 grid gap-2">
+-                  <h3 className="text-sm font-semibold">Editar usu├írio</h3>
++                  <h3 className="text-sm font-semibold">Editar usu├â┬írio</h3>
+                   <select className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" value={userTargetCompanyId} onChange={(e) => setUserTargetCompanyId(e.target.value)}>
+                     <option value="">Empresa destino</option>
+                     {companies.map((c) => <option key={String(c.id)} value={String(c.id)}>{String(c.nome ?? c.slug ?? c.id)}</option>)}
+@@ -1089,23 +1089,23 @@ export default function Owner2() {
+                   <button
+                     className="rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                     disabled={busy || !selectedUserId || !userTargetCompanyId}
+-                    onClick={() => runAction('move_user_company', { user_id: selectedUserId, new_empresa_id: userTargetCompanyId, user: { role: userTargetRole } }, 'Usu├írio movido para nova empresa com sucesso.')}
++                    onClick={() => runAction('move_user_company', { user_id: selectedUserId, new_empresa_id: userTargetCompanyId, user: { role: userTargetRole } }, 'Usu├â┬írio movido para nova empresa com sucesso.')}
+                   >
+                     Mover para outra empresa
+                   </button>
+ 
+-                  <input className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" type="password" value={userNewPassword} onChange={(e) => setUserNewPassword(e.target.value)} placeholder="Nova senha do usu├írio" />
++                  <input className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" type="password" value={userNewPassword} onChange={(e) => setUserNewPassword(e.target.value)} placeholder="Nova senha do usu├â┬írio" />
+                   <button
+                     className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-700"
+                     disabled={busy || !selectedUserId || userNewPassword.length < 8}
+-                    onClick={() => runAction('set_user_password', { user_id: selectedUserId, new_password: userNewPassword, force_password_change: true }, 'Senha redefinida. Usu├írio dever├í trocar no 1┬║ login.')}
++                    onClick={() => runAction('set_user_password', { user_id: selectedUserId, new_password: userNewPassword, force_password_change: true }, 'Senha redefinida. Usu├â┬írio dever├â┬í trocar no 1├é┬║ login.')}
+                   >
+-                    Trocar senha e for├ºar troca no 1┬║ login
++                    Trocar senha e for├â┬ºar troca no 1├é┬║ login
+                   </button>
+                 </div>
+               </SurfaceCard>
+ 
+-              <SurfaceCard title="Usu├írios" subtitle="Painel operacional com busca e filtros">
++              <SurfaceCard title="Usu├â┬írios" subtitle="Painel operacional com busca e filtros">
+                 <div className="mb-3 grid gap-2 sm:grid-cols-4">
+                   <MetricTile label="Total" value={userSummary.total} icon={Users} tone="sky" />
+                   <MetricTile label="Ativos" value={userSummary.active} icon={ShieldCheck} tone="emerald" />
+@@ -1168,7 +1168,7 @@ export default function Owner2() {
+                       })}
+                       {usersFiltered.length === 0 && (
+                         <tr>
+-                          <td className="px-2 py-3 text-slate-500" colSpan={3}>Nenhum usu├írio encontrado com os filtros atuais.</td>
++                          <td className="px-2 py-3 text-slate-500" colSpan={3}>Nenhum usu├â┬írio encontrado com os filtros atuais.</td>
+                         </tr>
+                       )}
+                     </tbody>
+@@ -1180,28 +1180,28 @@ export default function Owner2() {
+ 
+           {activeTab === 'comercial' && (
+             <div className="grid gap-4 xl:grid-cols-2">
+-              <SurfaceCard title="Planos" subtitle="Crie e ajuste planos base com periodicidade padr├úo">
++              <SurfaceCard title="Planos" subtitle="Crie e ajuste planos base com periodicidade padr├â┬úo">
+                 <div className="grid gap-2">
+-                  <input className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" value={planCode} onChange={(e) => setPlanCode(e.target.value)} placeholder="C├│digo" />
++                  <input className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" value={planCode} onChange={(e) => setPlanCode(e.target.value)} placeholder="C├â┬│digo" />
+                   <input className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" value={planName} onChange={(e) => setPlanName(e.target.value)} placeholder="Nome" />
+-                  <input className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" value={planPrice} onChange={(e) => setPlanPrice(e.target.value)} placeholder="Pre├ºo mensal" />
++                  <input className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" value={planPrice} onChange={(e) => setPlanPrice(e.target.value)} placeholder="Pre├â┬ºo mensal" />
+                   <select className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" value={planDefaultPeriod} onChange={(e) => setPlanDefaultPeriod(e.target.value as 'monthly' | 'quarterly' | 'yearly')}>
+-                    <option value="monthly">Periodicidade padr├úo: Mensal</option>
+-                    <option value="quarterly">Periodicidade padr├úo: Trimestral</option>
+-                    <option value="yearly">Periodicidade padr├úo: Anual</option>
++                    <option value="monthly">Periodicidade padr├â┬úo: Mensal</option>
++                    <option value="quarterly">Periodicidade padr├â┬úo: Trimestral</option>
++                    <option value="yearly">Periodicidade padr├â┬úo: Anual</option>
+                   </select>
+-                  <button className="rounded-lg bg-sky-700 px-3 py-2 text-sm font-semibold text-white" disabled={busy || !planCode || !planName} onClick={() => runAction('create_plan', { plan: { code: planCode.toUpperCase(), name: planName, description: `Periodicidade padr├úo: ${planDefaultPeriod}`, price_month: Number(planPrice || 0), user_limit: 10, data_limit_mb: 2048, module_flags: { default_periodicity: planDefaultPeriod }, active: true } }, 'Plano criado com sucesso.')}>Criar plano</button>
++                  <button className="rounded-lg bg-sky-700 px-3 py-2 text-sm font-semibold text-white" disabled={busy || !planCode || !planName} onClick={() => runAction('create_plan', { plan: { code: planCode.toUpperCase(), name: planName, description: `Periodicidade padr├â┬úo: ${planDefaultPeriod}`, price_month: Number(planPrice || 0), user_limit: 10, data_limit_mb: 2048, module_flags: { default_periodicity: planDefaultPeriod }, active: true } }, 'Plano criado com sucesso.')}>Criar plano</button>
+                 </div>
+               </SurfaceCard>
+ 
+-              <SurfaceCard title="Cat├ílogo de planos">
++              <SurfaceCard title="Cat├â┬ílogo de planos">
+                 <div className="max-h-[420px] overflow-auto rounded-xl border border-slate-200">
+                   <table className="w-full text-xs">
+                     <thead className="bg-slate-100">
+                       <tr>
+-                        <th className="px-2 py-2 text-left">C├│digo</th>
++                        <th className="px-2 py-2 text-left">C├â┬│digo</th>
+                         <th className="px-2 py-2 text-left">Nome</th>
+-                        <th className="px-2 py-2 text-left">Pre├ºo</th>
++                        <th className="px-2 py-2 text-left">Pre├â┬ºo</th>
+                       </tr>
+                     </thead>
+                     <tbody>
+@@ -1221,7 +1221,7 @@ export default function Owner2() {
+ 
+           {activeTab === 'comercial' && (
+             <div className="grid gap-4 xl:grid-cols-2">
+-              <SurfaceCard title="Assinaturas por empresa" subtitle="Cada empresa com plano, valor e periodicidade pr├│prios">
++              <SurfaceCard title="Assinaturas por empresa" subtitle="Cada empresa com plano, valor e periodicidade pr├â┬│prios">
+                 <div className="grid gap-2">
+                   <select className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" value={subscriptionPlanId} onChange={(e) => setSubscriptionPlanId(e.target.value)}>
+                     <option value="">Plano</option>
+@@ -1240,13 +1240,13 @@ export default function Owner2() {
+                     <option value="atrasada">Status inicial: Atrasada</option>
+                     <option value="cancelada">Status inicial: Cancelada</option>
+                   </select>
+-                  <input className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" type="date" value={subscriptionStartsAt} onChange={(e) => setSubscriptionStartsAt(e.target.value)} placeholder="In├¡cio" />
+-                  <input className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" type="date" value={subscriptionRenewalAt} onChange={(e) => setSubscriptionRenewalAt(e.target.value)} placeholder="Pr├│ximo vencimento" />
++                  <input className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" type="date" value={subscriptionStartsAt} onChange={(e) => setSubscriptionStartsAt(e.target.value)} placeholder="In├â┬¡cio" />
++                  <input className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" type="date" value={subscriptionRenewalAt} onChange={(e) => setSubscriptionRenewalAt(e.target.value)} placeholder="Pr├â┬│ximo vencimento" />
+                   <input className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" type="date" value={subscriptionEndsAt} onChange={(e) => setSubscriptionEndsAt(e.target.value)} placeholder="Fim (opcional)" />
+                   <button className="rounded-lg bg-sky-700 px-3 py-2 text-sm font-semibold text-white" disabled={busy || !companyId || !subscriptionPlanId} onClick={() => runAction('create_subscription', { subscription: { empresa_id: companyId, plan_id: subscriptionPlanId, amount: Number(subscriptionAmount || 0), period: subscriptionPeriod, starts_at: subscriptionStartsAt || undefined, renewal_at: subscriptionRenewalAt || undefined, ends_at: subscriptionEndsAt || undefined, status: subscriptionStatus } }, 'Assinatura criada com sucesso.')}>Criar assinatura</button>
+                   <button className="rounded-lg border border-slate-300 px-3 py-2 text-sm" disabled={busy || !companyId} onClick={() => runAction('set_subscription_status', { empresa_id: companyId, status: 'ativa' }, 'Assinatura ativada.')}>Ativar assinatura da empresa</button>
+                   <button className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-700" disabled={busy || !isOwnerMaster} onClick={() => runAction('enforce_subscription_expiry', {}, 'Vencimentos processados. Empresas vencidas foram bloqueadas.')}>Processar vencimentos e bloquear</button>
+-                  <input className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" value={planCodeToChange} onChange={(e) => setPlanCodeToChange(e.target.value)} placeholder="C├│digo do novo plano" />
++                  <input className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" value={planCodeToChange} onChange={(e) => setPlanCodeToChange(e.target.value)} placeholder="C├â┬│digo do novo plano" />
+                   <button className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-700" disabled={busy || !companyId || !planCodeToChange} onClick={() => runAction('change_plan', { empresa_id: companyId, plano_codigo: planCodeToChange.toUpperCase() }, 'Plano da empresa alterado.')}>Trocar plano</button>
+                 </div>
+               </SurfaceCard>
+@@ -1310,13 +1310,13 @@ export default function Owner2() {
+                 </div>
+               </SurfaceCard>
+ 
+-              <SurfaceCard title="Atualizar cobran├ºa" subtitle="Sem editar dados t├®cnicos direto">
++              <SurfaceCard title="Atualizar cobran├â┬ºa" subtitle="Sem editar dados t├â┬®cnicos direto">
+                 <div className="grid gap-2">
+                   <select className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" value={billingSubscriptionId} onChange={(e) => setBillingSubscriptionId(e.target.value)}>
+                     <option value="">Selecione a assinatura</option>
+                     {subscriptions.map((s, idx) => (
+                       <option key={`${String(s.id ?? 'sub')}-${idx}`} value={String(s.id ?? '')}>
+-                        {String(s.id ?? '-')} ÔÇó {String(s.empresa_id ?? '-')}
++                        {String(s.id ?? '-')} ├óÔé¼┬ó {String(s.empresa_id ?? '-')}
+                       </option>
+                     ))}
+                   </select>
+@@ -1334,15 +1334,15 @@ export default function Owner2() {
+                       subscription_id: billingSubscriptionId,
+                       amount: billingAmount ? Number(billingAmount) : undefined,
+                       payment_status: billingPaymentStatus,
+-                    }, 'Cobran├ºa atualizada com sucesso.')}
++                    }, 'Cobran├â┬ºa atualizada com sucesso.')}
+                   >
+-                    Atualizar cobran├ºa
++                    Atualizar cobran├â┬ºa
+                   </button>
+ 
+                   {isOwnerMaster ? (
+                     <div className="mt-2 rounded-xl border border-slate-200 bg-slate-50 p-3">
+-                      <p className="text-xs font-semibold text-slate-700">Integra├º├úo Asaas</p>
+-                      <p className="mt-1 text-xs text-slate-500">Vincule IDs ou sincronize automaticamente assinatura/cobran├ºa.</p>
++                      <p className="text-xs font-semibold text-slate-700">Integra├â┬º├â┬úo Asaas</p>
++                      <p className="mt-1 text-xs text-slate-500">Vincule IDs ou sincronize automaticamente assinatura/cobran├â┬ºa.</p>
+                       <div className="mt-2 grid gap-2">
+                         <input className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" placeholder="Asaas customer id (opcional)" value={asaasCustomerId} onChange={(e) => setAsaasCustomerId(e.target.value)} />
+                         <input className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" placeholder="Asaas subscription id (opcional)" value={asaasSubscriptionId} onChange={(e) => setAsaasSubscriptionId(e.target.value)} />
+@@ -1355,9 +1355,9 @@ export default function Owner2() {
+                               empresa_id: billingSubscriptionId ? undefined : (companyId || undefined),
+                               asaas_customer_id: asaasCustomerId || undefined,
+                               asaas_subscription_id: asaasSubscriptionId || undefined,
+-                            }, 'V├¡nculo Asaas salvo com sucesso.')}
++                            }, 'V├â┬¡nculo Asaas salvo com sucesso.')}
+                           >
+-                            Salvar v├¡nculo Asaas
++                            Salvar v├â┬¡nculo Asaas
+                           </button>
+                           <button
+                             className="rounded-lg border border-emerald-300 bg-emerald-50 px-3 py-2 text-sm text-emerald-700"
+@@ -1365,7 +1365,7 @@ export default function Owner2() {
+                             onClick={() => runAction('asaas_sync_subscription', {
+                               subscription_id: billingSubscriptionId || undefined,
+                               empresa_id: billingSubscriptionId ? undefined : (companyId || undefined),
+-                            }, 'Sincroniza├º├úo Asaas conclu├¡da.')}
++                            }, 'Sincroniza├â┬º├â┬úo Asaas conclu├â┬¡da.')}
+                           >
+                             Sincronizar com Asaas
+                           </button>
+@@ -1374,8 +1374,8 @@ export default function Owner2() {
+                     </div>
+                   ) : (
+                     <div className="mt-2 rounded-xl border border-slate-200 bg-slate-50 p-3">
+-                      <p className="text-xs font-semibold text-slate-700">Integra├º├úo Asaas</p>
+-                      <p className="mt-1 text-xs text-slate-500">├ürea restrita ao OWNER_MASTER.</p>
++                      <p className="text-xs font-semibold text-slate-700">Integra├â┬º├â┬úo Asaas</p>
++                      <p className="mt-1 text-xs text-slate-500">├â┬ürea restrita ao OWNER_MASTER.</p>
+                     </div>
+                   )}
+                 </div>
+@@ -1391,11 +1391,11 @@ export default function Owner2() {
+                     <option value="">Selecione o contrato</option>
+                     {contracts.map((c) => <option key={String(c.id)} value={String(c.id)}>{String(c.summary ?? c.id)}</option>)}
+                   </select>
+-                  <textarea className="min-h-[120px] rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" value={contractContent} onChange={(e) => setContractContent(e.target.value)} placeholder="Conte├║do do contrato" />
++                  <textarea className="min-h-[120px] rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" value={contractContent} onChange={(e) => setContractContent(e.target.value)} placeholder="Conte├â┬║do do contrato" />
+                   <input className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" value={contractSummary} onChange={(e) => setContractSummary(e.target.value)} placeholder="Resumo" />
+-                  <button className="rounded-lg bg-sky-700 px-3 py-2 text-sm font-semibold text-white" disabled={busy || !selectedContractId} onClick={() => runAction('update_contract', { contract_id: selectedContractId, content: contractContent, summary: contractSummary }, 'Contrato atualizado.')}>Salvar altera├º├Áes</button>
++                  <button className="rounded-lg bg-sky-700 px-3 py-2 text-sm font-semibold text-white" disabled={busy || !selectedContractId} onClick={() => runAction('update_contract', { contract_id: selectedContractId, content: contractContent, summary: contractSummary }, 'Contrato atualizado.')}>Salvar altera├â┬º├â┬Áes</button>
+                   <button className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-700" disabled={busy || !selectedContractId} onClick={() => runAction('regenerate_contract', { contract_id: selectedContractId }, 'Contrato regenerado.')}>Regenerar contrato</button>
+-                  <button className="rounded-lg border border-rose-300 bg-rose-50 px-3 py-2 text-sm text-rose-700" disabled={busy || !selectedContractId} onClick={() => runAction('delete_contract', { contract_id: selectedContractId }, 'Contrato exclu├¡do.')}>Excluir contrato</button>
++                  <button className="rounded-lg border border-rose-300 bg-rose-50 px-3 py-2 text-sm text-rose-700" disabled={busy || !selectedContractId} onClick={() => runAction('delete_contract', { contract_id: selectedContractId }, 'Contrato exclu├â┬¡do.')}>Excluir contrato</button>
+                 </div>
+               </SurfaceCard>
+ 
+@@ -1467,10 +1467,10 @@ export default function Owner2() {
+ 
+           {activeTab === 'configuracoes' && (
+             <div className="grid gap-4 xl:grid-cols-2">
+-              <SurfaceCard title="Configura├º├Áes operacionais" subtitle="Sem JSON/SQL. Ajustes por chave liga/desliga e limites simples.">
++              <SurfaceCard title="Configura├â┬º├â┬Áes operacionais" subtitle="Sem JSON/SQL. Ajustes por chave liga/desliga e limites simples.">
+                 <div className="space-y-3">
+-                  <h3 className="text-sm font-semibold">M├│dulos</h3>
+-                  <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={moduleOs} onChange={(e) => setModuleOs(e.target.checked)} /> Ordens de servi├ºo</label>
++                  <h3 className="text-sm font-semibold">M├â┬│dulos</h3>
++                  <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={moduleOs} onChange={(e) => setModuleOs(e.target.checked)} /> Ordens de servi├â┬ºo</label>
+                   <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={modulePreventiva} onChange={(e) => setModulePreventiva(e.target.checked)} /> Preventiva</label>
+                   <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={modulePreditiva} onChange={(e) => setModulePreditiva(e.target.checked)} /> Preditiva</label>
+                   <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={moduleMateriais} onChange={(e) => setModuleMateriais(e.target.checked)} /> Materiais</label>
+@@ -1478,7 +1478,7 @@ export default function Owner2() {
+                 </div>
+ 
+                 <div className="mt-3 grid gap-2 sm:grid-cols-3">
+-                  <input className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" value={limitUsers} onChange={(e) => setLimitUsers(e.target.value)} placeholder="Limite usu├írios" />
++                  <input className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" value={limitUsers} onChange={(e) => setLimitUsers(e.target.value)} placeholder="Limite usu├â┬írios" />
+                   <input className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" value={limitAssets} onChange={(e) => setLimitAssets(e.target.value)} placeholder="Limite equipamentos" />
+                   <input className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" value={limitStorageMb} onChange={(e) => setLimitStorageMb(e.target.value)} placeholder="Armazenamento MB" />
+                 </div>
+@@ -1514,13 +1514,13 @@ export default function Owner2() {
+                         sso: featureSso,
+                       },
+                     },
+-                  }, 'Configura├º├Áes salvas com sucesso.')}
++                  }, 'Configura├â┬º├â┬Áes salvas com sucesso.')}
+                 >
+-                  Salvar configura├º├Áes
++                  Salvar configura├â┬º├â┬Áes
+                 </button>
+               </SurfaceCard>
+ 
+-              <SurfaceCard title="A├º├Áes de seguran├ºa">
++              <SurfaceCard title="A├â┬º├â┬Áes de seguran├â┬ºa">
+                 <div className="grid gap-2">
+                   <button
+                     className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-700"
+@@ -1558,7 +1558,7 @@ export default function Owner2() {
+ 
+           {activeTab === 'feature-flags' && (
+             <div className="grid gap-4 xl:grid-cols-2">
+-              <SurfaceCard title="Feature Flags por empresa" subtitle="Controle r├ípido de recursos premium">
++              <SurfaceCard title="Feature Flags por empresa" subtitle="Controle r├â┬ípido de recursos premium">
+                 <div className="space-y-2">
+                   <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={featureAi} onChange={(e) => setFeatureAi(e.target.checked)} /> IA habilitada</label>
+                   <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={featureApi} onChange={(e) => setFeatureApi(e.target.checked)} /> API habilitada</label>
+@@ -1595,10 +1595,10 @@ export default function Owner2() {
+                 </button>
+               </SurfaceCard>
+ 
+-              <SurfaceCard title="Estado atual" subtitle="Configura├º├úo carregada da empresa selecionada">
++              <SurfaceCard title="Estado atual" subtitle="Configura├â┬º├â┬úo carregada da empresa selecionada">
+                 <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs text-slate-700">
+                   <p>Empresa selecionada: {companyId || 'Nenhuma'}</p>
+-                  <p className="mt-1">Recursos atuais: AI {featureAi ? 'ON' : 'OFF'} ÔÇó API {featureApi ? 'ON' : 'OFF'} ÔÇó SSO {featureSso ? 'ON' : 'OFF'}</p>
++                  <p className="mt-1">Recursos atuais: AI {featureAi ? 'ON' : 'OFF'} ├óÔé¼┬ó API {featureApi ? 'ON' : 'OFF'} ├óÔé¼┬ó SSO {featureSso ? 'ON' : 'OFF'}</p>
+                 </div>
+               </SurfaceCard>
+             </div>
+@@ -1610,8 +1610,8 @@ export default function Owner2() {
+                 <table className="w-full text-xs">
+                   <thead className="bg-slate-100">
+                     <tr>
+-                      <th className="px-2 py-2 text-left">A├º├úo</th>
+-                      <th className="px-2 py-2 text-left">Usu├írio</th>
++                      <th className="px-2 py-2 text-left">A├â┬º├â┬úo</th>
++                      <th className="px-2 py-2 text-left">Usu├â┬írio</th>
+                       <th className="px-2 py-2 text-left">Data</th>
+                     </tr>
+                   </thead>
+@@ -1630,7 +1630,7 @@ export default function Owner2() {
+           )}
+ 
+           {activeTab === 'logs' && (
+-            <SurfaceCard title="Logs" subtitle="Busca por a├º├úo/usu├írio e filtro de severidade">
++            <SurfaceCard title="Logs" subtitle="Busca por a├â┬º├â┬úo/usu├â┬írio e filtro de severidade">
+               <div className="mb-3 flex justify-end">
+                 <button className="inline-flex items-center gap-1 rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-700" onClick={exportLogsCsv}>
+                   <Download className="h-3.5 w-3.5" /> Exportar CSV
+@@ -1638,7 +1638,7 @@ export default function Owner2() {
+               </div>
+ 
+               <div className="mb-3 grid gap-2 sm:grid-cols-3">
+-                <input className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" placeholder="Buscar a├º├úo ou usu├írio" value={logSearch} onChange={(e) => setLogSearch(e.target.value)} />
++                <input className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" placeholder="Buscar a├â┬º├â┬úo ou usu├â┬írio" value={logSearch} onChange={(e) => setLogSearch(e.target.value)} />
+                 <select className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" value={logSeverityFilter} onChange={(e) => setLogSeverityFilter(e.target.value as 'todos' | 'info' | 'warn' | 'error' | 'critical')}>
+                   <option value="todos">Severidade: Todas</option>
+                   <option value="info">info</option>
+@@ -1665,9 +1665,9 @@ export default function Owner2() {
+                 <table className="w-full text-xs">
+                   <thead className="bg-slate-100">
+                     <tr>
+-                      <th className="px-2 py-2 text-left">A├º├úo</th>
++                      <th className="px-2 py-2 text-left">A├â┬º├â┬úo</th>
+                       <th className="px-2 py-2 text-left">Severidade</th>
+-                      <th className="px-2 py-2 text-left">Usu├írio</th>
++                      <th className="px-2 py-2 text-left">Usu├â┬írio</th>
+                       <th className="px-2 py-2 text-left">Data</th>
+                     </tr>
+                   </thead>
+@@ -1693,10 +1693,10 @@ export default function Owner2() {
+ 
+           {activeTab === 'sistema' && (
+             <div className="grid gap-4 xl:grid-cols-2">
+-              <SurfaceCard title="A├º├Áes de sistema" subtitle="Opera├º├Áes avan├ºadas com seguran├ºa">
++              <SurfaceCard title="A├â┬º├â┬Áes de sistema" subtitle="Opera├â┬º├â┬Áes avan├â┬ºadas com seguran├â┬ºa">
+                 <div className="grid gap-2">
+                   <select className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" value={systemUserId} onChange={(e) => setSystemUserId(e.target.value)}>
+-                    <option value="">Usu├írio para promo├º├úo/timeout</option>
++                    <option value="">Usu├â┬írio para promo├â┬º├â┬úo/timeout</option>
+                     {users.map((u) => (
+                       <option key={String(u.id)} value={String(u.id)}>{String(u.nome ?? u.email ?? u.id)}</option>
+                     ))}
+@@ -1705,12 +1705,12 @@ export default function Owner2() {
+                   <button
+                     className="rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                     disabled={busy || !systemUserId}
+-                    onClick={() => runAction('create_system_admin', { user_id: systemUserId }, 'Permiss├úo SYSTEM_ADMIN concedida.')}
++                    onClick={() => runAction('create_system_admin', { user_id: systemUserId }, 'Permiss├â┬úo SYSTEM_ADMIN concedida.')}
+                   >
+                     Conceder SYSTEM_ADMIN
+                   </button>
+ 
+-                  <p className="text-xs text-slate-500">Timeout de inatividade ocultado do Owner2 para simplificar a opera├º├úo.</p>
++                  <p className="text-xs text-slate-500">Timeout de inatividade ocultado do Owner2 para simplificar a opera├â┬º├â┬úo.</p>
+ 
+                   <select className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" value={selectedTableName} onChange={(e) => setSelectedTableName(e.target.value)}>
+                     <option value="">Tabela para purge</option>
+@@ -1738,12 +1738,12 @@ export default function Owner2() {
+                 </div>
+               </SurfaceCard>
+ 
+-              <SurfaceCard title="Resumo operacional do sistema" subtitle="Vis├úo r├ípida de seguran├ºa e manuten├º├úo">
++              <SurfaceCard title="Resumo operacional do sistema" subtitle="Vis├â┬úo r├â┬ípida de seguran├â┬ºa e manuten├â┬º├â┬úo">
+                 <div className="grid gap-2 sm:grid-cols-2">
+                   <MetricTile label="Tabelas detectadas" value={tables.length} icon={Database} tone="sky" />
+-                  <MetricTile label="Usu├írios globais" value={users.length} icon={Users} tone="emerald" />
++                  <MetricTile label="Usu├â┬írios globais" value={users.length} icon={Users} tone="emerald" />
+                   <MetricTile label="Empresa em escopo" value={companyId ? 'Selecionada' : 'Global'} icon={Building2} tone="amber" />
+-                  <MetricTile label="M├│dulo" value="Sistema" icon={Settings2} tone="rose" />
++                  <MetricTile label="M├â┬│dulo" value="Sistema" icon={Settings2} tone="rose" />
+                 </div>
+               </SurfaceCard>
+             </div>
+@@ -1793,7 +1793,7 @@ export default function Owner2() {
+               <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-4 shadow-2xl">
+                 <h3 className="text-base font-semibold text-slate-900">{criticalRequest.title}</h3>
+                 <p className="mt-2 text-sm text-slate-600">{criticalRequest.description}</p>
+-                <p className="mt-2 text-xs text-slate-500">Digite <span className="font-semibold text-slate-800">{criticalRequest.confirmText}</span> e informe a senha de confirma├º├úo para prosseguir.</p>
++                <p className="mt-2 text-xs text-slate-500">Digite <span className="font-semibold text-slate-800">{criticalRequest.confirmText}</span> e informe a senha de confirma├â┬º├â┬úo para prosseguir.</p>
+ 
+                 <div className="mt-3 grid gap-2">
+                   <input
+@@ -1823,3 +1823,4 @@ export default function Owner2() {
+     </div>
+   )
+ }
++
+diff --git a/supabase/functions/owner-portal-admin/index.ts b/supabase/functions/owner-portal-admin/index.ts
+index 14ae579..d86618e 100644
+--- a/supabase/functions/owner-portal-admin/index.ts
++++ b/supabase/functions/owner-portal-admin/index.ts
+@@ -1259,8 +1259,11 @@ const PROTECTED_PLATFORM_TABLES = new Set([
+ 
+ function extractReferencedTableFromFkError(message?: string | null) {
+   const text = message ?? "";
+-  const onTable = text.match(/on table\s+"([a-zA-Z0-9_]+)"/i);
+-  if (onTable?.[1]) return onTable[1];
++  const onTableMatches = Array.from(text.matchAll(/on table\s+"([a-zA-Z0-9_]+)"/ig)).map((m) => m[1]);
++  if (onTableMatches.length > 0) {
++    // FK errors can mention source and dependent tables; last match is usually the dependent table.
++    return onTableMatches[onTableMatches.length - 1];
++  }
+ 
+   const allQuoted = Array.from(text.matchAll(/"([a-zA-Z0-9_]+)"/g)).map((m) => m[1]);
+   if (allQuoted.length > 1) {
+@@ -3889,9 +3892,34 @@ Deno.serve(async (req) => {
+     await admin.from("enterprise_audit_logs").delete().eq("empresa_id", body.empresa_id);
+     await admin.from("contracts").delete().eq("empresa_id", body.empresa_id);
+     await admin.from("subscriptions").delete().eq("empresa_id", body.empresa_id);
++    await admin.from("operational_logs").delete().eq("empresa_id", body.empresa_id);
++
++    const { count: remainingOperationalLogs, error: remainingOperationalLogsError } = await admin
++      .from("operational_logs")
++      .select("id", { count: "exact", head: true })
++      .eq("empresa_id", body.empresa_id);
++
++    if (remainingOperationalLogsError) {
++      return fail(
++        `Falha ao validar limpeza de operational_logs antes da exclus├úo da empresa. Detalhe: ${remainingOperationalLogsError.message}`,
++        400,
++        {
++          operation_id: operationId,
++          fk_table: "operational_logs",
++          reason: remainingOperationalLogsError.message,
++        },
++        req,
++      );
++    }
++
++    if (Number(remainingOperationalLogs ?? 0) > 0) {
++      await bestEffortDeleteByEq(admin, "operational_logs", "empresa_id", body.empresa_id);
++    }
+ 
+     let lastDeleteCompanyError: { message?: string; code?: string } | null = null;
+     for (let attempt = 0; attempt < 8; attempt += 1) {
++      await bestEffortDeleteByEq(admin, "operational_logs", "empresa_id", body.empresa_id);
++
+       const { error: deleteCompanyError } = await admin
+         .from("empresas")
+         .delete()
+@@ -4013,9 +4041,10 @@ Deno.serve(async (req) => {
+       endpoint: trace.endpoint,
+       statusCode: 200,
+       durationMs: traceDurationMs(trace),
+-      empresaId: body.empresa_id,
++      empresaId: null,
+       userId: auth.user.id,
+       metadata: {
++        empresa_id: body.empresa_id,
+         company_name: expectedName,
+         deleted_auth_users: deletedAuthUsers,
+       },

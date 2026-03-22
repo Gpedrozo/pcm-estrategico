@@ -1,0 +1,392 @@
+﻿[
+    {
+        "table_schema":  "public",
+        "table_name":  "acoes_corretivas",
+        "table_type":  "BASE TABLE"
+    },
+    {
+        "table_schema":  "public",
+        "table_name":  "ai_root_cause_analysis",
+        "table_type":  "BASE TABLE"
+    },
+    {
+        "table_schema":  "public",
+        "table_name":  "analise_causa_raiz",
+        "table_type":  "BASE TABLE"
+    },
+    {
+        "table_schema":  "public",
+        "table_name":  "anomalias_inspecao",
+        "table_type":  "BASE TABLE"
+    },
+    {
+        "table_schema":  "public",
+        "table_name":  "areas",
+        "table_type":  "BASE TABLE"
+    },
+    {
+        "table_schema":  "public",
+        "table_name":  "atividades_lubrificacao",
+        "table_type":  "BASE TABLE"
+    },
+    {
+        "table_schema":  "public",
+        "table_name":  "atividades_preventivas",
+        "table_type":  "BASE TABLE"
+    },
+    {
+        "table_schema":  "public",
+        "table_name":  "audit_logs",
+        "table_type":  "BASE TABLE"
+    },
+    {
+        "table_schema":  "public",
+        "table_name":  "billing_customers",
+        "table_type":  "BASE TABLE"
+    },
+    {
+        "table_schema":  "public",
+        "table_name":  "billing_invoices",
+        "table_type":  "BASE TABLE"
+    },
+    {
+        "table_schema":  "public",
+        "table_name":  "company_subscriptions",
+        "table_type":  "BASE TABLE"
+    },
+    {
+        "table_schema":  "public",
+        "table_name":  "company_usage_metrics",
+        "table_type":  "BASE TABLE"
+    },
+    {
+        "table_schema":  "public",
+        "table_name":  "componentes_equipamento",
+        "table_type":  "BASE TABLE"
+    },
+    {
+        "table_schema":  "public",
+        "table_name":  "configuracoes_sistema",
+        "table_type":  "BASE TABLE"
+    },
+    {
+        "table_schema":  "public",
+        "table_name":  "contract_versions",
+        "table_type":  "BASE TABLE"
+    },
+    {
+        "table_schema":  "public",
+        "table_name":  "contracts",
+        "table_type":  "BASE TABLE"
+    },
+    {
+        "table_schema":  "public",
+        "table_name":  "contratos",
+        "table_type":  "BASE TABLE"
+    },
+    {
+        "table_schema":  "public",
+        "table_name":  "dados_empresa",
+        "table_type":  "BASE TABLE"
+    },
+    {
+        "table_schema":  "public",
+        "table_name":  "document_layouts",
+        "table_type":  "BASE TABLE"
+    },
+    {
+        "table_schema":  "public",
+        "table_name":  "document_sequences",
+        "table_type":  "BASE TABLE"
+    },
+    {
+        "table_schema":  "public",
+        "table_name":  "documentos_tecnicos",
+        "table_type":  "BASE TABLE"
+    },
+    {
+        "table_schema":  "public",
+        "table_name":  "empresa_config",
+        "table_type":  "BASE TABLE"
+    },
+    {
+        "table_schema":  "public",
+        "table_name":  "empresas",
+        "table_type":  "BASE TABLE"
+    },
+    {
+        "table_schema":  "public",
+        "table_name":  "enterprise_audit_logs",
+        "table_type":  "BASE TABLE"
+    },
+    {
+        "table_schema":  "public",
+        "table_name":  "equipamentos",
+        "table_type":  "BASE TABLE"
+    },
+    {
+        "table_schema":  "public",
+        "table_name":  "execucoes_lubrificacao",
+        "table_type":  "BASE TABLE"
+    },
+    {
+        "table_schema":  "public",
+        "table_name":  "execucoes_os",
+        "table_type":  "BASE TABLE"
+    },
+    {
+        "table_schema":  "public",
+        "table_name":  "execucoes_os_pausas",
+        "table_type":  "BASE TABLE"
+    },
+    {
+        "table_schema":  "public",
+        "table_name":  "execucoes_preventivas",
+        "table_type":  "BASE TABLE"
+    },
+    {
+        "table_schema":  "public",
+        "table_name":  "feature_flags",
+        "table_type":  "BASE TABLE"
+    },
+    {
+        "table_schema":  "public",
+        "table_name":  "fmea",
+        "table_type":  "BASE TABLE"
+    },
+    {
+        "table_schema":  "public",
+        "table_name":  "fornecedores",
+        "table_type":  "BASE TABLE"
+    },
+    {
+        "table_schema":  "public",
+        "table_name":  "incidentes_ssma",
+        "table_type":  "BASE TABLE"
+    },
+    {
+        "table_schema":  "public",
+        "table_name":  "inspecoes",
+        "table_type":  "BASE TABLE"
+    },
+    {
+        "table_schema":  "public",
+        "table_name":  "ip_rate_limits",
+        "table_type":  "BASE TABLE"
+    },
+    {
+        "table_schema":  "public",
+        "table_name":  "maintenance_action_suggestions",
+        "table_type":  "BASE TABLE"
+    },
+    {
+        "table_schema":  "public",
+        "table_name":  "maintenance_schedule",
+        "table_type":  "BASE TABLE"
+    },
+    {
+        "table_schema":  "public",
+        "table_name":  "materiais",
+        "table_type":  "BASE TABLE"
+    },
+    {
+        "table_schema":  "public",
+        "table_name":  "materiais_os",
+        "table_type":  "BASE TABLE"
+    },
+    {
+        "table_schema":  "public",
+        "table_name":  "mecanicos",
+        "table_type":  "BASE TABLE"
+    },
+    {
+        "table_schema":  "public",
+        "table_name":  "medicoes_preditivas",
+        "table_type":  "BASE TABLE"
+    },
+    {
+        "table_schema":  "public",
+        "table_name":  "melhorias",
+        "table_type":  "BASE TABLE"
+    },
+    {
+        "table_schema":  "public",
+        "table_name":  "movimentacoes_materiais",
+        "table_type":  "BASE TABLE"
+    },
+    {
+        "table_schema":  "public",
+        "table_name":  "operational_logs",
+        "table_type":  "BASE TABLE"
+    },
+    {
+        "table_schema":  "public",
+        "table_name":  "orcamentos_manutencao",
+        "table_type":  "BASE TABLE"
+    },
+    {
+        "table_schema":  "public",
+        "table_name":  "ordens_servico",
+        "table_type":  "BASE TABLE"
+    },
+    {
+        "table_schema":  "public",
+        "table_name":  "permissoes_granulares",
+        "table_type":  "BASE TABLE"
+    },
+    {
+        "table_schema":  "public",
+        "table_name":  "permissoes_trabalho",
+        "table_type":  "BASE TABLE"
+    },
+    {
+        "table_schema":  "public",
+        "table_name":  "planos_lubrificacao",
+        "table_type":  "BASE TABLE"
+    },
+    {
+        "table_schema":  "public",
+        "table_name":  "planos_preventivos",
+        "table_type":  "BASE TABLE"
+    },
+    {
+        "table_schema":  "public",
+        "table_name":  "plans",
+        "table_type":  "BASE TABLE"
+    },
+    {
+        "table_schema":  "public",
+        "table_name":  "plantas",
+        "table_type":  "BASE TABLE"
+    },
+    {
+        "table_schema":  "public",
+        "table_name":  "profiles",
+        "table_type":  "BASE TABLE"
+    },
+    {
+        "table_schema":  "public",
+        "table_name":  "rbac_user_roles",
+        "table_type":  "BASE TABLE"
+    },
+    {
+        "table_schema":  "public",
+        "table_name":  "saas_metrics_daily",
+        "table_type":  "BASE TABLE"
+    },
+    {
+        "table_schema":  "public",
+        "table_name":  "schema_inventory_columns",
+        "table_type":  "VIEW"
+    },
+    {
+        "table_schema":  "public",
+        "table_name":  "schema_inventory_fks",
+        "table_type":  "VIEW"
+    },
+    {
+        "table_schema":  "public",
+        "table_name":  "schema_inventory_functions",
+        "table_type":  "VIEW"
+    },
+    {
+        "table_schema":  "public",
+        "table_name":  "schema_inventory_tables",
+        "table_type":  "VIEW"
+    },
+    {
+        "table_schema":  "public",
+        "table_name":  "security_logs",
+        "table_type":  "BASE TABLE"
+    },
+    {
+        "table_schema":  "public",
+        "table_name":  "servicos_preventivos",
+        "table_type":  "BASE TABLE"
+    },
+    {
+        "table_schema":  "public",
+        "table_name":  "sistemas",
+        "table_type":  "BASE TABLE"
+    },
+    {
+        "table_schema":  "public",
+        "table_name":  "solicitacoes",
+        "table_type":  "BASE TABLE"
+    },
+    {
+        "table_schema":  "public",
+        "table_name":  "solicitacoes_manutencao",
+        "table_type":  "BASE TABLE"
+    },
+    {
+        "table_schema":  "public",
+        "table_name":  "subscription_payments",
+        "table_type":  "BASE TABLE"
+    },
+    {
+        "table_schema":  "public",
+        "table_name":  "subscriptions",
+        "table_type":  "BASE TABLE"
+    },
+    {
+        "table_schema":  "public",
+        "table_name":  "support_tickets",
+        "table_type":  "BASE TABLE"
+    },
+    {
+        "table_schema":  "public",
+        "table_name":  "system_error_events",
+        "table_type":  "BASE TABLE"
+    },
+    {
+        "table_schema":  "public",
+        "table_name":  "system_notifications",
+        "table_type":  "BASE TABLE"
+    },
+    {
+        "table_schema":  "public",
+        "table_name":  "templates_preventivos",
+        "table_type":  "BASE TABLE"
+    },
+    {
+        "table_schema":  "public",
+        "table_name":  "tenant_users",
+        "table_type":  "BASE TABLE"
+    },
+    {
+        "table_schema":  "public",
+        "table_name":  "tenants",
+        "table_type":  "BASE TABLE"
+    },
+    {
+        "table_schema":  "public",
+        "table_name":  "user_roles",
+        "table_type":  "BASE TABLE"
+    },
+    {
+        "table_schema":  "public",
+        "table_name":  "v_custos_orcado_realizado",
+        "table_type":  "VIEW"
+    },
+    {
+        "table_schema":  "public",
+        "table_name":  "v_dashboard_kpis",
+        "table_type":  "VIEW"
+    },
+    {
+        "table_schema":  "public",
+        "table_name":  "v_ordens_servico_sla",
+        "table_type":  "VIEW"
+    },
+    {
+        "table_schema":  "public",
+        "table_name":  "v_rls_policies_permissive_true",
+        "table_type":  "VIEW"
+    },
+    {
+        "table_schema":  "public",
+        "table_name":  "v_tenant_tables_without_rls",
+        "table_type":  "VIEW"
+    }
+]

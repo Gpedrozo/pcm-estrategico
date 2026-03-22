@@ -1,0 +1,27 @@
+﻿ M src/pages/Owner.tsx
+ M src/pages/Owner2.tsx
+ M supabase/functions/owner-portal-admin/index.ts
+?? .tmp_auth_schema.sql
+?? reports/OWNER_CONNECTION_DIAGNOSTIC_2026-03-22T01-11-47-146Z.json
+?? reports/inspect/
+?? reports/schema_inventory/
+?? reports/snapshots/
+?? supabase/migrations/20260321200000_support_ticket_thread_unread_counts.sql
+?? supabase/migrations/20260321213000_support_ticket_thread_schema_repair.sql
+?? supabase/migrations/20260321223000_support_ticket_attachments_storage.sql
+?? supabase/migrations/20260321234000_operational_logs_fk_on_delete_cascade.sql
+?? supabase/migrations/20260321235900_auth_schema_hardening_emergency.sql
+?? supabase/migrations/20260322000500_public_auth_hook_noop_fix.sql
+?? supabase/migrations/20260322003000_schema_inventory_views.sql
+?? supabase/migrations/20260322004000_fix_fk_inventory_view.sql
+?? supabase/migrations/20260322004500_recreate_fk_inventory_view.sql
+?? supabase/migrations/20260322005000_auth_runtime_diagnostics_view.sql
+?? supabase/migrations/20260322005500_auth_catalog_tables_view.sql
+?? supabase/migrations/20260322006000_auth_instances_snapshot_view.sql
+?? supabase/migrations/20260322006500_auth_core_counts_view.sql
+?? supabase/migrations/20260322007000_auth_catalog_columns_view.sql
+?? supabase/migrations/20260322008000_auth_instances_seed_if_empty.sql
+?? supabase/migrations/20260322009000_auth_schema_migrations_diag_view.sql
+?? supabase/migrations/20260322011000_owner_full_seed_auth_fix.sql
+?? supabase/migrations/20260322011200_owner_full_seed_auth_fix_retry.sql
+?? supabase/migrations/20260322012000_auth_instances_singleton_fix.sql

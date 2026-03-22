@@ -1,0 +1,359 @@
+﻿[
+    {
+        "function_schema":  "auth",
+        "function_name":  "email",
+        "args":  "",
+        "returns":  "text",
+        "language":  "sql"
+    },
+    {
+        "function_schema":  "auth",
+        "function_name":  "jwt",
+        "args":  "",
+        "returns":  "jsonb",
+        "language":  "sql"
+    },
+    {
+        "function_schema":  "auth",
+        "function_name":  "role",
+        "args":  "",
+        "returns":  "text",
+        "language":  "sql"
+    },
+    {
+        "function_schema":  "auth",
+        "function_name":  "uid",
+        "args":  "",
+        "returns":  "uuid",
+        "language":  "sql"
+    },
+    {
+        "function_schema":  "public",
+        "function_name":  "app_capture_system_error",
+        "args":  "p_empresa_id uuid, p_user_id uuid, p_request_id text, p_endpoint text, p_source text, p_error_name text, p_error_message text, p_stack_trace text, p_severity text, p_metadata jsonb",
+        "returns":  "uuid",
+        "language":  "plpgsql"
+    },
+    {
+        "function_schema":  "public",
+        "function_name":  "app_check_rate_limit_ip",
+        "args":  "p_scope text, p_identifier text, p_max_requests integer, p_window_seconds integer, p_block_seconds integer",
+        "returns":  "boolean",
+        "language":  "plpgsql"
+    },
+    {
+        "function_schema":  "public",
+        "function_name":  "app_write_audit_log",
+        "args":  "p_action text, p_table text, p_record_id text, p_empresa_id uuid, p_severity text, p_source text, p_metadata jsonb, p_correlation_id uuid",
+        "returns":  "uuid",
+        "language":  "plpgsql"
+    },
+    {
+        "function_schema":  "public",
+        "function_name":  "app_write_operational_log",
+        "args":  "p_scope text, p_action text, p_endpoint text, p_status_code integer, p_duration_ms integer, p_empresa_id uuid, p_user_id uuid, p_metadata jsonb, p_error_message text",
+        "returns":  "uuid",
+        "language":  "plpgsql"
+    },
+    {
+        "function_schema":  "public",
+        "function_name":  "app_write_operational_log",
+        "args":  "p_scope text, p_action text, p_endpoint text, p_status_code integer, p_duration_ms integer, p_empresa_id uuid, p_user_id uuid, p_metadata jsonb, p_error_message text, p_request_id text",
+        "returns":  "uuid",
+        "language":  "plpgsql"
+    },
+    {
+        "function_schema":  "public",
+        "function_name":  "assert_table_rls_enabled",
+        "args":  "p_schema text, p_table text",
+        "returns":  "boolean",
+        "language":  "plpgsql"
+    },
+    {
+        "function_schema":  "public",
+        "function_name":  "block_empresa_id_update",
+        "args":  "",
+        "returns":  "trigger",
+        "language":  "plpgsql"
+    },
+    {
+        "function_schema":  "public",
+        "function_name":  "check_company_plan_limit",
+        "args":  "p_empresa_id uuid, p_limit_type text, p_increment integer",
+        "returns":  "boolean",
+        "language":  "plpgsql"
+    },
+    {
+        "function_schema":  "public",
+        "function_name":  "check_company_storage_limit",
+        "args":  "p_empresa_id uuid, p_increment_bytes bigint",
+        "returns":  "boolean",
+        "language":  "plpgsql"
+    },
+    {
+        "function_schema":  "public",
+        "function_name":  "check_multitenant_governance",
+        "args":  "",
+        "returns":  "TABLE(table_name text, has_empresa_id boolean, rls_enabled boolean, null_empresa_rows bigint)",
+        "language":  "plpgsql"
+    },
+    {
+        "function_schema":  "public",
+        "function_name":  "close_os_with_execution_atomic",
+        "args":  "p_os_id uuid, p_mecanico_id uuid, p_mecanico_nome text, p_hora_inicio text, p_hora_fim text, p_tempo_execucao integer, p_servico_executado text, p_custo_mao_obra numeric, p_custo_materiais numeric, p_custo_terceiros numeric, p_custo_total numeric, p_materiais jsonb, p_usuario_fechamento uuid, p_modo_falha text, p_causa_raiz text, p_acao_corretiva text, p_licoes_aprendidas text, p_pausas jsonb",
+        "returns":  "TABLE(os_id uuid, execucao_id uuid, os_status text, total_materiais numeric, total_custo numeric)",
+        "language":  "plpgsql"
+    },
+    {
+        "function_schema":  "public",
+        "function_name":  "close_os_with_execution_atomic",
+        "args":  "p_os_id uuid, p_mecanico_id uuid, p_mecanico_nome text, p_data_inicio date, p_hora_inicio text, p_data_fim date, p_hora_fim text, p_tempo_execucao integer, p_servico_executado text, p_custo_mao_obra numeric, p_custo_materiais numeric, p_custo_terceiros numeric, p_custo_total numeric, p_materiais jsonb, p_usuario_fechamento uuid, p_modo_falha text, p_causa_raiz text, p_acao_corretiva text, p_licoes_aprendidas text, p_pausas jsonb",
+        "returns":  "TABLE(os_id uuid, execucao_id uuid, os_status text, total_materiais numeric, total_custo numeric)",
+        "language":  "plpgsql"
+    },
+    {
+        "function_schema":  "public",
+        "function_name":  "create_maintenance_action_suggestion",
+        "args":  "p_empresa_id uuid, p_origin_type text, p_origin_id uuid, p_recommendation_type text, p_prioridade text, p_titulo text, p_descricao text, p_metadata jsonb",
+        "returns":  "uuid",
+        "language":  "plpgsql"
+    },
+    {
+        "function_schema":  "public",
+        "function_name":  "current_empresa_id",
+        "args":  "",
+        "returns":  "uuid",
+        "language":  "plpgsql"
+    },
+    {
+        "function_schema":  "public",
+        "function_name":  "custom_access_token_hook",
+        "args":  "event jsonb",
+        "returns":  "jsonb",
+        "language":  "plpgsql"
+    },
+    {
+        "function_schema":  "public",
+        "function_name":  "enforce_empresa_id_insert",
+        "args":  "",
+        "returns":  "trigger",
+        "language":  "plpgsql"
+    },
+    {
+        "function_schema":  "public",
+        "function_name":  "enqueue_system_notification",
+        "args":  "p_empresa_id uuid, p_channel text, p_event_type text, p_recipient text, p_payload jsonb, p_scheduled_for timestamp with time zone",
+        "returns":  "uuid",
+        "language":  "plpgsql"
+    },
+    {
+        "function_schema":  "public",
+        "function_name":  "ensure_updated_at_trigger",
+        "args":  "p_table regclass",
+        "returns":  "void",
+        "language":  "plpgsql"
+    },
+    {
+        "function_schema":  "public",
+        "function_name":  "get_current_empresa_id",
+        "args":  "",
+        "returns":  "uuid",
+        "language":  "sql"
+    },
+    {
+        "function_schema":  "public",
+        "function_name":  "has_permission",
+        "args":  "p_permission_code text, p_empresa_id uuid",
+        "returns":  "boolean",
+        "language":  "sql"
+    },
+    {
+        "function_schema":  "public",
+        "function_name":  "has_role",
+        "args":  "p_user_id uuid, p_role app_role",
+        "returns":  "boolean",
+        "language":  "sql"
+    },
+    {
+        "function_schema":  "public",
+        "function_name":  "is_control_plane_operator",
+        "args":  "",
+        "returns":  "boolean",
+        "language":  "sql"
+    },
+    {
+        "function_schema":  "public",
+        "function_name":  "is_feature_enabled",
+        "args":  "p_feature_key text, p_empresa_id uuid",
+        "returns":  "boolean",
+        "language":  "sql"
+    },
+    {
+        "function_schema":  "public",
+        "function_name":  "is_system_master",
+        "args":  "",
+        "returns":  "boolean",
+        "language":  "plpgsql"
+    },
+    {
+        "function_schema":  "public",
+        "function_name":  "log_audit_event",
+        "args":  "p_action text, p_entity_type text, p_entity_id text, p_empresa_id uuid, p_user_id uuid, p_payload_json jsonb, p_ip_address text, p_user_agent text, p_source text, p_severity text, p_endpoint text, p_execution_ms integer",
+        "returns":  "uuid",
+        "language":  "plpgsql"
+    },
+    {
+        "function_schema":  "public",
+        "function_name":  "log_audit_event",
+        "args":  "p_action text, p_entity_type text, p_entity_id text, p_empresa_id uuid, p_user_id uuid, p_payload_json jsonb, p_ip_address text, p_user_agent text, p_source text, p_severity text, p_endpoint text, p_execution_ms integer, p_request_id text",
+        "returns":  "uuid",
+        "language":  "plpgsql"
+    },
+    {
+        "function_schema":  "public",
+        "function_name":  "log_enterprise_audit",
+        "args":  "",
+        "returns":  "trigger",
+        "language":  "plpgsql"
+    },
+    {
+        "function_schema":  "public",
+        "function_name":  "owner_list_database_tables",
+        "args":  "p_empresa_id uuid",
+        "returns":  "TABLE(table_name text, total_rows bigint, has_empresa_id boolean)",
+        "language":  "plpgsql"
+    },
+    {
+        "function_schema":  "public",
+        "function_name":  "owner_list_database_tables",
+        "args":  "",
+        "returns":  "TABLE(table_name text, total_rows bigint, has_empresa_id boolean)",
+        "language":  "plpgsql"
+    },
+    {
+        "function_schema":  "public",
+        "function_name":  "owner_touch_updated_at",
+        "args":  "",
+        "returns":  "trigger",
+        "language":  "plpgsql"
+    },
+    {
+        "function_schema":  "public",
+        "function_name":  "prevent_legacy_auditoria_table",
+        "args":  "",
+        "returns":  "event_trigger",
+        "language":  "plpgsql"
+    },
+    {
+        "function_schema":  "public",
+        "function_name":  "process_pending_system_notifications",
+        "args":  "p_limit integer",
+        "returns":  "TABLE(notification_id uuid, processed_status text, details text)",
+        "language":  "plpgsql"
+    },
+    {
+        "function_schema":  "public",
+        "function_name":  "refresh_company_usage_metrics",
+        "args":  "p_metric_month date",
+        "returns":  "integer",
+        "language":  "plpgsql"
+    },
+    {
+        "function_schema":  "public",
+        "function_name":  "refresh_saas_metrics_daily",
+        "args":  "p_metric_date date",
+        "returns":  "saas_metrics_daily",
+        "language":  "plpgsql"
+    },
+    {
+        "function_schema":  "public",
+        "function_name":  "resolve_empresa_id_by_slug",
+        "args":  "p_slug text",
+        "returns":  "uuid",
+        "language":  "sql"
+    },
+    {
+        "function_schema":  "public",
+        "function_name":  "resolve_user_tenant_context",
+        "args":  "p_user_id uuid",
+        "returns":  "TABLE(empresa_id uuid, empresa_slug text, user_role app_role, force_password_change boolean)",
+        "language":  "plpgsql"
+    },
+    {
+        "function_schema":  "public",
+        "function_name":  "restore_soft_deleted_record",
+        "args":  "p_table_name text, p_id uuid",
+        "returns":  "boolean",
+        "language":  "plpgsql"
+    },
+    {
+        "function_schema":  "public",
+        "function_name":  "run_multitenant_rls_suite",
+        "args":  "",
+        "returns":  "TABLE(test_name text, passed boolean, details text)",
+        "language":  "plpgsql"
+    },
+    {
+        "function_schema":  "public",
+        "function_name":  "sync_support_ticket_user_columns",
+        "args":  "",
+        "returns":  "trigger",
+        "language":  "plpgsql"
+    },
+    {
+        "function_schema":  "public",
+        "function_name":  "tg_set_updated_at",
+        "args":  "",
+        "returns":  "trigger",
+        "language":  "plpgsql"
+    },
+    {
+        "function_schema":  "public",
+        "function_name":  "touch_login_attempts_updated_at",
+        "args":  "",
+        "returns":  "trigger",
+        "language":  "plpgsql"
+    },
+    {
+        "function_schema":  "public",
+        "function_name":  "trg_enqueue_os_closed_notification",
+        "args":  "",
+        "returns":  "trigger",
+        "language":  "plpgsql"
+    },
+    {
+        "function_schema":  "public",
+        "function_name":  "trg_enqueue_solicitacao_sla_notification",
+        "args":  "",
+        "returns":  "trigger",
+        "language":  "plpgsql"
+    },
+    {
+        "function_schema":  "public",
+        "function_name":  "trg_fmea_generate_suggestion",
+        "args":  "",
+        "returns":  "trigger",
+        "language":  "plpgsql"
+    },
+    {
+        "function_schema":  "public",
+        "function_name":  "trg_preventiva_overdue_generate_suggestion",
+        "args":  "",
+        "returns":  "trigger",
+        "language":  "plpgsql"
+    },
+    {
+        "function_schema":  "public",
+        "function_name":  "trg_rca_generate_suggestion",
+        "args":  "",
+        "returns":  "trigger",
+        "language":  "plpgsql"
+    },
+    {
+        "function_schema":  "public",
+        "function_name":  "update_updated_at_column",
+        "args":  "",
+        "returns":  "trigger",
+        "language":  "plpgsql"
+    }
+]

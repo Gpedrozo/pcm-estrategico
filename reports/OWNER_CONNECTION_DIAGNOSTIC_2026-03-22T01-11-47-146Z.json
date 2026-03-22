@@ -1,0 +1,70 @@
+{
+  "generated_at": "2026-03-22T01:11:47.135Z",
+  "supabase": {
+    "url": "https://dvwsferonoczgmvfubgu.supabase.co",
+    "anon_key": "eyJhb...5G44",
+    "project_ref": "dvwsferonoczgmvfubgu",
+    "owner_env_present": false,
+    "tenant_base_domain": null
+  },
+  "tests": [
+    {
+      "name": "auth_health",
+      "ok": true,
+      "status": 200,
+      "detail": {
+        "version": "v2.188.1",
+        "name": "GoTrue",
+        "description": "GoTrue is a user registration and authentication API"
+      },
+      "ms": 559
+    },
+    {
+      "name": "auth_password_invalid_probe",
+      "ok": false,
+      "status": 500,
+      "detail": {
+        "message": "Database error querying schema",
+        "payload": {
+          "code": 500,
+          "error_code": "unexpected_failure",
+          "msg": "Database error querying schema",
+          "error_id": "9e0152f9a68f0343-CWB"
+        }
+      },
+      "ms": 211
+    },
+    {
+      "name": "edge_auth_login_probe",
+      "ok": true,
+      "status": 502,
+      "detail": {
+        "message": "Auth provider request failed",
+        "payload": {
+          "error": "Auth provider request failed",
+          "details": {
+            "auth_status": 500,
+            "auth_message": "Database error querying schema"
+          }
+        }
+      },
+      "ms": 1617
+    },
+    {
+      "name": "edge_owner_portal_health_unauth",
+      "ok": true,
+      "status": 401,
+      "detail": {
+        "success": false,
+        "error": "unauthorized"
+      },
+      "ms": 209
+    }
+  ],
+  "summary": {
+    "total": 4,
+    "failed": 1,
+    "healthy": false,
+    "likely_root_cause": "supabase_auth_schema_or_auth_backend"
+  }
+}

@@ -1259,8 +1259,11 @@ const PROTECTED_PLATFORM_TABLES = new Set([
 
 function extractReferencedTableFromFkError(message?: string | null) {
   const text = message ?? "";
-  const onTable = text.match(/on table\s+"([a-zA-Z0-9_]+)"/i);
-  if (onTable?.[1]) return onTable[1];
+  const onTableMatches = Array.from(text.matchAll(/on table\s+"([a-zA-Z0-9_]+)"/ig)).map((m) => m[1]);
+  if (onTableMatches.length > 0) {
+    // FK errors can mention source and dependent tables; last match is usually the dependent table.
+    return onTableMatches[onTableMatches.length - 1];
+  }
 
   const allQuoted = Array.from(text.matchAll(/"([a-zA-Z0-9_]+)"/g)).map((m) => m[1]);
   if (allQuoted.length > 1) {
@@ -3889,9 +3892,34 @@ Deno.serve(async (req) => {
     await admin.from("enterprise_audit_logs").delete().eq("empresa_id", body.empresa_id);
     await admin.from("contracts").delete().eq("empresa_id", body.empresa_id);
     await admin.from("subscriptions").delete().eq("empresa_id", body.empresa_id);
+    await admin.from("operational_logs").delete().eq("empresa_id", body.empresa_id);
+
+    const { count: remainingOperationalLogs, error: remainingOperationalLogsError } = await admin
+      .from("operational_logs")
+      .select("id", { count: "exact", head: true })
+      .eq("empresa_id", body.empresa_id);
+
+    if (remainingOperationalLogsError) {
+      return fail(
+        `Falha ao validar limpeza de operational_logs antes da exclusão da empresa. Detalhe: ${remainingOperationalLogsError.message}`,
+        400,
+        {
+          operation_id: operationId,
+          fk_table: "operational_logs",
+          reason: remainingOperationalLogsError.message,
+        },
+        req,
+      );
+    }
+
+    if (Number(remainingOperationalLogs ?? 0) > 0) {
+      await bestEffortDeleteByEq(admin, "operational_logs", "empresa_id", body.empresa_id);
+    }
 
     let lastDeleteCompanyError: { message?: string; code?: string } | null = null;
     for (let attempt = 0; attempt < 8; attempt += 1) {
+      await bestEffortDeleteByEq(admin, "operational_logs", "empresa_id", body.empresa_id);
+
       const { error: deleteCompanyError } = await admin
         .from("empresas")
         .delete()
@@ -4013,9 +4041,10 @@ Deno.serve(async (req) => {
       endpoint: trace.endpoint,
       statusCode: 200,
       durationMs: traceDurationMs(trace),
-      empresaId: body.empresa_id,
+      empresaId: null,
       userId: auth.user.id,
       metadata: {
+        empresa_id: body.empresa_id,
         company_name: expectedName,
         deleted_auth_users: deletedAuthUsers,
       },

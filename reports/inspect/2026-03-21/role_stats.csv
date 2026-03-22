@@ -1,0 +1,31 @@
+role_name,active_connections,connection_limit,custom_config
+supabase_storage_admin,0,60,"search_path=storage,log_statement=none"
+supabase_replication_admin,0,60,
+supabase_realtime_admin,0,60,
+supabase_read_only_user,0,60,default_transaction_read_only=on
+supabase_etl_admin,0,60,
+supabase_auth_admin,0,60,"search_path=auth,idle_in_transaction_session_timeout=60000,log_statement=none"
+supabase_admin,5,60,"search_path=""$user"", public, auth, extensions,log_statement=none"
+service_role,0,60,
+postgres,0,60,"search_path=""\$user"", public, extensions"
+pgbouncer,0,60,
+pg_write_server_files,0,60,
+pg_write_all_data,0,60,
+pg_use_reserved_connections,0,60,
+pg_stat_scan_tables,0,60,
+pg_signal_backend,0,60,
+pg_read_server_files,0,60,
+pg_read_all_stats,0,60,
+pg_read_all_settings,0,60,
+pg_read_all_data,0,60,
+pg_monitor,0,60,
+pg_maintain,0,60,
+pg_execute_server_program,0,60,
+pg_database_owner,0,60,
+pg_create_subscription,0,60,
+pg_checkpoint,0,60,
+dashboard_user,0,60,
+cli_login_postgres,1,60,
+authenticator,2,60,"session_preload_libraries=safeupdate,statement_timeout=8s,lock_timeout=8s"
+authenticated,0,60,statement_timeout=8s
+anon,0,60,statement_timeout=3s

@@ -1,0 +1,527 @@
+﻿[
+    {
+        "Name":  "20260116012756_remix_migration_from_pg_dump.sql",
+        "Length":  33932,
+        "LastWriteTime":  "\/Date(1772995838737)\/"
+    },
+    {
+        "Name":  "20260116013000_create_user_roles.sql",
+        "Length":  2569,
+        "LastWriteTime":  "\/Date(1772995838741)\/"
+    },
+    {
+        "Name":  "20260116013455_5367e88d-0e22-4b0a-b334-f87ee6aa3778.sql",
+        "Length":  26882,
+        "LastWriteTime":  "\/Date(1771201706601)\/"
+    },
+    {
+        "Name":  "20260116015707_d2d8d2ef-e264-4f70-abf0-6891dd3ca630.sql",
+        "Length":  6942,
+        "LastWriteTime":  "\/Date(1771201706602)\/"
+    },
+    {
+        "Name":  "20260122013847_757ca027-1a90-48bd-9002-78d8f5ad0916.sql",
+        "Length":  2678,
+        "LastWriteTime":  "\/Date(1771201706602)\/"
+    },
+    {
+        "Name":  "20260213004455_ec1ec3a2-463e-4970-9d64-26e18aa3f254.sql",
+        "Length":  106,
+        "LastWriteTime":  "\/Date(1771201706603)\/"
+    },
+    {
+        "Name":  "20260215231237_1ec8aa23-d421-41f4-beb6-2473d5bb8ad8.sql",
+        "Length":  4619,
+        "LastWriteTime":  "\/Date(1772995838743)\/"
+    },
+    {
+        "Name":  "20260216220739_f38fce3d-8e39-4ad8-b611-d18832efccc7.sql",
+        "Length":  1192,
+        "LastWriteTime":  "\/Date(1772995838745)\/"
+    },
+    {
+        "Name":  "20260216221330_3913aedb-ef5d-48bf-b271-34e4e649a9ac.sql",
+        "Length":  3300,
+        "LastWriteTime":  "\/Date(1772995838747)\/"
+    },
+    {
+        "Name":  "20260223232039_2ee93a58-45f2-42ad-880d-9067538e38cf.sql",
+        "Length":  941,
+        "LastWriteTime":  "\/Date(1772995838749)\/"
+    },
+    {
+        "Name":  "20260224000000_create_registrar_auditoria.sql",
+        "Length":  589,
+        "LastWriteTime":  "\/Date(1772995838752)\/"
+    },
+    {
+        "Name":  "20260224001222_e217ef0d-6fb4-42b3-9833-82eea2d86f17.sql",
+        "Length":  5652,
+        "LastWriteTime":  "\/Date(1772995838755)\/"
+    },
+    {
+        "Name":  "20260224005607_4e788413-8dcb-40e8-9156-9a37a57942fe.sql",
+        "Length":  3606,
+        "LastWriteTime":  "\/Date(1772995838758)\/"
+    },
+    {
+        "Name":  "20260224020000_create_lubrificacao.sql",
+        "Length":  5004,
+        "LastWriteTime":  "\/Date(1772995838760)\/"
+    },
+    {
+        "Name":  "20260224021000_create_lubrificacao_indexes.sql",
+        "Length":  495,
+        "LastWriteTime":  "\/Date(1772995838763)\/"
+    },
+    {
+        "Name":  "20260224030000_sync_sequences_trigger.sql",
+        "Length":  3312,
+        "LastWriteTime":  "\/Date(1772995838764)\/"
+    },
+    {
+        "Name":  "20260301025500_secure_user_registration_and_enterprise_audit.sql",
+        "Length":  11487,
+        "LastWriteTime":  "\/Date(1772995838767)\/"
+    },
+    {
+        "Name":  "20260301032000_enterprise_multitenant_foundation.sql",
+        "Length":  20467,
+        "LastWriteTime":  "\/Date(1772995838770)\/"
+    },
+    {
+        "Name":  "20260301034000_enterprise_saas_hardening.sql",
+        "Length":  25012,
+        "LastWriteTime":  "\/Date(1772995838774)\/"
+    },
+    {
+        "Name":  "20260301035500_owner_portal_foundation.sql",
+        "Length":  20001,
+        "LastWriteTime":  "\/Date(1772995838776)\/"
+    },
+    {
+        "Name":  "20260301043000_owner_enterprise_hardening.sql",
+        "Length":  3784,
+        "LastWriteTime":  "\/Date(1772995838778)\/"
+    },
+    {
+        "Name":  "20260301043100_promote_gustavus82_system_owner.sql",
+        "Length":  417,
+        "LastWriteTime":  "\/Date(1772995838781)\/"
+    },
+    {
+        "Name":  "20260301050000_create_maintenance_schedule.sql",
+        "Length":  7381,
+        "LastWriteTime":  "\/Date(1772995838783)\/"
+    },
+    {
+        "Name":  "20260301053500_add_system_owner_role_and_promotion.sql",
+        "Length":  2013,
+        "LastWriteTime":  "\/Date(1772995838787)\/"
+    },
+    {
+        "Name":  "20260302093000_series_a_foundation_unified_tenancy_rbac_audit.sql",
+        "Length":  11834,
+        "LastWriteTime":  "\/Date(1772995838790)\/"
+    },
+    {
+        "Name":  "20260302103000_tenancy_cleanup_validation_and_rollback.sql",
+        "Length":  3174,
+        "LastWriteTime":  "\/Date(1772995838793)\/"
+    },
+    {
+        "Name":  "20260302200000_rebuild_phase0_drop.sql",
+        "Length":  1659,
+        "LastWriteTime":  "\/Date(1772995838795)\/"
+    },
+    {
+        "Name":  "20260302200100_rebuild_phase1_schema.sql",
+        "Length":  23086,
+        "LastWriteTime":  "\/Date(1772995838798)\/"
+    },
+    {
+        "Name":  "20260302200200_rebuild_phase2_security.sql",
+        "Length":  11526,
+        "LastWriteTime":  "\/Date(1772995838800)\/"
+    },
+    {
+        "Name":  "20260302200300_rebuild_phase4_front_compat.sql",
+        "Length":  975,
+        "LastWriteTime":  "\/Date(1772995838804)\/"
+    },
+    {
+        "Name":  "20260302200400_rebuild_phase3_edge_contract.sql",
+        "Length":  920,
+        "LastWriteTime":  "\/Date(1772995838806)\/"
+    },
+    {
+        "Name":  "20260302200500_rebuild_phase5_analytics.sql",
+        "Length":  1645,
+        "LastWriteTime":  "\/Date(1772995838808)\/"
+    },
+    {
+        "Name":  "20260302200600_rebuild_phase6_cutover.sql",
+        "Length":  922,
+        "LastWriteTime":  "\/Date(1772995838810)\/"
+    },
+    {
+        "Name":  "20260302213000_align_refactor_online.sql",
+        "Length":  6286,
+        "LastWriteTime":  "\/Date(1772995838814)\/"
+    },
+    {
+        "Name":  "20260302214500_cleanup_legacy_objects.sql",
+        "Length":  1498,
+        "LastWriteTime":  "\/Date(1772995838816)\/"
+    },
+    {
+        "Name":  "20260302222000_full_reset_single_owner.sql",
+        "Length":  6613,
+        "LastWriteTime":  "\/Date(1772995838821)\/"
+    },
+    {
+        "Name":  "20260302223000_fix_single_owner_password.sql",
+        "Length":  543,
+        "LastWriteTime":  "\/Date(1772995838824)\/"
+    },
+    {
+        "Name":  "20260302224000_fix_single_owner_auth_compat.sql",
+        "Length":  763,
+        "LastWriteTime":  "\/Date(1772995838827)\/"
+    },
+    {
+        "Name":  "20260302225000_enforce_single_owner_user.sql",
+        "Length":  2364,
+        "LastWriteTime":  "\/Date(1772995838830)\/"
+    },
+    {
+        "Name":  "20260302230000_user_roles_self_read_policy.sql",
+        "Length":  396,
+        "LastWriteTime":  "\/Date(1772995838832)\/"
+    },
+    {
+        "Name":  "20260302231000_force_single_owner_role_assignment.sql",
+        "Length":  1413,
+        "LastWriteTime":  "\/Date(1772995838834)\/"
+    },
+    {
+        "Name":  "20260302232000_owner_disable_broken_access_token_hook.sql",
+        "Length":  993,
+        "LastWriteTime":  "\/Date(1772995838837)\/"
+    },
+    {
+        "Name":  "20260302233000_owner_recreate_pedrozo_user.sql",
+        "Length":  4140,
+        "LastWriteTime":  "\/Date(1772995838840)\/"
+    },
+    {
+        "Name":  "20260302234000_owner_fix_auth_token_hook.sql",
+        "Length":  1482,
+        "LastWriteTime":  "\/Date(1772995838842)\/"
+    },
+    {
+        "Name":  "20260302240000_saas_professional_multiempresa_backend.sql",
+        "Length":  21490,
+        "LastWriteTime":  "\/Date(1772995838845)\/"
+    },
+    {
+        "Name":  "20260302241000_owner_portal_core_tables.sql",
+        "Length":  5533,
+        "LastWriteTime":  "\/Date(1772995838848)\/"
+    },
+    {
+        "Name":  "20260302242000_owner_auth_schema_hook_fix.sql",
+        "Length":  2067,
+        "LastWriteTime":  "\/Date(1772995838850)\/"
+    },
+    {
+        "Name":  "20260303001500_owner_definitive_access_fix.sql",
+        "Length":  5783,
+        "LastWriteTime":  "\/Date(1772995838854)\/"
+    },
+    {
+        "Name":  "20260303210000_full_rebuild_reset.sql",
+        "Length":  48646,
+        "LastWriteTime":  "\/Date(1772995838859)\/"
+    },
+    {
+        "Name":  "20260303211000_post_reset_smoke_assert.sql",
+        "Length":  2170,
+        "LastWriteTime":  "\/Date(1772995838861)\/"
+    },
+    {
+        "Name":  "20260304003000_repair_corrupted_pedrozo_auth_user.sql",
+        "Length":  1026,
+        "LastWriteTime":  "\/Date(1772995838863)\/"
+    },
+    {
+        "Name":  "20260304005000_enforce_empresa_id_triggers.sql",
+        "Length":  1668,
+        "LastWriteTime":  "\/Date(1772995838866)\/"
+    },
+    {
+        "Name":  "20260304012000_owner_control_plane_contracts.sql",
+        "Length":  10322,
+        "LastWriteTime":  "\/Date(1772995838868)\/"
+    },
+    {
+        "Name":  "20260304023000_recreate_owner_after_auth_repair.sql",
+        "Length":  4400,
+        "LastWriteTime":  "\/Date(1772995838871)\/"
+    },
+    {
+        "Name":  "20260304024000_owner_disable_access_token_hook_hard.sql",
+        "Length":  3283,
+        "LastWriteTime":  "\/Date(1772995838873)\/"
+    },
+    {
+        "Name":  "20260304025000_fix_access_hook_permissions.sql",
+        "Length":  2059,
+        "LastWriteTime":  "\/Date(1772995838875)\/"
+    },
+    {
+        "Name":  "20260304030000_disable_auth_hook_in_auth_config.sql",
+        "Length":  2024,
+        "LastWriteTime":  "\/Date(1772995838877)\/"
+    },
+    {
+        "Name":  "20260304031000_auth_hook_diagnostics.sql",
+        "Length":  2688,
+        "LastWriteTime":  "\/Date(1772995838880)\/"
+    },
+    {
+        "Name":  "20260304032000_promote_frontend_seed_user_system_owner.sql",
+        "Length":  2742,
+        "LastWriteTime":  "\/Date(1772995838882)\/"
+    },
+    {
+        "Name":  "20260304232000_restore_owner_portal_access.sql",
+        "Length":  3225,
+        "LastWriteTime":  "\/Date(1772995838893)\/"
+    },
+    {
+        "Name":  "20260304233500_restore_owner_for_last_signed_user.sql",
+        "Length":  1662,
+        "LastWriteTime":  "\/Date(1772995838898)\/"
+    },
+    {
+        "Name":  "20260304234500_restore_tenant_domain_mapping_and_owner_roles.sql",
+        "Length":  2621,
+        "LastWriteTime":  "\/Date(1772995838900)\/"
+    },
+    {
+        "Name":  "20260304235500_emergency_login_recovery_owner_and_tenant.sql",
+        "Length":  3877,
+        "LastWriteTime":  "\/Date(1772995838908)\/"
+    },
+    {
+        "Name":  "20260305000500_purge_corrupt_pedrozo_auth.sql",
+        "Length":  892,
+        "LastWriteTime":  "\/Date(1772995838911)\/"
+    },
+    {
+        "Name":  "20260305003000_emergency_owner_password_reset.sql",
+        "Length":  3692,
+        "LastWriteTime":  "\/Date(1772995838914)\/"
+    },
+    {
+        "Name":  "20260311113000_saas_integrity_phase1.sql",
+        "Length":  33492,
+        "LastWriteTime":  "\/Date(1774051564647)\/"
+    },
+    {
+        "Name":  "20260311202000_os_governance_and_breaks_phase2.sql",
+        "Length":  18030,
+        "LastWriteTime":  "\/Date(1774051564648)\/"
+    },
+    {
+        "Name":  "20260312190000_enforce_domain_bound_tenant_resolution.sql",
+        "Length":  4100,
+        "LastWriteTime":  "\/Date(1773398679474)\/"
+    },
+    {
+        "Name":  "20260312193000_enforce_strict_rls_all_empresa_tables.sql",
+        "Length":  5015,
+        "LastWriteTime":  "\/Date(1774051564653)\/"
+    },
+    {
+        "Name":  "20260312194500_fix_remaining_empresa_tables_without_rls.sql",
+        "Length":  3729,
+        "LastWriteTime":  "\/Date(1773398679475)\/"
+    },
+    {
+        "Name":  "20260314121000_p0_harden_close_os_atomic.sql",
+        "Length":  7919,
+        "LastWriteTime":  "\/Date(1774051564646)\/"
+    },
+    {
+        "Name":  "20260314173000_saas_production_scale_foundation.sql",
+        "Length":  17952,
+        "LastWriteTime":  "\/Date(1773584309729)\/"
+    },
+    {
+        "Name":  "20260315113000_saas_enterprise_monitoring_metrics_billing.sql",
+        "Length":  17407,
+        "LastWriteTime":  "\/Date(1773584945888)\/"
+    },
+    {
+        "Name":  "20260315123000_auth_first_login_tenant_fix.sql",
+        "Length":  3137,
+        "LastWriteTime":  "\/Date(1773586621863)\/"
+    },
+    {
+        "Name":  "20260315160000_login_attempts_rate_limit.sql",
+        "Length":  1134,
+        "LastWriteTime":  "\/Date(1773587955614)\/"
+    },
+    {
+        "Name":  "20260315190000_auth_login_tenant_compat.sql",
+        "Length":  1521,
+        "LastWriteTime":  "\/Date(1773597279562)\/"
+    },
+    {
+        "Name":  "20260317043000_profiles_force_password_change_root_fix.sql",
+        "Length":  635,
+        "LastWriteTime":  "\/Date(1773719845957)\/"
+    },
+    {
+        "Name":  "20260317062000_empresas_slug_public_lookup_policy.sql",
+        "Length":  742,
+        "LastWriteTime":  "\/Date(1773784494383)\/"
+    },
+    {
+        "Name":  "20260317074000_create_auth_session_transfer_tokens.sql",
+        "Length":  495,
+        "LastWriteTime":  "\/Date(1773786123067)\/"
+    },
+    {
+        "Name":  "20260317081000_owner_impersonation_sessions_guard.sql",
+        "Length":  590,
+        "LastWriteTime":  "\/Date(1773786123073)\/"
+    },
+    {
+        "Name":  "20260319120000_asaas_billing_integration.sql",
+        "Length":  4297,
+        "LastWriteTime":  "\/Date(1774051564647)\/"
+    },
+    {
+        "Name":  "20260320214000_fix_medicoes_preditivas_schema_compat.sql",
+        "Length":  604,
+        "LastWriteTime":  "\/Date(1774055743233)\/"
+    },
+    {
+        "Name":  "20260320235500_close_os_atomic_dates_and_fallback.sql",
+        "Length":  10315,
+        "LastWriteTime":  "\/Date(1774052943760)\/"
+    },
+    {
+        "Name":  "20260321010000_mecanicos_portal_assignment_and_operational_fields.sql",
+        "Length":  1939,
+        "LastWriteTime":  "\/Date(1774057523164)\/"
+    },
+    {
+        "Name":  "20260321013000_security_advisor_critical_fixes.sql",
+        "Length":  6937,
+        "LastWriteTime":  "\/Date(1774121816787)\/"
+    },
+    {
+        "Name":  "20260321200000_support_ticket_thread_unread_counts.sql",
+        "Length":  3287,
+        "LastWriteTime":  "\/Date(1774126310205)\/"
+    },
+    {
+        "Name":  "20260321213000_support_ticket_thread_schema_repair.sql",
+        "Length":  3398,
+        "LastWriteTime":  "\/Date(1774126310207)\/"
+    },
+    {
+        "Name":  "20260321223000_support_ticket_attachments_storage.sql",
+        "Length":  1355,
+        "LastWriteTime":  "\/Date(1774126966194)\/"
+    },
+    {
+        "Name":  "20260321234000_operational_logs_fk_on_delete_cascade.sql",
+        "Length":  506,
+        "LastWriteTime":  "\/Date(1774130728494)\/"
+    },
+    {
+        "Name":  "20260321235900_auth_schema_hardening_emergency.sql",
+        "Length":  370,
+        "LastWriteTime":  "\/Date(1774142445154)\/"
+    },
+    {
+        "Name":  "20260322000500_public_auth_hook_noop_fix.sql",
+        "Length":  509,
+        "LastWriteTime":  "\/Date(1774142706274)\/"
+    },
+    {
+        "Name":  "20260322003000_schema_inventory_views.sql",
+        "Length":  2002,
+        "LastWriteTime":  "\/Date(1774143239769)\/"
+    },
+    {
+        "Name":  "20260322004000_fix_fk_inventory_view.sql",
+        "Length":  1348,
+        "LastWriteTime":  "\/Date(1774143390468)\/"
+    },
+    {
+        "Name":  "20260322004500_recreate_fk_inventory_view.sql",
+        "Length":  1184,
+        "LastWriteTime":  "\/Date(1774143352836)\/"
+    },
+    {
+        "Name":  "20260322005000_auth_runtime_diagnostics_view.sql",
+        "Length":  1733,
+        "LastWriteTime":  "\/Date(1774143664404)\/"
+    },
+    {
+        "Name":  "20260322005500_auth_catalog_tables_view.sql",
+        "Length":  381,
+        "LastWriteTime":  "\/Date(1774143712693)\/"
+    },
+    {
+        "Name":  "20260322006000_auth_instances_snapshot_view.sql",
+        "Length":  873,
+        "LastWriteTime":  "\/Date(1774143764466)\/"
+    },
+    {
+        "Name":  "20260322006500_auth_core_counts_view.sql",
+        "Length":  1810,
+        "LastWriteTime":  "\/Date(1774143825561)\/"
+    },
+    {
+        "Name":  "20260322007000_auth_catalog_columns_view.sql",
+        "Length":  725,
+        "LastWriteTime":  "\/Date(1774143901771)\/"
+    },
+    {
+        "Name":  "20260322008000_auth_instances_seed_if_empty.sql",
+        "Length":  991,
+        "LastWriteTime":  "\/Date(1774143975450)\/"
+    },
+    {
+        "Name":  "20260322009000_auth_schema_migrations_diag_view.sql",
+        "Length":  1138,
+        "LastWriteTime":  "\/Date(1774144123737)\/"
+    },
+    {
+        "Name":  "20260322011000_owner_full_seed_auth_fix.sql",
+        "Length":  4213,
+        "LastWriteTime":  "\/Date(1774145443329)\/"
+    },
+    {
+        "Name":  "20260322011200_owner_full_seed_auth_fix_retry.sql",
+        "Length":  4213,
+        "LastWriteTime":  "\/Date(1774145443329)\/"
+    },
+    {
+        "Name":  "20260322012000_auth_instances_singleton_fix.sql",
+        "Length":  714,
+        "LastWriteTime":  "\/Date(1774145695594)\/"
+    },
+    {
+        "Name":  "secure_rls_baseline.sql",
+        "Length":  4508,
+        "LastWriteTime":  "\/Date(1773500317483)\/"
+    }
+]
