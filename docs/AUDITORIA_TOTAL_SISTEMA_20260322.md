@@ -1,3 +1,5 @@
+<!-- markdownlint-disable -->
+
 # 🔍 AUDITORIA TOTAL DO SISTEMA — PCM ESTRATÉGICO
 ## Front + Back + Rotas + Banco + Arquitetura + Integrações
 

@@ -1,3 +1,5 @@
+<!-- markdownlint-disable -->
+
 # Relatorio Definitivo de Conectividade por Modulo
 
 Data: 2026-03-22
