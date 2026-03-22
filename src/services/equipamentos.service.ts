@@ -6,6 +6,20 @@ import { isMissingTableError } from '@/lib/supabaseCompat';
 const EQUIPAMENTOS_TABLE = 'equipamentos' as const;
 let equipamentosTableAvailable: boolean | null = null;
 
+function isMissingEquipamentosSistemasRelationshipError(error: unknown): boolean {
+  if (!error || typeof error !== 'object') return false;
+
+  const message = (error as { message?: string }).message;
+  if (typeof message !== 'string') return false;
+
+  const normalized = message.toLowerCase();
+  return (
+    normalized.includes('could not find a relationship between') &&
+    normalized.includes("'equipamentos'") &&
+    normalized.includes("'sistemas'")
+  );
+}
+
 async function ensureEquipamentosTable() {
   if (equipamentosTableAvailable === true) return EQUIPAMENTOS_TABLE;
 
@@ -29,7 +43,7 @@ export const equipamentosService = {
   async listar(empresaId: string) {
     const table = await ensureEquipamentosTable();
 
-    const { data, error } = await supabase
+    const withSistemaQuery = supabase
       .from(table)
       .select(`
         *,
@@ -41,8 +55,23 @@ export const equipamentosService = {
           )
         )
       `)
-      .eq('empresa_id', empresaId)
-      .order('tag', { ascending: true });
+      .eq('empresa_id', empresaId);
+
+    const { data, error } = await withSistemaQuery.order('tag', { ascending: true });
+
+    if (error && isMissingEquipamentosSistemasRelationshipError(error)) {
+      const { data: fallbackData, error: fallbackError } = await supabase
+        .from(table)
+        .select('*')
+        .eq('empresa_id', empresaId)
+        .order('tag', { ascending: true });
+
+      if (fallbackError) {
+        throw new Error(`Falha ao carregar equipamentos: ${fallbackError.message}`);
+      }
+
+      return fallbackData;
+    }
 
     if (error) throw new Error(`Falha ao carregar equipamentos: ${error.message}`);
     return data;

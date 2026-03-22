@@ -56,7 +56,8 @@ CREATE INDEX IF NOT EXISTS idx_equipamentos_empresa_sistema ON public.equipament
 
 DO $$
 BEGIN
-  IF NOT EXISTS (
+  IF to_regclass('public.empresas') IS NOT NULL
+    AND NOT EXISTS (
     SELECT 1 FROM pg_constraint
     WHERE conname = 'equipamentos_empresa_id_fkey'
       AND conrelid = 'public.equipamentos'::regclass
@@ -66,7 +67,8 @@ BEGIN
       FOREIGN KEY (empresa_id) REFERENCES public.empresas(id);
   END IF;
 
-  IF NOT EXISTS (
+  IF to_regclass('public.sistemas') IS NOT NULL
+    AND NOT EXISTS (
     SELECT 1 FROM pg_constraint
     WHERE conname = 'equipamentos_sistema_id_fkey'
       AND conrelid = 'public.equipamentos'::regclass
