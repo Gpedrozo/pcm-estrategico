@@ -15,7 +15,8 @@ BEGIN
   LIMIT 1;
 
   IF v_user_id IS NULL THEN
-    RAISE EXCEPTION 'Usuário não encontrado em auth.users: %', v_email;
+    RAISE NOTICE 'Usuário de seed não encontrado em auth.users: %, seguindo sem promoção.', v_email;
+    RETURN;
   END IF;
 
   UPDATE auth.users

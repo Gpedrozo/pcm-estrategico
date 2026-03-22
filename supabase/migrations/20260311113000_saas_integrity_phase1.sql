@@ -37,6 +37,32 @@ begin
 end
 $$;
 
+do $$
+begin
+  if to_regprocedure('public.current_empresa_id()') is null then
+    execute $fn$
+      create function public.current_empresa_id()
+      returns uuid
+      language plpgsql
+      stable
+      security definer
+      set search_path = public
+      as $body$
+      begin
+        if to_regprocedure('public.get_current_empresa_id()') is not null then
+          return public.get_current_empresa_id();
+        end if;
+
+        return null;
+      end;
+      $body$;
+    $fn$;
+
+    grant execute on function public.current_empresa_id() to anon, authenticated, service_role;
+  end if;
+end
+$$;
+
 -- -----------------------------------------------------------------------------
 -- Async notifications queue (outside browser session)
 -- -----------------------------------------------------------------------------

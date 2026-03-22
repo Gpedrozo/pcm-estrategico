@@ -1,6 +1,8 @@
 BEGIN;
 
 ALTER TABLE public.support_tickets
+  ADD COLUMN IF NOT EXISTS user_id uuid,
+  ADD COLUMN IF NOT EXISTS owner_responder_id uuid,
   ADD COLUMN IF NOT EXISTS messages jsonb NOT NULL DEFAULT '[]'::jsonb,
   ADD COLUMN IF NOT EXISTS unread_owner_messages integer NOT NULL DEFAULT 0,
   ADD COLUMN IF NOT EXISTS unread_client_messages integer NOT NULL DEFAULT 0,

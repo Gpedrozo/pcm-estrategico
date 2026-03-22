@@ -30,6 +30,12 @@ CREATE TABLE IF NOT EXISTS public.legacy_tenant_rollback_snapshot (
   created_at timestamptz NOT NULL DEFAULT now()
 );
 
+ALTER TABLE public.empresas ADD COLUMN IF NOT EXISTS slug text;
+
+UPDATE public.empresas
+SET slug = nullif(regexp_replace(lower(nome), '[^a-z0-9_-]', '-', 'g'), '')
+WHERE slug IS NULL;
+
 INSERT INTO public.legacy_tenant_rollback_snapshot (empresa_id, tenant_slug, tenant_name)
 SELECT
   e.id,

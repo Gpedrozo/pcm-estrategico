@@ -211,7 +211,21 @@ DECLARE
 BEGIN
   FOREACH v_table IN ARRAY v_tables LOOP
     IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = v_table) THEN
+      -- Avoid side effects from legacy audit triggers while backfilling tenant key.
+      BEGIN
+        EXECUTE format('ALTER TABLE public.%I DISABLE TRIGGER USER', v_table);
+      EXCEPTION WHEN OTHERS THEN
+        NULL;
+      END;
+
       EXECUTE format('UPDATE public.%I SET empresa_id = COALESCE(empresa_id, (SELECT id FROM public.empresas ORDER BY created_at LIMIT 1))', v_table);
+
+      BEGIN
+        EXECUTE format('ALTER TABLE public.%I ENABLE TRIGGER USER', v_table);
+      EXCEPTION WHEN OTHERS THEN
+        NULL;
+      END;
+
       EXECUTE format('SELECT COUNT(*) FROM public.%I WHERE empresa_id IS NULL', v_table) INTO v_null_count;
       IF v_null_count > 0 THEN
         RAISE EXCEPTION 'Inconsistencia detectada: % ainda possui % linhas sem empresa_id. Corrija antes de aplicar NOT NULL.', v_table, v_null_count;

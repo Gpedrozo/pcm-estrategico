@@ -53,6 +53,19 @@ CREATE TABLE IF NOT EXISTS public.enterprise_audit_logs (
   created_at timestamptz NOT NULL DEFAULT now()
 );
 
+ALTER TABLE public.enterprise_audit_logs ADD COLUMN IF NOT EXISTS actor_user_id uuid;
+ALTER TABLE public.enterprise_audit_logs ADD COLUMN IF NOT EXISTS actor_email text;
+ALTER TABLE public.enterprise_audit_logs ADD COLUMN IF NOT EXISTS empresa_id uuid;
+ALTER TABLE public.enterprise_audit_logs ADD COLUMN IF NOT EXISTS action_type text;
+ALTER TABLE public.enterprise_audit_logs ADD COLUMN IF NOT EXISTS action_details jsonb NOT NULL DEFAULT '{}'::jsonb;
+
+UPDATE public.enterprise_audit_logs
+SET action_type = 'legacy_event'
+WHERE action_type IS NULL;
+
+ALTER TABLE public.enterprise_audit_logs
+  ALTER COLUMN action_type SET DEFAULT 'legacy_event';
+
 CREATE TABLE IF NOT EXISTS public.enterprise_impersonation_sessions (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   owner_user_id uuid NOT NULL,
@@ -94,7 +107,12 @@ SECURITY DEFINER
 SET search_path TO public, auth
 AS $$
   SELECT
-    public.has_role(auth.uid(), 'SYSTEM_OWNER'::public.app_role)
+    EXISTS (
+      SELECT 1
+      FROM public.user_roles ur
+      WHERE ur.user_id = auth.uid()
+        AND ur.role::text = 'SYSTEM_OWNER'
+    )
     OR EXISTS (
       SELECT 1
       FROM public.system_owner_allowlist a
@@ -123,19 +141,19 @@ AS $$
 DECLARE
   current_owner_count integer;
 BEGIN
-  IF TG_OP = 'INSERT' AND NEW.role = 'SYSTEM_OWNER'::public.app_role AND NOT public.is_system_owner_strict() THEN
+  IF TG_OP = 'INSERT' AND NEW.role::text = 'SYSTEM_OWNER' AND NOT public.is_system_owner_strict() THEN
     RAISE EXCEPTION 'Somente SYSTEM_OWNER com 2FA pode promover novos SYSTEM_OWNER';
   END IF;
 
-  IF TG_OP = 'UPDATE' AND (OLD.role = 'SYSTEM_OWNER'::public.app_role OR NEW.role = 'SYSTEM_OWNER'::public.app_role) THEN
+  IF TG_OP = 'UPDATE' AND (OLD.role::text = 'SYSTEM_OWNER' OR NEW.role::text = 'SYSTEM_OWNER') THEN
     IF NOT public.is_system_owner_strict() THEN
       RAISE EXCEPTION 'Alteração de SYSTEM_OWNER requer autenticação forte';
     END IF;
 
-    IF OLD.role = 'SYSTEM_OWNER'::public.app_role AND NEW.role <> 'SYSTEM_OWNER'::public.app_role THEN
+    IF OLD.role::text = 'SYSTEM_OWNER' AND NEW.role::text <> 'SYSTEM_OWNER' THEN
       SELECT count(*) INTO current_owner_count
       FROM public.user_roles
-      WHERE role = 'SYSTEM_OWNER'::public.app_role;
+      WHERE role::text = 'SYSTEM_OWNER';
 
       IF current_owner_count <= 1 THEN
         RAISE EXCEPTION 'Não é permitido remover o último SYSTEM_OWNER';
@@ -143,14 +161,14 @@ BEGIN
     END IF;
   END IF;
 
-  IF TG_OP = 'DELETE' AND OLD.role = 'SYSTEM_OWNER'::public.app_role THEN
+  IF TG_OP = 'DELETE' AND OLD.role::text = 'SYSTEM_OWNER' THEN
     IF NOT public.is_system_owner_strict() THEN
       RAISE EXCEPTION 'Remoção de SYSTEM_OWNER requer autenticação forte';
     END IF;
 
     SELECT count(*) INTO current_owner_count
     FROM public.user_roles
-    WHERE role = 'SYSTEM_OWNER'::public.app_role;
+    WHERE role::text = 'SYSTEM_OWNER';
 
     IF current_owner_count <= 1 THEN
       RAISE EXCEPTION 'Não é permitido remover o último SYSTEM_OWNER';

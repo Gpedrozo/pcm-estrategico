@@ -13,6 +13,31 @@ CREATE TABLE IF NOT EXISTS public.empresas (
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
+DO $$
+DECLARE
+  v_dup record;
+BEGIN
+  -- Normalize legacy duplicates before enforcing unique company name.
+  FOR v_dup IN
+    SELECT nome
+    FROM public.empresas
+    GROUP BY nome
+    HAVING COUNT(*) > 1
+  LOOP
+    WITH ranked AS (
+      SELECT id, ROW_NUMBER() OVER (PARTITION BY nome ORDER BY created_at NULLS LAST, id) AS rn
+      FROM public.empresas
+      WHERE nome = v_dup.nome
+    )
+    UPDATE public.empresas e
+    SET nome = e.nome || ' (' || substring(e.id::text from 1 for 8) || ')'
+    FROM ranked r
+    WHERE e.id = r.id
+      AND r.rn > 1;
+  END LOOP;
+END;
+$$;
+
 CREATE UNIQUE INDEX IF NOT EXISTS idx_empresas_nome ON public.empresas (nome);
 
 DO $$
@@ -91,31 +116,68 @@ $$;
 
 CREATE OR REPLACE FUNCTION public.empresa_is_active(p_empresa_id UUID)
 RETURNS BOOLEAN
-LANGUAGE sql
+LANGUAGE plpgsql
 STABLE
 SECURITY DEFINER
 SET search_path = public
 AS $$
+DECLARE
+  v_has_ativo BOOLEAN;
+  v_result BOOLEAN;
+BEGIN
   SELECT EXISTS (
     SELECT 1
-    FROM public.empresas e
-    WHERE e.id = p_empresa_id
-      AND e.ativo = true
-      AND e.status = 'active'
-      AND (
-        NOT EXISTS (
-          SELECT 1
-          FROM public.assinaturas a0
-          WHERE a0.empresa_id = e.id
+    FROM information_schema.columns
+    WHERE table_schema = 'public'
+      AND table_name = 'empresas'
+      AND column_name = 'ativo'
+  ) INTO v_has_ativo;
+
+  IF v_has_ativo THEN
+    SELECT EXISTS (
+      SELECT 1
+      FROM public.empresas e
+      WHERE e.id = p_empresa_id
+        AND e.ativo = true
+        AND e.status = 'active'
+        AND (
+          NOT EXISTS (
+            SELECT 1
+            FROM public.assinaturas a0
+            WHERE a0.empresa_id = e.id
+          )
+          OR EXISTS (
+            SELECT 1
+            FROM public.assinaturas a1
+            WHERE a1.empresa_id = e.id
+              AND a1.status = 'active'
+          )
         )
-        OR EXISTS (
-          SELECT 1
-          FROM public.assinaturas a1
-          WHERE a1.empresa_id = e.id
-            AND a1.status = 'active'
+    ) INTO v_result;
+  ELSE
+    SELECT EXISTS (
+      SELECT 1
+      FROM public.empresas e
+      WHERE e.id = p_empresa_id
+        AND e.status = 'active'
+        AND (
+          NOT EXISTS (
+            SELECT 1
+            FROM public.assinaturas a0
+            WHERE a0.empresa_id = e.id
+          )
+          OR EXISTS (
+            SELECT 1
+            FROM public.assinaturas a1
+            WHERE a1.empresa_id = e.id
+              AND a1.status = 'active'
+          )
         )
-      )
-  );
+    ) INTO v_result;
+  END IF;
+
+  RETURN COALESCE(v_result, false);
+END;
 $$;
 
 -- 3) Estrutura comercial SaaS
@@ -562,6 +624,7 @@ END;
 $$;
 
 -- 9) Monitoramento semanal de integridade de tenant
+DROP FUNCTION IF EXISTS public.weekly_tenant_integrity_check();
 CREATE OR REPLACE FUNCTION public.weekly_tenant_integrity_check()
 RETURNS TABLE (table_name TEXT, issue_type TEXT, issue_count BIGINT)
 LANGUAGE plpgsql

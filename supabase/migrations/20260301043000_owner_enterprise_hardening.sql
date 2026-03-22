@@ -111,7 +111,7 @@ BEGIN
     EXECUTE format('ALTER TABLE %I.%I ENABLE ROW LEVEL SECURITY;', enterprise_table.schemaname, enterprise_table.tablename);
     EXECUTE format('DROP POLICY IF EXISTS "System owners only" ON %I.%I;', enterprise_table.schemaname, enterprise_table.tablename);
     EXECUTE format(
-      'CREATE POLICY "System owners only" ON %I.%I FOR ALL USING (public.is_system_owner()) WITH CHECK (public.is_system_owner());',
+      'CREATE POLICY "System owners only" ON %I.%I FOR ALL USING (public.is_system_owner(auth.uid())) WITH CHECK (public.is_system_owner(auth.uid()));',
       enterprise_table.schemaname,
       enterprise_table.tablename
     );

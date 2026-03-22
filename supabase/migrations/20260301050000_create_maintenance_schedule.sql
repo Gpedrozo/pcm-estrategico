@@ -74,6 +74,8 @@ ALTER TABLE public.planos_lubrificacao ADD COLUMN IF NOT EXISTS prioridade text
   CHECK (prioridade IN ('baixa', 'media', 'alta', 'critica'));
 ALTER TABLE public.planos_lubrificacao ADD COLUMN IF NOT EXISTS ultima_execucao timestamptz;
 ALTER TABLE public.planos_lubrificacao ADD COLUMN IF NOT EXISTS status text;
+ALTER TABLE public.planos_lubrificacao ADD COLUMN IF NOT EXISTS responsavel_nome text;
+ALTER TABLE public.planos_lubrificacao ADD COLUMN IF NOT EXISTS responsavel text;
 
 UPDATE public.planos_lubrificacao
 SET
