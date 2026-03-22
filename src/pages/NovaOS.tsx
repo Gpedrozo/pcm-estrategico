@@ -81,6 +81,8 @@ export default function NovaOS() {
   const [nomeEmpresa, setNomeEmpresa] = useState('MANUTENÇÃO INDUSTRIAL');
   const [showSolicitacoesModal, setShowSolicitacoesModal] = useState(false);
   const [dismissedTagWarnings, setDismissedTagWarnings] = useState<Record<string, boolean>>({});
+  const problemaMinLength = 5;
+  const problemaValido = formData.problema.trim().length >= problemaMinLength;
 
   const solicitacoesAbertasDaTag = useMemo(() => {
     if (!formData.tag) return [];
@@ -167,7 +169,7 @@ export default function NovaOS() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!formData.tag || !formData.tipo || !formData.solicitante || !formData.problema) {
+    if (!formData.tag || !formData.tipo || !formData.solicitante || !problemaValido) {
       return;
     }
 
@@ -386,8 +388,12 @@ export default function NovaOS() {
               onChange={(e) => setFormData({ ...formData, problema: e.target.value })}
               placeholder="Descreva detalhadamente o problema ou serviço a ser executado..."
               rows={4}
+              minLength={problemaMinLength}
               required
             />
+            {!problemaValido && formData.problema.length > 0 && (
+              <p className="text-xs text-destructive">Descrição do problema deve ter no mínimo 5 caracteres.</p>
+            )}
           </div>
 
           {/* Estimates */}
@@ -414,7 +420,7 @@ export default function NovaOS() {
             <Button 
               type="submit" 
               className="flex-1 gap-2 h-11"
-              disabled={createOSMutation.isPending || !formData.tag || !formData.tipo || !formData.solicitante || !formData.problema}
+              disabled={createOSMutation.isPending || !formData.tag || !formData.tipo || !formData.solicitante || !problemaValido}
             >
               {createOSMutation.isPending ? (
                 <>
