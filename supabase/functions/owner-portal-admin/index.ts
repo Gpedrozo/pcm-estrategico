@@ -1798,7 +1798,6 @@ Deno.serve(async (req) => {
       .insert({
         nome: companyName,
         slug,
-        cnpj: body.company.cnpj ?? null,
         status: body.company.status ?? "active",
         plano: null,
       })
@@ -2204,7 +2203,6 @@ Deno.serve(async (req) => {
     if (nextSlug) updatePayload.slug = nextSlug;
     if (body.company.status) updatePayload.status = body.company.status;
     const normalizedDocument = String(body.company.cpf_cnpj ?? body.company.cnpj ?? "").replace(/\D+/g, "");
-    if (body.company.cnpj !== undefined || body.company.cpf_cnpj !== undefined) updatePayload.cnpj = normalizedDocument || null;
 
     const { error: empresaError } = await admin
       .from("empresas")
