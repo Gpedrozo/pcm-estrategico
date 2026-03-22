@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { insertWithColumnFallback, updateWithColumnFallback } from '@/lib/supabaseCompat';
 import { useAuth } from '@/contexts/AuthContext';
+import { writeAuditLog } from '@/lib/audit';
 
 export interface PermissaoTrabalhoRow {
   id: string;
@@ -129,6 +130,7 @@ export function useCreatePermissaoTrabalho() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['permissoes-trabalho', tenantId] });
+      writeAuditLog({ action: 'CREATE_PERMISSAO_TRABALHO', table: 'permissoes_trabalho', empresaId: tenantId, source: 'useSSMA' });
       toast({
         title: 'PT criada',
         description: 'A permissão de trabalho foi criada com sucesso.',
@@ -164,6 +166,7 @@ export function useUpdatePermissaoTrabalho() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['permissoes-trabalho', tenantId] });
+      writeAuditLog({ action: 'UPDATE_PERMISSAO_TRABALHO', table: 'permissoes_trabalho', empresaId: tenantId, source: 'useSSMA' });
       toast({
         title: 'PT atualizada',
         description: 'A permissão de trabalho foi atualizada com sucesso.',
@@ -219,6 +222,7 @@ export function useCreateIncidenteSSMA() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['incidentes-ssma', tenantId] });
+      writeAuditLog({ action: 'CREATE_INCIDENTE_SSMA', table: 'incidentes_ssma', empresaId: tenantId, source: 'useSSMA' });
       toast({
         title: 'Incidente registrado',
         description: 'O incidente foi registrado com sucesso.',
@@ -254,6 +258,7 @@ export function useUpdateIncidenteSSMA() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['incidentes-ssma', tenantId] });
+      writeAuditLog({ action: 'UPDATE_INCIDENTE_SSMA', table: 'incidentes_ssma', empresaId: tenantId, source: 'useSSMA' });
       toast({
         title: 'Incidente atualizado',
         description: 'O incidente foi atualizado com sucesso.',

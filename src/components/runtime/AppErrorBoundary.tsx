@@ -2,6 +2,7 @@ import React from 'react';
 import { AlertTriangle } from 'lucide-react';
 import { logger } from '@/lib/logger';
 import { writeAuditLog } from '@/lib/audit';
+import { captureError } from '@/lib/monitoring';
 
 type Props = {
   children: React.ReactNode;
@@ -109,6 +110,8 @@ export class AppErrorBoundary extends React.Component<Props, State> {
     };
 
     logger.error('react_render_crash', details);
+
+    captureError(error, details);
 
     void writeAuditLog({
       action: 'CLIENT_RENDER_CRASH',

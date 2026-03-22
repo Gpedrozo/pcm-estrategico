@@ -1,3 +1,5 @@
+import { captureError } from '@/lib/monitoring'
+
 type LogLevel = 'debug' | 'info' | 'warn' | 'error'
 
 interface LogPayload {
@@ -12,6 +14,7 @@ function write(payload: LogPayload) {
 
   if (payload.level === 'error') {
     console.error(serialized)
+    captureError(new Error(payload.message), payload.context)
     return
   }
 

@@ -4,6 +4,7 @@ import { useToast } from '@/hooks/use-toast';
 import { deleteMaintenanceSchedule, upsertMaintenanceSchedule } from '@/services/maintenanceSchedule';
 import { insertWithColumnFallback, updateWithColumnFallback } from '@/lib/supabaseCompat';
 import { useAuth } from '@/contexts/AuthContext';
+import { writeAuditLog } from '@/lib/audit';
 
 export interface PlanoPreventivo {
   id: string;
@@ -130,6 +131,7 @@ export function useCreatePlanoPreventivo() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['planos-preventivos', tenantId] });
       queryClient.invalidateQueries({ queryKey: ['document-sequences'] });
+      writeAuditLog({ action: 'CREATE_PLANO_PREVENTIVO', table: 'planos_preventivos', empresaId: tenantId, source: 'usePlanosPreventivos' });
       toast({
         title: 'Plano criado',
         description: 'O plano preventivo foi criado com sucesso.',
@@ -181,6 +183,7 @@ export function useUpdatePlanoPreventivo() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['planos-preventivos', tenantId] });
+      writeAuditLog({ action: 'UPDATE_PLANO_PREVENTIVO', table: 'planos_preventivos', empresaId: tenantId, source: 'usePlanosPreventivos' });
       toast({
         title: 'Plano atualizado',
         description: 'O plano preventivo foi atualizado com sucesso.',
@@ -217,6 +220,7 @@ export function useDeletePlanoPreventivo() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['planos-preventivos', tenantId] });
+      writeAuditLog({ action: 'DELETE_PLANO_PREVENTIVO', table: 'planos_preventivos', empresaId: tenantId, source: 'usePlanosPreventivos', severity: 'warning' });
       toast({
         title: 'Plano excluído',
         description: 'O plano preventivo foi excluído com sucesso.',

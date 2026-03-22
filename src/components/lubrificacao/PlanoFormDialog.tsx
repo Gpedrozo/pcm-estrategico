@@ -9,6 +9,7 @@ import { useCreatePlanoLubrificacao } from '@/hooks/useLubrificacao';
 import { useEquipamentos } from '@/hooks/useEquipamentos';
 import { useNextDocumentNumber } from '@/hooks/useDocumentEngine';
 import { uploadToStorage } from '@/services/storage';
+import { logger } from '@/lib/logger';
 import type { PlanoLubrificacaoInsert } from '@/types/lubrificacao';
 import { Loader2, Hash } from 'lucide-react';
 
@@ -92,7 +93,7 @@ export default function PlanoFormDialog({ open, onOpenChange }: Props) {
       create.mutate(payload);
       onOpenChange(false);
     } catch (err) {
-      console.error('Erro upload instrucoes', err);
+      logger.error('upload_instrucoes_failed', { error: String(err) });
       create.mutate(payload); // fallback: create plano without file link
       onOpenChange(false);
     }

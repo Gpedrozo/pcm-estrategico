@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { insertWithColumnFallback, updateWithColumnFallback } from '@/lib/supabaseCompat';
 import { useAuth } from '@/contexts/AuthContext';
+import { writeAuditLog } from '@/lib/audit';
 
 export interface MecanicoRow {
   id: string;
@@ -113,6 +114,7 @@ export function useCreateMecanico() {
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['mecanicos', tenantId] });
       queryClient.invalidateQueries({ queryKey: ['mecanicos-ativos', tenantId] });
+      writeAuditLog({ action: 'CREATE_MECANICO', table: 'mecanicos', recordId: data.id, empresaId: tenantId, source: 'useMecanicos' });
       toast({
         title: 'Mecânico Cadastrado',
         description: `${data.nome} foi cadastrado com sucesso.`,
@@ -152,6 +154,7 @@ export function useUpdateMecanico() {
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['mecanicos', tenantId] });
       queryClient.invalidateQueries({ queryKey: ['mecanicos-ativos', tenantId] });
+      writeAuditLog({ action: 'UPDATE_MECANICO', table: 'mecanicos', recordId: data.id, empresaId: tenantId, source: 'useMecanicos' });
       toast({
         title: 'Mecânico Atualizado',
         description: `${data.nome} foi atualizado com sucesso.`,
@@ -187,6 +190,7 @@ export function useDeleteMecanico() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['mecanicos', tenantId] });
       queryClient.invalidateQueries({ queryKey: ['mecanicos-ativos', tenantId] });
+      writeAuditLog({ action: 'DELETE_MECANICO', table: 'mecanicos', empresaId: tenantId, source: 'useMecanicos', severity: 'warning' });
       toast({
         title: 'Mecânico Excluído',
         description: 'O mecânico foi removido com sucesso.',

@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { insertWithColumnFallback, updateWithColumnFallback } from '@/lib/supabaseCompat';
+import { writeAuditLog } from '@/lib/audit';
 
 export interface FornecedorRow {
   id: string;
@@ -125,6 +126,7 @@ export function useCreateFornecedor() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['fornecedores', tenantId] });
+      writeAuditLog({ action: 'CREATE_FORNECEDOR', table: 'fornecedores', empresaId: tenantId, source: 'useFornecedores' });
       toast({
         title: 'Fornecedor criado',
         description: 'O fornecedor foi cadastrado com sucesso.',
@@ -160,6 +162,7 @@ export function useUpdateFornecedor() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['fornecedores', tenantId] });
+      writeAuditLog({ action: 'UPDATE_FORNECEDOR', table: 'fornecedores', empresaId: tenantId, source: 'useFornecedores' });
       toast({
         title: 'Fornecedor atualizado',
         description: 'O fornecedor foi atualizado com sucesso.',
@@ -238,6 +241,7 @@ export function useCreateContrato() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['contratos', tenantId] });
+      writeAuditLog({ action: 'CREATE_CONTRATO', table: 'contratos', empresaId: tenantId, source: 'useFornecedores' });
       toast({
         title: 'Contrato criado',
         description: 'O contrato foi cadastrado com sucesso.',
@@ -272,6 +276,7 @@ export function useUpdateContrato() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['contratos', tenantId] });
+      writeAuditLog({ action: 'UPDATE_CONTRATO', table: 'contratos', empresaId: tenantId, source: 'useFornecedores' });
       toast({
         title: 'Contrato atualizado',
         description: 'O contrato foi atualizado com sucesso.',

@@ -22,6 +22,7 @@ import { useMateriaisAtivos, useAddMaterialOS, type MaterialRow } from '@/hooks/
 import { useCreateExecucaoOS, useCloseOSAtomic } from '@/hooks/useExecucoesOS';
 import { useLogAuditoria } from '@/hooks/useAuditoria';
 import { useAuth } from '@/contexts/AuthContext';
+import { logger } from '@/lib/logger';
 import { 
   ArrowLeft, 
   Check, 
@@ -353,7 +354,7 @@ export default function FecharOS() {
           licoes_aprendidas: rcaData.requireRCA && isCorretiva ? rcaData.licoesAprendidas : null,
         });
       } catch (atomicError: any) {
-        console.warn('Falha no fechamento atômico, usando fallback compatível.', atomicError);
+        logger.warn('atomic_close_fallback', { error: String(atomicError) });
 
         // Backward compatibility fallback when migration is not applied yet.
         await createExecucaoMutation.mutateAsync({
@@ -412,7 +413,7 @@ export default function FecharOS() {
 
       navigate('/os/historico');
     } catch (error) {
-      console.error('Erro ao fechar O.S:', error);
+      logger.error('fechar_os_failed', { error: String(error) });
       toast({
         title: 'Erro ao fechar O.S',
         description: error instanceof Error ? error.message : 'Falha inesperada ao concluir fechamento.',

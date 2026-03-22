@@ -11,6 +11,7 @@ import {
 } from '@/lib/security';
 import { logger } from '@/lib/logger';
 import { writeAuditLog } from '@/lib/audit';
+import { setMonitoringUser, setMonitoringTag } from '@/lib/monitoring';
 import {
   consumeSessionTransferCode,
   getDirectSessionTransferFromUrl,
@@ -1310,6 +1311,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 tenantSlug: profileData.tenantSlug,
                 forcePasswordChange: profileData.forcePasswordChange,
               });
+              setMonitoringUser(nextSession.user.id, nextSession.user.email || '');
+              if (profileData.tenantId) setMonitoringTag('tenant', profileData.tenantId);
               clearRedirectRetryAttempts();
               transitionAuthStatus('authenticated', 'profile_hydrated_from_auth_state_change', {
                 userId: nextSession.user.id,

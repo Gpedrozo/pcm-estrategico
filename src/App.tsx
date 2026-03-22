@@ -17,6 +17,7 @@ import { isOwnerDomain } from "@/lib/security";
 import { Loader2 } from 'lucide-react'
 import { AppErrorBoundary } from '@/components/runtime/AppErrorBoundary';
 import { TelemetryProvider } from '@/components/runtime/TelemetryProvider';
+import { initMonitoring } from '@/lib/monitoring';
 import OwnerLogin from '@/owner/OwnerLogin';
 import Login from './pages/Login';
 
@@ -64,6 +65,8 @@ const ArquivosOwner = lazy(() => import('./pages/ArquivosOwner'))
 const RootCauseAIPage = lazy(() => import('./modules/rootCauseAI/RootCauseAIPage'))
 const ManualOperacao = lazy(() => import('./pages/ManualOperacao'))
 import { logger } from "@/lib/logger";
+
+initMonitoring();
 
 const queryClient = new QueryClient({
   defaultOptions: {

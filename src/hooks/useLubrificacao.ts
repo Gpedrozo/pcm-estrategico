@@ -4,6 +4,7 @@ import { useToast } from '@/hooks/use-toast';
 import type { PlanoLubrificacao, PlanoLubrificacaoInsert } from '@/types/lubrificacao';
 import { deleteMaintenanceSchedule, upsertMaintenanceSchedule } from '@/services/maintenanceSchedule';
 import { useAuth } from '@/contexts/AuthContext';
+import { logger } from '@/lib/logger';
 
 interface ExecucaoRow {
   id: string;
@@ -274,7 +275,7 @@ export function useGenerateExecucoesNow() {
           }
         }
       } catch (err) {
-        console.warn('Erro ao criar OSs em lote', err);
+        logger.warn('batch_os_creation_failed', { error: String(err) });
       }
   // Calculate next execution for each treated plan
   for (const plano of planosTyped) {
@@ -296,7 +297,7 @@ export function useGenerateExecucoesNow() {
             })
             .eq('id', plano.id);
         } catch (err) {
-          console.error(`Erro ao atualizar próxima execução do plano ${plano.id}`, err);
+          logger.error('plano_next_exec_update_failed', { planoId: plano.id, error: String(err) });
         }
       }
 

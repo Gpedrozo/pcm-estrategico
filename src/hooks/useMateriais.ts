@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { insertWithColumnFallback, updateWithColumnFallback } from '@/lib/supabaseCompat';
 import { useAuth } from '@/contexts/AuthContext';
+import { writeAuditLog } from '@/lib/audit';
 
 // ==================== INTERFACES ====================
 
@@ -174,6 +175,7 @@ export function useCreateMaterial() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['materiais', tenantId] });
+      writeAuditLog({ action: 'CREATE_MATERIAL', table: 'materiais', empresaId: tenantId, source: 'useMateriais' });
       toast({
         title: 'Material criado',
         description: 'O material foi cadastrado com sucesso.',
@@ -209,6 +211,7 @@ export function useUpdateMaterial() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['materiais', tenantId] });
+      writeAuditLog({ action: 'UPDATE_MATERIAL', table: 'materiais', empresaId: tenantId, source: 'useMateriais' });
       toast({
         title: 'Material atualizado',
         description: 'Os dados foram salvos com sucesso.',
@@ -240,6 +243,7 @@ export function useDeleteMaterial() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['materiais', tenantId] });
+      writeAuditLog({ action: 'DELETE_MATERIAL', table: 'materiais', empresaId: tenantId, source: 'useMateriais', severity: 'warning' });
       toast({
         title: 'Material excluído',
         description: 'O material foi removido com sucesso.',

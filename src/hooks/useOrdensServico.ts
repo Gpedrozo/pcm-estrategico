@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { insertWithColumnFallback } from '@/lib/supabaseCompat';
+import { writeAuditLog } from '@/lib/audit';
 
 function getCreateOrdemServicoErrorMessage(error: unknown) {
   const message =
@@ -187,6 +188,7 @@ export function useCreateOrdemServico() {
       queryClient.invalidateQueries({ queryKey: ['ordens-servico-pending', tenantId] });
       queryClient.invalidateQueries({ queryKey: ['indicadores', tenantId] });
       queryClient.invalidateQueries({ queryKey: ['document-sequences', tenantId] });
+      writeAuditLog({ action: 'CREATE_ORDEM_SERVICO', table: 'ordens_servico', recordId: data.id, empresaId: tenantId, source: 'useOrdensServico', metadata: { numero_os: data.numero_os, tipo: data.tipo } });
       toast({
         title: 'O.S Criada com Sucesso!',
         description: `Ordem de Serviço nº ${data.numero_os} foi registrada.`,
@@ -227,6 +229,7 @@ export function useUpdateOrdemServico() {
       queryClient.invalidateQueries({ queryKey: ['ordens-servico-recent', tenantId] });
       queryClient.invalidateQueries({ queryKey: ['ordens-servico-pending', tenantId] });
       queryClient.invalidateQueries({ queryKey: ['indicadores', tenantId] });
+      writeAuditLog({ action: 'UPDATE_ORDEM_SERVICO', table: 'ordens_servico', recordId: data.id, empresaId: tenantId, source: 'useOrdensServico', metadata: { status: data.status } });
     },
     onError: (error: any) => {
       toast({

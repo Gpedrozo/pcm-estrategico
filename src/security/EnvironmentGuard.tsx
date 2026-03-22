@@ -1,5 +1,6 @@
 import { ReactNode, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
+import { logger } from '@/lib/logger';
 
 interface EnvironmentGuardProps {
   children: ReactNode;
@@ -23,7 +24,7 @@ export function EnvironmentGuard({ children, hostnameOverride }: EnvironmentGuar
     }
 
     if (!isOwnerEnv && isOwnerRoute) {
-      console.warn(`[EnvironmentGuard] blocked owner route on hostname "${hostname}"`);
+      logger.warn('environment_guard_blocked_owner_route', { hostname });
       navigate("/", { replace: true });
     }
   }, [hostnameOverride, location.pathname, navigate]);
