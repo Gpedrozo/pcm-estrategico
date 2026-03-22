@@ -1,0 +1,8 @@
+{
+    "email":  "admin.recuperacao@gppis.com.br",
+    "email_confirm":  true,
+    "password":  "Admin@Recuperacao2026!",
+    "user_metadata":  {
+                          "nome":  "Admin Recuperacao"
+                      }
+}
