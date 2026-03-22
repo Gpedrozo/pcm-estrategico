@@ -1,11 +1,36 @@
 import { supabase } from '@/integrations/supabase/client';
 import { equipamentoSchema, type EquipamentoFormData } from '@/schemas/equipamento.schema';
 import { writeAuditLog } from '@/lib/audit';
+import { isMissingTableError } from '@/lib/supabaseCompat';
+
+const EQUIPAMENTOS_TABLE = 'equipamentos' as const;
+let equipamentosTableAvailable: boolean | null = null;
+
+async function ensureEquipamentosTable() {
+  if (equipamentosTableAvailable === true) return EQUIPAMENTOS_TABLE;
+
+  const { error } = await supabase.from(EQUIPAMENTOS_TABLE).select('id').limit(1);
+
+  if (!error) {
+    equipamentosTableAvailable = true;
+    return EQUIPAMENTOS_TABLE;
+  }
+
+  if (isMissingTableError(error)) {
+    throw new Error(
+      'A tabela public.equipamentos não existe neste ambiente. Execute as migrations pendentes (incluindo 20260322193000_restore_equipamentos_table.sql) para restaurar o módulo de ativos.',
+    );
+  }
+
+  throw error;
+}
 
 export const equipamentosService = {
   async listar(empresaId: string) {
+    const table = await ensureEquipamentosTable();
+
     const { data, error } = await supabase
-      .from('equipamentos')
+      .from(table)
       .select(`
         *,
         sistema:sistemas(
@@ -24,9 +49,10 @@ export const equipamentosService = {
   },
 
   async criar(payload: EquipamentoFormData, empresaId: string) {
+    const table = await ensureEquipamentosTable();
     const validated = equipamentoSchema.parse(payload);
     const { data, error } = await supabase
-      .from('equipamentos')
+      .from(table)
       .insert([{ ...validated, empresa_id: empresaId }])
       .select()
       .single();
@@ -45,8 +71,9 @@ export const equipamentosService = {
   },
 
   async atualizar(id: string, payload: Partial<EquipamentoFormData>, empresaId: string) {
+    const table = await ensureEquipamentosTable();
     const { data, error } = await supabase
-      .from('equipamentos')
+      .from(table)
       .update(payload)
       .eq('id', id)
       .eq('empresa_id', empresaId)
@@ -68,8 +95,9 @@ export const equipamentosService = {
   },
 
   async excluir(id: string, empresaId: string) {
+    const table = await ensureEquipamentosTable();
     const { error } = await supabase
-      .from('equipamentos')
+      .from(table)
       .delete()
       .eq('id', id)
       .eq('empresa_id', empresaId);

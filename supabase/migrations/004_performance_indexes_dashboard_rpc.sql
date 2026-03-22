@@ -45,8 +45,15 @@ CREATE INDEX IF NOT EXISTS idx_sistemas_empresa_area
   ON sistemas (empresa_id, area_id);
 
 -- Audit log: consultas por empresa e data
-CREATE INDEX IF NOT EXISTS idx_audit_log_empresa_created
-  ON audit_log (empresa_id, created_at DESC);
+DO $$
+BEGIN
+  IF to_regclass('public.audit_log') IS NOT NULL THEN
+    EXECUTE 'CREATE INDEX IF NOT EXISTS idx_audit_log_empresa_created ON public.audit_log (empresa_id, created_at DESC)';
+  ELSIF to_regclass('public.audit_logs') IS NOT NULL THEN
+    EXECUTE 'CREATE INDEX IF NOT EXISTS idx_audit_logs_empresa_created ON public.audit_logs (empresa_id, created_at DESC)';
+  END IF;
+END;
+$$;
 
 -- Movimentações de materiais
 CREATE INDEX IF NOT EXISTS idx_movimentacoes_empresa_material
