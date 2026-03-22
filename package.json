@@ -15,6 +15,7 @@
     "validate:full": "npm run test -- --run && npm run build",
     "verify:saas:phase1": "node scripts/saas-phase1-verify.mjs",
     "verify:saas:phase1:process": "node scripts/saas-phase1-verify.mjs --process-notifications",
+    "verify:modules:connectivity": "node scripts/diagnostics/module-connectivity-readiness.mjs",
     "check:tenant-domain": "node scripts/check-tenant-domain-readiness.mjs",
     "prepare": "husky"
   },
