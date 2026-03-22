@@ -143,6 +143,7 @@ const useCreateMedicao = () => {
       await upsertMaintenanceSchedule({
         tipo: 'preditiva',
         origemId: result.id,
+        empresaId: tenantId!,
         equipamentoId: result.equipamento_id || null,
         titulo: `${result.tag} • ${result.tipo_medicao}`,
         descricao: result.observacoes,
@@ -154,7 +155,7 @@ const useCreateMedicao = () => {
       return result;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['medicoes_preditivas'] });
+      queryClient.invalidateQueries({ queryKey: ['medicoes_preditivas', tenantId] });
       toast({ title: 'Medição registrada com sucesso' });
     },
     onError: (error) => {

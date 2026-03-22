@@ -100,6 +100,8 @@ export function useCreateEquipamento() {
 
   return useMutation({
     mutationFn: async (equipamento: EquipamentoInsert) => {
+      if (!tenantId) throw new Error('Tenant não resolvido.');
+
       return insertWithColumnFallback(
         async (payload) =>
           supabase
@@ -107,7 +109,7 @@ export function useCreateEquipamento() {
             .insert(payload)
             .select()
             .single(),
-        equipamento as Record<string, unknown>,
+        { ...equipamento, empresa_id: tenantId } as Record<string, unknown>,
       );
     },
     onSuccess: (data) => {
@@ -140,6 +142,7 @@ export function useUpdateEquipamento() {
             .from('equipamentos')
             .update(payload)
             .eq('id', id)
+            .eq('empresa_id', tenantId!)
             .select()
             .single(),
         updates as Record<string, unknown>,

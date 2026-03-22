@@ -1,7 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { getSupabaseErrorMessage, insertWithColumnFallback, updateWithColumnFallback } from '@/lib/supabaseCompat';
+import { insertWithColumnFallback, updateWithColumnFallback } from '@/lib/supabaseCompat';
 import { useAuth } from '@/contexts/AuthContext';
 
 export interface MecanicoRow {
@@ -59,27 +59,14 @@ export function useMecanicos() {
     queryKey: ['mecanicos', tenantId],
     enabled: Boolean(tenantId),
     queryFn: async () => {
-      if (!tenantId) return [];
-
-      const tenantQuery = await supabase
-        .from('mecanicos')
-        .select('*')
-        .eq('empresa_id', tenantId)
-        .order('nome', { ascending: true });
-
-      if (!tenantQuery.error) return (tenantQuery.data || []) as MecanicoRow[];
-
-      const message = getSupabaseErrorMessage(tenantQuery.error).toLowerCase();
-      const missingEmpresa = message.includes('empresa_id') && message.includes('column');
-      if (!missingEmpresa) throw tenantQuery.error;
-
       const { data, error } = await supabase
         .from('mecanicos')
         .select('*')
+        .eq('empresa_id', tenantId!)
         .order('nome', { ascending: true });
 
       if (error) throw error;
-      return data as MecanicoRow[];
+      return (data || []) as MecanicoRow[];
     },
   });
 }
@@ -91,29 +78,15 @@ export function useMecanicosAtivos() {
     queryKey: ['mecanicos-ativos', tenantId],
     enabled: Boolean(tenantId),
     queryFn: async () => {
-      if (!tenantId) return [];
-
-      const tenantQuery = await supabase
-        .from('mecanicos')
-        .select('*')
-        .eq('empresa_id', tenantId)
-        .eq('ativo', true)
-        .order('nome', { ascending: true });
-
-      if (!tenantQuery.error) return (tenantQuery.data || []) as MecanicoRow[];
-
-      const message = getSupabaseErrorMessage(tenantQuery.error).toLowerCase();
-      const missingEmpresa = message.includes('empresa_id') && message.includes('column');
-      if (!missingEmpresa) throw tenantQuery.error;
-
       const { data, error } = await supabase
         .from('mecanicos')
         .select('*')
+        .eq('empresa_id', tenantId!)
         .eq('ativo', true)
         .order('nome', { ascending: true });
 
       if (error) throw error;
-      return data as MecanicoRow[];
+      return (data || []) as MecanicoRow[];
     },
   });
 }

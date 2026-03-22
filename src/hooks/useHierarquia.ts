@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/contexts/AuthContext';
 import { insertWithColumnFallback, updateWithColumnFallback } from '@/lib/supabaseCompat';
 
 // ==================== INTERFACES ====================
@@ -94,42 +95,57 @@ export interface SistemaUpdate {
 // ==================== PLANTAS ====================
 
 export function usePlantas() {
+  const { tenantId } = useAuth();
+
   return useQuery({
-    queryKey: ['plantas'],
+    queryKey: ['plantas', tenantId],
     queryFn: async () => {
+      if (!tenantId) throw new Error('Tenant não resolvido.');
+
       const { data, error } = await supabase
         .from('plantas')
         .select('*')
+        .eq('empresa_id', tenantId)
         .order('codigo');
       
       if (error) throw error;
       return data as PlantaRow[];
     },
+    enabled: !!tenantId,
   });
 }
 
 export function usePlantasAtivas() {
+  const { tenantId } = useAuth();
+
   return useQuery({
-    queryKey: ['plantas', 'ativas'],
+    queryKey: ['plantas', tenantId, 'ativas'],
     queryFn: async () => {
+      if (!tenantId) throw new Error('Tenant não resolvido.');
+
       const { data, error } = await supabase
         .from('plantas')
         .select('*')
+        .eq('empresa_id', tenantId)
         .eq('ativo', true)
         .order('codigo');
       
       if (error) throw error;
       return data as PlantaRow[];
     },
+    enabled: !!tenantId,
   });
 }
 
 export function useCreatePlanta() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const { tenantId } = useAuth();
 
   return useMutation({
     mutationFn: async (planta: PlantaInsert) => {
+      if (!tenantId) throw new Error('Tenant não resolvido.');
+
       return insertWithColumnFallback(
         async (payload) =>
           supabase
@@ -137,11 +153,11 @@ export function useCreatePlanta() {
             .insert(payload)
             .select()
             .single(),
-        planta as Record<string, unknown>,
+        { ...planta, empresa_id: tenantId } as Record<string, unknown>,
       );
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['plantas'] });
+      queryClient.invalidateQueries({ queryKey: ['plantas', tenantId] });
       toast({
         title: 'Planta criada',
         description: 'A planta foi cadastrada com sucesso.',
@@ -160,6 +176,7 @@ export function useCreatePlanta() {
 export function useUpdatePlanta() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const { tenantId } = useAuth();
 
   return useMutation({
     mutationFn: async ({ id, ...data }: PlantaUpdate & { id: string }) => {
@@ -175,7 +192,7 @@ export function useUpdatePlanta() {
       );
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['plantas'] });
+      queryClient.invalidateQueries({ queryKey: ['plantas', tenantId] });
       toast({
         title: 'Planta atualizada',
         description: 'Os dados foram salvos com sucesso.',
@@ -194,6 +211,7 @@ export function useUpdatePlanta() {
 export function useDeletePlanta() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const { tenantId } = useAuth();
 
   return useMutation({
     mutationFn: async (id: string) => {
@@ -205,8 +223,8 @@ export function useDeletePlanta() {
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['plantas'] });
-      queryClient.invalidateQueries({ queryKey: ['areas'] });
+      queryClient.invalidateQueries({ queryKey: ['plantas', tenantId] });
+      queryClient.invalidateQueries({ queryKey: ['areas', tenantId] });
       toast({
         title: 'Planta excluída',
         description: 'A planta foi removida com sucesso.',
@@ -225,20 +243,26 @@ export function useDeletePlanta() {
 // ==================== ÁREAS ====================
 
 export function useAreas() {
+  const { tenantId } = useAuth();
+
   return useQuery({
-    queryKey: ['areas'],
+    queryKey: ['areas', tenantId],
     queryFn: async () => {
+      if (!tenantId) throw new Error('Tenant não resolvido.');
+
       const { data, error } = await supabase
         .from('areas')
         .select(`
           *,
           planta:plantas(*)
         `)
+        .eq('empresa_id', tenantId)
         .order('codigo');
       
       if (error) throw error;
       return data as AreaRow[];
     },
+    enabled: !!tenantId,
   });
 }
 
@@ -265,9 +289,12 @@ export function useAreasByPlanta(plantaId: string | undefined) {
 export function useCreateArea() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const { tenantId } = useAuth();
 
   return useMutation({
     mutationFn: async (area: AreaInsert) => {
+      if (!tenantId) throw new Error('Tenant não resolvido.');
+
       return insertWithColumnFallback(
         async (payload) =>
           supabase
@@ -275,11 +302,11 @@ export function useCreateArea() {
             .insert(payload)
             .select()
             .single(),
-        area as Record<string, unknown>,
+        { ...area, empresa_id: tenantId } as Record<string, unknown>,
       );
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['areas'] });
+      queryClient.invalidateQueries({ queryKey: ['areas', tenantId] });
       toast({
         title: 'Área criada',
         description: 'A área foi cadastrada com sucesso.',
@@ -298,6 +325,7 @@ export function useCreateArea() {
 export function useUpdateArea() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const { tenantId } = useAuth();
 
   return useMutation({
     mutationFn: async ({ id, ...data }: AreaUpdate & { id: string }) => {
@@ -313,7 +341,7 @@ export function useUpdateArea() {
       );
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['areas'] });
+      queryClient.invalidateQueries({ queryKey: ['areas', tenantId] });
       toast({
         title: 'Área atualizada',
         description: 'Os dados foram salvos com sucesso.',
@@ -332,6 +360,7 @@ export function useUpdateArea() {
 export function useDeleteArea() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const { tenantId } = useAuth();
 
   return useMutation({
     mutationFn: async (id: string) => {
@@ -343,8 +372,8 @@ export function useDeleteArea() {
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['areas'] });
-      queryClient.invalidateQueries({ queryKey: ['sistemas'] });
+      queryClient.invalidateQueries({ queryKey: ['areas', tenantId] });
+      queryClient.invalidateQueries({ queryKey: ['sistemas', tenantId] });
       toast({
         title: 'Área excluída',
         description: 'A área foi removida com sucesso.',
@@ -363,20 +392,26 @@ export function useDeleteArea() {
 // ==================== SISTEMAS ====================
 
 export function useSistemas() {
+  const { tenantId } = useAuth();
+
   return useQuery({
-    queryKey: ['sistemas'],
+    queryKey: ['sistemas', tenantId],
     queryFn: async () => {
+      if (!tenantId) throw new Error('Tenant não resolvido.');
+
       const { data, error } = await supabase
         .from('sistemas')
         .select(`
           *,
           area:areas(*, planta:plantas(*))
         `)
+        .eq('empresa_id', tenantId)
         .order('codigo');
       
       if (error) throw error;
       return data as SistemaRow[];
     },
+    enabled: !!tenantId,
   });
 }
 
@@ -403,9 +438,12 @@ export function useSistemasByArea(areaId: string | undefined) {
 export function useCreateSistema() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const { tenantId } = useAuth();
 
   return useMutation({
     mutationFn: async (sistema: SistemaInsert) => {
+      if (!tenantId) throw new Error('Tenant não resolvido.');
+
       return insertWithColumnFallback(
         async (payload) =>
           supabase
@@ -413,11 +451,11 @@ export function useCreateSistema() {
             .insert(payload)
             .select()
             .single(),
-        sistema as Record<string, unknown>,
+        { ...sistema, empresa_id: tenantId } as Record<string, unknown>,
       );
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['sistemas'] });
+      queryClient.invalidateQueries({ queryKey: ['sistemas', tenantId] });
       toast({
         title: 'Sistema criado',
         description: 'O sistema foi cadastrado com sucesso.',
@@ -436,6 +474,7 @@ export function useCreateSistema() {
 export function useUpdateSistema() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const { tenantId } = useAuth();
 
   return useMutation({
     mutationFn: async ({ id, ...data }: SistemaUpdate & { id: string }) => {
@@ -451,7 +490,7 @@ export function useUpdateSistema() {
       );
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['sistemas'] });
+      queryClient.invalidateQueries({ queryKey: ['sistemas', tenantId] });
       toast({
         title: 'Sistema atualizado',
         description: 'Os dados foram salvos com sucesso.',
@@ -470,6 +509,7 @@ export function useUpdateSistema() {
 export function useDeleteSistema() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const { tenantId } = useAuth();
 
   return useMutation({
     mutationFn: async (id: string) => {
@@ -481,7 +521,7 @@ export function useDeleteSistema() {
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['sistemas'] });
+      queryClient.invalidateQueries({ queryKey: ['sistemas', tenantId] });
       toast({
         title: 'Sistema excluído',
         description: 'O sistema foi removido com sucesso.',

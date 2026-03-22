@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/contexts/AuthContext';
 import { resolveSlaHorasByClassificacao } from '@/hooks/useTenantPadronizacoes';
 import {
   insertWithColumnFallback,
@@ -52,12 +53,13 @@ function normalizeSolicitacaoRow(row: any): SolicitacaoRow {
   };
 }
 
-async function fetchSolicitacoes(statuses?: string[]) {
+async function fetchSolicitacoes(empresaId: string, statuses?: string[]) {
   const table = await getSolicitacoesTable();
 
   let query = supabase
     .from(table)
     .select('*')
+    .eq('empresa_id', empresaId)
     .order('created_at', { ascending: false });
 
   if (statuses && statuses.length > 0) {
@@ -101,25 +103,40 @@ export interface SolicitacaoInsert {
 }
 
 export function useSolicitacoes() {
+  const { tenantId } = useAuth();
+
   return useQuery({
-    queryKey: ['solicitacoes'],
-    queryFn: () => fetchSolicitacoes(),
+    queryKey: ['solicitacoes', tenantId],
+    queryFn: () => {
+      if (!tenantId) throw new Error('Tenant não resolvido.');
+      return fetchSolicitacoes(tenantId);
+    },
+    enabled: !!tenantId,
   });
 }
 
 export function useSolicitacoesPendentes() {
+  const { tenantId } = useAuth();
+
   return useQuery({
-    queryKey: ['solicitacoes', 'pendentes'],
-    queryFn: () => fetchSolicitacoes(['PENDENTE', 'APROVADA']),
+    queryKey: ['solicitacoes', tenantId, 'pendentes'],
+    queryFn: () => {
+      if (!tenantId) throw new Error('Tenant não resolvido.');
+      return fetchSolicitacoes(tenantId, ['PENDENTE', 'APROVADA']);
+    },
+    enabled: !!tenantId,
   });
 }
 
 export function useCreateSolicitacao() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const { tenantId } = useAuth();
 
   return useMutation({
     mutationFn: async (solicitacao: SolicitacaoInsert) => {
+      if (!tenantId) throw new Error('Tenant não resolvido.');
+
       const classificacao = solicitacao.classificacao ?? 'PROGRAMAVEL';
       const slaHoras = resolveSlaHorasByClassificacao(classificacao);
       const dataLimite = new Date();
@@ -128,6 +145,7 @@ export function useCreateSolicitacao() {
       const table = await getSolicitacoesTable();
       const payload = {
         ...solicitacao,
+        empresa_id: tenantId,
         status: 'PENDENTE',
         impacto: solicitacao.impacto ?? 'MEDIO',
         classificacao,
@@ -148,7 +166,7 @@ export function useCreateSolicitacao() {
       return normalizeSolicitacaoRow(data);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['solicitacoes'] });
+      queryClient.invalidateQueries({ queryKey: ['solicitacoes', tenantId] });
       toast({
         title: 'Solicitação criada',
         description: 'A solicitação foi registrada com sucesso.',
@@ -167,6 +185,7 @@ export function useCreateSolicitacao() {
 export function useUpdateSolicitacao() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const { tenantId } = useAuth();
 
   return useMutation({
     mutationFn: async ({ id, ...updates }: Partial<SolicitacaoRow> & { id: string }) => {
@@ -186,7 +205,7 @@ export function useUpdateSolicitacao() {
       return normalizeSolicitacaoRow(data);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['solicitacoes'] });
+      queryClient.invalidateQueries({ queryKey: ['solicitacoes', tenantId] });
       toast({
         title: 'Solicitação atualizada',
         description: 'A solicitação foi atualizada com sucesso.',

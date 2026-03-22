@@ -2,7 +2,6 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-import { getSupabaseErrorMessage } from '@/lib/supabaseCompat';
 import {
   deleteMaintenanceSchedule,
   type MaintenanceScheduleRow,
@@ -29,23 +28,8 @@ export function useMaintenanceSchedule(fromIso?: string, toIso?: string) {
       if (toIso) tenantQuery = tenantQuery.lte('data_programada', toIso);
 
       const { data, error } = await tenantQuery;
-      if (!error) return (data || []) as MaintenanceScheduleRow[];
-
-      const message = getSupabaseErrorMessage(error).toLowerCase();
-      const missingEmpresa = message.includes('empresa_id') && message.includes('column');
-      if (!missingEmpresa) throw error;
-
-      let legacyQuery = supabase
-        .from('maintenance_schedule')
-        .select('*')
-        .order('data_programada', { ascending: true });
-
-      if (fromIso) legacyQuery = legacyQuery.gte('data_programada', fromIso);
-      if (toIso) legacyQuery = legacyQuery.lte('data_programada', toIso);
-
-      const legacyResult = await legacyQuery;
-      if (legacyResult.error) throw legacyResult.error;
-      return (legacyResult.data || []) as MaintenanceScheduleRow[];
+      if (error) throw error;
+      return (data || []) as MaintenanceScheduleRow[];
     },
   });
 }

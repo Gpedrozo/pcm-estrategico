@@ -2,7 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { deleteMaintenanceSchedule, upsertMaintenanceSchedule } from '@/services/maintenanceSchedule';
-import { getSupabaseErrorMessage, insertWithColumnFallback, updateWithColumnFallback } from '@/lib/supabaseCompat';
+import { insertWithColumnFallback, updateWithColumnFallback } from '@/lib/supabaseCompat';
 import { useAuth } from '@/contexts/AuthContext';
 
 export interface PlanoPreventivo {
@@ -53,23 +53,10 @@ export function usePlanosPreventivos() {
     queryKey: ['planos-preventivos', tenantId],
     enabled: Boolean(tenantId),
     queryFn: async () => {
-      if (!tenantId) return [];
-
-      const tenantQuery = await supabase
-        .from('planos_preventivos')
-        .select('*')
-        .eq('empresa_id', tenantId)
-        .order('codigo');
-
-      if (!tenantQuery.error) return tenantQuery.data as PlanoPreventivo[];
-
-      const message = getSupabaseErrorMessage(tenantQuery.error).toLowerCase();
-      const missingEmpresa = message.includes('empresa_id') && message.includes('column');
-      if (!missingEmpresa) throw tenantQuery.error;
-
       const { data, error } = await supabase
         .from('planos_preventivos')
         .select('*')
+        .eq('empresa_id', tenantId!)
         .order('codigo');
 
       if (error) throw error;
@@ -85,24 +72,10 @@ export function usePlanosPreventivosAtivos() {
     queryKey: ['planos-preventivos', tenantId, 'ativos'],
     enabled: Boolean(tenantId),
     queryFn: async () => {
-      if (!tenantId) return [];
-
-      const tenantQuery = await supabase
-        .from('planos_preventivos')
-        .select('*')
-        .eq('empresa_id', tenantId)
-        .eq('ativo', true)
-        .order('proxima_execucao');
-
-      if (!tenantQuery.error) return tenantQuery.data as PlanoPreventivo[];
-
-      const message = getSupabaseErrorMessage(tenantQuery.error).toLowerCase();
-      const missingEmpresa = message.includes('empresa_id') && message.includes('column');
-      if (!missingEmpresa) throw tenantQuery.error;
-
       const { data, error } = await supabase
         .from('planos_preventivos')
         .select('*')
+        .eq('empresa_id', tenantId!)
         .eq('ativo', true)
         .order('proxima_execucao');
 
@@ -144,6 +117,7 @@ export function useCreatePlanoPreventivo() {
       await upsertMaintenanceSchedule({
         tipo: 'preventiva',
         origemId: data.id,
+        empresaId: tenantId!,
         equipamentoId: data.equipamento_id,
         titulo: `${data.codigo} • ${data.nome}`,
         descricao: data.descricao,
@@ -195,6 +169,7 @@ export function useUpdatePlanoPreventivo() {
       await upsertMaintenanceSchedule({
         tipo: 'preventiva',
         origemId: data.id,
+        empresaId: tenantId!,
         equipamentoId: data.equipamento_id,
         titulo: `${data.codigo} • ${data.nome}`,
         descricao: data.descricao,

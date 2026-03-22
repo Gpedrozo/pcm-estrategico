@@ -3,26 +3,28 @@ import { contratoSchema, type ContratoFormData } from '@/schemas/contrato.schema
 import { writeAuditLog } from '@/lib/audit';
 
 export const contratosService = {
-  async listar() {
+  async listar(empresaId: string) {
     const { data, error } = await supabase
       .from('contratos')
       .select(`
         *,
         fornecedor:fornecedores(razao_social, nome_fantasia)
       `)
+      .eq('empresa_id', empresaId)
       .order('created_at', { ascending: false });
 
     if (error) throw new Error(`Falha ao carregar contratos: ${error.message}`);
     return data;
   },
 
-  async listarAtivos() {
+  async listarAtivos(empresaId: string) {
     const { data, error } = await supabase
       .from('contratos')
       .select(`
         *,
         fornecedor:fornecedores(razao_social, nome_fantasia)
       `)
+      .eq('empresa_id', empresaId)
       .eq('status', 'ATIVO')
       .order('data_fim', { ascending: true });
 
@@ -30,11 +32,11 @@ export const contratosService = {
     return data;
   },
 
-  async criar(payload: ContratoFormData) {
+  async criar(payload: ContratoFormData, empresaId: string) {
     const validated = contratoSchema.parse(payload);
     const { data, error } = await supabase
       .from('contratos')
-      .insert([validated])
+      .insert([{ ...validated, empresa_id: empresaId }])
       .select()
       .single();
 
@@ -54,11 +56,12 @@ export const contratosService = {
     return data;
   },
 
-  async atualizar(id: string, payload: Partial<ContratoFormData>) {
+  async atualizar(id: string, payload: Partial<ContratoFormData>, empresaId: string) {
     const { data, error } = await supabase
       .from('contratos')
       .update(payload)
       .eq('id', id)
+      .eq('empresa_id', empresaId)
       .select()
       .single();
 
@@ -77,11 +80,12 @@ export const contratosService = {
     return data;
   },
 
-  async excluir(id: string) {
+  async excluir(id: string, empresaId: string) {
     const { error } = await supabase
       .from('contratos')
       .delete()
-      .eq('id', id);
+      .eq('id', id)
+      .eq('empresa_id', empresaId);
 
     if (error) throw new Error(`Erro ao excluir do banco de dados: ${error.message}`);
 
@@ -94,10 +98,11 @@ export const contratosService = {
     });
   },
 
-  async listarPorFornecedor(fornecedorId: string) {
+  async listarPorFornecedor(fornecedorId: string, empresaId: string) {
     const { data, error } = await supabase
       .from('contratos')
       .select('*')
+      .eq('empresa_id', empresaId)
       .eq('fornecedor_id', fornecedorId)
       .order('created_at', { ascending: false });
 

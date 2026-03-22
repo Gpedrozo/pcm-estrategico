@@ -40,7 +40,7 @@ export function useContratos() {
   return useQuery({
     queryKey: ['contratos', tenantId],
     queryFn: async () => {
-      const data = await contratosService.listar();
+      const data = await contratosService.listar(tenantId!);
       return data as ContratoRow[];
     },
     enabled: !!tenantId,
@@ -53,7 +53,7 @@ export function useContratosAtivos() {
   return useQuery({
     queryKey: ['contratos', tenantId, 'ativos'],
     queryFn: async () => {
-      const data = await contratosService.listarAtivos();
+      const data = await contratosService.listarAtivos(tenantId!);
       return data as ContratoRow[];
     },
     enabled: !!tenantId,
@@ -67,7 +67,7 @@ export function useContratosByFornecedor(fornecedorId: string | undefined) {
     queryKey: ['contratos', tenantId, 'fornecedor', fornecedorId],
     queryFn: async () => {
       if (!fornecedorId) return [];
-      const data = await contratosService.listarPorFornecedor(fornecedorId);
+      const data = await contratosService.listarPorFornecedor(fornecedorId, tenantId!);
       return data as ContratoRow[];
     },
     enabled: !!tenantId && !!fornecedorId,
@@ -85,9 +85,10 @@ export function useCreateContrato() {
 
   return useMutation({
     mutationFn: async (contrato: ContratoFormData) => {
+      if (!tenantId) throw new Error('Tenant não resolvido.');
       try {
         contratoSchema.parse(contrato);
-        return await contratosService.criar(contrato);
+        return await contratosService.criar(contrato, tenantId);
       } catch (error) {
         if (error instanceof ZodError) {
           throw new Error(error.errors[0]?.message || 'Erro de validação');
@@ -122,7 +123,7 @@ export function useUpdateContrato() {
       payload: Partial<ContratoFormData> & { id: string }
     ) => {
       const { id, ...updates } = payload;
-      return await contratosService.atualizar(id, updates);
+      return await contratosService.atualizar(id, updates, tenantId!);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['contratos', tenantId] });
@@ -148,7 +149,7 @@ export function useDeleteContrato() {
 
   return useMutation({
     mutationFn: async (id: string) => {
-      return await contratosService.excluir(id);
+      return await contratosService.excluir(id, tenantId!);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['contratos', tenantId] });

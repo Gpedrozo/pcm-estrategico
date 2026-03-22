@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/contexts/AuthContext';
 import { insertWithColumnFallback, updateWithColumnFallback } from '@/lib/supabaseCompat';
 
 export interface FMEARow {
@@ -42,43 +43,57 @@ export interface FMEAInsert {
 }
 
 export function useFMEA() {
+  const { tenantId } = useAuth();
+
   return useQuery({
-    queryKey: ['fmea'],
+    queryKey: ['fmea', tenantId],
     queryFn: async () => {
+      if (!tenantId) throw new Error('Tenant não resolvido.');
+
       const { data, error } = await supabase
         .from('fmea')
         .select('*')
+        .eq('empresa_id', tenantId)
         .order('rpn', { ascending: false });
 
       if (error) throw error;
       return data as FMEARow[];
     },
+    enabled: !!tenantId,
   });
 }
 
 export function useFMEAByEquipamento(tag?: string) {
+  const { tenantId } = useAuth();
+
   return useQuery({
-    queryKey: ['fmea', 'equipamento', tag],
+    queryKey: ['fmea', tenantId, 'equipamento', tag],
     queryFn: async () => {
+      if (!tenantId) throw new Error('Tenant não resolvido.');
+
       const { data, error } = await supabase
         .from('fmea')
         .select('*')
+        .eq('empresa_id', tenantId)
         .eq('tag', tag!)
         .order('rpn', { ascending: false });
 
       if (error) throw error;
       return data as FMEARow[];
     },
-    enabled: !!tag,
+    enabled: !!tenantId && !!tag,
   });
 }
 
 export function useCreateFMEA() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const { tenantId } = useAuth();
 
   return useMutation({
     mutationFn: async (fmea: FMEAInsert) => {
+      if (!tenantId) throw new Error('Tenant não resolvido.');
+
       return insertWithColumnFallback(
         async (payload) =>
           supabase
@@ -86,11 +101,11 @@ export function useCreateFMEA() {
             .insert(payload)
             .select()
             .single(),
-        fmea as Record<string, unknown>,
+        { ...fmea, empresa_id: tenantId } as Record<string, unknown>,
       ) as Promise<FMEARow>;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['fmea'] });
+      queryClient.invalidateQueries({ queryKey: ['fmea', tenantId] });
       toast({
         title: 'FMEA criado',
         description: 'A análise FMEA foi criada com sucesso.',
@@ -109,6 +124,7 @@ export function useCreateFMEA() {
 export function useUpdateFMEA() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const { tenantId } = useAuth();
 
   return useMutation({
     mutationFn: async ({ id, ...updates }: Partial<FMEARow> & { id: string }) => {
@@ -124,7 +140,7 @@ export function useUpdateFMEA() {
       ) as Promise<FMEARow>;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['fmea'] });
+      queryClient.invalidateQueries({ queryKey: ['fmea', tenantId] });
       toast({
         title: 'FMEA atualizado',
         description: 'A análise FMEA foi atualizada com sucesso.',
@@ -143,6 +159,7 @@ export function useUpdateFMEA() {
 export function useDeleteFMEA() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const { tenantId } = useAuth();
 
   return useMutation({
     mutationFn: async (id: string) => {
@@ -154,7 +171,7 @@ export function useDeleteFMEA() {
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['fmea'] });
+      queryClient.invalidateQueries({ queryKey: ['fmea', tenantId] });
       toast({
         title: 'FMEA excluído',
         description: 'A análise FMEA foi excluída com sucesso.',

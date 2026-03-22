@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/contexts/AuthContext';
 import { insertWithColumnFallback, updateWithColumnFallback } from '@/lib/supabaseCompat';
 
 export interface RCARow {
@@ -56,43 +57,57 @@ export interface AcaoCorretivaRow {
 }
 
 export function useRCAs() {
+  const { tenantId } = useAuth();
+
   return useQuery({
-    queryKey: ['rca'],
+    queryKey: ['rca', tenantId],
     queryFn: async () => {
+      if (!tenantId) throw new Error('Tenant não resolvido.');
+
       const { data, error } = await supabase
         .from('analise_causa_raiz')
         .select('*')
+        .eq('empresa_id', tenantId)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
       return data as RCARow[];
     },
+    enabled: !!tenantId,
   });
 }
 
 export function useRCAById(id?: string) {
+  const { tenantId } = useAuth();
+
   return useQuery({
-    queryKey: ['rca', id],
+    queryKey: ['rca', tenantId, id],
     queryFn: async () => {
+      if (!tenantId) throw new Error('Tenant não resolvido.');
+
       const { data, error } = await supabase
         .from('analise_causa_raiz')
         .select('*')
+        .eq('empresa_id', tenantId)
         .eq('id', id!)
         .single();
 
       if (error) throw error;
       return data as RCARow;
     },
-    enabled: !!id,
+    enabled: !!tenantId && !!id,
   });
 }
 
 export function useCreateRCA() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const { tenantId } = useAuth();
 
   return useMutation({
     mutationFn: async (rca: RCAInsert) => {
+      if (!tenantId) throw new Error('Tenant não resolvido.');
+
       return insertWithColumnFallback(
         async (payload) =>
           supabase
@@ -100,11 +115,11 @@ export function useCreateRCA() {
             .insert(payload)
             .select()
             .single(),
-        rca as Record<string, unknown>,
+        { ...rca, empresa_id: tenantId } as Record<string, unknown>,
       ) as Promise<RCARow>;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['rca'] });
+      queryClient.invalidateQueries({ queryKey: ['rca', tenantId] });
       toast({
         title: 'RCA criada',
         description: 'A análise de causa raiz foi criada com sucesso.',
@@ -123,6 +138,7 @@ export function useCreateRCA() {
 export function useUpdateRCA() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const { tenantId } = useAuth();
 
   return useMutation({
     mutationFn: async ({ id, ...updates }: Partial<RCARow> & { id: string }) => {
@@ -138,7 +154,7 @@ export function useUpdateRCA() {
       ) as Promise<RCARow>;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['rca'] });
+      queryClient.invalidateQueries({ queryKey: ['rca', tenantId] });
       toast({
         title: 'RCA atualizada',
         description: 'A análise de causa raiz foi atualizada com sucesso.',
@@ -155,28 +171,34 @@ export function useUpdateRCA() {
 }
 
 export function useAcoesCorretivas(rcaId?: string) {
+  const { tenantId } = useAuth();
+
   return useQuery({
-    queryKey: ['acoes-corretivas', rcaId],
+    queryKey: ['acoes-corretivas', tenantId, rcaId],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('acoes_corretivas')
         .select('*')
+        .eq('empresa_id', tenantId!)
         .eq('rca_id', rcaId!)
         .order('prazo');
 
       if (error) throw error;
       return data as AcaoCorretivaRow[];
     },
-    enabled: !!rcaId,
+    enabled: !!rcaId && !!tenantId,
   });
 }
 
 export function useCreateAcaoCorretiva() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const { tenantId } = useAuth();
 
   return useMutation({
     mutationFn: async (acao: Omit<AcaoCorretivaRow, 'id' | 'created_at' | 'updated_at' | 'data_conclusao' | 'evidencias' | 'observacoes'>) => {
+      if (!tenantId) throw new Error('Tenant não resolvido.');
+
       return insertWithColumnFallback(
         async (payload) =>
           supabase
@@ -184,7 +206,7 @@ export function useCreateAcaoCorretiva() {
             .insert(payload)
             .select()
             .single(),
-        acao as Record<string, unknown>,
+        { ...acao, empresa_id: tenantId } as Record<string, unknown>,
       ) as Promise<AcaoCorretivaRow>;
     },
     onSuccess: () => {
@@ -207,6 +229,7 @@ export function useCreateAcaoCorretiva() {
 export function useUpdateAcaoCorretiva() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const { tenantId } = useAuth();
 
   return useMutation({
     mutationFn: async ({ id, ...updates }: Partial<AcaoCorretivaRow> & { id: string }) => {
@@ -222,7 +245,7 @@ export function useUpdateAcaoCorretiva() {
       ) as Promise<AcaoCorretivaRow>;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['acoes-corretivas'] });
+      queryClient.invalidateQueries({ queryKey: ['acoes-corretivas', tenantId] });
       toast({
         title: 'Ação atualizada',
         description: 'A ação corretiva foi atualizada com sucesso.',

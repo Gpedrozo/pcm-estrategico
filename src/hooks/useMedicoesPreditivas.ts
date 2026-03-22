@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { deleteMaintenanceSchedule, upsertMaintenanceSchedule } from '@/services/maintenanceSchedule';
 import { insertWithColumnFallback, updateWithColumnFallback } from '@/lib/supabaseCompat';
+import { useAuth } from '@/contexts/AuthContext';
 
 export interface MedicaoPreditivaRow {
   id: string;
@@ -47,61 +48,75 @@ export interface MedicaoPreditivaUpdate {
 }
 
 export function useMedicoesPreditivas() {
+  const { tenantId } = useAuth();
+
   return useQuery({
-    queryKey: ['medicoes_preditivas'],
+    queryKey: ['medicoes_preditivas', tenantId],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('medicoes_preditivas')
         .select('*')
+        .eq('empresa_id', tenantId!)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
       return data as MedicaoPreditivaRow[];
     },
+    enabled: !!tenantId,
   });
 }
 
 export function useMedicoesByTag(tag: string | undefined) {
+  const { tenantId } = useAuth();
+
   return useQuery({
-    queryKey: ['medicoes_preditivas', 'tag', tag],
+    queryKey: ['medicoes_preditivas', tenantId, 'tag', tag],
     queryFn: async () => {
       if (!tag) return [];
       
       const { data, error } = await supabase
         .from('medicoes_preditivas')
         .select('*')
+        .eq('empresa_id', tenantId!)
         .eq('tag', tag)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
       return data as MedicaoPreditivaRow[];
     },
-    enabled: !!tag,
+    enabled: !!tag && !!tenantId,
   });
 }
 
 export function useMedicoesAlertas() {
+  const { tenantId } = useAuth();
+
   return useQuery({
-    queryKey: ['medicoes_preditivas', 'alertas'],
+    queryKey: ['medicoes_preditivas', tenantId, 'alertas'],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('medicoes_preditivas')
         .select('*')
+        .eq('empresa_id', tenantId!)
         .in('status', ['ALERTA', 'CRITICO'])
         .order('created_at', { ascending: false });
 
       if (error) throw error;
       return data as MedicaoPreditivaRow[];
     },
+    enabled: !!tenantId,
   });
 }
 
 export function useCreateMedicaoPreditiva() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const { tenantId } = useAuth();
 
   return useMutation({
     mutationFn: async (medicao: MedicaoPreditivaInsert) => {
+      if (!tenantId) throw new Error('Tenant não resolvido.');
+
       const data = await insertWithColumnFallback(
         async (payload) =>
           supabase
@@ -109,12 +124,13 @@ export function useCreateMedicaoPreditiva() {
             .insert(payload)
             .select()
             .single(),
-        medicao as Record<string, unknown>,
+        { ...medicao, empresa_id: tenantId } as Record<string, unknown>,
       );
 
       await upsertMaintenanceSchedule({
         tipo: 'preditiva',
         origemId: data.id,
+        empresaId: tenantId,
         equipamentoId: data.equipamento_id,
         titulo: `${data.tag} • ${data.tipo_medicao}`,
         descricao: data.observacoes,
@@ -126,7 +142,7 @@ export function useCreateMedicaoPreditiva() {
       return data as MedicaoPreditivaRow;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['medicoes_preditivas'] });
+      queryClient.invalidateQueries({ queryKey: ['medicoes_preditivas', tenantId] });
       toast({
         title: 'Medição registrada',
         description: 'Medição preditiva registrada com sucesso.',
@@ -145,6 +161,7 @@ export function useCreateMedicaoPreditiva() {
 export function useUpdateMedicaoPreditiva() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const { tenantId } = useAuth();
 
   return useMutation({
     mutationFn: async ({ id, ...updates }: MedicaoPreditivaUpdate & { id: string }) => {
@@ -162,6 +179,7 @@ export function useUpdateMedicaoPreditiva() {
       await upsertMaintenanceSchedule({
         tipo: 'preditiva',
         origemId: data.id,
+        empresaId: tenantId!,
         equipamentoId: data.equipamento_id,
         titulo: `${data.tag} • ${data.tipo_medicao}`,
         descricao: data.observacoes,
@@ -173,7 +191,7 @@ export function useUpdateMedicaoPreditiva() {
       return data as MedicaoPreditivaRow;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['medicoes_preditivas'] });
+      queryClient.invalidateQueries({ queryKey: ['medicoes_preditivas', tenantId] });
       toast({
         title: 'Medição atualizada',
         description: 'Medição preditiva atualizada com sucesso.',

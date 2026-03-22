@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/contexts/AuthContext';
 import { insertWithColumnFallback, updateWithColumnFallback } from '@/lib/supabaseCompat';
 
 export interface FornecedorRow {
@@ -61,42 +62,57 @@ export interface ContratoRow {
 }
 
 export function useFornecedores() {
+  const { tenantId } = useAuth();
+
   return useQuery({
-    queryKey: ['fornecedores'],
+    queryKey: ['fornecedores', tenantId],
     queryFn: async () => {
+      if (!tenantId) throw new Error('Tenant não resolvido.');
+
       const { data, error } = await supabase
         .from('fornecedores')
         .select('*')
+        .eq('empresa_id', tenantId)
         .order('razao_social');
 
       if (error) throw error;
       return data as FornecedorRow[];
     },
+    enabled: !!tenantId,
   });
 }
 
 export function useFornecedoresAtivos() {
+  const { tenantId } = useAuth();
+
   return useQuery({
-    queryKey: ['fornecedores', 'ativos'],
+    queryKey: ['fornecedores', tenantId, 'ativos'],
     queryFn: async () => {
+      if (!tenantId) throw new Error('Tenant não resolvido.');
+
       const { data, error } = await supabase
         .from('fornecedores')
         .select('*')
+        .eq('empresa_id', tenantId)
         .eq('ativo', true)
         .order('razao_social');
 
       if (error) throw error;
       return data as FornecedorRow[];
     },
+    enabled: !!tenantId,
   });
 }
 
 export function useCreateFornecedor() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const { tenantId } = useAuth();
 
   return useMutation({
     mutationFn: async (fornecedor: FornecedorInsert) => {
+      if (!tenantId) throw new Error('Tenant não resolvido.');
+
       return insertWithColumnFallback(
         async (payload) =>
           supabase
@@ -104,11 +120,11 @@ export function useCreateFornecedor() {
             .insert(payload)
             .select()
             .single(),
-        fornecedor as Record<string, unknown>,
+        { ...fornecedor, empresa_id: tenantId } as Record<string, unknown>,
       ) as Promise<FornecedorRow>;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['fornecedores'] });
+      queryClient.invalidateQueries({ queryKey: ['fornecedores', tenantId] });
       toast({
         title: 'Fornecedor criado',
         description: 'O fornecedor foi cadastrado com sucesso.',
@@ -127,6 +143,7 @@ export function useCreateFornecedor() {
 export function useUpdateFornecedor() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const { tenantId } = useAuth();
 
   return useMutation({
     mutationFn: async ({ id, ...updates }: Partial<FornecedorRow> & { id: string }) => {
@@ -142,7 +159,7 @@ export function useUpdateFornecedor() {
       ) as Promise<FornecedorRow>;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['fornecedores'] });
+      queryClient.invalidateQueries({ queryKey: ['fornecedores', tenantId] });
       toast({
         title: 'Fornecedor atualizado',
         description: 'O fornecedor foi atualizado com sucesso.',
@@ -159,45 +176,60 @@ export function useUpdateFornecedor() {
 }
 
 export function useContratos() {
+  const { tenantId } = useAuth();
+
   return useQuery({
-    queryKey: ['contratos'],
+    queryKey: ['contratos', tenantId],
     queryFn: async () => {
+      if (!tenantId) throw new Error('Tenant não resolvido.');
+
       const { data, error } = await supabase
         .from('contratos')
         .select('*, fornecedor:fornecedores(*)')
+        .eq('empresa_id', tenantId)
         .order('data_inicio', { ascending: false });
 
       if (error) throw error;
       return data as (ContratoRow & { fornecedor: FornecedorRow | null })[];
     },
+    enabled: !!tenantId,
   });
 }
 
 export function useContratosAtivos() {
+  const { tenantId } = useAuth();
+
   return useQuery({
-    queryKey: ['contratos', 'ativos'],
+    queryKey: ['contratos', tenantId, 'ativos'],
     queryFn: async () => {
+      if (!tenantId) throw new Error('Tenant não resolvido.');
+
       const { data, error } = await supabase
         .from('contratos')
         .select('*, fornecedor:fornecedores(*)')
+        .eq('empresa_id', tenantId)
         .eq('status', 'ATIVO')
         .order('data_fim');
 
       if (error) throw error;
       return data as (ContratoRow & { fornecedor: FornecedorRow | null })[];
     },
+    enabled: !!tenantId,
   });
 }
 
 export function useCreateContrato() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const { tenantId } = useAuth();
 
   return useMutation({
     mutationFn: async (contrato: Omit<ContratoRow, 'id' | 'created_at' | 'updated_at'>) => {
+      if (!tenantId) throw new Error('Tenant não resolvido.');
+
       const { data, error } = await supabase
         .from('contratos')
-        .insert(contrato)
+        .insert({ ...contrato, empresa_id: tenantId })
         .select()
         .single();
 
@@ -205,7 +237,7 @@ export function useCreateContrato() {
       return data as ContratoRow;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['contratos'] });
+      queryClient.invalidateQueries({ queryKey: ['contratos', tenantId] });
       toast({
         title: 'Contrato criado',
         description: 'O contrato foi cadastrado com sucesso.',
@@ -224,6 +256,7 @@ export function useCreateContrato() {
 export function useUpdateContrato() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const { tenantId } = useAuth();
 
   return useMutation({
     mutationFn: async ({ id, ...updates }: Partial<ContratoRow> & { id: string }) => {
@@ -238,7 +271,7 @@ export function useUpdateContrato() {
       return data as ContratoRow;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['contratos'] });
+      queryClient.invalidateQueries({ queryKey: ['contratos', tenantId] });
       toast({
         title: 'Contrato atualizado',
         description: 'O contrato foi atualizado com sucesso.',

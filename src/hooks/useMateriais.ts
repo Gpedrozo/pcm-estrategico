@@ -99,6 +99,7 @@ export function useMateriais() {
       const { data, error } = await supabase
         .from('materiais')
         .select('*')
+        .eq('empresa_id', tenantId!)
         .order('nome');
       
       if (error) throw error;
@@ -117,6 +118,7 @@ export function useMateriaisAtivos() {
       const { data, error } = await supabase
         .from('materiais')
         .select('*')
+        .eq('empresa_id', tenantId!)
         .eq('ativo', true)
         .order('nome');
       
@@ -136,6 +138,7 @@ export function useMateriaisBaixoEstoque() {
       const { data, error } = await supabase
         .from('materiais')
         .select('*')
+        .eq('empresa_id', tenantId!)
         .eq('ativo', true)
         .order('nome');
       
@@ -157,6 +160,8 @@ export function useCreateMaterial() {
 
   return useMutation({
     mutationFn: async (material: MaterialInsert) => {
+      if (!tenantId) throw new Error('Tenant não resolvido.');
+
       return insertWithColumnFallback(
         async (payload) =>
           supabase
@@ -164,7 +169,7 @@ export function useCreateMaterial() {
             .insert(payload)
             .select()
             .single(),
-        material as Record<string, unknown>,
+        { ...material, empresa_id: tenantId } as Record<string, unknown>,
       );
     },
     onSuccess: () => {
@@ -264,6 +269,7 @@ export function useMovimentacoes(materialId?: string) {
           *,
           material:materiais(*)
         `)
+        .eq('empresa_id', tenantId!)
         .order('created_at', { ascending: false });
       
       if (materialId) {
@@ -286,9 +292,11 @@ export function useCreateMovimentacao() {
 
   return useMutation({
     mutationFn: async (movimentacao: MovimentacaoInsert) => {
+      if (!tenantId) throw new Error('Tenant não resolvido.');
+
       const { data, error } = await supabase
         .from('movimentacoes_materiais')
-        .insert(movimentacao)
+        .insert({ ...movimentacao, empresa_id: tenantId })
         .select()
         .single();
       
@@ -327,6 +335,7 @@ export function useMateriaisOS(osId: string) {
           *,
           material:materiais(*)
         `)
+        .eq('empresa_id', tenantId!)
         .eq('os_id', osId);
       
       if (error) throw error;
@@ -343,9 +352,11 @@ export function useAddMaterialOS() {
 
   return useMutation({
     mutationFn: async (materialOS: MaterialOSInsert) => {
+      if (!tenantId) throw new Error('Tenant não resolvido.');
+
       const { data, error } = await supabase
         .from('materiais_os')
-        .insert(materialOS)
+        .insert({ ...materialOS, empresa_id: tenantId })
         .select()
         .single();
       

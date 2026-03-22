@@ -5,6 +5,7 @@ export type MaintenanceTipo = 'preventiva' | 'lubrificacao' | 'inspecao' | 'pred
 export interface MaintenanceScheduleUpsertInput {
   tipo: MaintenanceTipo;
   origemId: string;
+  empresaId: string;
   equipamentoId?: string | null;
   titulo: string;
   descricao?: string | null;
@@ -32,6 +33,7 @@ export async function upsertMaintenanceSchedule(input: MaintenanceScheduleUpsert
     .from('maintenance_schedule')
     .upsert(
       {
+        empresa_id: input.empresaId,
         tipo: input.tipo,
         origem_id: input.origemId,
         equipamento_id: input.equipamentoId ?? null,

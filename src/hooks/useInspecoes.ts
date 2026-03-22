@@ -2,7 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { upsertMaintenanceSchedule } from '@/services/maintenanceSchedule';
-import { getSupabaseErrorMessage, insertWithColumnFallback, updateWithColumnFallback } from '@/lib/supabaseCompat';
+import { insertWithColumnFallback, updateWithColumnFallback } from '@/lib/supabaseCompat';
 import { useAuth } from '@/contexts/AuthContext';
 
 export interface InspecaoRow {
@@ -54,28 +54,14 @@ export function useInspecoes() {
     queryKey: ['inspecoes', tenantId],
     enabled: Boolean(tenantId),
     queryFn: async () => {
-      if (!tenantId) return [];
-
-      const tenantQuery = await supabase
+      const { data, error } = await supabase
         .from('inspecoes')
         .select('*')
-        .eq('empresa_id', tenantId)
+        .eq('empresa_id', tenantId!)
         .order('data_inspecao', { ascending: false });
 
-      if (!tenantQuery.error) return (tenantQuery.data || []) as InspecaoRow[];
-
-      const errorMessage = getSupabaseErrorMessage(tenantQuery.error).toLowerCase();
-      const missingEmpresa = errorMessage.includes('empresa_id') && errorMessage.includes('column');
-      if (!missingEmpresa) throw tenantQuery.error;
-
-      // Fallback em schema legado sem empresa_id.
-      const allRows = await supabase
-        .from('inspecoes')
-        .select('*')
-        .order('data_inspecao', { ascending: false });
-
-      if (allRows.error) throw allRows.error;
-      return (allRows.data || []) as InspecaoRow[];
+      if (error) throw error;
+      return (data || []) as InspecaoRow[];
     },
   });
 }
@@ -87,29 +73,16 @@ export function useInspecoesHoje() {
     queryKey: ['inspecoes', tenantId, 'hoje'],
     enabled: Boolean(tenantId),
     queryFn: async () => {
-      if (!tenantId) return [];
       const hoje = new Date().toISOString().split('T')[0];
-      const tenantQuery = await supabase
+      const { data, error } = await supabase
         .from('inspecoes')
         .select('*')
-        .eq('empresa_id', tenantId)
+        .eq('empresa_id', tenantId!)
         .eq('data_inspecao', hoje)
         .order('hora_inicio');
 
-      if (!tenantQuery.error) return (tenantQuery.data || []) as InspecaoRow[];
-
-      const errorMessage = getSupabaseErrorMessage(tenantQuery.error).toLowerCase();
-      const missingEmpresa = errorMessage.includes('empresa_id') && errorMessage.includes('column');
-      if (!missingEmpresa) throw tenantQuery.error;
-
-      const allRows = await supabase
-        .from('inspecoes')
-        .select('*')
-        .eq('data_inspecao', hoje)
-        .order('hora_inicio');
-
-      if (allRows.error) throw allRows.error;
-      return (allRows.data || []) as InspecaoRow[];
+      if (error) throw error;
+      return (data || []) as InspecaoRow[];
     },
   });
 }
@@ -140,6 +113,7 @@ export function useCreateInspecao() {
       await upsertMaintenanceSchedule({
         tipo: 'inspecao',
         origemId: data.id,
+        empresaId: tenantId!,
         titulo: `Inspeção #${data.numero_inspecao} • ${data.rota_nome}`,
         descricao: data.descricao,
         dataProgramada: `${data.data_inspecao}T08:00:00.000Z`,
@@ -191,6 +165,7 @@ export function useUpdateInspecao() {
       await upsertMaintenanceSchedule({
         tipo: 'inspecao',
         origemId: data.id,
+        empresaId: tenantId!,
         titulo: `Inspeção #${data.numero_inspecao} • ${data.rota_nome}`,
         descricao: data.descricao,
         dataProgramada: `${data.data_inspecao}T08:00:00.000Z`,

@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { useState, useMemo } from 'react';
+import { useState, useEffect } from 'react';
 
 interface DynamicSupabaseClient {
   from: (table: string) => {
@@ -77,7 +77,7 @@ export function usePaginatedQuery<T>({
   const [filters, setFilters] = useState<FilterState>(initialFilters);
 
   // Build query key including pagination, sorting, and filters
-  const fullQueryKey = useMemo(() => [
+  const fullQueryKey = [
     ...queryKey,
     'paginated',
     pagination.pageIndex,
@@ -85,7 +85,7 @@ export function usePaginatedQuery<T>({
     sorting?.column,
     sorting?.direction,
     JSON.stringify(filters),
-  ], [queryKey, pagination, sorting, filters]);
+  ];
 
   // Count query
   const { data: totalCount = 0 } = useQuery({
@@ -177,7 +177,7 @@ export function usePaginatedQuery<T>({
 export function useDebounce<T>(value: T, delay: number): T {
   const [debouncedValue, setDebouncedValue] = useState(value);
 
-  useMemo(() => {
+  useEffect(() => {
     const timer = setTimeout(() => setDebouncedValue(value), delay);
     return () => clearTimeout(timer);
   }, [value, delay]);

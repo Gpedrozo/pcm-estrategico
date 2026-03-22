@@ -70,6 +70,7 @@ export function useCreatePlanoLubrificacao() {
       await upsertMaintenanceSchedule({
         tipo: 'lubrificacao',
         origemId: data.id,
+        empresaId: tenantId!,
         equipamentoId: data.equipamento_id,
         titulo: `${data.codigo} • ${data.nome}`,
         descricao: data.descricao || data.observacoes,
@@ -113,6 +114,7 @@ export function useUpdatePlanoLubrificacao() {
       await upsertMaintenanceSchedule({
         tipo: 'lubrificacao',
         origemId: data.id,
+        empresaId: tenantId!,
         equipamentoId: data.equipamento_id,
         titulo: `${data.codigo} • ${data.nome}`,
         descricao: data.descricao || data.observacoes,

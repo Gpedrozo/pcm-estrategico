@@ -1,7 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { getSupabaseErrorMessage, insertWithColumnFallback, updateWithColumnFallback } from '@/lib/supabaseCompat';
+import { insertWithColumnFallback, updateWithColumnFallback } from '@/lib/supabaseCompat';
 import { useAuth } from '@/contexts/AuthContext';
 
 export interface MelhoriaRow {
@@ -56,27 +56,14 @@ export function useMelhorias() {
     queryKey: ['melhorias', tenantId],
     enabled: Boolean(tenantId),
     queryFn: async () => {
-      if (!tenantId) return [];
-
-      const tenantQuery = await supabase
+      const { data, error } = await supabase
         .from('melhorias')
         .select('*')
-        .eq('empresa_id', tenantId)
+        .eq('empresa_id', tenantId!)
         .order('created_at', { ascending: false });
 
-      if (!tenantQuery.error) return (tenantQuery.data || []) as MelhoriaRow[];
-
-      const message = getSupabaseErrorMessage(tenantQuery.error).toLowerCase();
-      const missingEmpresa = message.includes('empresa_id') && message.includes('column');
-      if (!missingEmpresa) throw tenantQuery.error;
-
-      const allRows = await supabase
-        .from('melhorias')
-        .select('*')
-        .order('created_at', { ascending: false });
-
-      if (allRows.error) throw allRows.error;
-      return (allRows.data || []) as MelhoriaRow[];
+      if (error) throw error;
+      return (data || []) as MelhoriaRow[];
     },
   });
 }
@@ -88,29 +75,15 @@ export function useMelhoriasAprovadas() {
     queryKey: ['melhorias', tenantId, 'aprovadas'],
     enabled: Boolean(tenantId),
     queryFn: async () => {
-      if (!tenantId) return [];
-
-      const tenantQuery = await supabase
+      const { data, error } = await supabase
         .from('melhorias')
         .select('*')
-        .eq('empresa_id', tenantId)
+        .eq('empresa_id', tenantId!)
         .in('status', ['APROVADA', 'EM_IMPLEMENTACAO', 'IMPLEMENTADA'])
         .order('data_aprovacao', { ascending: false });
 
-      if (!tenantQuery.error) return (tenantQuery.data || []) as MelhoriaRow[];
-
-      const message = getSupabaseErrorMessage(tenantQuery.error).toLowerCase();
-      const missingEmpresa = message.includes('empresa_id') && message.includes('column');
-      if (!missingEmpresa) throw tenantQuery.error;
-
-      const allRows = await supabase
-        .from('melhorias')
-        .select('*')
-        .in('status', ['APROVADA', 'EM_IMPLEMENTACAO', 'IMPLEMENTADA'])
-        .order('data_aprovacao', { ascending: false });
-
-      if (allRows.error) throw allRows.error;
-      return (allRows.data || []) as MelhoriaRow[];
+      if (error) throw error;
+      return (data || []) as MelhoriaRow[];
     },
   });
 }
