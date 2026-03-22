@@ -36,7 +36,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { 
   Plus, Search, Tag, Edit, Trash2, Loader2, AlertTriangle, CheckCircle, 
-  AlertCircle, Building2, Eye, Settings2, FileText, Wrench, Download, Upload
+  AlertCircle, Building2, Eye, Settings2, FileText, Wrench, Download, Upload, QrCode
 } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 
@@ -50,6 +50,7 @@ import {
 import { useSistemas } from '@/hooks/useHierarquia';
 import { useAuth } from '@/contexts/AuthContext';
 import { ComponentesPanel } from '@/components/equipamentos/ComponentesPanel';
+import { EquipamentoQRCodeDialog } from '@/components/equipamentos/EquipamentoQRCode';
 import { generateEquipmentTemplate, generateEquipmentTechnicalTemplate, parseEquipmentFile } from '@/lib/reportGenerator';
 import { useToast } from '@/hooks/use-toast';
 import { useCreateComponente } from '@/hooks/useComponentesEquipamento';
@@ -91,6 +92,7 @@ export default function Equipamentos() {
   const [selectedEquip, setSelectedEquip] = useState<EquipamentoRow | null>(null);
   const [formData, setFormData] = useState<FormData>(initialFormData);
   const [importing, setImporting] = useState(false);
+  const [qrEquip, setQrEquip] = useState<EquipamentoRow | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const { data: equipamentos, isLoading, error } = useEquipamentos();
@@ -381,6 +383,9 @@ export default function Equipamentos() {
                     <Button variant="ghost" size="icon" onClick={() => handleViewDetails(equip)}>
                       <Eye className="h-4 w-4" />
                     </Button>
+                    <Button variant="ghost" size="icon" onClick={() => setQrEquip(equip)} title="QR Code">
+                      <QrCode className="h-4 w-4" />
+                    </Button>
                     <Button variant="ghost" size="icon" onClick={() => handleEdit(equip)}>
                       <Edit className="h-4 w-4" />
                     </Button>
@@ -571,6 +576,13 @@ export default function Equipamentos() {
                       )}
                     </CardContent>
                   </Card>
+
+                  <div className="flex justify-end">
+                    <Button variant="outline" className="gap-2" onClick={() => setQrEquip(selectedEquip)}>
+                      <QrCode className="h-4 w-4" />
+                      Gerar QR Code
+                    </Button>
+                  </div>
                 </TabsContent>
 
                 <TabsContent value="manutencao" className="mt-4">
@@ -804,6 +816,15 @@ export default function Equipamentos() {
           </form>
         </DialogContent>
       </Dialog>
+
+      {/* QR Code Dialog */}
+      {qrEquip && (
+        <EquipamentoQRCodeDialog
+          equipamento={qrEquip}
+          open={!!qrEquip}
+          onOpenChange={(open) => !open && setQrEquip(null)}
+        />
+      )}
 
       {/* Delete Confirmation */}
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
