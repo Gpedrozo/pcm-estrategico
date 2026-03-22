@@ -89,6 +89,17 @@ const LOGIN_RATE_LIMIT_WINDOW_MS = 5 * 60 * 1000;
 const LOGIN_RATE_LIMIT_BLOCK_MS = 15 * 60 * 1000;
 const AUTH_REDIRECT_RETRY_STORAGE_KEY = 'pcm.auth.redirect.retry.v1';
 const AUTH_REDIRECT_RETRY_MAX = 2;
+const OWNER_EDGE_LOGIN_ENDPOINT = '/functions/v1/auth-login';
+
+type OwnerEdgeLoginResult = {
+  ok: boolean;
+  status: number;
+  message: string;
+  payload: any;
+  accessToken: string | null;
+  refreshToken: string | null;
+  user: any | null;
+};
 
 type LoginRateLimitEntry = {
   attempts: number[];
@@ -141,6 +152,100 @@ function getLoginRateLimitStatus(email: string) {
     blocked,
     retryAfterSeconds: blocked ? Math.max(1, Math.ceil((blockedUntil - now) / 1000)) : 0,
   };
+}
+
+function getPublicAnonKey() {
+  const key = String(
+    import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY
+    ?? import.meta.env.VITE_SUPABASE_ANON_KEY
+    ?? '',
+  ).trim();
+  return key || null;
+}
+
+async function signInThroughOwnerEdge(email: string, password: string): Promise<OwnerEdgeLoginResult> {
+  const baseUrl = String(import.meta.env.VITE_SUPABASE_URL ?? '').trim();
+  const anonKey = getPublicAnonKey();
+
+  if (!baseUrl || !anonKey) {
+    return {
+      ok: false,
+      status: 500,
+      message: 'Owner login edge misconfigured',
+      payload: null,
+      accessToken: null,
+      refreshToken: null,
+      user: null,
+    };
+  }
+
+  try {
+    const response = await fetch(`${baseUrl}${OWNER_EDGE_LOGIN_ENDPOINT}`, {
+      method: 'POST',
+      headers: {
+        apikey: anonKey,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ email, password }),
+    });
+
+    const payload = await response.json().catch(() => null);
+    const accessToken = String(payload?.session?.access_token ?? payload?.access_token ?? '').trim() || null;
+    const refreshToken = String(payload?.session?.refresh_token ?? payload?.refresh_token ?? '').trim() || null;
+    const user = payload?.user ?? payload?.session?.user ?? null;
+
+    const message = String(
+      payload?.error
+      ?? payload?.message
+      ?? payload?.details?.auth_message
+      ?? payload?.msg
+      ?? '',
+    ).trim();
+
+    if (!response.ok) {
+      return {
+        ok: false,
+        status: response.status,
+        message,
+        payload,
+        accessToken: null,
+        refreshToken: null,
+        user: null,
+      };
+    }
+
+    if (!accessToken || !refreshToken || !user?.id) {
+      return {
+        ok: false,
+        status: 502,
+        message: 'Owner login response missing session payload',
+        payload,
+        accessToken: null,
+        refreshToken: null,
+        user: null,
+      };
+    }
+
+    return {
+      ok: true,
+      status: response.status,
+      message,
+      payload,
+      accessToken,
+      refreshToken,
+      user,
+    };
+  } catch (error) {
+    return {
+      ok: false,
+      status: 0,
+      message: String(error),
+      payload: null,
+      accessToken: null,
+      refreshToken: null,
+      user: null,
+    };
+  }
 }
 
 function registerFailedLoginAttempt(email: string) {
@@ -1292,19 +1397,58 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return { error: `Muitas tentativas de login. Tente novamente em ${throttle.retryAfterSeconds}s.` };
     }
 
-    const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
+    const ownerDomain = isOwnerDomain(window.location.hostname);
+    let signInSession: Session | null = null;
+    let signInUser: any | null = null;
+    let accessToken: string | null = null;
+    let refreshToken: string | null = null;
+    let providerStatus: number | null = null;
+    let providerErrorMessage = '';
 
-    const accessToken = signInData?.session?.access_token ?? null;
-    const refreshToken = signInData?.session?.refresh_token ?? null;
+    if (ownerDomain) {
+      const ownerSignIn = await signInThroughOwnerEdge(email, password);
+      providerStatus = ownerSignIn.status;
 
-    if (signInError || !accessToken || !refreshToken) {
+      if (!ownerSignIn.ok) {
+        providerErrorMessage = ownerSignIn.message || 'Owner login failed';
+      } else {
+        accessToken = ownerSignIn.accessToken;
+        refreshToken = ownerSignIn.refreshToken;
+        signInUser = ownerSignIn.user;
+
+        if (accessToken && refreshToken) {
+          const { data: setSessionData, error: setSessionError } = await supabase.auth.setSession({
+            access_token: accessToken,
+            refresh_token: refreshToken,
+          });
+
+          if (setSessionError) {
+            providerErrorMessage = String(setSessionError.message || 'Owner session setup failed');
+          } else {
+            signInSession = setSessionData.session ?? null;
+            signInUser = setSessionData.user ?? signInUser;
+          }
+        }
+      }
+    } else {
+      const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+
+      providerStatus = signInError?.status ?? null;
+      providerErrorMessage = String(signInError?.message ?? '').trim();
+      signInSession = signInData?.session ?? null;
+      signInUser = signInData?.user ?? null;
+      accessToken = signInData?.session?.access_token ?? null;
+      refreshToken = signInData?.session?.refresh_token ?? null;
+    }
+
+    if (providerErrorMessage || !accessToken || !refreshToken) {
       const failedAttempt = registerFailedLoginAttempt(email);
 
       let message = 'Falha ao autenticar. Tente novamente.';
-      const normalizedError = String(signInError?.message ?? '').trim().toLowerCase();
+      const normalizedError = String(providerErrorMessage ?? '').trim().toLowerCase();
 
       if (normalizedError.includes('invalid login credentials') || normalizedError.includes('invalid credentials')) {
         message = 'Email ou senha inválidos';
@@ -1312,10 +1456,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         message = 'Email ainda não confirmado. Verifique sua caixa de entrada.';
       } else if (normalizedError.includes('too many requests') || normalizedError.includes('rate limit')) {
         message = 'Muitas tentativas de login. Tente novamente em instantes.';
+      } else if (providerStatus === 429) {
+        message = 'Muitas tentativas de login. Tente novamente em instantes.';
       } else if (normalizedError.includes('email and password required')) {
         message = 'Email e senha são obrigatórios';
-      } else if (signInError?.message) {
-        message = signInError.message;
+      } else if (
+        normalizedError.includes('auth schema misconfigured')
+        || normalizedError.includes('database error querying schema')
+        || providerStatus === 503
+      ) {
+        message = 'Serviço de autenticação do Owner indisponível no momento. Tente novamente em alguns minutos.';
+      } else if (normalizedError.includes('auth provider request failed') || providerStatus === 502) {
+        message = 'Falha temporária no provedor de autenticação. Tente novamente em instantes.';
+      } else if (providerErrorMessage) {
+        message = providerErrorMessage;
       }
 
       await writeAuditLog({
@@ -1325,6 +1479,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         severity: 'warning',
         metadata: {
           email: email.trim().toLowerCase(),
+          provider_status: providerStatus,
+          provider_error: providerErrorMessage || null,
           attempts_in_window: failedAttempt.attemptsCount,
           blocked_until: failedAttempt.blockedUntil > 0 ? new Date(failedAttempt.blockedUntil).toISOString() : null,
         },
@@ -1342,8 +1498,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     const { data: { session: currentSession } } = await supabase.auth.getSession();
     const { data: { user: currentUser } } = await supabase.auth.getUser();
-    const activeSession = currentSession ?? signInData.session ?? null;
-    const activeUser = currentUser ?? signInData.user ?? null;
+    const activeSession = currentSession ?? signInSession ?? null;
+    const activeUser = currentUser ?? signInUser ?? null;
 
     if (activeUser) {
       let profileData: {
@@ -1538,7 +1694,31 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     });
 
     if (changeError) {
-      return { error: changeError.message || 'Falha ao atualizar senha.' };
+      logger.warn('auth_change_password_function_failed_fallback_to_update_user', {
+        error: changeError.message ?? 'invoke_failed',
+      });
+
+      const { error: fallbackChangeError } = await supabase.auth.updateUser({
+        password: normalizedPassword,
+        data: {
+          force_password_change: false,
+        },
+      });
+
+      if (fallbackChangeError) {
+        return { error: fallbackChangeError.message || changeError.message || 'Falha ao atualizar senha.' };
+      }
+
+      const { data: fallbackUserResult } = await supabase.auth.getUser();
+      const fallbackUser = fallbackUserResult.user;
+      if (fallbackUser?.id) {
+        await supabase
+          .from('profiles')
+          .update({ force_password_change: false })
+          .eq('id', fallbackUser.id)
+          .then(() => null)
+          .catch(() => null);
+      }
     }
 
     const { data: userResult } = await supabase.auth.getUser();

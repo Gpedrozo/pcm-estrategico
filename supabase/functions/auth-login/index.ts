@@ -83,6 +83,10 @@ function authPayloadMessage(payload: any) {
   ).trim();
 }
 
+function authPayloadErrorId(payload: any) {
+  return String(payload?.error_id ?? payload?.errorId ?? '').trim() || null;
+}
+
 function isCredentialFailure(status: number, payload: any) {
   const message = authPayloadMessage(payload).toLowerCase();
   if (message.includes("invalid login credentials")) return true;
@@ -335,13 +339,27 @@ Deno.serve(async (req) => {
 
       if (!isCredentialFailure(signIn.status, signIn.payload)) {
         const authMessage = authPayloadMessage(signIn.payload);
+        const authErrorId = authPayloadErrorId(signIn.payload);
+        const isSchemaQueryFailure = authMessage.toLowerCase().includes("database error querying schema");
         console.error("[auth-login] auth provider rejected request", {
           status: signIn.status,
           message: authMessage,
+          error_id: authErrorId,
         });
+
+        if (isSchemaQueryFailure) {
+          return fail("Auth schema misconfigured", 503, {
+            auth_status: signIn.status,
+            auth_message: authMessage || null,
+            auth_error_id: authErrorId,
+            remediation: "run_auth_hook_hardening",
+          }, req);
+        }
+
         return fail("Auth provider request failed", 502, {
           auth_status: signIn.status,
           auth_message: authMessage || null,
+          auth_error_id: authErrorId,
         }, req);
       }
 

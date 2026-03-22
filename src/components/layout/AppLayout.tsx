@@ -342,7 +342,7 @@ export function AppLayout() {
             {canSwitchCompany && (
               <button
                 onClick={openCompanyChooser}
-                className="rounded border border-emerald-400 px-3 py-1 text-xs font-medium text-emerald-600 hover:bg-emerald-50"
+                className="rounded border border-primary/40 bg-primary/10 px-3 py-1 text-xs font-medium text-primary hover:bg-primary/15"
               >
                 Acessar empresa
               </button>
@@ -384,24 +384,24 @@ export function AppLayout() {
 
           {isCompanyChooserOpen && (
             <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-              <div className="w-full max-w-md rounded-lg border border-slate-300 bg-white p-4 shadow-lg">
-                <h3 className="text-sm font-semibold text-slate-900">Entrar no contexto da empresa</h3>
-                <p className="mt-1 text-xs text-slate-600">
+              <div className="w-full max-w-md rounded-lg border border-border bg-card p-4 shadow-industrial-lg">
+                <h3 className="text-sm font-semibold text-foreground">Entrar no contexto da empresa</h3>
+                <p className="mt-1 text-xs text-muted-foreground">
                   Escolha a empresa para navegar no sistema como o cliente.
                 </p>
 
                 <div className="mt-3 space-y-2">
-                  <label htmlFor="company-context-search" className="text-xs font-medium text-slate-700">Buscar empresa</label>
+                  <label htmlFor="company-context-search" className="text-xs font-medium text-foreground">Buscar empresa</label>
                   <input
                     id="company-context-search"
-                    className="h-10 w-full rounded border border-slate-300 px-2 text-sm"
+                    className="h-10 w-full rounded border border-input bg-background px-2 text-sm text-foreground placeholder:text-muted-foreground"
                     placeholder="Digite nome, slug ou id"
                     value={companySearch}
                     onChange={(e) => setCompanySearch(e.target.value)}
                     disabled={isLoadingCompanies || isEnteringCompany}
                   />
 
-                  <div className="max-h-56 overflow-auto rounded border border-slate-200">
+                  <div className="max-h-56 overflow-auto rounded border border-border bg-background/40">
                     {filteredCompanies.map((company) => {
                       const isActive = activeCompanyId === company.id;
                       const isSelected = selectedCompanyId === company.id;
@@ -411,16 +411,16 @@ export function AppLayout() {
                           key={company.id}
                           type="button"
                           onClick={() => setSelectedCompanyId(company.id)}
-                          className={`flex w-full items-center justify-between px-3 py-2 text-left text-xs ${isSelected ? 'bg-emerald-50' : 'bg-white hover:bg-slate-50'} ${isActive ? 'border-l-4 border-amber-500' : 'border-l-4 border-transparent'}`}
+                          className={`flex w-full items-center justify-between px-3 py-2 text-left text-xs ${isSelected ? 'bg-primary/10' : 'bg-card hover:bg-muted/60'} ${isActive ? 'border-l-4 border-warning' : 'border-l-4 border-transparent'}`}
                           disabled={isEnteringCompany}
                         >
-                          <span className="font-medium text-slate-800">{company.nome || company.slug || company.id}</span>
-                          <span className="text-slate-500">{company.slug || company.id}</span>
+                          <span className="font-medium text-foreground">{company.nome || company.slug || company.id}</span>
+                          <span className="text-muted-foreground">{company.slug || company.id}</span>
                         </button>
                       );
                     })}
                     {!isLoadingCompanies && filteredCompanies.length === 0 && (
-                      <p className="px-3 py-3 text-xs text-slate-500">Nenhuma empresa encontrada para o filtro informado.</p>
+                      <p className="px-3 py-3 text-xs text-muted-foreground">Nenhuma empresa encontrada para o filtro informado.</p>
                     )}
                   </div>
 
@@ -429,20 +429,20 @@ export function AppLayout() {
                       Empresa ativa no contexto atual destacada em amarelo.
                     </p>
                   )}
-                  {isLoadingCompanies && <p className="text-xs text-slate-500">Carregando empresas...</p>}
+                  {isLoadingCompanies && <p className="text-xs text-muted-foreground">Carregando empresas...</p>}
                 </div>
 
                 <div className="mt-4 flex gap-2">
                   <button
                     onClick={() => setIsCompanyChooserOpen(false)}
-                    className="rounded border border-slate-300 px-3 py-2 text-xs"
+                    className="rounded border border-input bg-background px-3 py-2 text-xs text-foreground hover:bg-muted/60"
                     disabled={isEnteringCompany}
                   >
                     Cancelar
                   </button>
                   <button
                     onClick={handleEnterCompanyContext}
-                    className="rounded bg-emerald-500 px-3 py-2 text-xs font-semibold text-white disabled:opacity-60"
+                    className="rounded bg-primary px-3 py-2 text-xs font-semibold text-primary-foreground hover:bg-primary/90 disabled:opacity-60"
                     disabled={isEnteringCompany || !selectedCompanyId}
                   >
                     {isEnteringCompany ? 'Entrando...' : 'Entrar na empresa'}

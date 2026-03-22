@@ -70,7 +70,15 @@ export function RecentActivityFeed({ activities, onViewAll }: RecentActivityFeed
   };
 
   const formatTimestamp = (timestamp: string) => {
+    if (typeof timestamp !== 'string' || !timestamp.trim()) {
+      return 'Data indisponivel';
+    }
+
     const date = parseISO(timestamp);
+    if (Number.isNaN(date.getTime())) {
+      return 'Data indisponivel';
+    }
+
     const days = differenceInDays(new Date(), date);
     
     if (days === 0) {

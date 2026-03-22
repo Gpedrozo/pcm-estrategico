@@ -226,22 +226,17 @@ export default function NovaOS() {
   return (
     <div className="module-page max-w-5xl mx-auto space-y-6 pb-6">
       {/* Header */}
-      <div className="module-page-header relative overflow-hidden rounded-2xl border border-primary/20 bg-gradient-to-br from-primary/10 via-background to-info/10 p-5 md:p-7">
-        <div className="pointer-events-none absolute -top-10 -right-10 h-32 w-32 rounded-full bg-primary/20 blur-2xl" />
-        <div className="pointer-events-none absolute -bottom-10 -left-10 h-32 w-32 rounded-full bg-info/20 blur-2xl" />
-
-        <div className="relative flex items-start gap-4">
-          <Button variant="outline" size="icon" className="shrink-0 bg-background/70" onClick={() => navigate(-1)}>
+      <div className="module-page-header flex items-start gap-4">
+        <Button variant="outline" size="icon" className="shrink-0" onClick={() => navigate(-1)}>
             <ArrowLeft className="h-5 w-5" />
-          </Button>
-          <div className="space-y-1.5">
-            <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-foreground">Emitir Ordem de Servico</h1>
-            <p className="text-sm md:text-base text-muted-foreground max-w-3xl">
-              {solicitacaoOrigem
-                ? `Conversao da solicitacao #${solicitacaoOrigem.numero_solicitacao} em O.S com preenchimento automatico.`
-                : 'Preencha os dados operacionais para criar uma nova O.S com rastreabilidade completa.'}
-            </p>
-          </div>
+        </Button>
+        <div className="space-y-1">
+          <h1 className="text-2xl font-bold text-foreground">Emitir Ordem de Servico</h1>
+          <p className="text-muted-foreground max-w-3xl">
+            {solicitacaoOrigem
+              ? `Conversao da solicitacao #${solicitacaoOrigem.numero_solicitacao} em O.S com preenchimento automatico.`
+              : 'Preencha os dados operacionais para criar uma nova O.S com rastreabilidade completa.'}
+          </p>
         </div>
       </div>
 
@@ -259,10 +254,10 @@ export default function NovaOS() {
       )}
 
       {/* Form Card */}
-      <div className="bg-card border border-border rounded-2xl p-5 md:p-7 shadow-industrial">
+      <div className="bg-card border border-border rounded-lg p-4 md:p-6">
         <form onSubmit={handleSubmit} className="space-y-6">
           {/* Date */}
-          <div className="grid grid-cols-2 gap-4 p-4 bg-gradient-to-r from-muted/70 to-muted/40 rounded-xl border border-border/60">
+          <div className="grid grid-cols-2 gap-4 p-4 bg-muted/40 rounded-lg border border-border/60">
             <div>
               <Label className="text-xs text-muted-foreground">Nº da O.S</Label>
               <p className="text-2xl font-bold font-mono text-primary">(Auto)</p>

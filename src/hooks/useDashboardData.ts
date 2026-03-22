@@ -41,6 +41,15 @@ interface DashboardKpiRow {
   aderencia_preventiva_90d: number;
 }
 
+const parseDateOrNull = (value: unknown): Date | null => {
+  if (typeof value !== 'string') return null;
+  const normalized = value.trim();
+  if (!normalized) return null;
+  const parsed = parseISO(normalized);
+  if (Number.isNaN(parsed.getTime())) return null;
+  return parsed;
+};
+
 export function useDashboardData() {
   const { tenantId } = useAuth();
   const { data: indicadores, isLoading: loadingIndicadores } = useIndicadores();
@@ -112,7 +121,9 @@ export function useDashboardData() {
     }
     
     execucoes.forEach(exec => {
-      const month = format(parseISO(exec.data_execucao), 'yyyy-MM');
+      const executionDate = parseDateOrNull(exec.data_execucao);
+      if (!executionDate) return;
+      const month = format(executionDate, 'yyyy-MM');
       if (months[month]) {
         months[month].maoObra += exec.custo_mao_obra || 0;
         months[month].materiais += exec.custo_materiais || 0;
@@ -147,7 +158,8 @@ export function useDashboardData() {
     const urgentes = backlogOS.filter(os => os.prioridade === 'URGENTE').length;
     
     const atrasadas = backlogOS.filter(os => {
-      const dataSolicitacao = parseISO(os.data_solicitacao);
+      const dataSolicitacao = parseDateOrNull(os.data_solicitacao);
+      if (!dataSolicitacao) return false;
       const diasEmAberto = differenceInDays(now, dataSolicitacao);
       return diasEmAberto > 7 && os.status === 'ABERTA';
     }).length;
@@ -184,7 +196,8 @@ export function useDashboardData() {
     const startOfCurrentMonth = startOfMonth(now);
     
     const osDoMes = ordensServico.filter(os => {
-      const dataSolicitacao = parseISO(os.data_solicitacao);
+      const dataSolicitacao = parseDateOrNull(os.data_solicitacao);
+      if (!dataSolicitacao) return false;
       return dataSolicitacao >= startOfCurrentMonth;
     });
     
@@ -255,9 +268,9 @@ export function useDashboardData() {
           ? `O.S #${os.numero_os} Fechada` 
           : `O.S #${os.numero_os} Criada`,
         description: os.problema.substring(0, 100),
-        timestamp: os.status === 'FECHADA' && os.data_fechamento 
-          ? os.data_fechamento 
-          : os.data_solicitacao,
+        timestamp: os.status === 'FECHADA' && os.data_fechamento
+          ? os.data_fechamento
+          : (os.data_solicitacao || new Date().toISOString()),
         status: os.prioridade === 'URGENTE' ? 'warning' : 
                 os.status === 'FECHADA' ? 'success' : 'info',
         tag: os.tag,

@@ -688,7 +688,7 @@ export default function ManualOperacao() {
   return (
     <div className="min-h-screen bg-[radial-gradient(circle_at_top,#101f35_0%,#0b1422_35%,#090f1a_100%)]">
       <div className="mx-auto max-w-7xl px-4 py-8 md:px-8">
-        <header className="mb-6 rounded-xl border border-slate-700/70 bg-slate-900/80 p-6 backdrop-blur-sm">
+        <header className="mb-6 rounded-xl border border-border/70 bg-card/80 p-6 backdrop-blur-sm">
           {branding?.logo_menu_url && (
             <img
               src={branding.logo_menu_url}
@@ -700,8 +700,8 @@ export default function ManualOperacao() {
             <BookOpen className="h-6 w-6" />
             <span className="text-sm font-semibold uppercase tracking-wide">Manuais de Operacao do Sistema</span>
           </div>
-          <h1 className="text-3xl font-bold text-slate-100">{tituloManual}</h1>
-          <p className="mt-2 max-w-4xl text-sm text-slate-300">
+          <h1 className="text-3xl font-bold text-foreground">{tituloManual}</h1>
+          <p className="mt-2 max-w-4xl text-sm text-muted-foreground">
             Pagina operacional completa com imagens estampadas na tela, passo a passo, criterios de validacao
             e erros comuns por processo.
           </p>
@@ -709,7 +709,7 @@ export default function ManualOperacao() {
             <button
               type="button"
               onClick={() => window.print()}
-              className="inline-flex items-center gap-2 rounded-md border border-slate-600 bg-slate-950/70 px-3 py-2 text-sm text-slate-100 hover:bg-slate-800"
+              className="inline-flex items-center gap-2 rounded-md border border-border bg-background/80 px-3 py-2 text-sm text-foreground hover:bg-muted"
             >
               <Printer className="h-4 w-4" />
               Imprimir este manual
@@ -717,18 +717,18 @@ export default function ManualOperacao() {
           </div>
         </header>
 
-        <section className="mb-8 overflow-hidden rounded-xl border border-cyan-500/30 bg-slate-900/70 shadow-[0_0_40px_rgba(34,211,238,0.08)]">
+        <section className="mb-8 overflow-hidden rounded-xl border border-cyan-500/30 bg-card/80 shadow-[0_0_40px_rgba(34,211,238,0.08)]">
           <div className="grid gap-0 lg:grid-cols-[1.1fr_1fr]">
-            <div className="border-b border-slate-700/70 p-6 lg:border-b-0 lg:border-r">
+            <div className="border-b border-border/70 p-6 lg:border-b-0 lg:border-r">
               <div className="mb-4 flex items-center gap-2 text-cyan-300">
                 <PlayCircle className="h-5 w-5" />
                 <h2 className="text-sm font-semibold uppercase tracking-wide">Simulador Completo do Usuario Final</h2>
               </div>
-              <div className="rounded-lg border border-slate-700 bg-[#0d1728] p-4">
-                <p className="mb-3 text-xs text-slate-400">Todos os modulos executam no mesmo estilo do login: digitacao, acao e confirmacao.</p>
+              <div className="rounded-lg border border-border bg-background/90 p-4">
+                <p className="mb-3 text-xs text-muted-foreground">Todos os modulos executam no mesmo estilo do login: digitacao, acao e confirmacao.</p>
                 <div className="space-y-3">
-                  <div className="rounded border border-slate-700 bg-slate-950 p-3">
-                    <p className="mb-1 text-[11px] uppercase tracking-wide text-slate-400">Tela atual</p>
+                  <div className="rounded border border-border bg-background p-3">
+                    <p className="mb-1 text-[11px] uppercase tracking-wide text-muted-foreground">Tela atual</p>
                     <p className="text-sm font-semibold text-cyan-100">{cenaAtualDemo?.simulacao.tela ?? 'Carregando simulacao...'}</p>
                   </div>
 
@@ -744,9 +744,9 @@ export default function ManualOperacao() {
                     const campoAtivo = simStep === 'typing' && index === campoAtivoIndex;
 
                     return (
-                      <div key={`${cenaAtualDemo?.id ?? 'scene'}-${campo.label}-${index}`} className="rounded border border-slate-700 bg-slate-950 p-3">
-                        <p className="mb-1 text-[11px] uppercase tracking-wide text-slate-400">{campo.label}</p>
-                        <p className="font-mono text-sm text-slate-100">
+                      <div key={`${cenaAtualDemo?.id ?? 'scene'}-${campo.label}-${index}`} className="rounded border border-border bg-background p-3">
+                        <p className="mb-1 text-[11px] uppercase tracking-wide text-muted-foreground">{campo.label}</p>
+                        <p className="font-mono text-sm text-foreground">
                           {valorRenderizado}
                           {campoAtivo && <span className="animate-pulse">|</span>}
                         </p>
@@ -756,7 +756,7 @@ export default function ManualOperacao() {
 
                   <button
                     type="button"
-                    className={`w-full rounded-md px-4 py-2 text-sm font-semibold transition-all ${simStep === 'submitting' ? 'scale-[1.03] bg-cyan-400 text-slate-900 shadow-[0_0_20px_rgba(34,211,238,0.45)]' : simStep === 'done' ? 'bg-emerald-500 text-emerald-950' : 'bg-slate-700 text-slate-200'}`}
+                    className={`w-full rounded-md px-4 py-2 text-sm font-semibold transition-all ${simStep === 'submitting' ? 'scale-[1.03] bg-cyan-400 text-background shadow-[0_0_20px_rgba(34,211,238,0.45)]' : simStep === 'done' ? 'bg-emerald-500 text-emerald-950' : 'bg-muted text-muted-foreground'}`}
                   >
                     {simStep === 'submitting' ? (
                       <span className="inline-flex items-center gap-2"><Loader2 className="h-4 w-4 animate-spin" /> Processando...</span>
@@ -773,21 +773,21 @@ export default function ManualOperacao() {
               </div>
               {cenaAtualDemo ? (
                 <>
-                  <div className="overflow-hidden rounded-lg border border-slate-700 bg-slate-950">
+                  <div className="overflow-hidden rounded-lg border border-border bg-background">
                     <div className="relative">
                       <img src={cenaAtualDemo.imagem} alt={`Demo ${cenaAtualDemo.modulo}`} className="h-52 w-full object-cover transition-all duration-700" />
                       <div className="absolute left-3 top-3 rounded-full border border-red-300/70 bg-red-500/20 px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-red-100">
                         Ao vivo
                       </div>
-                      <div className="absolute bottom-0 left-0 right-0 h-1 bg-slate-700/80">
+                      <div className="absolute bottom-0 left-0 right-0 h-1 bg-border">
                         <div className="h-full bg-cyan-400 transition-all duration-700" style={{ width: `${progressoVideo}%` }} />
                       </div>
                     </div>
                   </div>
                   <div className="mt-3">
-                    <p className="text-xs uppercase tracking-wide text-slate-400">Roteiro em execucao</p>
-                    <h3 className="text-lg font-semibold text-slate-100">{cenaAtualDemo.modulo}</h3>
-                    <p className="text-sm text-slate-300">{cenaAtualDemo.titulo}</p>
+                    <p className="text-xs uppercase tracking-wide text-muted-foreground">Roteiro em execucao</p>
+                    <h3 className="text-lg font-semibold text-foreground">{cenaAtualDemo.modulo}</h3>
+                    <p className="text-sm text-muted-foreground">{cenaAtualDemo.titulo}</p>
                   </div>
                   <div className="mt-3 rounded-lg border border-cyan-400/30 bg-cyan-500/10 p-3">
                     <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-cyan-200">Simulacao etapa por etapa</p>
@@ -797,7 +797,7 @@ export default function ManualOperacao() {
                         const ativa = index === videoStepIndex && simStep === 'submitting';
 
                         return (
-                          <li key={`${cenaAtualDemo.id}-${etapa}`} className={`flex items-start gap-2 rounded-md border px-2 py-2 text-xs transition-all ${concluida ? 'border-emerald-400/50 bg-emerald-500/10 text-emerald-100' : ativa ? 'border-cyan-400/60 bg-cyan-500/15 text-cyan-100' : 'border-slate-700 text-slate-400'}`}>
+                          <li key={`${cenaAtualDemo.id}-${etapa}`} className={`flex items-start gap-2 rounded-md border px-2 py-2 text-xs transition-all ${concluida ? 'border-emerald-400/50 bg-emerald-500/10 text-emerald-100' : ativa ? 'border-cyan-400/60 bg-cyan-500/15 text-cyan-100' : 'border-border text-muted-foreground'}`}>
                             {concluida ? (
                               <CheckCircle2 className="mt-0.5 h-3.5 w-3.5 flex-none" />
                             ) : ativa ? (
@@ -813,23 +813,23 @@ export default function ManualOperacao() {
                   </div>
                   <div className="mt-4 flex flex-wrap gap-2">
                     {demoScenes.map((item, index) => (
-                      <span key={item.id} className={`rounded-full border px-2 py-1 text-[11px] ${index === videoSceneIndex ? 'border-cyan-400 bg-cyan-500/20 text-cyan-200' : 'border-slate-700 text-slate-400'}`}>
+                      <span key={item.id} className={`rounded-full border px-2 py-1 text-[11px] ${index === videoSceneIndex ? 'border-cyan-400 bg-cyan-500/20 text-cyan-200' : 'border-border text-muted-foreground'}`}>
                         {item.id} {item.modulo}
                       </span>
                     ))}
                   </div>
                 </>
               ) : (
-                <p className="text-sm text-slate-300">Nenhum modulo disponivel para este perfil.</p>
+                <p className="text-sm text-muted-foreground">Nenhum modulo disponivel para este perfil.</p>
               )}
             </div>
           </div>
         </section>
 
         {podeAcessarTreinamento && (
-          <section className="mb-8 rounded-xl border border-slate-700 bg-slate-900/70 p-4">
-            <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-slate-400">Acesso de treinamento</h2>
-            <p className="mb-3 text-sm text-slate-300">
+          <section className="mb-8 rounded-xl border border-border bg-card/80 p-4">
+            <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">Acesso de treinamento</h2>
+            <p className="mb-3 text-sm text-muted-foreground">
               Admin e Master TI podem acessar os manuais de todos os perfis para suporte e treinamento de equipes.
             </p>
             <div className="flex flex-wrap gap-2">
@@ -840,7 +840,7 @@ export default function ManualOperacao() {
                   className={`rounded-md border px-3 py-2 text-sm transition-colors ${
                     roleEfetivo === opcao.id
                       ? 'border-cyan-400 bg-cyan-500/20 text-cyan-100'
-                      : 'border-slate-700 bg-slate-950 text-slate-100 hover:bg-slate-800'
+                      : 'border-border bg-background text-foreground hover:bg-muted'
                   }`}
                   type="button"
                 >
