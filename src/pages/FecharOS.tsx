@@ -134,6 +134,7 @@ export default function FecharOS() {
   const [pausasExecucao, setPausasExecucao] = useState<PausaExecucao[]>([]);
   const [teveIntervalos, setTeveIntervalos] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const servicoMinLength = 20;
 
   const selectedMecanico = mecanicos?.find(m => m.id === formData.mecanicoId);
   
@@ -267,6 +268,34 @@ export default function FecharOS() {
   const custoMateriais = materiaisUsados.reduce((total, item) => {
     return total + (item.quantidade * item.material.custo_unitario);
   }, 0);
+
+  const duracaoBruta = calculateDuration();
+  const minutosPausas = calculatePauseMinutes();
+  const duracaoLiquida = calculateNetDuration();
+  const custoMaoObraEstimado = selectedMecanico?.custo_hora
+    ? ((duracaoLiquida || 0) / 60) * Number(selectedMecanico.custo_hora)
+    : 0;
+  const custoTerceirosValor = formData.custoTerceiros ? Number.parseFloat(formData.custoTerceiros) || 0 : 0;
+  const custoTotalEstimado = custoMaoObraEstimado + custoMateriais + custoTerceirosValor;
+  const servicoValido = formData.servicoExecutado.trim().length >= servicoMinLength;
+  const janelaExecucaoPreenchida = Boolean(formData.dataInicio && formData.horaInicio && formData.dataFim && formData.horaFim);
+  const janelaExecucaoValida = !janelaExecucaoPreenchida || Boolean(duracaoBruta);
+  const rcaObrigatorioPreenchido = !isCorretiva || !rcaData.requireRCA || Boolean(rcaData.modoFalha && rcaData.causaRaiz && rcaData.acaoCorretiva.trim());
+  const canSubmit = Boolean(
+    selectedOS &&
+      formData.mecanicoId &&
+      janelaExecucaoPreenchida &&
+      janelaExecucaoValida &&
+      servicoValido &&
+      rcaObrigatorioPreenchido,
+  );
+  const checklist = [
+    { label: 'Mecânico selecionado', ok: Boolean(formData.mecanicoId) },
+    { label: 'Horário de execução válido', ok: janelaExecucaoPreenchida && janelaExecucaoValida },
+    { label: `Serviço com mínimo de ${servicoMinLength} caracteres`, ok: servicoValido },
+    { label: 'RCA obrigatório preenchido', ok: rcaObrigatorioPreenchido },
+  ];
+  const progressoChecklist = Math.round((checklist.filter((item) => item.ok).length / checklist.length) * 100);
 
   const handleAddMaterial = () => {
     if (!materialSelecionado || !quantidadeMaterial) return;
@@ -533,321 +562,436 @@ export default function FecharOS() {
 
       {/* Execution Form */}
       {selectedOS && (
-        <div className="bg-card border border-border rounded-lg p-4 md:p-6">
-          <div className="flex items-center gap-2 mb-6">
-            <FileCheck className="h-5 w-5 text-primary" />
-            <h2 className="text-lg font-semibold">Dados da Execução</h2>
-          </div>
-
-          <form onSubmit={handleSubmit} className="space-y-6">
-            {/* OS Details */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 p-4 bg-muted/40 rounded-lg border border-border/60">
-              <div>
-                <Label className="text-xs text-muted-foreground">O.S</Label>
-                <p className="font-mono font-bold">{selectedOS.numero_os}</p>
-              </div>
-              <div>
-                <Label className="text-xs text-muted-foreground">TAG</Label>
-                <p className="font-mono text-primary font-medium">{selectedOS.tag}</p>
-              </div>
-              <div>
-                <Label className="text-xs text-muted-foreground">Equipamento</Label>
-                <p className="text-sm">{selectedOS.equipamento}</p>
-              </div>
-              <div>
-                <Label className="text-xs text-muted-foreground">Data Execução</Label>
-                <p className="font-medium">{new Date().toLocaleDateString('pt-BR')}</p>
-              </div>
+        <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_320px] gap-6 items-start">
+          <div className="bg-card border border-border rounded-lg p-4 md:p-6">
+            <div className="flex items-center gap-2 mb-6">
+              <FileCheck className="h-5 w-5 text-primary" />
+              <h2 className="text-lg font-semibold">Fechamento Guiado da Execução</h2>
             </div>
 
-            {/* Mechanic and Time */}
-            <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-              <div className="space-y-2 rounded-xl border border-border/70 p-4 bg-background/70">
-                <Label htmlFor="mecanico">Mecânico *</Label>
-                <Select 
-                  value={formData.mecanicoId} 
-                  onValueChange={(value) => setFormData({ ...formData, mecanicoId: value })}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecione" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {mecanicos?.map((mec) => (
-                      <SelectItem key={mec.id} value={mec.id}>
-                        {mec.nome} ({mec.tipo === 'PROPRIO' ? 'Próprio' : 'Terceirizado'})
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2 rounded-xl border border-border/70 p-4 bg-background/70">
-                <Label htmlFor="dataInicio">Data Início *</Label>
-                <Input
-                  id="dataInicio"
-                  type="date"
-                  value={formData.dataInicio}
-                  onChange={(e) => setFormData({ ...formData, dataInicio: e.target.value })}
-                  required
-                />
-              </div>
-
-              <div className="space-y-2 rounded-xl border border-border/70 p-4 bg-background/70">
-                <Label htmlFor="horaInicio">Hora Início *</Label>
-                <Input
-                  id="horaInicio"
-                  type="time"
-                  value={formData.horaInicio}
-                  onChange={(e) => setFormData({ ...formData, horaInicio: e.target.value })}
-                  required
-                />
-              </div>
-
-              <div className="space-y-2 rounded-xl border border-border/70 p-4 bg-background/70">
-                <Label htmlFor="dataFim">Data Final *</Label>
-                <Input
-                  id="dataFim"
-                  type="date"
-                  value={formData.dataFim}
-                  onChange={(e) => setFormData({ ...formData, dataFim: e.target.value })}
-                  required
-                />
-              </div>
-
-              <div className="space-y-2 rounded-xl border border-border/70 p-4 bg-background/70">
-                <Label htmlFor="horaFim">Hora Fim *</Label>
-                <Input
-                  id="horaFim"
-                  type="time"
-                  value={formData.horaFim}
-                  onChange={(e) => setFormData({ ...formData, horaFim: e.target.value })}
-                  required
-                />
-              </div>
-            </div>
-
-            {/* Duration and Cost Display */}
-            {calculateDuration() && (
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="p-3 bg-success/10 border border-success/20 rounded-lg">
-                  <span className="text-sm text-muted-foreground">Tempo bruto: </span>
-                  <span className="font-bold text-success">{formatDuration(calculateDuration())}</span>
-                </div>
-                <div className="p-3 bg-warning/10 border border-warning/20 rounded-lg">
-                  <span className="text-sm text-muted-foreground">Pausas: </span>
-                  <span className="font-bold text-warning">{formatDuration(calculatePauseMinutes()) || '0min'}</span>
-                </div>
-                <div className="p-3 bg-primary/10 border border-primary/20 rounded-lg">
-                  <span className="text-sm text-muted-foreground">Tempo líquido: </span>
-                  <span className="font-bold text-primary">{formatDuration(calculateNetDuration()) || '0min'}</span>
-                </div>
-                {selectedMecanico?.custo_hora && (
-                  <div className="p-3 bg-info/10 border border-info/20 rounded-lg">
-                    <span className="text-sm text-muted-foreground">Custo mão de obra: </span>
-                    <span className="font-bold text-info">
-                      {formatCurrency(((calculateNetDuration() || 0) / 60) * Number(selectedMecanico.custo_hora))}
-                    </span>
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* Breaks / Intervals */}
-            <div className="space-y-4 border-t pt-5">
-              <div className="flex items-center gap-2">
-                <Clock className="h-5 w-5 text-primary" />
-                <Label className="text-base font-semibold">Pausas durante a execução</Label>
-              </div>
-
-              <div className="rounded-xl border border-border/70 p-4 bg-background/70">
-                <p className="text-sm text-muted-foreground mb-3">Houve intervalos?</p>
-                <div className="flex gap-2">
-                  <Button type="button" variant={teveIntervalos ? 'default' : 'outline'} onClick={() => setTeveIntervalos(true)}>Sim</Button>
-                  <Button
-                    type="button"
-                    variant={!teveIntervalos ? 'default' : 'outline'}
-                    onClick={() => {
-                      setTeveIntervalos(false);
-                      setPausasExecucao([]);
-                    }}
-                  >
-                    Não
-                  </Button>
-                </div>
-              </div>
-
-              {teveIntervalos && (
-                <div className="grid grid-cols-1 md:grid-cols-6 gap-3 rounded-xl border border-border/70 p-4 bg-background/70">
-                  <Input type="date" value={pausaDataInicio} onChange={(e) => setPausaDataInicio(e.target.value)} />
-                  <Input type="time" value={pausaInicio} onChange={(e) => setPausaInicio(e.target.value)} placeholder="Início pausa" />
-                  <Input type="date" value={pausaDataFim} onChange={(e) => setPausaDataFim(e.target.value)} />
-                  <Input type="time" value={pausaFim} onChange={(e) => setPausaFim(e.target.value)} placeholder="Fim pausa" />
-                  <Input value={pausaMotivo} onChange={(e) => setPausaMotivo(e.target.value)} placeholder="Motivo (ex.: almoço)" />
-                  <Button type="button" variant="outline" onClick={handleAddPausa} disabled={!pausaInicio || !pausaFim}>
-                    <Plus className="h-4 w-4 mr-1" />
-                    Adicionar pausa
-                  </Button>
-                </div>
-              )}
-
-              {pausasExecucao.length > 0 && (
-                <div className="space-y-2">
-                  {pausasExecucao.map((pausa) => (
-                    <div key={pausa.id} className="flex items-center justify-between p-3 bg-muted/50 rounded-xl border border-border/60">
-                      <div className="flex items-center gap-2">
-                        <Badge variant="outline">{pausa.data_inicio} {pausa.inicio} - {pausa.data_fim} {pausa.fim}</Badge>
-                        <span className="text-sm text-muted-foreground">{pausa.motivo}</span>
-                      </div>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon"
-                        className="text-destructive hover:text-destructive"
-                        onClick={() => handleRemovePausa(pausa.id)}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            {/* Service Description */}
-            <div className="space-y-2 rounded-xl border border-border/70 p-4 bg-background/70">
-              <Label htmlFor="servico">Serviço Executado *</Label>
-              <div className="rounded-md border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-amber-700">
-                <p className="font-semibold">Atenção: o serviço executado deve ser descrito com o máximo de detalhes possível.</p>
-                <p className="mt-1">Informe o que foi feito passo a passo, quais componentes foram desmontados/trocados/ajustados, medições realizadas, testes de validação e condição final do equipamento após a intervenção.</p>
-              </div>
-              <Textarea
-                id="servico"
-                value={formData.servicoExecutado}
-                onChange={(e) => setFormData({ ...formData, servicoExecutado: e.target.value })}
-                placeholder="Descreva tecnicamente a atividade executada (ações realizadas, componentes envolvidos, ajustes, testes e resultado final)."
-                rows={3}
-                required
-              />
-            </div>
-
-            {/* Materials Used Section */}
-            <div className="space-y-4 border-t pt-5">
-              <div className="flex items-center gap-2">
-                <Package className="h-5 w-5 text-primary" />
-                <Label className="text-base font-semibold">Materiais Utilizados</Label>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-3 rounded-xl border border-border/70 p-4 bg-background/70">
-                <div className="md:col-span-1">
-                  <Select
-                    value={materialSelecionado}
-                    onValueChange={setMaterialSelecionado}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecione material" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {materiaisDisponiveis?.filter(m => m.estoque_atual > 0).map((mat) => (
-                        <SelectItem key={mat.id} value={mat.id}>
-                          {mat.codigo} - {mat.nome} (Est: {mat.estoque_atual})
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+            <form id="close-os-form" onSubmit={handleSubmit} className="space-y-6">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 p-4 bg-muted/40 rounded-lg border border-border/60">
+                <div>
+                  <Label className="text-xs text-muted-foreground">O.S</Label>
+                  <p className="font-mono font-bold">{selectedOS.numero_os}</p>
                 </div>
                 <div>
-                  <Input
-                    type="number"
-                    min="0.01"
-                    step="0.01"
-                    value={quantidadeMaterial}
-                    onChange={(e) => setQuantidadeMaterial(e.target.value)}
-                    placeholder="Quantidade"
-                  />
+                  <Label className="text-xs text-muted-foreground">TAG</Label>
+                  <p className="font-mono text-primary font-medium">{selectedOS.tag}</p>
                 </div>
-                <Button 
-                  type="button" 
-                  variant="outline" 
-                  onClick={handleAddMaterial}
-                  disabled={!materialSelecionado || !quantidadeMaterial}
-                >
-                  <Plus className="h-4 w-4 mr-1" />
-                  Adicionar
-                </Button>
+                <div>
+                  <Label className="text-xs text-muted-foreground">Equipamento</Label>
+                  <p className="text-sm">{selectedOS.equipamento}</p>
+                </div>
+                <div>
+                  <Label className="text-xs text-muted-foreground">Progresso</Label>
+                  <p className="font-medium">{progressoChecklist}% concluído</p>
+                </div>
               </div>
 
-              {materiaisUsados.length > 0 && (
-                <div className="space-y-2">
-                  {materiaisUsados.map((item, index) => (
-                    <div key={index} className="flex items-center justify-between p-3 bg-muted/50 rounded-xl border border-border/60">
-                      <div className="flex items-center gap-3">
-                        <Badge variant="outline">{item.material.codigo}</Badge>
-                        <span className="text-sm">{item.material.nome}</span>
-                        <span className="text-muted-foreground">x {item.quantidade} {item.material.unidade}</span>
+              <Tabs value={activeTab} onValueChange={setActiveTab}>
+                <TabsList className="grid w-full grid-cols-3">
+                  <TabsTrigger value="execucao" className="gap-2"><Wrench className="h-4 w-4" />Execução</TabsTrigger>
+                  <TabsTrigger value="materiais" className="gap-2"><Package className="h-4 w-4" />Materiais</TabsTrigger>
+                  <TabsTrigger value="rca" className="gap-2"><ClipboardCheck className="h-4 w-4" />RCA</TabsTrigger>
+                </TabsList>
+
+                <TabsContent value="execucao" className="space-y-6 mt-6">
+                  <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+                    <div className="space-y-2 rounded-xl border border-border/70 p-4 bg-background/70">
+                      <Label htmlFor="mecanico">Mecânico *</Label>
+                      <Select
+                        value={formData.mecanicoId}
+                        onValueChange={(value) => setFormData({ ...formData, mecanicoId: value })}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Selecione" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {mecanicos?.map((mec) => (
+                            <SelectItem key={mec.id} value={mec.id}>
+                              {mec.nome} ({mec.tipo === 'PROPRIO' ? 'Próprio' : mec.tipo === 'INTERNO' ? 'Interno' : 'Terceirizado'})
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-2 rounded-xl border border-border/70 p-4 bg-background/70">
+                      <Label htmlFor="dataInicio">Data Início *</Label>
+                      <Input
+                        id="dataInicio"
+                        type="date"
+                        value={formData.dataInicio}
+                        onChange={(e) => setFormData({ ...formData, dataInicio: e.target.value })}
+                        required
+                      />
+                    </div>
+
+                    <div className="space-y-2 rounded-xl border border-border/70 p-4 bg-background/70">
+                      <Label htmlFor="horaInicio">Hora Início *</Label>
+                      <Input
+                        id="horaInicio"
+                        type="time"
+                        value={formData.horaInicio}
+                        onChange={(e) => setFormData({ ...formData, horaInicio: e.target.value })}
+                        required
+                      />
+                    </div>
+
+                    <div className="space-y-2 rounded-xl border border-border/70 p-4 bg-background/70">
+                      <Label htmlFor="dataFim">Data Fim *</Label>
+                      <Input
+                        id="dataFim"
+                        type="date"
+                        value={formData.dataFim}
+                        onChange={(e) => setFormData({ ...formData, dataFim: e.target.value })}
+                        required
+                      />
+                    </div>
+
+                    <div className="space-y-2 rounded-xl border border-border/70 p-4 bg-background/70">
+                      <Label htmlFor="horaFim">Hora Fim *</Label>
+                      <Input
+                        id="horaFim"
+                        type="time"
+                        value={formData.horaFim}
+                        onChange={(e) => setFormData({ ...formData, horaFim: e.target.value })}
+                        required
+                      />
+                    </div>
+                  </div>
+
+                  {janelaExecucaoPreenchida && !janelaExecucaoValida && (
+                    <div className="rounded-md border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive">
+                      Horário inválido: a data/hora final precisa ser maior que a inicial.
+                    </div>
+                  )}
+
+                  {duracaoBruta && (
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div className="p-3 bg-success/10 border border-success/20 rounded-lg">
+                        <span className="text-sm text-muted-foreground">Tempo bruto: </span>
+                        <span className="font-bold text-success">{formatDuration(duracaoBruta)}</span>
                       </div>
-                      <div className="flex items-center gap-3">
-                        <span className="font-mono font-medium">
-                          {formatCurrency(item.quantidade * item.material.custo_unitario)}
-                        </span>
+                      <div className="p-3 bg-warning/10 border border-warning/20 rounded-lg">
+                        <span className="text-sm text-muted-foreground">Pausas: </span>
+                        <span className="font-bold text-warning">{formatDuration(minutosPausas) || '0min'}</span>
+                      </div>
+                      <div className="p-3 bg-primary/10 border border-primary/20 rounded-lg">
+                        <span className="text-sm text-muted-foreground">Tempo líquido: </span>
+                        <span className="font-bold text-primary">{formatDuration(duracaoLiquida) || '0min'}</span>
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="space-y-4 border-t pt-5">
+                    <div className="flex items-center gap-2">
+                      <Clock className="h-5 w-5 text-primary" />
+                      <Label className="text-base font-semibold">Pausas durante a execução</Label>
+                    </div>
+
+                    <div className="rounded-xl border border-border/70 p-4 bg-background/70">
+                      <p className="text-sm text-muted-foreground mb-3">Houve intervalos?</p>
+                      <div className="flex gap-2">
+                        <Button type="button" variant={teveIntervalos ? 'default' : 'outline'} onClick={() => setTeveIntervalos(true)}>Sim</Button>
                         <Button
                           type="button"
-                          variant="ghost"
-                          size="icon"
-                          className="text-destructive hover:text-destructive"
-                          onClick={() => handleRemoveMaterial(index)}
+                          variant={!teveIntervalos ? 'default' : 'outline'}
+                          onClick={() => {
+                            setTeveIntervalos(false);
+                            setPausasExecucao([]);
+                          }}
                         >
-                          <Trash2 className="h-4 w-4" />
+                          Não
                         </Button>
                       </div>
                     </div>
-                  ))}
-                  <div className="flex justify-end p-3 bg-primary/10 rounded-xl border border-primary/20">
-                    <span className="text-sm text-muted-foreground mr-2">Total Materiais:</span>
-                    <span className="font-mono font-bold text-primary">{formatCurrency(custoMateriais)}</span>
+
+                    {teveIntervalos && (
+                      <div className="grid grid-cols-1 md:grid-cols-6 gap-3 rounded-xl border border-border/70 p-4 bg-background/70">
+                        <Input type="date" value={pausaDataInicio} onChange={(e) => setPausaDataInicio(e.target.value)} />
+                        <Input type="time" value={pausaInicio} onChange={(e) => setPausaInicio(e.target.value)} placeholder="Início pausa" />
+                        <Input type="date" value={pausaDataFim} onChange={(e) => setPausaDataFim(e.target.value)} />
+                        <Input type="time" value={pausaFim} onChange={(e) => setPausaFim(e.target.value)} placeholder="Fim pausa" />
+                        <Input value={pausaMotivo} onChange={(e) => setPausaMotivo(e.target.value)} placeholder="Motivo (ex.: almoço)" />
+                        <Button type="button" variant="outline" onClick={handleAddPausa} disabled={!pausaInicio || !pausaFim}>
+                          <Plus className="h-4 w-4 mr-1" />
+                          Adicionar pausa
+                        </Button>
+                      </div>
+                    )}
+
+                    {pausasExecucao.length > 0 && (
+                      <div className="space-y-2">
+                        {pausasExecucao.map((pausa) => (
+                          <div key={pausa.id} className="flex items-center justify-between p-3 bg-muted/50 rounded-xl border border-border/60">
+                            <div className="flex items-center gap-2">
+                              <Badge variant="outline">{pausa.data_inicio} {pausa.inicio} - {pausa.data_fim} {pausa.fim}</Badge>
+                              <span className="text-sm text-muted-foreground">{pausa.motivo}</span>
+                            </div>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              className="text-destructive hover:text-destructive"
+                              onClick={() => handleRemovePausa(pausa.id)}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
+
+                  <div className="space-y-2 rounded-xl border border-border/70 p-4 bg-background/70">
+                    <Label htmlFor="servico">Serviço Executado *</Label>
+                    <div className="rounded-md border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-amber-700">
+                      <p className="font-semibold">Descreva o passo a passo da execução e o estado final do equipamento.</p>
+                    </div>
+                    <Textarea
+                      id="servico"
+                      value={formData.servicoExecutado}
+                      onChange={(e) => setFormData({ ...formData, servicoExecutado: e.target.value })}
+                      placeholder="Descreva tecnicamente ações realizadas, ajustes, testes e resultado final."
+                      rows={4}
+                      required
+                    />
+                    <div className="flex items-center justify-between text-xs">
+                      <span className={servicoValido ? 'text-success' : 'text-muted-foreground'}>
+                        Mínimo recomendado: {servicoMinLength} caracteres
+                      </span>
+                      <span className={servicoValido ? 'text-success' : 'text-warning'}>
+                        {formData.servicoExecutado.trim().length}/{servicoMinLength}
+                      </span>
+                    </div>
+                  </div>
+                </TabsContent>
+
+                <TabsContent value="materiais" className="space-y-6 mt-6">
+                  <div className="space-y-4 border-t pt-5">
+                    <div className="flex items-center gap-2">
+                      <Package className="h-5 w-5 text-primary" />
+                      <Label className="text-base font-semibold">Materiais Utilizados</Label>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3 rounded-xl border border-border/70 p-4 bg-background/70">
+                      <div className="md:col-span-1">
+                        <Select
+                          value={materialSelecionado}
+                          onValueChange={setMaterialSelecionado}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Selecione material" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {materiaisDisponiveis?.filter(m => m.estoque_atual > 0).map((mat) => (
+                              <SelectItem key={mat.id} value={mat.id}>
+                                {mat.codigo} - {mat.nome} (Est: {mat.estoque_atual})
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div>
+                        <Input
+                          type="number"
+                          min="0.01"
+                          step="0.01"
+                          value={quantidadeMaterial}
+                          onChange={(e) => setQuantidadeMaterial(e.target.value)}
+                          placeholder="Quantidade"
+                        />
+                      </div>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={handleAddMaterial}
+                        disabled={!materialSelecionado || !quantidadeMaterial}
+                      >
+                        <Plus className="h-4 w-4 mr-1" />
+                        Adicionar
+                      </Button>
+                    </div>
+
+                    {materiaisUsados.length > 0 && (
+                      <div className="space-y-2">
+                        {materiaisUsados.map((item, index) => (
+                          <div key={index} className="flex items-center justify-between p-3 bg-muted/50 rounded-xl border border-border/60">
+                            <div className="flex items-center gap-3">
+                              <Badge variant="outline">{item.material.codigo}</Badge>
+                              <span className="text-sm">{item.material.nome}</span>
+                              <span className="text-muted-foreground">x {item.quantidade} {item.material.unidade}</span>
+                            </div>
+                            <div className="flex items-center gap-3">
+                              <span className="font-mono font-medium">
+                                {formatCurrency(item.quantidade * item.material.custo_unitario)}
+                              </span>
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                className="text-destructive hover:text-destructive"
+                                onClick={() => handleRemoveMaterial(index)}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="space-y-2 rounded-xl border border-border/70 p-4 bg-background/70">
+                    <Label htmlFor="custoTerceiros">Custo Terceiros (R$)</Label>
+                    <Input
+                      id="custoTerceiros"
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={formData.custoTerceiros}
+                      onChange={(e) => setFormData({ ...formData, custoTerceiros: e.target.value })}
+                      placeholder="0.00"
+                    />
+                  </div>
+                </TabsContent>
+
+                <TabsContent value="rca" className="space-y-6 mt-6">
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-base">Análise de Causa Raiz</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <div className="flex items-center gap-3">
+                        <Checkbox
+                          id="rca-required"
+                          checked={rcaData.requireRCA}
+                          onCheckedChange={(checked) => setRcaData((prev) => ({ ...prev, requireRCA: Boolean(checked) }))}
+                        />
+                        <Label htmlFor="rca-required">Exigir preenchimento de RCA neste fechamento</Label>
+                      </div>
+
+                      {rcaData.requireRCA && (
+                        <>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                              <Label>Modo de falha *</Label>
+                              <Select value={rcaData.modoFalha} onValueChange={(value) => setRcaData((prev) => ({ ...prev, modoFalha: value }))}>
+                                <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+                                <SelectContent>
+                                  {MODOS_FALHA.map((modo) => (
+                                    <SelectItem key={modo.value} value={modo.value}>{modo.label}</SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </div>
+
+                            <div className="space-y-2">
+                              <Label>Causa raiz (6M) *</Label>
+                              <Select value={rcaData.causaRaiz} onValueChange={(value) => setRcaData((prev) => ({ ...prev, causaRaiz: value }))}>
+                                <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+                                <SelectContent>
+                                  {CAUSAS_RAIZ.map((causa) => (
+                                    <SelectItem key={causa.value} value={causa.value}>{causa.label}</SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </div>
+                          </div>
+
+                          <div className="space-y-2">
+                            <Label>Ação corretiva *</Label>
+                            <Textarea
+                              value={rcaData.acaoCorretiva}
+                              onChange={(e) => setRcaData((prev) => ({ ...prev, acaoCorretiva: e.target.value }))}
+                              rows={3}
+                              placeholder="Descreva a ação corretiva aplicada."
+                            />
+                          </div>
+
+                          <div className="space-y-2">
+                            <Label>Lições aprendidas</Label>
+                            <Textarea
+                              value={rcaData.licoesAprendidas}
+                              onChange={(e) => setRcaData((prev) => ({ ...prev, licoesAprendidas: e.target.value }))}
+                              rows={3}
+                              placeholder="Registre as lições aprendidas para evitar recorrência."
+                            />
+                          </div>
+                        </>
+                      )}
+
+                      {isCorretiva && !rcaData.requireRCA && (
+                        <div className="rounded-md border border-warning/30 bg-warning/10 p-3 text-sm text-warning">
+                          Esta O.S é corretiva. Recomenda-se habilitar o RCA para rastreabilidade completa.
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                </TabsContent>
+              </Tabs>
+
+              <div className="p-3 bg-muted/50 rounded-xl text-sm border border-border/60">
+                <span className="text-muted-foreground">Usuário de fechamento: </span>
+                <span className="font-medium">{user?.nome}</span>
+              </div>
+            </form>
+          </div>
+
+          <div className="space-y-4 xl:sticky xl:top-24">
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">Resumo em Tempo Real</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3 text-sm">
+                <div className="flex items-center justify-between"><span>Tempo bruto</span><strong>{formatDuration(duracaoBruta) || '-'}</strong></div>
+                <div className="flex items-center justify-between"><span>Pausas</span><strong>{formatDuration(minutosPausas) || '0min'}</strong></div>
+                <div className="flex items-center justify-between"><span>Tempo líquido</span><strong>{formatDuration(duracaoLiquida) || '-'}</strong></div>
+                <div className="flex items-center justify-between"><span>Mão de obra</span><strong>{formatCurrency(custoMaoObraEstimado)}</strong></div>
+                <div className="flex items-center justify-between"><span>Materiais</span><strong>{formatCurrency(custoMateriais)}</strong></div>
+                <div className="flex items-center justify-between"><span>Terceiros</span><strong>{formatCurrency(custoTerceirosValor)}</strong></div>
+                <div className="h-px bg-border" />
+                <div className="flex items-center justify-between text-base"><span>Total estimado</span><strong className="text-primary">{formatCurrency(custoTotalEstimado)}</strong></div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">Checklist de Fechamento</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="h-2 bg-muted rounded-full overflow-hidden">
+                  <div className="h-full bg-primary transition-all" style={{ width: `${progressoChecklist}%` }} />
                 </div>
-              )}
-            </div>
-
-            {/* Other Costs */}
-            <div className="space-y-2 rounded-xl border border-border/70 p-4 bg-background/70">
-              <Label htmlFor="custoTerceiros">Custo Terceiros (R$)</Label>
-              <Input
-                id="custoTerceiros"
-                type="number"
-                min="0"
-                step="0.01"
-                value={formData.custoTerceiros}
-                onChange={(e) => setFormData({ ...formData, custoTerceiros: e.target.value })}
-                placeholder="0.00"
-              />
-            </div>
-
-            {/* User Info */}
-            <div className="p-3 bg-muted/50 rounded-xl text-sm border border-border/60">
-              <span className="text-muted-foreground">Usuário de fechamento: </span>
-              <span className="font-medium">{user?.nome}</span>
-            </div>
-
-            {/* Submit */}
-            <Button 
-              type="submit" 
-              className="w-full gap-2 h-11"
-              disabled={isSubmitting || !formData.mecanicoId || !formData.dataInicio || !formData.horaInicio || !formData.dataFim || !formData.horaFim || !formData.servicoExecutado}
-            >
-              {isSubmitting ? (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  Fechando...
-                </>
-              ) : (
-                <>
-                  <FileCheck className="h-4 w-4" />
-                  Fechar O.S
-                </>
-              )}
-            </Button>
-          </form>
+                {checklist.map((item) => (
+                  <div key={item.label} className="flex items-center gap-2 text-sm">
+                    {item.ok ? <Check className="h-4 w-4 text-success" /> : <AlertTriangle className="h-4 w-4 text-warning" />}
+                    <span>{item.label}</span>
+                  </div>
+                ))}
+                <Button
+                  type="submit"
+                  form="close-os-form"
+                  className="w-full gap-2 h-11"
+                  disabled={isSubmitting || !canSubmit}
+                >
+                  {isSubmitting ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Fechando...
+                    </>
+                  ) : (
+                    <>
+                      <FileCheck className="h-4 w-4" />
+                      Fechar O.S
+                    </>
+                  )}
+                </Button>
+              </CardContent>
+            </Card>
+          </div>
         </div>
       )}
     </div>
