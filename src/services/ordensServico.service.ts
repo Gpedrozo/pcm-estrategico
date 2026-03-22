@@ -1,6 +1,7 @@
 import { supabase } from '@/integrations/supabase/client';
 import { ordemServicoSchema, ordemServicoUpdateSchema, type OrdemServicoFormData, type OrdemServicoUpdateData } from '@/schemas/ordemServico.schema';
 import { writeAuditLog } from '@/lib/audit';
+import { compactObject, insertWithColumnFallback } from '@/lib/supabaseCompat';
 
 export const ordensServicoService = {
   async listar(empresaId: string) {
@@ -42,29 +43,35 @@ export const ordensServicoService = {
 
   async criar(payload: OrdemServicoFormData, empresaId: string) {
     const validated = ordemServicoSchema.parse(payload);
-    const insertPayload = {
+    const insertPayload = compactObject({
       empresa_id: empresaId,
       ...validated,
       prioridade: validated.prioridade ?? 'MEDIA',
       status: 'ABERTA',
-    };
-
-    const { data, error } = await supabase
-      .from('ordens_servico')
-      .insert([insertPayload])
-      .select()
-      .single();
-
-    if (error) throw new Error(`Erro ao criar ordem de serviço: ${error.message}`);
-
-    await writeAuditLog({
-      action: 'CREATE_ORDEM_SERVICO',
-      table: 'ordens_servico',
-      recordId: data?.id,
-      empresaId,
-      source: 'ordensServico_service',
-      metadata: { numero_os: data?.numero_os, tipo: data?.tipo },
     });
+
+    const data = await insertWithColumnFallback(
+      async (payloadToInsert) =>
+        supabase
+          .from('ordens_servico')
+          .insert([payloadToInsert])
+          .select()
+          .single(),
+      insertPayload as Record<string, unknown>,
+    );
+
+    try {
+      await writeAuditLog({
+        action: 'CREATE_ORDEM_SERVICO',
+        table: 'ordens_servico',
+        recordId: data?.id,
+        empresaId,
+        source: 'ordensServico_service',
+        metadata: { numero_os: data?.numero_os, tipo: data?.tipo },
+      });
+    } catch {
+      // A criacao da O.S nao deve falhar por indisponibilidade de auditoria.
+    }
 
     return data;
   },
