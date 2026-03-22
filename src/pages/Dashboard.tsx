@@ -27,6 +27,7 @@ import { OSStatusBadge } from '@/components/os/OSStatusBadge';
 import { OSTypeBadge } from '@/components/os/OSTypeBadge';
 import { normalizeOSStatus, normalizeOSType } from '@/lib/osBadges';
 import { getPriorityToneClass, useTenantPadronizacoes } from '@/hooks/useTenantPadronizacoes';
+import { OnboardingWizard } from '@/components/onboarding/OnboardingWizard';
 
 export default function Dashboard() {
   const { user } = useAuth();
@@ -111,6 +112,9 @@ export default function Dashboard() {
 
   return (
     <div className="module-page space-y-6">
+      {/* Onboarding Wizard */}
+      <OnboardingWizard />
+
       {/* Header */}
       <div className="module-page-header flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>

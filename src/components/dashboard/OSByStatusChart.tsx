@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, memo } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
@@ -18,7 +18,7 @@ const STATUS_CONFIG: Record<string, { label: string; color: string }> = {
   FECHADA: { label: 'Fechadas', color: 'hsl(var(--success))' },
 };
 
-export function OSByStatusChart({ data, title = "OS por Status" }: OSByStatusChartProps) {
+export const OSByStatusChart = memo(function OSByStatusChart({ data, title = "OS por Status" }: OSByStatusChartProps) {
   const chartData = useMemo(() => {
     return data.map(item => ({
       name: STATUS_CONFIG[item.status]?.label || item.status,
@@ -78,4 +78,4 @@ export function OSByStatusChart({ data, title = "OS por Status" }: OSByStatusCha
       </CardContent>
     </Card>
   );
-}
+});

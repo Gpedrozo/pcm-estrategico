@@ -2,8 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
-import { insertWithColumnFallback, updateWithColumnFallback } from '@/lib/supabaseCompat';
-import { writeAuditLog } from '@/lib/audit';
+import { hierarquiaService } from '@/services/hierarquia.service';
 
 // ==================== INTERFACES ====================
 
@@ -102,15 +101,7 @@ export function usePlantas() {
     queryKey: ['plantas', tenantId],
     queryFn: async () => {
       if (!tenantId) throw new Error('Tenant não resolvido.');
-
-      const { data, error } = await supabase
-        .from('plantas')
-        .select('*')
-        .eq('empresa_id', tenantId)
-        .order('codigo');
-      
-      if (error) throw error;
-      return data as PlantaRow[];
+      return hierarquiaService.listarPlantas(tenantId) as Promise<PlantaRow[]>;
     },
     enabled: !!tenantId,
   });
@@ -146,20 +137,10 @@ export function useCreatePlanta() {
   return useMutation({
     mutationFn: async (planta: PlantaInsert) => {
       if (!tenantId) throw new Error('Tenant não resolvido.');
-
-      return insertWithColumnFallback(
-        async (payload) =>
-          supabase
-            .from('plantas')
-            .insert(payload)
-            .select()
-            .single(),
-        { ...planta, empresa_id: tenantId } as Record<string, unknown>,
-      );
+      return hierarquiaService.criarPlanta(planta as any, tenantId);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['plantas', tenantId] });
-      writeAuditLog({ action: 'CREATE_PLANTA', table: 'plantas', empresaId: tenantId, source: 'useHierarquia' });
       toast({
         title: 'Planta criada',
         description: 'A planta foi cadastrada com sucesso.',
@@ -182,20 +163,11 @@ export function useUpdatePlanta() {
 
   return useMutation({
     mutationFn: async ({ id, ...data }: PlantaUpdate & { id: string }) => {
-      await updateWithColumnFallback(
-        async (payload) =>
-          supabase
-            .from('plantas')
-            .update(payload)
-            .eq('id', id)
-            .select()
-            .single(),
-        data as Record<string, unknown>,
-      );
+      if (!tenantId) throw new Error('Tenant não resolvido.');
+      return hierarquiaService.atualizarPlanta(id, data as any, tenantId);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['plantas', tenantId] });
-      writeAuditLog({ action: 'UPDATE_PLANTA', table: 'plantas', empresaId: tenantId, source: 'useHierarquia' });
       toast({
         title: 'Planta atualizada',
         description: 'Os dados foram salvos com sucesso.',
@@ -218,17 +190,12 @@ export function useDeletePlanta() {
 
   return useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase
-        .from('plantas')
-        .delete()
-        .eq('id', id);
-      
-      if (error) throw error;
+      if (!tenantId) throw new Error('Tenant não resolvido.');
+      await hierarquiaService.excluirPlanta(id, tenantId);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['plantas', tenantId] });
       queryClient.invalidateQueries({ queryKey: ['areas', tenantId] });
-      writeAuditLog({ action: 'DELETE_PLANTA', table: 'plantas', empresaId: tenantId, source: 'useHierarquia', severity: 'warning' });
       toast({
         title: 'Planta excluída',
         description: 'A planta foi removida com sucesso.',
@@ -253,18 +220,7 @@ export function useAreas() {
     queryKey: ['areas', tenantId],
     queryFn: async () => {
       if (!tenantId) throw new Error('Tenant não resolvido.');
-
-      const { data, error } = await supabase
-        .from('areas')
-        .select(`
-          *,
-          planta:plantas(*)
-        `)
-        .eq('empresa_id', tenantId)
-        .order('codigo');
-      
-      if (error) throw error;
-      return data as AreaRow[];
+      return hierarquiaService.listarAreas(tenantId) as Promise<AreaRow[]>;
     },
     enabled: !!tenantId,
   });
@@ -298,20 +254,10 @@ export function useCreateArea() {
   return useMutation({
     mutationFn: async (area: AreaInsert) => {
       if (!tenantId) throw new Error('Tenant não resolvido.');
-
-      return insertWithColumnFallback(
-        async (payload) =>
-          supabase
-            .from('areas')
-            .insert(payload)
-            .select()
-            .single(),
-        { ...area, empresa_id: tenantId } as Record<string, unknown>,
-      );
+      return hierarquiaService.criarArea(area as any, tenantId);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['areas', tenantId] });
-      writeAuditLog({ action: 'CREATE_AREA', table: 'areas', empresaId: tenantId, source: 'useHierarquia' });
       toast({
         title: 'Área criada',
         description: 'A área foi cadastrada com sucesso.',
@@ -334,20 +280,11 @@ export function useUpdateArea() {
 
   return useMutation({
     mutationFn: async ({ id, ...data }: AreaUpdate & { id: string }) => {
-      await updateWithColumnFallback(
-        async (payload) =>
-          supabase
-            .from('areas')
-            .update(payload)
-            .eq('id', id)
-            .select()
-            .single(),
-        data as Record<string, unknown>,
-      );
+      if (!tenantId) throw new Error('Tenant não resolvido.');
+      return hierarquiaService.atualizarArea(id, data as any, tenantId);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['areas', tenantId] });
-      writeAuditLog({ action: 'UPDATE_AREA', table: 'areas', empresaId: tenantId, source: 'useHierarquia' });
       toast({
         title: 'Área atualizada',
         description: 'Os dados foram salvos com sucesso.',
@@ -370,17 +307,12 @@ export function useDeleteArea() {
 
   return useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase
-        .from('areas')
-        .delete()
-        .eq('id', id);
-      
-      if (error) throw error;
+      if (!tenantId) throw new Error('Tenant não resolvido.');
+      await hierarquiaService.excluirArea(id, tenantId);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['areas', tenantId] });
       queryClient.invalidateQueries({ queryKey: ['sistemas', tenantId] });
-      writeAuditLog({ action: 'DELETE_AREA', table: 'areas', empresaId: tenantId, source: 'useHierarquia', severity: 'warning' });
       toast({
         title: 'Área excluída',
         description: 'A área foi removida com sucesso.',
@@ -405,18 +337,7 @@ export function useSistemas() {
     queryKey: ['sistemas', tenantId],
     queryFn: async () => {
       if (!tenantId) throw new Error('Tenant não resolvido.');
-
-      const { data, error } = await supabase
-        .from('sistemas')
-        .select(`
-          *,
-          area:areas(*, planta:plantas(*))
-        `)
-        .eq('empresa_id', tenantId)
-        .order('codigo');
-      
-      if (error) throw error;
-      return data as SistemaRow[];
+      return hierarquiaService.listarSistemas(tenantId) as Promise<SistemaRow[]>;
     },
     enabled: !!tenantId,
   });
@@ -450,20 +371,10 @@ export function useCreateSistema() {
   return useMutation({
     mutationFn: async (sistema: SistemaInsert) => {
       if (!tenantId) throw new Error('Tenant não resolvido.');
-
-      return insertWithColumnFallback(
-        async (payload) =>
-          supabase
-            .from('sistemas')
-            .insert(payload)
-            .select()
-            .single(),
-        { ...sistema, empresa_id: tenantId } as Record<string, unknown>,
-      );
+      return hierarquiaService.criarSistema(sistema as any, tenantId);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['sistemas', tenantId] });
-      writeAuditLog({ action: 'CREATE_SISTEMA', table: 'sistemas', empresaId: tenantId, source: 'useHierarquia' });
       toast({
         title: 'Sistema criado',
         description: 'O sistema foi cadastrado com sucesso.',
@@ -486,20 +397,11 @@ export function useUpdateSistema() {
 
   return useMutation({
     mutationFn: async ({ id, ...data }: SistemaUpdate & { id: string }) => {
-      await updateWithColumnFallback(
-        async (payload) =>
-          supabase
-            .from('sistemas')
-            .update(payload)
-            .eq('id', id)
-            .select()
-            .single(),
-        data as Record<string, unknown>,
-      );
+      if (!tenantId) throw new Error('Tenant não resolvido.');
+      return hierarquiaService.atualizarSistema(id, data as any, tenantId);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['sistemas', tenantId] });
-      writeAuditLog({ action: 'UPDATE_SISTEMA', table: 'sistemas', empresaId: tenantId, source: 'useHierarquia' });
       toast({
         title: 'Sistema atualizado',
         description: 'Os dados foram salvos com sucesso.',
@@ -522,16 +424,11 @@ export function useDeleteSistema() {
 
   return useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase
-        .from('sistemas')
-        .delete()
-        .eq('id', id);
-      
-      if (error) throw error;
+      if (!tenantId) throw new Error('Tenant não resolvido.');
+      await hierarquiaService.excluirSistema(id, tenantId);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['sistemas', tenantId] });
-      writeAuditLog({ action: 'DELETE_SISTEMA', table: 'sistemas', empresaId: tenantId, source: 'useHierarquia', severity: 'warning' });
       toast({
         title: 'Sistema excluído',
         description: 'O sistema foi removido com sucesso.',

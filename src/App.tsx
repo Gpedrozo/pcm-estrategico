@@ -64,6 +64,7 @@ const Instalar = lazy(() => import('./pages/Instalar'))
 const ArquivosOwner = lazy(() => import('./pages/ArquivosOwner'))
 const RootCauseAIPage = lazy(() => import('./modules/rootCauseAI/RootCauseAIPage'))
 const ManualOperacao = lazy(() => import('./pages/ManualOperacao'))
+const SystemStatus = lazy(() => import('./pages/SystemStatus'))
 import { logger } from "@/lib/logger";
 
 initMonitoring();
@@ -345,6 +346,7 @@ function TenantRoutes() {
                 <Route path="/manuais-operacao/usuario" element={<ManualOperacao />} />
                 <Route path="/manuais-operacao/admin" element={<ManualOperacao />} />
                 <Route path="/manuais-operacao/master-ti" element={<ManualOperacao />} />
+                <Route path="/status" element={<SystemStatus />} />
               </Route>
 
                 <Route path="*" element={<NotFound />} />

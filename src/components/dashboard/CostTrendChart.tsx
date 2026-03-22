@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, memo } from 'react';
 import { 
   AreaChart, 
   Area, 
@@ -23,7 +23,7 @@ interface CostTrendChartProps {
   title?: string;
 }
 
-export function CostTrendChart({ data, title = "Evolução de Custos" }: CostTrendChartProps) {
+export const CostTrendChart = memo(function CostTrendChart({ data, title = "Evolução de Custos" }: CostTrendChartProps) {
   const formatCurrency = (value: number) => {
     if (value >= 1000) {
       return `R$ ${(value / 1000).toFixed(1)}k`;
@@ -136,4 +136,4 @@ export function CostTrendChart({ data, title = "Evolução de Custos" }: CostTre
       </CardContent>
     </Card>
   );
-}
+});

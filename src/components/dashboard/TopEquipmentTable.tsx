@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
@@ -25,7 +26,7 @@ interface TopEquipmentTableProps {
   showMetrics?: boolean;
 }
 
-export function TopEquipmentTable({ 
+export const TopEquipmentTable = memo(function TopEquipmentTable({ 
   data, 
   title = "Equipamentos com Mais O.S",
   showMetrics = true 
@@ -120,4 +121,4 @@ export function TopEquipmentTable({
       </CardContent>
     </Card>
   );
-}
+});

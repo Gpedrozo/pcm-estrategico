@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, memo } from 'react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from 'recharts';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
@@ -26,7 +26,7 @@ const LABELS = {
   MELHORIA: 'Melhoria',
 };
 
-export function OSDistributionChart({ data, title = "Distribuição por Tipo" }: OSDistributionChartProps) {
+export const OSDistributionChart = memo(function OSDistributionChart({ data, title = "Distribuição por Tipo" }: OSDistributionChartProps) {
   const chartData = useMemo(() => {
     return data.map(item => ({
       name: LABELS[item.tipo as keyof typeof LABELS] || item.tipo,
@@ -101,4 +101,4 @@ export function OSDistributionChart({ data, title = "Distribuição por Tipo" }:
       </CardContent>
     </Card>
   );
-}
+});

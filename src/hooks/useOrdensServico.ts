@@ -1,9 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
-import { insertWithColumnFallback } from '@/lib/supabaseCompat';
-import { writeAuditLog } from '@/lib/audit';
+import { ordensServicoService } from '@/services/ordensServico.service';
 
 function getCreateOrdemServicoErrorMessage(error: unknown) {
   const message =
@@ -86,15 +84,7 @@ export function useOrdensServico() {
     queryKey: ['ordens-servico', tenantId],
     queryFn: async () => {
       if (!tenantId) throw new Error('Tenant não resolvido.');
-
-      const { data, error } = await supabase
-        .from('ordens_servico')
-        .select('*')
-        .eq('empresa_id', tenantId)
-        .order('numero_os', { ascending: false });
-
-      if (error) throw error;
-      return data as OrdemServicoRow[];
+      return ordensServicoService.listar(tenantId) as Promise<OrdemServicoRow[]>;
     },
     enabled: !!tenantId,
   });
@@ -107,16 +97,7 @@ export function useRecentOrdensServico(limit = 5) {
     queryKey: ['ordens-servico-recent', tenantId, limit],
     queryFn: async () => {
       if (!tenantId) throw new Error('Tenant não resolvido.');
-
-      const { data, error } = await supabase
-        .from('ordens_servico')
-        .select('*')
-        .eq('empresa_id', tenantId)
-        .order('data_solicitacao', { ascending: false })
-        .limit(limit);
-
-      if (error) throw error;
-      return data as OrdemServicoRow[];
+      return ordensServicoService.listarRecentes(tenantId, limit) as Promise<OrdemServicoRow[]>;
     },
     enabled: !!tenantId,
   });
@@ -129,18 +110,7 @@ export function usePendingOrdensServico() {
     queryKey: ['ordens-servico-pending', tenantId],
     queryFn: async () => {
       if (!tenantId) throw new Error('Tenant não resolvido.');
-
-      const { data, error } = await supabase
-        .from('ordens_servico')
-        .select('*')
-        .eq('empresa_id', tenantId)
-        .neq('status', 'FECHADA')
-        .neq('status', 'CANCELADA')
-        .order('prioridade', { ascending: true })
-        .order('data_solicitacao', { ascending: true });
-
-      if (error) throw error;
-      return data as OrdemServicoRow[];
+      return ordensServicoService.listarPendentes(tenantId) as Promise<OrdemServicoRow[]>;
     },
     enabled: !!tenantId,
   });
@@ -154,33 +124,7 @@ export function useCreateOrdemServico() {
   return useMutation({
     mutationFn: async (os: OrdemServicoInsert) => {
       if (!tenantId) throw new Error('Tenant não resolvido.');
-
-      const payload = {
-        empresa_id: tenantId,
-        tipo: os.tipo,
-        prioridade: os.prioridade ?? 'MEDIA',
-        status: 'ABERTA',
-        tag: os.tag,
-        equipamento: os.equipamento,
-        solicitante: os.solicitante,
-        problema: os.problema,
-        tempo_estimado: os.tempo_estimado,
-        usuario_abertura: os.usuario_abertura,
-        mecanico_responsavel_id: os.mecanico_responsavel_id ?? null,
-        mecanico_responsavel_codigo: os.mecanico_responsavel_codigo ?? null,
-      };
-
-      const data = await insertWithColumnFallback(
-        async (insertPayload) =>
-          supabase
-            .from('ordens_servico')
-            .insert(insertPayload)
-            .select()
-            .single(),
-        payload as Record<string, unknown>,
-      );
-
-      return data as OrdemServicoRow;
+      return ordensServicoService.criar(os as any, tenantId) as Promise<OrdemServicoRow>;
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['ordens-servico', tenantId] });
@@ -188,7 +132,6 @@ export function useCreateOrdemServico() {
       queryClient.invalidateQueries({ queryKey: ['ordens-servico-pending', tenantId] });
       queryClient.invalidateQueries({ queryKey: ['indicadores', tenantId] });
       queryClient.invalidateQueries({ queryKey: ['document-sequences', tenantId] });
-      writeAuditLog({ action: 'CREATE_ORDEM_SERVICO', table: 'ordens_servico', recordId: data.id, empresaId: tenantId, source: 'useOrdensServico', metadata: { numero_os: data.numero_os, tipo: data.tipo } });
       toast({
         title: 'O.S Criada com Sucesso!',
         description: `Ordem de Serviço nº ${data.numero_os} foi registrada.`,
@@ -212,24 +155,13 @@ export function useUpdateOrdemServico() {
   return useMutation({
     mutationFn: async ({ id, ...updates }: OrdemServicoUpdate & { id: string }) => {
       if (!tenantId) throw new Error('Tenant não resolvido.');
-
-      const { data, error } = await supabase
-        .from('ordens_servico')
-        .update(updates)
-        .eq('id', id)
-        .eq('empresa_id', tenantId)
-        .select()
-        .single();
-
-      if (error) throw error;
-      return data as OrdemServicoRow;
+      return ordensServicoService.atualizar(id, updates as any, tenantId) as Promise<OrdemServicoRow>;
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['ordens-servico', tenantId] });
       queryClient.invalidateQueries({ queryKey: ['ordens-servico-recent', tenantId] });
       queryClient.invalidateQueries({ queryKey: ['ordens-servico-pending', tenantId] });
       queryClient.invalidateQueries({ queryKey: ['indicadores', tenantId] });
-      writeAuditLog({ action: 'UPDATE_ORDEM_SERVICO', table: 'ordens_servico', recordId: data.id, empresaId: tenantId, source: 'useOrdensServico', metadata: { status: data.status } });
     },
     onError: (error: any) => {
       toast({

@@ -1,9 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { insertWithColumnFallback, updateWithColumnFallback } from '@/lib/supabaseCompat';
 import { useAuth } from '@/contexts/AuthContext';
-import { writeAuditLog } from '@/lib/audit';
+import { equipamentosService } from '@/services/equipamentos.service';
 
 export interface EquipamentoRow {
   id: string;
@@ -72,24 +70,7 @@ export function useEquipamentos() {
     enabled: Boolean(tenantId),
     queryFn: async () => {
       if (!tenantId) return [] as EquipamentoRow[];
-
-      const { data, error } = await supabase
-        .from('equipamentos')
-        .select(`
-          *,
-          sistema:sistemas(
-            id, codigo, nome,
-            area:areas(
-              id, codigo, nome,
-              planta:plantas(id, codigo, nome)
-            )
-          )
-        `)
-        .eq('empresa_id', tenantId)
-        .order('tag', { ascending: true });
-
-      if (error) throw error;
-      return data as EquipamentoRow[];
+      return equipamentosService.listar(tenantId) as Promise<EquipamentoRow[]>;
     },
   });
 }
@@ -102,20 +83,10 @@ export function useCreateEquipamento() {
   return useMutation({
     mutationFn: async (equipamento: EquipamentoInsert) => {
       if (!tenantId) throw new Error('Tenant não resolvido.');
-
-      return insertWithColumnFallback(
-        async (payload) =>
-          supabase
-            .from('equipamentos')
-            .insert(payload)
-            .select()
-            .single(),
-        { ...equipamento, empresa_id: tenantId } as Record<string, unknown>,
-      );
+      return equipamentosService.criar(equipamento as any, tenantId);
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['equipamentos', tenantId] });
-      writeAuditLog({ action: 'CREATE_EQUIPAMENTO', table: 'equipamentos', recordId: data.id, empresaId: tenantId, source: 'useEquipamentos' });
       toast({
         title: 'Equipamento Cadastrado',
         description: `TAG ${data.tag} foi cadastrado com sucesso.`,
@@ -138,21 +109,11 @@ export function useUpdateEquipamento() {
 
   return useMutation({
     mutationFn: async ({ id, ...updates }: EquipamentoUpdate & { id: string }) => {
-      return updateWithColumnFallback(
-        async (payload) =>
-          supabase
-            .from('equipamentos')
-            .update(payload)
-            .eq('id', id)
-            .eq('empresa_id', tenantId!)
-            .select()
-            .single(),
-        updates as Record<string, unknown>,
-      );
+      if (!tenantId) throw new Error('Tenant não resolvido.');
+      return equipamentosService.atualizar(id, updates as any, tenantId);
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['equipamentos', tenantId] });
-      writeAuditLog({ action: 'UPDATE_EQUIPAMENTO', table: 'equipamentos', recordId: data.id, empresaId: tenantId, source: 'useEquipamentos' });
       toast({
         title: 'Equipamento Atualizado',
         description: `TAG ${data.tag} foi atualizado com sucesso.`,
@@ -175,18 +136,12 @@ export function useDeleteEquipamento() {
 
   return useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase
-        .from('equipamentos')
-        .delete()
-        .eq('empresa_id', tenantId)
-        .eq('id', id);
-
-      if (error) throw error;
+      if (!tenantId) throw new Error('Tenant não resolvido.');
+      await equipamentosService.excluir(id, tenantId);
       return id;
     },
-    onSuccess: (deletedId) => {
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['equipamentos', tenantId] });
-      writeAuditLog({ action: 'DELETE_EQUIPAMENTO', table: 'equipamentos', recordId: deletedId, empresaId: tenantId, source: 'useEquipamentos', severity: 'warning' });
       toast({
         title: 'Equipamento Excluído',
         description: 'O equipamento foi removido com sucesso.',

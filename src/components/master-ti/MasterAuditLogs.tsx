@@ -10,10 +10,13 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Search, FileText, Download, ChevronLeft, ChevronRight, Activity, Database, Clock, BarChart3, Eye } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { exportAuditLogsCSV } from '@/lib/auditExport';
+import { useAuth } from '@/contexts/AuthContext';
 
 const PAGE_SIZE = 25;
 
 export function MasterAuditLogs() {
+  const { tenantId } = useAuth();
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(0);
   const [actionFilter, setActionFilter] = useState('ALL');
@@ -102,16 +105,24 @@ export function MasterAuditLogs() {
     return 'bg-secondary text-secondary-foreground';
   };
 
-  const handleExport = () => {
-    if (!auditData?.logs.length) return;
-    const csv = ['Data/Hora,Usuário,Ação,Descrição,TAG']
-      .concat(auditData.logs.map(l => `"${new Date(l.data_hora).toLocaleString('pt-BR')}","${l.usuario_nome}","${l.acao}","${l.descricao}","${l.tag || ''}"`))
-      .join('\n');
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url; a.download = `auditoria_${new Date().toISOString().slice(0, 10)}.csv`; a.click();
-    URL.revokeObjectURL(url);
+  const handleExport = async () => {
+    if (!tenantId) return;
+    try {
+      await exportAuditLogsCSV(tenantId, {
+        actionFilter: actionFilter !== 'ALL' ? actionFilter : undefined,
+      });
+    } catch {
+      // Fallback to page-level export
+      if (!auditData?.logs.length) return;
+      const csv = ['Data/Hora,Usu\u00E1rio,A\u00E7\u00E3o,Descri\u00E7\u00E3o,TAG']
+        .concat(auditData.logs.map(l => `"${new Date(l.data_hora).toLocaleString('pt-BR')}","${l.usuario_nome}","${l.acao}","${l.descricao}","${l.tag || ''}"`))
+        .join('\n');
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = `auditoria_${new Date().toISOString().slice(0, 10)}.csv`; a.click();
+      URL.revokeObjectURL(url);
+    }
   };
 
   return (

@@ -1,9 +1,8 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { insertWithColumnFallback, updateWithColumnFallback } from '@/lib/supabaseCompat';
 import { useAuth } from '@/contexts/AuthContext';
-import { writeAuditLog } from '@/lib/audit';
+import { materiaisService } from '@/services/materiais.service';
 
 // ==================== INTERFACES ====================
 
@@ -97,14 +96,7 @@ export function useMateriais() {
   return useQuery({
     queryKey: ['materiais', tenantId],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('materiais')
-        .select('*')
-        .eq('empresa_id', tenantId!)
-        .order('nome');
-      
-      if (error) throw error;
-      return data as MaterialRow[];
+      return materiaisService.listar(tenantId!) as Promise<MaterialRow[]>;
     },
     enabled: !!tenantId,
   });
@@ -116,15 +108,7 @@ export function useMateriaisAtivos() {
   return useQuery({
     queryKey: ['materiais', tenantId, 'ativos'],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('materiais')
-        .select('*')
-        .eq('empresa_id', tenantId!)
-        .eq('ativo', true)
-        .order('nome');
-      
-      if (error) throw error;
-      return data as MaterialRow[];
+      return materiaisService.listarAtivos(tenantId!) as Promise<MaterialRow[]>;
     },
     enabled: !!tenantId,
   });
@@ -136,19 +120,8 @@ export function useMateriaisBaixoEstoque() {
   return useQuery({
     queryKey: ['materiais', tenantId, 'baixo-estoque'],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('materiais')
-        .select('*')
-        .eq('empresa_id', tenantId!)
-        .eq('ativo', true)
-        .order('nome');
-      
-      if (error) throw error;
-      
-      // Filter materials where current stock is below minimum
-      return (data as MaterialRow[]).filter(
-        (m) => m.estoque_atual <= m.estoque_minimo
-      );
+      const data = await materiaisService.listarAtivos(tenantId!) as MaterialRow[];
+      return data.filter((m) => m.estoque_atual <= m.estoque_minimo);
     },
     enabled: !!tenantId,
   });
@@ -162,20 +135,10 @@ export function useCreateMaterial() {
   return useMutation({
     mutationFn: async (material: MaterialInsert) => {
       if (!tenantId) throw new Error('Tenant não resolvido.');
-
-      return insertWithColumnFallback(
-        async (payload) =>
-          supabase
-            .from('materiais')
-            .insert(payload)
-            .select()
-            .single(),
-        { ...material, empresa_id: tenantId } as Record<string, unknown>,
-      );
+      return materiaisService.criar(material as any, tenantId);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['materiais', tenantId] });
-      writeAuditLog({ action: 'CREATE_MATERIAL', table: 'materiais', empresaId: tenantId, source: 'useMateriais' });
       toast({
         title: 'Material criado',
         description: 'O material foi cadastrado com sucesso.',
@@ -198,20 +161,11 @@ export function useUpdateMaterial() {
 
   return useMutation({
     mutationFn: async ({ id, ...data }: MaterialUpdate & { id: string }) => {
-      await updateWithColumnFallback(
-        async (payload) =>
-          supabase
-            .from('materiais')
-            .update(payload)
-            .eq('id', id)
-            .select()
-            .single(),
-        data as Record<string, unknown>,
-      );
+      if (!tenantId) throw new Error('Tenant não resolvido.');
+      return materiaisService.atualizar(id, data as any, tenantId);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['materiais', tenantId] });
-      writeAuditLog({ action: 'UPDATE_MATERIAL', table: 'materiais', empresaId: tenantId, source: 'useMateriais' });
       toast({
         title: 'Material atualizado',
         description: 'Os dados foram salvos com sucesso.',
@@ -234,16 +188,11 @@ export function useDeleteMaterial() {
 
   return useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase
-        .from('materiais')
-        .delete()
-        .eq('id', id);
-      
-      if (error) throw error;
+      if (!tenantId) throw new Error('Tenant não resolvido.');
+      await materiaisService.excluir(id, tenantId);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['materiais', tenantId] });
-      writeAuditLog({ action: 'DELETE_MATERIAL', table: 'materiais', empresaId: tenantId, source: 'useMateriais', severity: 'warning' });
       toast({
         title: 'Material excluído',
         description: 'O material foi removido com sucesso.',

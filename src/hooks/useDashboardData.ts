@@ -76,6 +76,7 @@ export function useDashboardData() {
       return (data ?? null) as DashboardKpiRow | null;
     },
     enabled: !!tenantId,
+    staleTime: 60_000,
   });
 
   // OS distribution by type
