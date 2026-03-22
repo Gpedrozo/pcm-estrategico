@@ -1,13 +1,13 @@
 {
-  "generatedAt": "2026-03-13T23:51:23.642Z",
+  "generatedAt": "2026-03-22T20:48:40.197Z",
   "summary": {
-    "modulesAudited": 39,
-    "createdTablesInMigrations": 92,
-    "tablesUsedByModules": 41,
-    "tablesUsedByFrontendGlobal": 49,
-    "tablesUsedByEdgeFunctions": 24,
-    "tablesUsedOverall": 58,
-    "unusedCandidateTables": 35
+    "modulesAudited": 46,
+    "createdTablesInMigrations": 106,
+    "tablesUsedByModules": 40,
+    "tablesUsedByFrontendGlobal": 45,
+    "tablesUsedByEdgeFunctions": 35,
+    "tablesUsedOverall": 65,
+    "unusedCandidateTables": 41
   },
   "global": {
     "moduleTableOps": {
@@ -58,7 +58,18 @@
       ],
       "dados_empresa": [
         "select",
+        "update",
+        "upsert"
+      ],
+      "document_layouts": [
+        "insert",
+        "select",
         "update"
+      ],
+      "document_sequences": [
+        "select",
+        "update",
+        "upsert"
       ],
       "documentos_tecnicos": [
         "insert",
@@ -68,11 +79,6 @@
         "select"
       ],
       "empresas": [
-        "select"
-      ],
-      "equipamentos": [
-        "delete",
-        "insert",
         "select",
         "update"
       ],
@@ -176,12 +182,8 @@
         "update"
       ],
       "profiles": [
-        "delete",
         "select",
         "update"
-      ],
-      "rbac_user_roles": [
-        "delete"
       ],
       "servicos_preventivos": [
         "delete",
@@ -197,7 +199,8 @@
       ],
       "support_tickets": [
         "insert",
-        "select"
+        "select",
+        "update"
       ],
       "templates_preventivos": [
         "delete",
@@ -205,12 +208,8 @@
         "select"
       ],
       "user_roles": [
-        "delete",
         "select",
         "update"
-      ],
-      "v_dashboard_kpis": [
-        "select"
       ]
     },
     "moduleRpc": [],
@@ -274,7 +273,8 @@
       "dados_empresa": [
         "insert",
         "select",
-        "update"
+        "update",
+        "upsert"
       ],
       "document_layouts": [
         "insert",
@@ -296,16 +296,11 @@
         "select"
       ],
       "empresas": [
-        "select"
+        "select",
+        "update"
       ],
       "enterprise_audit_logs": [
         "select"
-      ],
-      "equipamentos": [
-        "delete",
-        "insert",
-        "select",
-        "update"
       ],
       "execucoes_lubrificacao": [
         "insert",
@@ -414,12 +409,8 @@
         "update"
       ],
       "profiles": [
-        "delete",
         "select",
         "update"
-      ],
-      "rbac_user_roles": [
-        "delete"
       ],
       "security_logs": [
         "select"
@@ -436,12 +427,10 @@
         "select",
         "update"
       ],
-      "solicitacoes_manutencao": [
-        "select"
-      ],
       "support_tickets": [
         "insert",
-        "select"
+        "select",
+        "update"
       ],
       "templates_preventivos": [
         "delete",
@@ -450,11 +439,9 @@
       ],
       "user_roles": [
         "delete",
+        "insert",
         "select",
         "update"
-      ],
-      "v_dashboard_kpis": [
-        "select"
       ]
     },
     "frontendRpc": [],
@@ -482,11 +469,13 @@
       "src/components/equipamentos/ComponenteFormDialog.tsx",
       "src/components/equipamentos/ComponenteTree.tsx",
       "src/components/equipamentos/ComponentesPanel.tsx",
+      "src/components/equipamentos/EquipamentoQRCode.tsx",
       "src/components/guards/EnvironmentGuard.tsx",
       "src/components/guards/MasterTIGuard.test.tsx",
       "src/components/guards/MasterTIGuard.tsx",
       "src/components/guards/SystemOwnerGuard.test.tsx",
       "src/components/guards/SystemOwnerGuard.tsx",
+      "src/components/guards/TenantDomainMiddleware.tsx",
       "src/components/guards/TenantQueryIsolationGuard.tsx",
       "src/components/layout/AppLayout.tsx",
       "src/components/layout/AppSidebar.tsx",
@@ -508,6 +497,7 @@
       "src/components/master-ti/MasterSystemMonitor.tsx",
       "src/components/master-ti/MasterUsersManager.tsx",
       "src/components/notifications/NotificationCenter.tsx",
+      "src/components/onboarding/OnboardingWizard.tsx",
       "src/components/os/OSPrintDialog.tsx",
       "src/components/os/OSPrintTemplate.tsx",
       "src/components/os/OSStatusBadge.tsx",
@@ -518,6 +508,8 @@
       "src/components/preventiva/PreventivaPrintTemplate.tsx",
       "src/components/print/DocumentPrintBase.tsx",
       "src/components/print/PrintPreviewDialog.tsx",
+      "src/components/runtime/AppErrorBoundary.tsx",
+      "src/components/runtime/TelemetryProvider.tsx",
       "src/components/ui/accordion.tsx",
       "src/components/ui/alert-dialog.tsx",
       "src/components/ui/alert.tsx",
@@ -604,6 +596,7 @@
       "src/hooks/useMelhorias.ts",
       "src/hooks/useOrdensServico.ts",
       "src/hooks/useOrdensServicoPaginated.ts",
+      "src/hooks/useOwner2Portal.ts",
       "src/hooks/useOwnerPortal.ts",
       "src/hooks/usePaginatedQuery.ts",
       "src/hooks/usePermission.ts",
@@ -614,19 +607,29 @@
       "src/hooks/useSolicitacoes.ts",
       "src/hooks/useSupportTickets.ts",
       "src/hooks/useTemplatesPreventivos.ts",
+      "src/hooks/useTenantAdminConfig.ts",
+      "src/hooks/useTenantPadronizacoes.ts",
+      "src/hooks/useTenantVisualIdentity.ts",
       "src/hooks/useUsuarios.ts",
       "src/integrations/supabase/client.ts",
       "src/integrations/supabase/rpc.ts",
       "src/integrations/supabase/types.ts",
       "src/layouts/OwnerPortalLayout.tsx",
       "src/lib/audit.ts",
+      "src/lib/auditExport.ts",
+      "src/lib/authConstants.ts",
       "src/lib/logger.ts",
+      "src/lib/monitoring.ts",
+      "src/lib/navigationState.ts",
       "src/lib/osBadges.ts",
       "src/lib/reportGenerator.ts",
       "src/lib/secure-signup.ts",
       "src/lib/security.test.ts",
       "src/lib/security.ts",
+      "src/lib/sessionTransfer.ts",
       "src/lib/supabaseCompat.ts",
+      "src/lib/tenantDomain.ts",
+      "src/lib/tenantLoginFlow.ts",
       "src/lib/utils.ts",
       "src/main.tsx",
       "src/modules/rootCauseAI/RootCauseAIPage.tsx",
@@ -636,9 +639,12 @@
       "src/modules/rootCauseAI/useRootCauseAI.ts",
       "src/owner/OwnerLayout.tsx",
       "src/owner/OwnerLogin.tsx",
+      "src/pages/Administracao.tsx",
       "src/pages/ArquivosOwner.tsx",
       "src/pages/Auditoria.tsx",
       "src/pages/Backlog.tsx",
+      "src/pages/ChangePassword.test.tsx",
+      "src/pages/ChangePassword.tsx",
       "src/pages/ConfiguracoesEmpresa.tsx",
       "src/pages/Contratos.tsx",
       "src/pages/Custos.tsx",
@@ -647,6 +653,7 @@
       "src/pages/Equipamentos.tsx",
       "src/pages/FMEA.tsx",
       "src/pages/FecharOS.tsx",
+      "src/pages/ForgotPassword.tsx",
       "src/pages/Fornecedores.tsx",
       "src/pages/Hierarquia.tsx",
       "src/pages/HistoricoOS.tsx",
@@ -664,25 +671,42 @@
       "src/pages/NovaOS.tsx",
       "src/pages/Owner.test.tsx",
       "src/pages/Owner.tsx",
+      "src/pages/Owner2.tsx",
+      "src/pages/PortalMecanicoOS.tsx",
       "src/pages/Preditiva.tsx",
       "src/pages/Preventiva.tsx",
       "src/pages/Programacao.tsx",
       "src/pages/RCA.tsx",
       "src/pages/Relatorios.tsx",
+      "src/pages/ResetPassword.tsx",
       "src/pages/SSMA.tsx",
       "src/pages/Solicitacoes.tsx",
       "src/pages/Suporte.tsx",
+      "src/pages/SystemStatus.tsx",
       "src/pages/Usuarios.tsx",
       "src/pages/lubrificacao/LubrificacaoDetalhe.tsx",
       "src/pages/lubrificacao/LubrificacaoForm.tsx",
       "src/pages/lubrificacao/LubrificacaoList.tsx",
+      "src/schemas/__tests__/schemas.test.ts",
       "src/schemas/contrato.schema.ts",
+      "src/schemas/equipamento.schema.ts",
+      "src/schemas/hierarquia.schema.ts",
+      "src/schemas/material.schema.ts",
+      "src/schemas/mecanico.schema.ts",
+      "src/schemas/ordemServico.schema.ts",
       "src/security/EnvironmentGuard.test.tsx",
       "src/security/EnvironmentGuard.tsx",
       "src/security/SystemOwnerGuard.test.tsx",
       "src/security/SystemOwnerGuard.tsx",
       "src/services/contratos.service.ts",
+      "src/services/equipamentos.service.ts",
+      "src/services/hierarquia.service.ts",
       "src/services/maintenanceSchedule.ts",
+      "src/services/materiais.service.ts",
+      "src/services/mecanicos.service.ts",
+      "src/services/ordensServico.service.ts",
+      "src/services/owner2Portal.service.ts",
+      "src/services/ownerPortal.service.test.ts",
       "src/services/ownerPortal.service.ts",
       "src/services/storage.ts",
       "src/test/arquivos-owner.test.ts",
@@ -710,6 +734,17 @@
         "insert",
         "select",
         "update"
+      ],
+      "audit_logs": [
+        "insert"
+      ],
+      "auth_session_transfer_tokens": [
+        "delete",
+        "insert",
+        "select"
+      ],
+      "company_subscriptions": [
+        "delete"
       ],
       "configuracoes_sistema": [
         "delete",
@@ -746,6 +781,12 @@
         "insert",
         "select"
       ],
+      "enterprise_impersonation_sessions": [
+        "delete"
+      ],
+      "enterprise_subscriptions": [
+        "delete"
+      ],
       "equipamentos": [
         "select"
       ],
@@ -756,13 +797,26 @@
       "historico_manutencao": [
         "insert"
       ],
+      "login_attempts": [
+        "select",
+        "upsert"
+      ],
       "materiais": [
         "select"
       ],
       "medicoes_preditivas": [
         "select"
       ],
+      "operational_logs": [
+        "delete",
+        "select"
+      ],
       "ordens_servico": [
+        "insert",
+        "select",
+        "update"
+      ],
+      "owner_impersonation_sessions": [
         "insert",
         "select",
         "update"
@@ -786,7 +840,14 @@
       "profiles": [
         "delete",
         "select",
+        "update",
         "upsert"
+      ],
+      "subscription_payments": [
+        "delete",
+        "insert",
+        "select",
+        "update"
       ],
       "subscriptions": [
         "delete",
@@ -799,8 +860,15 @@
         "select",
         "update"
       ],
+      "tenant_users": [
+        "select"
+      ],
+      "tenants": [
+        "select"
+      ],
       "user_roles": [
         "delete",
+        "insert",
         "select",
         "upsert"
       ],
@@ -810,17 +878,33 @@
     },
     "functionRpc": [],
     "edgeFunctionFiles": [
+      "supabase/functions/_shared/audit.ts",
       "supabase/functions/_shared/auth.ts",
+      "supabase/functions/_shared/monitoring.ts",
+      "supabase/functions/_shared/observability.ts",
+      "supabase/functions/_shared/ownerActionProxy.ts",
+      "supabase/functions/_shared/rateLimit.ts",
       "supabase/functions/_shared/response.ts",
       "supabase/functions/analisar-causa-raiz/index.ts",
+      "supabase/functions/asaas-webhook/index.ts",
+      "supabase/functions/auth-change-password/index.ts",
+      "supabase/functions/auth-forgot-password/index.ts",
+      "supabase/functions/auth-login/index.ts",
       "supabase/functions/company-membership/index.ts",
       "supabase/functions/generate-preventive-os/index.ts",
       "supabase/functions/kpi-report/index.ts",
       "supabase/functions/maintenance-os-service/index.ts",
+      "supabase/functions/owner-audit/index.ts",
+      "supabase/functions/owner-billing/index.ts",
+      "supabase/functions/owner-companies/index.ts",
+      "supabase/functions/owner-data-control/index.ts",
       "supabase/functions/owner-portal-admin/index.ts",
+      "supabase/functions/owner-users/index.ts",
       "supabase/functions/platform-metrics-rollup/index.ts",
+      "supabase/functions/session-transfer/index.ts",
       "supabase/functions/stripe-webhook/index.ts",
-      "supabase/functions/system-health-check/index.ts"
+      "supabase/functions/system-health-check/index.ts",
+      "supabase/functions/tenant-domain-sync/index.ts"
     ],
     "createdTables": [
       "acoes_corretivas",
@@ -834,9 +918,14 @@
       "ativos",
       "audit_logs",
       "auditoria",
+      "auth_session_transfer_tokens",
       "avaliacoes_fornecedores",
+      "billing_customers",
+      "billing_invoices",
       "causas",
       "checklists",
+      "company_subscriptions",
+      "company_usage_metrics",
       "componentes_equipamento",
       "configuracoes_sistema",
       "contract_versions",
@@ -861,14 +950,17 @@
       "execucoes_os_pausas",
       "execucoes_preventivas",
       "falhas",
+      "feature_flags",
       "fmea",
       "fornecedores",
       "historico_manutencao",
       "incidentes_ssma",
       "indicadores_kpi",
       "inspecoes",
+      "ip_rate_limits",
       "legacy_tenant_rollback_snapshot",
       "localizacoes",
+      "login_attempts",
       "maintenance_action_suggestions",
       "maintenance_schedule",
       "materiais",
@@ -879,8 +971,11 @@
       "membros_empresa",
       "migration_validation_windows",
       "movimentacoes_materiais",
+      "operational_logs",
       "orcamentos_manutencao",
       "ordens_servico",
+      "owner_full_seed_log",
+      "owner_impersonation_sessions",
       "permissoes",
       "permissoes_granulares",
       "permissoes_trabalho",
@@ -899,6 +994,7 @@
       "rbac_roles",
       "rbac_user_roles",
       "role_permissions",
+      "saas_metrics_daily",
       "security_logs",
       "servicos_preventivos",
       "sistemas",
@@ -906,11 +1002,13 @@
       "subscription_payments",
       "subscriptions",
       "support_tickets",
+      "system_error_events",
       "system_notifications",
       "system_owner_allowlist",
       "tags_ativos",
       "tarefas_plano",
       "templates_preventivos",
+      "tenant_users",
       "tenants",
       "unidades",
       "user_roles",
@@ -920,23 +1018,27 @@
       "ativos",
       "auditoria",
       "avaliacoes_fornecedores",
+      "billing_customers",
+      "billing_invoices",
       "causas",
       "checklists",
+      "company_usage_metrics",
       "edge_refactor_contract",
       "enterprise_companies",
-      "enterprise_impersonation_sessions",
       "enterprise_plans",
-      "enterprise_subscriptions",
       "enterprise_system_integrity",
       "execucoes_os_pausas",
       "falhas",
+      "feature_flags",
       "indicadores_kpi",
+      "ip_rate_limits",
       "legacy_tenant_rollback_snapshot",
       "localizacoes",
       "maintenance_action_suggestions",
       "membros_empresa",
       "migration_validation_windows",
       "orcamentos_manutencao",
+      "owner_full_seed_log",
       "permissoes",
       "planos_manutencao",
       "rate_limits",
@@ -944,17 +1046,74 @@
       "rbac_permissions",
       "rbac_role_permissions",
       "rbac_roles",
+      "rbac_user_roles",
       "role_permissions",
-      "subscription_payments",
+      "saas_metrics_daily",
+      "solicitacoes_manutencao",
+      "system_error_events",
       "system_notifications",
       "system_owner_allowlist",
       "tags_ativos",
       "tarefas_plano",
-      "tenants",
       "unidades"
     ]
   },
   "modules": [
+    {
+      "module": "Administracao",
+      "entry": "src/pages/Administracao.tsx",
+      "dependencyFileCount": 27,
+      "dependencyFiles": [
+        "src/components/ui/badge.tsx",
+        "src/components/ui/button.tsx",
+        "src/components/ui/card.tsx",
+        "src/components/ui/input.tsx",
+        "src/components/ui/label.tsx",
+        "src/components/ui/select.tsx",
+        "src/components/ui/switch.tsx",
+        "src/components/ui/tabs.tsx",
+        "src/components/ui/toast.tsx",
+        "src/contexts/AuthContext.tsx",
+        "src/hooks/use-toast.ts",
+        "src/hooks/useTenantAdminConfig.ts",
+        "src/hooks/useTenantVisualIdentity.ts",
+        "src/hooks/useUsuarios.ts",
+        "src/integrations/supabase/client.ts",
+        "src/integrations/supabase/rpc.ts",
+        "src/integrations/supabase/types.ts",
+        "src/lib/audit.ts",
+        "src/lib/authConstants.ts",
+        "src/lib/logger.ts",
+        "src/lib/monitoring.ts",
+        "src/lib/security.ts",
+        "src/lib/sessionTransfer.ts",
+        "src/lib/tenantLoginFlow.ts",
+        "src/lib/utils.ts",
+        "src/pages/Administracao.tsx",
+        "src/services/ownerPortal.service.ts"
+      ],
+      "tables": {
+        "configuracoes_sistema": [
+          "select",
+          "upsert"
+        ],
+        "empresa_config": [
+          "select"
+        ],
+        "empresas": [
+          "select"
+        ],
+        "profiles": [
+          "select",
+          "update"
+        ],
+        "user_roles": [
+          "select",
+          "update"
+        ]
+      },
+      "rpc": []
+    },
     {
       "module": "ArquivosOwner",
       "entry": "src/pages/ArquivosOwner.tsx",
@@ -968,7 +1127,7 @@
     {
       "module": "Auditoria",
       "entry": "src/pages/Auditoria.tsx",
-      "dependencyFileCount": 15,
+      "dependencyFileCount": 20,
       "dependencyFiles": [
         "src/components/ui/button.tsx",
         "src/components/ui/input.tsx",
@@ -981,10 +1140,15 @@
         "src/integrations/supabase/rpc.ts",
         "src/integrations/supabase/types.ts",
         "src/lib/audit.ts",
+        "src/lib/authConstants.ts",
         "src/lib/logger.ts",
+        "src/lib/monitoring.ts",
         "src/lib/security.ts",
+        "src/lib/sessionTransfer.ts",
+        "src/lib/tenantLoginFlow.ts",
         "src/lib/utils.ts",
-        "src/pages/Auditoria.tsx"
+        "src/pages/Auditoria.tsx",
+        "src/services/ownerPortal.service.ts"
       ],
       "tables": {
         "audit_logs": [
@@ -1000,7 +1164,8 @@
           "select"
         ],
         "profiles": [
-          "select"
+          "select",
+          "update"
         ],
         "user_roles": [
           "select"
@@ -1011,7 +1176,7 @@
     {
       "module": "Backlog",
       "entry": "src/pages/Backlog.tsx",
-      "dependencyFileCount": 18,
+      "dependencyFileCount": 31,
       "dependencyFiles": [
         "src/components/os/OSStatusBadge.tsx",
         "src/components/os/OSTypeBadge.tsx",
@@ -1022,21 +1187,94 @@
         "src/components/ui/select.tsx",
         "src/components/ui/skeleton.tsx",
         "src/components/ui/toast.tsx",
+        "src/contexts/AuthContext.tsx",
         "src/hooks/use-toast.ts",
         "src/hooks/useOrdensServico.ts",
+        "src/hooks/useTenantAdminConfig.ts",
+        "src/hooks/useTenantPadronizacoes.ts",
         "src/integrations/supabase/client.ts",
+        "src/integrations/supabase/rpc.ts",
         "src/integrations/supabase/types.ts",
+        "src/lib/audit.ts",
+        "src/lib/authConstants.ts",
+        "src/lib/logger.ts",
+        "src/lib/monitoring.ts",
         "src/lib/osBadges.ts",
         "src/lib/security.ts",
+        "src/lib/sessionTransfer.ts",
+        "src/lib/tenantLoginFlow.ts",
         "src/lib/utils.ts",
         "src/pages/Backlog.tsx",
+        "src/schemas/ordemServico.schema.ts",
+        "src/services/ordensServico.service.ts",
+        "src/services/ownerPortal.service.ts",
         "src/types/index.ts"
       ],
       "tables": {
+        "configuracoes_sistema": [
+          "select",
+          "upsert"
+        ],
+        "empresa_config": [
+          "select"
+        ],
+        "empresas": [
+          "select"
+        ],
         "ordens_servico": [
           "insert",
           "select",
           "update"
+        ],
+        "profiles": [
+          "select",
+          "update"
+        ],
+        "user_roles": [
+          "select"
+        ]
+      },
+      "rpc": []
+    },
+    {
+      "module": "ChangePassword",
+      "entry": "src/pages/ChangePassword.tsx",
+      "dependencyFileCount": 17,
+      "dependencyFiles": [
+        "src/components/ui/button.tsx",
+        "src/components/ui/input.tsx",
+        "src/components/ui/label.tsx",
+        "src/contexts/AuthContext.tsx",
+        "src/integrations/supabase/client.ts",
+        "src/integrations/supabase/rpc.ts",
+        "src/integrations/supabase/types.ts",
+        "src/lib/audit.ts",
+        "src/lib/authConstants.ts",
+        "src/lib/logger.ts",
+        "src/lib/monitoring.ts",
+        "src/lib/security.ts",
+        "src/lib/sessionTransfer.ts",
+        "src/lib/tenantLoginFlow.ts",
+        "src/lib/utils.ts",
+        "src/pages/ChangePassword.tsx",
+        "src/services/ownerPortal.service.ts"
+      ],
+      "tables": {
+        "configuracoes_sistema": [
+          "select"
+        ],
+        "empresa_config": [
+          "select"
+        ],
+        "empresas": [
+          "select"
+        ],
+        "profiles": [
+          "select",
+          "update"
+        ],
+        "user_roles": [
+          "select"
         ]
       },
       "rpc": []
@@ -1044,7 +1282,7 @@
     {
       "module": "ConfiguracoesEmpresa",
       "entry": "src/pages/ConfiguracoesEmpresa.tsx",
-      "dependencyFileCount": 20,
+      "dependencyFileCount": 25,
       "dependencyFiles": [
         "src/components/ui/button.tsx",
         "src/components/ui/card.tsx",
@@ -1062,10 +1300,15 @@
         "src/integrations/supabase/rpc.ts",
         "src/integrations/supabase/types.ts",
         "src/lib/audit.ts",
+        "src/lib/authConstants.ts",
         "src/lib/logger.ts",
+        "src/lib/monitoring.ts",
         "src/lib/security.ts",
+        "src/lib/sessionTransfer.ts",
+        "src/lib/tenantLoginFlow.ts",
         "src/lib/utils.ts",
-        "src/pages/ConfiguracoesEmpresa.tsx"
+        "src/pages/ConfiguracoesEmpresa.tsx",
+        "src/services/ownerPortal.service.ts"
       ],
       "tables": {
         "configuracoes_sistema": [
@@ -1074,7 +1317,8 @@
         ],
         "dados_empresa": [
           "select",
-          "update"
+          "update",
+          "upsert"
         ],
         "empresa_config": [
           "select"
@@ -1083,7 +1327,8 @@
           "select"
         ],
         "profiles": [
-          "select"
+          "select",
+          "update"
         ],
         "user_roles": [
           "select"
@@ -1094,7 +1339,7 @@
     {
       "module": "Contratos",
       "entry": "src/pages/Contratos.tsx",
-      "dependencyFileCount": 25,
+      "dependencyFileCount": 30,
       "dependencyFiles": [
         "src/components/ui/badge.tsx",
         "src/components/ui/button.tsx",
@@ -1114,13 +1359,18 @@
         "src/integrations/supabase/rpc.ts",
         "src/integrations/supabase/types.ts",
         "src/lib/audit.ts",
+        "src/lib/authConstants.ts",
         "src/lib/logger.ts",
+        "src/lib/monitoring.ts",
         "src/lib/security.ts",
+        "src/lib/sessionTransfer.ts",
         "src/lib/supabaseCompat.ts",
+        "src/lib/tenantLoginFlow.ts",
         "src/lib/utils.ts",
         "src/pages/Contratos.tsx",
         "src/schemas/contrato.schema.ts",
-        "src/services/contratos.service.ts"
+        "src/services/contratos.service.ts",
+        "src/services/ownerPortal.service.ts"
       ],
       "tables": {
         "configuracoes_sistema": [
@@ -1144,7 +1394,8 @@
           "update"
         ],
         "profiles": [
-          "select"
+          "select",
+          "update"
         ],
         "user_roles": [
           "select"
@@ -1155,7 +1406,7 @@
     {
       "module": "Custos",
       "entry": "src/pages/Custos.tsx",
-      "dependencyFileCount": 21,
+      "dependencyFileCount": 30,
       "dependencyFiles": [
         "src/components/ui/badge.tsx",
         "src/components/ui/button.tsx",
@@ -1173,11 +1424,20 @@
         "src/integrations/supabase/rpc.ts",
         "src/integrations/supabase/types.ts",
         "src/lib/audit.ts",
+        "src/lib/authConstants.ts",
         "src/lib/logger.ts",
+        "src/lib/monitoring.ts",
         "src/lib/security.ts",
+        "src/lib/sessionTransfer.ts",
         "src/lib/supabaseCompat.ts",
+        "src/lib/tenantLoginFlow.ts",
         "src/lib/utils.ts",
-        "src/pages/Custos.tsx"
+        "src/pages/Custos.tsx",
+        "src/schemas/equipamento.schema.ts",
+        "src/schemas/ordemServico.schema.ts",
+        "src/services/equipamentos.service.ts",
+        "src/services/ordensServico.service.ts",
+        "src/services/ownerPortal.service.ts"
       ],
       "tables": {
         "configuracoes_sistema": [
@@ -1189,12 +1449,6 @@
         "empresas": [
           "select"
         ],
-        "equipamentos": [
-          "delete",
-          "insert",
-          "select",
-          "update"
-        ],
         "execucoes_os": [
           "insert",
           "select"
@@ -1205,7 +1459,8 @@
           "update"
         ],
         "profiles": [
-          "select"
+          "select",
+          "update"
         ],
         "user_roles": [
           "select"
@@ -1216,7 +1471,7 @@
     {
       "module": "Dashboard",
       "entry": "src/pages/Dashboard.tsx",
-      "dependencyFileCount": 32,
+      "dependencyFileCount": 50,
       "dependencyFiles": [
         "src/components/dashboard/BacklogSummary.tsx",
         "src/components/dashboard/CostTrendChart.tsx",
@@ -1224,7 +1479,7 @@
         "src/components/dashboard/KPIGaugeCard.tsx",
         "src/components/dashboard/OSByStatusChart.tsx",
         "src/components/dashboard/OSDistributionChart.tsx",
-        "src/components/dashboard/QuickActions.tsx",
+        "src/components/onboarding/OnboardingWizard.tsx",
         "src/components/os/OSStatusBadge.tsx",
         "src/components/os/OSTypeBadge.tsx",
         "src/components/ui/badge.tsx",
@@ -1236,24 +1491,49 @@
         "src/contexts/AuthContext.tsx",
         "src/hooks/use-toast.ts",
         "src/hooks/useDashboardData.ts",
+        "src/hooks/useEquipamentos.ts",
         "src/hooks/useExecucoesOS.ts",
+        "src/hooks/useHierarquia.ts",
         "src/hooks/useIndicadores.ts",
+        "src/hooks/useMecanicos.ts",
         "src/hooks/useOrdensServico.ts",
+        "src/hooks/useTenantAdminConfig.ts",
+        "src/hooks/useTenantPadronizacoes.ts",
         "src/integrations/supabase/client.ts",
         "src/integrations/supabase/rpc.ts",
         "src/integrations/supabase/types.ts",
         "src/lib/audit.ts",
+        "src/lib/authConstants.ts",
         "src/lib/logger.ts",
+        "src/lib/monitoring.ts",
         "src/lib/osBadges.ts",
         "src/lib/security.ts",
+        "src/lib/sessionTransfer.ts",
         "src/lib/supabaseCompat.ts",
+        "src/lib/tenantLoginFlow.ts",
         "src/lib/utils.ts",
         "src/pages/Dashboard.tsx",
+        "src/schemas/equipamento.schema.ts",
+        "src/schemas/hierarquia.schema.ts",
+        "src/schemas/mecanico.schema.ts",
+        "src/schemas/ordemServico.schema.ts",
+        "src/services/equipamentos.service.ts",
+        "src/services/hierarquia.service.ts",
+        "src/services/mecanicos.service.ts",
+        "src/services/ordensServico.service.ts",
+        "src/services/ownerPortal.service.ts",
         "src/types/index.ts"
       ],
       "tables": {
+        "areas": [
+          "delete",
+          "insert",
+          "select",
+          "update"
+        ],
         "configuracoes_sistema": [
-          "select"
+          "select",
+          "upsert"
         ],
         "empresa_config": [
           "select"
@@ -1265,18 +1545,34 @@
           "insert",
           "select"
         ],
+        "mecanicos": [
+          "delete",
+          "insert",
+          "select",
+          "update"
+        ],
         "ordens_servico": [
           "insert",
           "select",
           "update"
         ],
+        "plantas": [
+          "delete",
+          "insert",
+          "select",
+          "update"
+        ],
         "profiles": [
-          "select"
+          "select",
+          "update"
+        ],
+        "sistemas": [
+          "delete",
+          "insert",
+          "select",
+          "update"
         ],
         "user_roles": [
-          "select"
-        ],
-        "v_dashboard_kpis": [
           "select"
         ]
       },
@@ -1285,7 +1581,7 @@
     {
       "module": "DocumentosTecnicos",
       "entry": "src/pages/DocumentosTecnicos.tsx",
-      "dependencyFileCount": 23,
+      "dependencyFileCount": 31,
       "dependencyFiles": [
         "src/components/ui/badge.tsx",
         "src/components/ui/button.tsx",
@@ -1305,11 +1601,19 @@
         "src/integrations/supabase/rpc.ts",
         "src/integrations/supabase/types.ts",
         "src/lib/audit.ts",
+        "src/lib/authConstants.ts",
         "src/lib/logger.ts",
+        "src/lib/monitoring.ts",
         "src/lib/security.ts",
+        "src/lib/sessionTransfer.ts",
         "src/lib/supabaseCompat.ts",
+        "src/lib/tenantLoginFlow.ts",
         "src/lib/utils.ts",
-        "src/pages/DocumentosTecnicos.tsx"
+        "src/pages/DocumentosTecnicos.tsx",
+        "src/schemas/equipamento.schema.ts",
+        "src/services/equipamentos.service.ts",
+        "src/services/ownerPortal.service.ts",
+        "src/services/storage.ts"
       ],
       "tables": {
         "configuracoes_sistema": [
@@ -1325,14 +1629,9 @@
         "empresas": [
           "select"
         ],
-        "equipamentos": [
-          "delete",
-          "insert",
+        "profiles": [
           "select",
           "update"
-        ],
-        "profiles": [
-          "select"
         ],
         "user_roles": [
           "select"
@@ -1343,11 +1642,12 @@
     {
       "module": "Equipamentos",
       "entry": "src/pages/Equipamentos.tsx",
-      "dependencyFileCount": 32,
+      "dependencyFileCount": 46,
       "dependencyFiles": [
         "src/components/equipamentos/ComponenteFormDialog.tsx",
         "src/components/equipamentos/ComponenteTree.tsx",
         "src/components/equipamentos/ComponentesPanel.tsx",
+        "src/components/equipamentos/EquipamentoQRCode.tsx",
         "src/components/ui/alert-dialog.tsx",
         "src/components/ui/badge.tsx",
         "src/components/ui/button.tsx",
@@ -1366,17 +1666,30 @@
         "src/hooks/use-toast.ts",
         "src/hooks/useComponentesEquipamento.ts",
         "src/hooks/useEquipamentos.ts",
+        "src/hooks/useExecucoesOS.ts",
         "src/hooks/useHierarquia.ts",
+        "src/hooks/useOrdensServico.ts",
         "src/integrations/supabase/client.ts",
         "src/integrations/supabase/rpc.ts",
         "src/integrations/supabase/types.ts",
         "src/lib/audit.ts",
+        "src/lib/authConstants.ts",
         "src/lib/logger.ts",
+        "src/lib/monitoring.ts",
         "src/lib/reportGenerator.ts",
         "src/lib/security.ts",
+        "src/lib/sessionTransfer.ts",
         "src/lib/supabaseCompat.ts",
+        "src/lib/tenantLoginFlow.ts",
         "src/lib/utils.ts",
-        "src/pages/Equipamentos.tsx"
+        "src/pages/Equipamentos.tsx",
+        "src/schemas/equipamento.schema.ts",
+        "src/schemas/hierarquia.schema.ts",
+        "src/schemas/ordemServico.schema.ts",
+        "src/services/equipamentos.service.ts",
+        "src/services/hierarquia.service.ts",
+        "src/services/ordensServico.service.ts",
+        "src/services/ownerPortal.service.ts"
       ],
       "tables": {
         "areas": [
@@ -1400,8 +1713,11 @@
         "empresas": [
           "select"
         ],
-        "equipamentos": [
-          "delete",
+        "execucoes_os": [
+          "insert",
+          "select"
+        ],
+        "ordens_servico": [
           "insert",
           "select",
           "update"
@@ -1413,7 +1729,8 @@
           "update"
         ],
         "profiles": [
-          "select"
+          "select",
+          "update"
         ],
         "sistemas": [
           "delete",
@@ -1430,7 +1747,7 @@
     {
       "module": "FecharOS",
       "entry": "src/pages/FecharOS.tsx",
-      "dependencyFileCount": 31,
+      "dependencyFileCount": 42,
       "dependencyFiles": [
         "src/components/os/OSStatusBadge.tsx",
         "src/components/os/OSTypeBadge.tsx",
@@ -1456,12 +1773,23 @@
         "src/integrations/supabase/rpc.ts",
         "src/integrations/supabase/types.ts",
         "src/lib/audit.ts",
+        "src/lib/authConstants.ts",
         "src/lib/logger.ts",
+        "src/lib/monitoring.ts",
         "src/lib/osBadges.ts",
         "src/lib/security.ts",
+        "src/lib/sessionTransfer.ts",
         "src/lib/supabaseCompat.ts",
+        "src/lib/tenantLoginFlow.ts",
         "src/lib/utils.ts",
         "src/pages/FecharOS.tsx",
+        "src/schemas/material.schema.ts",
+        "src/schemas/mecanico.schema.ts",
+        "src/schemas/ordemServico.schema.ts",
+        "src/services/materiais.service.ts",
+        "src/services/mecanicos.service.ts",
+        "src/services/ordensServico.service.ts",
+        "src/services/ownerPortal.service.ts",
         "src/types/index.ts"
       ],
       "tables": {
@@ -1508,7 +1836,8 @@
           "update"
         ],
         "profiles": [
-          "select"
+          "select",
+          "update"
         ],
         "user_roles": [
           "select"
@@ -1519,7 +1848,7 @@
     {
       "module": "FMEA",
       "entry": "src/pages/FMEA.tsx",
-      "dependencyFileCount": 22,
+      "dependencyFileCount": 29,
       "dependencyFiles": [
         "src/components/ui/badge.tsx",
         "src/components/ui/button.tsx",
@@ -1538,11 +1867,18 @@
         "src/integrations/supabase/rpc.ts",
         "src/integrations/supabase/types.ts",
         "src/lib/audit.ts",
+        "src/lib/authConstants.ts",
         "src/lib/logger.ts",
+        "src/lib/monitoring.ts",
         "src/lib/security.ts",
+        "src/lib/sessionTransfer.ts",
         "src/lib/supabaseCompat.ts",
+        "src/lib/tenantLoginFlow.ts",
         "src/lib/utils.ts",
-        "src/pages/FMEA.tsx"
+        "src/pages/FMEA.tsx",
+        "src/schemas/equipamento.schema.ts",
+        "src/services/equipamentos.service.ts",
+        "src/services/ownerPortal.service.ts"
       ],
       "tables": {
         "configuracoes_sistema": [
@@ -1554,12 +1890,6 @@
         "empresas": [
           "select"
         ],
-        "equipamentos": [
-          "delete",
-          "insert",
-          "select",
-          "update"
-        ],
         "fmea": [
           "delete",
           "insert",
@@ -1567,7 +1897,8 @@
           "update"
         ],
         "profiles": [
-          "select"
+          "select",
+          "update"
         ],
         "user_roles": [
           "select"
@@ -1576,9 +1907,26 @@
       "rpc": []
     },
     {
+      "module": "ForgotPassword",
+      "entry": "src/pages/ForgotPassword.tsx",
+      "dependencyFileCount": 8,
+      "dependencyFiles": [
+        "src/components/ui/button.tsx",
+        "src/components/ui/input.tsx",
+        "src/components/ui/label.tsx",
+        "src/integrations/supabase/client.ts",
+        "src/integrations/supabase/types.ts",
+        "src/lib/security.ts",
+        "src/lib/utils.ts",
+        "src/pages/ForgotPassword.tsx"
+      ],
+      "tables": {},
+      "rpc": []
+    },
+    {
       "module": "Fornecedores",
       "entry": "src/pages/Fornecedores.tsx",
-      "dependencyFileCount": 17,
+      "dependencyFileCount": 26,
       "dependencyFiles": [
         "src/components/ui/badge.tsx",
         "src/components/ui/button.tsx",
@@ -1589,25 +1937,50 @@
         "src/components/ui/skeleton.tsx",
         "src/components/ui/textarea.tsx",
         "src/components/ui/toast.tsx",
+        "src/contexts/AuthContext.tsx",
         "src/hooks/use-toast.ts",
         "src/hooks/useFornecedores.ts",
         "src/integrations/supabase/client.ts",
+        "src/integrations/supabase/rpc.ts",
         "src/integrations/supabase/types.ts",
+        "src/lib/audit.ts",
+        "src/lib/authConstants.ts",
+        "src/lib/logger.ts",
+        "src/lib/monitoring.ts",
         "src/lib/security.ts",
+        "src/lib/sessionTransfer.ts",
         "src/lib/supabaseCompat.ts",
+        "src/lib/tenantLoginFlow.ts",
         "src/lib/utils.ts",
-        "src/pages/Fornecedores.tsx"
+        "src/pages/Fornecedores.tsx",
+        "src/services/ownerPortal.service.ts"
       ],
       "tables": {
+        "configuracoes_sistema": [
+          "select"
+        ],
         "contratos": [
           "insert",
           "select",
           "update"
         ],
+        "empresa_config": [
+          "select"
+        ],
+        "empresas": [
+          "select"
+        ],
         "fornecedores": [
           "insert",
           "select",
           "update"
+        ],
+        "profiles": [
+          "select",
+          "update"
+        ],
+        "user_roles": [
+          "select"
         ]
       },
       "rpc": []
@@ -1615,7 +1988,7 @@
     {
       "module": "Hierarquia",
       "entry": "src/pages/Hierarquia.tsx",
-      "dependencyFileCount": 24,
+      "dependencyFileCount": 30,
       "dependencyFiles": [
         "src/components/ui/alert-dialog.tsx",
         "src/components/ui/badge.tsx",
@@ -1636,11 +2009,17 @@
         "src/integrations/supabase/rpc.ts",
         "src/integrations/supabase/types.ts",
         "src/lib/audit.ts",
+        "src/lib/authConstants.ts",
         "src/lib/logger.ts",
+        "src/lib/monitoring.ts",
         "src/lib/security.ts",
-        "src/lib/supabaseCompat.ts",
+        "src/lib/sessionTransfer.ts",
+        "src/lib/tenantLoginFlow.ts",
         "src/lib/utils.ts",
-        "src/pages/Hierarquia.tsx"
+        "src/pages/Hierarquia.tsx",
+        "src/schemas/hierarquia.schema.ts",
+        "src/services/hierarquia.service.ts",
+        "src/services/ownerPortal.service.ts"
       ],
       "tables": {
         "areas": [
@@ -1665,7 +2044,8 @@
           "update"
         ],
         "profiles": [
-          "select"
+          "select",
+          "update"
         ],
         "sistemas": [
           "delete",
@@ -1682,7 +2062,7 @@
     {
       "module": "HistoricoOS",
       "entry": "src/pages/HistoricoOS.tsx",
-      "dependencyFileCount": 36,
+      "dependencyFileCount": 47,
       "dependencyFiles": [
         "src/components/os/OSPrintDialog.tsx",
         "src/components/os/OSPrintTemplate.tsx",
@@ -1709,37 +2089,44 @@
         "src/hooks/useEquipamentos.ts",
         "src/hooks/useExecucoesOS.ts",
         "src/hooks/useOrdensServico.ts",
+        "src/hooks/useTenantAdminConfig.ts",
+        "src/hooks/useTenantPadronizacoes.ts",
         "src/integrations/supabase/client.ts",
         "src/integrations/supabase/rpc.ts",
         "src/integrations/supabase/types.ts",
         "src/lib/audit.ts",
+        "src/lib/authConstants.ts",
         "src/lib/logger.ts",
+        "src/lib/monitoring.ts",
         "src/lib/osBadges.ts",
         "src/lib/security.ts",
+        "src/lib/sessionTransfer.ts",
         "src/lib/supabaseCompat.ts",
+        "src/lib/tenantLoginFlow.ts",
         "src/lib/utils.ts",
         "src/pages/HistoricoOS.tsx",
+        "src/schemas/equipamento.schema.ts",
+        "src/schemas/ordemServico.schema.ts",
+        "src/services/equipamentos.service.ts",
+        "src/services/ordensServico.service.ts",
+        "src/services/ownerPortal.service.ts",
         "src/types/index.ts"
       ],
       "tables": {
         "configuracoes_sistema": [
-          "select"
+          "select",
+          "upsert"
         ],
         "dados_empresa": [
           "select",
-          "update"
+          "update",
+          "upsert"
         ],
         "empresa_config": [
           "select"
         ],
         "empresas": [
           "select"
-        ],
-        "equipamentos": [
-          "delete",
-          "insert",
-          "select",
-          "update"
         ],
         "execucoes_os": [
           "insert",
@@ -1751,7 +2138,8 @@
           "update"
         ],
         "profiles": [
-          "select"
+          "select",
+          "update"
         ],
         "user_roles": [
           "select"
@@ -1762,7 +2150,7 @@
     {
       "module": "Index",
       "entry": "src/pages/Index.tsx",
-      "dependencyFileCount": 9,
+      "dependencyFileCount": 15,
       "dependencyFiles": [
         "src/assets/gppis-logo.png",
         "src/contexts/AuthContext.tsx",
@@ -1770,9 +2158,15 @@
         "src/integrations/supabase/rpc.ts",
         "src/integrations/supabase/types.ts",
         "src/lib/audit.ts",
+        "src/lib/authConstants.ts",
         "src/lib/logger.ts",
+        "src/lib/monitoring.ts",
+        "src/lib/navigationState.ts",
         "src/lib/security.ts",
-        "src/pages/Index.tsx"
+        "src/lib/sessionTransfer.ts",
+        "src/lib/tenantLoginFlow.ts",
+        "src/pages/Index.tsx",
+        "src/services/ownerPortal.service.ts"
       ],
       "tables": {
         "configuracoes_sistema": [
@@ -1785,7 +2179,8 @@
           "select"
         ],
         "profiles": [
-          "select"
+          "select",
+          "update"
         ],
         "user_roles": [
           "select"
@@ -1796,8 +2191,9 @@
     {
       "module": "Inspecoes",
       "entry": "src/pages/Inspecoes.tsx",
-      "dependencyFileCount": 22,
+      "dependencyFileCount": 34,
       "dependencyFiles": [
+        "src/components/ui/alert-dialog.tsx",
         "src/components/ui/badge.tsx",
         "src/components/ui/button.tsx",
         "src/components/ui/dialog.tsx",
@@ -1809,17 +2205,28 @@
         "src/components/ui/toast.tsx",
         "src/contexts/AuthContext.tsx",
         "src/hooks/use-toast.ts",
+        "src/hooks/useEquipamentos.ts",
         "src/hooks/useInspecoes.ts",
+        "src/hooks/useOrdensServico.ts",
         "src/integrations/supabase/client.ts",
         "src/integrations/supabase/rpc.ts",
         "src/integrations/supabase/types.ts",
         "src/lib/audit.ts",
+        "src/lib/authConstants.ts",
         "src/lib/logger.ts",
+        "src/lib/monitoring.ts",
         "src/lib/security.ts",
+        "src/lib/sessionTransfer.ts",
         "src/lib/supabaseCompat.ts",
+        "src/lib/tenantLoginFlow.ts",
         "src/lib/utils.ts",
         "src/pages/Inspecoes.tsx",
-        "src/services/maintenanceSchedule.ts"
+        "src/schemas/equipamento.schema.ts",
+        "src/schemas/ordemServico.schema.ts",
+        "src/services/equipamentos.service.ts",
+        "src/services/maintenanceSchedule.ts",
+        "src/services/ordensServico.service.ts",
+        "src/services/ownerPortal.service.ts"
       ],
       "tables": {
         "anomalias_inspecao": [
@@ -1844,8 +2251,14 @@
           "delete",
           "upsert"
         ],
+        "ordens_servico": [
+          "insert",
+          "select",
+          "update"
+        ],
         "profiles": [
-          "select"
+          "select",
+          "update"
         ],
         "user_roles": [
           "select"
@@ -1856,11 +2269,12 @@
     {
       "module": "Instalar",
       "entry": "src/pages/Instalar.tsx",
-      "dependencyFileCount": 5,
+      "dependencyFileCount": 6,
       "dependencyFiles": [
         "src/components/ui/button.tsx",
         "src/components/ui/card.tsx",
         "src/lib/logger.ts",
+        "src/lib/monitoring.ts",
         "src/lib/utils.ts",
         "src/pages/Instalar.tsx"
       ],
@@ -1870,7 +2284,7 @@
     {
       "module": "Login",
       "entry": "src/pages/Login.tsx",
-      "dependencyFileCount": 14,
+      "dependencyFileCount": 21,
       "dependencyFiles": [
         "src/components/ui/button.tsx",
         "src/components/ui/input.tsx",
@@ -1882,10 +2296,17 @@
         "src/integrations/supabase/rpc.ts",
         "src/integrations/supabase/types.ts",
         "src/lib/audit.ts",
+        "src/lib/authConstants.ts",
         "src/lib/logger.ts",
+        "src/lib/monitoring.ts",
+        "src/lib/navigationState.ts",
         "src/lib/security.ts",
+        "src/lib/sessionTransfer.ts",
+        "src/lib/tenantDomain.ts",
+        "src/lib/tenantLoginFlow.ts",
         "src/lib/utils.ts",
-        "src/pages/Login.tsx"
+        "src/pages/Login.tsx",
+        "src/services/ownerPortal.service.ts"
       ],
       "tables": {
         "configuracoes_sistema": [
@@ -1898,10 +2319,12 @@
           "select"
         ],
         "empresas": [
-          "select"
+          "select",
+          "update"
         ],
         "profiles": [
-          "select"
+          "select",
+          "update"
         ],
         "user_roles": [
           "select"
@@ -1912,7 +2335,7 @@
     {
       "module": "Lubrificacao",
       "entry": "src/pages/Lubrificacao.tsx",
-      "dependencyFileCount": 28,
+      "dependencyFileCount": 36,
       "dependencyFiles": [
         "src/components/ui/badge.tsx",
         "src/components/ui/button.tsx",
@@ -1926,38 +2349,50 @@
         "src/components/ui/toast.tsx",
         "src/contexts/AuthContext.tsx",
         "src/hooks/use-toast.ts",
+        "src/hooks/useDocumentEngine.ts",
         "src/hooks/useEquipamentos.ts",
         "src/hooks/useLubrificacao.ts",
         "src/integrations/supabase/client.ts",
         "src/integrations/supabase/rpc.ts",
         "src/integrations/supabase/types.ts",
         "src/lib/audit.ts",
+        "src/lib/authConstants.ts",
         "src/lib/logger.ts",
+        "src/lib/monitoring.ts",
         "src/lib/security.ts",
+        "src/lib/sessionTransfer.ts",
         "src/lib/supabaseCompat.ts",
+        "src/lib/tenantLoginFlow.ts",
         "src/lib/utils.ts",
         "src/pages/Lubrificacao.tsx",
         "src/pages/lubrificacao/LubrificacaoDetalhe.tsx",
         "src/pages/lubrificacao/LubrificacaoForm.tsx",
         "src/pages/lubrificacao/LubrificacaoList.tsx",
+        "src/schemas/equipamento.schema.ts",
+        "src/services/equipamentos.service.ts",
         "src/services/maintenanceSchedule.ts",
+        "src/services/ownerPortal.service.ts",
         "src/types/lubrificacao.ts"
       ],
       "tables": {
         "configuracoes_sistema": [
           "select"
         ],
+        "document_layouts": [
+          "insert",
+          "select",
+          "update"
+        ],
+        "document_sequences": [
+          "select",
+          "update",
+          "upsert"
+        ],
         "empresa_config": [
           "select"
         ],
         "empresas": [
           "select"
-        ],
-        "equipamentos": [
-          "delete",
-          "insert",
-          "select",
-          "update"
         ],
         "execucoes_lubrificacao": [
           "insert",
@@ -1978,7 +2413,8 @@
           "update"
         ],
         "profiles": [
-          "select"
+          "select",
+          "update"
         ],
         "user_roles": [
           "select"
@@ -1989,7 +2425,7 @@
     {
       "module": "LubrificacaoDetalhe",
       "entry": "src/pages/lubrificacao/LubrificacaoDetalhe.tsx",
-      "dependencyFileCount": 17,
+      "dependencyFileCount": 24,
       "dependencyFiles": [
         "src/components/ui/badge.tsx",
         "src/components/ui/button.tsx",
@@ -2002,11 +2438,18 @@
         "src/integrations/supabase/rpc.ts",
         "src/integrations/supabase/types.ts",
         "src/lib/audit.ts",
+        "src/lib/authConstants.ts",
         "src/lib/logger.ts",
+        "src/lib/monitoring.ts",
         "src/lib/security.ts",
+        "src/lib/sessionTransfer.ts",
         "src/lib/supabaseCompat.ts",
+        "src/lib/tenantLoginFlow.ts",
         "src/lib/utils.ts",
         "src/pages/lubrificacao/LubrificacaoDetalhe.tsx",
+        "src/schemas/equipamento.schema.ts",
+        "src/services/equipamentos.service.ts",
+        "src/services/ownerPortal.service.ts",
         "src/types/lubrificacao.ts"
       ],
       "tables": {
@@ -2019,14 +2462,9 @@
         "empresas": [
           "select"
         ],
-        "equipamentos": [
-          "delete",
-          "insert",
+        "profiles": [
           "select",
           "update"
-        ],
-        "profiles": [
-          "select"
         ],
         "user_roles": [
           "select"
@@ -2037,7 +2475,7 @@
     {
       "module": "LubrificacaoForm",
       "entry": "src/pages/lubrificacao/LubrificacaoForm.tsx",
-      "dependencyFileCount": 20,
+      "dependencyFileCount": 28,
       "dependencyFiles": [
         "src/components/ui/button.tsx",
         "src/components/ui/dialog.tsx",
@@ -2048,21 +2486,39 @@
         "src/components/ui/toast.tsx",
         "src/contexts/AuthContext.tsx",
         "src/hooks/use-toast.ts",
+        "src/hooks/useDocumentEngine.ts",
         "src/hooks/useEquipamentos.ts",
         "src/integrations/supabase/client.ts",
         "src/integrations/supabase/rpc.ts",
         "src/integrations/supabase/types.ts",
         "src/lib/audit.ts",
+        "src/lib/authConstants.ts",
         "src/lib/logger.ts",
+        "src/lib/monitoring.ts",
         "src/lib/security.ts",
+        "src/lib/sessionTransfer.ts",
         "src/lib/supabaseCompat.ts",
+        "src/lib/tenantLoginFlow.ts",
         "src/lib/utils.ts",
         "src/pages/lubrificacao/LubrificacaoForm.tsx",
+        "src/schemas/equipamento.schema.ts",
+        "src/services/equipamentos.service.ts",
+        "src/services/ownerPortal.service.ts",
         "src/types/lubrificacao.ts"
       ],
       "tables": {
         "configuracoes_sistema": [
           "select"
+        ],
+        "document_layouts": [
+          "insert",
+          "select",
+          "update"
+        ],
+        "document_sequences": [
+          "select",
+          "update",
+          "upsert"
         ],
         "empresa_config": [
           "select"
@@ -2070,14 +2526,9 @@
         "empresas": [
           "select"
         ],
-        "equipamentos": [
-          "delete",
-          "insert",
+        "profiles": [
           "select",
           "update"
-        ],
-        "profiles": [
-          "select"
         ],
         "user_roles": [
           "select"
@@ -2088,7 +2539,7 @@
     {
       "module": "LubrificacaoList",
       "entry": "src/pages/lubrificacao/LubrificacaoList.tsx",
-      "dependencyFileCount": 19,
+      "dependencyFileCount": 26,
       "dependencyFiles": [
         "src/components/ui/badge.tsx",
         "src/components/ui/button.tsx",
@@ -2103,11 +2554,18 @@
         "src/integrations/supabase/rpc.ts",
         "src/integrations/supabase/types.ts",
         "src/lib/audit.ts",
+        "src/lib/authConstants.ts",
         "src/lib/logger.ts",
+        "src/lib/monitoring.ts",
         "src/lib/security.ts",
+        "src/lib/sessionTransfer.ts",
         "src/lib/supabaseCompat.ts",
+        "src/lib/tenantLoginFlow.ts",
         "src/lib/utils.ts",
         "src/pages/lubrificacao/LubrificacaoList.tsx",
+        "src/schemas/equipamento.schema.ts",
+        "src/services/equipamentos.service.ts",
+        "src/services/ownerPortal.service.ts",
         "src/types/lubrificacao.ts"
       ],
       "tables": {
@@ -2120,14 +2578,9 @@
         "empresas": [
           "select"
         ],
-        "equipamentos": [
-          "delete",
-          "insert",
+        "profiles": [
           "select",
           "update"
-        ],
-        "profiles": [
-          "select"
         ],
         "user_roles": [
           "select"
@@ -2138,19 +2591,29 @@
     {
       "module": "ManualOperacao",
       "entry": "src/pages/ManualOperacao.tsx",
-      "dependencyFileCount": 8,
+      "dependencyFileCount": 15,
       "dependencyFiles": [
         "src/contexts/AuthContext.tsx",
+        "src/contexts/BrandingContext.tsx",
+        "src/contexts/TenantContext.tsx",
         "src/integrations/supabase/client.ts",
         "src/integrations/supabase/rpc.ts",
         "src/integrations/supabase/types.ts",
         "src/lib/audit.ts",
+        "src/lib/authConstants.ts",
         "src/lib/logger.ts",
+        "src/lib/monitoring.ts",
         "src/lib/security.ts",
-        "src/pages/ManualOperacao.tsx"
+        "src/lib/sessionTransfer.ts",
+        "src/lib/tenantLoginFlow.ts",
+        "src/pages/ManualOperacao.tsx",
+        "src/services/ownerPortal.service.ts"
       ],
       "tables": {
         "configuracoes_sistema": [
+          "select"
+        ],
+        "dados_empresa": [
           "select"
         ],
         "empresa_config": [
@@ -2160,7 +2623,8 @@
           "select"
         ],
         "profiles": [
-          "select"
+          "select",
+          "update"
         ],
         "user_roles": [
           "select"
@@ -2171,7 +2635,7 @@
     {
       "module": "MasterTI",
       "entry": "src/pages/MasterTI.tsx",
-      "dependencyFileCount": 10,
+      "dependencyFileCount": 15,
       "dependencyFiles": [
         "src/components/ui/tabs.tsx",
         "src/contexts/AuthContext.tsx",
@@ -2179,10 +2643,15 @@
         "src/integrations/supabase/rpc.ts",
         "src/integrations/supabase/types.ts",
         "src/lib/audit.ts",
+        "src/lib/authConstants.ts",
         "src/lib/logger.ts",
+        "src/lib/monitoring.ts",
         "src/lib/security.ts",
+        "src/lib/sessionTransfer.ts",
+        "src/lib/tenantLoginFlow.ts",
         "src/lib/utils.ts",
-        "src/pages/MasterTI.tsx"
+        "src/pages/MasterTI.tsx",
+        "src/services/ownerPortal.service.ts"
       ],
       "tables": {
         "configuracoes_sistema": [
@@ -2195,7 +2664,8 @@
           "select"
         ],
         "profiles": [
-          "select"
+          "select",
+          "update"
         ],
         "user_roles": [
           "select"
@@ -2206,7 +2676,7 @@
     {
       "module": "Materiais",
       "entry": "src/pages/Materiais.tsx",
-      "dependencyFileCount": 23,
+      "dependencyFileCount": 29,
       "dependencyFiles": [
         "src/components/ui/alert-dialog.tsx",
         "src/components/ui/badge.tsx",
@@ -2226,11 +2696,17 @@
         "src/integrations/supabase/rpc.ts",
         "src/integrations/supabase/types.ts",
         "src/lib/audit.ts",
+        "src/lib/authConstants.ts",
         "src/lib/logger.ts",
+        "src/lib/monitoring.ts",
         "src/lib/security.ts",
-        "src/lib/supabaseCompat.ts",
+        "src/lib/sessionTransfer.ts",
+        "src/lib/tenantLoginFlow.ts",
         "src/lib/utils.ts",
-        "src/pages/Materiais.tsx"
+        "src/pages/Materiais.tsx",
+        "src/schemas/material.schema.ts",
+        "src/services/materiais.service.ts",
+        "src/services/ownerPortal.service.ts"
       ],
       "tables": {
         "configuracoes_sistema": [
@@ -2258,7 +2734,8 @@
           "select"
         ],
         "profiles": [
-          "select"
+          "select",
+          "update"
         ],
         "user_roles": [
           "select"
@@ -2269,7 +2746,7 @@
     {
       "module": "Mecanicos",
       "entry": "src/pages/Mecanicos.tsx",
-      "dependencyFileCount": 21,
+      "dependencyFileCount": 32,
       "dependencyFiles": [
         "src/components/ui/alert-dialog.tsx",
         "src/components/ui/button.tsx",
@@ -2282,16 +2759,27 @@
         "src/components/ui/toast.tsx",
         "src/contexts/AuthContext.tsx",
         "src/hooks/use-toast.ts",
+        "src/hooks/useExecucoesOS.ts",
         "src/hooks/useMecanicos.ts",
+        "src/hooks/useOrdensServico.ts",
         "src/integrations/supabase/client.ts",
         "src/integrations/supabase/rpc.ts",
         "src/integrations/supabase/types.ts",
         "src/lib/audit.ts",
+        "src/lib/authConstants.ts",
         "src/lib/logger.ts",
+        "src/lib/monitoring.ts",
         "src/lib/security.ts",
+        "src/lib/sessionTransfer.ts",
         "src/lib/supabaseCompat.ts",
+        "src/lib/tenantLoginFlow.ts",
         "src/lib/utils.ts",
-        "src/pages/Mecanicos.tsx"
+        "src/pages/Mecanicos.tsx",
+        "src/schemas/mecanico.schema.ts",
+        "src/schemas/ordemServico.schema.ts",
+        "src/services/mecanicos.service.ts",
+        "src/services/ordensServico.service.ts",
+        "src/services/ownerPortal.service.ts"
       ],
       "tables": {
         "configuracoes_sistema": [
@@ -2303,14 +2791,24 @@
         "empresas": [
           "select"
         ],
+        "execucoes_os": [
+          "insert",
+          "select"
+        ],
         "mecanicos": [
           "delete",
           "insert",
           "select",
           "update"
         ],
+        "ordens_servico": [
+          "insert",
+          "select",
+          "update"
+        ],
         "profiles": [
-          "select"
+          "select",
+          "update"
         ],
         "user_roles": [
           "select"
@@ -2321,7 +2819,7 @@
     {
       "module": "Melhorias",
       "entry": "src/pages/Melhorias.tsx",
-      "dependencyFileCount": 22,
+      "dependencyFileCount": 29,
       "dependencyFiles": [
         "src/components/ui/badge.tsx",
         "src/components/ui/button.tsx",
@@ -2340,11 +2838,18 @@
         "src/integrations/supabase/rpc.ts",
         "src/integrations/supabase/types.ts",
         "src/lib/audit.ts",
+        "src/lib/authConstants.ts",
         "src/lib/logger.ts",
+        "src/lib/monitoring.ts",
         "src/lib/security.ts",
+        "src/lib/sessionTransfer.ts",
         "src/lib/supabaseCompat.ts",
+        "src/lib/tenantLoginFlow.ts",
         "src/lib/utils.ts",
-        "src/pages/Melhorias.tsx"
+        "src/pages/Melhorias.tsx",
+        "src/schemas/equipamento.schema.ts",
+        "src/services/equipamentos.service.ts",
+        "src/services/ownerPortal.service.ts"
       ],
       "tables": {
         "configuracoes_sistema": [
@@ -2356,19 +2861,14 @@
         "empresas": [
           "select"
         ],
-        "equipamentos": [
-          "delete",
-          "insert",
-          "select",
-          "update"
-        ],
         "melhorias": [
           "insert",
           "select",
           "update"
         ],
         "profiles": [
-          "select"
+          "select",
+          "update"
         ],
         "user_roles": [
           "select"
@@ -2379,9 +2879,10 @@
     {
       "module": "NotFound",
       "entry": "src/pages/NotFound.tsx",
-      "dependencyFileCount": 2,
+      "dependencyFileCount": 3,
       "dependencyFiles": [
         "src/lib/logger.ts",
+        "src/lib/monitoring.ts",
         "src/pages/NotFound.tsx"
       ],
       "tables": {},
@@ -2390,7 +2891,7 @@
     {
       "module": "NovaOS",
       "entry": "src/pages/NovaOS.tsx",
-      "dependencyFileCount": 27,
+      "dependencyFileCount": 41,
       "dependencyFiles": [
         "src/components/os/OSPrintTemplate.tsx",
         "src/components/print/DocumentPrintBase.tsx",
@@ -2408,28 +2909,44 @@
         "src/hooks/useAuditoria.ts",
         "src/hooks/useDadosEmpresa.ts",
         "src/hooks/useEquipamentos.ts",
+        "src/hooks/useMecanicos.ts",
         "src/hooks/useOrdensServico.ts",
         "src/hooks/useSolicitacoes.ts",
+        "src/hooks/useTenantAdminConfig.ts",
+        "src/hooks/useTenantPadronizacoes.ts",
         "src/integrations/supabase/client.ts",
         "src/integrations/supabase/rpc.ts",
         "src/integrations/supabase/types.ts",
         "src/lib/audit.ts",
+        "src/lib/authConstants.ts",
         "src/lib/logger.ts",
+        "src/lib/monitoring.ts",
         "src/lib/security.ts",
+        "src/lib/sessionTransfer.ts",
         "src/lib/supabaseCompat.ts",
+        "src/lib/tenantLoginFlow.ts",
         "src/lib/utils.ts",
-        "src/pages/NovaOS.tsx"
+        "src/pages/NovaOS.tsx",
+        "src/schemas/equipamento.schema.ts",
+        "src/schemas/mecanico.schema.ts",
+        "src/schemas/ordemServico.schema.ts",
+        "src/services/equipamentos.service.ts",
+        "src/services/mecanicos.service.ts",
+        "src/services/ordensServico.service.ts",
+        "src/services/ownerPortal.service.ts"
       ],
       "tables": {
         "audit_logs": [
           "select"
         ],
         "configuracoes_sistema": [
-          "select"
+          "select",
+          "upsert"
         ],
         "dados_empresa": [
           "select",
-          "update"
+          "update",
+          "upsert"
         ],
         "empresa_config": [
           "select"
@@ -2437,7 +2954,7 @@
         "empresas": [
           "select"
         ],
-        "equipamentos": [
+        "mecanicos": [
           "delete",
           "insert",
           "select",
@@ -2449,7 +2966,8 @@
           "update"
         ],
         "profiles": [
-          "select"
+          "select",
+          "update"
         ],
         "user_roles": [
           "select"
@@ -2460,7 +2978,7 @@
     {
       "module": "Owner",
       "entry": "src/pages/Owner.tsx",
-      "dependencyFileCount": 11,
+      "dependencyFileCount": 16,
       "dependencyFiles": [
         "src/contexts/AuthContext.tsx",
         "src/hooks/useOwnerPortal.ts",
@@ -2469,9 +2987,111 @@
         "src/integrations/supabase/types.ts",
         "src/layouts/OwnerPortalLayout.tsx",
         "src/lib/audit.ts",
+        "src/lib/authConstants.ts",
         "src/lib/logger.ts",
+        "src/lib/monitoring.ts",
         "src/lib/security.ts",
+        "src/lib/sessionTransfer.ts",
+        "src/lib/tenantDomain.ts",
+        "src/lib/tenantLoginFlow.ts",
         "src/pages/Owner.tsx",
+        "src/services/ownerPortal.service.ts"
+      ],
+      "tables": {
+        "configuracoes_sistema": [
+          "select"
+        ],
+        "empresa_config": [
+          "select"
+        ],
+        "empresas": [
+          "select",
+          "update"
+        ],
+        "profiles": [
+          "select",
+          "update"
+        ],
+        "user_roles": [
+          "select"
+        ]
+      },
+      "rpc": []
+    },
+    {
+      "module": "Owner2",
+      "entry": "src/pages/Owner2.tsx",
+      "dependencyFileCount": 16,
+      "dependencyFiles": [
+        "src/contexts/AuthContext.tsx",
+        "src/hooks/useOwner2Portal.ts",
+        "src/integrations/supabase/client.ts",
+        "src/integrations/supabase/rpc.ts",
+        "src/integrations/supabase/types.ts",
+        "src/lib/audit.ts",
+        "src/lib/authConstants.ts",
+        "src/lib/logger.ts",
+        "src/lib/monitoring.ts",
+        "src/lib/security.ts",
+        "src/lib/sessionTransfer.ts",
+        "src/lib/tenantDomain.ts",
+        "src/lib/tenantLoginFlow.ts",
+        "src/pages/Owner2.tsx",
+        "src/services/owner2Portal.service.ts",
+        "src/services/ownerPortal.service.ts"
+      ],
+      "tables": {
+        "configuracoes_sistema": [
+          "select"
+        ],
+        "empresa_config": [
+          "select"
+        ],
+        "empresas": [
+          "select",
+          "update"
+        ],
+        "profiles": [
+          "select",
+          "update"
+        ],
+        "user_roles": [
+          "select"
+        ]
+      },
+      "rpc": []
+    },
+    {
+      "module": "PortalMecanicoOS",
+      "entry": "src/pages/PortalMecanicoOS.tsx",
+      "dependencyFileCount": 27,
+      "dependencyFiles": [
+        "src/components/ui/badge.tsx",
+        "src/components/ui/button.tsx",
+        "src/components/ui/card.tsx",
+        "src/components/ui/input.tsx",
+        "src/components/ui/label.tsx",
+        "src/components/ui/toast.tsx",
+        "src/contexts/AuthContext.tsx",
+        "src/hooks/use-toast.ts",
+        "src/hooks/useMecanicos.ts",
+        "src/hooks/useOrdensServico.ts",
+        "src/integrations/supabase/client.ts",
+        "src/integrations/supabase/rpc.ts",
+        "src/integrations/supabase/types.ts",
+        "src/lib/audit.ts",
+        "src/lib/authConstants.ts",
+        "src/lib/logger.ts",
+        "src/lib/monitoring.ts",
+        "src/lib/security.ts",
+        "src/lib/sessionTransfer.ts",
+        "src/lib/tenantLoginFlow.ts",
+        "src/lib/utils.ts",
+        "src/pages/PortalMecanicoOS.tsx",
+        "src/schemas/mecanico.schema.ts",
+        "src/schemas/ordemServico.schema.ts",
+        "src/services/mecanicos.service.ts",
+        "src/services/ordensServico.service.ts",
         "src/services/ownerPortal.service.ts"
       ],
       "tables": {
@@ -2484,15 +3104,22 @@
         "empresas": [
           "select"
         ],
-        "profiles": [
+        "mecanicos": [
           "delete",
-          "select"
+          "insert",
+          "select",
+          "update"
         ],
-        "rbac_user_roles": [
-          "delete"
+        "ordens_servico": [
+          "insert",
+          "select",
+          "update"
+        ],
+        "profiles": [
+          "select",
+          "update"
         ],
         "user_roles": [
-          "delete",
           "select"
         ]
       },
@@ -2501,8 +3128,9 @@
     {
       "module": "Preditiva",
       "entry": "src/pages/Preditiva.tsx",
-      "dependencyFileCount": 24,
+      "dependencyFileCount": 35,
       "dependencyFiles": [
+        "src/components/ui/alert-dialog.tsx",
         "src/components/ui/badge.tsx",
         "src/components/ui/button.tsx",
         "src/components/ui/card.tsx",
@@ -2517,16 +3145,26 @@
         "src/contexts/AuthContext.tsx",
         "src/hooks/use-toast.ts",
         "src/hooks/useEquipamentos.ts",
+        "src/hooks/useOrdensServico.ts",
         "src/integrations/supabase/client.ts",
         "src/integrations/supabase/rpc.ts",
         "src/integrations/supabase/types.ts",
         "src/lib/audit.ts",
+        "src/lib/authConstants.ts",
         "src/lib/logger.ts",
+        "src/lib/monitoring.ts",
         "src/lib/security.ts",
+        "src/lib/sessionTransfer.ts",
         "src/lib/supabaseCompat.ts",
+        "src/lib/tenantLoginFlow.ts",
         "src/lib/utils.ts",
         "src/pages/Preditiva.tsx",
-        "src/services/maintenanceSchedule.ts"
+        "src/schemas/equipamento.schema.ts",
+        "src/schemas/ordemServico.schema.ts",
+        "src/services/equipamentos.service.ts",
+        "src/services/maintenanceSchedule.ts",
+        "src/services/ordensServico.service.ts",
+        "src/services/ownerPortal.service.ts"
       ],
       "tables": {
         "configuracoes_sistema": [
@@ -2538,12 +3176,6 @@
         "empresas": [
           "select"
         ],
-        "equipamentos": [
-          "delete",
-          "insert",
-          "select",
-          "update"
-        ],
         "maintenance_schedule": [
           "delete",
           "upsert"
@@ -2552,8 +3184,14 @@
           "insert",
           "select"
         ],
+        "ordens_servico": [
+          "insert",
+          "select",
+          "update"
+        ],
         "profiles": [
-          "select"
+          "select",
+          "update"
         ],
         "user_roles": [
           "select"
@@ -2564,7 +3202,7 @@
     {
       "module": "Preventiva",
       "entry": "src/pages/Preventiva.tsx",
-      "dependencyFileCount": 38,
+      "dependencyFileCount": 47,
       "dependencyFiles": [
         "src/components/preventiva/PlanoDetailPanel.tsx",
         "src/components/preventiva/PlanoFormDialog.tsx",
@@ -2598,12 +3236,21 @@
         "src/integrations/supabase/rpc.ts",
         "src/integrations/supabase/types.ts",
         "src/lib/audit.ts",
+        "src/lib/authConstants.ts",
         "src/lib/logger.ts",
+        "src/lib/monitoring.ts",
         "src/lib/security.ts",
+        "src/lib/sessionTransfer.ts",
         "src/lib/supabaseCompat.ts",
+        "src/lib/tenantLoginFlow.ts",
         "src/lib/utils.ts",
         "src/pages/Preventiva.tsx",
-        "src/services/maintenanceSchedule.ts"
+        "src/schemas/equipamento.schema.ts",
+        "src/schemas/mecanico.schema.ts",
+        "src/services/equipamentos.service.ts",
+        "src/services/maintenanceSchedule.ts",
+        "src/services/mecanicos.service.ts",
+        "src/services/ownerPortal.service.ts"
       ],
       "tables": {
         "atividades_preventivas": [
@@ -2617,19 +3264,14 @@
         ],
         "dados_empresa": [
           "select",
-          "update"
+          "update",
+          "upsert"
         ],
         "empresa_config": [
           "select"
         ],
         "empresas": [
           "select"
-        ],
-        "equipamentos": [
-          "delete",
-          "insert",
-          "select",
-          "update"
         ],
         "execucoes_preventivas": [
           "insert",
@@ -2653,7 +3295,8 @@
           "update"
         ],
         "profiles": [
-          "select"
+          "select",
+          "update"
         ],
         "servicos_preventivos": [
           "delete",
@@ -2675,7 +3318,7 @@
     {
       "module": "Programacao",
       "entry": "src/pages/Programacao.tsx",
-      "dependencyFileCount": 23,
+      "dependencyFileCount": 35,
       "dependencyFiles": [
         "src/components/ui/badge.tsx",
         "src/components/ui/button.tsx",
@@ -2684,9 +3327,12 @@
         "src/components/ui/input.tsx",
         "src/components/ui/label.tsx",
         "src/components/ui/skeleton.tsx",
+        "src/components/ui/tabs.tsx",
         "src/components/ui/toast.tsx",
         "src/contexts/AuthContext.tsx",
+        "src/contexts/TenantContext.tsx",
         "src/hooks/use-toast.ts",
+        "src/hooks/useDadosEmpresa.ts",
         "src/hooks/useEquipamentos.ts",
         "src/hooks/useMaintenanceSchedule.ts",
         "src/hooks/useOrdensServico.ts",
@@ -2694,28 +3340,36 @@
         "src/integrations/supabase/rpc.ts",
         "src/integrations/supabase/types.ts",
         "src/lib/audit.ts",
+        "src/lib/authConstants.ts",
         "src/lib/logger.ts",
+        "src/lib/monitoring.ts",
         "src/lib/security.ts",
+        "src/lib/sessionTransfer.ts",
         "src/lib/supabaseCompat.ts",
+        "src/lib/tenantLoginFlow.ts",
         "src/lib/utils.ts",
         "src/pages/Programacao.tsx",
-        "src/services/maintenanceSchedule.ts"
+        "src/schemas/equipamento.schema.ts",
+        "src/schemas/ordemServico.schema.ts",
+        "src/services/equipamentos.service.ts",
+        "src/services/maintenanceSchedule.ts",
+        "src/services/ordensServico.service.ts",
+        "src/services/ownerPortal.service.ts"
       ],
       "tables": {
         "configuracoes_sistema": [
           "select"
+        ],
+        "dados_empresa": [
+          "select",
+          "update",
+          "upsert"
         ],
         "empresa_config": [
           "select"
         ],
         "empresas": [
           "select"
-        ],
-        "equipamentos": [
-          "delete",
-          "insert",
-          "select",
-          "update"
         ],
         "maintenance_schedule": [
           "delete",
@@ -2729,7 +3383,8 @@
           "update"
         ],
         "profiles": [
-          "select"
+          "select",
+          "update"
         ],
         "user_roles": [
           "select"
@@ -2740,7 +3395,7 @@
     {
       "module": "RCA",
       "entry": "src/pages/RCA.tsx",
-      "dependencyFileCount": 22,
+      "dependencyFileCount": 29,
       "dependencyFiles": [
         "src/components/ui/badge.tsx",
         "src/components/ui/button.tsx",
@@ -2759,11 +3414,18 @@
         "src/integrations/supabase/rpc.ts",
         "src/integrations/supabase/types.ts",
         "src/lib/audit.ts",
+        "src/lib/authConstants.ts",
         "src/lib/logger.ts",
+        "src/lib/monitoring.ts",
         "src/lib/security.ts",
+        "src/lib/sessionTransfer.ts",
         "src/lib/supabaseCompat.ts",
+        "src/lib/tenantLoginFlow.ts",
         "src/lib/utils.ts",
-        "src/pages/RCA.tsx"
+        "src/pages/RCA.tsx",
+        "src/schemas/equipamento.schema.ts",
+        "src/services/equipamentos.service.ts",
+        "src/services/ownerPortal.service.ts"
       ],
       "tables": {
         "acoes_corretivas": [
@@ -2785,14 +3447,9 @@
         "empresas": [
           "select"
         ],
-        "equipamentos": [
-          "delete",
-          "insert",
+        "profiles": [
           "select",
           "update"
-        ],
-        "profiles": [
-          "select"
         ],
         "user_roles": [
           "select"
@@ -2803,7 +3460,7 @@
     {
       "module": "Relatorios",
       "entry": "src/pages/Relatorios.tsx",
-      "dependencyFileCount": 23,
+      "dependencyFileCount": 30,
       "dependencyFiles": [
         "src/components/ui/badge.tsx",
         "src/components/ui/button.tsx",
@@ -2822,11 +3479,18 @@
         "src/integrations/supabase/rpc.ts",
         "src/integrations/supabase/types.ts",
         "src/lib/audit.ts",
+        "src/lib/authConstants.ts",
         "src/lib/logger.ts",
+        "src/lib/monitoring.ts",
         "src/lib/reportGenerator.ts",
         "src/lib/security.ts",
+        "src/lib/sessionTransfer.ts",
+        "src/lib/tenantLoginFlow.ts",
         "src/lib/utils.ts",
         "src/pages/Relatorios.tsx",
+        "src/schemas/ordemServico.schema.ts",
+        "src/services/ordensServico.service.ts",
+        "src/services/ownerPortal.service.ts",
         "src/types/index.ts"
       ],
       "tables": {
@@ -2835,7 +3499,8 @@
         ],
         "dados_empresa": [
           "select",
-          "update"
+          "update",
+          "upsert"
         ],
         "empresa_config": [
           "select"
@@ -2852,7 +3517,51 @@
           "update"
         ],
         "profiles": [
+          "select",
+          "update"
+        ],
+        "user_roles": [
           "select"
+        ]
+      },
+      "rpc": []
+    },
+    {
+      "module": "ResetPassword",
+      "entry": "src/pages/ResetPassword.tsx",
+      "dependencyFileCount": 17,
+      "dependencyFiles": [
+        "src/components/ui/button.tsx",
+        "src/components/ui/input.tsx",
+        "src/components/ui/label.tsx",
+        "src/contexts/AuthContext.tsx",
+        "src/integrations/supabase/client.ts",
+        "src/integrations/supabase/rpc.ts",
+        "src/integrations/supabase/types.ts",
+        "src/lib/audit.ts",
+        "src/lib/authConstants.ts",
+        "src/lib/logger.ts",
+        "src/lib/monitoring.ts",
+        "src/lib/security.ts",
+        "src/lib/sessionTransfer.ts",
+        "src/lib/tenantLoginFlow.ts",
+        "src/lib/utils.ts",
+        "src/pages/ResetPassword.tsx",
+        "src/services/ownerPortal.service.ts"
+      ],
+      "tables": {
+        "configuracoes_sistema": [
+          "select"
+        ],
+        "empresa_config": [
+          "select"
+        ],
+        "empresas": [
+          "select"
+        ],
+        "profiles": [
+          "select",
+          "update"
         ],
         "user_roles": [
           "select"
@@ -2863,7 +3572,7 @@
     {
       "module": "Solicitacoes",
       "entry": "src/pages/Solicitacoes.tsx",
-      "dependencyFileCount": 22,
+      "dependencyFileCount": 31,
       "dependencyFiles": [
         "src/components/ui/badge.tsx",
         "src/components/ui/button.tsx",
@@ -2878,19 +3587,29 @@
         "src/hooks/use-toast.ts",
         "src/hooks/useEquipamentos.ts",
         "src/hooks/useSolicitacoes.ts",
+        "src/hooks/useTenantAdminConfig.ts",
+        "src/hooks/useTenantPadronizacoes.ts",
         "src/integrations/supabase/client.ts",
         "src/integrations/supabase/rpc.ts",
         "src/integrations/supabase/types.ts",
         "src/lib/audit.ts",
+        "src/lib/authConstants.ts",
         "src/lib/logger.ts",
+        "src/lib/monitoring.ts",
         "src/lib/security.ts",
+        "src/lib/sessionTransfer.ts",
         "src/lib/supabaseCompat.ts",
+        "src/lib/tenantLoginFlow.ts",
         "src/lib/utils.ts",
-        "src/pages/Solicitacoes.tsx"
+        "src/pages/Solicitacoes.tsx",
+        "src/schemas/equipamento.schema.ts",
+        "src/services/equipamentos.service.ts",
+        "src/services/ownerPortal.service.ts"
       ],
       "tables": {
         "configuracoes_sistema": [
-          "select"
+          "select",
+          "upsert"
         ],
         "empresa_config": [
           "select"
@@ -2898,14 +3617,9 @@
         "empresas": [
           "select"
         ],
-        "equipamentos": [
-          "delete",
-          "insert",
+        "profiles": [
           "select",
           "update"
-        ],
-        "profiles": [
-          "select"
         ],
         "user_roles": [
           "select"
@@ -2916,7 +3630,7 @@
     {
       "module": "SSMA",
       "entry": "src/pages/SSMA.tsx",
-      "dependencyFileCount": 23,
+      "dependencyFileCount": 30,
       "dependencyFiles": [
         "src/components/ui/badge.tsx",
         "src/components/ui/button.tsx",
@@ -2936,11 +3650,18 @@
         "src/integrations/supabase/rpc.ts",
         "src/integrations/supabase/types.ts",
         "src/lib/audit.ts",
+        "src/lib/authConstants.ts",
         "src/lib/logger.ts",
+        "src/lib/monitoring.ts",
         "src/lib/security.ts",
+        "src/lib/sessionTransfer.ts",
         "src/lib/supabaseCompat.ts",
+        "src/lib/tenantLoginFlow.ts",
         "src/lib/utils.ts",
-        "src/pages/SSMA.tsx"
+        "src/pages/SSMA.tsx",
+        "src/schemas/equipamento.schema.ts",
+        "src/services/equipamentos.service.ts",
+        "src/services/ownerPortal.service.ts"
       ],
       "tables": {
         "configuracoes_sistema": [
@@ -2951,12 +3672,6 @@
         ],
         "empresas": [
           "select"
-        ],
-        "equipamentos": [
-          "delete",
-          "insert",
-          "select",
-          "update"
         ],
         "incidentes_ssma": [
           "insert",
@@ -2969,7 +3684,8 @@
           "update"
         ],
         "profiles": [
-          "select"
+          "select",
+          "update"
         ],
         "user_roles": [
           "select"
@@ -2980,7 +3696,7 @@
     {
       "module": "Suporte",
       "entry": "src/pages/Suporte.tsx",
-      "dependencyFileCount": 16,
+      "dependencyFileCount": 22,
       "dependencyFiles": [
         "src/components/ui/button.tsx",
         "src/components/ui/input.tsx",
@@ -2994,10 +3710,16 @@
         "src/integrations/supabase/rpc.ts",
         "src/integrations/supabase/types.ts",
         "src/lib/audit.ts",
+        "src/lib/authConstants.ts",
         "src/lib/logger.ts",
+        "src/lib/monitoring.ts",
         "src/lib/security.ts",
+        "src/lib/sessionTransfer.ts",
+        "src/lib/tenantLoginFlow.ts",
         "src/lib/utils.ts",
-        "src/pages/Suporte.tsx"
+        "src/pages/Suporte.tsx",
+        "src/services/ownerPortal.service.ts",
+        "src/services/storage.ts"
       ],
       "tables": {
         "configuracoes_sistema": [
@@ -3010,11 +3732,59 @@
           "select"
         ],
         "profiles": [
-          "select"
+          "select",
+          "update"
         ],
         "support_tickets": [
           "insert",
+          "select",
+          "update"
+        ],
+        "user_roles": [
           "select"
+        ]
+      },
+      "rpc": []
+    },
+    {
+      "module": "SystemStatus",
+      "entry": "src/pages/SystemStatus.tsx",
+      "dependencyFileCount": 17,
+      "dependencyFiles": [
+        "src/components/ui/badge.tsx",
+        "src/components/ui/card.tsx",
+        "src/components/ui/progress.tsx",
+        "src/contexts/AuthContext.tsx",
+        "src/integrations/supabase/client.ts",
+        "src/integrations/supabase/rpc.ts",
+        "src/integrations/supabase/types.ts",
+        "src/lib/audit.ts",
+        "src/lib/authConstants.ts",
+        "src/lib/logger.ts",
+        "src/lib/monitoring.ts",
+        "src/lib/security.ts",
+        "src/lib/sessionTransfer.ts",
+        "src/lib/tenantLoginFlow.ts",
+        "src/lib/utils.ts",
+        "src/pages/SystemStatus.tsx",
+        "src/services/ownerPortal.service.ts"
+      ],
+      "tables": {
+        "configuracoes_sistema": [
+          "select"
+        ],
+        "empresa_config": [
+          "select"
+        ],
+        "empresas": [
+          "select"
+        ],
+        "ordens_servico": [
+          "select"
+        ],
+        "profiles": [
+          "select",
+          "update"
         ],
         "user_roles": [
           "select"
@@ -3025,7 +3795,7 @@
     {
       "module": "Usuarios",
       "entry": "src/pages/Usuarios.tsx",
-      "dependencyFileCount": 18,
+      "dependencyFileCount": 23,
       "dependencyFiles": [
         "src/components/ui/button.tsx",
         "src/components/ui/dialog.tsx",
@@ -3041,10 +3811,15 @@
         "src/integrations/supabase/rpc.ts",
         "src/integrations/supabase/types.ts",
         "src/lib/audit.ts",
+        "src/lib/authConstants.ts",
         "src/lib/logger.ts",
+        "src/lib/monitoring.ts",
         "src/lib/security.ts",
+        "src/lib/sessionTransfer.ts",
+        "src/lib/tenantLoginFlow.ts",
         "src/lib/utils.ts",
-        "src/pages/Usuarios.tsx"
+        "src/pages/Usuarios.tsx",
+        "src/services/ownerPortal.service.ts"
       ],
       "tables": {
         "configuracoes_sistema": [
