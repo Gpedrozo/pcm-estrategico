@@ -29,16 +29,16 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Loader2, AlertCircle, Settings } from 'lucide-react';
 import { z } from 'zod';
-
-const SESSION_TRANSFER_REDIRECT_STORAGE_KEY = 'pcm.auth.session_transfer.redirect.v1';
-const SESSION_TRANSFER_CONSUMED_STORAGE_KEY = 'pcm.auth.session_transfer.consumed.v1';
-const SESSION_TRANSFER_CONSUMED_MAX_AGE_MS = 2 * 60 * 1000;
-const CROSS_DOMAIN_REDIRECT_MARKER_STORAGE_KEY = 'pcm.auth.cross_domain_redirect.v1';
-const LOGIN_REDIRECT_LOCK_KEY = 'pcm.auth.login_redirect_lock.v2';
-const LOGIN_REDIRECT_LOCK_TTL_MS = 15_000;
-const INACTIVITY_NOTICE_STORAGE_KEY = 'pcm.auth.inactivity.notice.v1';
-
-const TENANT_REDIRECT_TIMEOUT_MS = 6_000;
+import {
+  SESSION_TRANSFER_REDIRECT_STORAGE_KEY,
+  SESSION_TRANSFER_CONSUMED_STORAGE_KEY,
+  SESSION_TRANSFER_CONSUMED_MAX_AGE_MS,
+  CROSS_DOMAIN_REDIRECT_MARKER_STORAGE_KEY,
+  LOGIN_REDIRECT_LOCK_KEY,
+  LOGIN_REDIRECT_LOCK_TTL_MS,
+  INACTIVITY_NOTICE_STORAGE_KEY,
+  TENANT_REDIRECT_TIMEOUT_MS,
+} from '@/lib/authConstants';
 
 async function withTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T> {
   let timer: number | null = null;

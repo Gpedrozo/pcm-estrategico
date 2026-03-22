@@ -97,6 +97,26 @@ export async function requireUser(req: Request, options?: { allowPasswordChangeF
   return { user: data.user, token, admin } as const;
 }
 
+/**
+ * Verifica se o usuário tem role de Owner (SYSTEM_OWNER ou SYSTEM_ADMIN).
+ * Usado para proteger o módulo Owner/Owner2. MASTER_TI NÃO tem acesso.
+ */
+export async function isOwnerOperator(admin: ReturnType<typeof adminClient>, userId: string) {
+  const { data, error } = await admin
+    .from("user_roles")
+    .select("role")
+    .eq("user_id", userId)
+    .in("role", ["SYSTEM_OWNER", "SYSTEM_ADMIN"])
+    .limit(1);
+
+  if (error) return false;
+  return Array.isArray(data) && data.length > 0;
+}
+
+/**
+ * Verifica se o usuário tem role de operador global (acesso cross-empresa).
+ * Inclui MASTER_TI para bypass de empresa, mas NÃO dá acesso ao Owner.
+ */
 export async function isSystemOperator(admin: ReturnType<typeof adminClient>, userId: string) {
   const { data, error } = await admin
     .from("user_roles")

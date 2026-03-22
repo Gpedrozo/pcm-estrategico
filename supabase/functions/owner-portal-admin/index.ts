@@ -1,5 +1,5 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { adminClient, isSystemOperator, requireUser, unauthorizedResponse } from "../_shared/auth.ts";
+import { adminClient, isOwnerOperator, isSystemOperator, requireUser, unauthorizedResponse } from "../_shared/auth.ts";
 import { fail, ok, preflight, rejectIfOriginNotAllowed, resolveCorsHeaders } from "../_shared/response.ts";
 import { enforceRateLimit } from "../_shared/rateLimit.ts";
 import { createRequestTrace, traceDurationMs, writeOperationalLog } from "../_shared/observability.ts";
@@ -374,14 +374,18 @@ function shouldEnforceRateLimit(action: Payload["action"]) {
 
 const OWNER_RATE_LIMIT_ENABLED = (Deno.env.get("OWNER_RATE_LIMIT_ENABLED") ?? "false").toLowerCase() === "true";
 
-function isSystemOperatorFromJwt(user: any) {
+/**
+ * Verifica se o JWT do usuário contém role de Owner (SYSTEM_OWNER ou SYSTEM_ADMIN).
+ * MASTER_TI NÃO tem acesso ao módulo Owner.
+ */
+function isOwnerOperatorFromJwt(user: any) {
   const appMetadata = (user?.app_metadata ?? {}) as Record<string, unknown>;
   const roleFromToken = String(appMetadata.role ?? "").toUpperCase();
   const rolesFromToken = Array.isArray(appMetadata.roles)
     ? appMetadata.roles.map((value) => String(value).toUpperCase())
     : [];
 
-  const allowed = new Set(["SYSTEM_OWNER", "SYSTEM_ADMIN", "MASTER_TI"]);
+  const allowed = new Set(["SYSTEM_OWNER", "SYSTEM_ADMIN"]);
   if (roleFromToken && allowed.has(roleFromToken)) return true;
   return rolesFromToken.some((role) => allowed.has(role));
 }
@@ -1562,8 +1566,8 @@ Deno.serve(async (req) => {
   if ("error" in auth) return unauthorizedResponse(req);
 
   const admin = auth.admin;
-  const isSystem = isSystemOperatorFromJwt(auth.user) || await isSystemOperator(admin, auth.user.id);
-  if (!isSystem) return forbiddenResponse(req);
+  const isOwner = isOwnerOperatorFromJwt(auth.user) || await isOwnerOperator(admin, auth.user.id);
+  if (!isOwner) return forbiddenResponse(req);
 
   const rawBody = await req.json().catch(() => null);
   if (!isOwnerActionPayload(rawBody)) return badRequestResponse(req, "Missing action", 400);
@@ -1633,8 +1637,12 @@ Deno.serve(async (req) => {
     || Boolean(ownerRoleRow?.user_id)
     || isKnownOwnerMasterEmail(auth.user.email ?? null);
 
+  // SYSTEM_OWNER (role) tem acesso total; email é fallback.
+  // SYSTEM_ADMIN NÃO passa aqui → bloqueado de ações destrutivas.
   const isStrictOwnerMaster =
-    isOwnerMasterEmail(auth.user.email ?? null, ownerMasterEmail)
+    hasSystemOwnerRole(auth.user)
+    || Boolean(ownerRoleRow?.user_id)
+    || isOwnerMasterEmail(auth.user.email ?? null, ownerMasterEmail)
     || isKnownOwnerMasterEmail(auth.user.email ?? null);
 
   const ownerMasterOnlyActions = new Set<Payload["action"]>([

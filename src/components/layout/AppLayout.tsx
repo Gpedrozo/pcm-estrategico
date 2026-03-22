@@ -14,8 +14,7 @@ import { createSessionTransferHash } from '@/lib/sessionTransfer';
 import { logger } from '@/lib/logger';
 import { isPersistableAppPath, persistLastAppRoute } from '@/lib/navigationState';
 import { useApplyTenantVisualIdentity, useTenantVisualIdentity } from '@/hooks/useTenantVisualIdentity';
-
-const SESSION_TRANSFER_REDIRECT_STORAGE_KEY = 'pcm.auth.session_transfer.redirect.v1';
+import { SESSION_TRANSFER_REDIRECT_STORAGE_KEY } from '@/lib/authConstants';
 const AUTH_RETRY_COUNT_PARAM = 'retry_count';
 
 export function AppLayout() {

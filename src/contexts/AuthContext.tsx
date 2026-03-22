@@ -18,6 +18,29 @@ import {
 } from '@/lib/sessionTransfer';
 import { HANDOFF_FAILED_PARAM, resolveTenantHostSlug } from '@/lib/tenantLoginFlow';
 import { validateImpersonationSession } from '@/services/ownerPortal.service';
+import {
+  IMPERSONATION_STORAGE_KEY,
+  TENANT_BASE_DOMAIN,
+  LOGOUT_MARKER_PARAM,
+  LOGOUT_REASON_PARAM,
+  TAB_CLOSE_MARKER_STORAGE_KEY,
+  TAB_CLOSE_MARKER_MAX_AGE_MS,
+  DEFAULT_INACTIVITY_TIMEOUT_MS,
+  INACTIVITY_NOTICE_STORAGE_KEY,
+  SESSION_TRANSFER_MAX_AGE_MS,
+  SESSION_TRANSFER_REDIRECT_STORAGE_KEY,
+  SESSION_TRANSFER_REDIRECT_MAX_AGE_MS,
+  SESSION_TRANSFER_CONSUMED_STORAGE_KEY,
+  SESSION_TRANSFER_PARAM,
+  CROSS_DOMAIN_REDIRECT_MARKER_STORAGE_KEY,
+  CROSS_DOMAIN_REDIRECT_MARKER_MAX_AGE_MS,
+  LOGIN_PROFILE_TIMEOUT_MS,
+  TENANT_HOST_RESOLVE_TIMEOUT_MS,
+  HYDRATION_TIMEOUT_MS,
+  AUTH_REDIRECT_RETRY_STORAGE_KEY,
+  AUTH_REDIRECT_RETRY_MAX,
+  OWNER_EDGE_LOGIN_ENDPOINT,
+} from '@/lib/authConstants';
 
 export interface AuthUser {
   id: string;
@@ -65,31 +88,11 @@ export interface AuthContextType {
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
-const IMPERSONATION_STORAGE_KEY = 'pcm.owner.impersonation.session';
-const TENANT_BASE_DOMAIN = (import.meta.env.VITE_TENANT_BASE_DOMAIN || 'gppis.com.br').toLowerCase();
-const LOGOUT_MARKER_PARAM = 'logout';
-const LOGOUT_REASON_PARAM = 'reason';
-const TAB_CLOSE_MARKER_STORAGE_KEY = 'pcm.auth.window_closed.v1';
-const TAB_CLOSE_MARKER_MAX_AGE_MS = 12 * 60 * 60 * 1000;
-const DEFAULT_INACTIVITY_TIMEOUT_MS = 10 * 60 * 1000;
-const INACTIVITY_NOTICE_STORAGE_KEY = 'pcm.auth.inactivity.notice.v1';
-const SESSION_TRANSFER_MAX_AGE_MS = 2 * 60 * 1000;
-const SESSION_TRANSFER_REDIRECT_STORAGE_KEY = 'pcm.auth.session_transfer.redirect.v1';
-const SESSION_TRANSFER_REDIRECT_MAX_AGE_MS = 15_000;
-const SESSION_TRANSFER_CONSUMED_STORAGE_KEY = 'pcm.auth.session_transfer.consumed.v1';
-const SESSION_TRANSFER_PARAM = 'session_transfer';
-const CROSS_DOMAIN_REDIRECT_MARKER_STORAGE_KEY = 'pcm.auth.cross_domain_redirect.v1';
-const CROSS_DOMAIN_REDIRECT_MARKER_MAX_AGE_MS = 60_000;
-const LOGIN_PROFILE_TIMEOUT_MS = 12_000;
-const TENANT_HOST_RESOLVE_TIMEOUT_MS = 6_000;
-const HYDRATION_TIMEOUT_MS = 12_000;
+
 const LOGIN_RATE_LIMIT_STORAGE_KEY = 'pcm.auth.login.rate_limit.v1';
 const LOGIN_RATE_LIMIT_MAX_ATTEMPTS = 5;
 const LOGIN_RATE_LIMIT_WINDOW_MS = 5 * 60 * 1000;
 const LOGIN_RATE_LIMIT_BLOCK_MS = 15 * 60 * 1000;
-const AUTH_REDIRECT_RETRY_STORAGE_KEY = 'pcm.auth.redirect.retry.v1';
-const AUTH_REDIRECT_RETRY_MAX = 2;
-const OWNER_EDGE_LOGIN_ENDPOINT = '/functions/v1/auth-login';
 
 type OwnerEdgeLoginResult = {
   ok: boolean;

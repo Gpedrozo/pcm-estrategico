@@ -1,5 +1,5 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { adminClient, isSystemOperator, requireUser } from "../_shared/auth.ts";
+import { adminClient, isOwnerOperator, requireUser } from "../_shared/auth.ts";
 import { fail, ok, preflight, rejectIfOriginNotAllowed } from "../_shared/response.ts";
 
 Deno.serve(async (req) => {
@@ -14,7 +14,7 @@ Deno.serve(async (req) => {
   if ("error" in auth) return fail(auth.error ?? "Unauthorized", auth.status ?? 401, null, req);
 
   const admin = adminClient();
-  const allowed = await isSystemOperator(admin, auth.user.id);
+  const allowed = await isOwnerOperator(admin, auth.user.id);
   if (!allowed) return fail("Forbidden", 403, null, req);
 
   const today = new Date().toISOString().slice(0, 10);

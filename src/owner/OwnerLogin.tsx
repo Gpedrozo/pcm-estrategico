@@ -11,8 +11,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { z } from 'zod';
-
-const SESSION_TRANSFER_REDIRECT_STORAGE_KEY = 'pcm.auth.session_transfer.redirect.v1';
+import { SESSION_TRANSFER_REDIRECT_STORAGE_KEY } from '@/lib/authConstants';
 
 const loginSchema = z.object({
   email: z
