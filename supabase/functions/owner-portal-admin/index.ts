@@ -2619,6 +2619,20 @@ Deno.serve(async (req) => {
 
   if (body.action === "set_user_status") {
     if (!body.user_id || !body.status) return fail("user_id and status are required", 400, null, req);
+
+    if (body.user_id === auth.user.id) {
+      return fail("Não é permitido alterar o status do próprio usuário.", 400, null, req);
+    }
+
+    const { data: targetRoles } = await admin
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", body.user_id);
+    const targetRoleNames = (targetRoles ?? []).map((r: any) => r.role);
+    if (targetRoleNames.includes("SYSTEM_OWNER") || targetRoleNames.includes("SYSTEM_ADMIN")) {
+      return fail("Não é permitido desativar usuários SYSTEM_OWNER ou SYSTEM_ADMIN via esta ação.", 400, null, req);
+    }
+
     const enabled = body.status === "ativo";
     const { error } = await admin.auth.admin.updateUserById(body.user_id, {
       ban_duration: enabled ? "none" : "876000h",
@@ -3548,13 +3562,33 @@ Deno.serve(async (req) => {
 
     let ownerUserId = existingUser?.id ?? null;
 
+    const { data: company } = await admin
+      .from("empresas")
+      .select("id,slug")
+      .order("created_at", { ascending: true })
+      .limit(1)
+      .maybeSingle();
+
+    if (!company?.id) return fail("Nenhuma empresa disponível para vínculo do owner", 400, null, req);
+
+    const ownerRole = body.owner_user.role ?? "SYSTEM_ADMIN";
+
     if (!ownerUserId) {
       const { data: createdAuth, error: createAuthError } = await admin.auth.admin.createUser({
         email: normalizedEmail,
         password,
         email_confirm: true,
+        app_metadata: {
+          empresa_id: company.id,
+          empresa_slug: company.slug ?? null,
+          role: ownerRole,
+          roles: [ownerRole],
+        },
         user_metadata: {
           nome: body.owner_user.nome,
+          empresa_id: company.id,
+          empresa_slug: company.slug ?? null,
+          email_verified: true,
         },
       });
 
@@ -3564,17 +3598,6 @@ Deno.serve(async (req) => {
 
       ownerUserId = createdAuth.user.id;
     }
-
-    const { data: company } = await admin
-      .from("empresas")
-      .select("id")
-      .order("created_at", { ascending: true })
-      .limit(1)
-      .maybeSingle();
-
-    if (!company?.id) return fail("Nenhuma empresa disponível para vínculo do owner", 400, null, req);
-
-    const ownerRole = body.owner_user.role ?? "SYSTEM_ADMIN";
 
     const { error: profileError } = await admin
       .from("profiles")
@@ -3748,14 +3771,15 @@ Deno.serve(async (req) => {
       .limit(1);
     hasEmpresaId = !empresaIdProbe.error;
 
-    let query = admin.from(tableName).delete({ count: "exact" });
-
-    if (body.empresa_id) {
-      if (!hasEmpresaId) {
-        return fail("Tabela sem empresa_id; remova o filtro de empresa para purge global.", 400, null, req);
-      }
-      query = query.eq("empresa_id", body.empresa_id);
+    if (!body.empresa_id) {
+      return fail("empresa_id é obrigatório para purge_table_data. Purge global não é permitido.", 400, null, req);
     }
+
+    if (!hasEmpresaId) {
+      return fail("Tabela não possui coluna empresa_id; purge não é possível com filtro de empresa.", 400, null, req);
+    }
+
+    let query = admin.from(tableName).delete({ count: "exact" }).eq("empresa_id", body.empresa_id);
 
     const { count, error } = await query;
     if (error) return fail(`Falha ao limpar tabela ${tableName}: ${error.message}`, 400, null, req);
@@ -4223,8 +4247,16 @@ Deno.serve(async (req) => {
       if (profilesDeleteError) return fail(profilesDeleteError.message, 400, null, req);
       summary.profiles = stressUserIds.length;
 
+      const deleteErrors: string[] = [];
       for (const userId of stressUserIds) {
-        await admin.auth.admin.deleteUser(userId);
+        try {
+          await admin.auth.admin.deleteUser(userId);
+        } catch (e: any) {
+          deleteErrors.push(`${userId}: ${e?.message ?? "unknown"}`);
+        }
+      }
+      if (deleteErrors.length > 0) {
+        summary.auth_delete_errors = deleteErrors;
       }
     }
 

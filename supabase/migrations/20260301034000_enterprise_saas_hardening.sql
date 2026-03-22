@@ -37,7 +37,6 @@ BEGIN
   END LOOP;
 END;
 $$;
-
 CREATE UNIQUE INDEX IF NOT EXISTS idx_empresas_nome ON public.empresas (nome);
 
 DO $$
