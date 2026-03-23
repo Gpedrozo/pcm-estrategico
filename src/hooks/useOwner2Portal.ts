@@ -112,11 +112,28 @@ export function useOwner2PlatformOwners(enabled = true) {
   })
 }
 
-export function useOwner2Tables(empresaId?: string, enabled = true) {
+export function useOwner2Tables(
+  empresaId?: string,
+  enabled = true,
+  refetchInterval: number | false = false,
+) {
+  const computeRefetchInterval = () => {
+    if (refetchInterval === false) return false
+    if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return false
+    return refetchInterval
+  }
+
   return useQuery({
     queryKey: owner2Keys.tables(empresaId),
-    queryFn: () => invokeOwner2<{ tables: Array<Record<string, unknown>> }>({ action: 'list_database_tables', empresa_id: empresaId ?? null }),
+    queryFn: () => {
+      if (!empresaId) return Promise.resolve({ tables: [] as Array<Record<string, unknown>> })
+      return invokeOwner2<{ tables: Array<Record<string, unknown>> }>({ action: 'list_database_tables', empresa_id: empresaId })
+    },
     enabled,
+    staleTime: 10_000,
+    refetchInterval: computeRefetchInterval,
+    refetchIntervalInBackground: false,
+    refetchOnWindowFocus: false,
     retry: 0,
   })
 }

@@ -157,6 +157,7 @@ function MetricTile({ label, value, icon: Icon, tone = 'sky' }: { label: string;
 export default function Owner2() {
   const { isSystemOwner, isLoading, user, logout } = useAuth()
   const [activeTab, setActiveTab] = useState<Owner2Tab>('dashboard')
+  const [isDocumentVisible, setIsDocumentVisible] = useState(true)
   const [feedback, setFeedback] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [companyCredentialNote, setCompanyCredentialNote] = useState<CompanyCredentialNote | null>(null)
@@ -264,7 +265,15 @@ export default function Owner2() {
   const ticketsQuery = useOwner2Tickets(activeTab === 'suporte' || activeTab === 'dashboard')
   const auditsQuery = useOwner2Audits(activeTab === 'auditoria' || activeTab === 'monitoramento' || activeTab === 'logs')
   const ownersQuery = useOwner2PlatformOwners(activeTab === 'owner-master')
-  const tablesQuery = useOwner2Tables(companyId || undefined, activeTab === 'dashboard' || activeTab === 'monitoramento' || activeTab === 'sistema')
+  const monitoringLive = activeTab === 'monitoramento' && isDocumentVisible
+  const systemLive = activeTab === 'sistema' && isDocumentVisible
+  const tablesLive = monitoringLive || systemLive || (activeTab === 'dashboard' && Boolean(companyId))
+  const tablesRefetchInterval = monitoringLive ? 5000 : systemLive ? 10000 : false
+  const tablesQuery = useOwner2Tables(
+    companyId || undefined,
+    tablesLive && Boolean(companyId),
+    tablesRefetchInterval,
+  )
   const settingsQuery = useOwner2Settings(companyId || undefined, activeTab === 'configuracoes' || activeTab === 'feature-flags')
   const { execute } = useOwner2Actions()
 
@@ -293,6 +302,20 @@ export default function Owner2() {
   )
 
   const busy = execute.isPending
+
+  useEffect(() => {
+    if (typeof document === 'undefined') return
+
+    const syncVisibility = () => {
+      setIsDocumentVisible(document.visibilityState !== 'hidden')
+    }
+
+    syncVisibility()
+    document.addEventListener('visibilitychange', syncVisibility)
+    return () => {
+      document.removeEventListener('visibilitychange', syncVisibility)
+    }
+  }, [])
 
   useEffect(() => {
     if (!selectedUserId && users.length > 0) setSelectedUserId(String(users[0]?.id ?? ''))
