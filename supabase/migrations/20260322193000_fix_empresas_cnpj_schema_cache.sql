@@ -94,6 +94,31 @@ UPDATE public.user_roles
 SET updated_at = now()
 WHERE updated_at IS NULL;
 
+-- Auto-repair linkage: ensure each profile in a company has at least one role.
+INSERT INTO public.user_roles (user_id, empresa_id, role, created_at, updated_at)
+SELECT p.id, p.empresa_id, 'USUARIO', now(), now()
+FROM public.profiles p
+WHERE p.id IS NOT NULL
+  AND p.empresa_id IS NOT NULL
+  AND NOT EXISTS (
+    SELECT 1
+    FROM public.user_roles ur
+    WHERE ur.user_id = p.id
+      AND ur.empresa_id = p.empresa_id
+  );
+
+-- Auto-repair linkage: ensure each user_role has a profile row.
+INSERT INTO public.profiles (id, empresa_id, nome, email, force_password_change, created_at, updated_at)
+SELECT DISTINCT ur.user_id, ur.empresa_id, 'Usuário', NULL, false, now(), now()
+FROM public.user_roles ur
+WHERE ur.user_id IS NOT NULL
+  AND ur.empresa_id IS NOT NULL
+  AND NOT EXISTS (
+    SELECT 1
+    FROM public.profiles p
+    WHERE p.id = ur.user_id
+  );
+
 -- Remove duplicates before creating unique index on (user_id, empresa_id).
 WITH duplicated_user_roles AS (
   SELECT
@@ -111,24 +136,6 @@ USING duplicated_user_roles d
 WHERE ur.ctid = d.ctid
   AND d.rn > 1;
 
--- Remove duplicates before creating unique index on (user_id, empresa_id, role).
-WITH duplicated_user_roles_role AS (
-  SELECT
-    ctid,
-    row_number() OVER (
-      PARTITION BY user_id, empresa_id, role
-      ORDER BY updated_at DESC NULLS LAST, created_at DESC NULLS LAST, ctid DESC
-    ) AS rn
-  FROM public.user_roles
-  WHERE user_id IS NOT NULL
-    AND empresa_id IS NOT NULL
-    AND role IS NOT NULL
-)
-DELETE FROM public.user_roles ur
-USING duplicated_user_roles_role d
-WHERE ur.ctid = d.ctid
-  AND d.rn > 1;
-
 CREATE UNIQUE INDEX IF NOT EXISTS profiles_id_uidx
   ON public.profiles (id);
 
@@ -138,16 +145,20 @@ CREATE UNIQUE INDEX IF NOT EXISTS configuracoes_sistema_empresa_chave_uidx
 CREATE UNIQUE INDEX IF NOT EXISTS empresa_config_empresa_id_uidx
   ON public.empresa_config (empresa_id);
 
-CREATE UNIQUE INDEX IF NOT EXISTS user_roles_user_empresa_role_uidx
-  ON public.user_roles (user_id, empresa_id, role)
-  WHERE user_id IS NOT NULL
-    AND empresa_id IS NOT NULL
-    AND role IS NOT NULL;
+-- Drop old partial indexes that PostgREST cannot use for ON CONFLICT resolution.
+DROP INDEX IF EXISTS public.user_roles_user_empresa_role_uidx;
+DROP INDEX IF EXISTS public.user_roles_user_empresa_uidx;
 
+-- Remove orphan rows with NULL keys that would block non-partial unique indexes.
+DELETE FROM public.user_roles WHERE user_id IS NULL OR empresa_id IS NULL;
+
+-- Backfill NULL role to a safe default so no row has NULL role.
+UPDATE public.user_roles SET role = 'USUARIO' WHERE role IS NULL;
+
+-- Single non-partial unique index on (user_id, empresa_id): one role per user per
+-- company.  PostgREST can now resolve onConflict("user_id,empresa_id") directly.
 CREATE UNIQUE INDEX IF NOT EXISTS user_roles_user_empresa_uidx
-  ON public.user_roles (user_id, empresa_id)
-  WHERE user_id IS NOT NULL
-    AND empresa_id IS NOT NULL;
+  ON public.user_roles (user_id, empresa_id);
 
 -- 2) Standard defaults for runtime compatibility.
 ALTER TABLE public.empresas ALTER COLUMN created_at SET DEFAULT now();

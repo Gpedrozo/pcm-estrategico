@@ -99,7 +99,7 @@ Deno.serve(async (req) => {
           empresa_id: body.empresa_id,
           role: body.role,
         },
-        { onConflict: "user_id,empresa_id,role" },
+        { onConflict: "user_id,empresa_id" },
       );
 
     if (roleError) return fail(roleError.message, 400, null, req);

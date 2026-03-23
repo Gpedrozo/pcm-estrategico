@@ -90,7 +90,7 @@ async function ensureOwnerUser() {
 
   const { error: roleError } = await admin
     .from('user_roles')
-    .upsert({ user_id: ownerId, empresa_id: empresaId, role: 'SYSTEM_OWNER' }, { onConflict: 'user_id,empresa_id,role' })
+    .upsert({ user_id: ownerId, empresa_id: empresaId, role: 'SYSTEM_OWNER' }, { onConflict: 'user_id,empresa_id' })
 
   if (roleError) throw new Error(`user_roles upsert failed: ${roleError.message}`)
 

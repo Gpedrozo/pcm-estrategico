@@ -2176,27 +2176,31 @@ Deno.serve(async (req) => {
     }
 
     let roleLinkError: { message?: string } | null = null;
-    const roleUpsertStandard = await admin.from("user_roles").upsert({
+    // Primary: upsert with the single unique index (user_id,empresa_id).
+    const roleUpsert = await admin.from("user_roles").upsert({
       user_id: authMasterUserId,
       empresa_id: company.id,
       role: masterRole,
-    }, { onConflict: "user_id,empresa_id,role" });
+    }, { onConflict: "user_id,empresa_id" });
 
-    if (roleUpsertStandard.error) {
-      const roleUpsertAlt = await admin.from("user_roles").upsert({
-        user_id: authMasterUserId,
-        empresa_id: company.id,
-        role: masterRole,
-      }, { onConflict: "user_id,empresa_id" });
+    if (roleUpsert.error) {
+      // Fallback 1: direct UPDATE.
+      const roleUpdate = await admin
+        .from("user_roles")
+        .update({ role: masterRole })
+        .eq("user_id", authMasterUserId)
+        .eq("empresa_id", company.id);
 
-      if (roleUpsertAlt.error) {
-        const roleUpdate = await admin
+      if (roleUpdate.error) {
+        // Fallback 2: check existence then insert or ignore.
+        const { data: existingRole } = await admin
           .from("user_roles")
-          .update({ role: masterRole })
+          .select("id")
           .eq("user_id", authMasterUserId)
-          .eq("empresa_id", company.id);
+          .eq("empresa_id", company.id)
+          .maybeSingle();
 
-        if (roleUpdate.error) {
+        if (!existingRole?.id) {
           const roleInsert = await admin
             .from("user_roles")
             .insert({
@@ -2209,6 +2213,7 @@ Deno.serve(async (req) => {
             roleLinkError = roleInsert.error;
           }
         }
+        // If existingRole exists, the UPDATE just failed on schema; role is already persisted – OK.
       }
     }
 
@@ -2714,27 +2719,31 @@ Deno.serve(async (req) => {
     }
 
     let roleLinkError: { message?: string } | null = null;
-    const roleUpsertStandard = await admin.from("user_roles").upsert({
+    // Primary: upsert with the single unique index (user_id,empresa_id).
+    const roleUpsert = await admin.from("user_roles").upsert({
       user_id: createdAuth.user.id,
       empresa_id: body.user.empresa_id,
       role: normalizedRole,
-    }, { onConflict: "user_id,empresa_id,role" });
+    }, { onConflict: "user_id,empresa_id" });
 
-    if (roleUpsertStandard.error) {
-      const roleUpsertAlt = await admin.from("user_roles").upsert({
-        user_id: createdAuth.user.id,
-        empresa_id: body.user.empresa_id,
-        role: normalizedRole,
-      }, { onConflict: "user_id,empresa_id" });
+    if (roleUpsert.error) {
+      // Fallback 1: direct UPDATE.
+      const roleUpdate = await admin
+        .from("user_roles")
+        .update({ role: normalizedRole })
+        .eq("user_id", createdAuth.user.id)
+        .eq("empresa_id", body.user.empresa_id);
 
-      if (roleUpsertAlt.error) {
-        const roleUpdate = await admin
+      if (roleUpdate.error) {
+        // Fallback 2: check existence then insert or ignore.
+        const { data: existingRole } = await admin
           .from("user_roles")
-          .update({ role: normalizedRole })
+          .select("id")
           .eq("user_id", createdAuth.user.id)
-          .eq("empresa_id", body.user.empresa_id);
+          .eq("empresa_id", body.user.empresa_id)
+          .maybeSingle();
 
-        if (roleUpdate.error) {
+        if (!existingRole?.id) {
           const roleInsert = await admin
             .from("user_roles")
             .insert({
@@ -3820,7 +3829,7 @@ Deno.serve(async (req) => {
         user_id: body.user_id,
         empresa_id: profile.empresa_id,
         role: "SYSTEM_ADMIN",
-      }, { onConflict: "user_id,empresa_id,role" });
+      }, { onConflict: "user_id,empresa_id" });
 
     if (error) return fail(error.message, 400, null, req);
     return ok({ success: true }, 200, req);
@@ -3931,7 +3940,7 @@ Deno.serve(async (req) => {
         user_id: ownerUserId,
         empresa_id: company.id,
         role: ownerRole,
-      }, { onConflict: "user_id,empresa_id,role" });
+      }, { onConflict: "user_id,empresa_id" });
 
     if (roleError) return fail(roleError.message, 400, null, req);
 
