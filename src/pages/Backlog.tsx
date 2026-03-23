@@ -44,12 +44,16 @@ export default function Backlog() {
   const prioridadePrincipal = prioridadesOS[0] ?? 'URGENTE';
   const prioridadeSecundaria = prioridadesOS[1] ?? 'ALTA';
 
-  // Filter for open OS (backlog)
+  // O backlog mantém visíveis as O.S abertas e também as canceladas para rastreabilidade.
   const backlog = useMemo(() => {
     if (!ordensServico) return [];
     
     return ordensServico.filter(os => {
-      const isInBacklog = os.status === 'ABERTA' || os.status === 'EM_ANDAMENTO' || os.status === 'AGUARDANDO_MATERIAL';
+      const isInBacklog =
+        os.status === 'ABERTA' ||
+        os.status === 'EM_ANDAMENTO' ||
+        os.status === 'AGUARDANDO_MATERIAL' ||
+        os.status === 'CANCELADA';
       if (!isInBacklog) return false;
       
       if (filterPriority !== 'all' && os.prioridade !== filterPriority) return false;
@@ -76,6 +80,7 @@ export default function Backlog() {
       groups[`Semana ${i + 1} (${weekKey})`] = [];
     }
     groups['Atrasadas'] = [];
+    groups['Canceladas'] = [];
     groups['Futuras'] = [];
     
     backlog.forEach(os => {
@@ -85,7 +90,9 @@ export default function Backlog() {
       // Check if overdue (opened more than 7 days ago and still open)
       const daysSinceOpen = Math.floor((now.getTime() - osDate.getTime()) / (1000 * 60 * 60 * 24));
       
-      if (daysSinceOpen > 7 && os.status === 'ABERTA') {
+      if (os.status === 'CANCELADA') {
+        groups['Canceladas'].push(os);
+      } else if (daysSinceOpen > 7 && os.status === 'ABERTA') {
         groups['Atrasadas'].push(os);
       } else {
         // Assign to current week for now
@@ -105,6 +112,7 @@ export default function Backlog() {
     principal: backlog.filter(os => os.prioridade === prioridadePrincipal).length,
     secundaria: backlog.filter(os => os.prioridade === prioridadeSecundaria).length,
     atrasadas: weeklyGroups['Atrasadas']?.length || 0,
+    canceladas: weeklyGroups['Canceladas']?.length || 0,
     horasEstimadas: backlog.reduce((acc, os) => acc + (os.tempo_estimado || 0), 0),
   }), [backlog, weeklyGroups, prioridadePrincipal, prioridadeSecundaria]);
 
@@ -121,7 +129,7 @@ export default function Backlog() {
 
       toast({
         title: 'O.S cancelada',
-        description: `A ordem de serviço nº ${osToCancel.numero_os} foi cancelada.`,
+        description: `A ordem de serviço nº ${osToCancel.numero_os} foi cancelada e permanece visível para leitura e impressão.`,
       });
       setOsToCancel(null);
     } catch {
@@ -153,7 +161,7 @@ export default function Backlog() {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-6 gap-4">
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center gap-2">
@@ -188,6 +196,15 @@ export default function Backlog() {
               <span className="text-sm text-muted-foreground">Atrasadas</span>
             </div>
             <p className="text-2xl font-bold text-destructive">{stats.atrasadas}</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-rose-600" />
+              <span className="text-sm text-muted-foreground">Canceladas</span>
+            </div>
+            <p className="text-2xl font-bold text-rose-600">{stats.canceladas}</p>
           </CardContent>
         </Card>
         <Card>
@@ -284,14 +301,20 @@ export default function Backlog() {
                         <td><OSStatusBadge status={normalizeOSStatus(os.status)} /></td>
                         <td>{os.tempo_estimado ? `${os.tempo_estimado} min` : '-'}</td>
                         <td className="text-right">
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="text-destructive hover:text-destructive"
-                            onClick={() => setOsToCancel({ id: os.id, numero_os: os.numero_os })}
-                          >
-                            Cancelar O.S
-                          </Button>
+                          {os.status === 'CANCELADA' ? (
+                            <span className="inline-flex items-center rounded-md border border-rose-200 bg-rose-50 px-2.5 py-1 text-xs font-medium text-rose-700">
+                              Somente leitura
+                            </span>
+                          ) : (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="text-destructive hover:text-destructive"
+                              onClick={() => setOsToCancel({ id: os.id, numero_os: os.numero_os })}
+                            >
+                              Cancelar O.S
+                            </Button>
+                          )}
                         </td>
                       </tr>
                     ))}
@@ -316,7 +339,7 @@ export default function Backlog() {
           <AlertDialogHeader>
             <AlertDialogTitle>Cancelar ordem de serviço</AlertDialogTitle>
             <AlertDialogDescription>
-              Confirma o cancelamento da O.S nº {osToCancel?.numero_os}? Esta ação remove a O.S do backlog.
+              Confirma o cancelamento da O.S nº {osToCancel?.numero_os}? A O.S continuará visível no backlog como CANCELADA, sem possibilidade de nova movimentação.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

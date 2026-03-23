@@ -12,6 +12,7 @@ const statusConfig: Record<StatusOS, { label: string; className: string }> = {
   AGUARDANDO_MATERIAL: { label: 'Aguard. Material', className: 'bg-orange-500/10 text-orange-500 border border-orange-500/20' },
   AGUARDANDO_APROVACAO: { label: 'Aguard. Aprovação', className: 'bg-purple-500/10 text-purple-500 border border-purple-500/20' },
   FECHADA: { label: 'Fechada', className: 'status-fechada' },
+  CANCELADA: { label: 'Cancelada', className: 'bg-rose-500/10 text-rose-600 border border-rose-500/20' },
 };
 
 export function OSStatusBadge({ status, className }: OSStatusBadgeProps) {
