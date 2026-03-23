@@ -299,6 +299,15 @@ export async function callOwnerAdmin<T = unknown>(payload: OwnerActionPayload) {
     throw new Error('Payload owner inválido: action obrigatória.')
   }
 
+  const refreshSession = async () => {
+    const refreshFn = (supabase.auth as { refreshSession?: () => Promise<{ data?: { session?: { access_token?: string } }; error?: unknown }> } | undefined)?.refreshSession
+    if (typeof refreshFn !== 'function') return null
+
+    const { data, error } = await refreshFn()
+    if (error || !data?.session?.access_token) return null
+    return data.session.access_token
+  }
+
   const invokeWithToken = async (accessToken: string) => {
     const { data, error } = await supabase.functions.invoke('owner-portal-admin', {
       body: payload,
@@ -322,11 +331,11 @@ export async function callOwnerAdmin<T = unknown>(payload: OwnerActionPayload) {
   let token = sessionResult?.session?.access_token
 
   if (!token) {
-    const { data: refreshed, error: refreshError } = await supabase.auth.refreshSession()
-    if (refreshError || !refreshed.session?.access_token) {
+    const refreshedToken = await refreshSession()
+    if (!refreshedToken) {
       throw new Error('Sessão expirada. Faça login novamente para continuar.')
     }
-    token = refreshed.session.access_token
+    token = refreshedToken
   }
 
   if (!token) {
@@ -341,13 +350,14 @@ export async function callOwnerAdmin<T = unknown>(payload: OwnerActionPayload) {
       throw new Error(message)
     }
 
-    const { data: refreshed, error: refreshError } = await supabase.auth.refreshSession()
-    if (refreshError || !refreshed.session?.access_token) {
-      throw new Error('Sessão expirada. Faça login novamente para continuar.')
+    const refreshedToken = await refreshSession()
+    if (!refreshedToken) {
+      const message = error instanceof Error ? error.message : await parseErrorMessage(error)
+      throw new Error(message)
     }
 
     try {
-      return await invokeWithToken(refreshed.session.access_token)
+      return await invokeWithToken(refreshedToken)
     } catch (retryError) {
       const message = retryError instanceof Error ? retryError.message : await parseErrorMessage(retryError)
       throw new Error(message)
