@@ -1,6 +1,31 @@
 import { supabase } from '@/integrations/supabase/client';
 import { plantaSchema, areaSchema, sistemaSchema, type PlantaFormData, type AreaFormData, type SistemaFormData } from '@/schemas/hierarquia.schema';
 import { writeAuditLog } from '@/lib/audit';
+import { getSupabaseErrorMessage, insertWithColumnFallback, isMissingTableError, updateWithColumnFallback } from '@/lib/supabaseCompat';
+
+function toReadableError(error: unknown, fallback = 'Falha inesperada no módulo de hierarquia.'): Error {
+  const message = getSupabaseErrorMessage(error);
+  if (message) return new Error(message);
+
+  if (typeof error === 'string' && error.trim().length > 0) {
+    return new Error(error);
+  }
+
+  try {
+    return new Error(JSON.stringify(error));
+  } catch {
+    return new Error(fallback);
+  }
+}
+
+function throwPlantasTableMissing(error: unknown): never {
+  if (isMissingTableError(error)) {
+    throw new Error(
+      'A tabela public.plantas não existe neste ambiente. Execute a migration 20260323003000_guard_hierarquia_tables_presence.sql e tente novamente.',
+    );
+  }
+  throw toReadableError(error, 'Falha no módulo de plantas.');
+}
 
 export const hierarquiaService = {
   // ==================== PLANTAS ====================
@@ -11,19 +36,30 @@ export const hierarquiaService = {
       .eq('empresa_id', empresaId)
       .order('codigo');
 
-    if (error) throw new Error(`Falha ao carregar plantas: ${error.message}`);
+    if (error) {
+      throwPlantasTableMissing(error);
+    }
     return data;
   },
 
   async criarPlanta(payload: PlantaFormData, empresaId: string) {
     const validated = plantaSchema.parse(payload);
-    const { data, error } = await supabase
-      .from('plantas')
-      .insert([{ ...validated, empresa_id: empresaId }])
-      .select()
-      .single();
+    const payloadWithTenant = { ...validated, empresa_id: empresaId } as Record<string, unknown>;
 
-    if (error) throw new Error(`Erro ao criar planta: ${error.message}`);
+    let data: any;
+    try {
+      data = await insertWithColumnFallback<any>(
+        (row) =>
+          supabase
+            .from('plantas')
+            .insert([row])
+            .select()
+            .single(),
+        payloadWithTenant,
+      );
+    } catch (error) {
+      throwPlantasTableMissing(error);
+    }
 
     await writeAuditLog({
       action: 'CREATE_PLANTA',
@@ -37,15 +73,22 @@ export const hierarquiaService = {
   },
 
   async atualizarPlanta(id: string, payload: Partial<PlantaFormData>, empresaId: string) {
-    const { data, error } = await supabase
-      .from('plantas')
-      .update(payload)
-      .eq('id', id)
-      .eq('empresa_id', empresaId)
-      .select()
-      .single();
-
-    if (error) throw new Error(`Erro ao atualizar planta: ${error.message}`);
+    let data: any;
+    try {
+      data = await updateWithColumnFallback<any>(
+        (row) =>
+          supabase
+            .from('plantas')
+            .update(row)
+            .eq('id', id)
+            .eq('empresa_id', empresaId)
+            .select()
+            .single(),
+        payload as Record<string, unknown>,
+      );
+    } catch (error) {
+      throwPlantasTableMissing(error);
+    }
 
     await writeAuditLog({
       action: 'UPDATE_PLANTA',
@@ -60,7 +103,9 @@ export const hierarquiaService = {
 
   async excluirPlanta(id: string, empresaId: string) {
     const { error } = await supabase.from('plantas').delete().eq('id', id).eq('empresa_id', empresaId);
-    if (error) throw new Error(`Erro ao excluir planta: ${error.message}`);
+    if (error) {
+      throwPlantasTableMissing(error);
+    }
 
     await writeAuditLog({ action: 'DELETE_PLANTA', table: 'plantas', recordId: id, empresaId, source: 'hierarquia_service', severity: 'warning' });
   },
