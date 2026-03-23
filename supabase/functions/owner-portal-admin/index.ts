@@ -1941,41 +1941,99 @@ Deno.serve(async (req) => {
       }
     }
 
-    const { error: configError } = await admin.from("configuracoes_sistema").upsert({
+    const companyProfileValue = {
+      tipo_pessoa: body.company.tipo_pessoa ?? (normalizedDocument.length === 11 ? "PF" : "PJ"),
+      cpf_cnpj: normalizedDocument || null,
+      endereco: body.company.endereco ?? null,
+      telefone: body.company.telefone ?? null,
+      email: body.company.email ?? null,
+      responsavel: body.company.responsavel ?? null,
+      segmento: body.company.segmento ?? null,
+    };
+
+    let configError: { message?: string } | null = null;
+    const profileUpsert = await admin.from("configuracoes_sistema").upsert({
       empresa_id: company.id,
       chave: "owner.company_profile",
-      valor: {
-        tipo_pessoa: body.company.tipo_pessoa ?? (normalizedDocument.length === 11 ? "PF" : "PJ"),
-        cpf_cnpj: normalizedDocument || null,
-        endereco: body.company.endereco ?? null,
-        telefone: body.company.telefone ?? null,
-        email: body.company.email ?? null,
-        responsavel: body.company.responsavel ?? null,
-        segmento: body.company.segmento ?? null,
-      },
+      valor: companyProfileValue,
     }, { onConflict: "empresa_id,chave" });
+
+    if (profileUpsert.error) {
+      const fallbackUpdate = await admin
+        .from("configuracoes_sistema")
+        .update({ valor: companyProfileValue })
+        .eq("empresa_id", company.id)
+        .eq("chave", "owner.company_profile");
+
+      if (fallbackUpdate.error) {
+        const fallbackInsert = await admin
+          .from("configuracoes_sistema")
+          .insert({
+            empresa_id: company.id,
+            chave: "owner.company_profile",
+            valor: companyProfileValue,
+          });
+
+        if (fallbackInsert.error) {
+          configError = fallbackInsert.error;
+        }
+      }
+    }
 
     const inactivityMinutes =
       typeof body.company.inactivity_timeout_minutes === "number" && Number.isFinite(body.company.inactivity_timeout_minutes)
         ? Math.max(0, Math.trunc(body.company.inactivity_timeout_minutes))
         : null;
 
-    const { error: securityPolicyError } = await admin.from("configuracoes_sistema").upsert({
+    const securityPolicyValue = {
+      inactivity_timeout_minutes: inactivityMinutes,
+    };
+
+    let securityPolicyError: { message?: string } | null = null;
+    const securityUpsert = await admin.from("configuracoes_sistema").upsert({
       empresa_id: company.id,
       chave: "owner.security_policy",
-      valor: {
-        inactivity_timeout_minutes: inactivityMinutes,
-      },
+      valor: securityPolicyValue,
     }, { onConflict: "empresa_id,chave" });
 
+    if (securityUpsert.error) {
+      const fallbackUpdate = await admin
+        .from("configuracoes_sistema")
+        .update({ valor: securityPolicyValue })
+        .eq("empresa_id", company.id)
+        .eq("chave", "owner.security_policy");
+
+      if (fallbackUpdate.error) {
+        const fallbackInsert = await admin
+          .from("configuracoes_sistema")
+          .insert({
+            empresa_id: company.id,
+            chave: "owner.security_policy",
+            valor: securityPolicyValue,
+          });
+
+        if (fallbackInsert.error) {
+          securityPolicyError = fallbackInsert.error;
+        }
+      }
+    }
+
     if (configError || securityPolicyError) {
-      const reason = await rollbackCreateCompany(configError?.message ?? securityPolicyError?.message ?? "unknown");
-      return fail(
-        "Falha ao salvar configurações iniciais da empresa.",
-        400,
-        { reason },
-        req,
-      );
+      const reason = configError?.message ?? securityPolicyError?.message ?? "unknown";
+      if (isSchemaOrMissingObjectError(reason)) {
+        onboardingWarning = mergeWarnings(
+          onboardingWarning,
+          `Configurações iniciais não puderam ser persistidas totalmente neste ambiente legado. (${reason})`,
+        );
+      } else {
+        const rollbackReason = await rollbackCreateCompany(reason);
+        return fail(
+          "Falha ao salvar configurações iniciais da empresa.",
+          400,
+          { reason: rollbackReason },
+          req,
+        );
+      }
     }
 
     const managedDomain = buildManagedTenantDomain(slug);

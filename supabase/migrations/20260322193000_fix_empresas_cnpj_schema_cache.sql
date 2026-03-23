@@ -23,6 +23,18 @@ CREATE TABLE IF NOT EXISTS public.dados_empresa (
   updated_at timestamptz DEFAULT now()
 );
 
+CREATE TABLE IF NOT EXISTS public.configuracoes_sistema (
+  id bigserial PRIMARY KEY,
+  empresa_id text,
+  chave text NOT NULL,
+  valor jsonb DEFAULT '{}'::jsonb,
+  created_at timestamptz DEFAULT now(),
+  updated_at timestamptz DEFAULT now()
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS configuracoes_sistema_empresa_chave_uidx
+  ON public.configuracoes_sistema (empresa_id, chave);
+
 -- 2) Standard defaults for runtime compatibility.
 ALTER TABLE public.empresas ALTER COLUMN created_at SET DEFAULT now();
 ALTER TABLE public.empresas ALTER COLUMN updated_at SET DEFAULT now();
