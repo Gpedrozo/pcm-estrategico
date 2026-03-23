@@ -116,7 +116,7 @@ export default function Backlog() {
         id: osToCancel.id,
         status: 'CANCELADA',
         data_fechamento: new Date().toISOString(),
-        usuario_fechamento: user?.email ?? null,
+        usuario_fechamento: user?.id ?? null,
       });
 
       toast({
