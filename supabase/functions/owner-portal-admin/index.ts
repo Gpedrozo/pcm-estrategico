@@ -2176,52 +2176,60 @@ Deno.serve(async (req) => {
       );
     }
 
+    // --- Role assignment: UPSERT then UPDATE fallback ---
     let roleLinkError: { message?: string } | null = null;
-    // Primary: upsert with the single unique index (user_id,empresa_id).
-    const roleUpsert = await admin.from("user_roles").upsert({
-      user_id: authMasterUserId,
-      empresa_id: company.id,
-      role: masterRole,
-    }, { onConflict: "user_id,empresa_id" });
 
-    if (roleUpsert.error) {
-      // Fallback 1: direct UPDATE.
-      const roleUpdate = await admin
+    // Primary: upsert with unique index (user_id, empresa_id) — handle_new_user trigger may have created USUARIO
+    const { error: roleUpsertError } = await admin
+      .from("user_roles")
+      .upsert({
+        user_id: authMasterUserId,
+        empresa_id: company.id,
+        role: masterRole,
+      }, { onConflict: "user_id,empresa_id" })
+
+    if (roleUpsertError) {
+      // Fallback 1: direct UPDATE (works if handle_new_user already created a row)
+      const { error: roleUpdateError, data: roleUpdateData } = await admin
         .from("user_roles")
         .update({ role: masterRole })
         .eq("user_id", authMasterUserId)
-        .eq("empresa_id", company.id);
+        .eq("empresa_id", company.id)
+        .select("id")
 
-      if (roleUpdate.error) {
-        // Fallback 2: check existence then insert or ignore.
-        const { data: existingRole } = await admin
+      if (roleUpdateError || !roleUpdateData?.length) {
+        // Fallback 2: plain INSERT (if no row exists yet)
+        const { error: insertErr } = await admin
           .from("user_roles")
-          .select("id")
-          .eq("user_id", authMasterUserId)
-          .eq("empresa_id", company.id)
-          .maybeSingle();
+          .insert({
+            user_id: authMasterUserId,
+            empresa_id: company.id,
+            role: masterRole,
+          })
 
-        if (!existingRole?.id) {
-          const roleInsert = await admin
-            .from("user_roles")
-            .insert({
-              user_id: authMasterUserId,
-              empresa_id: company.id,
-              role: masterRole,
-            });
-
-          if (roleInsert.error) {
-            roleLinkError = roleInsert.error;
+        if (insertErr) {
+          const insertMsg = (insertErr.message ?? "").toLowerCase()
+          // Duplicate = trigger already inserted the role → just update
+          if (insertMsg.includes("duplicate") || insertMsg.includes("unique") || insertMsg.includes("23505")) {
+            const { error: finalUpdateErr } = await admin
+              .from("user_roles")
+              .update({ role: masterRole })
+              .eq("user_id", authMasterUserId)
+              .eq("empresa_id", company.id)
+            if (finalUpdateErr) {
+              roleLinkError = finalUpdateErr
+            }
+          } else {
+            roleLinkError = insertErr
           }
         }
-        // If existingRole exists, the UPDATE just failed on schema; role is already persisted – OK.
       }
     }
 
     if (roleLinkError) {
       onboardingWarning = mergeWarnings(
         onboardingWarning,
-        `Usuário master criado no Auth, porém vínculo em user_roles não foi persistido automaticamente. (${roleLinkError.message})`,
+        `Vínculo em user_roles não persistido automaticamente. (${roleLinkError.message})`,
       );
     }
 
@@ -2757,42 +2765,51 @@ Deno.serve(async (req) => {
       );
     }
 
+    // --- Role assignment: UPSERT then UPDATE fallback ---
     let roleLinkError: { message?: string } | null = null;
-    // Primary: upsert with the single unique index (user_id,empresa_id).
-    const roleUpsert = await admin.from("user_roles").upsert({
-      user_id: createdAuth.user.id,
-      empresa_id: body.user.empresa_id,
-      role: normalizedRole,
-    }, { onConflict: "user_id,empresa_id" });
 
-    if (roleUpsert.error) {
-      // Fallback 1: direct UPDATE.
-      const roleUpdate = await admin
+    // Primary: upsert with unique index (user_id, empresa_id) — handle_new_user trigger may have created USUARIO
+    const { error: roleUpsertError } = await admin
+      .from("user_roles")
+      .upsert({
+        user_id: createdAuth.user.id,
+        empresa_id: body.user.empresa_id,
+        role: normalizedRole,
+      }, { onConflict: "user_id,empresa_id" })
+
+    if (roleUpsertError) {
+      // Fallback 1: direct UPDATE (works if handle_new_user already created a row)
+      const { error: roleUpdateError, data: roleUpdateData } = await admin
         .from("user_roles")
         .update({ role: normalizedRole })
         .eq("user_id", createdAuth.user.id)
-        .eq("empresa_id", body.user.empresa_id);
+        .eq("empresa_id", body.user.empresa_id)
+        .select("id")
 
-      if (roleUpdate.error) {
-        // Fallback 2: check existence then insert or ignore.
-        const { data: existingRole } = await admin
+      if (roleUpdateError || !roleUpdateData?.length) {
+        // Fallback 2: plain INSERT (if no row exists yet)
+        const { error: insertErr } = await admin
           .from("user_roles")
-          .select("id")
-          .eq("user_id", createdAuth.user.id)
-          .eq("empresa_id", body.user.empresa_id)
-          .maybeSingle();
+          .insert({
+            user_id: createdAuth.user.id,
+            empresa_id: body.user.empresa_id,
+            role: normalizedRole,
+          })
 
-        if (!existingRole?.id) {
-          const roleInsert = await admin
-            .from("user_roles")
-            .insert({
-              user_id: createdAuth.user.id,
-              empresa_id: body.user.empresa_id,
-              role: normalizedRole,
-            });
-
-          if (roleInsert.error) {
-            roleLinkError = roleInsert.error;
+        if (insertErr) {
+          const insertMsg = (insertErr.message ?? "").toLowerCase()
+          // Duplicate = trigger already inserted the role → just update
+          if (insertMsg.includes("duplicate") || insertMsg.includes("unique") || insertMsg.includes("23505")) {
+            const { error: finalUpdateErr } = await admin
+              .from("user_roles")
+              .update({ role: normalizedRole })
+              .eq("user_id", createdAuth.user.id)
+              .eq("empresa_id", body.user.empresa_id)
+            if (finalUpdateErr) {
+              roleLinkError = finalUpdateErr
+            }
+          } else {
+            roleLinkError = insertErr
           }
         }
       }
@@ -2801,7 +2818,7 @@ Deno.serve(async (req) => {
     if (roleLinkError) {
       createUserWarning = mergeWarnings(
         createUserWarning,
-        `Usuário criado no Auth, porém vínculo em user_roles não foi persistido automaticamente. (${roleLinkError.message})`,
+        `Vínculo em user_roles não persistido automaticamente. (${roleLinkError.message})`,
       );
     }
 
