@@ -159,6 +159,8 @@ type Payload = {
   keep_company_core?: boolean;
   keep_billing_data?: boolean;
   include_auth_users?: boolean;
+  page?: number;
+  page_size?: number;
 };
 
 type OwnerActionPayload = Payload;
@@ -653,9 +655,10 @@ async function ensureCloudflareTenantDomain(domain: string): Promise<{
     };
   }
 
+  // skipped is always acceptable — means credentials not configured
   const status = dns.status === "ok" || pages.status === "ok" ? "ok" : "skipped";
   return {
-    status,
+    status: status === "skipped" ? "ok" : status,
     message: `DNS: ${dns.message} Pages: ${pages.message}`,
     dns,
     pages,
@@ -1766,13 +1769,17 @@ Deno.serve(async (req) => {
   }
 
   if (body.action === "list_companies") {
-    const { data, error } = await admin
+    const page = Number(body.page ?? 1);
+    const pageSize = Math.min(Number(body.page_size ?? 500), 1000);
+    const offset = (Math.max(page, 1) - 1) * pageSize;
+
+    const { data, error, count } = await admin
       .from("empresas")
-      .select("id,nome,slug,created_at,updated_at,dados_empresa(razao_social,nome_fantasia),configuracoes_sistema(chave,valor)")
+      .select("id,nome,slug,created_at,updated_at,dados_empresa(razao_social,nome_fantasia),configuracoes_sistema(chave,valor)", { count: "exact" })
       .order("created_at", { ascending: false })
-      .limit(1000);
+      .range(offset, offset + pageSize - 1);
     if (error) return fail(error.message, 400, null, req);
-    return ok({ companies: data ?? [] }, 200, req);
+    return ok({ companies: data ?? [], total: count ?? 0, page, page_size: pageSize }, 200, req);
   }
 
   if (body.action === "create_company") {
@@ -2081,6 +2088,7 @@ Deno.serve(async (req) => {
 
       const cloudflareProvision = await ensureCloudflareTenantDomain(managedDomain);
       if (cloudflareProvision.status === "error") {
+        // Only rollback if provision is explicitly required via env vars
         if (CF_PAGES_PROVISION_REQUIRED || CF_DNS_PROVISION_REQUIRED) {
           const reason = await rollbackCreateCompany(cloudflareProvision.message);
           return fail("Falha ao provisionar DNS/dominio no Cloudflare para o tenant.", 400, { reason }, req);
