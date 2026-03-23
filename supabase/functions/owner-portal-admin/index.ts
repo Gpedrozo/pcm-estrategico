@@ -1285,6 +1285,18 @@ function isForeignKeyError(error: unknown) {
   return code === "23503" || message.includes("foreign key");
 }
 
+function isSchemaOrMissingObjectError(message?: string | null) {
+  const text = String(message ?? "").toLowerCase();
+  return (
+    text.includes("schema cache") ||
+    text.includes("does not exist") ||
+    text.includes("relation") ||
+    text.includes("column") ||
+    text.includes("cache de esquema") ||
+    text.includes("não foi possível encontrar a coluna")
+  );
+}
+
 async function listDatabaseTables(admin: ReturnType<typeof adminClient>, empresaId?: string | null) {
   const rows: Array<{ table_name: string; total_rows: number; has_empresa_id: boolean }> = [];
 
@@ -1690,9 +1702,8 @@ Deno.serve(async (req) => {
     const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
     const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000).toISOString();
 
-    const [{ count: totalCompanies }, { count: blockedCompanies }, { count: totalUsers }, { count: activeSubscriptions }, { count: overdueSubscriptions }, { count: newCompaniesMonth }, { count: openTickets }, { data: revenue }, { data: plans }, { data: canceledSubscriptions }] = await Promise.all([
+    const [{ count: totalCompanies }, { count: totalUsers }, { count: activeSubscriptions }, { count: overdueSubscriptions }, { count: newCompaniesMonth }, { count: openTickets }, { data: revenue }, { data: plans }, { data: canceledSubscriptions }] = await Promise.all([
       admin.from("empresas").select("id", { count: "exact", head: true }),
-      admin.from("empresas").select("id", { count: "exact", head: true }).eq("status", "blocked"),
       admin.from("profiles").select("id", { count: "exact", head: true }),
       admin.from("subscriptions").select("id", { count: "exact", head: true }).eq("status", "ativa"),
       admin.from("subscriptions").select("id", { count: "exact", head: true }).eq("status", "atrasada"),
@@ -1706,6 +1717,16 @@ Deno.serve(async (req) => {
         .eq("status", "cancelada")
         .gte("updated_at", thirtyDaysAgo),
     ]);
+
+    let blockedCompanies = 0;
+    const blockedCompaniesResult = await admin
+      .from("empresas")
+      .select("id", { count: "exact", head: true })
+      .eq("status", "blocked");
+
+    if (!blockedCompaniesResult.error) {
+      blockedCompanies = Number(blockedCompaniesResult.count ?? 0);
+    }
 
     const mrr = (revenue ?? []).reduce((acc, item: any) => acc + Number(item.amount ?? 0), 0);
     const arr = mrr * 12;
@@ -1746,7 +1767,7 @@ Deno.serve(async (req) => {
   if (body.action === "list_companies") {
     const { data, error } = await admin
       .from("empresas")
-      .select("id,nome,slug,status,plano,created_at,updated_at,dados_empresa(razao_social,nome_fantasia),configuracoes_sistema(chave,valor)")
+      .select("id,nome,slug,created_at,updated_at,dados_empresa(razao_social,nome_fantasia),configuracoes_sistema(chave,valor)")
       .order("created_at", { ascending: false })
       .limit(1000);
     if (error) return fail(error.message, 400, null, req);
@@ -1798,10 +1819,8 @@ Deno.serve(async (req) => {
       .insert({
         nome: companyName,
         slug,
-        status: body.company.status ?? "active",
-        plano: null,
       })
-      .select("id,nome,slug,status,created_at")
+      .select("id,nome,slug,created_at")
       .single();
 
     if (companyError) {
@@ -1887,7 +1906,7 @@ Deno.serve(async (req) => {
         .from("empresas")
         .update({ slug: fallbackSlug })
         .eq("id", company.id)
-        .select("id,nome,slug,status,created_at")
+        .select("id,nome,slug,created_at")
         .single();
 
       if (slugRepairError || !updatedCompany?.slug) {
@@ -1901,6 +1920,7 @@ Deno.serve(async (req) => {
     }
 
     const normalizedDocument = String(body.company.cpf_cnpj ?? body.company.cnpj ?? "").replace(/\D+/g, "");
+    let onboardingWarning: string | null = null;
 
     const { error: companyDataError } = await admin.from("dados_empresa").upsert({
       empresa_id: company.id,
@@ -1910,8 +1930,15 @@ Deno.serve(async (req) => {
     }, { onConflict: "empresa_id" });
 
     if (companyDataError) {
-      const reason = await rollbackCreateCompany(companyDataError.message);
-      return fail("Falha ao salvar dados da empresa.", 400, { reason }, req);
+      if (isSchemaOrMissingObjectError(companyDataError.message)) {
+        onboardingWarning = mergeWarnings(
+          onboardingWarning,
+          `Tabela/colunas de dados_empresa indisponíveis neste ambiente. Dados legais foram preservados no perfil de configuração. (${companyDataError.message})`,
+        );
+      } else {
+        const reason = await rollbackCreateCompany(companyDataError.message);
+        return fail("Falha ao salvar dados da empresa.", 400, { reason }, req);
+      }
     }
 
     const { error: configError } = await admin.from("configuracoes_sistema").upsert({
@@ -1950,8 +1977,6 @@ Deno.serve(async (req) => {
         req,
       );
     }
-
-    let onboardingWarning: string | null = null;
 
     const managedDomain = buildManagedTenantDomain(slug);
     if (managedDomain) {
@@ -2201,7 +2226,6 @@ Deno.serve(async (req) => {
 
     if (body.company.nome) updatePayload.nome = body.company.nome;
     if (nextSlug) updatePayload.slug = nextSlug;
-    if (body.company.status) updatePayload.status = body.company.status;
     const normalizedDocument = String(body.company.cpf_cnpj ?? body.company.cnpj ?? "").replace(/\D+/g, "");
 
     const { error: empresaError } = await admin
@@ -2307,7 +2331,26 @@ Deno.serve(async (req) => {
       .update({ status })
       .eq("id", body.empresa_id);
 
-    if (error) return fail(error.message, 400, null, req);
+    if (error) {
+      const message = String(error.message ?? "").toLowerCase();
+      const isSchemaMismatch = message.includes("schema cache") || message.includes("does not exist") || message.includes("coluna") || message.includes("column");
+
+      if (!isSchemaMismatch) return fail(error.message, 400, null, req);
+
+      const { error: fallbackError } = await admin
+        .from("configuracoes_sistema")
+        .upsert({
+          empresa_id: body.empresa_id,
+          chave: "owner.company_state",
+          valor: {
+            status,
+            reason: body.reason ?? null,
+            updated_at: new Date().toISOString(),
+          },
+        }, { onConflict: "empresa_id,chave" });
+
+      if (fallbackError) return fail(fallbackError.message, 400, null, req);
+    }
 
     await logPlatformAudit(admin, {
       actorId: auth.user.id,
@@ -3362,7 +3405,7 @@ Deno.serve(async (req) => {
 
     const { data: company, error: companyError } = await admin
       .from("empresas")
-      .select("id,nome,status")
+      .select("id,nome")
       .eq("id", body.empresa_id)
       .maybeSingle();
 
@@ -3411,7 +3454,7 @@ Deno.serve(async (req) => {
       details: {
         company_id: company.id,
         company_name: company.nome ?? null,
-        company_status: company.status ?? null,
+        company_status: null,
         issued_at: now.toISOString(),
         expires_at: expiresAt.toISOString(),
         operation_id: operationId,
@@ -3424,7 +3467,7 @@ Deno.serve(async (req) => {
         id: impersonationSessionId,
         empresa_id: company.id,
         empresa_nome: company.nome ?? null,
-        company_status: company.status ?? null,
+        company_status: null,
         issued_at: now.toISOString(),
         expires_at: expiresAt.toISOString(),
         session_token: impersonationSessionToken,

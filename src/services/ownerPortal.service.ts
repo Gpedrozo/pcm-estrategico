@@ -246,7 +246,20 @@ const isEmpresaForeignKeyMessage = (value: unknown) => {
 
 const isEmpresasCnpjSchemaError = (value: unknown) => {
   const msg = String(value ?? '').toLowerCase()
-  return msg.includes("could not find the 'cnpj' column of 'empresas' in the schema cache")
+  return (
+    msg.includes("could not find the 'cnpj' column of 'empresas' in the schema cache") ||
+    msg.includes("não foi possível encontrar a coluna 'cnpj' de 'empresas' no cache de esquema") ||
+    msg.includes("could not find the 'status' column of 'empresas' in the schema cache") ||
+    msg.includes("não foi possível encontrar a coluna 'status' de 'empresas' no cache de esquema") ||
+    msg.includes("could not find the 'plano' column of 'empresas' in the schema cache") ||
+    msg.includes("não foi possível encontrar a coluna 'plano' de 'empresas' no cache de esquema") ||
+    (msg.includes('cnpj') && msg.includes('empresas') && msg.includes('schema cache')) ||
+    (msg.includes('cnpj') && msg.includes('empresas') && msg.includes('cache de esquema')) ||
+    (msg.includes('status') && msg.includes('empresas') && msg.includes('schema cache')) ||
+    (msg.includes('status') && msg.includes('empresas') && msg.includes('cache de esquema')) ||
+    (msg.includes('plano') && msg.includes('empresas') && msg.includes('schema cache')) ||
+    (msg.includes('plano') && msg.includes('empresas') && msg.includes('cache de esquema'))
+  )
 }
 
 const sanitizeOwnerPayload = (payload: OwnerActionPayload): OwnerActionPayload => {
@@ -265,7 +278,7 @@ const sanitizeOwnerPayload = (payload: OwnerActionPayload): OwnerActionPayload =
 const listCompaniesFallback = async () => {
   const { data, error } = await supabase
     .from('empresas')
-    .select('id,nome,slug,status,plano,created_at,updated_at')
+    .select('id,nome,slug,created_at,updated_at')
     .order('created_at', { ascending: false })
     .limit(1000)
 
