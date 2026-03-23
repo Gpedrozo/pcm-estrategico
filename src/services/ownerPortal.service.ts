@@ -220,6 +220,15 @@ export const isOwnerErrorResponse = (value: unknown): value is OwnerErrorRespons
   return maybe.success === false && typeof maybe.error === 'string'
 }
 
+const isUnauthorizedOwnerError = (error: unknown) => {
+  const unsafeError = error as { context?: unknown; message?: unknown } | null
+  const status = Number((unsafeError?.context as { status?: number } | undefined)?.status ?? 0)
+  if (status === 401) return true
+
+  const msg = String(unsafeError?.message ?? '').toLowerCase()
+  return msg.includes('401') || msg.includes('unauthorized')
+}
+
 const isUnsupportedActionMessage = (value: unknown) => {
   const msg = String(value ?? '').toLowerCase()
   return msg.includes('unsupported action') || msg.includes('missing action')
@@ -290,30 +299,60 @@ export async function callOwnerAdmin<T = unknown>(payload: OwnerActionPayload) {
     throw new Error('Payload owner inválido: action obrigatória.')
   }
 
+  const invokeWithToken = async (accessToken: string) => {
+    const { data, error } = await supabase.functions.invoke('owner-portal-admin', {
+      body: payload,
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+    })
+
+    if (error) {
+      throw error
+    }
+
+    if (isOwnerErrorResponse(data)) {
+      throw new Error(data.error)
+    }
+
+    return data as T
+  }
+
   const { data: sessionResult } = await supabase.auth.getSession()
-  const token = sessionResult?.session?.access_token
+  let token = sessionResult?.session?.access_token
+
+  if (!token) {
+    const { data: refreshed, error: refreshError } = await supabase.auth.refreshSession()
+    if (refreshError || !refreshed.session?.access_token) {
+      throw new Error('Sessão expirada. Faça login novamente para continuar.')
+    }
+    token = refreshed.session.access_token
+  }
 
   if (!token) {
     throw new Error('Sessão expirada. Faça login novamente para continuar.')
   }
 
-  const { data, error } = await supabase.functions.invoke('owner-portal-admin', {
-    body: payload,
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
-  })
+  try {
+    return await invokeWithToken(token)
+  } catch (error) {
+    if (!isUnauthorizedOwnerError(error)) {
+      const message = error instanceof Error ? error.message : await parseErrorMessage(error)
+      throw new Error(message)
+    }
 
-  if (error) {
-    const message = await parseErrorMessage(error)
-    throw new Error(message)
+    const { data: refreshed, error: refreshError } = await supabase.auth.refreshSession()
+    if (refreshError || !refreshed.session?.access_token) {
+      throw new Error('Sessão expirada. Faça login novamente para continuar.')
+    }
+
+    try {
+      return await invokeWithToken(refreshed.session.access_token)
+    } catch (retryError) {
+      const message = retryError instanceof Error ? retryError.message : await parseErrorMessage(retryError)
+      throw new Error(message)
+    }
   }
-
-  if (isOwnerErrorResponse(data)) {
-    throw new Error(data.error)
-  }
-
-  return data as T
 }
 
 export async function listPlatformCompanies() {

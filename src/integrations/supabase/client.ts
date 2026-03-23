@@ -35,6 +35,9 @@ const DEFAULT_SUPABASE_PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHAB
 const OWNER_SUPABASE_URL = import.meta.env.VITE_OWNER_SUPABASE_URL
 const OWNER_SUPABASE_ANON_KEY = import.meta.env.VITE_OWNER_SUPABASE_ANON_KEY
 const OWNER_SUPABASE_PUBLISHABLE_KEY = import.meta.env.VITE_OWNER_SUPABASE_PUBLISHABLE_KEY || OWNER_SUPABASE_ANON_KEY
+const OWNER_SUPABASE_MULTI_PROJECT_ENABLED = ['1', 'true', 'yes', 'on'].includes(
+  String(import.meta.env.VITE_OWNER_SUPABASE_MULTI_PROJECT ?? '').trim().toLowerCase(),
+)
 
 const defaultProjectRef =
   extractProjectRefFromUrl(DEFAULT_SUPABASE_URL) ||
@@ -44,9 +47,13 @@ const ownerProjectRef =
   extractProjectRefFromUrl(OWNER_SUPABASE_URL) ||
   ((decodeJwtPayload(OWNER_SUPABASE_PUBLISHABLE_KEY)?.ref as string | undefined) ?? null)
 
+const ownerConfigExists = Boolean(OWNER_SUPABASE_URL && OWNER_SUPABASE_PUBLISHABLE_KEY)
+const ownerProjectMismatch = Boolean(ownerProjectRef && defaultProjectRef && ownerProjectRef !== defaultProjectRef)
+
 const canUseOwnerSupabaseConfig =
   isOwnerRuntime &&
-  Boolean(OWNER_SUPABASE_URL && OWNER_SUPABASE_PUBLISHABLE_KEY)
+  ownerConfigExists &&
+  (!ownerProjectMismatch || OWNER_SUPABASE_MULTI_PROJECT_ENABLED)
 
 const SUPABASE_URL = canUseOwnerSupabaseConfig ? OWNER_SUPABASE_URL : DEFAULT_SUPABASE_URL
 const SUPABASE_KEY = canUseOwnerSupabaseConfig ? OWNER_SUPABASE_PUBLISHABLE_KEY : DEFAULT_SUPABASE_PUBLISHABLE_KEY
@@ -65,10 +72,16 @@ if (!hasSupabaseEnv && !isTestEnvironment && !import.meta.env.DEV) {
   )
 }
 
-if (!isTestEnvironment && isOwnerRuntime && canUseOwnerSupabaseConfig && ownerProjectRef && defaultProjectRef && ownerProjectRef !== defaultProjectRef) {
-  console.warn(
-    '[owner-auth] VITE_OWNER_SUPABASE_* aponta para projeto diferente do tenant runtime. Modo multi-projeto ativo para owner.'
-  )
+if (!isTestEnvironment && isOwnerRuntime && ownerConfigExists && ownerProjectMismatch) {
+  if (OWNER_SUPABASE_MULTI_PROJECT_ENABLED) {
+    console.warn(
+      '[owner-auth] VITE_OWNER_SUPABASE_* aponta para projeto diferente do tenant runtime. Modo multi-projeto ativo para owner por opt-in.'
+    )
+  } else {
+    console.warn(
+      '[owner-auth] VITE_OWNER_SUPABASE_* aponta para projeto diferente do tenant runtime e sera ignorado para evitar conexao dupla. Defina VITE_OWNER_SUPABASE_MULTI_PROJECT=true para habilitar multi-projeto conscientemente.'
+    )
+  }
 }
 
 const projectRefFromUrl = extractProjectRefFromUrl(SUPABASE_URL)

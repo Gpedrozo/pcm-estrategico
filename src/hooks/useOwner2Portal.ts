@@ -58,7 +58,11 @@ export function useOwner2Dashboard(enabled = true) {
 export function useOwner2Companies(enabled = true) {
   return useQuery({
     queryKey: owner2Keys.companies,
-    queryFn: async () => ({ companies: await listPlatformCompanies() }),
+    queryFn: async () => {
+      const data = await listPlatformCompanies()
+      const companies = Array.isArray((data as any)?.companies) ? (data as any).companies : []
+      return { companies }
+    },
     enabled,
     retry: 0,
   })
