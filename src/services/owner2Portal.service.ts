@@ -87,30 +87,70 @@ async function parseInvokeError(error: unknown) {
   return `${prefix}Falha desconhecida na execução do Owner2.`
 }
 
-export async function invokeOwner2<T = unknown>(payload: Owner2Payload): Promise<T> {
-  const { data: sessionData } = await supabase.auth.getSession()
-  const accessToken = sessionData?.session?.access_token
+function isUnauthorizedInvokeError(error: unknown) {
+  const unsafe = error as { context?: unknown; message?: unknown } | null;
+  const context = unsafe?.context as { status?: number } | undefined;
+  const status = Number(context?.status ?? 0);
+  if (status === 401) return true;
 
-  if (!accessToken) {
-    throw new Error('Sessão expirada. Faça login novamente para acessar o Owner2.')
-  }
+  const message = String(unsafe?.message ?? '').toLowerCase();
+  return message.includes('401') || message.includes('unauthorized');
+}
 
+async function invokeWithAccessToken<T = unknown>(payload: Owner2Payload, accessToken: string) {
   const { data, error } = await supabase.functions.invoke('owner-portal-admin', {
     body: payload,
     headers: {
       Authorization: `Bearer ${accessToken}`,
     },
-  })
+  });
 
   if (error) {
-    const message = await parseInvokeError(error)
-    throw new Error(message)
+    throw error;
   }
 
-  const response = data as { success?: boolean; error?: string }
+  const response = data as { success?: boolean; error?: string };
   if (response?.success === false && response?.error) {
-    throw new Error(response.error)
+    throw new Error(response.error);
   }
 
-  return data as T
+  return data as T;
+}
+
+export async function invokeOwner2<T = unknown>(payload: Owner2Payload): Promise<T> {
+  const { data: sessionData } = await supabase.auth.getSession();
+  let accessToken = sessionData?.session?.access_token;
+
+  if (!accessToken) {
+    const { data: refreshed, error: refreshError } = await supabase.auth.refreshSession();
+    if (refreshError) {
+      throw new Error('Sessão expirada. Faça login novamente para acessar o Owner2.');
+    }
+    accessToken = refreshed.session?.access_token;
+  }
+
+  if (!accessToken) {
+    throw new Error('Sessão expirada. Faça login novamente para acessar o Owner2.');
+  }
+
+  try {
+    return await invokeWithAccessToken<T>(payload, accessToken);
+  } catch (error) {
+    if (!isUnauthorizedInvokeError(error)) {
+      const message = error instanceof Error ? error.message : await parseInvokeError(error);
+      throw new Error(message);
+    }
+
+    const { data: refreshed, error: refreshError } = await supabase.auth.refreshSession();
+    if (refreshError || !refreshed.session?.access_token) {
+      throw new Error('Sessão expirada. Faça login novamente para acessar o Owner2.');
+    }
+
+    try {
+      return await invokeWithAccessToken<T>(payload, refreshed.session.access_token);
+    } catch (retryError) {
+      const message = retryError instanceof Error ? retryError.message : await parseInvokeError(retryError);
+      throw new Error(message);
+    }
+  }
 }

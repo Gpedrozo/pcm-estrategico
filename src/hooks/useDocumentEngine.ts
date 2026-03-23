@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
+import { getSupabaseErrorMessage, isMissingTableError } from '@/lib/supabaseCompat';
 
 export interface DocumentSequence {
   id: string;
@@ -33,6 +34,42 @@ const DEFAULT_PREFIX_BY_TYPE: Record<string, string> = {
   RELATORIO: 'RL',
 };
 
+const DOCUMENT_SEQUENCES_TABLE = 'document_sequences';
+
+function isMissingDocumentSequencesTable(error: unknown): boolean {
+  const message = getSupabaseErrorMessage(error).toLowerCase();
+  return isMissingTableError(error) || message.includes('document_sequences');
+}
+
+function formatRuntimeError(error: unknown, fallback = 'Falha inesperada no motor de documentos.'): Error {
+  const message = getSupabaseErrorMessage(error);
+  if (message) return new Error(message);
+
+  if (typeof error === 'string' && error.trim().length > 0) {
+    return new Error(error);
+  }
+
+  try {
+    return new Error(JSON.stringify(error));
+  } catch {
+    return new Error(fallback);
+  }
+}
+
+function buildFallbackDocumentNumber(prefixo: string) {
+  const now = new Date();
+  const compact = [
+    now.getFullYear().toString().slice(-2),
+    String(now.getMonth() + 1).padStart(2, '0'),
+    String(now.getDate()).padStart(2, '0'),
+    String(now.getHours()).padStart(2, '0'),
+    String(now.getMinutes()).padStart(2, '0'),
+    String(now.getSeconds()).padStart(2, '0'),
+  ].join('');
+
+  return `${prefixo}-${compact}`;
+}
+
 export function useDocumentSequences() {
   const { tenantId } = useAuth();
 
@@ -42,11 +79,18 @@ export function useDocumentSequences() {
       if (!tenantId) return [];
 
       const { data, error } = await supabase
-        .from('document_sequences')
+        .from(DOCUMENT_SEQUENCES_TABLE)
         .select('*')
         .eq('empresa_id', tenantId)
         .order('tipo_documento');
-      if (error) throw error;
+
+      if (error) {
+        if (isMissingDocumentSequencesTable(error)) {
+          return [];
+        }
+        throw formatRuntimeError(error);
+      }
+
       return data as DocumentSequence[];
     },
     enabled: Boolean(tenantId),
@@ -64,52 +108,78 @@ export function useNextDocumentNumber() {
 
       const prefixo = DEFAULT_PREFIX_BY_TYPE[tipo] ?? tipo.slice(0, 3).toUpperCase();
 
-      await supabase
-        .from('document_sequences')
-        .upsert(
-          {
-            empresa_id: tenantId,
-            tipo_documento: tipo,
-            prefixo,
-            proximo_numero: 1,
-          },
-          { onConflict: 'empresa_id,tipo_documento' },
-        );
+      try {
+        const { error: upsertError } = await supabase
+          .from(DOCUMENT_SEQUENCES_TABLE)
+          .upsert(
+            {
+              empresa_id: tenantId,
+              tipo_documento: tipo,
+              prefixo,
+              proximo_numero: 1,
+            },
+            { onConflict: 'empresa_id,tipo_documento' },
+          );
 
-      for (let attempt = 0; attempt < 5; attempt += 1) {
-        const { data: currentRow, error: currentError } = await supabase
-          .from('document_sequences')
-          .select('id,prefixo,proximo_numero')
-          .eq('empresa_id', tenantId)
-          .eq('tipo_documento', tipo)
-          .single();
-
-        if (currentError) throw currentError;
-
-        const numeroAtual = Number(currentRow.proximo_numero || 1);
-        const proximoValor = numeroAtual + 1;
-
-        const { data: updatedRows, error: updateError } = await supabase
-          .from('document_sequences')
-          .update({ proximo_numero: proximoValor, updated_at: new Date().toISOString() })
-          .eq('id', currentRow.id)
-          .eq('proximo_numero', numeroAtual)
-          .select('id');
-
-        if (updateError) throw updateError;
-
-        if (updatedRows && updatedRows.length > 0) {
-          return `${currentRow.prefixo}-${String(numeroAtual).padStart(6, '0')}`;
+        if (upsertError) {
+          if (isMissingDocumentSequencesTable(upsertError)) {
+            return buildFallbackDocumentNumber(prefixo);
+          }
+          throw formatRuntimeError(upsertError);
         }
-      }
 
-      throw new Error('Não foi possível gerar o número do documento. Tente novamente.');
+        for (let attempt = 0; attempt < 5; attempt += 1) {
+          const { data: currentRow, error: currentError } = await supabase
+            .from(DOCUMENT_SEQUENCES_TABLE)
+            .select('id,prefixo,proximo_numero')
+            .eq('empresa_id', tenantId)
+            .eq('tipo_documento', tipo)
+            .single();
+
+          if (currentError) {
+            if (isMissingDocumentSequencesTable(currentError)) {
+              return buildFallbackDocumentNumber(prefixo);
+            }
+            throw formatRuntimeError(currentError);
+          }
+
+          const numeroAtual = Number(currentRow.proximo_numero || 1);
+          const proximoValor = numeroAtual + 1;
+
+          const { data: updatedRows, error: updateError } = await supabase
+            .from(DOCUMENT_SEQUENCES_TABLE)
+            .update({ proximo_numero: proximoValor, updated_at: new Date().toISOString() })
+            .eq('id', currentRow.id)
+            .eq('proximo_numero', numeroAtual)
+            .select('id');
+
+          if (updateError) {
+            if (isMissingDocumentSequencesTable(updateError)) {
+              return buildFallbackDocumentNumber(prefixo);
+            }
+            throw formatRuntimeError(updateError);
+          }
+
+          if (updatedRows && updatedRows.length > 0) {
+            return `${currentRow.prefixo}-${String(numeroAtual).padStart(6, '0')}`;
+          }
+        }
+
+        throw new Error('Não foi possível gerar o número do documento. Tente novamente.');
+      } catch (error) {
+        if (isMissingDocumentSequencesTable(error)) {
+          return buildFallbackDocumentNumber(prefixo);
+        }
+
+        throw formatRuntimeError(error);
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['document-sequences', tenantId] });
     },
-    onError: (error: any) => {
-      toast({ title: 'Erro', description: error.message, variant: 'destructive' });
+    onError: (error: unknown) => {
+      const message = error instanceof Error ? error.message : getSupabaseErrorMessage(error) || 'Falha ao gerar número do documento.';
+      toast({ title: 'Erro', description: message, variant: 'destructive' });
     },
   });
 }
@@ -124,11 +194,14 @@ export function useResetSequence() {
       if (!tenantId) throw new Error('Tenant não identificado.');
 
       const { error } = await supabase
-        .from('document_sequences')
+        .from(DOCUMENT_SEQUENCES_TABLE)
         .update({ proximo_numero: 1, updated_at: new Date().toISOString() })
         .eq('empresa_id', tenantId)
         .eq('tipo_documento', tipo);
-      if (error) throw error;
+      if (error) {
+        if (isMissingDocumentSequencesTable(error)) return;
+        throw formatRuntimeError(error);
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['document-sequences', tenantId] });
