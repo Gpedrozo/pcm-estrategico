@@ -1746,7 +1746,7 @@ Deno.serve(async (req) => {
   if (body.action === "list_companies") {
     const { data, error } = await admin
       .from("empresas")
-      .select("id,nome,slug,status,plano,created_at,updated_at,dados_empresa(razao_social,nome_fantasia,cnpj),configuracoes_sistema(chave,valor)")
+      .select("id,nome,slug,status,plano,created_at,updated_at,dados_empresa(razao_social,nome_fantasia),configuracoes_sistema(chave,valor)")
       .order("created_at", { ascending: false })
       .limit(1000);
     if (error) return fail(error.message, 400, null, req);

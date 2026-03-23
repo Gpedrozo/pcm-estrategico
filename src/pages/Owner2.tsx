@@ -684,7 +684,6 @@ export default function Owner() {
             slug: newCompanySlug || undefined,
             tipo_pessoa: newCompanyPersonType,
             cpf_cnpj: newCompanyDocument || undefined,
-            cnpj: newCompanyDocument || undefined,
             razao_social: newCompanyRazaoSocial || newCompanyName,
             nome_fantasia: newCompanyNomeFantasia || newCompanyName,
             endereco: newCompanyAddress || undefined,

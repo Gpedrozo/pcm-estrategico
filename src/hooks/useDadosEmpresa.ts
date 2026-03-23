@@ -61,7 +61,7 @@ export function useDadosEmpresa() {
       // Bootstrap tenant company profile from owner-side base company record when missing.
       const { data: empresaBase, error: empresaError } = await supabase
         .from('empresas')
-        .select('id,nome,cnpj')
+        .select('id,nome')
         .eq('id', tenantId)
         .maybeSingle();
 
@@ -72,7 +72,7 @@ export function useDadosEmpresa() {
         empresa_id: tenantId,
         razao_social: empresaBase.nome,
         nome_fantasia: empresaBase.nome,
-        cnpj: empresaBase.cnpj,
+        cnpj: null,
       };
 
       const { data: inserted, error: insertError } = await supabase
