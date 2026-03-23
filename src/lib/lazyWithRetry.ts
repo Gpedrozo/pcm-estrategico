@@ -1,6 +1,7 @@
 import { lazy, type ComponentType, type LazyExoticComponent } from 'react';
 
 const LAZY_RELOAD_MARKER = 'pcm-lazy-import-reload-v1';
+const LAZY_RELOAD_COOLDOWN_MS = 45_000;
 
 function isDynamicImportFailure(error: unknown): boolean {
   const message = String((error as { message?: string })?.message ?? error ?? '').toLowerCase();
@@ -14,7 +15,9 @@ function isDynamicImportFailure(error: unknown): boolean {
 
 function hasReloadedRecently() {
   try {
-    return window.sessionStorage.getItem(LAZY_RELOAD_MARKER) === '1';
+    const raw = window.sessionStorage.getItem(LAZY_RELOAD_MARKER);
+    const at = Number(raw ?? 0);
+    return Number.isFinite(at) && at > 0 && Date.now() - at <= LAZY_RELOAD_COOLDOWN_MS;
   } catch {
     return false;
   }
@@ -22,7 +25,7 @@ function hasReloadedRecently() {
 
 function markReload() {
   try {
-    window.sessionStorage.setItem(LAZY_RELOAD_MARKER, '1');
+    window.sessionStorage.setItem(LAZY_RELOAD_MARKER, String(Date.now()));
   } catch {
     // noop
   }
