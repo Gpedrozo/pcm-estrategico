@@ -262,6 +262,16 @@ const isEmpresasCnpjSchemaError = (value: unknown) => {
   )
 }
 
+const isProfileBindingErrorMessage = (value: unknown) => {
+  const msg = String(value ?? '').toLowerCase()
+  return (
+    msg.includes('falha ao vincular usuário master na empresa (profiles)') ||
+    msg.includes('falha ao vincular usuario master na empresa (profiles)') ||
+    msg.includes('falha ao vincular usuário à empresa (profiles)') ||
+    msg.includes('falha ao vincular usuario a empresa (profiles)')
+  )
+}
+
 const sanitizeOwnerPayload = (payload: OwnerActionPayload): OwnerActionPayload => {
   if ((payload.action === 'create_company' || payload.action === 'update_company') && payload.company && typeof payload.company === 'object') {
     const company = { ...(payload.company as Record<string, unknown>) }
@@ -289,6 +299,38 @@ const listCompaniesFallback = async () => {
   return {
     companies: Array.isArray(data) ? data : [],
     fallback: 'direct_supabase_companies_query',
+  }
+}
+
+const tryRecoverCreateCompanyByLookup = async (payload: OwnerActionPayload, errorMessage: string) => {
+  if (payload.action !== 'create_company') return null
+
+  const company = payload.company && typeof payload.company === 'object'
+    ? payload.company as Record<string, unknown>
+    : null
+  if (!company) return null
+
+  const targetSlug = String(company.slug ?? '').trim().toLowerCase()
+  const targetName = String(company.nome ?? '').trim().toLowerCase()
+  if (!targetSlug && !targetName) return null
+
+  const lookup = await listCompaniesFallback()
+  const companies = Array.isArray(lookup.companies) ? lookup.companies : []
+
+  const found = companies.find((item: any) => {
+    const itemSlug = String(item?.slug ?? '').trim().toLowerCase()
+    const itemName = String(item?.nome ?? '').trim().toLowerCase()
+    if (targetSlug && itemSlug) return itemSlug === targetSlug
+    return Boolean(targetName && itemName === targetName)
+  })
+
+  if (!found) return null
+
+  return {
+    success: true,
+    company: found,
+    warning: `Empresa criada com recuperação automática. Vínculo do usuário em profiles requer revisão manual. (${errorMessage})`,
+    recovered: true,
   }
 }
 
@@ -398,6 +440,11 @@ export async function callOwnerAdmin<T = unknown>(payload: OwnerActionPayload) {
     if (!isUnauthorizedOwnerError(error)) {
       const message = await parseErrorMessage(error)
 
+      if (safePayload.action === 'create_company' && isProfileBindingErrorMessage(message)) {
+        const recovered = await tryRecoverCreateCompanyByLookup(safePayload, message)
+        if (recovered) return recovered as T
+      }
+
       if (safePayload.action === 'list_companies' && isEmpresasCnpjSchemaError(message)) {
         return await listCompaniesFallback() as T
       }
@@ -408,6 +455,11 @@ export async function callOwnerAdmin<T = unknown>(payload: OwnerActionPayload) {
     const refreshedToken = await refreshSession()
     if (!refreshedToken) {
       const message = await parseErrorMessage(error)
+
+      if (safePayload.action === 'create_company' && isProfileBindingErrorMessage(message)) {
+        const recovered = await tryRecoverCreateCompanyByLookup(safePayload, message)
+        if (recovered) return recovered as T
+      }
 
       if (safePayload.action === 'list_companies' && isEmpresasCnpjSchemaError(message)) {
         return await listCompaniesFallback() as T
@@ -420,6 +472,11 @@ export async function callOwnerAdmin<T = unknown>(payload: OwnerActionPayload) {
       return await invokeWithToken(refreshedToken)
     } catch (retryError) {
       const message = await parseErrorMessage(retryError)
+
+      if (safePayload.action === 'create_company' && isProfileBindingErrorMessage(message)) {
+        const recovered = await tryRecoverCreateCompanyByLookup(safePayload, message)
+        if (recovered) return recovered as T
+      }
 
       if (safePayload.action === 'list_companies' && isEmpresasCnpjSchemaError(message)) {
         return await listCompaniesFallback() as T
