@@ -18,6 +18,7 @@ import { Loader2 } from 'lucide-react'
 import { AppErrorBoundary } from '@/components/runtime/AppErrorBoundary';
 import { TelemetryProvider } from '@/components/runtime/TelemetryProvider';
 import { initMonitoring } from '@/lib/monitoring';
+import { lazyWithRetry } from '@/lib/lazyWithRetry';
 import OwnerLogin from '@/owner/OwnerLogin';
 import Login from './pages/Login';
 
@@ -28,7 +29,7 @@ const Index = lazy(() => import('./pages/Index'))
 const ChangePassword = lazy(() => import('./pages/ChangePassword'))
 const ForgotPassword = lazy(() => import('./pages/ForgotPassword'))
 const ResetPassword = lazy(() => import('./pages/ResetPassword'))
-const Dashboard = lazy(() => import('./pages/Dashboard'))
+const Dashboard = lazyWithRetry(() => import('./pages/Dashboard'))
 const NovaOS = lazy(() => import('./pages/NovaOS'))
 const FecharOS = lazy(() => import('./pages/FecharOS'))
 const PortalMecanicoOS = lazy(() => import('./pages/PortalMecanicoOS'))
