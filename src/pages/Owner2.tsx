@@ -35,7 +35,7 @@ import {
   useOwner2Users,
 } from '@/hooks/useOwner2Portal'
 
-const OWNER2_TABS = [
+const OWNER_TABS = [
   'dashboard',
   'monitoramento',
   'empresas',
@@ -52,7 +52,7 @@ const OWNER2_TABS = [
   'owner-master',
 ] as const
 
-type Owner2Tab = (typeof OWNER2_TABS)[number]
+type OwnerTab = (typeof OWNER_TABS)[number]
 
 type CompanyCredentialNote = {
   companyName: string
@@ -154,9 +154,9 @@ function MetricTile({ label, value, icon: Icon, tone = 'sky' }: { label: string;
   )
 }
 
-export default function Owner2() {
+export default function Owner() {
   const { isSystemOwner, isLoading, user, logout } = useAuth()
-  const [activeTab, setActiveTab] = useState<Owner2Tab>('dashboard')
+  const [activeTab, setActiveTab] = useState<OwnerTab>('dashboard')
   const [isDocumentVisible, setIsDocumentVisible] = useState(true)
   const [feedback, setFeedback] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -553,7 +553,7 @@ export default function Owner2() {
       String(u.status ?? ''),
       String(u.empresa_id ?? ''),
     ])
-    downloadCsv('owner2-usuarios.csv', ['id', 'nome', 'email', 'role', 'status', 'empresa_id'], rows)
+    downloadCsv('owner-usuarios.csv', ['id', 'nome', 'email', 'role', 'status', 'empresa_id'], rows)
     setFeedback('Exportacao de usuarios gerada em CSV.')
   }
 
@@ -566,7 +566,7 @@ export default function Owner2() {
       String(l.actor_email ?? l.user_email ?? ''),
       String(l.created_at ?? l.at ?? ''),
     ])
-    downloadCsv('owner2-logs.csv', ['id', 'acao', 'severidade', 'modulo', 'ator', 'data'], rows)
+    downloadCsv('owner-logs.csv', ['id', 'acao', 'severidade', 'modulo', 'ator', 'data'], rows)
     setFeedback('Exportacao de logs gerada em CSV.')
   }
 
@@ -579,7 +579,7 @@ export default function Owner2() {
       String(s.payment_status ?? ''),
       String(s.status ?? ''),
     ])
-    downloadCsv('owner2-financeiro.csv', ['id', 'empresa_id', 'plano_id', 'valor', 'payment_status', 'status'], rows)
+    downloadCsv('owner-financeiro.csv', ['id', 'empresa_id', 'plano_id', 'valor', 'payment_status', 'status'], rows)
     setFeedback('Exportacao financeira gerada em CSV.')
   }
 
@@ -628,7 +628,7 @@ export default function Owner2() {
       await execute.mutateAsync({ action, payload })
       setFeedback(successMessage)
     } catch (err: any) {
-      setError(String(err?.message ?? err ?? 'Falha na operação do Owner2.'))
+      setError(String(err?.message ?? err ?? 'Falha na operação do Owner.'))
     }
   }
 
@@ -711,7 +711,7 @@ export default function Owner2() {
       setNewAdminName('')
       setNewAdminEmail('')
     } catch (err: any) {
-      setError(String(err?.message ?? err ?? 'Falha ao criar empresa no Owner2.'))
+      setError(String(err?.message ?? err ?? 'Falha ao criar empresa no Owner.'))
     }
   }
 
@@ -747,7 +747,7 @@ export default function Owner2() {
             <ShieldCheck className="h-6 w-6 text-rose-600" />
           </div>
           <h2 className="mt-4 text-lg font-semibold text-slate-900">Acesso negado</h2>
-          <p className="mt-2 text-sm text-slate-600">O Owner2 é exclusivo para SYSTEM_OWNER.</p>
+          <p className="mt-2 text-sm text-slate-600">O Owner é exclusivo para SYSTEM_OWNER.</p>
         </div>
       </div>
     )
@@ -758,7 +758,7 @@ export default function Owner2() {
       <header className="border-b border-slate-200/90 bg-white/90 backdrop-blur">
         <div className="mx-auto flex w-full max-w-[1600px] items-center justify-between px-6 py-4">
           <div>
-            <h1 className="text-xl font-semibold tracking-tight">Owner2</h1>
+            <h1 className="text-xl font-semibold tracking-tight">Owner</h1>
             <p className="text-xs text-slate-600">Centro operacional premium da plataforma</p>
           </div>
           <div className="flex items-center gap-2">
@@ -779,7 +779,7 @@ export default function Owner2() {
       <main className="mx-auto grid w-full max-w-[1600px] gap-4 p-4 lg:grid-cols-[230px,1fr]">
         <aside className="rounded-2xl border border-slate-200 bg-white/95 p-3 shadow-sm">
           <nav className="space-y-1">
-            {OWNER2_TABS.map((tab) => (
+            {OWNER_TABS.map((tab) => (
               <button
                 key={tab}
                 className={`w-full rounded-lg px-3 py-2 text-left text-sm transition ${activeTab === tab ? 'bg-sky-700 font-semibold text-white shadow-sm' : 'text-slate-700 hover:bg-slate-100'}`}
@@ -1741,7 +1741,7 @@ export default function Owner2() {
                     Conceder SYSTEM_ADMIN
                   </button>
 
-                  <p className="text-xs text-slate-500">Timeout de inatividade ocultado do Owner2 para simplificar a operação.</p>
+                  <p className="text-xs text-slate-500">Timeout de inatividade ocultado do Owner para simplificar a operação.</p>
 
                   <select className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" value={selectedTableName} onChange={(e) => setSelectedTableName(e.target.value)}>
                     <option value="">Tabela para purge</option>

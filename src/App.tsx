@@ -23,7 +23,6 @@ import OwnerLogin from '@/owner/OwnerLogin';
 import Login from './pages/Login';
 
 const Owner = lazyWithRetry(() => import('./pages/Owner'))
-const Owner2 = lazyWithRetry(() => import('./pages/Owner2'))
 
 const Index = lazyWithRetry(() => import('./pages/Index'))
 const ChangePassword = lazyWithRetry(() => import('./pages/ChangePassword'))
@@ -109,7 +108,7 @@ const OwnerOnlyRoute = ({ children }: { children: React.ReactNode }) => {
   const lastTraceRef = useRef<string>('');
 
   useEffect(() => {
-    const isOwner2Path = location.pathname.startsWith('/owner2');
+    const isOwnerPath = location.pathname === '/' || location.pathname.startsWith('/owner');
     const traceKey = [
       location.pathname,
       isAuthenticated ? '1' : '0',
@@ -120,10 +119,10 @@ const OwnerOnlyRoute = ({ children }: { children: React.ReactNode }) => {
       forcePasswordChange ? '1' : '0',
     ].join('|');
 
-    if (!isOwner2Path || lastTraceRef.current === traceKey) return;
+    if (!isOwnerPath || lastTraceRef.current === traceKey) return;
     lastTraceRef.current = traceKey;
 
-    logger.info('owner2_route_guard_trace', {
+    logger.info('owner_route_guard_trace', {
       path: location.pathname,
       search: location.search,
       hash: location.hash,
@@ -210,16 +209,7 @@ function OwnerRoutes() {
           }
         />
 
-        <Route
-          path="/owner2"
-          element={
-            <EnvironmentGuard allowOwner>
-              <OwnerOnlyRoute>
-                <Owner2 />
-              </OwnerOnlyRoute>
-            </EnvironmentGuard>
-          }
-        />
+        <Route path="/owner2" element={<Navigate to="/" replace />} />
 
         <Route
           path="/manuais-operacao"
