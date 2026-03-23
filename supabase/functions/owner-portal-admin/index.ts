@@ -2664,29 +2664,97 @@ Deno.serve(async (req) => {
 
     if (createError || !createdAuth?.user?.id) return fail(createError?.message ?? "Failed to create user", 400, null, req);
 
-    const { error: profileError } = await admin.from("profiles").upsert({
+    let createUserWarning: string | null = null;
+
+    const profilePayloadExtended = {
       id: createdAuth.user.id,
       empresa_id: body.user.empresa_id,
       nome: body.user.nome,
       email: normalizedUserEmail,
       force_password_change: forcePasswordChange,
-    }, { onConflict: "id" });
+    };
+    const profilePayloadMinimal = {
+      id: createdAuth.user.id,
+      empresa_id: body.user.empresa_id,
+      nome: body.user.nome,
+      email: normalizedUserEmail,
+    };
 
-    if (profileError) {
-      await admin.auth.admin.deleteUser(createdAuth.user.id).catch(() => null);
-      return fail("Falha ao vincular usuário à empresa (profiles).", 400, { reason: profileError.message }, req);
+    let profileLinkError: { message?: string } | null = null;
+    const profileUpsertExtended = await admin.from("profiles").upsert(profilePayloadExtended, { onConflict: "id" });
+    if (profileUpsertExtended.error) {
+      const profileUpsertMinimal = await admin.from("profiles").upsert(profilePayloadMinimal, { onConflict: "id" });
+      if (profileUpsertMinimal.error) {
+        const profileUpdateMinimal = await admin
+          .from("profiles")
+          .update({
+            empresa_id: body.user.empresa_id,
+            nome: body.user.nome,
+            email: normalizedUserEmail,
+          })
+          .eq("id", createdAuth.user.id);
+
+        if (profileUpdateMinimal.error) {
+          const profileInsertMinimal = await admin
+            .from("profiles")
+            .insert(profilePayloadMinimal);
+
+          if (profileInsertMinimal.error) {
+            profileLinkError = profileInsertMinimal.error;
+          }
+        }
+      }
     }
 
-    const { error: roleError } = await admin.from("user_roles").upsert({
+    if (profileLinkError) {
+      createUserWarning = mergeWarnings(
+        createUserWarning,
+        `Usuário criado no Auth, porém vínculo em profiles não foi persistido automaticamente. (${profileLinkError.message})`,
+      );
+    }
+
+    let roleLinkError: { message?: string } | null = null;
+    const roleUpsertStandard = await admin.from("user_roles").upsert({
       user_id: createdAuth.user.id,
       empresa_id: body.user.empresa_id,
       role: normalizedRole,
     }, { onConflict: "user_id,empresa_id,role" });
 
-    if (roleError) {
-      await admin.from("profiles").delete().eq("id", createdAuth.user.id).catch(() => null);
-      await admin.auth.admin.deleteUser(createdAuth.user.id).catch(() => null);
-      return fail("Falha ao vincular papel do usuário na empresa (user_roles).", 400, { reason: roleError.message }, req);
+    if (roleUpsertStandard.error) {
+      const roleUpsertAlt = await admin.from("user_roles").upsert({
+        user_id: createdAuth.user.id,
+        empresa_id: body.user.empresa_id,
+        role: normalizedRole,
+      }, { onConflict: "user_id,empresa_id" });
+
+      if (roleUpsertAlt.error) {
+        const roleUpdate = await admin
+          .from("user_roles")
+          .update({ role: normalizedRole })
+          .eq("user_id", createdAuth.user.id)
+          .eq("empresa_id", body.user.empresa_id);
+
+        if (roleUpdate.error) {
+          const roleInsert = await admin
+            .from("user_roles")
+            .insert({
+              user_id: createdAuth.user.id,
+              empresa_id: body.user.empresa_id,
+              role: normalizedRole,
+            });
+
+          if (roleInsert.error) {
+            roleLinkError = roleInsert.error;
+          }
+        }
+      }
+    }
+
+    if (roleLinkError) {
+      createUserWarning = mergeWarnings(
+        createUserWarning,
+        `Usuário criado no Auth, porém vínculo em user_roles não foi persistido automaticamente. (${roleLinkError.message})`,
+      );
     }
 
     if (body.user.status && body.user.status !== "ativo") {
@@ -2731,7 +2799,7 @@ Deno.serve(async (req) => {
       },
     });
 
-    return ok({ success: true, user_id: createdAuth.user.id, initial_password: password }, 200, req);
+    return ok({ success: true, user_id: createdAuth.user.id, initial_password: password, warning: createUserWarning }, 200, req);
   }
 
   if (body.action === "move_user_company") {
