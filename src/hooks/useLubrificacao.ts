@@ -86,27 +86,36 @@ export function useCreatePlanoLubrificacao() {
     mutationFn: async (plano: PlanoLubrificacaoInsert) => {
       if (!tenantId) throw new Error('Tenant não resolvido.');
 
-      const { data, error } = await supabase
+      const planoId = (plano as Partial<PlanoLubrificacao>).id ?? crypto.randomUUID();
+      const payload = { id: planoId, empresa_id: tenantId, ...plano };
+
+      const { error } = await supabase
         .from('planos_lubrificacao')
-        .insert({ empresa_id: tenantId, ...plano })
-        .select()
-        .single();
+        .insert(payload);
 
-      if (error) throw error;
+      if (error) throw toReadableError(error);
 
-      await upsertMaintenanceSchedule({
-        tipo: 'lubrificacao',
-        origemId: data.id,
-        empresaId: tenantId!,
-        equipamentoId: data.equipamento_id,
-        titulo: `${data.codigo} • ${data.nome}`,
-        descricao: data.descricao || data.observacoes,
-        dataProgramada: data.proxima_execucao || new Date().toISOString(),
-        status: data.status || (data.ativo ? 'programado' : 'inativo'),
-        responsavel: data.responsavel_nome || data.responsavel,
-      });
+      try {
+        await upsertMaintenanceSchedule({
+          tipo: 'lubrificacao',
+          origemId: planoId,
+          empresaId: tenantId,
+          equipamentoId: payload.equipamento_id,
+          titulo: `${payload.codigo} • ${payload.nome}`,
+          descricao: payload.descricao || payload.observacoes,
+          dataProgramada: payload.proxima_execucao || new Date().toISOString(),
+          status: payload.status || (payload.ativo ? 'programado' : 'inativo'),
+          responsavel: payload.responsavel_nome || payload.responsavel,
+        });
+      } catch (scheduleError) {
+        logger.warn('useLubrificacao.create.schedule_sync_failed', {
+          empresaId: tenantId,
+          planoId,
+          error: getSupabaseErrorMessage(scheduleError),
+        });
+      }
 
-      return data as PlanoLubrificacao;
+      return payload as PlanoLubrificacao;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['planos-lubrificacao', tenantId] });
@@ -128,29 +137,44 @@ export function useUpdatePlanoLubrificacao() {
     mutationFn: async ({ id, ...updates }: Partial<PlanoLubrificacao> & { id: string }) => {
       if (!tenantId) throw new Error('Tenant não resolvido.');
 
-      const { data, error } = await supabase
+      const { error } = await supabase
         .from('planos_lubrificacao')
         .update(updates)
         .eq('id', id)
+        .eq('empresa_id', tenantId);
+
+      if (error) throw toReadableError(error);
+
+      const { data: row } = await supabase
+        .from('planos_lubrificacao')
+        .select('*')
+        .eq('id', id)
         .eq('empresa_id', tenantId)
-        .select()
-        .single();
+        .maybeSingle();
 
-      if (error) throw error;
+      const source = (row ?? { id, ...updates }) as Partial<PlanoLubrificacao> & { id: string };
 
-      await upsertMaintenanceSchedule({
-        tipo: 'lubrificacao',
-        origemId: data.id,
-        empresaId: tenantId!,
-        equipamentoId: data.equipamento_id,
-        titulo: `${data.codigo} • ${data.nome}`,
-        descricao: data.descricao || data.observacoes,
-        dataProgramada: data.proxima_execucao || new Date().toISOString(),
-        status: data.status || (data.ativo ? 'programado' : 'inativo'),
-        responsavel: data.responsavel_nome || data.responsavel,
-      });
+      try {
+        await upsertMaintenanceSchedule({
+          tipo: 'lubrificacao',
+          origemId: source.id,
+          empresaId: tenantId,
+          equipamentoId: source.equipamento_id,
+          titulo: source.codigo && source.nome ? `${source.codigo} • ${source.nome}` : `Plano ${source.id}`,
+          descricao: source.descricao || source.observacoes,
+          dataProgramada: source.proxima_execucao || new Date().toISOString(),
+          status: source.status || (source.ativo ? 'programado' : 'inativo'),
+          responsavel: source.responsavel_nome || source.responsavel,
+        });
+      } catch (scheduleError) {
+        logger.warn('useLubrificacao.update.schedule_sync_failed', {
+          empresaId: tenantId,
+          planoId: id,
+          error: getSupabaseErrorMessage(scheduleError),
+        });
+      }
 
-      return data as PlanoLubrificacao;
+      return source as PlanoLubrificacao;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['planos-lubrificacao', tenantId] });
@@ -227,10 +251,10 @@ export function useCreateExecucaoLubrificacao() {
         .from('execucoes_lubrificacao')
         .insert(payload)
         .select()
-        .single();
+        .maybeSingle();
 
       if (error) throw error;
-      return data;
+      return data ?? { ...payload, id: crypto.randomUUID() };
     },
     onSuccess: (d) => {
       qc.invalidateQueries({ queryKey: ['execucoes-lubrificacao', d.plano_id] });

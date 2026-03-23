@@ -29,27 +29,37 @@ export interface MaintenanceScheduleRow {
 }
 
 export async function upsertMaintenanceSchedule(input: MaintenanceScheduleUpsertInput) {
-  const { data, error } = await supabase
+  const payload = {
+    empresa_id: input.empresaId,
+    tipo: input.tipo,
+    origem_id: input.origemId,
+    equipamento_id: input.equipamentoId ?? null,
+    titulo: input.titulo,
+    descricao: input.descricao ?? null,
+    data_programada: input.dataProgramada,
+    status: input.status || 'programado',
+    responsavel: input.responsavel ?? null,
+  };
+
+  const { error } = await supabase
     .from('maintenance_schedule')
-    .upsert(
-      {
-        empresa_id: input.empresaId,
-        tipo: input.tipo,
-        origem_id: input.origemId,
-        equipamento_id: input.equipamentoId ?? null,
-        titulo: input.titulo,
-        descricao: input.descricao ?? null,
-        data_programada: input.dataProgramada,
-        status: input.status || 'programado',
-        responsavel: input.responsavel ?? null,
-      },
-      { onConflict: 'tipo,origem_id' },
-    )
-    .select()
-    .single();
+    .upsert(payload, { onConflict: 'tipo,origem_id' });
 
   if (error) throw error;
-  return data as MaintenanceScheduleRow;
+
+  return {
+    id: '',
+    empresa_id: payload.empresa_id,
+    tipo: payload.tipo,
+    origem_id: payload.origem_id,
+    equipamento_id: payload.equipamento_id,
+    titulo: payload.titulo,
+    descricao: payload.descricao,
+    data_programada: payload.data_programada,
+    status: payload.status,
+    responsavel: payload.responsavel,
+    created_at: new Date().toISOString(),
+  } as MaintenanceScheduleRow;
 }
 
 export async function deleteMaintenanceSchedule(tipo: MaintenanceTipo, origemId: string) {
