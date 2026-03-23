@@ -8,7 +8,6 @@ import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Checkbox } from '@/components/ui/checkbox';
 import {
   Select,
   SelectContent,
@@ -34,39 +33,12 @@ import {
   AlertTriangle,
   Wrench,
   Clock,
-  ClipboardCheck,
-  FileText
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { OSStatusBadge } from '@/components/os/OSStatusBadge';
 import { OSTypeBadge } from '@/components/os/OSTypeBadge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { normalizeOSStatus, normalizeOSType } from '@/lib/osBadges';
-
-// Modo de Falha options
-const MODOS_FALHA = [
-  { value: 'DESGASTE', label: 'Desgaste' },
-  { value: 'FADIGA', label: 'Fadiga' },
-  { value: 'CORROSAO', label: 'Corrosão' },
-  { value: 'SOBRECARGA', label: 'Sobrecarga' },
-  { value: 'DESALINHAMENTO', label: 'Desalinhamento' },
-  { value: 'LUBRIFICACAO_DEFICIENTE', label: 'Lubrificação Deficiente' },
-  { value: 'CONTAMINACAO', label: 'Contaminação' },
-  { value: 'ERRO_OPERACIONAL', label: 'Erro Operacional' },
-  { value: 'FALTA_MANUTENCAO', label: 'Falta de Manutenção' },
-  { value: 'DEFEITO_FABRICACAO', label: 'Defeito de Fabricação' },
-  { value: 'OUTRO', label: 'Outro' },
-];
-
-// Causa Raiz options (6M - Ishikawa)
-const CAUSAS_RAIZ = [
-  { value: 'MAO_OBRA', label: 'Mão de Obra', description: 'Falha humana, treinamento' },
-  { value: 'METODO', label: 'Método', description: 'Procedimento inadequado' },
-  { value: 'MATERIAL', label: 'Material', description: 'Peça defeituosa, qualidade' },
-  { value: 'MAQUINA', label: 'Máquina', description: 'Falha do equipamento' },
-  { value: 'MEIO_AMBIENTE', label: 'Meio Ambiente', description: 'Condições externas' },
-  { value: 'MEDICAO', label: 'Medição', description: 'Erro de instrumentação' },
-];
 
 interface MaterialUsado {
   material: MaterialRow;
@@ -80,14 +52,6 @@ interface PausaExecucao {
   data_fim: string;
   fim: string;
   motivo: string;
-}
-
-interface RCAFormData {
-  modoFalha: string;
-  causaRaiz: string;
-  acaoCorretiva: string;
-  licoesAprendidas: string;
-  requireRCA: boolean;
 }
 
 export default function FecharOS() {
@@ -116,13 +80,6 @@ export default function FecharOS() {
     servicoExecutado: '',
     custoTerceiros: '',
   });
-  const [rcaData, setRcaData] = useState<RCAFormData>({
-    modoFalha: '',
-    causaRaiz: '',
-    acaoCorretiva: '',
-    licoesAprendidas: '',
-    requireRCA: false,
-  });
   const [materiaisUsados, setMateriaisUsados] = useState<MaterialUsado[]>([]);
   const [materialSelecionado, setMaterialSelecionado] = useState('');
   const [quantidadeMaterial, setQuantidadeMaterial] = useState('');
@@ -137,9 +94,6 @@ export default function FecharOS() {
   const servicoMinLength = 20;
 
   const selectedMecanico = mecanicos?.find(m => m.id === formData.mecanicoId);
-  
-  // Determine if RCA is required based on OS type
-  const isCorretiva = selectedOS?.tipo === 'CORRETIVA';
 
   const parseDateTime = (dateValue: string, timeValue: string) => {
     if (!dateValue || !timeValue) return null;
@@ -280,20 +234,17 @@ export default function FecharOS() {
   const servicoValido = formData.servicoExecutado.trim().length >= servicoMinLength;
   const janelaExecucaoPreenchida = Boolean(formData.dataInicio && formData.horaInicio && formData.dataFim && formData.horaFim);
   const janelaExecucaoValida = !janelaExecucaoPreenchida || Boolean(duracaoBruta);
-  const rcaObrigatorioPreenchido = !isCorretiva || !rcaData.requireRCA || Boolean(rcaData.modoFalha && rcaData.causaRaiz && rcaData.acaoCorretiva.trim());
   const canSubmit = Boolean(
     selectedOS &&
       formData.mecanicoId &&
       janelaExecucaoPreenchida &&
       janelaExecucaoValida &&
-      servicoValido &&
-      rcaObrigatorioPreenchido,
+      servicoValido,
   );
   const checklist = [
     { label: 'Mecânico selecionado', ok: Boolean(formData.mecanicoId) },
     { label: 'Horário de execução válido', ok: janelaExecucaoPreenchida && janelaExecucaoValida },
     { label: `Serviço com mínimo de ${servicoMinLength} caracteres`, ok: servicoValido },
-    { label: 'RCA obrigatório preenchido', ok: rcaObrigatorioPreenchido },
   ];
   const progressoChecklist = Math.round((checklist.filter((item) => item.ok).length / checklist.length) * 100);
 
@@ -377,10 +328,6 @@ export default function FecharOS() {
             motivo: p.motivo,
           })),
           usuario_fechamento: user?.id || null,
-          modo_falha: rcaData.requireRCA && isCorretiva ? rcaData.modoFalha : null,
-          causa_raiz: rcaData.requireRCA && isCorretiva ? rcaData.causaRaiz : null,
-          acao_corretiva: rcaData.requireRCA && isCorretiva ? rcaData.acaoCorretiva : null,
-          licoes_aprendidas: rcaData.requireRCA && isCorretiva ? rcaData.licoesAprendidas : null,
         });
       } catch (atomicError: any) {
         logger.warn('atomic_close_fallback', { error: String(atomicError) });
@@ -420,10 +367,6 @@ export default function FecharOS() {
           status: 'FECHADA',
           data_fechamento: new Date().toISOString(),
           usuario_fechamento: user?.id || null,
-          modo_falha: rcaData.requireRCA && isCorretiva ? rcaData.modoFalha : null,
-          causa_raiz: rcaData.requireRCA && isCorretiva ? rcaData.causaRaiz : null,
-          acao_corretiva: rcaData.requireRCA && isCorretiva ? rcaData.acaoCorretiva : null,
-          licoes_aprendidas: rcaData.requireRCA && isCorretiva ? rcaData.licoesAprendidas : null,
         });
 
         toast({
@@ -433,7 +376,7 @@ export default function FecharOS() {
         });
       }
 
-      await log('FECHAR_OS', `Fechamento da O.S ${selectedOS.numero_os} - Custo total: ${formatCurrency(custoTotal)} - Tempo bruto: ${tempoExecucaoBruto} min - Pausas: ${tempoPausas} min - Tempo líquido: ${tempoExecucao} min${rcaData.requireRCA ? ' (com RCA)' : ''}`, selectedOS.tag);
+      await log('FECHAR_OS', `Fechamento da O.S ${selectedOS.numero_os} - Custo total: ${formatCurrency(custoTotal)} - Tempo bruto: ${tempoExecucaoBruto} min - Pausas: ${tempoPausas} min - Tempo líquido: ${tempoExecucao} min`, selectedOS.tag);
 
       toast({
         title: 'O.S Fechada com Sucesso!',
@@ -464,13 +407,6 @@ export default function FecharOS() {
       horaFim: '',
       servicoExecutado: '',
       custoTerceiros: '',
-    });
-    setRcaData({
-      modoFalha: '',
-      causaRaiz: '',
-      acaoCorretiva: '',
-      licoesAprendidas: '',
-      requireRCA: os.tipo === 'CORRETIVA',
     });
     setMateriaisUsados([]);
     setPausasExecucao([]);
@@ -516,7 +452,7 @@ export default function FecharOS() {
         </Button>
         <div className="space-y-1">
           <h1 className="text-2xl font-bold text-foreground">Fechamento de Ordem de Servico</h1>
-          <p className="text-muted-foreground max-w-3xl">Registre execução, custos e RCA para concluir a O.S com rastreabilidade.</p>
+          <p className="text-muted-foreground max-w-3xl">Registre execução e custos para concluir a O.S com rastreabilidade.</p>
         </div>
       </div>
 
@@ -590,10 +526,9 @@ export default function FecharOS() {
               </div>
 
               <Tabs value={activeTab} onValueChange={setActiveTab}>
-                <TabsList className="grid w-full grid-cols-3">
+                <TabsList className="grid w-full grid-cols-2">
                   <TabsTrigger value="execucao" className="gap-2"><Wrench className="h-4 w-4" />Execução</TabsTrigger>
                   <TabsTrigger value="materiais" className="gap-2"><Package className="h-4 w-4" />Materiais</TabsTrigger>
-                  <TabsTrigger value="rca" className="gap-2"><ClipboardCheck className="h-4 w-4" />RCA</TabsTrigger>
                 </TabsList>
 
                 <TabsContent value="execucao" className="space-y-6 mt-6">
@@ -849,79 +784,6 @@ export default function FecharOS() {
                   </div>
                 </TabsContent>
 
-                <TabsContent value="rca" className="space-y-6 mt-6">
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="text-base">Análise de Causa Raiz</CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                      <div className="flex items-center gap-3">
-                        <Checkbox
-                          id="rca-required"
-                          checked={rcaData.requireRCA}
-                          onCheckedChange={(checked) => setRcaData((prev) => ({ ...prev, requireRCA: Boolean(checked) }))}
-                        />
-                        <Label htmlFor="rca-required">Exigir preenchimento de RCA neste fechamento</Label>
-                      </div>
-
-                      {rcaData.requireRCA && (
-                        <>
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div className="space-y-2">
-                              <Label>Modo de falha *</Label>
-                              <Select value={rcaData.modoFalha} onValueChange={(value) => setRcaData((prev) => ({ ...prev, modoFalha: value }))}>
-                                <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
-                                <SelectContent>
-                                  {MODOS_FALHA.map((modo) => (
-                                    <SelectItem key={modo.value} value={modo.value}>{modo.label}</SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                            </div>
-
-                            <div className="space-y-2">
-                              <Label>Causa raiz (6M) *</Label>
-                              <Select value={rcaData.causaRaiz} onValueChange={(value) => setRcaData((prev) => ({ ...prev, causaRaiz: value }))}>
-                                <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
-                                <SelectContent>
-                                  {CAUSAS_RAIZ.map((causa) => (
-                                    <SelectItem key={causa.value} value={causa.value}>{causa.label}</SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                            </div>
-                          </div>
-
-                          <div className="space-y-2">
-                            <Label>Ação corretiva *</Label>
-                            <Textarea
-                              value={rcaData.acaoCorretiva}
-                              onChange={(e) => setRcaData((prev) => ({ ...prev, acaoCorretiva: e.target.value }))}
-                              rows={3}
-                              placeholder="Descreva a ação corretiva aplicada."
-                            />
-                          </div>
-
-                          <div className="space-y-2">
-                            <Label>Lições aprendidas</Label>
-                            <Textarea
-                              value={rcaData.licoesAprendidas}
-                              onChange={(e) => setRcaData((prev) => ({ ...prev, licoesAprendidas: e.target.value }))}
-                              rows={3}
-                              placeholder="Registre as lições aprendidas para evitar recorrência."
-                            />
-                          </div>
-                        </>
-                      )}
-
-                      {isCorretiva && !rcaData.requireRCA && (
-                        <div className="rounded-md border border-warning/30 bg-warning/10 p-3 text-sm text-warning">
-                          Esta O.S é corretiva. Recomenda-se habilitar o RCA para rastreabilidade completa.
-                        </div>
-                      )}
-                    </CardContent>
-                  </Card>
-                </TabsContent>
               </Tabs>
 
               <div className="p-3 bg-muted/40 rounded-lg text-sm border border-border/50">
