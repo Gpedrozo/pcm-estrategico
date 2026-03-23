@@ -137,7 +137,7 @@ export async function invokeOwner2<T = unknown>(payload: Owner2Payload): Promise
     return await invokeWithAccessToken<T>(payload, accessToken);
   } catch (error) {
     if (!isUnauthorizedInvokeError(error)) {
-      const message = error instanceof Error ? error.message : await parseInvokeError(error);
+      const message = await parseInvokeError(error);
       throw new Error(message);
     }
 
@@ -149,7 +149,7 @@ export async function invokeOwner2<T = unknown>(payload: Owner2Payload): Promise
     try {
       return await invokeWithAccessToken<T>(payload, refreshed.session.access_token);
     } catch (retryError) {
-      const message = retryError instanceof Error ? retryError.message : await parseInvokeError(retryError);
+      const message = await parseInvokeError(retryError);
       throw new Error(message);
     }
   }

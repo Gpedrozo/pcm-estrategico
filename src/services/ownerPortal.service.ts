@@ -346,20 +346,20 @@ export async function callOwnerAdmin<T = unknown>(payload: OwnerActionPayload) {
     return await invokeWithToken(token)
   } catch (error) {
     if (!isUnauthorizedOwnerError(error)) {
-      const message = error instanceof Error ? error.message : await parseErrorMessage(error)
+      const message = await parseErrorMessage(error)
       throw new Error(message)
     }
 
     const refreshedToken = await refreshSession()
     if (!refreshedToken) {
-      const message = error instanceof Error ? error.message : await parseErrorMessage(error)
+      const message = await parseErrorMessage(error)
       throw new Error(message)
     }
 
     try {
       return await invokeWithToken(refreshedToken)
     } catch (retryError) {
-      const message = retryError instanceof Error ? retryError.message : await parseErrorMessage(retryError)
+      const message = await parseErrorMessage(retryError)
       throw new Error(message)
     }
   }
