@@ -456,9 +456,9 @@ function buildManagedTenantDomain(slug: string) {
 }
 
 const CF_PAGES_AUTO_DOMAIN_ENABLED = (Deno.env.get("CF_PAGES_AUTO_DOMAIN_ENABLED") ?? "true").toLowerCase() !== "false";
-const CF_PAGES_PROVISION_REQUIRED = (Deno.env.get("CF_PAGES_PROVISION_REQUIRED") ?? "true").toLowerCase() !== "false";
+const CF_PAGES_PROVISION_REQUIRED = (Deno.env.get("CF_PAGES_PROVISION_REQUIRED") ?? "false").toLowerCase() === "true";
 const CF_DNS_AUTO_RECORD_ENABLED = (Deno.env.get("CF_DNS_AUTO_RECORD_ENABLED") ?? "true").toLowerCase() !== "false";
-const CF_DNS_PROVISION_REQUIRED = (Deno.env.get("CF_DNS_PROVISION_REQUIRED") ?? "true").toLowerCase() !== "false";
+const CF_DNS_PROVISION_REQUIRED = (Deno.env.get("CF_DNS_PROVISION_REQUIRED") ?? "false").toLowerCase() === "true";
 const CF_API_TOKEN = (Deno.env.get("CF_API_TOKEN") ?? "").trim();
 const CF_ACCOUNT_ID = (Deno.env.get("CF_ACCOUNT_ID") ?? "").trim();
 const CF_PAGES_PROJECT_NAME = (Deno.env.get("CF_PAGES_PROJECT_NAME") ?? "").trim();
@@ -640,8 +640,9 @@ async function ensureCloudflareTenantDomain(domain: string): Promise<{
   const dns = await ensureCloudflareDnsRecord(domain);
   const pages = await ensureCloudflarePagesCustomDomain(domain);
 
-  const hasDnsFailure = dns.status === "error" || (dns.status === "skipped" && CF_DNS_PROVISION_REQUIRED);
-  const hasPagesFailure = pages.status === "error" || (pages.status === "skipped" && CF_PAGES_PROVISION_REQUIRED);
+  // Only treat as failure if the API call actually errored (not skipped due to missing credentials)
+  const hasDnsFailure = dns.status === "error" && CF_DNS_PROVISION_REQUIRED;
+  const hasPagesFailure = pages.status === "error" && CF_PAGES_PROVISION_REQUIRED;
 
   if (hasDnsFailure || hasPagesFailure) {
     return {
@@ -2079,7 +2080,7 @@ Deno.serve(async (req) => {
       }
 
       const cloudflareProvision = await ensureCloudflareTenantDomain(managedDomain);
-      if (cloudflareProvision.status !== "ok") {
+      if (cloudflareProvision.status === "error") {
         if (CF_PAGES_PROVISION_REQUIRED || CF_DNS_PROVISION_REQUIRED) {
           const reason = await rollbackCreateCompany(cloudflareProvision.message);
           return fail("Falha ao provisionar DNS/dominio no Cloudflare para o tenant.", 400, { reason }, req);
@@ -2092,7 +2093,7 @@ Deno.serve(async (req) => {
       }
     }
 
-    const masterRole = body.user.role ?? "ADMIN";
+    const masterRole = body.user.role ?? "MASTER_TI";
     const password = body.user.password?.trim() || generateTemporaryPassword();
 
     const normalizedMasterEmail = body.user.email.trim().toLowerCase();
@@ -2296,6 +2297,28 @@ Deno.serve(async (req) => {
         }
       } else {
         subscription = createdSubscription;
+
+        // Sync company_subscriptions table (used by check_company_plan_limit RPC)
+        const companySubStatus = String(createdSubscription.status ?? "teste").toLowerCase();
+        const mappedStatus = companySubStatus === "teste" ? "trial" : companySubStatus === "ativa" ? "active" : companySubStatus;
+        await admin.from("company_subscriptions").upsert({
+          empresa_id: company.id,
+          plan_id: selectedPlanId,
+          status: mappedStatus,
+          starts_at: createdSubscription.starts_at ?? startsAt,
+          ends_at: createdSubscription.ends_at ?? null,
+        }, { onConflict: "empresa_id" }).then(({ error: csError }) => {
+          if (csError && !isSchemaOrMissingObjectError(csError.message)) {
+            // Fallback insert
+            return admin.from("company_subscriptions").insert({
+              empresa_id: company.id,
+              plan_id: selectedPlanId,
+              status: mappedStatus,
+              starts_at: createdSubscription.starts_at ?? startsAt,
+              ends_at: createdSubscription.ends_at ?? null,
+            });
+          }
+        }).catch(() => null);
 
         try {
           contract = await createContractFromSubscription(admin, auth.user.id, createdSubscription);
@@ -2502,7 +2525,7 @@ Deno.serve(async (req) => {
           }
 
           const cloudflareProvision = await ensureCloudflareTenantDomain(nextManagedDomain);
-          if (cloudflareProvision.status !== "ok") {
+          if (cloudflareProvision.status === "error") {
             if (CF_PAGES_PROVISION_REQUIRED || CF_DNS_PROVISION_REQUIRED) {
               return fail("Falha ao provisionar DNS/dominio no Cloudflare para o tenant.", 400, {
                 reason: cloudflareProvision.message,
@@ -2618,6 +2641,8 @@ Deno.serve(async (req) => {
       return fail("user payload is required", 400, null, req);
     }
 
+    // Plan limit check — gracefully skip if no subscription exists yet (new company onboarding)
+    let planLimitWarning: string | null = null;
     const { error: planLimitError } = await admin.rpc("check_company_plan_limit", {
       p_empresa_id: body.user.empresa_id,
       p_limit_type: "users",
@@ -2625,9 +2650,23 @@ Deno.serve(async (req) => {
     });
 
     if (planLimitError) {
-      return fail("Limite de usuários do plano atingido ou assinatura inválida.", 403, {
-        reason: planLimitError.message,
-      }, req);
+      const planMsg = planLimitError.message ?? "";
+      const isNoSubscription = planMsg.toLowerCase().includes("no active subscription");
+      const isPlanLimitExceeded = planMsg.toLowerCase().includes("limit exceeded");
+
+      if (isPlanLimitExceeded) {
+        return fail("Limite de usuários do plano atingido.", 403, {
+          reason: planLimitError.message,
+        }, req);
+      }
+
+      if (isNoSubscription) {
+        planLimitWarning = "Empresa sem assinatura ativa. Usuário criado sem verificação de limites do plano.";
+      } else if (isSchemaOrMissingObjectError(planMsg)) {
+        planLimitWarning = "Verificação de limites de plano indisponível neste ambiente.";
+      } else {
+        planLimitWarning = `Verificação de limites do plano falhou: ${planMsg}. Usuário criado sem enforcement.`;
+      }
     }
 
     const normalizedUserEmail = body.user.email.trim().toLowerCase();
@@ -2808,13 +2847,15 @@ Deno.serve(async (req) => {
       },
     });
 
-    return ok({ success: true, user_id: createdAuth.user.id, initial_password: password, warning: createUserWarning }, 200, req);
+    const finalWarning = mergeWarnings(planLimitWarning, createUserWarning);
+    return ok({ success: true, user_id: createdAuth.user.id, initial_password: password, warning: finalWarning }, 200, req);
   }
 
   if (body.action === "move_user_company") {
     const targetEmpresaId = String(body.new_empresa_id ?? body.empresa_id ?? "").trim();
     if (!body.user_id || !targetEmpresaId) return fail("user_id and new_empresa_id are required", 400, null, req);
 
+    // Plan limit check — gracefully skip if no subscription exists
     const { error: planLimitError } = await admin.rpc("check_company_plan_limit", {
       p_empresa_id: targetEmpresaId,
       p_limit_type: "users",
@@ -2822,9 +2863,14 @@ Deno.serve(async (req) => {
     });
 
     if (planLimitError) {
-      return fail("Limite de usuários do plano da empresa destino atingido ou assinatura inválida.", 403, {
-        reason: planLimitError.message,
-      }, req);
+      const planMsg = planLimitError.message ?? "";
+      const isPlanLimitExceeded = planMsg.toLowerCase().includes("limit exceeded");
+      if (isPlanLimitExceeded) {
+        return fail("Limite de usuários do plano da empresa destino atingido.", 403, {
+          reason: planLimitError.message,
+        }, req);
+      }
+      // For no subscription or schema errors, allow the move
     }
 
     const { data: targetCompany, error: targetCompanyError } = await admin

@@ -296,11 +296,11 @@ const sanitizeOwnerPayload = (payload: OwnerActionPayload): OwnerActionPayload =
 }
 
 const listCompaniesFallback = async () => {
-  const { data, error } = await supabase
+  const { data, error, count } = await supabase
     .from('empresas')
-    .select('id,nome,slug,created_at,updated_at')
+    .select('id,nome,slug,created_at,updated_at', { count: 'exact' })
     .order('created_at', { ascending: false })
-    .limit(1000)
+    .limit(5000)
 
   if (error) {
     throw new Error(`Falha no fallback de listagem de empresas: ${error.message}`)
@@ -308,6 +308,7 @@ const listCompaniesFallback = async () => {
 
   return {
     companies: Array.isArray(data) ? data : [],
+    total: count ?? 0,
     fallback: 'direct_supabase_companies_query',
   }
 }

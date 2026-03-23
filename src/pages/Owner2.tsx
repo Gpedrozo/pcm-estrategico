@@ -709,7 +709,7 @@ export default function Owner() {
             responsavel: newCompanyResponsible || undefined,
             segmento: newCompanySegment || undefined,
           },
-          user: { nome: newAdminName, email: newAdminEmail, role: 'ADMIN' },
+          user: { nome: newAdminName, email: newAdminEmail, role: 'MASTER_TI' },
         },
       })
 
@@ -1157,6 +1157,7 @@ export default function Owner() {
                   <input className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" value={newUserName} onChange={(e) => setNewUserName(e.target.value)} placeholder="Nome" />
                   <input className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" value={newUserEmail} onChange={(e) => setNewUserEmail(e.target.value)} placeholder="Email" />
                   <select className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" value={newUserRole} onChange={(e) => setNewUserRole(e.target.value)}>
+                    <option value="MASTER_TI">MASTER_TI (Admin TI)</option>
                     <option value="ADMIN">ADMIN</option>
                     <option value="GESTOR">GESTOR</option>
                     <option value="TECNICO">TECNICO</option>

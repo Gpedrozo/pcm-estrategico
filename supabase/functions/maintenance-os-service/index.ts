@@ -59,7 +59,13 @@ Deno.serve(async (req) => {
       p_limit_type: "orders",
       p_increment: 1,
     });
-    if (limitError) return fail(limitError.message, 429, { code: "PLAN_LIMIT_EXCEEDED" }, req);
+    if (limitError) {
+      const limitMsg = (limitError.message ?? "").toLowerCase();
+      if (limitMsg.includes("limit exceeded")) {
+        return fail(limitError.message, 429, { code: "PLAN_LIMIT_EXCEEDED" }, req);
+      }
+      // Allow operation if no subscription exists or schema error
+    }
 
     const { data, error } = await admin
       .from("ordens_servico")
