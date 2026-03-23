@@ -19,6 +19,7 @@ import {
 import { Area, AreaChart, Bar, BarChart, CartesianGrid, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import { useAuth } from '@/contexts/AuthContext'
 import { resolveOrRepairTenantHost } from '@/lib/tenantDomain'
+import { listPlatformCompanies } from '@/services/ownerPortal.service'
 import {
   useOwner2Actions,
   useOwner2Audits,
@@ -675,6 +676,22 @@ export default function Owner() {
     setFeedback(null)
     setCompanyCredentialNote(null)
 
+    const resetCreateCompanyForm = () => {
+      setNewCompanyName('')
+      setNewCompanySlug('')
+      setNewCompanyPersonType('PJ')
+      setNewCompanyDocument('')
+      setNewCompanyRazaoSocial('')
+      setNewCompanyNomeFantasia('')
+      setNewCompanyAddress('')
+      setNewCompanyPhone('')
+      setNewCompanyEmail('')
+      setNewCompanyResponsible('')
+      setNewCompanySegment('')
+      setNewAdminName('')
+      setNewAdminEmail('')
+    }
+
     try {
       const response: any = await execute.mutateAsync({
         action: 'create_company',
@@ -734,21 +751,39 @@ export default function Owner() {
       }
 
       setFeedback(initialPassword ? 'Empresa criada com sucesso. Credenciais iniciais disponíveis para cópia.' : 'Empresa criada com sucesso.')
-      setNewCompanyName('')
-      setNewCompanySlug('')
-      setNewCompanyPersonType('PJ')
-      setNewCompanyDocument('')
-      setNewCompanyRazaoSocial('')
-      setNewCompanyNomeFantasia('')
-      setNewCompanyAddress('')
-      setNewCompanyPhone('')
-      setNewCompanyEmail('')
-      setNewCompanyResponsible('')
-      setNewCompanySegment('')
-      setNewAdminName('')
-      setNewAdminEmail('')
+      resetCreateCompanyForm()
     } catch (err: any) {
-      setError(String(err?.message ?? err ?? 'Falha ao criar empresa no Owner.'))
+      const errorMessage = String(err?.message ?? err ?? 'Falha ao criar empresa no Owner.')
+      const isProfileBindingError =
+        errorMessage.includes('Falha ao vincular usuário master na empresa (profiles).') ||
+        errorMessage.includes('Falha ao vincular usuário à empresa (profiles).')
+
+      if (isProfileBindingError) {
+        try {
+          const companiesResult: any = await listPlatformCompanies()
+          const companies = Array.isArray(companiesResult?.companies) ? companiesResult.companies : []
+          const targetSlug = String(newCompanySlug || '').trim().toLowerCase()
+          const targetName = String(newCompanyName || '').trim().toLowerCase()
+
+          const createdCompany = companies.find((company: any) => {
+            const companySlug = String(company?.slug ?? '').trim().toLowerCase()
+            const companyName = String(company?.nome ?? '').trim().toLowerCase()
+            if (targetSlug && companySlug) return companySlug === targetSlug
+            return targetName && companyName === targetName
+          })
+
+          if (createdCompany) {
+            setError(null)
+            setFeedback('Empresa criada com sucesso, mas o vínculo automático do usuário master no perfil falhou. Use a aba Usuários para revisar/perfilar o acesso.')
+            resetCreateCompanyForm()
+            return
+          }
+        } catch {
+          // Se o fallback também falhar, devolve erro original.
+        }
+      }
+
+      setError(errorMessage)
     }
   }
 
