@@ -32,8 +32,20 @@ CREATE TABLE IF NOT EXISTS public.configuracoes_sistema (
   updated_at timestamptz DEFAULT now()
 );
 
+CREATE TABLE IF NOT EXISTS public.empresa_config (
+  id bigserial PRIMARY KEY,
+  empresa_id text,
+  dominio_custom text,
+  nome_exibicao text,
+  created_at timestamptz DEFAULT now(),
+  updated_at timestamptz DEFAULT now()
+);
+
 CREATE UNIQUE INDEX IF NOT EXISTS configuracoes_sistema_empresa_chave_uidx
   ON public.configuracoes_sistema (empresa_id, chave);
+
+CREATE UNIQUE INDEX IF NOT EXISTS empresa_config_empresa_id_uidx
+  ON public.empresa_config (empresa_id);
 
 -- 2) Standard defaults for runtime compatibility.
 ALTER TABLE public.empresas ALTER COLUMN created_at SET DEFAULT now();

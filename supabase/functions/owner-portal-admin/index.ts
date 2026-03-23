@@ -2038,15 +2038,44 @@ Deno.serve(async (req) => {
 
     const managedDomain = buildManagedTenantDomain(slug);
     if (managedDomain) {
-      const { error: domainError } = await admin.from("empresa_config").upsert({
+      const domainPayload = {
         empresa_id: company.id,
         dominio_custom: managedDomain,
         nome_exibicao: body.company.nome_fantasia ?? companyName,
-      }, { onConflict: "empresa_id" });
+      };
+
+      let domainError: { message?: string } | null = null;
+      const domainUpsert = await admin.from("empresa_config").upsert(domainPayload, { onConflict: "empresa_id" });
+      if (domainUpsert.error) {
+        const fallbackUpdate = await admin
+          .from("empresa_config")
+          .update({
+            dominio_custom: managedDomain,
+            nome_exibicao: body.company.nome_fantasia ?? companyName,
+          })
+          .eq("empresa_id", company.id);
+
+        if (fallbackUpdate.error) {
+          const fallbackInsert = await admin
+            .from("empresa_config")
+            .insert(domainPayload);
+
+          if (fallbackInsert.error) {
+            domainError = fallbackInsert.error;
+          }
+        }
+      }
 
       if (domainError) {
-        const reason = await rollbackCreateCompany(domainError.message);
-        return fail("Falha ao configurar domínio automático da empresa.", 400, { reason }, req);
+        if (isSchemaOrMissingObjectError(domainError.message)) {
+          onboardingWarning = mergeWarnings(
+            onboardingWarning,
+            `Domínio automático não foi persistido em empresa_config neste ambiente legado. (${domainError.message})`,
+          );
+        } else {
+          const reason = await rollbackCreateCompany(domainError.message ?? "domain_config_failed");
+          return fail("Falha ao configurar domínio automático da empresa.", 400, { reason }, req);
+        }
       }
 
       const cloudflareProvision = await ensureCloudflareTenantDomain(managedDomain);
