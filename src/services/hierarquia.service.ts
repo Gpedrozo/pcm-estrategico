@@ -53,7 +53,7 @@ export const hierarquiaService = {
           supabase
             .from('plantas')
             .insert([row])
-            .select()
+            .select('*')
             .single(),
         payloadWithTenant,
       );
@@ -82,7 +82,7 @@ export const hierarquiaService = {
             .update(row)
             .eq('id', id)
             .eq('empresa_id', empresaId)
-            .select()
+            .select('*')
             .single(),
         payload as Record<string, unknown>,
       );
@@ -127,7 +127,7 @@ export const hierarquiaService = {
     const { data, error } = await supabase
       .from('areas')
       .insert([{ ...validated, empresa_id: empresaId }])
-      .select()
+      .select('*')
       .single();
 
     if (error) throw new Error(`Erro ao criar área: ${error.message}`);
@@ -137,7 +137,7 @@ export const hierarquiaService = {
   },
 
   async atualizarArea(id: string, payload: Partial<AreaFormData>, empresaId: string) {
-    const { data, error } = await supabase.from('areas').update(payload).eq('id', id).eq('empresa_id', empresaId).select().single();
+    const { data, error } = await supabase.from('areas').update(payload).eq('id', id).eq('empresa_id', empresaId).select('*').single();
     if (error) throw new Error(`Erro ao atualizar área: ${error.message}`);
 
     await writeAuditLog({ action: 'UPDATE_AREA', table: 'areas', recordId: id, empresaId, source: 'hierarquia_service' });
@@ -168,7 +168,7 @@ export const hierarquiaService = {
     const { data, error } = await supabase
       .from('sistemas')
       .insert([{ ...validated, empresa_id: empresaId }])
-      .select()
+      .select('*')
       .single();
 
     if (error) throw new Error(`Erro ao criar sistema: ${error.message}`);
@@ -178,7 +178,7 @@ export const hierarquiaService = {
   },
 
   async atualizarSistema(id: string, payload: Partial<SistemaFormData>, empresaId: string) {
-    const { data, error } = await supabase.from('sistemas').update(payload).eq('id', id).eq('empresa_id', empresaId).select().single();
+    const { data, error } = await supabase.from('sistemas').update(payload).eq('id', id).eq('empresa_id', empresaId).select('*').single();
     if (error) throw new Error(`Erro ao atualizar sistema: ${error.message}`);
 
     await writeAuditLog({ action: 'UPDATE_SISTEMA', table: 'sistemas', recordId: id, empresaId, source: 'hierarquia_service' });
