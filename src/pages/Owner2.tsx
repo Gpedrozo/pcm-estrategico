@@ -52,6 +52,23 @@ const OWNER_TABS = [
   'owner-master',
 ] as const
 
+const OWNER_TAB_LABELS: Record<OwnerTab, string> = {
+  dashboard: 'Dashboard',
+  monitoramento: 'Monitoramento',
+  empresas: 'Empresas',
+  usuarios: 'Usuarios',
+  comercial: 'Planos',
+  financeiro: 'Financeiro',
+  contratos: 'Contratos',
+  suporte: 'Suporte',
+  configuracoes: 'Configuracoes',
+  'feature-flags': 'Feature Flags',
+  auditoria: 'Auditoria',
+  logs: 'Logs',
+  sistema: 'Sistema',
+  'owner-master': 'Owner Master',
+}
+
 type OwnerTab = (typeof OWNER_TABS)[number]
 
 type CompanyCredentialNote = {
@@ -254,6 +271,17 @@ export default function Owner() {
     if (currentEmail === ownerMasterEmail) return true
     return KNOWN_OWNER_MASTER_EMAILS.includes(currentEmail as (typeof KNOWN_OWNER_MASTER_EMAILS)[number])
   })()
+
+  const visibleTabs = useMemo(
+    () => OWNER_TABS.filter((tab) => (isOwnerMaster ? true : tab !== 'owner-master')),
+    [isOwnerMaster],
+  )
+
+  useEffect(() => {
+    if (!isOwnerMaster && activeTab === 'owner-master') {
+      setActiveTab('dashboard')
+    }
+  }, [activeTab, isOwnerMaster])
 
   const healthQuery = useOwner2Health(true)
   const dashboardQuery = useOwner2Dashboard(activeTab === 'dashboard')
@@ -758,8 +786,8 @@ export default function Owner() {
       <header className="border-b border-slate-200/90 bg-white/90 backdrop-blur">
         <div className="mx-auto flex w-full max-w-[1600px] items-center justify-between px-6 py-4">
           <div>
-            <h1 className="text-xl font-semibold tracking-tight">Owner</h1>
-            <p className="text-xs text-slate-600">Centro operacional premium da plataforma</p>
+            <h1 className="text-xl font-semibold tracking-tight">Owner Portal</h1>
+            <p className="text-xs text-slate-600">Visao executiva do ecossistema multiempresa.</p>
           </div>
           <div className="flex items-center gap-2">
             <div className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs text-slate-700 shadow-sm">
@@ -779,13 +807,13 @@ export default function Owner() {
       <main className="mx-auto grid w-full max-w-[1600px] gap-4 p-4 lg:grid-cols-[230px,1fr]">
         <aside className="rounded-2xl border border-slate-200 bg-white/95 p-3 shadow-sm">
           <nav className="space-y-1">
-            {OWNER_TABS.map((tab) => (
+            {visibleTabs.map((tab) => (
               <button
                 key={tab}
                 className={`w-full rounded-lg px-3 py-2 text-left text-sm transition ${activeTab === tab ? 'bg-sky-700 font-semibold text-white shadow-sm' : 'text-slate-700 hover:bg-slate-100'}`}
                 onClick={() => setActiveTab(tab)}
               >
-                {tab}
+                {OWNER_TAB_LABELS[tab]}
               </button>
             ))}
           </nav>
@@ -1089,7 +1117,7 @@ export default function Owner() {
                     <option value="SOLICITANTE">SOLICITANTE</option>
                   </select>
                   <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={newUserRequirePasswordChange} onChange={(e) => setNewUserRequirePasswordChange(e.target.checked)} /> Exigir troca de senha no 1º login</label>
-                  <button className="rounded-lg bg-sky-700 px-3 py-2 text-sm font-semibold text-white" disabled={busy || !companyId || !newUserName || !newUserEmail} onClick={() => runAction('create_user', { user: { nome: newUserName, email: newUserEmail, role: newUserRole, empresa_id: companyId, force_password_change: newUserRequirePasswordChange } }, 'Usuário criado com sucesso.')}>Criar usuário</button>
+                  <button className="rounded-lg bg-sky-700 px-3 py-2 text-sm font-semibold text-white" disabled={busy || !companyId || !newUserName || !newUserEmail} onClick={() => runAction('create_user', { user: { nome: newUserName, email: newUserEmail, role: newUserRole, empresa_id: companyId, force_password_change: newUserRequirePasswordChange } }, 'Usuário criado com sucesso.')}>Criar usuario</button>
                 </div>
 
                 <div className="mt-4 grid gap-2">
