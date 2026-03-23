@@ -41,11 +41,36 @@ CREATE TABLE IF NOT EXISTS public.empresa_config (
   updated_at timestamptz DEFAULT now()
 );
 
+CREATE TABLE IF NOT EXISTS public.profiles (
+  id text PRIMARY KEY,
+  empresa_id text,
+  nome text,
+  email text,
+  force_password_change boolean DEFAULT false,
+  created_at timestamptz DEFAULT now(),
+  updated_at timestamptz DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS public.user_roles (
+  id bigserial PRIMARY KEY,
+  user_id text,
+  empresa_id text,
+  role text,
+  created_at timestamptz DEFAULT now(),
+  updated_at timestamptz DEFAULT now()
+);
+
 CREATE UNIQUE INDEX IF NOT EXISTS configuracoes_sistema_empresa_chave_uidx
   ON public.configuracoes_sistema (empresa_id, chave);
 
 CREATE UNIQUE INDEX IF NOT EXISTS empresa_config_empresa_id_uidx
   ON public.empresa_config (empresa_id);
+
+CREATE UNIQUE INDEX IF NOT EXISTS user_roles_user_empresa_role_uidx
+  ON public.user_roles (user_id, empresa_id, role);
+
+CREATE UNIQUE INDEX IF NOT EXISTS user_roles_user_empresa_uidx
+  ON public.user_roles (user_id, empresa_id);
 
 -- 2) Standard defaults for runtime compatibility.
 ALTER TABLE public.empresas ALTER COLUMN created_at SET DEFAULT now();

@@ -2128,28 +2128,105 @@ Deno.serve(async (req) => {
 
     createdAuthUserId = authMasterUserId;
 
-    const { error: profileUpsertError } = await admin.from("profiles").upsert({
+    const profilePayloadExtended = {
       id: authMasterUserId,
       empresa_id: company.id,
       nome: body.user.nome,
       email: normalizedMasterEmail,
       force_password_change: true,
-    }, { onConflict: "id" });
+    };
+    const profilePayloadMinimal = {
+      id: authMasterUserId,
+      empresa_id: company.id,
+      nome: body.user.nome,
+      email: normalizedMasterEmail,
+    };
 
-    if (profileUpsertError) {
-      const reason = await rollbackCreateCompany(profileUpsertError.message);
-      return fail("Falha ao vincular usuário master na empresa (profiles).", 400, { reason }, req);
+    let profileLinkError: { message?: string } | null = null;
+    const profileUpsertExtended = await admin.from("profiles").upsert(profilePayloadExtended, { onConflict: "id" });
+    if (profileUpsertExtended.error) {
+      const profileUpsertMinimal = await admin.from("profiles").upsert(profilePayloadMinimal, { onConflict: "id" });
+      if (profileUpsertMinimal.error) {
+        const profileUpdateMinimal = await admin
+          .from("profiles")
+          .update({
+            empresa_id: company.id,
+            nome: body.user.nome,
+            email: normalizedMasterEmail,
+          })
+          .eq("id", authMasterUserId);
+
+        if (profileUpdateMinimal.error) {
+          const profileInsertMinimal = await admin
+            .from("profiles")
+            .insert(profilePayloadMinimal);
+
+          if (profileInsertMinimal.error) {
+            profileLinkError = profileInsertMinimal.error;
+          }
+        }
+      }
     }
 
-    const { error: roleUpsertError } = await admin.from("user_roles").upsert({
+    if (profileLinkError) {
+      if (isSchemaOrMissingObjectError(profileLinkError.message)) {
+        onboardingWarning = mergeWarnings(
+          onboardingWarning,
+          `Usuário master criado no Auth, porém vínculo em profiles não foi persistido neste ambiente legado. (${profileLinkError.message})`,
+        );
+      } else {
+        const reason = await rollbackCreateCompany(profileLinkError.message);
+        return fail("Falha ao vincular usuário master na empresa (profiles).", 400, { reason }, req);
+      }
+    }
+
+    let roleLinkError: { message?: string } | null = null;
+    const roleUpsertStandard = await admin.from("user_roles").upsert({
       user_id: authMasterUserId,
       empresa_id: company.id,
       role: masterRole,
     }, { onConflict: "user_id,empresa_id,role" });
 
-    if (roleUpsertError) {
-      const reason = await rollbackCreateCompany(roleUpsertError.message);
-      return fail("Falha ao vincular papel do usuário master na empresa (user_roles).", 400, { reason }, req);
+    if (roleUpsertStandard.error) {
+      const roleUpsertAlt = await admin.from("user_roles").upsert({
+        user_id: authMasterUserId,
+        empresa_id: company.id,
+        role: masterRole,
+      }, { onConflict: "user_id,empresa_id" });
+
+      if (roleUpsertAlt.error) {
+        const roleUpdate = await admin
+          .from("user_roles")
+          .update({ role: masterRole })
+          .eq("user_id", authMasterUserId)
+          .eq("empresa_id", company.id);
+
+        if (roleUpdate.error) {
+          const roleInsert = await admin
+            .from("user_roles")
+            .insert({
+              user_id: authMasterUserId,
+              empresa_id: company.id,
+              role: masterRole,
+            });
+
+          if (roleInsert.error) {
+            roleLinkError = roleInsert.error;
+          }
+        }
+      }
+    }
+
+    if (roleLinkError) {
+      if (isSchemaOrMissingObjectError(roleLinkError.message)) {
+        onboardingWarning = mergeWarnings(
+          onboardingWarning,
+          `Usuário master criado no Auth, porém vínculo em user_roles não foi persistido neste ambiente legado. (${roleLinkError.message})`,
+        );
+      } else {
+        const reason = await rollbackCreateCompany(roleLinkError.message);
+        return fail("Falha ao vincular papel do usuário master na empresa (user_roles).", 400, { reason }, req);
+      }
     }
 
     let selectedPlanId = body.subscription?.plan_id ?? null;
