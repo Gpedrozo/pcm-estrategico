@@ -865,11 +865,12 @@ export default function Owner() {
                 <p className="mt-1 text-sm text-sky-100">{String((dashboardQuery.data as any)?.message ?? 'Acompanhe indicadores e entre nas áreas operacionais com um clique.')}</p>
               </div>
 
-              <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+              <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
                 <MetricTile label="Empresas" value={companies.length} icon={Building2} tone="sky" />
                 <MetricTile label="Usuários" value={users.length} icon={Users} tone="emerald" />
                 <MetricTile label="Assinaturas" value={subscriptions.length} icon={CreditCard} tone="amber" />
                 <MetricTile label="Contratos" value={contracts.length} icon={FileText} tone="rose" />
+                <MetricTile label="MRR" value={`R$ ${financeSummary.totalMrr.toLocaleString('pt-BR')}`} icon={CreditCard} tone="emerald" />
               </div>
 
               <div className="grid gap-4 xl:grid-cols-2">
