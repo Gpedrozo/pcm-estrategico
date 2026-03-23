@@ -13,6 +13,7 @@ import type { PlanoLubrificacao, PlanoLubrificacaoInsert } from '@/types/lubrifi
 import { LubrificacaoForm } from './lubrificacao/LubrificacaoForm';
 import { LubrificacaoList } from './lubrificacao/LubrificacaoList';
 import { LubrificacaoDetalhe } from './lubrificacao/LubrificacaoDetalhe';
+import { getSupabaseErrorMessage } from '@/lib/supabaseCompat';
 
 export default function Lubrificacao() {
   const [search, setSearch] = useState('');
@@ -45,9 +46,12 @@ export default function Lubrificacao() {
     });
   }, [planos, search, equipamentoFilter, statusFilter]);
 
-  const errorMessage = error instanceof Error ? error.message : String(error || '');
+  const errorMessage = error instanceof Error
+    ? error.message
+    : getSupabaseErrorMessage(error) || 'Falha inesperada ao carregar planos de lubrificação.';
   const missingTableError =
     errorMessage.includes("Could not find the table 'public.planos_lubrificacao'")
+    || errorMessage.includes('A tabela public.planos_lubrificacao não existe neste ambiente')
     || errorMessage.includes('PGRST205')
     || errorMessage.includes('schema cache');
 

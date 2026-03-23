@@ -5,6 +5,7 @@ import type { PlanoLubrificacao, PlanoLubrificacaoInsert } from '@/types/lubrifi
 import { deleteMaintenanceSchedule, upsertMaintenanceSchedule } from '@/services/maintenanceSchedule';
 import { useAuth } from '@/contexts/AuthContext';
 import { logger } from '@/lib/logger';
+import { getSupabaseErrorMessage, isMissingTableError } from '@/lib/supabaseCompat';
 
 interface ExecucaoRow {
   id: string;
@@ -15,6 +16,43 @@ interface OrdemServicoCreated {
   id: string;
 }
 
+const PLANOS_LUBRIFICACAO_TABLE = 'planos_lubrificacao' as const;
+let planosLubrificacaoTableAvailable: boolean | null = null;
+
+function toReadableError(error: unknown, fallback = 'Falha inesperada no módulo de lubrificação.'): Error {
+  const message = getSupabaseErrorMessage(error);
+  if (message) return new Error(message);
+
+  if (typeof error === 'string' && error.trim().length > 0) {
+    return new Error(error);
+  }
+
+  try {
+    return new Error(JSON.stringify(error));
+  } catch {
+    return new Error(fallback);
+  }
+}
+
+async function ensurePlanosLubrificacaoTable() {
+  if (planosLubrificacaoTableAvailable === true) return PLANOS_LUBRIFICACAO_TABLE;
+
+  const { error } = await supabase.from(PLANOS_LUBRIFICACAO_TABLE).select('id').limit(1);
+
+  if (!error) {
+    planosLubrificacaoTableAvailable = true;
+    return PLANOS_LUBRIFICACAO_TABLE;
+  }
+
+  if (isMissingTableError(error)) {
+    throw new Error(
+      'A tabela public.planos_lubrificacao não existe neste ambiente. Execute a migration 20260224020000_create_lubrificacao.sql (e depois 20260301050000_create_maintenance_schedule.sql) para habilitar o módulo.',
+    );
+  }
+
+  throw toReadableError(error);
+}
+
 export function usePlanosLubrificacao() {
   const { tenantId } = useAuth();
 
@@ -23,15 +61,16 @@ export function usePlanosLubrificacao() {
     enabled: Boolean(tenantId),
     queryFn: async () => {
       if (!tenantId) return [];
+      const table = await ensurePlanosLubrificacaoTable();
 
       const { data, error } = await supabase
-        .from('planos_lubrificacao')
+        .from(table)
         .select('*')
         .eq('empresa_id', tenantId)
         .order('codigo')
         .limit(200);
 
-      if (error) throw error;
+      if (error) throw toReadableError(error);
       return data as PlanoLubrificacao[];
     },
     staleTime: 60_000,
