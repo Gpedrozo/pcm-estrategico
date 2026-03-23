@@ -3,24 +3,40 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Calendar, Clock, AlertTriangle, Filter, LayoutGrid, List } from 'lucide-react';
-import { useOrdensServico } from '@/hooks/useOrdensServico';
+import { useOrdensServico, useUpdateOrdemServico } from '@/hooks/useOrdensServico';
 import { OSStatusBadge } from '@/components/os/OSStatusBadge';
 import { OSTypeBadge } from '@/components/os/OSTypeBadge';
 import { format, startOfWeek, addWeeks, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { normalizeOSStatus, normalizeOSType } from '@/lib/osBadges';
 import { getPriorityToneClass, useTenantPadronizacoes } from '@/hooks/useTenantPadronizacoes';
+import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/contexts/AuthContext';
 
 export default function Backlog() {
   const [search, setSearch] = useState('');
   const [filterPriority, setFilterPriority] = useState<string>('all');
   const [viewMode, setViewMode] = useState<'list' | 'grid'>('list');
+  const [osToCancel, setOsToCancel] = useState<{ id: string; numero_os: number } | null>(null);
   
   const { data: ordensServico, isLoading } = useOrdensServico();
+  const updateOrdemServico = useUpdateOrdemServico();
   const { data: padronizacoes } = useTenantPadronizacoes();
+  const { toast } = useToast();
+  const { user } = useAuth();
 
   const prioridadesOS = padronizacoes?.prioridades_os?.length
     ? padronizacoes.prioridades_os
@@ -91,6 +107,27 @@ export default function Backlog() {
     atrasadas: weeklyGroups['Atrasadas']?.length || 0,
     horasEstimadas: backlog.reduce((acc, os) => acc + (os.tempo_estimado || 0), 0),
   }), [backlog, weeklyGroups, prioridadePrincipal, prioridadeSecundaria]);
+
+  const handleCancelOS = async () => {
+    if (!osToCancel) return;
+
+    try {
+      await updateOrdemServico.mutateAsync({
+        id: osToCancel.id,
+        status: 'CANCELADA',
+        data_fechamento: new Date().toISOString(),
+        usuario_fechamento: user?.email ?? null,
+      });
+
+      toast({
+        title: 'O.S cancelada',
+        description: `A ordem de serviço nº ${osToCancel.numero_os} foi cancelada.`,
+      });
+      setOsToCancel(null);
+    } catch {
+      // O erro é tratado no hook de atualização.
+    }
+  };
 
   if (isLoading) {
     return (
@@ -228,6 +265,7 @@ export default function Backlog() {
                       <th>Prioridade</th>
                       <th>Status</th>
                       <th>Tempo Est.</th>
+                      <th className="text-right">Ações</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -245,6 +283,16 @@ export default function Backlog() {
                         </td>
                         <td><OSStatusBadge status={normalizeOSStatus(os.status)} /></td>
                         <td>{os.tempo_estimado ? `${os.tempo_estimado} min` : '-'}</td>
+                        <td className="text-right">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="text-destructive hover:text-destructive"
+                            onClick={() => setOsToCancel({ id: os.id, numero_os: os.numero_os })}
+                          >
+                            Cancelar O.S
+                          </Button>
+                        </td>
                       </tr>
                     ))}
                   </tbody>
@@ -262,6 +310,27 @@ export default function Backlog() {
           <p className="text-sm">Todas as OS foram concluídas!</p>
         </div>
       )}
+
+      <AlertDialog open={!!osToCancel} onOpenChange={(open) => !open && setOsToCancel(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Cancelar ordem de serviço</AlertDialogTitle>
+            <AlertDialogDescription>
+              Confirma o cancelamento da O.S nº {osToCancel?.numero_os}? Esta ação remove a O.S do backlog.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={updateOrdemServico.isPending}>Voltar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleCancelOS}
+              disabled={updateOrdemServico.isPending}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {updateOrdemServico.isPending ? 'Cancelando...' : 'Confirmar cancelamento'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
