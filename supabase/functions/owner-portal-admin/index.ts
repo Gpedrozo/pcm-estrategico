@@ -2169,15 +2169,10 @@ Deno.serve(async (req) => {
     }
 
     if (profileLinkError) {
-      if (isSchemaOrMissingObjectError(profileLinkError.message)) {
-        onboardingWarning = mergeWarnings(
-          onboardingWarning,
-          `Usuário master criado no Auth, porém vínculo em profiles não foi persistido neste ambiente legado. (${profileLinkError.message})`,
-        );
-      } else {
-        const reason = await rollbackCreateCompany(profileLinkError.message);
-        return fail("Falha ao vincular usuário master na empresa (profiles).", 400, { reason }, req);
-      }
+      onboardingWarning = mergeWarnings(
+        onboardingWarning,
+        `Usuário master criado no Auth, porém vínculo em profiles não foi persistido automaticamente. (${profileLinkError.message})`,
+      );
     }
 
     let roleLinkError: { message?: string } | null = null;
@@ -2218,15 +2213,10 @@ Deno.serve(async (req) => {
     }
 
     if (roleLinkError) {
-      if (isSchemaOrMissingObjectError(roleLinkError.message)) {
-        onboardingWarning = mergeWarnings(
-          onboardingWarning,
-          `Usuário master criado no Auth, porém vínculo em user_roles não foi persistido neste ambiente legado. (${roleLinkError.message})`,
-        );
-      } else {
-        const reason = await rollbackCreateCompany(roleLinkError.message);
-        return fail("Falha ao vincular papel do usuário master na empresa (user_roles).", 400, { reason }, req);
-      }
+      onboardingWarning = mergeWarnings(
+        onboardingWarning,
+        `Usuário master criado no Auth, porém vínculo em user_roles não foi persistido automaticamente. (${roleLinkError.message})`,
+      );
     }
 
     let selectedPlanId = body.subscription?.plan_id ?? null;
