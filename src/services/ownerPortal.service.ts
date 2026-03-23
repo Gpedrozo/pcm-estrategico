@@ -244,6 +244,41 @@ const isEmpresaForeignKeyMessage = (value: unknown) => {
   return msg.includes('violates foreign key constraint') && msg.includes('empresa')
 }
 
+const isEmpresasCnpjSchemaError = (value: unknown) => {
+  const msg = String(value ?? '').toLowerCase()
+  return msg.includes("could not find the 'cnpj' column of 'empresas' in the schema cache")
+}
+
+const sanitizeOwnerPayload = (payload: OwnerActionPayload): OwnerActionPayload => {
+  if ((payload.action === 'create_company' || payload.action === 'update_company') && payload.company && typeof payload.company === 'object') {
+    const company = { ...(payload.company as Record<string, unknown>) }
+    delete company.cnpj
+    return {
+      ...payload,
+      company,
+    }
+  }
+
+  return payload
+}
+
+const listCompaniesFallback = async () => {
+  const { data, error } = await supabase
+    .from('empresas')
+    .select('id,nome,slug,status,plano,created_at,updated_at')
+    .order('created_at', { ascending: false })
+    .limit(1000)
+
+  if (error) {
+    throw new Error(`Falha no fallback de listagem de empresas: ${error.message}`)
+  }
+
+  return {
+    companies: Array.isArray(data) ? data : [],
+    fallback: 'direct_supabase_companies_query',
+  }
+}
+
 const parseErrorMessage = async (error: unknown) => {
   const unsafeError = error as { context?: unknown; message?: unknown } | null
   if (!unsafeError) return 'Falha desconhecida ao executar operação Owner.'
@@ -299,6 +334,8 @@ export async function callOwnerAdmin<T = unknown>(payload: OwnerActionPayload) {
     throw new Error('Payload owner inválido: action obrigatória.')
   }
 
+  const safePayload = sanitizeOwnerPayload(payload)
+
   const refreshSession = async () => {
     const refreshFn = (supabase.auth as { refreshSession?: () => Promise<{ data?: { session?: { access_token?: string } }; error?: unknown }> } | undefined)?.refreshSession
     if (typeof refreshFn !== 'function') return null
@@ -310,7 +347,7 @@ export async function callOwnerAdmin<T = unknown>(payload: OwnerActionPayload) {
 
   const invokeWithToken = async (accessToken: string) => {
     const { data, error } = await supabase.functions.invoke('owner-portal-admin', {
-      body: payload,
+      body: safePayload,
       headers: {
         Authorization: `Bearer ${accessToken}`,
       },
@@ -347,12 +384,22 @@ export async function callOwnerAdmin<T = unknown>(payload: OwnerActionPayload) {
   } catch (error) {
     if (!isUnauthorizedOwnerError(error)) {
       const message = await parseErrorMessage(error)
+
+      if (safePayload.action === 'list_companies' && isEmpresasCnpjSchemaError(message)) {
+        return await listCompaniesFallback() as T
+      }
+
       throw new Error(message)
     }
 
     const refreshedToken = await refreshSession()
     if (!refreshedToken) {
       const message = await parseErrorMessage(error)
+
+      if (safePayload.action === 'list_companies' && isEmpresasCnpjSchemaError(message)) {
+        return await listCompaniesFallback() as T
+      }
+
       throw new Error(message)
     }
 
@@ -360,6 +407,11 @@ export async function callOwnerAdmin<T = unknown>(payload: OwnerActionPayload) {
       return await invokeWithToken(refreshedToken)
     } catch (retryError) {
       const message = await parseErrorMessage(retryError)
+
+      if (safePayload.action === 'list_companies' && isEmpresasCnpjSchemaError(message)) {
+        return await listCompaniesFallback() as T
+      }
+
       throw new Error(message)
     }
   }
