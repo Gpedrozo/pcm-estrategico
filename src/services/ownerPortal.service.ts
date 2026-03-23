@@ -272,6 +272,16 @@ const isProfileBindingErrorMessage = (value: unknown) => {
   )
 }
 
+const isRoleBindingErrorMessage = (value: unknown) => {
+  const msg = String(value ?? '').toLowerCase()
+  return (
+    msg.includes('falha ao vincular papel do usuário master na empresa (user_roles)') ||
+    msg.includes('falha ao vincular papel do usuario master na empresa (user_roles)') ||
+    msg.includes('falha ao vincular papel do usuário na empresa (user_roles)') ||
+    msg.includes('falha ao vincular papel do usuario na empresa (user_roles)')
+  )
+}
+
 const sanitizeOwnerPayload = (payload: OwnerActionPayload): OwnerActionPayload => {
   if ((payload.action === 'create_company' || payload.action === 'update_company') && payload.company && typeof payload.company === 'object') {
     const company = { ...(payload.company as Record<string, unknown>) }
@@ -329,7 +339,7 @@ const tryRecoverCreateCompanyByLookup = async (payload: OwnerActionPayload, erro
   return {
     success: true,
     company: found,
-    warning: `Empresa criada com recuperação automática. Vínculo do usuário em profiles requer revisão manual. (${errorMessage})`,
+    warning: `Empresa criada com recuperação automática. Vínculo do usuário/papel requer revisão manual. (${errorMessage})`,
     recovered: true,
   }
 }
@@ -440,7 +450,7 @@ export async function callOwnerAdmin<T = unknown>(payload: OwnerActionPayload) {
     if (!isUnauthorizedOwnerError(error)) {
       const message = await parseErrorMessage(error)
 
-      if (safePayload.action === 'create_company' && isProfileBindingErrorMessage(message)) {
+      if (safePayload.action === 'create_company' && (isProfileBindingErrorMessage(message) || isRoleBindingErrorMessage(message))) {
         const recovered = await tryRecoverCreateCompanyByLookup(safePayload, message)
         if (recovered) return recovered as T
       }
@@ -456,7 +466,7 @@ export async function callOwnerAdmin<T = unknown>(payload: OwnerActionPayload) {
     if (!refreshedToken) {
       const message = await parseErrorMessage(error)
 
-      if (safePayload.action === 'create_company' && isProfileBindingErrorMessage(message)) {
+      if (safePayload.action === 'create_company' && (isProfileBindingErrorMessage(message) || isRoleBindingErrorMessage(message))) {
         const recovered = await tryRecoverCreateCompanyByLookup(safePayload, message)
         if (recovered) return recovered as T
       }
@@ -473,7 +483,7 @@ export async function callOwnerAdmin<T = unknown>(payload: OwnerActionPayload) {
     } catch (retryError) {
       const message = await parseErrorMessage(retryError)
 
-      if (safePayload.action === 'create_company' && isProfileBindingErrorMessage(message)) {
+      if (safePayload.action === 'create_company' && (isProfileBindingErrorMessage(message) || isRoleBindingErrorMessage(message))) {
         const recovered = await tryRecoverCreateCompanyByLookup(safePayload, message)
         if (recovered) return recovered as T
       }

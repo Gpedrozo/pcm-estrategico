@@ -2231,15 +2231,28 @@ Deno.serve(async (req) => {
         .maybeSingle();
 
       if (fallbackPlanError) {
-        const reason = await rollbackCreateCompany(fallbackPlanError.message ?? "fallback_plan_lookup_failed");
-        return fail("Falha ao localizar plano padrão para assinatura inicial.", 400, { reason }, req);
+        if (isSchemaOrMissingObjectError(fallbackPlanError.message)) {
+          onboardingWarning = mergeWarnings(
+            onboardingWarning,
+            `Plano inicial não pôde ser resolvido neste ambiente legado. Empresa seguirá sem assinatura inicial automática. (${fallbackPlanError.message})`,
+          );
+        } else {
+          const reason = await rollbackCreateCompany(fallbackPlanError.message ?? "fallback_plan_lookup_failed");
+          return fail("Falha ao localizar plano padrão para assinatura inicial.", 400, { reason }, req);
+        }
       }
 
       if (fallbackPlan?.id) {
         selectedPlanId = fallbackPlan.id;
-        onboardingWarning = `Plano inicial não informado. Assinatura criada automaticamente com plano ${fallbackPlan.code ?? fallbackPlan.id}.`;
+        onboardingWarning = mergeWarnings(
+          onboardingWarning,
+          `Plano inicial não informado. Assinatura criada automaticamente com plano ${fallbackPlan.code ?? fallbackPlan.id}.`,
+        );
       } else {
-        onboardingWarning = "Empresa criada sem assinatura inicial: nenhum plano ativo encontrado para fallback automático.";
+        onboardingWarning = mergeWarnings(
+          onboardingWarning,
+          "Empresa criada sem assinatura inicial: nenhum plano ativo encontrado para fallback automático.",
+        );
       }
     }
 
@@ -2266,20 +2279,36 @@ Deno.serve(async (req) => {
         .single();
 
       if (subscriptionError || !createdSubscription?.id) {
-        const reason = await rollbackCreateCompany(subscriptionError?.message ?? "subscription_create_failed");
-        return fail("Falha ao criar assinatura inicial da empresa.", 400, { reason }, req);
-      }
-
-      subscription = createdSubscription;
-
-      try {
-        contract = await createContractFromSubscription(admin, auth.user.id, createdSubscription);
-        if (!contract?.id) {
-          throw new Error("contract_create_failed");
+        const reasonText = subscriptionError?.message ?? "subscription_create_failed";
+        if (isSchemaOrMissingObjectError(reasonText)) {
+          onboardingWarning = mergeWarnings(
+            onboardingWarning,
+            `Assinatura inicial não foi criada automaticamente neste ambiente legado. (${reasonText})`,
+          );
+        } else {
+          const reason = await rollbackCreateCompany(reasonText);
+          return fail("Falha ao criar assinatura inicial da empresa.", 400, { reason }, req);
         }
-      } catch (error: any) {
-        const reason = await rollbackCreateCompany(error?.message ?? "contract_create_failed");
-        return fail("Falha ao gerar contrato inicial da empresa.", 400, { reason }, req);
+      } else {
+        subscription = createdSubscription;
+
+        try {
+          contract = await createContractFromSubscription(admin, auth.user.id, createdSubscription);
+          if (!contract?.id) {
+            throw new Error("contract_create_failed");
+          }
+        } catch (error: any) {
+          const reasonText = error?.message ?? "contract_create_failed";
+          if (isSchemaOrMissingObjectError(reasonText)) {
+            onboardingWarning = mergeWarnings(
+              onboardingWarning,
+              `Contrato inicial não pôde ser gerado automaticamente neste ambiente legado. (${reasonText})`,
+            );
+          } else {
+            const reason = await rollbackCreateCompany(reasonText);
+            return fail("Falha ao gerar contrato inicial da empresa.", 400, { reason }, req);
+          }
+        }
       }
     }
 
@@ -2295,6 +2324,11 @@ Deno.serve(async (req) => {
         contract_created: Boolean(contract?.id),
         warning: onboardingWarning,
       },
+    }).catch((error) => {
+      onboardingWarning = mergeWarnings(
+        onboardingWarning,
+        `Falha ao registrar auditoria de plataforma: ${String((error as any)?.message ?? error ?? 'unknown')}`,
+      );
     });
 
     await logAuditEvent(admin, {
@@ -2315,6 +2349,11 @@ Deno.serve(async (req) => {
       endpoint: trace.endpoint,
       executionMs: traceDurationMs(trace),
       req,
+    }).catch((error) => {
+      onboardingWarning = mergeWarnings(
+        onboardingWarning,
+        `Falha ao registrar auditoria operacional: ${String((error as any)?.message ?? error ?? 'unknown')}`,
+      );
     });
 
     await writeOperationalLog(admin, {
@@ -2328,6 +2367,11 @@ Deno.serve(async (req) => {
       metadata: {
         company_id: company.id,
       },
+    }).catch((error) => {
+      onboardingWarning = mergeWarnings(
+        onboardingWarning,
+        `Falha ao gravar log técnico de operação: ${String((error as any)?.message ?? error ?? 'unknown')}`,
+      );
     });
 
     return ok({

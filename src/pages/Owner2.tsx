@@ -754,11 +754,13 @@ export default function Owner() {
       resetCreateCompanyForm()
     } catch (err: any) {
       const errorMessage = String(err?.message ?? err ?? 'Falha ao criar empresa no Owner.')
-      const isProfileBindingError =
+      const isBindingError =
         errorMessage.includes('Falha ao vincular usuário master na empresa (profiles).') ||
-        errorMessage.includes('Falha ao vincular usuário à empresa (profiles).')
+        errorMessage.includes('Falha ao vincular usuário à empresa (profiles).') ||
+        errorMessage.includes('Falha ao vincular papel do usuário master na empresa (user_roles).') ||
+        errorMessage.includes('Falha ao vincular papel do usuário na empresa (user_roles).')
 
-      if (isProfileBindingError) {
+      if (isBindingError) {
         try {
           const companiesResult: any = await listPlatformCompanies()
           const companies = Array.isArray(companiesResult?.companies) ? companiesResult.companies : []
@@ -774,7 +776,7 @@ export default function Owner() {
 
           if (createdCompany) {
             setError(null)
-            setFeedback('Empresa criada com sucesso, mas o vínculo automático do usuário master no perfil falhou. Use a aba Usuários para revisar/perfilar o acesso.')
+            setFeedback('Empresa criada com sucesso, mas o vínculo automático de perfil/papel do usuário master falhou. Use a aba Usuários para revisar/perfilar o acesso.')
             resetCreateCompanyForm()
             return
           }

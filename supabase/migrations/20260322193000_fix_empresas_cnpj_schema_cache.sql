@@ -60,6 +60,78 @@ CREATE TABLE IF NOT EXISTS public.user_roles (
   updated_at timestamptz DEFAULT now()
 );
 
+-- Normalize legacy shapes for profiles/user_roles so owner upserts always work.
+ALTER TABLE IF EXISTS public.profiles ADD COLUMN IF NOT EXISTS empresa_id text;
+ALTER TABLE IF EXISTS public.profiles ADD COLUMN IF NOT EXISTS nome text;
+ALTER TABLE IF EXISTS public.profiles ADD COLUMN IF NOT EXISTS email text;
+ALTER TABLE IF EXISTS public.profiles ADD COLUMN IF NOT EXISTS force_password_change boolean DEFAULT false;
+ALTER TABLE IF EXISTS public.profiles ADD COLUMN IF NOT EXISTS created_at timestamptz DEFAULT now();
+ALTER TABLE IF EXISTS public.profiles ADD COLUMN IF NOT EXISTS updated_at timestamptz DEFAULT now();
+
+ALTER TABLE IF EXISTS public.user_roles ADD COLUMN IF NOT EXISTS user_id text;
+ALTER TABLE IF EXISTS public.user_roles ADD COLUMN IF NOT EXISTS empresa_id text;
+ALTER TABLE IF EXISTS public.user_roles ADD COLUMN IF NOT EXISTS role text;
+ALTER TABLE IF EXISTS public.user_roles ADD COLUMN IF NOT EXISTS created_at timestamptz DEFAULT now();
+ALTER TABLE IF EXISTS public.user_roles ADD COLUMN IF NOT EXISTS updated_at timestamptz DEFAULT now();
+
+UPDATE public.profiles
+SET force_password_change = false
+WHERE force_password_change IS NULL;
+
+UPDATE public.profiles
+SET created_at = now()
+WHERE created_at IS NULL;
+
+UPDATE public.profiles
+SET updated_at = now()
+WHERE updated_at IS NULL;
+
+UPDATE public.user_roles
+SET created_at = now()
+WHERE created_at IS NULL;
+
+UPDATE public.user_roles
+SET updated_at = now()
+WHERE updated_at IS NULL;
+
+-- Remove duplicates before creating unique index on (user_id, empresa_id).
+WITH duplicated_user_roles AS (
+  SELECT
+    ctid,
+    row_number() OVER (
+      PARTITION BY user_id, empresa_id
+      ORDER BY updated_at DESC NULLS LAST, created_at DESC NULLS LAST, ctid DESC
+    ) AS rn
+  FROM public.user_roles
+  WHERE user_id IS NOT NULL
+    AND empresa_id IS NOT NULL
+)
+DELETE FROM public.user_roles ur
+USING duplicated_user_roles d
+WHERE ur.ctid = d.ctid
+  AND d.rn > 1;
+
+-- Remove duplicates before creating unique index on (user_id, empresa_id, role).
+WITH duplicated_user_roles_role AS (
+  SELECT
+    ctid,
+    row_number() OVER (
+      PARTITION BY user_id, empresa_id, role
+      ORDER BY updated_at DESC NULLS LAST, created_at DESC NULLS LAST, ctid DESC
+    ) AS rn
+  FROM public.user_roles
+  WHERE user_id IS NOT NULL
+    AND empresa_id IS NOT NULL
+    AND role IS NOT NULL
+)
+DELETE FROM public.user_roles ur
+USING duplicated_user_roles_role d
+WHERE ur.ctid = d.ctid
+  AND d.rn > 1;
+
+CREATE UNIQUE INDEX IF NOT EXISTS profiles_id_uidx
+  ON public.profiles (id);
+
 CREATE UNIQUE INDEX IF NOT EXISTS configuracoes_sistema_empresa_chave_uidx
   ON public.configuracoes_sistema (empresa_id, chave);
 
@@ -67,10 +139,15 @@ CREATE UNIQUE INDEX IF NOT EXISTS empresa_config_empresa_id_uidx
   ON public.empresa_config (empresa_id);
 
 CREATE UNIQUE INDEX IF NOT EXISTS user_roles_user_empresa_role_uidx
-  ON public.user_roles (user_id, empresa_id, role);
+  ON public.user_roles (user_id, empresa_id, role)
+  WHERE user_id IS NOT NULL
+    AND empresa_id IS NOT NULL
+    AND role IS NOT NULL;
 
 CREATE UNIQUE INDEX IF NOT EXISTS user_roles_user_empresa_uidx
-  ON public.user_roles (user_id, empresa_id);
+  ON public.user_roles (user_id, empresa_id)
+  WHERE user_id IS NOT NULL
+    AND empresa_id IS NOT NULL;
 
 -- 2) Standard defaults for runtime compatibility.
 ALTER TABLE public.empresas ALTER COLUMN created_at SET DEFAULT now();
