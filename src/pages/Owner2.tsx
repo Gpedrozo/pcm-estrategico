@@ -102,7 +102,7 @@ function asBool(value: unknown, fallback = false): boolean {
   if (typeof value === 'string') {
     const normalized = value.trim().toLowerCase()
     if (normalized === 'true' || normalized === '1' || normalized === 'sim') return true
-    if (normalized === 'false' || normalized === '0' || normalized === 'nao' || normalized === 'nÃ£o') return false
+    if (normalized === 'false' || normalized === '0' || normalized === 'nao' || normalized === 'não') return false
   }
   return fallback
 }
@@ -267,6 +267,14 @@ export default function Owner2() {
   const tablesQuery = useOwner2Tables(companyId || undefined, activeTab === 'dashboard' || activeTab === 'monitoramento' || activeTab === 'sistema')
   const settingsQuery = useOwner2Settings(companyId || undefined, activeTab === 'configuracoes' || activeTab === 'feature-flags')
   const { execute } = useOwner2Actions()
+
+  const healthStatus = useMemo(() => {
+    if (healthQuery.isError) {
+      const message = healthQuery.error instanceof Error ? healthQuery.error.message : 'erro'
+      return `erro: ${message}`
+    }
+    return String((healthQuery.data as any)?.status ?? 'n/a')
+  }, [healthQuery.data, healthQuery.error, healthQuery.isError])
 
   const companies = useMemo(() => safeArray<Record<string, unknown>>((companiesQuery.data as any)?.companies), [companiesQuery.data])
   const users = useMemo(() => safeArray<Record<string, unknown>>((usersQuery.data as any)?.users), [usersQuery.data])
@@ -597,7 +605,7 @@ export default function Owner2() {
       await execute.mutateAsync({ action, payload })
       setFeedback(successMessage)
     } catch (err: any) {
-      setError(String(err?.message ?? err ?? 'Falha na operaÃ§Ã£o do Owner2.'))
+      setError(String(err?.message ?? err ?? 'Falha na operação do Owner2.'))
     }
   }
 
@@ -687,16 +695,16 @@ export default function Owner2() {
   async function copyCompanyCredentialNote() {
     if (!companyCredentialNote) return
     if (!navigator?.clipboard?.writeText) {
-      setError('Clipboard indisponÃ­vel neste navegador/contexto.')
+      setError('Clipboard indisponível neste navegador/contexto.')
       return
     }
 
     try {
       await navigator.clipboard.writeText(companyCredentialNote.noteText)
-      setFeedback('Nota de credenciais copiada para a Ã¡rea de transferÃªncia.')
+      setFeedback('Nota de credenciais copiada para a área de transferência.')
       setError(null)
     } catch {
-      setError('NÃ£o foi possÃ­vel copiar a nota automaticamente. Tente copiar manualmente.')
+      setError('Não foi possível copiar a nota automaticamente. Tente copiar manualmente.')
     }
   }
 
@@ -716,7 +724,7 @@ export default function Owner2() {
             <ShieldCheck className="h-6 w-6 text-rose-600" />
           </div>
           <h2 className="mt-4 text-lg font-semibold text-slate-900">Acesso negado</h2>
-          <p className="mt-2 text-sm text-slate-600">O Owner2 Ã© exclusivo para SYSTEM_OWNER.</p>
+          <p className="mt-2 text-sm text-slate-600">O Owner2 é exclusivo para SYSTEM_OWNER.</p>
         </div>
       </div>
     )
@@ -732,8 +740,8 @@ export default function Owner2() {
           </div>
           <div className="flex items-center gap-2">
             <div className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs text-slate-700 shadow-sm">
-              <p>UsuÃ¡rio: {user?.email}</p>
-              <p>Health: {String((healthQuery.data as any)?.status ?? 'n/a')}</p>
+              <p>Usuário: {user?.email}</p>
+              <p>Health: {healthStatus}</p>
             </div>
             <button
               className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-700 shadow-sm"
@@ -777,7 +785,7 @@ export default function Owner2() {
                   disabled={!companyId}
                   onClick={() => {
                     setCompanyId('')
-                    setFeedback('Contexto de empresa removido. Voltou para visao global.')
+                    setFeedback('Contexto de empresa removido. Voltou para visão global.')
                   }}
                 >
                   <LogOut className="h-3.5 w-3.5" /> Sair do contexto
@@ -794,7 +802,7 @@ export default function Owner2() {
                   <option key={String(c.id)} value={String(c.id)}>{String(c.nome ?? c.slug ?? c.id)}</option>
                 ))}
               </select>
-              <input className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" type="password" value={authPassword} onChange={(e) => setAuthPassword(e.target.value)} placeholder="Senha de confirmaÃ§Ã£o para aÃ§Ãµes crÃ­ticas" />
+              <input className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" type="password" value={authPassword} onChange={(e) => setAuthPassword(e.target.value)} placeholder="Senha de confirmação para ações críticas" />
             </div>
           </div>
 
@@ -802,19 +810,19 @@ export default function Owner2() {
             <div className="space-y-4">
               <div className="rounded-2xl border border-sky-200 bg-gradient-to-r from-sky-600 to-cyan-600 p-5 text-white shadow-lg shadow-sky-200">
                 <p className="text-xs uppercase tracking-wider text-sky-100">Painel executivo</p>
-                <h2 className="mt-1 text-xl font-semibold">VisÃ£o geral da operaÃ§Ã£o global</h2>
-                <p className="mt-1 text-sm text-sky-100">{String((dashboardQuery.data as any)?.message ?? 'Acompanhe indicadores e entre nas Ã¡reas operacionais com um clique.')}</p>
+                <h2 className="mt-1 text-xl font-semibold">Visão geral da operação global</h2>
+                <p className="mt-1 text-sm text-sky-100">{String((dashboardQuery.data as any)?.message ?? 'Acompanhe indicadores e entre nas áreas operacionais com um clique.')}</p>
               </div>
 
               <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
                 <MetricTile label="Empresas" value={companies.length} icon={Building2} tone="sky" />
-                <MetricTile label="UsuÃ¡rios" value={users.length} icon={Users} tone="emerald" />
+                <MetricTile label="Usuários" value={users.length} icon={Users} tone="emerald" />
                 <MetricTile label="Assinaturas" value={subscriptions.length} icon={CreditCard} tone="amber" />
                 <MetricTile label="Contratos" value={contracts.length} icon={FileText} tone="rose" />
               </div>
 
               <div className="grid gap-4 xl:grid-cols-2">
-                <SurfaceCard title="Empresas por status" subtitle="DistribuiÃ§Ã£o operacional">
+                <SurfaceCard title="Empresas por status" subtitle="Distribuição operacional">
                   <div className="h-64 rounded-xl border border-slate-200 bg-white p-2">
                     <ResponsiveContainer width="100%" height="100%">
                       <BarChart data={companyStatusChartData} margin={{ top: 16, right: 8, left: 0, bottom: 0 }}>
@@ -848,7 +856,7 @@ export default function Owner2() {
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <div className="flex items-center gap-3">
                     <div className={`h-3 w-3 rounded-full ${monitorSummary.healthy ? 'bg-emerald-500' : 'bg-rose-500'} animate-pulse`} />
-                    <p className="text-sm text-slate-700">{monitorSummary.healthy ? 'Operacional' : 'AtenÃ§Ã£o'} â€¢ atualizaÃ§Ã£o contÃ­nua</p>
+                    <p className="text-sm text-slate-700">{monitorSummary.healthy ? 'Operacional' : 'Atenção'} • atualização contínua</p>
                   </div>
                   <span className={`rounded-full border px-3 py-1 text-xs font-semibold ${monitorSummary.healthy ? 'border-emerald-200 bg-emerald-50 text-emerald-700' : 'border-rose-200 bg-rose-50 text-rose-700'}`}>
                     {monitorSummary.availabilityPercent}% disponibilidade
@@ -873,7 +881,7 @@ export default function Owner2() {
                 </div>
               </SurfaceCard>
 
-              <SurfaceCard title="Disponibilidade por horÃ¡rio" subtitle="Picos e vales das Ãºltimas 24 horas">
+              <SurfaceCard title="Disponibilidade por horário" subtitle="Picos e vales das últimas 24 horas">
                 <div className="rounded-xl border border-slate-200 bg-white p-2.5">
                   <div className="mb-2 grid gap-2 sm:grid-cols-2">
                     <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-800">
@@ -966,7 +974,7 @@ export default function Owner2() {
                 {companyCredentialNote && (
                   <div className="mt-4 rounded-xl border border-sky-200 bg-sky-50 p-4">
                     <p className="text-xs font-semibold uppercase tracking-wide text-sky-800">Credenciais iniciais do cliente</p>
-                    <p className="mt-1 text-xs text-sky-700">InformaÃ§Ã£o exibida somente agora. Compartilhe com seguranÃ§a.</p>
+                    <p className="mt-1 text-xs text-sky-700">Informação exibida somente agora. Compartilhe com segurança.</p>
                     <pre className="mt-3 whitespace-pre-wrap rounded-lg border border-sky-200 bg-white p-3 text-xs leading-relaxed text-slate-800">{companyCredentialNote.noteText}</pre>
                     <div className="mt-3 flex flex-wrap gap-2">
                       <button className="rounded-lg border border-sky-300 bg-white px-3 py-2 text-xs font-semibold text-sky-700 hover:bg-sky-100" onClick={copyCompanyCredentialNote}>Copiar nota</button>
@@ -976,7 +984,7 @@ export default function Owner2() {
                 )}
               </SurfaceCard>
 
-              <SurfaceCard title="AÃ§Ãµes rÃ¡pidas da empresa selecionada">
+              <SurfaceCard title="Ações rápidas da empresa selecionada">
                 <div className="grid gap-2 sm:grid-cols-2">
                   <button className="rounded-lg border border-slate-300 px-3 py-2 text-sm" disabled={busy || !companyId} onClick={() => runAction('set_company_status', { empresa_id: companyId, status: 'active' }, 'Empresa ativada.')}>Ativar</button>
                   <button className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-700" disabled={busy || !companyId} onClick={() => runAction('set_company_status', { empresa_id: companyId, status: 'blocked' }, 'Empresa bloqueada.')}>Bloquear</button>
