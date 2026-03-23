@@ -696,7 +696,7 @@ export default function Owner2() {
         })
       }
 
-      setFeedback(initialPassword ? 'Empresa criada com sucesso. Credenciais iniciais disponÃ­veis para cÃ³pia.' : 'Empresa criada com sucesso.')
+      setFeedback(initialPassword ? 'Empresa criada com sucesso. Credenciais iniciais disponíveis para cópia.' : 'Empresa criada com sucesso.')
       setNewCompanyName('')
       setNewCompanySlug('')
       setNewCompanyPersonType('PJ')
@@ -859,7 +859,7 @@ export default function Owner2() {
                   </div>
                 </SurfaceCard>
 
-                <SurfaceCard title="Assinaturas por status" subtitle="SaÃºde de receita recorrente">
+                <SurfaceCard title="Assinaturas por status" subtitle="Saúde de receita recorrente">
                   <div className="h-64 rounded-xl border border-slate-200 bg-white p-2">
                     <ResponsiveContainer width="100%" height="100%">
                       <PieChart>
@@ -909,11 +909,11 @@ export default function Owner2() {
                   <div className="mb-2 grid gap-2 sm:grid-cols-2">
                     <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-800">
                       <p className="font-semibold">Pico</p>
-                      <p>{availabilityTimeline.peak.hour} â€¢ {availabilityTimeline.peak.availability}%</p>
+                      <p>{availabilityTimeline.peak.hour} • {availabilityTimeline.peak.availability}%</p>
                     </div>
                     <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
                       <p className="font-semibold">Vale</p>
-                      <p>{availabilityTimeline.valley.hour} â€¢ {availabilityTimeline.valley.availability}%</p>
+                      <p>{availabilityTimeline.valley.hour} • {availabilityTimeline.valley.availability}%</p>
                     </div>
                   </div>
 
@@ -1077,7 +1077,7 @@ export default function Owner2() {
 
           {activeTab === 'usuarios' && (
             <div className="grid gap-4 xl:grid-cols-2">
-              <SurfaceCard title="Novo usuÃ¡rio">
+              <SurfaceCard title="Novo usuário">
                 <div className="grid gap-2">
                   <input className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" value={newUserName} onChange={(e) => setNewUserName(e.target.value)} placeholder="Nome" />
                   <input className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" value={newUserEmail} onChange={(e) => setNewUserEmail(e.target.value)} placeholder="Email" />
@@ -1088,24 +1088,24 @@ export default function Owner2() {
                     <option value="USUARIO">USUARIO</option>
                     <option value="SOLICITANTE">SOLICITANTE</option>
                   </select>
-                  <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={newUserRequirePasswordChange} onChange={(e) => setNewUserRequirePasswordChange(e.target.checked)} /> Exigir troca de senha no 1Âº login</label>
-                  <button className="rounded-lg bg-sky-700 px-3 py-2 text-sm font-semibold text-white" disabled={busy || !companyId || !newUserName || !newUserEmail} onClick={() => runAction('create_user', { user: { nome: newUserName, email: newUserEmail, role: newUserRole, empresa_id: companyId, force_password_change: newUserRequirePasswordChange } }, 'UsuÃ¡rio criado com sucesso.')}>Criar usuÃ¡rio</button>
+                  <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={newUserRequirePasswordChange} onChange={(e) => setNewUserRequirePasswordChange(e.target.checked)} /> Exigir troca de senha no 1º login</label>
+                  <button className="rounded-lg bg-sky-700 px-3 py-2 text-sm font-semibold text-white" disabled={busy || !companyId || !newUserName || !newUserEmail} onClick={() => runAction('create_user', { user: { nome: newUserName, email: newUserEmail, role: newUserRole, empresa_id: companyId, force_password_change: newUserRequirePasswordChange } }, 'Usuário criado com sucesso.')}>Criar usuário</button>
                 </div>
 
                 <div className="mt-4 grid gap-2">
-                  <h3 className="text-sm font-semibold">Status do usuÃ¡rio</h3>
+                  <h3 className="text-sm font-semibold">Status do usuário</h3>
                   <select className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" value={selectedUserId} onChange={(e) => setSelectedUserId(e.target.value)}>
-                    <option value="">Selecione um usuÃ¡rio</option>
+                    <option value="">Selecione um usuário</option>
                     {users.map((u) => <option key={String(u.id)} value={String(u.id)}>{String(u.nome ?? u.email ?? u.id)}</option>)}
                   </select>
                   <div className="grid grid-cols-2 gap-2">
-                    <button className="rounded-lg border border-slate-300 px-3 py-2 text-sm" disabled={busy || !selectedUserId} onClick={() => runAction('set_user_status', { user_id: selectedUserId, status: 'ativo' }, 'UsuÃ¡rio ativado.')}>Ativar</button>
-                    <button className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-700" disabled={busy || !selectedUserId} onClick={() => runAction('set_user_status', { user_id: selectedUserId, status: 'inativo' }, 'UsuÃ¡rio inativado.')}>Inativar</button>
+                    <button className="rounded-lg border border-slate-300 px-3 py-2 text-sm" disabled={busy || !selectedUserId} onClick={() => runAction('set_user_status', { user_id: selectedUserId, status: 'ativo' }, 'Usuário ativado.')}>Ativar</button>
+                    <button className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-700" disabled={busy || !selectedUserId} onClick={() => runAction('set_user_status', { user_id: selectedUserId, status: 'inativo' }, 'Usuário inativado.')}>Inativar</button>
                   </div>
                 </div>
 
                 <div className="mt-4 grid gap-2">
-                  <h3 className="text-sm font-semibold">Editar usuÃ¡rio</h3>
+                  <h3 className="text-sm font-semibold">Editar usuário</h3>
                   <select className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" value={userTargetCompanyId} onChange={(e) => setUserTargetCompanyId(e.target.value)}>
                     <option value="">Empresa destino</option>
                     {companies.map((c) => <option key={String(c.id)} value={String(c.id)}>{String(c.nome ?? c.slug ?? c.id)}</option>)}
@@ -1120,23 +1120,23 @@ export default function Owner2() {
                   <button
                     className="rounded-lg border border-slate-300 px-3 py-2 text-sm"
                     disabled={busy || !selectedUserId || !userTargetCompanyId}
-                    onClick={() => runAction('move_user_company', { user_id: selectedUserId, new_empresa_id: userTargetCompanyId, user: { role: userTargetRole } }, 'UsuÃ¡rio movido para nova empresa com sucesso.')}
+                    onClick={() => runAction('move_user_company', { user_id: selectedUserId, new_empresa_id: userTargetCompanyId, user: { role: userTargetRole } }, 'Usuário movido para nova empresa com sucesso.')}
                   >
                     Mover para outra empresa
                   </button>
 
-                  <input className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" type="password" value={userNewPassword} onChange={(e) => setUserNewPassword(e.target.value)} placeholder="Nova senha do usuÃ¡rio" />
+                  <input className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" type="password" value={userNewPassword} onChange={(e) => setUserNewPassword(e.target.value)} placeholder="Nova senha do usuário" />
                   <button
                     className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-700"
                     disabled={busy || !selectedUserId || userNewPassword.length < 8}
-                    onClick={() => runAction('set_user_password', { user_id: selectedUserId, new_password: userNewPassword, force_password_change: true }, 'Senha redefinida. UsuÃ¡rio deverÃ¡ trocar no 1Âº login.')}
+                    onClick={() => runAction('set_user_password', { user_id: selectedUserId, new_password: userNewPassword, force_password_change: true }, 'Senha redefinida. Usuário deverá trocar no 1º login.')}
                   >
-                    Trocar senha e forÃ§ar troca no 1Âº login
+                    Trocar senha e forçar troca no 1º login
                   </button>
                 </div>
               </SurfaceCard>
 
-              <SurfaceCard title="UsuÃ¡rios" subtitle="Painel operacional com busca e filtros">
+              <SurfaceCard title="Usuários" subtitle="Painel operacional com busca e filtros">
                 <div className="mb-3 grid gap-2 sm:grid-cols-4">
                   <MetricTile label="Total" value={userSummary.total} icon={Users} tone="sky" />
                   <MetricTile label="Ativos" value={userSummary.active} icon={ShieldCheck} tone="emerald" />
@@ -1199,7 +1199,7 @@ export default function Owner2() {
                       })}
                       {usersFiltered.length === 0 && (
                         <tr>
-                          <td className="px-2 py-3 text-slate-500" colSpan={3}>Nenhum usuÃ¡rio encontrado com os filtros atuais.</td>
+                          <td className="px-2 py-3 text-slate-500" colSpan={3}>Nenhum usuário encontrado com os filtros atuais.</td>
                         </tr>
                       )}
                     </tbody>
@@ -1211,28 +1211,28 @@ export default function Owner2() {
 
           {activeTab === 'comercial' && (
             <div className="grid gap-4 xl:grid-cols-2">
-              <SurfaceCard title="Planos" subtitle="Crie e ajuste planos base com periodicidade padrÃ£o">
+              <SurfaceCard title="Planos" subtitle="Crie e ajuste planos base com periodicidade padrão">
                 <div className="grid gap-2">
-                  <input className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" value={planCode} onChange={(e) => setPlanCode(e.target.value)} placeholder="CÃ³digo" />
+                  <input className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" value={planCode} onChange={(e) => setPlanCode(e.target.value)} placeholder="Código" />
                   <input className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" value={planName} onChange={(e) => setPlanName(e.target.value)} placeholder="Nome" />
-                  <input className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" value={planPrice} onChange={(e) => setPlanPrice(e.target.value)} placeholder="PreÃ§o mensal" />
+                  <input className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" value={planPrice} onChange={(e) => setPlanPrice(e.target.value)} placeholder="Preço mensal" />
                   <select className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" value={planDefaultPeriod} onChange={(e) => setPlanDefaultPeriod(e.target.value as 'monthly' | 'quarterly' | 'yearly')}>
-                    <option value="monthly">Periodicidade padrÃ£o: Mensal</option>
-                    <option value="quarterly">Periodicidade padrÃ£o: Trimestral</option>
-                    <option value="yearly">Periodicidade padrÃ£o: Anual</option>
+                    <option value="monthly">Periodicidade padrão: Mensal</option>
+                    <option value="quarterly">Periodicidade padrão: Trimestral</option>
+                    <option value="yearly">Periodicidade padrão: Anual</option>
                   </select>
-                  <button className="rounded-lg bg-sky-700 px-3 py-2 text-sm font-semibold text-white" disabled={busy || !planCode || !planName} onClick={() => runAction('create_plan', { plan: { code: planCode.toUpperCase(), name: planName, description: `Periodicidade padrÃ£o: ${planDefaultPeriod}`, price_month: Number(planPrice || 0), user_limit: 10, data_limit_mb: 2048, module_flags: { default_periodicity: planDefaultPeriod }, active: true } }, 'Plano criado com sucesso.')}>Criar plano</button>
+                  <button className="rounded-lg bg-sky-700 px-3 py-2 text-sm font-semibold text-white" disabled={busy || !planCode || !planName} onClick={() => runAction('create_plan', { plan: { code: planCode.toUpperCase(), name: planName, description: `Periodicidade padrão: ${planDefaultPeriod}`, price_month: Number(planPrice || 0), user_limit: 10, data_limit_mb: 2048, module_flags: { default_periodicity: planDefaultPeriod }, active: true } }, 'Plano criado com sucesso.')}>Criar plano</button>
                 </div>
               </SurfaceCard>
 
-              <SurfaceCard title="CatÃ¡logo de planos">
+              <SurfaceCard title="Catálogo de planos">
                 <div className="max-h-[420px] overflow-auto rounded-xl border border-slate-200">
                   <table className="w-full text-xs">
                     <thead className="bg-slate-100">
                       <tr>
-                        <th className="px-2 py-2 text-left">CÃ³digo</th>
+                        <th className="px-2 py-2 text-left">Código</th>
                         <th className="px-2 py-2 text-left">Nome</th>
-                        <th className="px-2 py-2 text-left">PreÃ§o</th>
+                        <th className="px-2 py-2 text-left">Preço</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -1252,7 +1252,7 @@ export default function Owner2() {
 
           {activeTab === 'comercial' && (
             <div className="grid gap-4 xl:grid-cols-2">
-              <SurfaceCard title="Assinaturas por empresa" subtitle="Cada empresa com plano, valor e periodicidade prÃ³prios">
+              <SurfaceCard title="Assinaturas por empresa" subtitle="Cada empresa com plano, valor e periodicidade próprios">
                 <div className="grid gap-2">
                   <select className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" value={subscriptionPlanId} onChange={(e) => setSubscriptionPlanId(e.target.value)}>
                     <option value="">Plano</option>
@@ -1271,13 +1271,13 @@ export default function Owner2() {
                     <option value="atrasada">Status inicial: Atrasada</option>
                     <option value="cancelada">Status inicial: Cancelada</option>
                   </select>
-                  <input className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" type="date" value={subscriptionStartsAt} onChange={(e) => setSubscriptionStartsAt(e.target.value)} placeholder="InÃ­cio" />
-                  <input className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" type="date" value={subscriptionRenewalAt} onChange={(e) => setSubscriptionRenewalAt(e.target.value)} placeholder="PrÃ³ximo vencimento" />
+                  <input className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" type="date" value={subscriptionStartsAt} onChange={(e) => setSubscriptionStartsAt(e.target.value)} placeholder="Início" />
+                  <input className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" type="date" value={subscriptionRenewalAt} onChange={(e) => setSubscriptionRenewalAt(e.target.value)} placeholder="Próximo vencimento" />
                   <input className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" type="date" value={subscriptionEndsAt} onChange={(e) => setSubscriptionEndsAt(e.target.value)} placeholder="Fim (opcional)" />
                   <button className="rounded-lg bg-sky-700 px-3 py-2 text-sm font-semibold text-white" disabled={busy || !companyId || !subscriptionPlanId} onClick={() => runAction('create_subscription', { subscription: { empresa_id: companyId, plan_id: subscriptionPlanId, amount: Number(subscriptionAmount || 0), period: subscriptionPeriod, starts_at: subscriptionStartsAt || undefined, renewal_at: subscriptionRenewalAt || undefined, ends_at: subscriptionEndsAt || undefined, status: subscriptionStatus } }, 'Assinatura criada com sucesso.')}>Criar assinatura</button>
                   <button className="rounded-lg border border-slate-300 px-3 py-2 text-sm" disabled={busy || !companyId} onClick={() => runAction('set_subscription_status', { empresa_id: companyId, status: 'ativa' }, 'Assinatura ativada.')}>Ativar assinatura da empresa</button>
                   <button className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-700" disabled={busy || !isOwnerMaster} onClick={() => runAction('enforce_subscription_expiry', {}, 'Vencimentos processados. Empresas vencidas foram bloqueadas.')}>Processar vencimentos e bloquear</button>
-                  <input className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" value={planCodeToChange} onChange={(e) => setPlanCodeToChange(e.target.value)} placeholder="CÃ³digo do novo plano" />
+                  <input className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" value={planCodeToChange} onChange={(e) => setPlanCodeToChange(e.target.value)} placeholder="Código do novo plano" />
                   <button className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-700" disabled={busy || !companyId || !planCodeToChange} onClick={() => runAction('change_plan', { empresa_id: companyId, plano_codigo: planCodeToChange.toUpperCase() }, 'Plano da empresa alterado.')}>Trocar plano</button>
                 </div>
               </SurfaceCard>
@@ -1341,13 +1341,13 @@ export default function Owner2() {
                 </div>
               </SurfaceCard>
 
-              <SurfaceCard title="Atualizar cobranÃ§a" subtitle="Sem editar dados tÃ©cnicos direto">
+              <SurfaceCard title="Atualizar cobrança" subtitle="Sem editar dados técnicos direto">
                 <div className="grid gap-2">
                   <select className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" value={billingSubscriptionId} onChange={(e) => setBillingSubscriptionId(e.target.value)}>
                     <option value="">Selecione a assinatura</option>
                     {subscriptions.map((s, idx) => (
                       <option key={`${String(s.id ?? 'sub')}-${idx}`} value={String(s.id ?? '')}>
-                        {String(s.id ?? '-')} â€¢ {String(s.empresa_id ?? '-')}
+                        {String(s.id ?? '-')} • {String(s.empresa_id ?? '-')}
                       </option>
                     ))}
                   </select>
@@ -1365,15 +1365,15 @@ export default function Owner2() {
                       subscription_id: billingSubscriptionId,
                       amount: billingAmount ? Number(billingAmount) : undefined,
                       payment_status: billingPaymentStatus,
-                    }, 'CobranÃ§a atualizada com sucesso.')}
+                    }, 'Cobrança atualizada com sucesso.')}
                   >
-                    Atualizar cobranÃ§a
+                    Atualizar cobrança
                   </button>
 
                   {isOwnerMaster ? (
                     <div className="mt-2 rounded-xl border border-slate-200 bg-slate-50 p-3">
-                      <p className="text-xs font-semibold text-slate-700">IntegraÃ§Ã£o Asaas</p>
-                      <p className="mt-1 text-xs text-slate-500">Vincule IDs ou sincronize automaticamente assinatura/cobranÃ§a.</p>
+                      <p className="text-xs font-semibold text-slate-700">Integração Asaas</p>
+                      <p className="mt-1 text-xs text-slate-500">Vincule IDs ou sincronize automaticamente assinatura/cobrança.</p>
                       <div className="mt-2 grid gap-2">
                         <input className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" placeholder="Asaas customer id (opcional)" value={asaasCustomerId} onChange={(e) => setAsaasCustomerId(e.target.value)} />
                         <input className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" placeholder="Asaas subscription id (opcional)" value={asaasSubscriptionId} onChange={(e) => setAsaasSubscriptionId(e.target.value)} />
@@ -1386,9 +1386,9 @@ export default function Owner2() {
                               empresa_id: billingSubscriptionId ? undefined : (companyId || undefined),
                               asaas_customer_id: asaasCustomerId || undefined,
                               asaas_subscription_id: asaasSubscriptionId || undefined,
-                            }, 'VÃ­nculo Asaas salvo com sucesso.')}
+                            }, 'Vínculo Asaas salvo com sucesso.')}
                           >
-                            Salvar vÃ­nculo Asaas
+                            Salvar vínculo Asaas
                           </button>
                           <button
                             className="rounded-lg border border-emerald-300 bg-emerald-50 px-3 py-2 text-sm text-emerald-700"
@@ -1396,7 +1396,7 @@ export default function Owner2() {
                             onClick={() => runAction('asaas_sync_subscription', {
                               subscription_id: billingSubscriptionId || undefined,
                               empresa_id: billingSubscriptionId ? undefined : (companyId || undefined),
-                            }, 'SincronizaÃ§Ã£o Asaas concluÃ­da.')}
+                            }, 'Sincronização Asaas concluída.')}
                           >
                             Sincronizar com Asaas
                           </button>
@@ -1405,8 +1405,8 @@ export default function Owner2() {
                     </div>
                   ) : (
                     <div className="mt-2 rounded-xl border border-slate-200 bg-slate-50 p-3">
-                      <p className="text-xs font-semibold text-slate-700">IntegraÃ§Ã£o Asaas</p>
-                      <p className="mt-1 text-xs text-slate-500">Ãrea restrita ao OWNER_MASTER.</p>
+                      <p className="text-xs font-semibold text-slate-700">Integração Asaas</p>
+                      <p className="mt-1 text-xs text-slate-500">Área restrita ao OWNER_MASTER.</p>
                     </div>
                   )}
                 </div>
@@ -1422,11 +1422,11 @@ export default function Owner2() {
                     <option value="">Selecione o contrato</option>
                     {contracts.map((c) => <option key={String(c.id)} value={String(c.id)}>{String(c.summary ?? c.id)}</option>)}
                   </select>
-                  <textarea className="min-h-[120px] rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" value={contractContent} onChange={(e) => setContractContent(e.target.value)} placeholder="ConteÃºdo do contrato" />
+                  <textarea className="min-h-[120px] rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" value={contractContent} onChange={(e) => setContractContent(e.target.value)} placeholder="Conteúdo do contrato" />
                   <input className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" value={contractSummary} onChange={(e) => setContractSummary(e.target.value)} placeholder="Resumo" />
-                  <button className="rounded-lg bg-sky-700 px-3 py-2 text-sm font-semibold text-white" disabled={busy || !selectedContractId} onClick={() => runAction('update_contract', { contract_id: selectedContractId, content: contractContent, summary: contractSummary }, 'Contrato atualizado.')}>Salvar alteraÃ§Ãµes</button>
+                  <button className="rounded-lg bg-sky-700 px-3 py-2 text-sm font-semibold text-white" disabled={busy || !selectedContractId} onClick={() => runAction('update_contract', { contract_id: selectedContractId, content: contractContent, summary: contractSummary }, 'Contrato atualizado.')}>Salvar alterações</button>
                   <button className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-700" disabled={busy || !selectedContractId} onClick={() => runAction('regenerate_contract', { contract_id: selectedContractId }, 'Contrato regenerado.')}>Regenerar contrato</button>
-                  <button className="rounded-lg border border-rose-300 bg-rose-50 px-3 py-2 text-sm text-rose-700" disabled={busy || !selectedContractId} onClick={() => runAction('delete_contract', { contract_id: selectedContractId }, 'Contrato excluÃ­do.')}>Excluir contrato</button>
+                  <button className="rounded-lg border border-rose-300 bg-rose-50 px-3 py-2 text-sm text-rose-700" disabled={busy || !selectedContractId} onClick={() => runAction('delete_contract', { contract_id: selectedContractId }, 'Contrato excluído.')}>Excluir contrato</button>
                 </div>
               </SurfaceCard>
 
@@ -1498,10 +1498,10 @@ export default function Owner2() {
 
           {activeTab === 'configuracoes' && (
             <div className="grid gap-4 xl:grid-cols-2">
-              <SurfaceCard title="ConfiguraÃ§Ãµes operacionais" subtitle="Sem JSON/SQL. Ajustes por chave liga/desliga e limites simples.">
+              <SurfaceCard title="Configurações operacionais" subtitle="Sem JSON/SQL. Ajustes por chave liga/desliga e limites simples.">
                 <div className="space-y-3">
-                  <h3 className="text-sm font-semibold">MÃ³dulos</h3>
-                  <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={moduleOs} onChange={(e) => setModuleOs(e.target.checked)} /> Ordens de serviÃ§o</label>
+                  <h3 className="text-sm font-semibold">Módulos</h3>
+                  <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={moduleOs} onChange={(e) => setModuleOs(e.target.checked)} /> Ordens de serviço</label>
                   <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={modulePreventiva} onChange={(e) => setModulePreventiva(e.target.checked)} /> Preventiva</label>
                   <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={modulePreditiva} onChange={(e) => setModulePreditiva(e.target.checked)} /> Preditiva</label>
                   <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={moduleMateriais} onChange={(e) => setModuleMateriais(e.target.checked)} /> Materiais</label>
@@ -1509,7 +1509,7 @@ export default function Owner2() {
                 </div>
 
                 <div className="mt-3 grid gap-2 sm:grid-cols-3">
-                  <input className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" value={limitUsers} onChange={(e) => setLimitUsers(e.target.value)} placeholder="Limite usuÃ¡rios" />
+                  <input className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" value={limitUsers} onChange={(e) => setLimitUsers(e.target.value)} placeholder="Limite usuários" />
                   <input className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" value={limitAssets} onChange={(e) => setLimitAssets(e.target.value)} placeholder="Limite equipamentos" />
                   <input className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" value={limitStorageMb} onChange={(e) => setLimitStorageMb(e.target.value)} placeholder="Armazenamento MB" />
                 </div>
@@ -1545,13 +1545,13 @@ export default function Owner2() {
                         sso: featureSso,
                       },
                     },
-                  }, 'ConfiguraÃ§Ãµes salvas com sucesso.')}
+                  }, 'Configurações salvas com sucesso.')}
                 >
-                  Salvar configuraÃ§Ãµes
+                  Salvar configurações
                 </button>
               </SurfaceCard>
 
-              <SurfaceCard title="AÃ§Ãµes de seguranÃ§a">
+              <SurfaceCard title="Ações de segurança">
                 <div className="grid gap-2">
                   <button
                     className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-700"
@@ -1589,7 +1589,7 @@ export default function Owner2() {
 
           {activeTab === 'feature-flags' && (
             <div className="grid gap-4 xl:grid-cols-2">
-              <SurfaceCard title="Feature Flags por empresa" subtitle="Controle rÃ¡pido de recursos premium">
+              <SurfaceCard title="Feature Flags por empresa" subtitle="Controle rápido de recursos premium">
                 <div className="space-y-2">
                   <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={featureAi} onChange={(e) => setFeatureAi(e.target.checked)} /> IA habilitada</label>
                   <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={featureApi} onChange={(e) => setFeatureApi(e.target.checked)} /> API habilitada</label>
@@ -1626,10 +1626,10 @@ export default function Owner2() {
                 </button>
               </SurfaceCard>
 
-              <SurfaceCard title="Estado atual" subtitle="ConfiguraÃ§Ã£o carregada da empresa selecionada">
+              <SurfaceCard title="Estado atual" subtitle="Configuração carregada da empresa selecionada">
                 <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs text-slate-700">
                   <p>Empresa selecionada: {companyId || 'Nenhuma'}</p>
-                  <p className="mt-1">Recursos atuais: AI {featureAi ? 'ON' : 'OFF'} â€¢ API {featureApi ? 'ON' : 'OFF'} â€¢ SSO {featureSso ? 'ON' : 'OFF'}</p>
+                  <p className="mt-1">Recursos atuais: AI {featureAi ? 'ON' : 'OFF'} • API {featureApi ? 'ON' : 'OFF'} • SSO {featureSso ? 'ON' : 'OFF'}</p>
                 </div>
               </SurfaceCard>
             </div>
@@ -1641,8 +1641,8 @@ export default function Owner2() {
                 <table className="w-full text-xs">
                   <thead className="bg-slate-100">
                     <tr>
-                      <th className="px-2 py-2 text-left">AÃ§Ã£o</th>
-                      <th className="px-2 py-2 text-left">UsuÃ¡rio</th>
+                      <th className="px-2 py-2 text-left">Ação</th>
+                      <th className="px-2 py-2 text-left">Usuário</th>
                       <th className="px-2 py-2 text-left">Data</th>
                     </tr>
                   </thead>
@@ -1661,7 +1661,7 @@ export default function Owner2() {
           )}
 
           {activeTab === 'logs' && (
-            <SurfaceCard title="Logs" subtitle="Busca por aÃ§Ã£o/usuÃ¡rio e filtro de severidade">
+            <SurfaceCard title="Logs" subtitle="Busca por ação/usuário e filtro de severidade">
               <div className="mb-3 flex justify-end">
                 <button className="inline-flex items-center gap-1 rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-700" onClick={exportLogsCsv}>
                   <Download className="h-3.5 w-3.5" /> Exportar CSV
@@ -1669,7 +1669,7 @@ export default function Owner2() {
               </div>
 
               <div className="mb-3 grid gap-2 sm:grid-cols-3">
-                <input className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" placeholder="Buscar aÃ§Ã£o ou usuÃ¡rio" value={logSearch} onChange={(e) => setLogSearch(e.target.value)} />
+                <input className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" placeholder="Buscar ação ou usuário" value={logSearch} onChange={(e) => setLogSearch(e.target.value)} />
                 <select className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" value={logSeverityFilter} onChange={(e) => setLogSeverityFilter(e.target.value as 'todos' | 'info' | 'warn' | 'error' | 'critical')}>
                   <option value="todos">Severidade: Todas</option>
                   <option value="info">info</option>
@@ -1696,9 +1696,9 @@ export default function Owner2() {
                 <table className="w-full text-xs">
                   <thead className="bg-slate-100">
                     <tr>
-                      <th className="px-2 py-2 text-left">AÃ§Ã£o</th>
+                      <th className="px-2 py-2 text-left">Ação</th>
                       <th className="px-2 py-2 text-left">Severidade</th>
-                      <th className="px-2 py-2 text-left">UsuÃ¡rio</th>
+                      <th className="px-2 py-2 text-left">Usuário</th>
                       <th className="px-2 py-2 text-left">Data</th>
                     </tr>
                   </thead>
@@ -1724,10 +1724,10 @@ export default function Owner2() {
 
           {activeTab === 'sistema' && (
             <div className="grid gap-4 xl:grid-cols-2">
-              <SurfaceCard title="AÃ§Ãµes de sistema" subtitle="OperaÃ§Ãµes avanÃ§adas com seguranÃ§a">
+              <SurfaceCard title="Ações de sistema" subtitle="Operações avançadas com segurança">
                 <div className="grid gap-2">
                   <select className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" value={systemUserId} onChange={(e) => setSystemUserId(e.target.value)}>
-                    <option value="">UsuÃ¡rio para promoÃ§Ã£o/timeout</option>
+                    <option value="">Usuário para promoção/timeout</option>
                     {users.map((u) => (
                       <option key={String(u.id)} value={String(u.id)}>{String(u.nome ?? u.email ?? u.id)}</option>
                     ))}
@@ -1736,12 +1736,12 @@ export default function Owner2() {
                   <button
                     className="rounded-lg border border-slate-300 px-3 py-2 text-sm"
                     disabled={busy || !systemUserId}
-                    onClick={() => runAction('create_system_admin', { user_id: systemUserId }, 'PermissÃ£o SYSTEM_ADMIN concedida.')}
+                    onClick={() => runAction('create_system_admin', { user_id: systemUserId }, 'Permissão SYSTEM_ADMIN concedida.')}
                   >
                     Conceder SYSTEM_ADMIN
                   </button>
 
-                  <p className="text-xs text-slate-500">Timeout de inatividade ocultado do Owner2 para simplificar a operaÃ§Ã£o.</p>
+                  <p className="text-xs text-slate-500">Timeout de inatividade ocultado do Owner2 para simplificar a operação.</p>
 
                   <select className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" value={selectedTableName} onChange={(e) => setSelectedTableName(e.target.value)}>
                     <option value="">Tabela para purge</option>
@@ -1769,12 +1769,12 @@ export default function Owner2() {
                 </div>
               </SurfaceCard>
 
-              <SurfaceCard title="Resumo operacional do sistema" subtitle="VisÃ£o rÃ¡pida de seguranÃ§a e manutenÃ§Ã£o">
+              <SurfaceCard title="Resumo operacional do sistema" subtitle="Visão rápida de segurança e manutenção">
                 <div className="grid gap-2 sm:grid-cols-2">
                   <MetricTile label="Tabelas detectadas" value={tables.length} icon={Database} tone="sky" />
-                  <MetricTile label="UsuÃ¡rios globais" value={users.length} icon={Users} tone="emerald" />
+                  <MetricTile label="Usuários globais" value={users.length} icon={Users} tone="emerald" />
                   <MetricTile label="Empresa em escopo" value={companyId ? 'Selecionada' : 'Global'} icon={Building2} tone="amber" />
-                  <MetricTile label="MÃ³dulo" value="Sistema" icon={Settings2} tone="rose" />
+                  <MetricTile label="Módulo" value="Sistema" icon={Settings2} tone="rose" />
                 </div>
               </SurfaceCard>
             </div>
@@ -1824,7 +1824,7 @@ export default function Owner2() {
               <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-4 shadow-2xl">
                 <h3 className="text-base font-semibold text-slate-900">{criticalRequest.title}</h3>
                 <p className="mt-2 text-sm text-slate-600">{criticalRequest.description}</p>
-                <p className="mt-2 text-xs text-slate-500">Digite <span className="font-semibold text-slate-800">{criticalRequest.confirmText}</span> e informe a senha de confirmaÃ§Ã£o para prosseguir.</p>
+                <p className="mt-2 text-xs text-slate-500">Digite <span className="font-semibold text-slate-800">{criticalRequest.confirmText}</span> e informe a senha de confirmação para prosseguir.</p>
 
                 <div className="mt-3 grid gap-2">
                   <input
