@@ -166,6 +166,12 @@ export function useCloseOSAtomic() {
 
   return useMutation({
     mutationFn: async (params: CloseOSAtomicParams) => {
+      const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+      const safeUsuarioFechamento =
+        typeof params.usuario_fechamento === 'string' && uuidPattern.test(params.usuario_fechamento)
+          ? params.usuario_fechamento
+          : null;
+
       const { data, error } = await callRpc<unknown[]>('close_os_with_execution_atomic', {
         p_os_id: params.os_id,
         p_mecanico_id: params.mecanico_id,
@@ -182,7 +188,7 @@ export function useCloseOSAtomic() {
         p_custo_total: params.custo_total,
         p_materiais: params.materiais,
         p_pausas: params.pausas,
-        p_usuario_fechamento: params.usuario_fechamento,
+        p_usuario_fechamento: safeUsuarioFechamento,
         p_modo_falha: params.modo_falha ?? null,
         p_causa_raiz: params.causa_raiz ?? null,
         p_acao_corretiva: params.acao_corretiva ?? null,

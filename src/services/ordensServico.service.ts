@@ -78,9 +78,20 @@ export const ordensServicoService = {
 
   async atualizar(id: string, payload: OrdemServicoUpdateData, empresaId: string) {
     const validated = ordemServicoUpdateSchema.parse(payload);
+    const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+    const usuarioFechamento =
+      typeof validated.usuario_fechamento === 'string' && uuidPattern.test(validated.usuario_fechamento)
+        ? validated.usuario_fechamento
+        : null;
+
+    const safePayload: OrdemServicoUpdateData = {
+      ...validated,
+      usuario_fechamento: usuarioFechamento,
+    };
+
     const { data, error } = await supabase
       .from('ordens_servico')
-      .update(validated)
+      .update(safePayload)
       .eq('id', id)
       .eq('empresa_id', empresaId)
       .select()
