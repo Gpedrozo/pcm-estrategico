@@ -286,20 +286,30 @@ export default function Owner() {
   const healthQuery = useOwner2Health(true)
   const dashboardQuery = useOwner2Dashboard(activeTab === 'dashboard')
   const companiesQuery = useOwner2Companies(activeTab !== 'owner-master')
-  const usersQuery = useOwner2Users(activeTab === 'usuarios' || activeTab === 'configuracoes' || activeTab === 'empresas' || activeTab === 'dashboard')
+  const usersQuery = useOwner2Users(
+    companyId || undefined,
+    activeTab === 'usuarios' || activeTab === 'configuracoes' || activeTab === 'empresas' || activeTab === 'dashboard',
+  )
   const plansQuery = useOwner2Plans(activeTab === 'comercial' || activeTab === 'dashboard')
   const subscriptionsQuery = useOwner2Subscriptions(activeTab === 'comercial' || activeTab === 'dashboard')
   const contractsQuery = useOwner2Contracts(activeTab === 'contratos' || activeTab === 'dashboard')
   const ticketsQuery = useOwner2Tickets(activeTab === 'suporte' || activeTab === 'dashboard')
-  const auditsQuery = useOwner2Audits(activeTab === 'auditoria' || activeTab === 'monitoramento' || activeTab === 'logs')
+  const auditFilters = useMemo(
+    () => (companyId ? { empresa_id: companyId } : {}),
+    [companyId],
+  )
+  const auditsQuery = useOwner2Audits(
+    auditFilters,
+    activeTab === 'auditoria' || activeTab === 'monitoramento' || activeTab === 'logs',
+  )
   const ownersQuery = useOwner2PlatformOwners(activeTab === 'owner-master')
   const monitoringLive = activeTab === 'monitoramento' && isDocumentVisible
   const systemLive = activeTab === 'sistema' && isDocumentVisible
-  const tablesLive = monitoringLive || systemLive || (activeTab === 'dashboard' && Boolean(companyId))
+  const tablesLive = monitoringLive || systemLive || activeTab === 'dashboard'
   const tablesRefetchInterval = monitoringLive ? 5000 : systemLive ? 10000 : false
   const tablesQuery = useOwner2Tables(
     companyId || undefined,
-    tablesLive && Boolean(companyId),
+    tablesLive,
     tablesRefetchInterval,
   )
   const settingsQuery = useOwner2Settings(companyId || undefined, activeTab === 'configuracoes' || activeTab === 'feature-flags')
@@ -1804,6 +1814,14 @@ export default function Owner() {
                   <MetricTile label="Usuários globais" value={users.length} icon={Users} tone="emerald" />
                   <MetricTile label="Empresa em escopo" value={companyId ? 'Selecionada' : 'Global'} icon={Building2} tone="amber" />
                   <MetricTile label="Módulo" value="Sistema" icon={Settings2} tone="rose" />
+                </div>
+
+                <div className="mt-3 rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs text-slate-700">
+                  <p>Status backend: <span className="font-semibold">{healthQuery.isError ? 'Com erro' : 'Operacional'}</span></p>
+                  <p className="mt-1">Monitoramento de tabelas: <span className="font-semibold">{tablesQuery.isLoading ? 'Carregando' : tablesQuery.isError ? 'Falha ao consultar' : `${tables.length} tabelas`}</span></p>
+                  {tablesQuery.isError && (
+                    <p className="mt-1 text-rose-700">Detalhe: {tablesQuery.error instanceof Error ? tablesQuery.error.message : 'Falha ao consultar tabelas.'}</p>
+                  )}
                 </div>
               </SurfaceCard>
             </div>

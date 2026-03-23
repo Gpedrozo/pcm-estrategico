@@ -1,5 +1,20 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { invokeOwner2, type Owner2Action } from '@/services/owner2Portal.service'
+import {
+  callOwnerAdmin,
+  getCompanySettings,
+  getOwnerBackendHealth,
+  getPlatformStats,
+  listAuditLogs,
+  listContracts,
+  listDatabaseTables,
+  listGlobalUsers,
+  listPlans,
+  listPlatformCompanies,
+  listPlatformOwners,
+  listSubscriptions,
+  listSupportTickets,
+} from '@/services/ownerPortal.service'
 
 const owner2Keys = {
   health: ['owner2', 'health'] as const,
@@ -23,7 +38,7 @@ function invalidateOwner2(qc: ReturnType<typeof useQueryClient>) {
 export function useOwner2Health(enabled = true) {
   return useQuery({
     queryKey: owner2Keys.health,
-    queryFn: () => invokeOwner2({ action: 'health_check' }),
+    queryFn: () => getOwnerBackendHealth(),
     enabled,
     staleTime: 15_000,
     retry: 1,
@@ -33,7 +48,7 @@ export function useOwner2Health(enabled = true) {
 export function useOwner2Dashboard(enabled = true) {
   return useQuery({
     queryKey: owner2Keys.dashboard,
-    queryFn: () => invokeOwner2({ action: 'dashboard' }),
+    queryFn: () => getPlatformStats(),
     enabled,
     staleTime: 15_000,
     retry: 0,
@@ -43,16 +58,16 @@ export function useOwner2Dashboard(enabled = true) {
 export function useOwner2Companies(enabled = true) {
   return useQuery({
     queryKey: owner2Keys.companies,
-    queryFn: () => invokeOwner2<{ companies: Array<Record<string, unknown>> }>({ action: 'list_companies' }),
+    queryFn: async () => ({ companies: await listPlatformCompanies() }),
     enabled,
     retry: 0,
   })
 }
 
-export function useOwner2Users(enabled = true) {
+export function useOwner2Users(empresaId?: string, enabled = true) {
   return useQuery({
-    queryKey: owner2Keys.users,
-    queryFn: () => invokeOwner2<{ users: Array<Record<string, unknown>> }>({ action: 'list_users' }),
+    queryKey: [...owner2Keys.users, empresaId ?? null],
+    queryFn: async () => ({ users: await listGlobalUsers(empresaId) }),
     enabled,
     retry: 0,
   })
@@ -61,7 +76,7 @@ export function useOwner2Users(enabled = true) {
 export function useOwner2Plans(enabled = true) {
   return useQuery({
     queryKey: owner2Keys.plans,
-    queryFn: () => invokeOwner2<{ plans: Array<Record<string, unknown>> }>({ action: 'list_plans' }),
+    queryFn: async () => ({ plans: await listPlans() }),
     enabled,
     retry: 0,
   })
@@ -70,7 +85,7 @@ export function useOwner2Plans(enabled = true) {
 export function useOwner2Subscriptions(enabled = true) {
   return useQuery({
     queryKey: owner2Keys.subscriptions,
-    queryFn: () => invokeOwner2<{ subscriptions: Array<Record<string, unknown>> }>({ action: 'list_subscriptions', limit: 500 }),
+    queryFn: async () => ({ subscriptions: await listSubscriptions(500) }),
     enabled,
     retry: 0,
   })
@@ -79,7 +94,7 @@ export function useOwner2Subscriptions(enabled = true) {
 export function useOwner2Contracts(enabled = true) {
   return useQuery({
     queryKey: owner2Keys.contracts,
-    queryFn: () => invokeOwner2<{ contracts: Array<Record<string, unknown>> }>({ action: 'list_contracts' }),
+    queryFn: async () => ({ contracts: await listContracts() }),
     enabled,
     retry: 0,
   })
@@ -88,16 +103,16 @@ export function useOwner2Contracts(enabled = true) {
 export function useOwner2Tickets(enabled = true) {
   return useQuery({
     queryKey: owner2Keys.tickets,
-    queryFn: () => invokeOwner2<{ tickets: Array<Record<string, unknown>> }>({ action: 'list_support_tickets' }),
+    queryFn: async () => ({ tickets: await listSupportTickets() }),
     enabled,
     retry: 0,
   })
 }
 
-export function useOwner2Audits(enabled = true) {
+export function useOwner2Audits(filters?: Record<string, unknown>, enabled = true) {
   return useQuery({
-    queryKey: owner2Keys.audits,
-    queryFn: () => invokeOwner2<{ logs: Array<Record<string, unknown>> }>({ action: 'list_audit_logs', filters: {} }),
+    queryKey: [...owner2Keys.audits, filters ?? null],
+    queryFn: async () => ({ logs: await listAuditLogs(filters) }),
     enabled,
     retry: 0,
   })
@@ -106,7 +121,7 @@ export function useOwner2Audits(enabled = true) {
 export function useOwner2PlatformOwners(enabled = true) {
   return useQuery({
     queryKey: owner2Keys.owners,
-    queryFn: () => invokeOwner2<{ owners: Array<Record<string, unknown>> }>({ action: 'list_platform_owners' }),
+    queryFn: async () => ({ owners: await listPlatformOwners() }),
     enabled,
     retry: 0,
   })
@@ -125,10 +140,7 @@ export function useOwner2Tables(
 
   return useQuery({
     queryKey: owner2Keys.tables(empresaId),
-    queryFn: () => {
-      if (!empresaId) return Promise.resolve({ tables: [] as Array<Record<string, unknown>> })
-      return invokeOwner2<{ tables: Array<Record<string, unknown>> }>({ action: 'list_database_tables', empresa_id: empresaId })
-    },
+    queryFn: async () => ({ tables: await listDatabaseTables(empresaId ?? null) }),
     enabled,
     staleTime: 10_000,
     refetchInterval: computeRefetchInterval,
@@ -141,9 +153,9 @@ export function useOwner2Tables(
 export function useOwner2Settings(empresaId?: string, enabled = true) {
   return useQuery({
     queryKey: owner2Keys.settings(empresaId),
-    queryFn: () => {
-      if (!empresaId) return Promise.resolve({ settings: [] as Array<Record<string, unknown>> })
-      return invokeOwner2<{ settings: Array<Record<string, unknown>> }>({ action: 'get_company_settings', empresa_id: empresaId })
+    queryFn: async () => {
+      if (!empresaId) return { settings: [] as Array<Record<string, unknown>> }
+      return getCompanySettings(empresaId)
     },
     enabled,
     retry: 0,
@@ -153,9 +165,37 @@ export function useOwner2Settings(empresaId?: string, enabled = true) {
 export function useOwner2Actions() {
   const qc = useQueryClient()
 
+  const normalizePayload = (action: Owner2Action, payload?: Record<string, unknown>) => {
+    const source = payload ?? {}
+
+    if (action === 'update_subscription_billing' && !('billing' in source)) {
+      return {
+        action,
+        subscription_id: source.subscription_id,
+        empresa_id: source.empresa_id,
+        billing: {
+          amount: source.amount,
+          payment_status: source.payment_status,
+          payment_method: source.payment_method,
+          due_date: source.due_date,
+          paid_at: source.paid_at,
+        },
+      }
+    }
+
+    if (action === 'list_audit_logs' && !('filters' in source)) {
+      return {
+        action,
+        filters: source,
+      }
+    }
+
+    return { action, ...source }
+  }
+
   const execute = useMutation({
     mutationFn: ({ action, payload }: { action: Owner2Action; payload?: Record<string, unknown> }) =>
-      invokeOwner2({ action, ...(payload ?? {}) }),
+      callOwnerAdmin(normalizePayload(action, payload) as any),
     onSuccess: () => invalidateOwner2(qc),
   })
 
