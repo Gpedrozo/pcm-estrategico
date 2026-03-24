@@ -293,7 +293,7 @@ export default function Suporte() {
                               {entry.attachments.map((url) => (
                                 <div key={url} className="space-y-1">
                                   {isImageAttachmentUrl(url) && (
-                                    <a href={url} target="_blank" rel="noreferrer" className="block">
+                                    <a href={url} target="_blank" rel="noopener noreferrer" className="block">
                                       <img
                                         src={url}
                                         alt="Anexo do chamado"
@@ -302,7 +302,7 @@ export default function Suporte() {
                                       />
                                     </a>
                                   )}
-                                  <a href={url} target="_blank" rel="noreferrer" className="block text-xs text-info underline">
+                                  <a href={url} target="_blank" rel="noopener noreferrer" className="block text-xs text-info underline">
                                     Ver anexo
                                   </a>
                                 </div>
