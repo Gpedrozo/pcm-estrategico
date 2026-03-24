@@ -330,8 +330,9 @@ export function AppSidebar() {
             onClick={() => logout()}
             className="p-2 rounded-md hover:bg-sidebar-accent/50 text-sidebar-foreground/70 hover:text-sidebar-foreground transition-colors"
             title="Sair"
+            aria-label="Sair do sistema"
           >
-            <LogOut className="h-5 w-5" />
+            <LogOut className="h-5 w-5" aria-hidden="true" />
           </button>
         </div>
       </SidebarFooter>

@@ -35,142 +35,10 @@ import {
   useOwner2Tickets,
   useOwner2Users,
 } from '@/hooks/useOwner2Portal'
+import { OWNER_TABS, OWNER_TAB_LABELS, type OwnerTab, type CompanyCredentialNote, type CriticalActionRequest } from './owner2/owner2Types'
+import { normalizeEmail, resolveOwnerMasterEmail, safeArray, asObject, asBool, asNumber, statusColor, downloadCsv, TENANT_BASE_DOMAIN, KNOWN_OWNER_MASTER_EMAILS } from './owner2/owner2Helpers'
+import { SurfaceCard, MetricTile } from './owner2/owner2Components'
 
-const OWNER_TABS = [
-  'dashboard',
-  'monitoramento',
-  'empresas',
-  'usuarios',
-  'comercial',
-  'financeiro',
-  'contratos',
-  'suporte',
-  'configuracoes',
-  'feature-flags',
-  'auditoria',
-  'logs',
-  'sistema',
-  'owner-master',
-] as const
-
-const OWNER_TAB_LABELS: Record<OwnerTab, string> = {
-  dashboard: 'Dashboard',
-  monitoramento: 'Monitoramento',
-  empresas: 'Empresas',
-  usuarios: 'Usuarios',
-  comercial: 'Planos',
-  financeiro: 'Financeiro',
-  contratos: 'Contratos',
-  suporte: 'Suporte',
-  configuracoes: 'Configuracoes',
-  'feature-flags': 'Feature Flags',
-  auditoria: 'Auditoria',
-  logs: 'Logs',
-  sistema: 'Sistema',
-  'owner-master': 'Owner Master',
-}
-
-type OwnerTab = (typeof OWNER_TABS)[number]
-
-type CompanyCredentialNote = {
-  companyName: string
-  companySlug: string
-  masterEmail: string
-  initialPassword: string
-  loginUrl: string
-  noteText: string
-}
-
-type CriticalActionRequest = {
-  title: string
-  description: string
-  confirmText: string
-  action: any
-  payload: Record<string, unknown>
-  successMessage: string
-  masterOnly?: boolean
-}
-
-const TENANT_BASE_DOMAIN = (import.meta.env.VITE_TENANT_BASE_DOMAIN || 'gppis.com.br').toLowerCase()
-
-const KNOWN_OWNER_MASTER_EMAILS = ['pedrozo@gppis.com.br', 'pedrozo@gppis.cm.br'] as const
-
-function normalizeEmail(value: string) {
-  return String(value || '').trim().toLowerCase()
-}
-
-function resolveOwnerMasterEmail() {
-  const configured = normalizeEmail(String(import.meta.env.VITE_OWNER_MASTER_EMAIL ?? ''))
-  if (configured) return configured
-  return KNOWN_OWNER_MASTER_EMAILS[0]
-}
-
-function safeArray<T>(value: unknown): T[] {
-  return Array.isArray(value) ? (value as T[]) : []
-}
-
-function asObject(value: unknown): Record<string, unknown> {
-  return value && typeof value === 'object' && !Array.isArray(value)
-    ? (value as Record<string, unknown>)
-    : {}
-}
-
-function asBool(value: unknown, fallback = false): boolean {
-  if (typeof value === 'boolean') return value
-  if (typeof value === 'string') {
-    const normalized = value.trim().toLowerCase()
-    if (normalized === 'true' || normalized === '1' || normalized === 'sim') return true
-    if (normalized === 'false' || normalized === '0' || normalized === 'nao' || normalized === 'não') return false
-  }
-  return fallback
-}
-
-function asNumber(value: unknown, fallback = 0): number {
-  const n = Number(value)
-  return Number.isFinite(n) ? n : fallback
-}
-
-function statusColor(status: string) {
-  const normalized = status.toLowerCase()
-  if (normalized.includes('ativo') || normalized.includes('active') || normalized.includes('resolvido')) {
-    return 'bg-emerald-100 text-emerald-700 border-emerald-200'
-  }
-  if (normalized.includes('bloq') || normalized.includes('block') || normalized.includes('inativo') || normalized.includes('cancel')) {
-    return 'bg-rose-100 text-rose-700 border-rose-200'
-  }
-  return 'bg-amber-100 text-amber-700 border-amber-200'
-}
-
-function SurfaceCard({ title, subtitle, children }: { title: string; subtitle?: string; children: React.ReactNode }) {
-  return (
-    <section className="rounded-2xl border border-border bg-card/95 p-4 shadow-sm">
-      <div className="mb-3">
-        <h3 className="text-sm font-semibold text-slate-900">{title}</h3>
-        {subtitle ? <p className="mt-1 text-xs text-slate-500">{subtitle}</p> : null}
-      </div>
-      {children}
-    </section>
-  )
-}
-
-function MetricTile({ label, value, icon: Icon, tone = 'sky' }: { label: string; value: string | number; icon: any; tone?: 'sky' | 'emerald' | 'amber' | 'rose' }) {
-  const toneClass = {
-    sky: 'from-sky-50 to-cyan-50 border-sky-200 text-sky-800',
-    emerald: 'from-emerald-50 to-teal-50 border-emerald-200 text-emerald-800',
-    amber: 'from-amber-50 to-orange-50 border-amber-200 text-amber-800',
-    rose: 'from-rose-50 to-pink-50 border-rose-200 text-rose-800',
-  }[tone]
-
-  return (
-    <div className={`rounded-xl border bg-gradient-to-br p-4 ${toneClass}`}>
-      <div className="flex items-start justify-between">
-        <p className="text-xs font-medium opacity-80">{label}</p>
-        <Icon className="h-4 w-4 opacity-80" />
-      </div>
-      <p className="mt-2 text-2xl font-bold">{value}</p>
-    </div>
-  )
-}
 
 export default function Owner() {
   const { isSystemOwner, isLoading, user, logout } = useAuth()
@@ -561,27 +429,6 @@ export default function Owner() {
       return textOk && severityOk && actorOk && moduleOk && Boolean(fromOk) && Boolean(toOk)
     })
   }, [logActorFilter, logDateFrom, logDateTo, logModuleFilter, logSearch, logSeverityFilter, logs])
-
-  function downloadCsv(filename: string, headers: string[], rows: Array<Array<string | number>>) {
-    const escapeCell = (value: string | number) => {
-      const content = String(value ?? '')
-      return `"${content.replace(/"/g, '""')}"`
-    }
-
-    const csvContent = [headers, ...rows]
-      .map((row) => row.map(escapeCell).join(';'))
-      .join('\n')
-
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
-    const href = URL.createObjectURL(blob)
-    const link = document.createElement('a')
-    link.href = href
-    link.download = filename
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
-    URL.revokeObjectURL(href)
-  }
 
   function exportUsersCsv() {
     const rows = usersFiltered.map((u) => [
