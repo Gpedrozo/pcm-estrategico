@@ -380,10 +380,8 @@ function TenantRoutes() {
                 />
                 <Route path="/inteligencia-causa-raiz" element={<RootCauseAIPage />} />
                 <Route path="/status" element={<SystemStatus />} />
-              </Route>
 
-                {/* Manual de Operação — 22 capítulos (tenant) */}
-                <Route path="/manuais-operacao/imprimir" element={<ManualPrintAll />} />
+                {/* Manual de Operação — 22 capítulos (dentro do AppLayout) */}
                 <Route path="/manuais-operacao" element={<ManualLayout basePath="/manuais-operacao" />}>
                   <Route index element={<ManualCover basePath="/manuais-operacao" />} />
                   <Route path="login" element={<ManualLogin />} />
@@ -410,7 +408,6 @@ function TenantRoutes() {
                   <Route path="kpis" element={<ManualKPIs />} />
                 </Route>
 
-                <Route path="/manual/imprimir" element={<ManualPrintAll />} />
                 <Route path="/manual" element={<ManualLayout />}>
                   <Route index element={<ManualCover />} />
                   <Route path="login" element={<ManualLogin />} />
@@ -436,6 +433,11 @@ function TenantRoutes() {
                   <Route path="rotina" element={<ManualRotina />} />
                   <Route path="kpis" element={<ManualKPIs />} />
                 </Route>
+
+              </Route>
+
+                <Route path="/manuais-operacao/imprimir" element={<ManualPrintAll />} />
+                <Route path="/manual/imprimir" element={<ManualPrintAll />} />
 
                 <Route path="*" element={<NotFound />} />
               </Routes>
