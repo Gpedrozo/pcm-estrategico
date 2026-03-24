@@ -31,6 +31,8 @@ import {
   TENANT_HOST_RESOLVE_TIMEOUT_MS,
   HYDRATION_TIMEOUT_MS,
   CROSS_DOMAIN_REDIRECT_MARKER_STORAGE_KEY,
+  SESSION_TRANSFER_MAX_AGE_MS,
+  SESSION_TRANSFER_PARAM,
 } from '@/lib/authConstants';
 import {
   getLoginRateLimitStatus,
@@ -373,14 +375,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (isOwnerDomain(window.location.hostname)) return null;
 
     const hostname = window.location.hostname.toLowerCase();
-    const { data: domainConfig, error } = await supabase
-      .from('empresa_config')
+    const { data: domainConfig, error } = await (supabase
+      .from('empresa_config' as any)
       .select('empresa_id')
       .eq('dominio_custom', hostname)
-      .maybeSingle();
+      .maybeSingle() as any);
 
     if (!error && domainConfig?.empresa_id) {
-      return domainConfig.empresa_id;
+      return domainConfig.empresa_id as string;
     }
 
     if (error) {
@@ -598,7 +600,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
         roleData = (fallbackRoleQuery.data || []).map((item: { role: AppRole }) => ({
           role: item.role,
-          empresa_id: null,
+          empresa_id: null as string | null,
         }));
 
         if (fallbackRoleQuery.error) {
@@ -670,9 +672,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       return {
         nome: 'Usuário',
-        tipo: 'USUARIO',
+        tipo: 'USUARIO' as AppRole,
         roles,
-        tenantId: null,
+        tenantId: null as string | null,
         tenantSlug: extractEmpresaSlugFromMetadata(metadata),
         forcePasswordChange: extractForcePasswordChangeFromMetadata(metadata),
       };
@@ -684,6 +686,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     tipo: AppRole;
     roles: AppRole[];
     tenantId: string | null;
+    tenantSlug?: string | null;
+    forcePasswordChange?: boolean;
   }) => {
     const roles = Array.from(new Set([
       ...(profileData.roles || []),
@@ -905,11 +909,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 id: nextSession.user.id,
                 email: nextSession.user.email || '',
                 nome: profileData.nome,
-                tipo: profileData.tipo,
+                tipo: profileData.tipo as AppRole,
                 roles: profileData.roles,
                 tenantId: profileData.tenantId,
-                tenantSlug: profileData.tenantSlug,
-                forcePasswordChange: profileData.forcePasswordChange,
+                tenantSlug: (profileData as any).tenantSlug ?? null,
+                forcePasswordChange: (profileData as any).forcePasswordChange ?? false,
               });
               setMonitoringUser(nextSession.user.id, nextSession.user.email || '');
               if (profileData.tenantId) setMonitoringTag('tenant', profileData.tenantId);
@@ -957,11 +961,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             id: session.user.id,
             email: session.user.email || '',
             nome: profileData.nome,
-            tipo: profileData.tipo,
+            tipo: profileData.tipo as AppRole,
             roles: profileData.roles,
             tenantId: profileData.tenantId,
-            tenantSlug: profileData.tenantSlug,
-            forcePasswordChange: profileData.forcePasswordChange,
+            tenantSlug: (profileData as any).tenantSlug ?? null,
+            forcePasswordChange: (profileData as any).forcePasswordChange ?? false,
           });
 
           clearRedirectRetryAttempts();
@@ -1118,10 +1122,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       };
 
       try {
-        profileData = await resolveUserProfileWithRetry(activeUser.id, activeUser.email, {
+        const rawProfile = await resolveUserProfileWithRetry(activeUser.id, activeUser.email, {
             app_metadata: activeUser.app_metadata,
             user_metadata: activeUser.user_metadata,
           }, activeSession?.access_token ?? null);
+        profileData = {
+          nome: rawProfile.nome,
+          tipo: rawProfile.tipo as AppRole,
+          roles: rawProfile.roles,
+          tenantId: rawProfile.tenantId,
+          tenantSlug: (rawProfile as any).tenantSlug ?? null,
+          forcePasswordChange: (rawProfile as any).forcePasswordChange ?? false,
+        };
       } catch {
         await supabase.auth.signOut();
         transitionAuthStatus('error', 'login_profile_hydration_timeout_or_error', {
@@ -1318,12 +1330,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const { data: fallbackUserResult } = await supabase.auth.getUser();
       const fallbackUser = fallbackUserResult.user;
       if (fallbackUser?.id) {
-        await supabase
-          .from('profiles')
-          .update({ force_password_change: false })
-          .eq('id', fallbackUser.id)
-          .then(() => null)
-          .catch(() => null);
+        await Promise.resolve(
+          supabase
+            .from('profiles')
+            .update({ force_password_change: false })
+            .eq('id', fallbackUser.id)
+        ).catch(() => null);
       }
     }
 
@@ -1348,10 +1360,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return {
         ...previous,
         nome: refreshedProfile.nome,
-        tipo: refreshedProfile.tipo,
+        tipo: refreshedProfile.tipo as AppRole,
         roles: refreshedProfile.roles,
         tenantId: refreshedProfile.tenantId,
-        tenantSlug: refreshedProfile.tenantSlug,
+        tenantSlug: (refreshedProfile as any).tenantSlug ?? previous.tenantSlug,
         forcePasswordChange: false,
       };
     });
@@ -1381,17 +1393,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return { error: tenantDomainError };
     }
 
-    const { data: domainConfig, error: domainConfigError } = await supabase
-      .from('empresa_config')
+    const { data: domainConfig, error: domainConfigError } = await (supabase
+      .from('empresa_config' as any)
       .select('empresa_id')
       .eq('dominio_custom', hostname)
-      .maybeSingle();
+      .maybeSingle() as any);
 
     if (domainConfigError) {
       return { error: 'Falha ao validar domínio da empresa.' };
     }
 
-    let empresaId = domainConfig?.empresa_id ?? null;
+    let empresaId: string | null = domainConfig?.empresa_id ?? null;
 
     if (!empresaId) {
       const isSubdomainHost = hostname.toLowerCase().endsWith(`.${baseDomain}`) && !isTenantBaseDomain(hostname);
@@ -1400,7 +1412,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         : '';
 
       if (slug && slug !== 'www') {
-        const { data: empresaIdBySlug } = await supabase.rpc('resolve_empresa_id_by_slug', {
+        const { data: empresaIdBySlug } = await supabase.rpc('resolve_empresa_id_by_slug' as any, {
           p_slug: slug,
         });
         empresaId = typeof empresaIdBySlug === 'string' ? empresaIdBySlug : null;
