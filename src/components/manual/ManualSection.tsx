@@ -1,4 +1,4 @@
-import { motion } from "framer-motion";
+
 import { CheckCircle, AlertTriangle, Lightbulb, Info } from "lucide-react";
 
 interface ManualSectionProps {
@@ -10,19 +10,13 @@ interface ManualSectionProps {
 
 export function ManualSection({ id, number, title, children }: ManualSectionProps) {
   return (
-    <motion.section
-      id={id}
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.4 }}
-      className="space-y-6"
-    >
+    <section id={id} className="space-y-6">
       <div className="manual-section-title">
         <span className="manual-step-number w-10 h-10 text-base">{number}</span>
         <h2 className="text-xl md:text-2xl font-bold text-foreground">{title}</h2>
       </div>
       {children}
-    </motion.section>
+    </section>
   );
 }
 

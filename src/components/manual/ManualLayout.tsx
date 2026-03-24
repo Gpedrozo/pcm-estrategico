@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, Outlet, useLocation } from "react-router-dom";
-import { motion, AnimatePresence } from "framer-motion";
+
 import {
   BookOpen, LogIn, Users, FileText, ClipboardList, FilePlus, CheckSquare,
   History, Calendar, Shield, Activity, Droplets, Search, BarChart3,
@@ -91,15 +91,11 @@ export default function ManualLayout() {
       </button>
 
       {/* Sidebar */}
-      <AnimatePresence>
-        {(sidebarOpen || true) && (
-          <motion.aside
-            initial={{ x: -280 }}
-            animate={{ x: 0 }}
-            className={`fixed md:sticky top-0 left-0 z-40 h-screen w-72 bg-card border-r border-border overflow-y-auto flex-shrink-0 no-print ${
-              sidebarOpen ? "block" : "hidden md:block"
-            }`}
-          >
+      <aside
+        className={`fixed md:sticky top-0 left-0 z-40 h-screen w-72 bg-card border-r border-border overflow-y-auto flex-shrink-0 no-print transition-transform ${
+          sidebarOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"
+        }`}
+      >
             <div className="p-4 border-b border-border">
               <Link to="/manual" className="flex items-center gap-2">
                 <BookOpen className="w-6 h-6 text-primary" />
@@ -152,9 +148,7 @@ export default function ManualLayout() {
             <div className="p-3 text-[10px] text-muted-foreground text-center border-t border-border">
               © {new Date().getFullYear()} PCM Estratégico
             </div>
-          </motion.aside>
-        )}
-      </AnimatePresence>
+          </aside>
 
       {/* Overlay mobile */}
       {sidebarOpen && (

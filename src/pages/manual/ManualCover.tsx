@@ -1,5 +1,4 @@
 import { Link } from "react-router-dom";
-import { motion } from "framer-motion";
 import {
   BookOpen, LogIn, Users, FileText, ClipboardList, FilePlus, CheckSquare,
   History, Calendar, Shield, Activity, Droplets, Search, BarChart3,
@@ -36,11 +35,7 @@ export default function ManualCover() {
   return (
     <div className="space-y-10">
       {/* Cover */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="text-center space-y-4 py-8"
-      >
+      <div className="text-center space-y-4 py-8">
         <div className="flex justify-center">
           <div className="w-16 h-16 rounded-2xl bg-primary flex items-center justify-center">
             <BookOpen className="w-8 h-8 text-primary-foreground" />
@@ -57,7 +52,7 @@ export default function ManualCover() {
         <div className="print-only text-sm text-muted-foreground mt-4">
           <p>Documento gerado em {new Date().toLocaleDateString("pt-BR")}</p>
         </div>
-      </motion.div>
+      </div>
 
       {/* TOC */}
       <div className="space-y-4">
@@ -66,12 +61,7 @@ export default function ManualCover() {
           {chapters.map((ch, i) => {
             const Icon = ch.icon;
             return (
-              <motion.div
-                key={ch.num}
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: i * 0.03 }}
-              >
+              <div key={ch.num}>
                 <Link
                   to={ch.path}
                   className="flex items-start gap-3 p-3 rounded-lg border border-border hover:border-primary/30 hover:bg-primary/5 transition-colors group"
@@ -87,7 +77,7 @@ export default function ManualCover() {
                     <p className="text-xs text-muted-foreground mt-0.5">{ch.desc}</p>
                   </div>
                 </Link>
-              </motion.div>
+              </div>
             );
           })}
         </div>
