@@ -42,7 +42,13 @@ import { SurfaceCard, MetricTile } from './owner2/owner2Components'
 
 export default function Owner() {
   const { isSystemOwner, isLoading, user, logout } = useAuth()
-  const [activeTab, setActiveTab] = useState<OwnerTab>('dashboard')
+  const [activeTab, setActiveTab] = useState<OwnerTab>(() => {
+    try {
+      const saved = sessionStorage.getItem('owner_active_tab')
+      if (saved && (OWNER_TABS as readonly string[]).includes(saved)) return saved as OwnerTab
+    } catch { /* SSR / security sandbox */ }
+    return 'dashboard'
+  })
   const [isDocumentVisible, setIsDocumentVisible] = useState(true)
   const [feedback, setFeedback] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -151,6 +157,10 @@ export default function Owner() {
       setActiveTab('dashboard')
     }
   }, [activeTab, isOwnerMaster])
+
+  useEffect(() => {
+    try { sessionStorage.setItem('owner_active_tab', activeTab) } catch { /* ignore */ }
+  }, [activeTab])
 
   const healthQuery = useOwner2Health(true)
   const dashboardQuery = useOwner2Dashboard(activeTab === 'dashboard')
