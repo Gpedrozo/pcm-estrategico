@@ -25,23 +25,40 @@ import {
   LOGOUT_MARKER_PARAM,
   LOGOUT_REASON_PARAM,
   TAB_CLOSE_MARKER_STORAGE_KEY,
-  TAB_CLOSE_MARKER_MAX_AGE_MS,
   DEFAULT_INACTIVITY_TIMEOUT_MS,
   INACTIVITY_NOTICE_STORAGE_KEY,
-  SESSION_TRANSFER_MAX_AGE_MS,
-  SESSION_TRANSFER_REDIRECT_STORAGE_KEY,
-  SESSION_TRANSFER_REDIRECT_MAX_AGE_MS,
-  SESSION_TRANSFER_CONSUMED_STORAGE_KEY,
-  SESSION_TRANSFER_PARAM,
-  CROSS_DOMAIN_REDIRECT_MARKER_STORAGE_KEY,
-  CROSS_DOMAIN_REDIRECT_MARKER_MAX_AGE_MS,
   LOGIN_PROFILE_TIMEOUT_MS,
   TENANT_HOST_RESOLVE_TIMEOUT_MS,
   HYDRATION_TIMEOUT_MS,
-  AUTH_REDIRECT_RETRY_STORAGE_KEY,
-  AUTH_REDIRECT_RETRY_MAX,
-  OWNER_EDGE_LOGIN_ENDPOINT,
+  CROSS_DOMAIN_REDIRECT_MARKER_STORAGE_KEY,
 } from '@/lib/authConstants';
+import {
+  getLoginRateLimitStatus,
+  registerFailedLoginAttempt,
+  resetLoginRateLimit,
+} from '@/lib/authRateLimit';
+import {
+  type OwnerEdgeLoginResult,
+  signInThroughOwnerEdge,
+} from '@/lib/authOwnerEdge';
+import {
+  isTenantBaseDomain,
+  stripAuthHandoffFromUrl,
+  getNavigationType,
+  shouldForceLogoutByClosedWindowMarker,
+  markSessionTransferRedirectInProgress,
+  isSessionTransferRedirectInProgress,
+  clearSessionTransferRedirectInProgress,
+  isCrossDomainRedirectInProgress,
+  markConsumedSessionTransfer,
+  wasSessionTransferAlreadyConsumed,
+  getRedirectRetryCount,
+  markRedirectRetryAttempt,
+  clearRedirectRetryAttempts,
+  shouldBlockCrossDomainRedirect,
+  getRetryCountFromCurrentUrl,
+  withTimeout,
+} from '@/lib/authSessionHelpers';
 
 export interface AuthUser {
   id: string;
@@ -90,424 +107,7 @@ export interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-const LOGIN_RATE_LIMIT_STORAGE_KEY = 'pcm.auth.login.rate_limit.v1';
-const LOGIN_RATE_LIMIT_MAX_ATTEMPTS = 5;
-const LOGIN_RATE_LIMIT_WINDOW_MS = 5 * 60 * 1000;
-const LOGIN_RATE_LIMIT_BLOCK_MS = 15 * 60 * 1000;
-
-type OwnerEdgeLoginResult = {
-  ok: boolean;
-  status: number;
-  message: string;
-  payload: any;
-  accessToken: string | null;
-  refreshToken: string | null;
-  user: any | null;
-};
-
-type LoginRateLimitEntry = {
-  attempts: number[];
-  blockedUntil: number;
-};
-
 type LogoutReason = 'manual' | 'inactivity' | 'window_closed' | 'security';
-
-function normalizeLoginRateLimitKey(email: string) {
-  return email.trim().toLowerCase();
-}
-
-function loadLoginRateLimitState(): Record<string, LoginRateLimitEntry> {
-  try {
-    const raw = window.localStorage.getItem(LOGIN_RATE_LIMIT_STORAGE_KEY);
-    if (!raw) return {};
-    const parsed = JSON.parse(raw) as Record<string, LoginRateLimitEntry>;
-    return parsed && typeof parsed === 'object' ? parsed : {};
-  } catch {
-    return {};
-  }
-}
-
-function saveLoginRateLimitState(state: Record<string, LoginRateLimitEntry>) {
-  try {
-    window.localStorage.setItem(LOGIN_RATE_LIMIT_STORAGE_KEY, JSON.stringify(state));
-  } catch {
-    // noop
-  }
-}
-
-function getLoginRateLimitStatus(email: string) {
-  const now = Date.now();
-  const key = normalizeLoginRateLimitKey(email);
-  const state = loadLoginRateLimitState();
-  const entry = state[key];
-
-  if (!entry) {
-    return { blocked: false, retryAfterSeconds: 0 };
-  }
-
-  const attempts = (entry.attempts ?? []).filter((ts) => now - ts <= LOGIN_RATE_LIMIT_WINDOW_MS);
-  const blockedUntil = Number(entry.blockedUntil ?? 0);
-  const blocked = blockedUntil > now;
-
-  state[key] = { attempts, blockedUntil };
-  saveLoginRateLimitState(state);
-
-  return {
-    blocked,
-    retryAfterSeconds: blocked ? Math.max(1, Math.ceil((blockedUntil - now) / 1000)) : 0,
-  };
-}
-
-function getPublicAnonKey() {
-  const key = String(
-    import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY
-    ?? import.meta.env.VITE_SUPABASE_ANON_KEY
-    ?? '',
-  ).trim();
-  return key || null;
-}
-
-async function signInThroughOwnerEdge(email: string, password: string): Promise<OwnerEdgeLoginResult> {
-  const baseUrl = String(import.meta.env.VITE_SUPABASE_URL ?? '').trim();
-  const anonKey = getPublicAnonKey();
-
-  if (!baseUrl || !anonKey) {
-    return {
-      ok: false,
-      status: 500,
-      message: 'Owner login edge misconfigured',
-      payload: null,
-      accessToken: null,
-      refreshToken: null,
-      user: null,
-    };
-  }
-
-  try {
-    const response = await fetch(`${baseUrl}${OWNER_EDGE_LOGIN_ENDPOINT}`, {
-      method: 'POST',
-      headers: {
-        apikey: anonKey,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ email, password }),
-    });
-
-    const payload = await response.json().catch(() => null);
-    const accessToken = String(payload?.session?.access_token ?? payload?.access_token ?? '').trim() || null;
-    const refreshToken = String(payload?.session?.refresh_token ?? payload?.refresh_token ?? '').trim() || null;
-    const user = payload?.user ?? payload?.session?.user ?? null;
-
-    const message = String(
-      payload?.error
-      ?? payload?.message
-      ?? payload?.details?.auth_message
-      ?? payload?.msg
-      ?? '',
-    ).trim();
-
-    if (!response.ok) {
-      return {
-        ok: false,
-        status: response.status,
-        message,
-        payload,
-        accessToken: null,
-        refreshToken: null,
-        user: null,
-      };
-    }
-
-    if (!accessToken || !refreshToken || !user?.id) {
-      return {
-        ok: false,
-        status: 502,
-        message: 'Owner login response missing session payload',
-        payload,
-        accessToken: null,
-        refreshToken: null,
-        user: null,
-      };
-    }
-
-    return {
-      ok: true,
-      status: response.status,
-      message,
-      payload,
-      accessToken,
-      refreshToken,
-      user,
-    };
-  } catch (error) {
-    return {
-      ok: false,
-      status: 0,
-      message: String(error),
-      payload: null,
-      accessToken: null,
-      refreshToken: null,
-      user: null,
-    };
-  }
-}
-
-function registerFailedLoginAttempt(email: string) {
-  const now = Date.now();
-  const key = normalizeLoginRateLimitKey(email);
-  const state = loadLoginRateLimitState();
-  const current = state[key] ?? { attempts: [], blockedUntil: 0 };
-  const attempts = (current.attempts ?? []).filter((ts) => now - ts <= LOGIN_RATE_LIMIT_WINDOW_MS);
-  attempts.push(now);
-
-  let blockedUntil = Number(current.blockedUntil ?? 0);
-  if (attempts.length >= LOGIN_RATE_LIMIT_MAX_ATTEMPTS) {
-    blockedUntil = now + LOGIN_RATE_LIMIT_BLOCK_MS;
-  }
-
-  state[key] = {
-    attempts,
-    blockedUntil,
-  };
-  saveLoginRateLimitState(state);
-
-  return {
-    blockedUntil,
-    attemptsCount: attempts.length,
-  };
-}
-
-function resetLoginRateLimit(email: string) {
-  const key = normalizeLoginRateLimitKey(email);
-  const state = loadLoginRateLimitState();
-  if (!state[key]) return;
-  delete state[key];
-  saveLoginRateLimitState(state);
-}
-
-async function withTimeout<T>(promise: Promise<T>, timeoutMs: number, timeoutMessage: string): Promise<T> {
-  let timer: number | null = null;
-
-  const timeoutPromise = new Promise<never>((_, reject) => {
-    timer = window.setTimeout(() => {
-      reject(new Error(timeoutMessage));
-    }, timeoutMs);
-  });
-
-  try {
-    return await Promise.race([promise, timeoutPromise]);
-  } finally {
-    if (timer !== null) {
-      window.clearTimeout(timer);
-    }
-  }
-}
-
-function isTenantBaseDomain(hostname: string) {
-  const normalized = hostname.toLowerCase();
-  return normalized === TENANT_BASE_DOMAIN || normalized === `www.${TENANT_BASE_DOMAIN}`;
-}
-
-function stripAuthHandoffFromUrl() {
-  const queryParams = new URLSearchParams(window.location.search);
-  queryParams.delete(LOGOUT_MARKER_PARAM);
-  queryParams.delete(LOGOUT_REASON_PARAM);
-  queryParams.delete(SESSION_TRANSFER_PARAM);
-  queryParams.delete('st_access');
-  queryParams.delete('st_refresh');
-  queryParams.delete('st_issued');
-
-  const hashParams = new URLSearchParams(window.location.hash.startsWith('#') ? window.location.hash.slice(1) : '');
-  hashParams.delete('session_transfer');
-  hashParams.delete('st_access');
-  hashParams.delete('st_refresh');
-  hashParams.delete('st_issued');
-
-  const nextQuery = queryParams.toString();
-  const nextHash = hashParams.toString();
-  const cleanedUrl = `${window.location.pathname}${nextQuery ? `?${nextQuery}` : ''}${nextHash ? `#${nextHash}` : ''}`;
-  window.history.replaceState({}, document.title, cleanedUrl);
-}
-
-function getNavigationType(): string | null {
-  try {
-    const entry = window.performance.getEntriesByType('navigation')[0] as PerformanceNavigationTiming | undefined;
-    return entry?.type ?? null;
-  } catch {
-    return null;
-  }
-}
-
-function shouldForceLogoutByClosedWindowMarker() {
-  try {
-    const transfer = getSessionTransferFromUrl();
-    if (transfer.token) {
-      window.localStorage.removeItem(TAB_CLOSE_MARKER_STORAGE_KEY);
-      return false;
-    }
-
-    const crossDomainRedirectRaw = window.localStorage.getItem(CROSS_DOMAIN_REDIRECT_MARKER_STORAGE_KEY);
-    if (crossDomainRedirectRaw) {
-      const parsed = JSON.parse(crossDomainRedirectRaw) as { at?: number };
-      const markerAt = Number(parsed?.at ?? 0);
-      window.localStorage.removeItem(CROSS_DOMAIN_REDIRECT_MARKER_STORAGE_KEY);
-      if (Number.isFinite(markerAt) && markerAt > 0 && (Date.now() - markerAt) <= CROSS_DOMAIN_REDIRECT_MARKER_MAX_AGE_MS) {
-        window.localStorage.removeItem(TAB_CLOSE_MARKER_STORAGE_KEY);
-        return false;
-      }
-    }
-
-    const navigationType = getNavigationType();
-    if (navigationType === 'reload' || navigationType === 'back_forward') {
-      return false;
-    }
-
-    const raw = window.localStorage.getItem(TAB_CLOSE_MARKER_STORAGE_KEY);
-    if (!raw) return false;
-
-    window.localStorage.removeItem(TAB_CLOSE_MARKER_STORAGE_KEY);
-
-    const parsed = JSON.parse(raw) as { at?: number };
-    const markerAt = Number(parsed?.at ?? 0);
-    if (!Number.isFinite(markerAt) || markerAt <= 0) return false;
-
-    return (Date.now() - markerAt) <= TAB_CLOSE_MARKER_MAX_AGE_MS;
-  } catch {
-    return false;
-  }
-}
-
-function markSessionTransferRedirectInProgress() {
-  try {
-    window.sessionStorage.setItem(
-      SESSION_TRANSFER_REDIRECT_STORAGE_KEY,
-      JSON.stringify({ at: Date.now() }),
-    );
-  } catch {
-    // noop
-  }
-}
-
-function isSessionTransferRedirectInProgress() {
-  try {
-    const raw = window.sessionStorage.getItem(SESSION_TRANSFER_REDIRECT_STORAGE_KEY);
-    if (!raw) return false;
-    const parsed = JSON.parse(raw) as { at?: number };
-    const markerAt = Number(parsed?.at ?? 0);
-    if (!Number.isFinite(markerAt) || markerAt <= 0) {
-      window.sessionStorage.removeItem(SESSION_TRANSFER_REDIRECT_STORAGE_KEY);
-      return false;
-    }
-    if ((Date.now() - markerAt) > SESSION_TRANSFER_REDIRECT_MAX_AGE_MS) {
-      window.sessionStorage.removeItem(SESSION_TRANSFER_REDIRECT_STORAGE_KEY);
-      return false;
-    }
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-function clearSessionTransferRedirectInProgress() {
-  try {
-    window.sessionStorage.removeItem(SESSION_TRANSFER_REDIRECT_STORAGE_KEY);
-  } catch {
-    // noop
-  }
-}
-
-function isCrossDomainRedirectInProgress() {
-  try {
-    const raw = window.localStorage.getItem(CROSS_DOMAIN_REDIRECT_MARKER_STORAGE_KEY);
-    if (!raw) return false;
-    const parsed = JSON.parse(raw) as { at?: number };
-    const markerAt = Number(parsed?.at ?? 0);
-    if (!Number.isFinite(markerAt) || markerAt <= 0) {
-      window.localStorage.removeItem(CROSS_DOMAIN_REDIRECT_MARKER_STORAGE_KEY);
-      return false;
-    }
-    if ((Date.now() - markerAt) > CROSS_DOMAIN_REDIRECT_MARKER_MAX_AGE_MS) {
-      window.localStorage.removeItem(CROSS_DOMAIN_REDIRECT_MARKER_STORAGE_KEY);
-      return false;
-    }
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-function markConsumedSessionTransfer(encoded: string) {
-  try {
-    window.sessionStorage.setItem(
-      SESSION_TRANSFER_CONSUMED_STORAGE_KEY,
-      JSON.stringify({ encoded, at: Date.now() }),
-    );
-  } catch {
-    // noop
-  }
-}
-
-function wasSessionTransferAlreadyConsumed(encoded: string) {
-  try {
-    const raw = window.sessionStorage.getItem(SESSION_TRANSFER_CONSUMED_STORAGE_KEY);
-    if (!raw) return false;
-    const parsed = JSON.parse(raw) as { encoded?: string; at?: number };
-    const markerAt = Number(parsed?.at ?? 0);
-    if (String(parsed?.encoded ?? '') !== encoded) return false;
-    if (!Number.isFinite(markerAt) || markerAt <= 0) return false;
-    return (Date.now() - markerAt) <= SESSION_TRANSFER_MAX_AGE_MS;
-  } catch {
-    return false;
-  }
-}
-
-function getRedirectRetryCount() {
-  try {
-    const raw = window.sessionStorage.getItem(AUTH_REDIRECT_RETRY_STORAGE_KEY);
-    if (!raw) return 0;
-    const parsed = JSON.parse(raw) as { count?: number };
-    const count = Number(parsed?.count ?? 0);
-    return Number.isFinite(count) && count > 0 ? Math.trunc(count) : 0;
-  } catch {
-    return 0;
-  }
-}
-
-function markRedirectRetryAttempt() {
-  const nextCount = getRedirectRetryCount() + 1;
-  try {
-    window.sessionStorage.setItem(
-      AUTH_REDIRECT_RETRY_STORAGE_KEY,
-      JSON.stringify({ count: nextCount, at: Date.now() }),
-    );
-  } catch {
-    // noop
-  }
-  return nextCount;
-}
-
-function clearRedirectRetryAttempts() {
-  try {
-    window.sessionStorage.removeItem(AUTH_REDIRECT_RETRY_STORAGE_KEY);
-  } catch {
-    // noop
-  }
-}
-
-function shouldBlockCrossDomainRedirect() {
-  return getRedirectRetryCount() >= AUTH_REDIRECT_RETRY_MAX;
-}
-
-function getRetryCountFromCurrentUrl() {
-  try {
-    const raw = new URLSearchParams(window.location.search).get('retry_count');
-    const parsed = Number(raw ?? 0);
-    if (!Number.isFinite(parsed) || parsed < 0) return 0;
-    return Math.trunc(parsed);
-  } catch {
-    return 0;
-  }
-}
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
