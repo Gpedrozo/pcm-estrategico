@@ -1,4 +1,4 @@
-﻿import { useMemo } from "react";
+import { useMemo } from "react";
 import { Link, Outlet, useLocation } from "react-router-dom";
 import { BookOpen, ChevronLeft, ChevronRight, Printer } from "lucide-react";
 

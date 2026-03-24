@@ -433,9 +433,9 @@ function TenantRoutes() {
                   <Route path="rotina" element={<ManualRotina />} />
                   <Route path="kpis" element={<ManualKPIs />} />
                 </Route>
-
               </Route>
 
+                {/* Impressão (fora do AppLayout — tela cheia para PDF) */}
                 <Route path="/manuais-operacao/imprimir" element={<ManualPrintAll />} />
                 <Route path="/manual/imprimir" element={<ManualPrintAll />} />
 
