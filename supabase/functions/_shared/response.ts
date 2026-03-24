@@ -28,7 +28,18 @@ function isTenantDomainOrigin(origin: string) {
       return false;
     }
 
-    return hostname === TENANT_BASE_DOMAIN || hostname.endsWith(`.${TENANT_BASE_DOMAIN}`);
+    // Only accept base domain or single-level subdomains (slug.gppis.com.br)
+    // Reject multi-level subdomains like evil.evil.gppis.com.br
+    if (hostname === TENANT_BASE_DOMAIN) return true;
+    if (!hostname.endsWith(`.${TENANT_BASE_DOMAIN}`)) return false;
+
+    const subdomain = hostname.replace(`.${TENANT_BASE_DOMAIN}`, "");
+    // Only allow single-level slugs (no dots) and valid characters
+    if (subdomain.includes(".") || !/^[a-z0-9][a-z0-9-]*[a-z0-9]$|^[a-z0-9]$/.test(subdomain)) {
+      return false;
+    }
+
+    return true;
   } catch {
     return false;
   }
@@ -44,7 +55,7 @@ function allowedOrigins() {
 }
 
 export function isAllowedOrigin(origin: string | null) {
-  if (!origin) return true;
+  if (!origin) return false;
   return allowedOrigins().includes(origin) || isTenantDomainOrigin(origin);
 }
 
@@ -71,7 +82,10 @@ export function resolveCorsHeaders(
 
 export function rejectIfOriginNotAllowed(req: Request) {
   const origin = req.headers.get("origin");
-  if (origin && !isAllowedOrigin(origin)) {
+  // Requests without Origin header (server-to-server, Supabase triggers) are allowed
+  // but will not receive CORS headers. Browser requests ALWAYS include Origin.
+  if (!origin) return null;
+  if (!isAllowedOrigin(origin)) {
     return fail("Origin not allowed", 403, { origin }, req);
   }
 

@@ -19,27 +19,48 @@ function resolveCorsHeaders(origin: string | null) {
 }
 
 const rateWindowMs = 60_000;
-const rateLimit = 60;
-const ipBucket = new Map<string, { count: number; windowStart: number }>();
+const rateMaxRequests = 60;
+
+async function timingSafeEqual(a: string, b: string): Promise<boolean> {
+  const encoder = new TextEncoder();
+  const aBuf = encoder.encode(a);
+  const bBuf = encoder.encode(b);
+  if (aBuf.length !== bBuf.length) {
+    // Compare against self to keep constant time regardless of length mismatch
+    await crypto.subtle.timingSafeEqual(aBuf, aBuf);
+    return false;
+  }
+  return crypto.subtle.timingSafeEqual(aBuf, bBuf);
+}
 
 function resolveClientIp(req: Request): string {
+  const cfIp = req.headers.get("cf-connecting-ip")?.trim();
+  if (cfIp) return cfIp;
+  const realIp = req.headers.get("x-real-ip")?.trim();
+  if (realIp) return realIp;
   const forwardedFor = req.headers.get("x-forwarded-for") ?? "";
   return forwardedFor.split(",")[0]?.trim() || "unknown";
 }
 
-function isRateLimited(req: Request): boolean {
-  const key = resolveClientIp(req);
-  const now = Date.now();
-  const item = ipBucket.get(key);
-
-  if (!item || now - item.windowStart > rateWindowMs) {
-    ipBucket.set(key, { count: 1, windowStart: now });
+async function isRateLimited(req: Request): Promise<boolean> {
+  const ip = resolveClientIp(req);
+  try {
+    const supabase = adminClient();
+    const { data, error } = await supabase.rpc("app_check_rate_limit_ip", {
+      p_scope: "system_health_check",
+      p_identifier: ip,
+      p_max_requests: rateMaxRequests,
+      p_window_seconds: Math.ceil(rateWindowMs / 1000),
+      p_block_seconds: 300,
+    });
+    if (error) {
+      console.error("[system-health-check] rate limit DB check failed, allowing request", { error: error.message });
+      return false;
+    }
+    return data !== true;
+  } catch {
     return false;
   }
-
-  item.count += 1;
-  ipBucket.set(key, item);
-  return item.count > rateLimit;
 }
 
 interface Material {
@@ -119,7 +140,7 @@ Deno.serve(async (req) => {
   }
 
   const providedKey = req.headers.get("x-system-health-key");
-  if (!providedKey || providedKey !== healthCheckApiKey) {
+  if (!providedKey || !await timingSafeEqual(providedKey, healthCheckApiKey)) {
     await logOperationalAlert("SYSTEM_HEALTH_UNAUTHORIZED", "warning", {
       ip: resolveClientIp(req),
     });
@@ -129,7 +150,7 @@ Deno.serve(async (req) => {
     });
   }
 
-  if (isRateLimited(req)) {
+  if (await isRateLimited(req)) {
     await logOperationalAlert("SYSTEM_HEALTH_RATE_LIMITED", "warning", {
       ip: resolveClientIp(req),
     });

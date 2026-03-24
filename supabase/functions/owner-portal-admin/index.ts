@@ -392,6 +392,14 @@ function isOwnerOperatorFromJwt(user: any) {
   return rolesFromToken.some((role) => allowed.has(role));
 }
 
+async function hashToken(token: string): Promise<string> {
+  const data = new TextEncoder().encode(token);
+  const hashBuffer = await crypto.subtle.digest("SHA-256", data);
+  return Array.from(new Uint8Array(hashBuffer))
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
+}
+
 async function verifyActorPassword(input: {
   email?: string | null;
   password?: string | null;
@@ -2423,7 +2431,6 @@ Deno.serve(async (req) => {
       master_user: {
         id: authMasterUserId,
         email: normalizedMasterEmail,
-        initial_password: password,
       },
       subscription: subscription
         ? {
@@ -2873,7 +2880,7 @@ Deno.serve(async (req) => {
     });
 
     const finalWarning = mergeWarnings(planLimitWarning, createUserWarning);
-    return ok({ success: true, user_id: createdAuth.user.id, initial_password: password, warning: finalWarning }, 200, req);
+    return ok({ success: true, user_id: createdAuth.user.id, warning: finalWarning }, 200, req);
   }
 
   if (body.action === "move_user_company") {
@@ -3762,13 +3769,14 @@ Deno.serve(async (req) => {
     const expiresAt = new Date(now.getTime() + (60 * 60 * 1000));
     const operationId = crypto.randomUUID();
     const sessionToken = `${crypto.randomUUID().replaceAll("-", "")}${crypto.randomUUID().slice(0, 12)}`;
+    const sessionTokenHash = await hashToken(sessionToken);
 
     const { data: createdSession, error: sessionError } = await admin
       .from("owner_impersonation_sessions")
       .insert({
         owner_user_id: auth.user.id,
         empresa_id: company.id,
-        session_token: sessionToken,
+        session_token: sessionTokenHash,
         expires_at: expiresAt.toISOString(),
         active: true,
       })
@@ -3857,11 +3865,13 @@ Deno.serve(async (req) => {
 
     const nowIso = new Date().toISOString();
 
+    const incomingTokenHash = await hashToken(body.impersonation_session_token);
+
     const { data: sessionRow, error: sessionError } = await admin
       .from("owner_impersonation_sessions")
       .select("id")
       .eq("id", body.impersonation_session_id)
-      .eq("session_token", body.impersonation_session_token)
+      .eq("session_token", incomingTokenHash)
       .eq("owner_user_id", auth.user.id)
       .eq("empresa_id", body.empresa_id)
       .eq("active", true)
@@ -4033,7 +4043,6 @@ Deno.serve(async (req) => {
         user_id: ownerUserId,
         email: normalizedEmail,
         role: ownerRole,
-        temporary_password: existingUser ? null : password,
       },
     }, 200, req);
   }
