@@ -421,36 +421,102 @@ export type Database = {
       componentes_equipamento: {
         Row: {
           ativo: boolean
+          codigo: string | null
+          corrente: string | null
           created_at: string
           criticidade: string | null
+          data_instalacao: string | null
           descricao: string | null
+          dimensoes: Json | null
           empresa_id: string
           equipamento_id: string
+          especificacoes: Json | null
+          estado: string | null
+          fabricante: string | null
+          horas_operacao: number | null
           id: string
+          intervalo_manutencao_dias: number | null
+          modelo: string | null
           nome: string
+          numero_serie: string | null
+          observacoes: string | null
+          parent_id: string | null
+          posicao: string | null
+          potencia: string | null
+          proxima_manutencao: string | null
+          quantidade: number | null
+          rpm: string | null
+          tensao: string | null
+          tipo: string | null
+          ultima_manutencao: string | null
           updated_at: string
+          vida_util_horas: number | null
         }
         Insert: {
           ativo?: boolean
+          codigo?: string | null
+          corrente?: string | null
           created_at?: string
           criticidade?: string | null
+          data_instalacao?: string | null
           descricao?: string | null
+          dimensoes?: Json | null
           empresa_id: string
           equipamento_id: string
+          especificacoes?: Json | null
+          estado?: string | null
+          fabricante?: string | null
+          horas_operacao?: number | null
           id?: string
+          intervalo_manutencao_dias?: number | null
+          modelo?: string | null
           nome: string
+          numero_serie?: string | null
+          observacoes?: string | null
+          parent_id?: string | null
+          posicao?: string | null
+          potencia?: string | null
+          proxima_manutencao?: string | null
+          quantidade?: number | null
+          rpm?: string | null
+          tensao?: string | null
+          tipo?: string | null
+          ultima_manutencao?: string | null
           updated_at?: string
+          vida_util_horas?: number | null
         }
         Update: {
           ativo?: boolean
+          codigo?: string | null
+          corrente?: string | null
           created_at?: string
           criticidade?: string | null
+          data_instalacao?: string | null
           descricao?: string | null
+          dimensoes?: Json | null
           empresa_id?: string
           equipamento_id?: string
+          especificacoes?: Json | null
+          estado?: string | null
+          fabricante?: string | null
+          horas_operacao?: number | null
           id?: string
+          intervalo_manutencao_dias?: number | null
+          modelo?: string | null
           nome?: string
+          numero_serie?: string | null
+          observacoes?: string | null
+          parent_id?: string | null
+          posicao?: string | null
+          potencia?: string | null
+          proxima_manutencao?: string | null
+          quantidade?: number | null
+          rpm?: string | null
+          tensao?: string | null
+          tipo?: string | null
+          ultima_manutencao?: string | null
           updated_at?: string
+          vida_util_horas?: number | null
         }
         Relationships: [
           {

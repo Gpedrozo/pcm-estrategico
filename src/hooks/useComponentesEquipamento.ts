@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/contexts/AuthContext';
 
 export interface ComponenteEquipamento {
   id: string;
@@ -171,12 +172,14 @@ export function useAllComponentes(equipamentoId?: string) {
 export function useCreateComponente() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const { tenantId } = useAuth();
 
   return useMutation({
     mutationFn: async (componente: ComponenteInsert) => {
+      if (!tenantId) throw new Error('Tenant não resolvido.');
       const { data, error } = await supabase
         .from('componentes_equipamento')
-        .insert(componente)
+        .insert({ ...componente, empresa_id: tenantId } as any)
         .select()
         .single();
 
@@ -269,13 +272,15 @@ export function useDeleteComponente() {
 export function useDuplicateComponente() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const { tenantId } = useAuth();
 
   return useMutation({
     mutationFn: async ({ componente, newCodigo }: { componente: ComponenteEquipamento; newCodigo: string }) => {
+      if (!tenantId) throw new Error('Tenant não resolvido.');
       const { id, created_at, updated_at, children, ...rest } = componente;
       const { data, error } = await supabase
         .from('componentes_equipamento')
-        .insert({ ...rest, codigo: newCodigo })
+        .insert({ ...rest, codigo: newCodigo, empresa_id: tenantId } as any)
         .select()
         .single();
 
