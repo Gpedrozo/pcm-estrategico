@@ -229,6 +229,7 @@ Identifique:
       .insert({
         tag,
         equipamento_id: equipamento?.id || null,
+        empresa_id: scope.empresaId,
         summary: analysis.summary,
         possible_causes: analysis.possible_causes,
         main_hypothesis: analysis.main_hypothesis,

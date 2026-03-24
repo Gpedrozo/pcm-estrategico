@@ -5,8 +5,9 @@ import { useAuth } from '@/contexts/AuthContext';
 import type { AIRootCauseAnalysis, AnalysisResponse } from './types';
 
 export function useAIAnalysisHistory(tag?: string) {
+  const { tenantId } = useAuth();
   return useQuery({
-    queryKey: ['ai-root-cause', tag],
+    queryKey: ['ai-root-cause', tag, tenantId],
     queryFn: async () => {
       const query = supabase
         .from('ai_root_cause_analysis')
@@ -15,6 +16,9 @@ export function useAIAnalysisHistory(tag?: string) {
 
       if (tag) {
         query.eq('tag', tag);
+      }
+      if (tenantId) {
+        query.eq('empresa_id', tenantId);
       }
 
       const { data, error } = await query.limit(50);
@@ -39,7 +43,11 @@ export function useGenerateAnalysis() {
         body: { tag, empresa_id: tenantId },
       });
 
-      if (error) throw error;
+      if (error) {
+        // Supabase JS wraps non-2xx as generic message; real error is in data
+        const realMessage = data?.error || data?.message || error.message;
+        throw new Error(realMessage);
+      }
       if (data?.error) throw new Error(data.error);
       return data as AnalysisResponse;
     },

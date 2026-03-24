@@ -114,7 +114,7 @@ export function ok(data: unknown, status = 200, req?: Request) {
 
 export function fail(message: string, status = 400, details?: unknown, req?: Request) {
   return new Response(
-    JSON.stringify({ error: message, details: details ?? null }),
+    JSON.stringify({ error: message, message, details: details ?? null }),
     {
       status,
       headers: { ...resolveCorsHeaders(req), "Content-Type": "application/json" },
