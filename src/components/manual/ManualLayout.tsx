@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Link, Outlet, useLocation } from "react-router-dom";
 import {
   BookOpen, LogIn, Users, FileText, ClipboardList, FilePlus, CheckSquare,
@@ -7,73 +7,40 @@ import {
   ListChecks, LineChart, Menu, X, ChevronLeft, ChevronRight, Printer,
 } from "lucide-react";
 
-const sections = [
-  {
-    group: "Introdução",
-    items: [{ label: "Capa e Sumário", path: "/manual", icon: BookOpen }],
-  },
-  {
-    group: "Acesso & Perfis",
-    items: [
-      { label: "Login e Primeiro Acesso", path: "/manual/login", icon: LogIn },
-      { label: "Perfis e Permissões", path: "/manual/perfis", icon: Users },
-    ],
-  },
-  {
-    group: "Fluxo Operacional",
-    items: [
-      { label: "Solicitações", path: "/manual/solicitacoes", icon: FileText },
-      { label: "Backlog", path: "/manual/backlog", icon: ClipboardList },
-      { label: "Emitir O.S", path: "/manual/emitir-os", icon: FilePlus },
-      { label: "Fechar O.S", path: "/manual/fechar-os", icon: CheckSquare },
-      { label: "Histórico", path: "/manual/historico", icon: History },
-    ],
-  },
-  {
-    group: "Planejamento",
-    items: [
-      { label: "Programação", path: "/manual/programacao", icon: Calendar },
-      { label: "Preventiva", path: "/manual/preventiva", icon: Shield },
-      { label: "Preditiva", path: "/manual/preditiva", icon: Activity },
-      { label: "Lubrificação", path: "/manual/lubrificacao", icon: Droplets },
-      { label: "Inspeções", path: "/manual/inspecoes", icon: Search },
-    ],
-  },
-  {
-    group: "Análises Técnicas",
-    items: [
-      { label: "FMEA / RCM", path: "/manual/fmea-rcm", icon: BarChart3 },
-      { label: "RCA", path: "/manual/rca", icon: Brain },
-      { label: "Inteligência IA", path: "/manual/inteligencia-ia", icon: Lightbulb },
-      { label: "Melhorias", path: "/manual/melhorias", icon: Lightbulb },
-    ],
-  },
-  {
-    group: "Cadastros & Dados",
-    items: [
-      { label: "Cadastros", path: "/manual/cadastros", icon: Database },
-      { label: "Custos e Relatórios", path: "/manual/custos-relatorios", icon: DollarSign },
-      { label: "SSMA", path: "/manual/ssma", icon: AlertTriangle },
-    ],
-  },
-  {
-    group: "Gestão & Controle",
-    items: [
-      { label: "Administração", path: "/manual/administracao", icon: Settings },
-      { label: "Rotina Operacional", path: "/manual/rotina", icon: ListChecks },
-    ],
-  },
-  {
-    group: "Rotina & KPIs",
-    items: [{ label: "KPIs e Métricas", path: "/manual/kpis", icon: LineChart }],
-  },
+const chapters = [
+  { num: "01", label: "Login e Primeiro Acesso", slug: "login", icon: LogIn },
+  { num: "02", label: "Perfis e Permissões", slug: "perfis", icon: Users },
+  { num: "03", label: "Solicitações", slug: "solicitacoes", icon: FileText },
+  { num: "04", label: "Backlog", slug: "backlog", icon: ClipboardList },
+  { num: "05", label: "Emitir O.S", slug: "emitir-os", icon: FilePlus },
+  { num: "06", label: "Fechar O.S", slug: "fechar-os", icon: CheckSquare },
+  { num: "07", label: "Histórico", slug: "historico", icon: History },
+  { num: "08", label: "Programação", slug: "programacao", icon: Calendar },
+  { num: "09", label: "Preventiva", slug: "preventiva", icon: Shield },
+  { num: "10", label: "Preditiva", slug: "preditiva", icon: Activity },
+  { num: "11", label: "Lubrificação", slug: "lubrificacao", icon: Droplets },
+  { num: "12", label: "Inspeções", slug: "inspecoes", icon: Search },
+  { num: "13", label: "FMEA / RCM", slug: "fmea-rcm", icon: BarChart3 },
+  { num: "14", label: "RCA", slug: "rca", icon: Brain },
+  { num: "15", label: "Inteligência IA", slug: "inteligencia-ia", icon: Lightbulb },
+  { num: "16", label: "Melhorias", slug: "melhorias", icon: Lightbulb },
+  { num: "17", label: "Cadastros", slug: "cadastros", icon: Database },
+  { num: "18", label: "Custos e Relatórios", slug: "custos-relatorios", icon: DollarSign },
+  { num: "19", label: "SSMA", slug: "ssma", icon: AlertTriangle },
+  { num: "20", label: "Administração", slug: "administracao", icon: Settings },
+  { num: "21", label: "Rotina Operacional", slug: "rotina", icon: ListChecks },
+  { num: "22", label: "KPIs e Métricas", slug: "kpis", icon: LineChart },
 ];
 
-const allPaths = sections.flatMap((s) => s.items.map((i) => i.path));
+interface ManualLayoutProps {
+  basePath?: string;
+}
 
-export default function ManualLayout() {
+export default function ManualLayout({ basePath = "/manual" }: ManualLayoutProps) {
   const location = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  const allPaths = useMemo(() => [basePath, ...chapters.map((c) => `${basePath}/${c.slug}`)], [basePath]);
 
   const currentIndex = allPaths.indexOf(location.pathname);
   const prevPath = currentIndex > 0 ? allPaths[currentIndex - 1] : null;
@@ -96,7 +63,7 @@ export default function ManualLayout() {
         }`}
       >
             <div className="p-4 border-b border-border">
-              <Link to="/manual" className="flex items-center gap-2">
+              <Link to={basePath} className="flex items-center gap-2">
                 <BookOpen className="w-6 h-6 text-primary" />
                 <div>
                   <h1 className="text-sm font-bold text-foreground">PCM Estratégico</h1>
@@ -105,38 +72,45 @@ export default function ManualLayout() {
               </Link>
             </div>
 
-            <nav className="p-3 space-y-4">
-              {sections.map((section) => (
-                <div key={section.group}>
-                  <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider px-2 mb-1">
-                    {section.group}
-                  </p>
-                  {section.items.map((item) => {
-                    const Icon = item.icon;
-                    const active = location.pathname === item.path;
-                    return (
-                      <Link
-                        key={item.path}
-                        to={item.path}
-                        onClick={() => setSidebarOpen(false)}
-                        className={`flex items-center gap-2 px-2 py-1.5 rounded-md text-xs transition-colors ${
-                          active
-                            ? "bg-primary text-primary-foreground font-semibold"
-                            : "text-muted-foreground hover:bg-muted hover:text-foreground"
-                        }`}
-                      >
-                        <Icon className="w-3.5 h-3.5" />
-                        {item.label}
-                      </Link>
-                    );
-                  })}
-                </div>
-              ))}
+            <nav className="p-3 space-y-0.5">
+              <Link
+                to={basePath}
+                onClick={() => setSidebarOpen(false)}
+                className={`flex items-center gap-2 px-2 py-1.5 rounded-md text-xs transition-colors ${
+                  location.pathname === basePath
+                    ? "bg-primary text-primary-foreground font-semibold"
+                    : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                }`}
+              >
+                <BookOpen className="w-3.5 h-3.5" />
+                Sumário
+              </Link>
+              {chapters.map((ch) => {
+                const Icon = ch.icon;
+                const path = `${basePath}/${ch.slug}`;
+                const active = location.pathname === path;
+                return (
+                  <Link
+                    key={ch.slug}
+                    to={path}
+                    onClick={() => setSidebarOpen(false)}
+                    className={`flex items-center gap-2 px-2 py-1.5 rounded-md text-xs transition-colors ${
+                      active
+                        ? "bg-primary text-primary-foreground font-semibold"
+                        : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                    }`}
+                  >
+                    <span className="w-5 text-[10px] font-mono opacity-60">{ch.num}</span>
+                    <Icon className="w-3.5 h-3.5 flex-shrink-0" />
+                    <span className="truncate">{ch.label}</span>
+                  </Link>
+                );
+              })}
             </nav>
 
             <div className="p-3 border-t border-border space-y-2">
               <Link
-                to="/manual/imprimir"
+                to={`${basePath}/imprimir`}
                 className="flex items-center justify-center gap-2 w-full px-3 py-2 rounded-md text-xs font-medium bg-muted text-foreground hover:bg-muted/80 transition-colors"
               >
                 <Printer className="w-3.5 h-3.5" />

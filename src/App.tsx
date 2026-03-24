@@ -238,43 +238,34 @@ function OwnerRoutes() {
 
         <Route path="/owner2" element={<Navigate to="/" replace />} />
 
-        <Route
-          path="/manuais-operacao"
-          element={
-            <EnvironmentGuard allowOwner>
-              <ManualOperacao />
-            </EnvironmentGuard>
-          }
-        />
+        {/* Manual de Operação — 22 capítulos (owner) */}
+        <Route path="/manuais-operacao/imprimir" element={<EnvironmentGuard allowOwner><ManualPrintAll /></EnvironmentGuard>} />
+        <Route path="/manuais-operacao" element={<EnvironmentGuard allowOwner><ManualLayout basePath="/manuais-operacao" /></EnvironmentGuard>}>
+          <Route index element={<ManualCover basePath="/manuais-operacao" />} />
+          <Route path="login" element={<ManualLogin />} />
+          <Route path="perfis" element={<ManualPerfis />} />
+          <Route path="solicitacoes" element={<ManualSolicitacoes />} />
+          <Route path="backlog" element={<ManualBacklog />} />
+          <Route path="emitir-os" element={<ManualEmitirOS />} />
+          <Route path="fechar-os" element={<ManualFecharOS />} />
+          <Route path="historico" element={<ManualHistorico />} />
+          <Route path="programacao" element={<ManualProgramacao />} />
+          <Route path="preventiva" element={<ManualPreventiva />} />
+          <Route path="preditiva" element={<ManualPreditiva />} />
+          <Route path="lubrificacao" element={<ManualLubrificacao />} />
+          <Route path="inspecoes" element={<ManualInspecoes />} />
+          <Route path="fmea-rcm" element={<ManualFMEAPage />} />
+          <Route path="rca" element={<ManualRCAPage />} />
+          <Route path="inteligencia-ia" element={<ManualIA />} />
+          <Route path="melhorias" element={<ManualMelhorias_Manual />} />
+          <Route path="cadastros" element={<ManualCadastros />} />
+          <Route path="custos-relatorios" element={<ManualCustosRelatorios />} />
+          <Route path="ssma" element={<ManualSSMAPage />} />
+          <Route path="administracao" element={<ManualAdministracaoPage />} />
+          <Route path="rotina" element={<ManualRotina />} />
+          <Route path="kpis" element={<ManualKPIs />} />
+        </Route>
 
-        <Route
-          path="/manuais-operacao/usuario"
-          element={
-            <EnvironmentGuard allowOwner>
-              <ManualOperacao />
-            </EnvironmentGuard>
-          }
-        />
-
-        <Route
-          path="/manuais-operacao/admin"
-          element={
-            <EnvironmentGuard allowOwner>
-              <ManualOperacao />
-            </EnvironmentGuard>
-          }
-        />
-
-        <Route
-          path="/manuais-operacao/master-ti"
-          element={
-            <EnvironmentGuard allowOwner>
-              <ManualOperacao />
-            </EnvironmentGuard>
-          }
-        />
-
-        {/* Manual v2 — 22 chapters (owner) */}
         <Route path="/manual/imprimir" element={<EnvironmentGuard allowOwner><ManualPrintAll /></EnvironmentGuard>} />
         <Route path="/manual" element={<EnvironmentGuard allowOwner><ManualLayout /></EnvironmentGuard>}>
           <Route index element={<ManualCover />} />
@@ -388,14 +379,37 @@ function TenantRoutes() {
                   }
                 />
                 <Route path="/inteligencia-causa-raiz" element={<RootCauseAIPage />} />
-                <Route path="/manuais-operacao" element={<ManualOperacao />} />
-                <Route path="/manuais-operacao/usuario" element={<ManualOperacao />} />
-                <Route path="/manuais-operacao/admin" element={<ManualOperacao />} />
-                <Route path="/manuais-operacao/master-ti" element={<ManualOperacao />} />
                 <Route path="/status" element={<SystemStatus />} />
               </Route>
 
-                {/* Manual v2 — 22 chapters (tenant) */}
+                {/* Manual de Operação — 22 capítulos (tenant) */}
+                <Route path="/manuais-operacao/imprimir" element={<ManualPrintAll />} />
+                <Route path="/manuais-operacao" element={<ManualLayout basePath="/manuais-operacao" />}>
+                  <Route index element={<ManualCover basePath="/manuais-operacao" />} />
+                  <Route path="login" element={<ManualLogin />} />
+                  <Route path="perfis" element={<ManualPerfis />} />
+                  <Route path="solicitacoes" element={<ManualSolicitacoes />} />
+                  <Route path="backlog" element={<ManualBacklog />} />
+                  <Route path="emitir-os" element={<ManualEmitirOS />} />
+                  <Route path="fechar-os" element={<ManualFecharOS />} />
+                  <Route path="historico" element={<ManualHistorico />} />
+                  <Route path="programacao" element={<ManualProgramacao />} />
+                  <Route path="preventiva" element={<ManualPreventiva />} />
+                  <Route path="preditiva" element={<ManualPreditiva />} />
+                  <Route path="lubrificacao" element={<ManualLubrificacao />} />
+                  <Route path="inspecoes" element={<ManualInspecoes />} />
+                  <Route path="fmea-rcm" element={<ManualFMEAPage />} />
+                  <Route path="rca" element={<ManualRCAPage />} />
+                  <Route path="inteligencia-ia" element={<ManualIA />} />
+                  <Route path="melhorias" element={<ManualMelhorias_Manual />} />
+                  <Route path="cadastros" element={<ManualCadastros />} />
+                  <Route path="custos-relatorios" element={<ManualCustosRelatorios />} />
+                  <Route path="ssma" element={<ManualSSMAPage />} />
+                  <Route path="administracao" element={<ManualAdministracaoPage />} />
+                  <Route path="rotina" element={<ManualRotina />} />
+                  <Route path="kpis" element={<ManualKPIs />} />
+                </Route>
+
                 <Route path="/manual/imprimir" element={<ManualPrintAll />} />
                 <Route path="/manual" element={<ManualLayout />}>
                   <Route index element={<ManualCover />} />
