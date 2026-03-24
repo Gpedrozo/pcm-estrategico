@@ -1,4 +1,3 @@
-
 import { CheckCircle, AlertTriangle, Lightbulb, Info } from "lucide-react";
 
 interface ManualSectionProps {
