@@ -65,6 +65,33 @@ const ArquivosOwner = lazyWithRetry(() => import('./pages/ArquivosOwner'))
 const RootCauseAIPage = lazyWithRetry(() => import('./modules/rootCauseAI/RootCauseAIPage'))
 const ManualOperacao = lazyWithRetry(() => import('./pages/ManualOperacao'))
 const SystemStatus = lazyWithRetry(() => import('./pages/SystemStatus'))
+
+// Manual de Operação v2 (22 chapters)
+const ManualLayout = lazyWithRetry(() => import('./components/manual/ManualLayout'))
+const ManualCover = lazyWithRetry(() => import('./pages/manual/ManualCover'))
+const ManualLogin = lazyWithRetry(() => import('./pages/manual/ManualLogin'))
+const ManualPerfis = lazyWithRetry(() => import('./pages/manual/ManualPerfis'))
+const ManualSolicitacoes = lazyWithRetry(() => import('./pages/manual/ManualSolicitacoes'))
+const ManualBacklog = lazyWithRetry(() => import('./pages/manual/ManualBacklog'))
+const ManualEmitirOS = lazyWithRetry(() => import('./pages/manual/ManualEmitirOS'))
+const ManualFecharOS = lazyWithRetry(() => import('./pages/manual/ManualFecharOS'))
+const ManualHistorico = lazyWithRetry(() => import('./pages/manual/ManualHistorico'))
+const ManualProgramacao = lazyWithRetry(() => import('./pages/manual/ManualProgramacao'))
+const ManualPreventiva = lazyWithRetry(() => import('./pages/manual/ManualPreventiva'))
+const ManualPreditiva = lazyWithRetry(() => import('./pages/manual/ManualPreditiva'))
+const ManualLubrificacao = lazyWithRetry(() => import('./pages/manual/ManualLubrificacao'))
+const ManualInspecoes = lazyWithRetry(() => import('./pages/manual/ManualInspecoes'))
+const ManualFMEAPage = lazyWithRetry(() => import('./pages/manual/ManualFMEA'))
+const ManualRCAPage = lazyWithRetry(() => import('./pages/manual/ManualRCA'))
+const ManualIA = lazyWithRetry(() => import('./pages/manual/ManualIA'))
+const ManualMelhorias_Manual = lazyWithRetry(() => import('./pages/manual/ManualMelhorias'))
+const ManualCadastros = lazyWithRetry(() => import('./pages/manual/ManualCadastros'))
+const ManualCustosRelatorios = lazyWithRetry(() => import('./pages/manual/ManualCustosRelatorios'))
+const ManualSSMAPage = lazyWithRetry(() => import('./pages/manual/ManualSSMA'))
+const ManualAdministracaoPage = lazyWithRetry(() => import('./pages/manual/ManualAdministracao'))
+const ManualRotina = lazyWithRetry(() => import('./pages/manual/ManualRotina'))
+const ManualKPIs = lazyWithRetry(() => import('./pages/manual/ManualKPIs'))
+const ManualPrintAll = lazyWithRetry(() => import('./pages/manual/ManualPrintAll'))
 import { logger } from "@/lib/logger";
 
 initMonitoring();
@@ -247,6 +274,34 @@ function OwnerRoutes() {
           }
         />
 
+        {/* Manual v2 — 22 chapters (owner) */}
+        <Route path="/manual/imprimir" element={<EnvironmentGuard allowOwner><ManualPrintAll /></EnvironmentGuard>} />
+        <Route path="/manual" element={<EnvironmentGuard allowOwner><ManualLayout /></EnvironmentGuard>}>
+          <Route index element={<ManualCover />} />
+          <Route path="login" element={<ManualLogin />} />
+          <Route path="perfis" element={<ManualPerfis />} />
+          <Route path="solicitacoes" element={<ManualSolicitacoes />} />
+          <Route path="backlog" element={<ManualBacklog />} />
+          <Route path="emitir-os" element={<ManualEmitirOS />} />
+          <Route path="fechar-os" element={<ManualFecharOS />} />
+          <Route path="historico" element={<ManualHistorico />} />
+          <Route path="programacao" element={<ManualProgramacao />} />
+          <Route path="preventiva" element={<ManualPreventiva />} />
+          <Route path="preditiva" element={<ManualPreditiva />} />
+          <Route path="lubrificacao" element={<ManualLubrificacao />} />
+          <Route path="inspecoes" element={<ManualInspecoes />} />
+          <Route path="fmea-rcm" element={<ManualFMEAPage />} />
+          <Route path="rca" element={<ManualRCAPage />} />
+          <Route path="inteligencia-ia" element={<ManualIA />} />
+          <Route path="melhorias" element={<ManualMelhorias_Manual />} />
+          <Route path="cadastros" element={<ManualCadastros />} />
+          <Route path="custos-relatorios" element={<ManualCustosRelatorios />} />
+          <Route path="ssma" element={<ManualSSMAPage />} />
+          <Route path="administracao" element={<ManualAdministracaoPage />} />
+          <Route path="rotina" element={<ManualRotina />} />
+          <Route path="kpis" element={<ManualKPIs />} />
+        </Route>
+
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </Suspense>
@@ -339,6 +394,34 @@ function TenantRoutes() {
                 <Route path="/manuais-operacao/master-ti" element={<ManualOperacao />} />
                 <Route path="/status" element={<SystemStatus />} />
               </Route>
+
+                {/* Manual v2 — 22 chapters (tenant) */}
+                <Route path="/manual/imprimir" element={<ManualPrintAll />} />
+                <Route path="/manual" element={<ManualLayout />}>
+                  <Route index element={<ManualCover />} />
+                  <Route path="login" element={<ManualLogin />} />
+                  <Route path="perfis" element={<ManualPerfis />} />
+                  <Route path="solicitacoes" element={<ManualSolicitacoes />} />
+                  <Route path="backlog" element={<ManualBacklog />} />
+                  <Route path="emitir-os" element={<ManualEmitirOS />} />
+                  <Route path="fechar-os" element={<ManualFecharOS />} />
+                  <Route path="historico" element={<ManualHistorico />} />
+                  <Route path="programacao" element={<ManualProgramacao />} />
+                  <Route path="preventiva" element={<ManualPreventiva />} />
+                  <Route path="preditiva" element={<ManualPreditiva />} />
+                  <Route path="lubrificacao" element={<ManualLubrificacao />} />
+                  <Route path="inspecoes" element={<ManualInspecoes />} />
+                  <Route path="fmea-rcm" element={<ManualFMEAPage />} />
+                  <Route path="rca" element={<ManualRCAPage />} />
+                  <Route path="inteligencia-ia" element={<ManualIA />} />
+                  <Route path="melhorias" element={<ManualMelhorias_Manual />} />
+                  <Route path="cadastros" element={<ManualCadastros />} />
+                  <Route path="custos-relatorios" element={<ManualCustosRelatorios />} />
+                  <Route path="ssma" element={<ManualSSMAPage />} />
+                  <Route path="administracao" element={<ManualAdministracaoPage />} />
+                  <Route path="rotina" element={<ManualRotina />} />
+                  <Route path="kpis" element={<ManualKPIs />} />
+                </Route>
 
                 <Route path="*" element={<NotFound />} />
               </Routes>
