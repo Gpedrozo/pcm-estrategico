@@ -148,6 +148,8 @@ export function AppSidebar() {
   const isActive = (path: string) => location.pathname === path;
 
   const isSolicitanteOnly = effectiveRole === 'SOLICITANTE';
+  const isUsuarioOrBelow = isSolicitanteOnly || effectiveRole === 'USUARIO';
+  const isAdminOrAbove = isAdmin || effectiveRole === 'MASTER_TI' || effectiveRole === 'SYSTEM_OWNER' || effectiveRole === 'SYSTEM_ADMIN';
 
   const renderMenuLink = (item: { title: string; url: string; icon: React.ElementType }) => (
     <SidebarMenuItem key={item.url}>
@@ -210,60 +212,55 @@ export function AppSidebar() {
           </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {osMenuItems.map(renderMenuLink)}
+              {isSolicitanteOnly
+                ? osMenuItems.filter(i => i.url === '/solicitacoes').map(renderMenuLink)
+                : osMenuItems.map(renderMenuLink)
+              }
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
 
-        {isSolicitanteOnly && (
+        {!isSolicitanteOnly && (
           <SidebarGroup className="mt-4">
             <SidebarGroupLabel className="text-sidebar-foreground/50 uppercase text-xs font-semibold px-3 mb-2">
-              Ajuda
+              Planejamento
             </SidebarGroupLabel>
             <SidebarGroupContent>
               <SidebarMenu>
-                {ajudaMenuItems.map(renderMenuLink)}
+                {planejamentoMenuItems.map(renderMenuLink)}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
+
+        {isAdminOrAbove && (
+          <SidebarGroup className="mt-4">
+            <SidebarGroupLabel className="text-sidebar-foreground/50 uppercase text-xs font-semibold px-3 mb-2">
+              Análises
+            </SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                {analisesMenuItems.map(renderMenuLink)}
               </SidebarMenu>
             </SidebarGroupContent>
           </SidebarGroup>
         )}
 
         {!isSolicitanteOnly && (
+          <SidebarGroup className="mt-4">
+            <SidebarGroupLabel className="text-sidebar-foreground/50 uppercase text-xs font-semibold px-3 mb-2">
+              Catálogos
+            </SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                {cadastroMenuItems.map(renderMenuLink)}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
+
+        {isAdminOrAbove && (
           <>
-
-            <SidebarGroup className="mt-4">
-              <SidebarGroupLabel className="text-sidebar-foreground/50 uppercase text-xs font-semibold px-3 mb-2">
-                Planejamento
-              </SidebarGroupLabel>
-              <SidebarGroupContent>
-                <SidebarMenu>
-                  {planejamentoMenuItems.map(renderMenuLink)}
-                </SidebarMenu>
-              </SidebarGroupContent>
-            </SidebarGroup>
-
-            <SidebarGroup className="mt-4">
-              <SidebarGroupLabel className="text-sidebar-foreground/50 uppercase text-xs font-semibold px-3 mb-2">
-                Análises
-              </SidebarGroupLabel>
-              <SidebarGroupContent>
-                <SidebarMenu>
-                  {analisesMenuItems.map(renderMenuLink)}
-                </SidebarMenu>
-              </SidebarGroupContent>
-            </SidebarGroup>
-
-            <SidebarGroup className="mt-4">
-              <SidebarGroupLabel className="text-sidebar-foreground/50 uppercase text-xs font-semibold px-3 mb-2">
-                Catálogos
-              </SidebarGroupLabel>
-              <SidebarGroupContent>
-                <SidebarMenu>
-                  {cadastroMenuItems.map(renderMenuLink)}
-                </SidebarMenu>
-              </SidebarGroupContent>
-            </SidebarGroup>
-
             <SidebarGroup className="mt-4">
               <SidebarGroupLabel className="text-sidebar-foreground/50 uppercase text-xs font-semibold px-3 mb-2">
                 Relatórios
@@ -285,31 +282,31 @@ export function AppSidebar() {
                 </SidebarMenu>
               </SidebarGroupContent>
             </SidebarGroup>
-
-            <SidebarGroup className="mt-4">
-              <SidebarGroupLabel className="text-sidebar-foreground/50 uppercase text-xs font-semibold px-3 mb-2">
-                Ajuda
-              </SidebarGroupLabel>
-              <SidebarGroupContent>
-                <SidebarMenu>
-                  {ajudaMenuItems.map(renderMenuLink)}
-                </SidebarMenu>
-              </SidebarGroupContent>
-            </SidebarGroup>
-
-            {isAdmin && (
-              <SidebarGroup className="mt-4">
-                <SidebarGroupLabel className="text-sidebar-foreground/50 uppercase text-xs font-semibold px-3 mb-2">
-                  Administração
-                </SidebarGroupLabel>
-                <SidebarGroupContent>
-                  <SidebarMenu>
-                    {adminMenuItems.map(renderMenuLink)}
-                  </SidebarMenu>
-                </SidebarGroupContent>
-              </SidebarGroup>
-            )}
           </>
+        )}
+
+        <SidebarGroup className="mt-4">
+          <SidebarGroupLabel className="text-sidebar-foreground/50 uppercase text-xs font-semibold px-3 mb-2">
+            Ajuda
+          </SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {ajudaMenuItems.map(renderMenuLink)}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+
+        {isAdmin && (
+          <SidebarGroup className="mt-4">
+            <SidebarGroupLabel className="text-sidebar-foreground/50 uppercase text-xs font-semibold px-3 mb-2">
+              Administração
+            </SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                {adminMenuItems.map(renderMenuLink)}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
         )}
       </SidebarContent>
 

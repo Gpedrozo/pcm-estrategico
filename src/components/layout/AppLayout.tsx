@@ -36,8 +36,7 @@ export function AppLayout() {
 
   const canSwitchCompany =
     effectiveRole === 'SYSTEM_OWNER'
-    || effectiveRole === 'SYSTEM_ADMIN'
-    || effectiveRole === 'MASTER_TI';
+    || effectiveRole === 'SYSTEM_ADMIN';
 
   const activeCompanyId = impersonation?.empresaId ?? '';
 
@@ -120,12 +119,15 @@ export function AppLayout() {
     }
   };
 
+  const [companyLoadError, setCompanyLoadError] = useState('');
+
   const openCompanyChooser = async () => {
     if (!canSwitchCompany) return;
 
     setIsCompanyChooserOpen(true);
     setIsLoadingCompanies(true);
     setCompanySearch('');
+    setCompanyLoadError('');
 
     try {
       const data = await listPlatformCompanies();
@@ -136,16 +138,23 @@ export function AppLayout() {
         const hasActiveInList = !!activeCompanyId && rows.some((item) => item.id === activeCompanyId);
         setSelectedCompanyId(hasActiveInList ? activeCompanyId : rows[0].id);
       }
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Erro ao carregar empresas';
+      setCompanyLoadError(msg);
+      logger.error('company_chooser_load_error', { error: msg });
     } finally {
       setIsLoadingCompanies(false);
     }
   };
+
+  const [enterCompanyError, setEnterCompanyError] = useState('');
 
   const handleEnterCompanyContext = async () => {
     const selected = companies.find((item) => item.id === selectedCompanyId);
     if (!selected?.id) return;
 
     setIsEnteringCompany(true);
+    setEnterCompanyError('');
 
     try {
       const response: any = await impersonateCompany(selected.id);
@@ -163,6 +172,10 @@ export function AppLayout() {
       });
 
       setIsCompanyChooserOpen(false);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Erro ao entrar na empresa';
+      setEnterCompanyError(msg);
+      logger.error('company_enter_error', { error: msg, empresaId: selected.id });
     } finally {
       setIsEnteringCompany(false);
     }
@@ -309,14 +322,9 @@ export function AppLayout() {
     );
   }
 
-  const solicitanteAllowedPaths = new Set([
-    '/dashboard',
-    '/solicitacoes',
-    '/manuais-operacao',
-    '/manuais-operacao/usuario',
-  ]);
+  const solicitanteAllowedPaths = ['/dashboard', '/solicitacoes', '/manuais-operacao', '/manual', '/suporte'];
 
-  if (effectiveRole === 'SOLICITANTE' && !solicitanteAllowedPaths.has(location.pathname)) {
+  if (effectiveRole === 'SOLICITANTE' && !solicitanteAllowedPaths.some(p => location.pathname === p || location.pathname.startsWith(p + '/'))) {
     return <Navigate to="/solicitacoes" replace />;
   }
 
@@ -429,6 +437,7 @@ export function AppLayout() {
                     </p>
                   )}
                   {isLoadingCompanies && <p className="text-xs text-muted-foreground">Carregando empresas...</p>}
+                  {companyLoadError && <p className="text-xs text-destructive">{companyLoadError}</p>}
                 </div>
 
                 <div className="mt-4 flex gap-2">
@@ -447,6 +456,7 @@ export function AppLayout() {
                     {isEnteringCompany ? 'Entrando...' : 'Entrar na empresa'}
                   </button>
                 </div>
+                {enterCompanyError && <p className="mt-2 text-xs text-destructive">{enterCompanyError}</p>}
               </div>
             </div>
           )}
