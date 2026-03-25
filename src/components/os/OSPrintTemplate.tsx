@@ -28,10 +28,11 @@ interface OSPrintTemplateProps {
   empresa?: DadosEmpresa | null;
   documentNumber?: string;
   layoutVersion?: string;
+  solicitacaoNumero?: number | null;
 }
 
 export const OSPrintTemplate = forwardRef<HTMLDivElement, OSPrintTemplateProps>(
-  ({ os, empresa, documentNumber, layoutVersion }, ref) => {
+  ({ os, empresa, documentNumber, layoutVersion, solicitacaoNumero }, ref) => {
     const dataSolicitacao = format(new Date(os.data_solicitacao), 'dd/MM/yyyy', { locale: ptBR });
     const docNum = documentNumber || `OS-${String(os.numero_os).padStart(6, '0')}`;
 
@@ -57,6 +58,7 @@ export const OSPrintTemplate = forwardRef<HTMLDivElement, OSPrintTemplateProps>(
           { label: 'SOLICITANTE', value: os.solicitante.toUpperCase() },
           { label: 'TAG', value: os.tag, mono: true },
           { label: 'TIPO / PRIORIDADE', value: `${tipoLabels[os.tipo] || os.tipo} — ${prioridadeLabels[os.prioridade] || os.prioridade}` },
+          ...(solicitacaoNumero ? [{ label: 'ORIGEM', value: `SOLICITAÇÃO #${solicitacaoNumero}` }] : []),
         ]} />
 
         {/* ═══ EQUIPMENT ═══ */}

@@ -12,6 +12,7 @@ import { Plus, Search, Clock, Eye, CheckCircle2, XCircle, GitBranch, AlertTriang
 import { useSolicitacoes, useCreateSolicitacao, useUpdateSolicitacao, type SolicitacaoRow } from '@/hooks/useSolicitacoes';
 import { useEquipamentos } from '@/hooks/useEquipamentos';
 import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
 import { resolveSlaHorasByClassificacao, useTenantPadronizacoes } from '@/hooks/useTenantPadronizacoes';
 
 export default function Solicitacoes() {
@@ -22,6 +23,7 @@ export default function Solicitacoes() {
   const [selectedSol, setSelectedSol] = useState<SolicitacaoRow | null>(null);
   const [rejectReason, setRejectReason] = useState('');
   const [showRejectInput, setShowRejectInput] = useState(false);
+  const [linkedOSNumero, setLinkedOSNumero] = useState<number | null>(null);
   const [formData, setFormData] = useState({
     tag: '',
     solicitante_nome: '',
@@ -57,6 +59,11 @@ export default function Solicitacoes() {
     setSelectedSol(sol);
     setShowRejectInput(false);
     setRejectReason('');
+    setLinkedOSNumero(null);
+    if (sol.os_id) {
+      supabase.from('ordens_servico').select('numero_os').eq('id', sol.os_id).single()
+        .then(({ data }) => { if (data) setLinkedOSNumero(data.numero_os); });
+    }
   };
 
   const handleCloseDetail = () => {
@@ -283,7 +290,11 @@ export default function Solicitacoes() {
               {/* Data */}
               <div className="grid grid-cols-2 gap-4 text-sm text-muted-foreground">
                 <p>Criada em: {new Date(selectedSol.created_at).toLocaleString('pt-BR')}</p>
-                {selectedSol.os_id && <p className="text-success font-medium">Vinculada a uma O.S.</p>}
+                {selectedSol.os_id && (
+                  <p className="text-success font-medium">
+                    Vinculada à O.S #{linkedOSNumero ? String(linkedOSNumero).padStart(4, '0') : '...'}
+                  </p>
+                )}
               </div>
 
               {/* ── Área de Input de Rejeição ── */}
@@ -342,7 +353,9 @@ export default function Solicitacoes() {
 
                 {/* Status finais */}
                 {selectedSol.os_id && (
-                  <span className="text-sm text-success font-medium">Já vinculada a uma O.S.</span>
+                  <span className="text-sm text-success font-medium">
+                    Vinculada à O.S #{linkedOSNumero ? String(linkedOSNumero).padStart(4, '0') : '...'}
+                  </span>
                 )}
                 {selectedSol.status === 'REJEITADA' && (
                   <span className="text-sm text-destructive font-medium">Solicitação rejeitada</span>

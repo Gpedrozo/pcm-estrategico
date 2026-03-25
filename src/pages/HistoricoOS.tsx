@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -26,6 +26,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useOrdensServico, type OrdemServicoRow } from '@/hooks/useOrdensServico';
 import { useEquipamentos } from '@/hooks/useEquipamentos';
 import { useExecucaoByOSId, useExecucoesOS } from '@/hooks/useExecucoesOS';
+import { supabase } from '@/integrations/supabase/client';
 import { OSStatusBadge } from '@/components/os/OSStatusBadge';
 import { OSTypeBadge } from '@/components/os/OSTypeBadge';
 import { OSPrintDialog } from '@/components/os/OSPrintDialog';
@@ -82,6 +83,19 @@ function OSDetailsModal({
   onClose: () => void;
 }) {
   const { data: execucao } = useExecucaoByOSId(os?.id);
+  const [solicitacaoOrigem, setSolicitacaoOrigem] = useState<{ numero_solicitacao: number } | null>(null);
+
+  useEffect(() => {
+    setSolicitacaoOrigem(null);
+    if (!os?.id) return;
+    supabase
+      .from('solicitacoes_manutencao')
+      .select('numero_solicitacao')
+      .eq('os_id', os.id)
+      .limit(1)
+      .single()
+      .then(({ data }) => { if (data) setSolicitacaoOrigem(data as { numero_solicitacao: number }); });
+  }, [os?.id]);
 
   if (!os) return null;
 
@@ -105,6 +119,12 @@ function OSDetailsModal({
 
         <div className="space-y-4">
           <div className="grid grid-cols-2 gap-4 p-4 bg-muted/50 rounded-lg">
+            {solicitacaoOrigem && (
+              <div className="col-span-2 mb-1">
+                <Label className="text-xs text-muted-foreground">Origem</Label>
+                <p className="text-sm font-medium text-info">Solicitação #{solicitacaoOrigem.numero_solicitacao}</p>
+              </div>
+            )}
             <div>
               <Label className="text-xs text-muted-foreground">TAG</Label>
               <p className="font-mono text-primary font-medium">{os.tag}</p>

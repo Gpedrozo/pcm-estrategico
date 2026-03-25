@@ -482,7 +482,7 @@ export default function NovaOS() {
                 </div>
                 <div className="overflow-auto max-h-[400px] bg-gray-100 p-4">
                   <div className="transform scale-[0.5] origin-top-left" style={{ width: '200%' }}>
-                    <OSPrintTemplate ref={printRef} os={createdOS} nomeEmpresa={nomeEmpresa} empresa={empresa} />
+                    <OSPrintTemplate ref={printRef} os={createdOS} nomeEmpresa={nomeEmpresa} empresa={empresa} solicitacaoNumero={solicitacaoVinculada?.numero_solicitacao} />
                   </div>
                 </div>
               </div>
