@@ -3600,10 +3600,12 @@ Deno.serve(async (req) => {
     if (!body.ticket_id || !body.response) return fail("ticket_id and response are required", 400, null, req);
 
     const now = new Date().toISOString();
-    const newMessage = {
+    const attachments = Array.isArray(body.attachments) ? body.attachments.filter((u: unknown) => typeof u === "string" && u.trim()) : [];
+    const newMessage: Record<string, unknown> = {
       id: crypto.randomUUID(),
       sender: "owner",
       message: body.response,
+      attachments,
       channel: "in_app",
       created_at: now,
       sender_user_id: auth.user.id,

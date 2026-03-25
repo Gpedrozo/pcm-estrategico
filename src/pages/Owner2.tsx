@@ -20,6 +20,7 @@ import { Area, AreaChart, Bar, BarChart, CartesianGrid, Pie, PieChart, Responsiv
 import { useAuth } from '@/contexts/AuthContext'
 import { resolveOrRepairTenantHost } from '@/lib/tenantDomain'
 import { listPlatformCompanies } from '@/services/ownerPortal.service'
+import { uploadToStorage } from '@/services/storage'
 import {
   useOwner2Actions,
   useOwner2Audits,
@@ -39,6 +40,11 @@ import { OWNER_TABS, OWNER_TAB_LABELS, type OwnerTab, type CompanyCredentialNote
 import { normalizeEmail, resolveOwnerMasterEmail, safeArray, asObject, asBool, asNumber, statusColor, downloadCsv, TENANT_BASE_DOMAIN, KNOWN_OWNER_MASTER_EMAILS } from './owner2/owner2Helpers'
 import { SurfaceCard, MetricTile } from './owner2/owner2Components'
 
+const isImageUrl = (url: unknown) => {
+  if (typeof url !== 'string') return false
+  const normalized = url.split('?')[0].toLowerCase()
+  return ['.png', '.jpg', '.jpeg', '.webp', '.gif', '.bmp', '.svg'].some((ext) => normalized.endsWith(ext))
+}
 
 export default function Owner() {
   const { isSystemOwner, isLoading, user, logout } = useAuth()
@@ -109,6 +115,8 @@ export default function Owner() {
   const [selectedTicketId, setSelectedTicketId] = useState('')
   const [ticketResponse, setTicketResponse] = useState('')
   const [ticketResponseStatus, setTicketResponseStatus] = useState('em_andamento')
+  const [ticketAttachments, setTicketAttachments] = useState<File[]>([])
+  const [ticketUploading, setTicketUploading] = useState(false)
 
   const [systemUserId, setSystemUserId] = useState('')
   const [selectedTableName, setSelectedTableName] = useState('')
@@ -1392,11 +1400,20 @@ export default function Owner() {
           {activeTab === 'suporte' && (() => {
             const selectedTicket = tickets.find((t) => String(t.id) === selectedTicketId) ?? null
             const ticketMessages = (() => {
-              if (!selectedTicket) return []
+              if (!selectedTicket) return [] as Record<string, unknown>[]
               const msgs = selectedTicket.messages
-              if (Array.isArray(msgs)) return msgs as Record<string, unknown>[]
-              if (selectedTicket.owner_response) return [{ sender: 'owner', content: String(selectedTicket.owner_response), created_at: selectedTicket.updated_at }]
-              return []
+              if (Array.isArray(msgs) && msgs.length > 0) return msgs as Record<string, unknown>[]
+              // Fallback: build thread from legacy fields
+              const fallback: Record<string, unknown>[] = []
+              const clientMsg = String(selectedTicket.message ?? '').trim()
+              if (clientMsg) {
+                fallback.push({ sender: 'client', message: clientMsg, created_at: selectedTicket.created_at })
+              }
+              const ownerResp = String(selectedTicket.owner_response ?? '').trim()
+              if (ownerResp) {
+                fallback.push({ sender: 'owner', message: ownerResp, created_at: selectedTicket.updated_at ?? selectedTicket.responded_at })
+              }
+              return fallback
             })()
             const openCount = tickets.filter((t) => {
               const st = String(t.status ?? '').toLowerCase()
@@ -1409,9 +1426,39 @@ export default function Owner() {
 
             const priorityBadge = (p: string) => {
               const pl = p.toLowerCase()
+              if (pl === 'critica' || pl === 'critical') return 'bg-purple-100 text-purple-700 border-purple-200'
               if (pl === 'alta' || pl === 'high' || pl === 'urgente') return 'bg-red-100 text-red-700 border-red-200'
               if (pl === 'media' || pl === 'medium' || pl === 'média') return 'bg-amber-100 text-amber-700 border-amber-200'
               return 'bg-slate-100 text-slate-600 border-slate-200'
+            }
+
+            const handleOwnerUploadAndRespond = async () => {
+              if (!selectedTicketId || !ticketResponse.trim()) return
+              try {
+                setTicketUploading(true)
+                let attachmentUrls: string[] = []
+                if (ticketAttachments.length > 0 && user?.id) {
+                  const validFiles = ticketAttachments.filter((f) => f.type.startsWith('image/'))
+                  for (const file of validFiles) {
+                    const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_')
+                    const path = `owner/${user.id}/${selectedTicketId}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}-${safeName}`
+                    const publicUrl = await uploadToStorage('support-attachments', path, file)
+                    attachmentUrls.push(publicUrl)
+                  }
+                }
+                await runAction('respond_support_ticket', {
+                  ticket_id: selectedTicketId,
+                  response: ticketResponse,
+                  status: ticketResponseStatus,
+                  attachments: attachmentUrls,
+                }, 'Ticket respondido com sucesso.')
+                setTicketResponse('')
+                setTicketAttachments([])
+              } catch {
+                // error is handled by runAction
+              } finally {
+                setTicketUploading(false)
+              }
             }
 
             return (
@@ -1421,7 +1468,7 @@ export default function Owner() {
                   <MetricTile icon={LifeBuoy} label="Total" value={tickets.length} />
                   <MetricTile icon={AlertTriangle} label="Abertos" value={openCount} color="text-amber-600" />
                   <MetricTile icon={ShieldCheck} label="Resolvidos" value={resolvedCount} color="text-emerald-600" />
-                  <MetricTile icon={Clock} label="Não lidos" value={tickets.reduce((acc, t) => acc + (Number(t.unread_client_messages ?? 0)), 0)} color="text-sky-600" />
+                  <MetricTile icon={Clock} label="Não lidos" value={tickets.reduce((acc, t) => acc + (Number(t.unread_owner_messages ?? 0)), 0)} color="text-sky-600" />
                 </div>
 
                 <div className="grid gap-4 xl:grid-cols-5">
@@ -1434,9 +1481,11 @@ export default function Owner() {
                           const tid = String(t.id)
                           const st = String(t.status ?? 'aberto')
                           const pri = String(t.priority ?? 'baixa')
-                          const unread = Number(t.unread_client_messages ?? 0)
+                          const unread = Number(t.unread_owner_messages ?? 0)
                           const isSelected = tid === selectedTicketId
                           const created = t.created_at ? new Date(String(t.created_at)).toLocaleDateString('pt-BR') : '—'
+                          const empresa = t.empresas as Record<string, unknown> | null
+                          const empresaNome = empresa ? String(empresa.nome ?? empresa.slug ?? '') : ''
                           return (
                             <button
                               key={tid}
@@ -1448,6 +1497,7 @@ export default function Owner() {
                                 <div className="min-w-0 flex-1">
                                   <p className={`text-sm font-medium truncate ${isSelected ? 'text-sky-800' : ''}`}>{String(t.subject ?? 'Sem assunto')}</p>
                                   <p className="text-xs text-slate-400 mt-0.5 truncate">{String(t.message ?? '').slice(0, 80)}</p>
+                                  {empresaNome && <p className="text-[10px] text-slate-400 mt-0.5">{empresaNome}</p>}
                                 </div>
                                 {unread > 0 && (
                                   <span className="shrink-0 rounded-full bg-sky-600 text-white text-[10px] font-bold px-1.5 py-0.5">{unread}</span>
@@ -1475,35 +1525,52 @@ export default function Owner() {
                             <div><span className="text-slate-400">Status:</span> <span className={`rounded border px-1.5 py-0.5 font-medium ${statusColor(String(selectedTicket.status ?? ''))}`}>{String(selectedTicket.status ?? '—')}</span></div>
                             <div><span className="text-slate-400">Prioridade:</span> <span className={`rounded border px-1.5 py-0.5 font-medium ${priorityBadge(String(selectedTicket.priority ?? 'baixa'))}`}>{String(selectedTicket.priority ?? '—')}</span></div>
                             <div><span className="text-slate-400">Criado:</span> {selectedTicket.created_at ? new Date(String(selectedTicket.created_at)).toLocaleString('pt-BR') : '—'}</div>
-                            <div><span className="text-slate-400">Empresa:</span> {String(selectedTicket.empresa_id ?? '—').slice(0, 8)}</div>
-                          </div>
-                          <div className="rounded-lg bg-slate-50 border border-slate-200 p-3 text-sm whitespace-pre-wrap">
-                            {String(selectedTicket.message ?? 'Sem mensagem')}
+                            <div><span className="text-slate-400">Empresa:</span> {(() => {
+                              const emp = selectedTicket.empresas as Record<string, unknown> | null
+                              return emp ? String(emp.nome ?? emp.slug ?? String(selectedTicket.empresa_id ?? '—').slice(0, 8)) : String(selectedTicket.empresa_id ?? '—').slice(0, 8)
+                            })()}</div>
                           </div>
                         </SurfaceCard>
 
-                        {/* Thread */}
-                        {ticketMessages.length > 0 && (
-                          <SurfaceCard title={`Conversa (${ticketMessages.length})`}>
-                            <div className="max-h-[300px] overflow-auto space-y-2">
-                              {ticketMessages.map((msg, idx) => {
-                                const sender = String((msg as any).sender ?? 'client')
-                                const isOwner = sender === 'owner' || sender === 'system'
-                                const content = String((msg as any).content ?? (msg as any).message ?? '')
-                                const time = (msg as any).created_at ? new Date(String((msg as any).created_at)).toLocaleString('pt-BR') : ''
-                                return (
-                                  <div key={idx} className={`p-3 rounded-lg text-sm ${isOwner ? 'bg-sky-50 border border-sky-200 ml-6' : 'bg-slate-50 border border-slate-200 mr-6'}`}>
-                                    <div className="flex items-center gap-2 mb-1">
-                                      <span className={`text-[10px] font-bold uppercase ${isOwner ? 'text-sky-600' : 'text-slate-500'}`}>{isOwner ? 'Suporte' : 'Cliente'}</span>
-                                      {time && <span className="text-[10px] text-slate-400">{time}</span>}
-                                    </div>
-                                    <p className="whitespace-pre-wrap">{content}</p>
+                        {/* Thread - full conversation */}
+                        <SurfaceCard title={`Conversa (${ticketMessages.length} mensagens)`}>
+                          <div className="max-h-[420px] overflow-auto space-y-2 pr-1">
+                            {ticketMessages.length === 0 && (
+                              <p className="text-sm text-slate-400 py-4 text-center">Nenhuma mensagem ainda</p>
+                            )}
+                            {ticketMessages.map((msg, idx) => {
+                              const sender = String((msg as any).sender ?? 'client')
+                              const isOwner = sender === 'owner' || sender === 'system'
+                              const content = String((msg as any).message ?? (msg as any).content ?? '')
+                              const time = (msg as any).created_at ? new Date(String((msg as any).created_at)).toLocaleString('pt-BR') : ''
+                              const attachments = Array.isArray((msg as any).attachments) ? (msg as any).attachments as string[] : []
+                              return (
+                                <div key={(msg as any).id ?? idx} className={`p-3 rounded-lg text-sm ${isOwner ? 'bg-sky-50 border border-sky-200 ml-8' : 'bg-slate-50 border border-slate-200 mr-8'}`}>
+                                  <div className="flex items-center gap-2 mb-1">
+                                    <span className={`text-[10px] font-bold uppercase ${isOwner ? 'text-sky-600' : 'text-slate-500'}`}>{isOwner ? 'Suporte (Owner)' : 'Cliente'}</span>
+                                    {time && <span className="text-[10px] text-slate-400">{time}</span>}
                                   </div>
-                                )
-                              })}
-                            </div>
-                          </SurfaceCard>
-                        )}
+                                  <p className="whitespace-pre-wrap">{content}</p>
+                                  {attachments.length > 0 && (
+                                    <div className="mt-2 flex flex-wrap gap-2">
+                                      {attachments.map((url, aidx) => (
+                                        <div key={aidx}>
+                                          {isImageUrl(url) ? (
+                                            <a href={url} target="_blank" rel="noopener noreferrer" className="block">
+                                              <img src={url} alt="Anexo" loading="lazy" className="max-h-40 rounded-md border border-slate-200 object-contain hover:opacity-90 transition-opacity" />
+                                            </a>
+                                          ) : (
+                                            <a href={url} target="_blank" rel="noopener noreferrer" className="text-xs text-sky-600 underline">Ver anexo</a>
+                                          )}
+                                        </div>
+                                      ))}
+                                    </div>
+                                  )}
+                                </div>
+                              )
+                            })}
+                          </div>
+                        </SurfaceCard>
 
                         {/* Response Form */}
                         <SurfaceCard title="Responder">
@@ -1514,6 +1581,19 @@ export default function Owner() {
                               onChange={(e) => setTicketResponse(e.target.value)}
                               placeholder="Digite sua resposta ao cliente..."
                             />
+                            <div className="space-y-2">
+                              <label className="block text-xs text-slate-500">Anexar imagens (opcional)</label>
+                              <input
+                                type="file"
+                                accept="image/*"
+                                multiple
+                                className="block w-full text-sm text-slate-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border file:border-slate-300 file:text-sm file:bg-white file:text-slate-700 hover:file:bg-slate-50"
+                                onChange={(e) => setTicketAttachments(Array.from(e.target.files ?? []))}
+                              />
+                              {ticketAttachments.length > 0 && (
+                                <p className="text-xs text-slate-400">{ticketAttachments.length} arquivo(s) selecionado(s)</p>
+                              )}
+                            </div>
                             <div className="flex items-center gap-3">
                               <select
                                 className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm"
@@ -1526,13 +1606,10 @@ export default function Owner() {
                               </select>
                               <button
                                 className="rounded-lg bg-sky-700 px-4 py-2 text-sm font-semibold text-white hover:bg-sky-800 disabled:opacity-50 transition-colors"
-                                disabled={busy || !selectedTicketId || !ticketResponse.trim()}
-                                onClick={async () => {
-                                  await runAction('respond_support_ticket', { ticket_id: selectedTicketId, response: ticketResponse, status: ticketResponseStatus }, 'Ticket respondido com sucesso.')
-                                  setTicketResponse('')
-                                }}
+                                disabled={busy || ticketUploading || !selectedTicketId || !ticketResponse.trim()}
+                                onClick={handleOwnerUploadAndRespond}
                               >
-                                Enviar resposta
+                                {ticketUploading ? 'Enviando...' : 'Enviar resposta'}
                               </button>
                             </div>
                           </div>

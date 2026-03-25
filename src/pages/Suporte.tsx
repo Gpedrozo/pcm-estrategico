@@ -320,19 +320,21 @@ export default function Suporte() {
                   )}
                 </div>
 
-                {ticket.status !== 'resolvido' && (
-                  <div className="mt-3 space-y-2">
-                    <Textarea
-                      rows={3}
-                      value={replyDrafts[ticket.id] ?? ''}
-                      onChange={(event) =>
-                        setReplyDrafts((current) => ({
-                          ...current,
-                          [ticket.id]: event.target.value,
-                        }))
-                      }
-                      placeholder="Enviar nova dúvida ou atualização neste chamado"
-                    />
+                {/* Always show reply form - even for resolved tickets (will reopen on send) */}
+                <div className="mt-3 space-y-2">
+                  <Textarea
+                    rows={3}
+                    value={replyDrafts[ticket.id] ?? ''}
+                    onChange={(event) =>
+                      setReplyDrafts((current) => ({
+                        ...current,
+                        [ticket.id]: event.target.value,
+                      }))
+                    }
+                    placeholder={ticket.status === 'resolvido' ? 'Reabrir chamado com nova mensagem...' : 'Enviar nova dúvida ou atualização neste chamado'}
+                  />
+                  <div>
+                    <label className="block text-xs text-muted-foreground mb-1">Anexar imagens (opcional)</label>
                     <Input
                       type="file"
                       accept="image/*"
@@ -344,18 +346,21 @@ export default function Suporte() {
                         }))
                       }
                     />
-                    <div className="flex justify-end">
-                      <Button
-                        type="button"
-                        size="sm"
-                        disabled={addTicketMessage.isPending || uploading || (!(replyDrafts[ticket.id] ?? '').trim() && (replyAttachments[ticket.id] ?? []).length === 0)}
-                        onClick={() => void handleSendFollowUp(ticket.id)}
-                      >
-                        Enviar mensagem
-                      </Button>
-                    </div>
+                    {(replyAttachments[ticket.id] ?? []).length > 0 && (
+                      <p className="text-xs text-muted-foreground mt-1">{(replyAttachments[ticket.id] ?? []).length} arquivo(s) selecionado(s)</p>
+                    )}
                   </div>
-                )}
+                  <div className="flex justify-end">
+                    <Button
+                      type="button"
+                      size="sm"
+                      disabled={addTicketMessage.isPending || uploading || (!(replyDrafts[ticket.id] ?? '').trim() && (replyAttachments[ticket.id] ?? []).length === 0)}
+                      onClick={() => void handleSendFollowUp(ticket.id)}
+                    >
+                      {ticket.status === 'resolvido' ? 'Reabrir e enviar' : 'Enviar mensagem'}
+                    </Button>
+                  </div>
+                </div>
 
                 <p className="mt-2 text-xs text-muted-foreground">
                   Atualizado em {new Date(ticket.updated_at).toLocaleString('pt-BR')}
