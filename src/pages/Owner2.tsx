@@ -114,7 +114,7 @@ export default function Owner() {
 
   const [selectedTicketId, setSelectedTicketId] = useState('')
   const [ticketResponse, setTicketResponse] = useState('')
-  const [ticketResponseStatus, setTicketResponseStatus] = useState('em_andamento')
+  const [ticketResponseStatus, setTicketResponseStatus] = useState('em_analise')
   const [ticketAttachments, setTicketAttachments] = useState<File[]>([])
   const [ticketUploading, setTicketUploading] = useState(false)
 
@@ -1417,7 +1417,7 @@ export default function Owner() {
             })()
             const openCount = tickets.filter((t) => {
               const st = String(t.status ?? '').toLowerCase()
-              return st === 'aberto' || st === 'em_andamento' || st === 'open' || st === 'pending'
+              return st === 'aberto' || st === 'em_analise' || st === 'open' || st === 'pending'
             }).length
             const resolvedCount = tickets.filter((t) => {
               const st = String(t.status ?? '').toLowerCase()
@@ -1600,7 +1600,7 @@ export default function Owner() {
                                 value={ticketResponseStatus}
                                 onChange={(e) => setTicketResponseStatus(e.target.value)}
                               >
-                                <option value="em_andamento">Em andamento</option>
+                                <option value="em_analise">Em análise</option>
                                 <option value="resolvido">Resolvido</option>
                                 <option value="aberto">Reabrir</option>
                               </select>
