@@ -188,7 +188,7 @@ export default function Owner() {
   )
   const auditsQuery = useOwner2Audits(
     auditFilters,
-    activeTab === 'auditoria' || activeTab === 'monitoramento' || activeTab === 'logs',
+    activeTab === 'auditoria' || activeTab === 'monitoramento' || activeTab === 'logs' || activeTab === 'owner-master',
   )
   const ownersQuery = useOwner2PlatformOwners(activeTab === 'owner-master')
   const monitoringLive = activeTab === 'monitoramento' && isDocumentVisible
@@ -1193,7 +1193,7 @@ export default function Owner() {
                         <tr key={String(p.id)} className="border-t border-slate-200">
                           <td className="px-2 py-2">{String(p.code ?? '-')}</td>
                           <td className="px-2 py-2">{String(p.name ?? '-')}</td>
-                          <td className="px-2 py-2">R$ {String(p.price_month ?? '0')}</td>
+                          <td className="px-2 py-2">R$ {Number(p.price_month ?? 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                         </tr>
                       ))}
                     </tbody>
@@ -1957,7 +1957,7 @@ export default function Owner() {
           )}
 
           {activeTab === 'owner-master' && (
-            <div className="grid gap-4 xl:grid-cols-2">
+            <div className="grid gap-4">
               <SurfaceCard title="Novo owner da plataforma">
                 <div className="grid gap-2">
                   <input className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" value={ownerName} onChange={(e) => setOwnerName(e.target.value)} placeholder="Nome" />
@@ -1978,13 +1978,65 @@ export default function Owner() {
                       </tr>
                     </thead>
                     <tbody>
-                      {owners.map((o, idx) => (
-                        <tr key={`${String(o.id ?? 'owner')}-${idx}`} className="border-t border-slate-200">
-                          <td className="px-2 py-2">{String(o.nome ?? '-')}</td>
-                          <td className="px-2 py-2">{String(o.email ?? '-')}</td>
-                          <td className="px-2 py-2">{String(o.role ?? '-')}</td>
-                        </tr>
-                      ))}
+                      {owners.map((o, idx) => {
+                        const profile = o.profile as Record<string, unknown> | null | undefined;
+                        return (
+                          <tr key={`${String(o.user_id ?? o.id ?? 'owner')}-${idx}`} className="border-t border-slate-200">
+                            <td className="px-2 py-2">{String(profile?.nome ?? o.nome ?? '-')}</td>
+                            <td className="px-2 py-2">{String(profile?.email ?? o.email ?? '-')}</td>
+                            <td className="px-2 py-2">{String(o.role ?? '-')}</td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </SurfaceCard>
+
+              <SurfaceCard title="Auditoria de Owners" subtitle="Histórico de ações realizadas por owners do sistema">
+                <div className="max-h-[520px] overflow-auto rounded-xl border border-slate-200">
+                  <table className="w-full text-xs">
+                    <thead className="bg-slate-100 sticky top-0">
+                      <tr>
+                        <th className="px-2 py-2 text-left">Data</th>
+                        <th className="px-2 py-2 text-left">Ator</th>
+                        <th className="px-2 py-2 text-left">Ação</th>
+                        <th className="px-2 py-2 text-left">Detalhes</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {logs
+                        .filter((l) => {
+                          const src = String(l.source ?? '').toLowerCase();
+                          const action = String(l.action_type ?? '').toUpperCase();
+                          return src.includes('owner') || action.startsWith('OWNER');
+                        })
+                        .slice(0, 200)
+                        .map((l, idx) => (
+                          <tr key={`audit-owner-${idx}`} className="border-t border-slate-200">
+                            <td className="px-2 py-2 whitespace-nowrap">{new Date(String(l.created_at ?? '')).toLocaleString('pt-BR')}</td>
+                            <td className="px-2 py-2">{String(l.actor_email ?? l.actor_id ?? '-')}</td>
+                            <td className="px-2 py-2 font-medium">{String(l.action_type ?? '-')}</td>
+                            <td className="px-2 py-2 max-w-[300px] truncate" title={JSON.stringify(l.details ?? {})}>
+                              {(() => {
+                                const d = l.details as Record<string, unknown> | null;
+                                if (!d) return '-';
+                                const parts: string[] = [];
+                                if (d.owner_email) parts.push(String(d.owner_email));
+                                if (d.owner_role) parts.push(String(d.owner_role));
+                                if (d.reason) parts.push(String(d.reason));
+                                return parts.length > 0 ? parts.join(' · ') : JSON.stringify(d).slice(0, 80);
+                              })()}
+                            </td>
+                          </tr>
+                        ))}
+                      {logs.filter((l) => {
+                        const src = String(l.source ?? '').toLowerCase();
+                        const action = String(l.action_type ?? '').toUpperCase();
+                        return src.includes('owner') || action.startsWith('OWNER');
+                      }).length === 0 && (
+                        <tr><td colSpan={4} className="px-2 py-4 text-center text-slate-400">Nenhum registro de auditoria de owners encontrado.</td></tr>
+                      )}
                     </tbody>
                   </table>
                 </div>

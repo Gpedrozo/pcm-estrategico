@@ -3972,13 +3972,20 @@ Deno.serve(async (req) => {
 
     if (!profile?.empresa_id) return fail("User profile/empresa not found", 404, null, req);
 
+    // Delete existing role for this user+empresa, then insert the new one
+    await admin
+      .from("user_roles")
+      .delete()
+      .eq("user_id", body.user_id)
+      .eq("empresa_id", profile.empresa_id);
+
     const { error } = await admin
       .from("user_roles")
-      .upsert({
+      .insert({
         user_id: body.user_id,
         empresa_id: profile.empresa_id,
         role: "SYSTEM_ADMIN",
-      }, { onConflict: "user_id,empresa_id" });
+      });
 
     if (error) return fail(error.message, 400, null, req);
     return ok({ success: true }, 200, req);
@@ -4083,13 +4090,20 @@ Deno.serve(async (req) => {
 
     if (profileError) return fail(profileError.message, 400, null, req);
 
+    // Delete existing role for this user+empresa, then insert the new one
+    await admin
+      .from("user_roles")
+      .delete()
+      .eq("user_id", ownerUserId)
+      .eq("empresa_id", company.id);
+
     const { error: roleError } = await admin
       .from("user_roles")
-      .upsert({
+      .insert({
         user_id: ownerUserId,
         empresa_id: company.id,
         role: ownerRole,
-      }, { onConflict: "user_id,empresa_id" });
+      });
 
     if (roleError) return fail(roleError.message, 400, null, req);
 
