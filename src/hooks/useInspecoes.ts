@@ -110,16 +110,18 @@ export function useCreateInspecao() {
         } as Record<string, unknown>,
       );
 
-      await upsertMaintenanceSchedule({
-        tipo: 'inspecao',
-        origemId: data.id,
-        empresaId: tenantId!,
-        titulo: `Inspeção #${data.numero_inspecao} • ${data.rota_nome}`,
-        descricao: data.descricao,
-        dataProgramada: `${data.data_inspecao}T08:00:00.000Z`,
-        status: data.status || 'programado',
-        responsavel: data.inspetor_nome,
-      });
+      try {
+        await upsertMaintenanceSchedule({
+          tipo: 'inspecao',
+          origemId: data.id,
+          empresaId: tenantId!,
+          titulo: `Inspeção #${data.numero_inspecao} • ${data.rota_nome}`,
+          descricao: data.descricao,
+          dataProgramada: `${data.data_inspecao}T08:00:00.000Z`,
+          status: data.status || 'programado',
+          responsavel: data.inspetor_nome,
+        });
+      } catch { /* schedule sync best-effort */ }
 
       return data as InspecaoRow;
     },
@@ -162,16 +164,18 @@ export function useUpdateInspecao() {
         updates as Record<string, unknown>,
       );
 
-      await upsertMaintenanceSchedule({
-        tipo: 'inspecao',
-        origemId: data.id,
-        empresaId: tenantId!,
-        titulo: `Inspeção #${data.numero_inspecao} • ${data.rota_nome}`,
-        descricao: data.descricao,
-        dataProgramada: `${data.data_inspecao}T08:00:00.000Z`,
-        status: data.status || 'programado',
-        responsavel: data.inspetor_nome,
-      });
+      try {
+        await upsertMaintenanceSchedule({
+          tipo: 'inspecao',
+          origemId: data.id,
+          empresaId: tenantId!,
+          titulo: `Inspeção #${data.numero_inspecao} • ${data.rota_nome}`,
+          descricao: data.descricao,
+          dataProgramada: `${data.data_inspecao}T08:00:00.000Z`,
+          status: data.status || 'programado',
+          responsavel: data.inspetor_nome,
+        });
+      } catch { /* schedule sync best-effort */ }
 
       return data as InspecaoRow;
     },
