@@ -33,7 +33,7 @@ type CalendarFilter = 'all' | 'preventiva' | 'lubrificacao' | 'pred-inspecao';
 
 function mapMaintenanceTipoToOsTipo(tipo: string) {
   if (tipo === 'preventiva') return 'PREVENTIVA';
-  if (tipo === 'lubrificacao') return 'LUBRIFICACAO';
+  if (tipo === 'lubrificacao') return 'PREVENTIVA';
   if (tipo === 'inspecao') return 'INSPECAO';
   if (tipo === 'preditiva') return 'PREDITIVA';
   return 'PREVENTIVA';
