@@ -18,7 +18,8 @@ import {
   Loader2,
   Printer,
   ExternalLink,
-  Edit
+  Edit,
+  XCircle
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useEquipamentos } from '@/hooks/useEquipamentos';
@@ -464,12 +465,22 @@ export default function Programacao() {
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                <Button
-                  className="gap-2"
-                  onClick={() => updateSchedule.mutate({ id: selectedEvent.id, status: 'executado' })}
-                >
-                  <CheckCircle2 className="h-4 w-4" /> Marcar como executado
-                </Button>
+                {['executado', 'concluido', 'concluida'].includes((selectedEvent.status || '').toLowerCase()) ? (
+                  <Button
+                    variant="destructive"
+                    className="gap-2"
+                    onClick={() => updateSchedule.mutate({ id: selectedEvent.id, status: 'programado' })}
+                  >
+                    <XCircle className="h-4 w-4" /> Marcar como não executado
+                  </Button>
+                ) : (
+                  <Button
+                    className="gap-2"
+                    onClick={() => updateSchedule.mutate({ id: selectedEvent.id, status: 'executado' })}
+                  >
+                    <CheckCircle2 className="h-4 w-4" /> Marcar como executado
+                  </Button>
+                )}
 
                 <Button
                   className="gap-2"
