@@ -1415,12 +1415,12 @@ export default function Owner() {
               const msgs = selectedTicket.messages
               if (Array.isArray(msgs) && msgs.length > 0) {
                 // Ensure original client message is present (legacy tickets may only have owner msgs)
-                const hasClientMsg = msgs.some((m) => String((m as any).sender ?? '') === 'client')
+                const hasClientMsg = msgs.some((m: any) => String(m.sender ?? '') === 'client')
                 if (!hasClientMsg) {
-                  const cMsg = String(selectedTicket.message ?? '').trim()
-                  if (cMsg) {
+                  const clientMsg = String(selectedTicket.message ?? '').trim()
+                  if (clientMsg) {
                     return [
-                      { id: `legacy-client-${String(selectedTicket.id)}`, sender: 'client', message: cMsg, created_at: selectedTicket.created_at },
+                      { id: `legacy-client-${String(selectedTicket.id)}`, sender: 'client', message: clientMsg, created_at: selectedTicket.created_at },
                       ...msgs,
                     ] as Record<string, unknown>[]
                   }
@@ -1431,11 +1431,11 @@ export default function Owner() {
               const fallback: Record<string, unknown>[] = []
               const clientMsg = String(selectedTicket.message ?? '').trim()
               if (clientMsg) {
-                fallback.push({ sender: 'client', message: clientMsg, created_at: selectedTicket.created_at })
+                fallback.push({ id: `legacy-client-${String(selectedTicket.id)}`, sender: 'client', message: clientMsg, created_at: selectedTicket.created_at })
               }
               const ownerResp = String(selectedTicket.owner_response ?? '').trim()
               if (ownerResp) {
-                fallback.push({ sender: 'owner', message: ownerResp, created_at: selectedTicket.updated_at ?? selectedTicket.responded_at })
+                fallback.push({ id: `legacy-owner-${String(selectedTicket.id)}`, sender: 'owner', message: ownerResp, created_at: selectedTicket.updated_at ?? selectedTicket.responded_at })
               }
               return fallback
             })()
@@ -1623,11 +1623,11 @@ export default function Owner() {
                                   <p className="whitespace-pre-wrap">{content}</p>
                                   {/* Read indicator: show on last owner message when client has read it */}
                                   {isOwner && idx === ticketMessages.length - 1 && Number(selectedTicket?.unread_client_messages ?? 1) === 0 && (
-                                    <p className="text-[10px] text-emerald-500 mt-1 flex items-center gap-1">\u2713\u2713 Lido pelo cliente</p>
+                                    <p className="text-[10px] text-emerald-500 mt-1 flex items-center gap-1">✓✓ Lido pelo cliente</p>
                                   )}
                                   {/* Read indicator: show on last client message when owner has read it */}
                                   {!isOwner && idx === ticketMessages.length - 1 && Number(selectedTicket?.unread_owner_messages ?? 1) === 0 && String(selectedTicket?.last_message_sender ?? '') === 'client' && (
-                                    <p className="text-[10px] text-sky-500 mt-1 flex items-center gap-1">\u2713\u2713 Lido por voc\u00ea</p>
+                                    <p className="text-[10px] text-sky-500 mt-1 flex items-center gap-1">✓✓ Lido por você</p>
                                   )}
                                   {attachments.length > 0 && (
                                     <div className="mt-2 flex flex-wrap gap-2">
