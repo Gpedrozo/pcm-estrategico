@@ -19,9 +19,12 @@ import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Plus, Search, Activity, Thermometer, Gauge, TrendingUp, AlertTriangle, CheckCircle } from 'lucide-react';
+import { Plus, Search, Activity, Thermometer, Gauge, TrendingUp, AlertTriangle, CheckCircle, Printer } from 'lucide-react';
 import { useEquipamentos } from '@/hooks/useEquipamentos';
 import { useAuth } from '@/contexts/AuthContext';
+import { useDadosEmpresa } from '@/hooks/useDadosEmpresa';
+import { PreditivaPrintTemplate } from '@/components/preditiva/PreditivaPrintTemplate';
+import { PrintPreviewDialog } from '@/components/print/PrintPreviewDialog';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
@@ -191,6 +194,7 @@ export default function Preditiva() {
   });
 
   const { data: equipamentos } = useEquipamentos();
+  const { data: empresa } = useDadosEmpresa();
   const allowedTags = useMemo(() => (equipamentos || []).map((item) => item.tag), [equipamentos]);
   const allowedEquipamentoIds = useMemo(() => (equipamentos || []).map((item) => item.id), [equipamentos]);
   const { data: medicoes, isLoading } = useMedicoesPreditivas(tenantId, allowedTags, allowedEquipamentoIds);
@@ -408,10 +412,32 @@ export default function Preditiva() {
           <h1 className="text-2xl font-bold text-foreground">Manutenção Preditiva</h1>
           <p className="text-muted-foreground">Monitoramento de condição e análise de tendências</p>
         </div>
-        <Button onClick={() => setIsModalOpen(true)} className="gap-2">
-          <Plus className="h-4 w-4" />
-          Nova Medição
-        </Button>
+        <div className="flex gap-2">
+          <PrintPreviewDialog
+            title="Relatório Preditivo"
+            subtitle={`${filteredMedicoes.length} medições`}
+            documentTitle="Relatorio-Preditiva"
+            trigger={
+              <Button variant="outline" className="gap-2" disabled={filteredMedicoes.length === 0}>
+                <Printer className="h-4 w-4" />
+                Imprimir Relatório
+              </Button>
+            }
+          >
+            {(ref) => (
+              <PreditivaPrintTemplate
+                ref={ref}
+                medicoes={filteredMedicoes as any}
+                tag={filteredMedicoes.length > 0 ? filteredMedicoes[0].tag : '—'}
+                empresa={empresa}
+              />
+            )}
+          </PrintPreviewDialog>
+          <Button onClick={() => setIsModalOpen(true)} className="gap-2">
+            <Plus className="h-4 w-4" />
+            Nova Medição
+          </Button>
+        </div>
       </div>
 
       {/* Stats */}

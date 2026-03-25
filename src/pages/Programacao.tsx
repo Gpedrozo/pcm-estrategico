@@ -193,100 +193,334 @@ export default function Programacao() {
     const printWindow = window.open('', '_blank', 'width=900,height=700');
     if (!printWindow) return;
 
-    const tipoLabel = selectedEvent.tipo === 'lubrificacao' ? 'Lubrificação' : 'Preventiva';
+    const tipoLabels: Record<string, string> = {
+      preventiva: 'MANUTENÇÃO PREVENTIVA',
+      lubrificacao: 'LUBRIFICAÇÃO',
+      inspecao: 'INSPEÇÃO',
+      preditiva: 'MANUTENÇÃO PREDITIVA',
+    };
+    const tipoLabel = tipoLabels[selectedEvent.tipo] || 'MANUTENÇÃO';
+    const tipoPrefix: Record<string, string> = {
+      preventiva: 'PRV', lubrificacao: 'LUB', inspecao: 'INS', preditiva: 'PRD',
+    };
+    const docNum = `${tipoPrefix[selectedEvent.tipo] || 'MNT'}-${(selectedEvent.origem_id || '').substring(0, 8).toUpperCase()}`;
     const logoUrl = empresa?.logo_os_url || empresa?.logo_pdf_url || empresa?.logo_url || '';
     const nomeEmpresa = empresa?.nome_fantasia || empresa?.razao_social || 'MANUTENÇÃO INDUSTRIAL';
+    const dataFormatada = format(new Date(selectedEvent.data_programada), 'dd/MM/yyyy', { locale: ptBR });
+    const dataEmissao = format(new Date(), 'dd/MM/yyyy', { locale: ptBR });
+    const equipNome = equipamento?.nome || 'Não informado';
+    const equipTag = equipamento?.tag || 'N/A';
+    const equipSetor = (equipamento as Record<string, unknown>)?.setor as string || '';
+
     const doc = printWindow.document;
     doc.open();
-    doc.write('<!doctype html><html><head><meta charset="utf-8"></head><body></body></html>');
+    doc.write(`<!doctype html><html><head><meta charset="utf-8"><title>Ficha ${tipoLabel}</title>
+<style>
+  @page { size: A4; margin: 0; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: Arial, 'Helvetica Neue', sans-serif; color: #111; padding: 8mm; line-height: 1.4; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .doc { border: 2px solid #000; width: 194mm; min-height: 279mm; margin: 0 auto; }
+
+  /* HEADER */
+  .header { display: flex; border-bottom: 2px solid #000; }
+  .header-logo { width: 25mm; border-right: 2px solid #000; padding: 2mm; display: flex; align-items: center; justify-content: center; background: #fff; }
+  .header-logo img { max-height: 18mm; max-width: 22mm; object-fit: contain; }
+  .header-logo .placeholder { font-size: 8px; color: #999; font-weight: bold; }
+  .header-center { flex: 1; text-align: center; padding: 2mm; display: flex; flex-direction: column; justify-content: center; }
+  .header-company { font-size: 9px; font-weight: bold; letter-spacing: 2px; color: #555; }
+  .header-title { font-size: 16px; font-weight: 900; margin-top: 1mm; letter-spacing: -0.3px; }
+  .header-right { width: 48mm; border-left: 2px solid #000; font-size: 9px; }
+  .header-right div { padding: 1.5mm 2mm; display: flex; justify-content: space-between; }
+  .header-right div + div { border-top: 1px solid #000; }
+  .header-right .lbl { font-weight: bold; }
+  .header-right .doc-num { font-weight: 900; font-size: 12px; }
+
+  /* COMPANY INFO BAR */
+  .company-bar { border-bottom: 2px solid #000; padding: 1mm 3mm; font-size: 8px; background: #f8f8f8; color: #666; display: flex; justify-content: space-between; }
+
+  /* INFO GRID */
+  .info-grid { display: grid; border-bottom: 2px solid #000; font-size: 9px; }
+  .info-grid.cols-4 { grid-template-columns: 1fr 1fr 1fr 1fr; }
+  .info-grid.cols-3 { grid-template-columns: 1fr 1fr 1fr; }
+  .info-grid.cols-2 { grid-template-columns: 1fr 1fr; }
+  .info-cell { padding: 2mm; border-right: 1px solid #000; }
+  .info-cell:last-child { border-right: none; }
+  .info-label { font-weight: bold; font-size: 8px; color: #666; display: block; margin-bottom: 0.5mm; }
+  .info-value { font-weight: 600; }
+  .info-value.mono { font-family: 'Courier New', monospace; font-weight: 900; font-size: 11px; }
+
+  /* SECTION HEADER */
+  .section-hdr { background: #e8e8e8; padding: 2mm; font-weight: bold; font-size: 9px; border-bottom: 1px solid #000; letter-spacing: 0.5px; }
+  .section-content { padding: 2mm; min-height: 10mm; font-size: 9px; }
+  .section-block { border-bottom: 2px solid #000; }
+
+  /* BLANK LINES */
+  .blank-lines { padding: 2mm; }
+  .blank-line { border-bottom: 1px dashed #bbb; height: 6mm; }
+
+  /* TABLE */
+  .tbl { width: 100%; border-collapse: collapse; font-size: 9px; }
+  .tbl th { background: #e8e8e8; font-weight: bold; font-size: 8px; color: #555; padding: 1.5mm 2mm; border: 1px solid #000; text-align: left; letter-spacing: 0.3px; }
+  .tbl td { padding: 1.5mm 2mm; border: 1px solid #000; }
+  .tbl .center { text-align: center; }
+  .tbl .checkbox-cell { text-align: center; vertical-align: middle; }
+  .tbl .checkbox { display: inline-block; width: 4mm; height: 4mm; border: 1px solid #000; }
+
+  /* EXECUTORS */
+  .executor-grid { display: grid; grid-template-columns: 1fr 1fr; border-bottom: 2px solid #000; font-size: 9px; }
+  .executor-block { }
+  .executor-block:first-child { border-right: 2px solid #000; }
+  .executor-hdr { background: #e8e8e8; padding: 2mm; font-weight: bold; border-bottom: 1px solid #000; letter-spacing: 0.5px; }
+  .executor-name { padding: 2mm; height: 7mm; border-bottom: 1px solid #000; }
+  .executor-sign { display: grid; grid-template-columns: 1fr 1fr; }
+  .executor-sign div { padding: 1.5mm; }
+  .executor-sign div:first-child { border-right: 1px solid #000; }
+
+  /* TIME ROW */
+  .time-row { display: grid; grid-template-columns: 1fr 1fr 1fr; border-bottom: 2px solid #000; font-size: 9px; }
+  .time-cell { padding: 2mm; }
+  .time-cell + .time-cell { border-left: 1px solid #000; }
+  .time-cell .lbl { font-weight: bold; font-size: 8px; color: #666; }
+  .time-cell .val { height: 5mm; margin-top: 1mm; border-bottom: 1px dashed #999; }
+
+  /* STATUS */
+  .status-grid { display: grid; grid-template-columns: 1fr 1fr; border-bottom: 2px solid #000; font-size: 9px; }
+  .status-cell { padding: 2mm; }
+  .status-cell:first-child { border-right: 2px solid #000; }
+  .status-cell .lbl { font-weight: bold; }
+  .status-opts { margin-top: 1.5mm; display: flex; gap: 6mm; }
+  .status-opt { display: flex; align-items: center; gap: 1.5mm; }
+
+  /* SIGNATURES */
+  .signatures { padding: 4mm; text-align: center; font-size: 9px; }
+  .sign-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8mm; margin-top: 4mm; }
+  .sign-block .line { border-bottom: 1px solid #000; margin: 0 6mm; }
+  .sign-block .name { font-weight: bold; margin-top: 1mm; }
+
+  /* FOOTER */
+  .footer { margin-top: 3mm; display: flex; justify-content: space-between; font-size: 7px; color: #999; padding: 0 1mm; }
+</style>
+</head><body></body></html>`);
     doc.close();
-
-    doc.title = `Ficha ${tipoLabel}`;
-
-    const style = doc.createElement('style');
-    style.textContent = [
-      'body { font-family: Arial, sans-serif; margin: 24px; color: #111; }',
-      'h1 { font-size: 20px; margin-bottom: 12px; }',
-      '.line { margin: 8px 0; }',
-      '.label { font-weight: bold; }',
-      '.box { border: 1px solid #ccc; border-radius: 6px; padding: 12px; margin-top: 14px; }',
-      '.sign { margin-top: 32px; display: flex; justify-content: space-between; gap: 24px; }',
-      '.sign div { width: 45%; border-top: 1px solid #999; padding-top: 8px; text-align: center; }',
-    ].join('\n');
-    doc.head.appendChild(style);
 
     const body = doc.body;
 
-    if (logoUrl) {
-      const logo = doc.createElement('img');
-      logo.src = logoUrl;
-      logo.alt = 'Logo da empresa';
-      logo.style.maxHeight = '48px';
-      logo.style.maxWidth = '180px';
-      logo.style.objectFit = 'contain';
-      logo.style.marginBottom = '10px';
-      body.appendChild(logo);
+    /* ═══ BUILD HTML ═══ */
+    let html = '<div class="doc">';
+
+    /* HEADER */
+    html += '<div class="header">';
+    html += '<div class="header-logo">';
+    html += logoUrl ? `<img src="${logoUrl}" alt="Logo">` : '<div class="placeholder">LOGO</div>';
+    html += '</div>';
+    html += '<div class="header-center">';
+    html += `<div class="header-company">${nomeEmpresa.toUpperCase()}</div>`;
+    html += `<div class="header-title">FICHA DE EXECUÇÃO — ${tipoLabel}</div>`;
+    html += '</div>';
+    html += '<div class="header-right">';
+    html += `<div><span class="lbl">Nº Documento:</span><span class="doc-num">${docNum}</span></div>`;
+    html += `<div><span class="lbl">Emissão:</span><span>${dataEmissao}</span></div>`;
+    html += `<div><span class="lbl">Revisão:</span><span>00</span></div>`;
+    html += `<div><span class="lbl">Página:</span><span>1 / 1</span></div>`;
+    html += '</div></div>';
+
+    /* COMPANY BAR */
+    const barParts: string[] = [];
+    if (empresa?.cnpj) barParts.push(`CNPJ: ${empresa.cnpj}`);
+    if (empresa?.telefone) barParts.push(`Tel: ${empresa.telefone}`);
+    if (empresa?.email) barParts.push(empresa.email);
+    if (barParts.length > 0) {
+      html += `<div class="company-bar">${barParts.map(p => `<span>${p}</span>`).join('')}</div>`;
     }
 
-    const title = doc.createElement('h1');
-    title.textContent = `${nomeEmpresa} - Ficha de Execução - ${tipoLabel}`;
-    body.appendChild(title);
+    /* INFO GRID - ROW 1 */
+    html += '<div class="info-grid cols-4">';
+    html += `<div class="info-cell"><span class="info-label">TAG / MÁQUINA</span><span class="info-value mono">${equipTag}</span></div>`;
+    html += `<div class="info-cell"><span class="info-label">EQUIPAMENTO</span><span class="info-value">${equipNome}</span></div>`;
+    html += `<div class="info-cell"><span class="info-label">TIPO</span><span class="info-value">${tipoLabel}</span></div>`;
+    html += `<div class="info-cell"><span class="info-label">STATUS</span><span class="info-value">${(selectedEvent.status || 'programado').toUpperCase()}</span></div>`;
+    html += '</div>';
 
-    const addLine = (label: string, value: string) => {
-      const line = doc.createElement('div');
-      line.className = 'line';
+    /* INFO GRID - ROW 2 */
+    html += '<div class="info-grid cols-3">';
+    html += `<div class="info-cell"><span class="info-label">DATA PROGRAMADA</span><span class="info-value">${dataFormatada}</span></div>`;
+    html += `<div class="info-cell"><span class="info-label">RESPONSÁVEL</span><span class="info-value">${selectedEvent.responsavel || '—'}</span></div>`;
+    html += `<div class="info-cell"><span class="info-label">SETOR</span><span class="info-value">${equipSetor || '—'}</span></div>`;
+    html += '</div>';
 
-      const labelSpan = doc.createElement('span');
-      labelSpan.className = 'label';
-      labelSpan.textContent = `${label}: `;
+    /* TITLE */
+    html += '<div class="section-block">';
+    html += `<div style="padding:2mm;font-size:9px;"><strong style="color:#666;font-size:8px;">TÍTULO: </strong><strong>${(selectedEvent.titulo || '—').toUpperCase()}</strong></div>`;
+    html += '</div>';
 
-      const valueSpan = doc.createElement('span');
-      valueSpan.textContent = value;
+    /* DESCRIPTION */
+    html += '<div class="section-block">';
+    html += '<div class="section-hdr">DESCRIÇÃO DA ATIVIDADE</div>';
+    html += `<div class="section-content">${selectedEvent.descricao || '—'}</div>`;
+    html += '</div>';
 
-      line.appendChild(labelSpan);
-      line.appendChild(valueSpan);
-      body.appendChild(line);
-    };
+    /* TYPE-SPECIFIC SECTIONS */
+    if (selectedEvent.tipo === 'inspecao') {
+      /* Inspeção: checklist table */
+      html += '<div class="section-block">';
+      html += '<div class="section-hdr">CHECKLIST DE INSPEÇÃO</div>';
+      html += '<table class="tbl"><thead><tr>';
+      html += '<th style="width:8mm" class="center">#</th>';
+      html += '<th>ITEM A INSPECIONAR</th>';
+      html += '<th style="width:18mm" class="center">CONFORME</th>';
+      html += '<th style="width:18mm" class="center">NÃO CONF.</th>';
+      html += '<th style="width:18mm" class="center">N/A</th>';
+      html += '<th style="width:40mm">OBSERVAÇÃO</th>';
+      html += '</tr></thead><tbody>';
+      for (let i = 1; i <= 10; i++) {
+        html += '<tr>';
+        html += `<td class="center" style="color:#999">${i}</td>`;
+        html += '<td style="height:6mm"></td>';
+        html += '<td class="checkbox-cell"><span class="checkbox"></span></td>';
+        html += '<td class="checkbox-cell"><span class="checkbox"></span></td>';
+        html += '<td class="checkbox-cell"><span class="checkbox"></span></td>';
+        html += '<td></td>';
+        html += '</tr>';
+      }
+      html += '</tbody></table>';
+      html += '</div>';
+    } else if (selectedEvent.tipo === 'preditiva') {
+      /* Preditiva: measurements table */
+      html += '<div class="section-block">';
+      html += '<div class="section-hdr">MEDIÇÕES / LEITURAS PREDITIVAS</div>';
+      html += '<table class="tbl"><thead><tr>';
+      html += '<th style="width:8mm" class="center">#</th>';
+      html += '<th>PARÂMETRO / PONTO DE MEDIÇÃO</th>';
+      html += '<th style="width:20mm" class="center">UNIDADE</th>';
+      html += '<th style="width:22mm" class="center">VALOR LIDO</th>';
+      html += '<th style="width:22mm" class="center">LIMITE OK</th>';
+      html += '<th style="width:22mm" class="center">LIMITE CRIT.</th>';
+      html += '<th style="width:14mm" class="center">STATUS</th>';
+      html += '</tr></thead><tbody>';
+      for (let i = 1; i <= 8; i++) {
+        html += '<tr>';
+        html += `<td class="center" style="color:#999">${i}</td>`;
+        html += '<td style="height:6mm"></td>';
+        html += '<td></td>';
+        html += '<td></td>';
+        html += '<td></td>';
+        html += '<td></td>';
+        html += '<td class="checkbox-cell"><span class="checkbox"></span></td>';
+        html += '</tr>';
+      }
+      html += '</tbody></table>';
+      html += '</div>';
 
-    addLine('Título', selectedEvent.titulo || '—');
-    addLine('Equipamento', equipamento?.nome || 'Não informado');
-    addLine('TAG', equipamento?.tag || 'Não informado');
-    addLine('Data programada', new Date(selectedEvent.data_programada).toLocaleString('pt-BR'));
-    addLine('Responsável', selectedEvent.responsavel || '—');
+      /* Análise preditiva */
+      html += '<div class="section-block">';
+      html += '<div class="section-hdr">ANÁLISE / DIAGNÓSTICO PREDITIVO</div>';
+      html += '<div class="blank-lines">';
+      for (let i = 0; i < 4; i++) html += '<div class="blank-line"></div>';
+      html += '</div></div>';
+    } else {
+      /* Preventiva / Lubrificação: activity lines */
+      html += '<div class="section-block">';
+      html += `<div class="section-hdr">ATIVIDADES E SERVIÇOS${selectedEvent.tipo === 'lubrificacao' ? ' — LUBRIFICAÇÃO' : ''}</div>`;
+      html += '<table class="tbl"><thead><tr>';
+      html += '<th style="width:8mm" class="center">#</th>';
+      html += '<th>SERVIÇO / ATIVIDADE</th>';
+      if (selectedEvent.tipo === 'lubrificacao') {
+        html += '<th style="width:25mm" class="center">LUBRIFICANTE</th>';
+        html += '<th style="width:18mm" class="center">QTD.</th>';
+      }
+      html += '<th style="width:18mm" class="center">TEMPO</th>';
+      html += '<th style="width:14mm" class="center">OK</th>';
+      html += '</tr></thead><tbody>';
+      for (let i = 1; i <= 8; i++) {
+        html += '<tr>';
+        html += `<td class="center" style="color:#999">${i}</td>`;
+        html += '<td style="height:6mm"></td>';
+        if (selectedEvent.tipo === 'lubrificacao') {
+          html += '<td></td><td></td>';
+        }
+        html += '<td></td>';
+        html += '<td class="checkbox-cell"><span class="checkbox"></span></td>';
+        html += '</tr>';
+      }
+      html += '</tbody></table>';
+      html += '</div>';
+    }
 
-    const descricaoBox = doc.createElement('div');
-    descricaoBox.className = 'box';
-    const descricaoLabel = doc.createElement('div');
-    descricaoLabel.className = 'label';
-    descricaoLabel.textContent = 'Descrição da atividade:';
-    const descricaoValue = doc.createElement('div');
-    descricaoValue.textContent = selectedEvent.descricao || '—';
-    descricaoBox.appendChild(descricaoLabel);
-    descricaoBox.appendChild(descricaoValue);
-    body.appendChild(descricaoBox);
+    /* EXECUTORS */
+    html += '<div class="executor-grid">';
+    for (let n = 1; n <= 2; n++) {
+      html += `<div class="executor-block">`;
+      html += `<div class="executor-hdr">EXECUTOR ${n}</div>`;
+      html += '<div class="executor-name"></div>';
+      html += '<div class="executor-sign">';
+      html += '<div><strong>Assinatura:</strong></div>';
+      html += '<div><strong>Data:</strong> ___/___/______</div>';
+      html += '</div></div>';
+    }
+    html += '</div>';
 
-    const anotacoesBox = doc.createElement('div');
-    anotacoesBox.className = 'box';
-    anotacoesBox.style.minHeight = '140px';
-    const anotacoesLabel = doc.createElement('div');
-    anotacoesLabel.className = 'label';
-    anotacoesLabel.textContent = 'Anotações de execução:';
-    anotacoesBox.appendChild(anotacoesLabel);
-    body.appendChild(anotacoesBox);
+    /* TIME ROW */
+    html += '<div class="time-row">';
+    ['HORA INÍCIO', 'HORA FIM', 'TEMPO TOTAL'].forEach(label => {
+      html += `<div class="time-cell"><span class="lbl">${label}:</span><div class="val"></div></div>`;
+    });
+    html += '</div>';
 
-    const sign = doc.createElement('div');
-    sign.className = 'sign';
-    const sign1 = doc.createElement('div');
-    sign1.textContent = 'Mecânico responsável';
-    const sign2 = doc.createElement('div');
-    sign2.textContent = 'Supervisor / Aprovação';
-    sign.appendChild(sign1);
-    sign.appendChild(sign2);
-    body.appendChild(sign);
+    /* MATERIALS */
+    html += '<div class="section-block">';
+    html += '<div class="section-hdr">PEÇAS / MATERIAIS UTILIZADOS</div>';
+    html += '<table class="tbl"><thead><tr>';
+    html += '<th style="width:25mm">CÓDIGO</th>';
+    html += '<th>DESCRIÇÃO</th>';
+    html += '<th style="width:15mm" class="center">QTD.</th>';
+    html += '<th style="width:15mm" class="center">UN.</th>';
+    html += '</tr></thead><tbody>';
+    for (let i = 0; i < 4; i++) {
+      html += '<tr><td style="height:6mm"></td><td></td><td></td><td></td></tr>';
+    }
+    html += '</tbody></table>';
+    html += '</div>';
 
-    printWindow.onload = () => {
-      printWindow.print();
-    };
+    /* STATUS CHECKBOXES */
+    html += '<div class="status-grid">';
+    ['Serviço finalizado', 'Equipamento liberado'].forEach(label => {
+      html += '<div class="status-cell">';
+      html += `<span class="lbl">${label}:</span>`;
+      html += '<div class="status-opts">';
+      ['Sim', 'Não'].forEach(opt => {
+        html += `<div class="status-opt"><span class="checkbox"></span><span>${opt}</span></div>`;
+      });
+      html += '</div></div>';
+    });
+    html += '</div>';
+
+    /* OBSERVATIONS */
+    html += '<div class="section-block">';
+    html += '<div class="section-hdr">OBSERVAÇÕES</div>';
+    html += '<div class="blank-lines">';
+    for (let i = 0; i < 3; i++) html += '<div class="blank-line"></div>';
+    html += '</div></div>';
+
+    /* SIGNATURES */
+    html += '<div class="signatures">';
+    html += '<div class="sign-grid">';
+    html += '<div class="sign-block"><div class="line"></div><div class="name">Responsável Manutenção</div></div>';
+    html += '<div class="sign-block"><div class="line"></div><div class="name">Responsável Produção</div></div>';
+    html += '</div>';
+    html += '<div style="margin-top:3mm;color:#666;">Data: ___/___/______</div>';
+    html += '</div>';
+
+    html += '</div>'; /* close .doc */
+
+    /* FOOTER */
+    const footerParts = [nomeEmpresa];
+    if (empresa?.endereco) footerParts.push(empresa.endereco);
+    if (empresa?.cidade) footerParts.push(`${empresa.cidade}/${empresa?.estado || ''}`);
+    html += `<div class="footer"><span>${footerParts.join(' • ')}</span><span>Página 1/1 • Emitido em ${dataEmissao}</span></div>`;
+
+    body.innerHTML = html;
+
+    setTimeout(() => { printWindow.print(); }, 300);
   };
 
   if (isLoading) {
@@ -522,15 +756,13 @@ export default function Programacao() {
                   <ExternalLink className="h-4 w-4" /> Abrir item original
                 </Button>
 
-                {['preventiva', 'lubrificacao'].includes(selectedEvent.tipo) && (
-                  <Button
-                    variant="outline"
-                    className="gap-2 sm:col-span-2"
-                    onClick={handlePrintFicha}
-                  >
-                    <Printer className="h-4 w-4" /> Imprimir ficha para execução
-                  </Button>
-                )}
+                <Button
+                  variant="outline"
+                  className="gap-2 sm:col-span-2"
+                  onClick={handlePrintFicha}
+                >
+                  <Printer className="h-4 w-4" /> Imprimir ficha para execução
+                </Button>
               </div>
             </div>
           )}

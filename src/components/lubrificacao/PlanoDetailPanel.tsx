@@ -1,14 +1,18 @@
 import React from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Trash2, Edit, Camera } from 'lucide-react';
+import { Trash2, Edit, Camera, Printer } from 'lucide-react';
 import type { PlanoLubrificacao } from '@/types/lubrificacao';
 import { useCreateExecucaoLubrificacao, useExecucoesByPlanoLubrificacao } from '@/hooks/useLubrificacao';
+import { useDadosEmpresa } from '@/hooks/useDadosEmpresa';
 import ExecucaoFormDialog from '@/components/lubrificacao/ExecucaoFormDialog';
 import AtividadesList from '@/components/lubrificacao/AtividadesList';
+import { LubrificacaoPrintTemplate } from './LubrificacaoPrintTemplate';
+import { PrintPreviewDialog } from '@/components/print/PrintPreviewDialog';
 
 export default function PlanoDetailPanel({ plano }: { plano: PlanoLubrificacao }) {
   const { data: execucoes } = useExecucoesByPlanoLubrificacao(plano.id);
+  const { data: empresa } = useDadosEmpresa();
   const createExec = useCreateExecucaoLubrificacao();
   const [openExec, setOpenExec] = React.useState(false);
 
@@ -48,7 +52,19 @@ export default function PlanoDetailPanel({ plano }: { plano: PlanoLubrificacao }
         <div className="mt-4">
           <div className="flex items-center justify-between">
             <div className="text-sm text-muted-foreground">Execuções: <span className="font-semibold">{execucoes?.length || 0}</span></div>
-            <div className="flex gap-2">
+            <div className="flex gap-2 flex-wrap">
+              <PrintPreviewDialog
+                title="Ficha de Lubrificação"
+                subtitle={plano.nome}
+                documentTitle={`Lubrificacao-${plano.codigo}`}
+                trigger={
+                  <Button variant="outline" className="gap-1">
+                    <Printer className="h-4 w-4" /> Imprimir
+                  </Button>
+                }
+              >
+                {(ref) => <LubrificacaoPrintTemplate ref={ref} plano={plano} empresa={empresa} />}
+              </PrintPreviewDialog>
               <Button variant="outline"><Camera className="h-4 w-4" /> Fotos</Button>
               <Button variant="outline" onClick={handleGenerate}>Gerar Tarefa</Button>
               <Button onClick={() => setOpenExec(true)}>Registrar Execução</Button>

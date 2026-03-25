@@ -17,11 +17,14 @@ import {
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Plus, Search, ClipboardCheck, AlertTriangle } from 'lucide-react';
+import { Plus, Search, ClipboardCheck, AlertTriangle, Printer } from 'lucide-react';
 import { useInspecoes, useCreateInspecao, useUpdateInspecao, type InspecaoRow } from '@/hooks/useInspecoes';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCreateOrdemServico } from '@/hooks/useOrdensServico';
 import { useEquipamentos } from '@/hooks/useEquipamentos';
+import { useDadosEmpresa } from '@/hooks/useDadosEmpresa';
+import { InspecaoPrintTemplate } from '@/components/inspecao/InspecaoPrintTemplate';
+import { PrintPreviewDialog } from '@/components/print/PrintPreviewDialog';
 
 interface ChecklistItem {
   item: string;
@@ -79,6 +82,7 @@ export default function Inspecoes() {
   });
 
   const { data: inspecoes, isLoading } = useInspecoes();
+  const { data: empresa } = useDadosEmpresa();
   const createMutation = useCreateInspecao();
   const updateMutation = useUpdateInspecao();
   const createOSMutation = useCreateOrdemServico();
@@ -279,6 +283,18 @@ export default function Inspecoes() {
                   <td>{new Date(insp.data_inspecao).toLocaleDateString('pt-BR')}</td>
                   <td>
                     <div className="flex gap-1">
+                      <PrintPreviewDialog
+                        title="Ficha de Inspeção"
+                        subtitle={insp.rota_nome}
+                        documentTitle={`Inspecao-${insp.rota_nome}`}
+                        trigger={
+                          <Button size="sm" variant="outline">
+                            <Printer className="h-3 w-3 mr-1" />Imprimir
+                          </Button>
+                        }
+                      >
+                        {(ref) => <InspecaoPrintTemplate ref={ref} inspecao={insp} empresa={empresa} />}
+                      </PrintPreviewDialog>
                       {insp.status === 'EM_ANDAMENTO' && (
                         <Button size="sm" variant="outline" onClick={() => { setSelectedInspecao(insp); handleConcluir(insp); }}>
                           <ClipboardCheck className="h-3 w-3 mr-1" />Concluir
