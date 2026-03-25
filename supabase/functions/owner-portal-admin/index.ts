@@ -3598,13 +3598,41 @@ Deno.serve(async (req) => {
 
   if (body.action === "respond_support_ticket") {
     if (!body.ticket_id || !body.response) return fail("ticket_id and response are required", 400, null, req);
+
+    const now = new Date().toISOString();
+    const newMessage = {
+      id: crypto.randomUUID(),
+      sender: "owner",
+      message: body.response,
+      channel: "in_app",
+      created_at: now,
+      sender_user_id: auth.user.id,
+    };
+
+    // Fetch current ticket to append message and increment unread counter
+    const { data: current, error: fetchErr } = await admin
+      .from("support_tickets")
+      .select("messages,unread_client_messages")
+      .eq("id", body.ticket_id)
+      .single();
+    if (fetchErr) return fail(fetchErr.message, 400, null, req);
+
+    const existingMessages = Array.isArray(current?.messages) ? current.messages : [];
+    existingMessages.push(newMessage);
+
+    const currentUnread = Number(current?.unread_client_messages ?? 0);
+
     const { error } = await admin
       .from("support_tickets")
       .update({
         owner_response: body.response,
         owner_responder_id: auth.user.id,
-        responded_at: new Date().toISOString(),
+        responded_at: now,
         status: body.status ?? "resolvido",
+        messages: existingMessages,
+        unread_client_messages: currentUnread + 1,
+        last_message_sender: "owner",
+        last_message_at: now,
       })
       .eq("id", body.ticket_id);
     if (error) return fail(error.message, 400, null, req);
