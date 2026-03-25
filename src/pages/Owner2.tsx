@@ -181,7 +181,7 @@ export default function Owner() {
   const plansQuery = useOwner2Plans(activeTab === 'comercial' || activeTab === 'dashboard')
   const subscriptionsQuery = useOwner2Subscriptions(activeTab === 'comercial' || activeTab === 'dashboard')
   const contractsQuery = useOwner2Contracts(activeTab === 'contratos' || activeTab === 'dashboard')
-  const ticketsQuery = useOwner2Tickets(activeTab === 'suporte' || activeTab === 'dashboard')
+  const ticketsQuery = useOwner2Tickets(true)
   const auditFilters = useMemo(
     () => (companyId ? { empresa_id: companyId } : {}),
     [companyId],
@@ -217,6 +217,10 @@ export default function Owner() {
   const subscriptions = useMemo(() => safeArray<Record<string, unknown>>((subscriptionsQuery.data as any)?.subscriptions), [subscriptionsQuery.data])
   const contracts = useMemo(() => safeArray<Record<string, unknown>>((contractsQuery.data as any)?.contracts), [contractsQuery.data])
   const tickets = useMemo(() => safeArray<Record<string, unknown>>((ticketsQuery.data as any)?.tickets), [ticketsQuery.data])
+  const unreadOwnerCount = useMemo(
+    () => tickets.reduce((sum, t) => sum + Number(t.unread_owner_messages ?? 0), 0),
+    [tickets],
+  )
   const logs = useMemo(() => safeArray<Record<string, unknown>>((auditsQuery.data as any)?.logs), [auditsQuery.data])
   const owners = useMemo(() => safeArray<Record<string, unknown>>((ownersQuery.data as any)?.owners), [ownersQuery.data])
   const tables = useMemo(() => safeArray<Record<string, unknown>>((tablesQuery.data as any)?.tables), [tablesQuery.data])
@@ -725,7 +729,14 @@ export default function Owner() {
                 className={`w-full rounded-lg px-3 py-2 text-left text-sm transition ${activeTab === tab ? 'bg-sky-700 font-semibold text-white shadow-sm' : 'text-slate-700 hover:bg-slate-100'}`}
                 onClick={() => setActiveTab(tab)}
               >
-                {OWNER_TAB_LABELS[tab]}
+                <span className="flex items-center justify-between">
+                  {OWNER_TAB_LABELS[tab]}
+                  {tab === 'suporte' && unreadOwnerCount > 0 && (
+                    <span className="inline-flex h-5 min-w-[20px] items-center justify-center rounded-full bg-red-500 px-1.5 text-[11px] font-bold leading-none text-white">
+                      {unreadOwnerCount > 99 ? '99+' : unreadOwnerCount}
+                    </span>
+                  )}
+                </span>
               </button>
             ))}
           </nav>
