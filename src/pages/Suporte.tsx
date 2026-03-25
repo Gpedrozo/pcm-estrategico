@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { AlertTriangle, ChevronDown, ChevronUp, LifeBuoy, Loader2, MessageSquarePlus, Send } from 'lucide-react'
+import { AlertTriangle, CheckCheck, ChevronDown, ChevronUp, LifeBuoy, Loader2, MessageSquarePlus, Send } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -301,6 +301,11 @@ export default function Suporte() {
                   <span className={`rounded border px-2 py-0.5 font-medium ${statusBadge(selectedTicket.status)}`}>{selectedTicket.status}</span>
                   <span className={`rounded border px-2 py-0.5 font-medium ${priorityBadge(selectedTicket.priority ?? 'media')}`}>{selectedTicket.priority ?? 'media'}</span>
                   <span className="text-muted-foreground">Criado em {new Date(selectedTicket.created_at).toLocaleString('pt-BR')}</span>
+                  {selectedTicket.unread_owner_messages === 0 && threadMessages.some((m) => m.sender === 'client') && (
+                    <span className="flex items-center gap-1 text-emerald-600">
+                      <CheckCheck className="h-3 w-3" /> Lido pelo suporte
+                    </span>
+                  )}
                 </div>
               </div>
 
@@ -329,6 +334,12 @@ export default function Suporte() {
                           </span>
                         </div>
                         <p className="whitespace-pre-wrap">{entry.message}</p>
+                        {/* Read indicator on last client message */}
+                        {entry.sender === 'client' && entry.id === threadMessages.filter((m) => m.sender === 'client').at(-1)?.id && selectedTicket.unread_owner_messages === 0 && (
+                          <p className="text-[10px] text-emerald-500 mt-1 flex items-center gap-1">
+                            <CheckCheck className="h-2.5 w-2.5" /> Visto pelo suporte
+                          </p>
+                        )}
                         {Array.isArray(entry.attachments) && entry.attachments.length > 0 && (
                           <div className="mt-2 flex flex-wrap gap-2">
                             {entry.attachments.map((url) => (

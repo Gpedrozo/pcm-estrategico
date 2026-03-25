@@ -1413,7 +1413,20 @@ export default function Owner() {
             const ticketMessages = (() => {
               if (!selectedTicket) return [] as Record<string, unknown>[]
               const msgs = selectedTicket.messages
-              if (Array.isArray(msgs) && msgs.length > 0) return msgs as Record<string, unknown>[]
+              if (Array.isArray(msgs) && msgs.length > 0) {
+                // Ensure original client message is present (legacy tickets may only have owner msgs)
+                const hasClientMsg = msgs.some((m) => String((m as any).sender ?? '') === 'client')
+                if (!hasClientMsg) {
+                  const cMsg = String(selectedTicket.message ?? '').trim()
+                  if (cMsg) {
+                    return [
+                      { id: `legacy-client-${String(selectedTicket.id)}`, sender: 'client', message: cMsg, created_at: selectedTicket.created_at },
+                      ...msgs,
+                    ] as Record<string, unknown>[]
+                  }
+                }
+                return msgs as Record<string, unknown>[]
+              }
               // Fallback: build thread from legacy fields
               const fallback: Record<string, unknown>[] = []
               const clientMsg = String(selectedTicket.message ?? '').trim()
@@ -1608,6 +1621,14 @@ export default function Owner() {
                                     {time && <span className="text-[10px] text-slate-400">{time}</span>}
                                   </div>
                                   <p className="whitespace-pre-wrap">{content}</p>
+                                  {/* Read indicator: show on last owner message when client has read it */}
+                                  {isOwner && idx === ticketMessages.length - 1 && Number(selectedTicket?.unread_client_messages ?? 1) === 0 && (
+                                    <p className="text-[10px] text-emerald-500 mt-1 flex items-center gap-1">\u2713\u2713 Lido pelo cliente</p>
+                                  )}
+                                  {/* Read indicator: show on last client message when owner has read it */}
+                                  {!isOwner && idx === ticketMessages.length - 1 && Number(selectedTicket?.unread_owner_messages ?? 1) === 0 && String(selectedTicket?.last_message_sender ?? '') === 'client' && (
+                                    <p className="text-[10px] text-sky-500 mt-1 flex items-center gap-1">\u2713\u2713 Lido por voc\u00ea</p>
+                                  )}
                                   {attachments.length > 0 && (
                                     <div className="mt-2 flex flex-wrap gap-2">
                                       {attachments.map((url, aidx) => (

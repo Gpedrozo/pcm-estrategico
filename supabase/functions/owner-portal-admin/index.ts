@@ -3621,12 +3621,27 @@ Deno.serve(async (req) => {
     // Fetch current ticket to append message and increment unread counter
     const { data: current, error: fetchErr } = await admin
       .from("support_tickets")
-      .select("messages,unread_client_messages")
+      .select("messages,unread_client_messages,message,created_at,user_id")
       .eq("id", body.ticket_id)
       .single();
     if (fetchErr) return fail(fetchErr.message, 400, null, req);
 
-    const existingMessages = Array.isArray(current?.messages) ? current.messages : [];
+    const existingMessages = Array.isArray(current?.messages) ? [...current.messages] : [];
+    // If messages array is empty, reconstruct from legacy client message
+    if (existingMessages.length === 0) {
+      const originalMsg = String(current?.message ?? "").trim();
+      if (originalMsg) {
+        existingMessages.push({
+          id: crypto.randomUUID(),
+          sender: "client",
+          message: originalMsg,
+          attachments: [],
+          channel: "in_app",
+          created_at: current?.created_at ?? now,
+          sender_user_id: current?.user_id ?? null,
+        });
+      }
+    }
     existingMessages.push(newMessage);
 
     const currentUnread = Number(current?.unread_client_messages ?? 0);
