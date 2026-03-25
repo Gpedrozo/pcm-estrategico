@@ -59,7 +59,8 @@ ALTER TABLE IF EXISTS public.subscriptions
   ADD COLUMN IF NOT EXISTS asaas_customer_id text,
   ADD COLUMN IF NOT EXISTS asaas_subscription_id text,
   ADD COLUMN IF NOT EXISTS asaas_last_event_at timestamptz,
-  ADD COLUMN IF NOT EXISTS billing_metadata jsonb NOT NULL DEFAULT '{}'::jsonb;
+  ADD COLUMN IF NOT EXISTS billing_metadata jsonb NOT NULL DEFAULT '{}'::jsonb,
+  ADD COLUMN IF NOT EXISTS payment_method text;
 
 CREATE TABLE IF NOT EXISTS public.subscription_payments (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),

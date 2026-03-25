@@ -51,7 +51,7 @@ type Payload = {
     | "cleanup_company_data"
     | "delete_company"
     | "purge_table_data"
-    "delete_support_ticket",
+    | "delete_support_ticket"
     | "asaas_link_subscription"
     | "asaas_sync_subscription"
     | "list_subscription_payments"

@@ -92,16 +92,7 @@ CREATE TABLE IF NOT EXISTS public.materiais (
   UNIQUE (empresa_id, codigo)
 );
 
--- AUDITORIA
-CREATE TABLE IF NOT EXISTS public.auditoria (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  usuario_id uuid,
-  usuario_nome text NOT NULL,
-  acao text NOT NULL,
-  descricao text NOT NULL,
-  tag text,
-  data_hora timestamptz NOT NULL DEFAULT now()
-);
+-- AUDITORIA (skipped: event trigger trg_prevent_legacy_auditoria blocks this)
 
 -- PLATFORM_METRICS
 CREATE TABLE IF NOT EXISTS public.platform_metrics (
@@ -862,6 +853,7 @@ ALTER TABLE public.auth_session_transfer_tokens ENABLE ROW LEVEL SECURITY;
 DO $$
 DECLARE
   t text;
+  has_col boolean;
 BEGIN
   FOR t IN
     SELECT unnest(ARRAY[
@@ -881,6 +873,13 @@ BEGIN
       'avaliacoes_fornecedores','indicadores_kpi'
     ])
   LOOP
+    -- Skip tables that don't have empresa_id column
+    SELECT EXISTS (
+      SELECT 1 FROM information_schema.columns
+      WHERE table_schema = 'public' AND table_name = t AND column_name = 'empresa_id'
+    ) INTO has_col;
+    IF NOT has_col THEN CONTINUE; END IF;
+
     EXECUTE format('DROP POLICY IF EXISTS %I ON public.%I', 'tenant_select_' || t, t);
     EXECUTE format(
       'CREATE POLICY %I ON public.%I FOR SELECT USING (empresa_id IN (SELECT ur.empresa_id FROM public.user_roles ur WHERE ur.user_id = auth.uid()))',
