@@ -1,4 +1,4 @@
-﻿-- Fix: close_os_with_execution_atomic was inserting into execucoes_os WITHOUT empresa_id,
+-- Fix: close_os_with_execution_atomic was inserting into execucoes_os WITHOUT empresa_id,
 -- violating RLS policy that requires empresa_id = current_empresa_id().
 -- This migration recreates the function adding empresa_id to the INSERT.
 

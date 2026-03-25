@@ -1,4 +1,4 @@
-﻿import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { insertWithColumnFallback } from '@/lib/supabaseCompat';
@@ -135,6 +135,7 @@ export function useCreateExecucaoOS() {
 
   return useMutation({
     mutationFn: async (execucao: ExecucaoOSInsert) => {
+      const payloadWithTenant = { ...execucao, empresa_id: tenantId } as Record<string, unknown>;
       return insertWithColumnFallback(
         async (payload) =>
           supabase
@@ -142,7 +143,7 @@ export function useCreateExecucaoOS() {
             .insert(payload)
             .select()
             .single(),
-        execucao as Record<string, unknown>,
+        payloadWithTenant,
       ) as Promise<ExecucaoOSRow>;
     },
     onSuccess: () => {
