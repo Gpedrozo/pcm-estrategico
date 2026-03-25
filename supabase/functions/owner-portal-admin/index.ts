@@ -1781,12 +1781,37 @@ Deno.serve(async (req) => {
     const pageSize = Math.min(Number(body.page_size ?? 500), 1000);
     const offset = (Math.max(page, 1) - 1) * pageSize;
 
-    const { data, error, count } = await admin
+    // Try with related tables first; fall back to plain query if schema lacks the FK
+    let data: any[] | null = null;
+    let count: number | null = null;
+    let listError: any = null;
+
+    const richSelect = "id,nome,slug,created_at,updated_at,dados_empresa(razao_social,nome_fantasia),configuracoes_sistema(chave,valor)";
+    const plainSelect = "id,nome,slug,created_at,updated_at";
+
+    const result = await admin
       .from("empresas")
-      .select("id,nome,slug,created_at,updated_at,dados_empresa(razao_social,nome_fantasia),configuracoes_sistema(chave,valor)", { count: "exact" })
+      .select(richSelect, { count: "exact" })
       .order("created_at", { ascending: false })
       .range(offset, offset + pageSize - 1);
-    if (error) return fail(error.message, 400, null, req);
+
+    if (result.error && result.error.message?.includes("schema cache")) {
+      // FK/table missing — retry without related tables
+      const fallback = await admin
+        .from("empresas")
+        .select(plainSelect, { count: "exact" })
+        .order("created_at", { ascending: false })
+        .range(offset, offset + pageSize - 1);
+      data = fallback.data;
+      count = fallback.count;
+      listError = fallback.error;
+    } else {
+      data = result.data;
+      count = result.count;
+      listError = result.error;
+    }
+
+    if (listError) return fail(listError.message, 400, null, req);
     return ok({ companies: data ?? [], total: count ?? 0, page, page_size: pageSize }, 200, req);
   }
 
