@@ -1,4 +1,4 @@
-{
+﻿{
   "files": [],
   "references": [{ "path": "./tsconfig.app.json" }, { "path": "./tsconfig.node.json" }],
   "compilerOptions": {
@@ -12,5 +12,6 @@
     "allowJs": true,
     "noUnusedLocals": false,
     "strictNullChecks": false
-  }
+  },
+  "exclude": ["supabase/functions"]
 }

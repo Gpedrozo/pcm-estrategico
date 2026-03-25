@@ -1,4 +1,4 @@
-import { supabase } from '@/integrations/supabase/client'
+﻿import { supabase } from '@/integrations/supabase/client'
 
 export type OwnerAction =
   | 'health_check'
@@ -42,6 +42,7 @@ export type OwnerAction =
   | 'cleanup_company_data'
   | 'purge_table_data'
   | 'delete_company'
+  | 'delete_support_ticket'
   | 'asaas_link_subscription'
   | 'asaas_sync_subscription'
   | 'list_subscription_payments'
@@ -248,11 +249,11 @@ const isEmpresasCnpjSchemaError = (value: unknown) => {
   const msg = String(value ?? '').toLowerCase()
   return (
     msg.includes("could not find the 'cnpj' column of 'empresas' in the schema cache") ||
-    msg.includes("não foi possível encontrar a coluna 'cnpj' de 'empresas' no cache de esquema") ||
+    msg.includes("nÃ£o foi possÃ­vel encontrar a coluna 'cnpj' de 'empresas' no cache de esquema") ||
     msg.includes("could not find the 'status' column of 'empresas' in the schema cache") ||
-    msg.includes("não foi possível encontrar a coluna 'status' de 'empresas' no cache de esquema") ||
+    msg.includes("nÃ£o foi possÃ­vel encontrar a coluna 'status' de 'empresas' no cache de esquema") ||
     msg.includes("could not find the 'plano' column of 'empresas' in the schema cache") ||
-    msg.includes("não foi possível encontrar a coluna 'plano' de 'empresas' no cache de esquema") ||
+    msg.includes("nÃ£o foi possÃ­vel encontrar a coluna 'plano' de 'empresas' no cache de esquema") ||
     (msg.includes('cnpj') && msg.includes('empresas') && msg.includes('schema cache')) ||
     (msg.includes('cnpj') && msg.includes('empresas') && msg.includes('cache de esquema')) ||
     (msg.includes('status') && msg.includes('empresas') && msg.includes('schema cache')) ||
@@ -265,9 +266,9 @@ const isEmpresasCnpjSchemaError = (value: unknown) => {
 const isProfileBindingErrorMessage = (value: unknown) => {
   const msg = String(value ?? '').toLowerCase()
   return (
-    msg.includes('falha ao vincular usuário master na empresa (profiles)') ||
+    msg.includes('falha ao vincular usuÃ¡rio master na empresa (profiles)') ||
     msg.includes('falha ao vincular usuario master na empresa (profiles)') ||
-    msg.includes('falha ao vincular usuário à empresa (profiles)') ||
+    msg.includes('falha ao vincular usuÃ¡rio Ã  empresa (profiles)') ||
     msg.includes('falha ao vincular usuario a empresa (profiles)')
   )
 }
@@ -275,9 +276,9 @@ const isProfileBindingErrorMessage = (value: unknown) => {
 const isRoleBindingErrorMessage = (value: unknown) => {
   const msg = String(value ?? '').toLowerCase()
   return (
-    msg.includes('falha ao vincular papel do usuário master na empresa (user_roles)') ||
+    msg.includes('falha ao vincular papel do usuÃ¡rio master na empresa (user_roles)') ||
     msg.includes('falha ao vincular papel do usuario master na empresa (user_roles)') ||
-    msg.includes('falha ao vincular papel do usuário na empresa (user_roles)') ||
+    msg.includes('falha ao vincular papel do usuÃ¡rio na empresa (user_roles)') ||
     msg.includes('falha ao vincular papel do usuario na empresa (user_roles)')
   )
 }
@@ -340,14 +341,14 @@ const tryRecoverCreateCompanyByLookup = async (payload: OwnerActionPayload, erro
   return {
     success: true,
     company: found,
-    warning: `Empresa criada com recuperação automática. Vínculo do usuário/papel requer revisão manual. (${errorMessage})`,
+    warning: `Empresa criada com recuperaÃ§Ã£o automÃ¡tica. VÃ­nculo do usuÃ¡rio/papel requer revisÃ£o manual. (${errorMessage})`,
     recovered: true,
   }
 }
 
 const parseErrorMessage = async (error: unknown) => {
   const unsafeError = error as { context?: unknown; message?: unknown } | null
-  if (!unsafeError) return 'Falha desconhecida ao executar operação Owner.'
+  if (!unsafeError) return 'Falha desconhecida ao executar operaÃ§Ã£o Owner.'
   const context = unsafeError?.context
 
   const status = Number((context as any)?.status)
@@ -392,12 +393,12 @@ const parseErrorMessage = async (error: unknown) => {
   const direct = String(unsafeError?.message ?? '').trim()
   if (direct) return withStatus(direct)
 
-  return withStatus('Falha desconhecida ao executar operação Owner.')
+  return withStatus('Falha desconhecida ao executar operaÃ§Ã£o Owner.')
 }
 
 export async function callOwnerAdmin<T = unknown>(payload: OwnerActionPayload) {
   if (!isOwnerActionPayload(payload)) {
-    throw new Error('Payload owner inválido: action obrigatória.')
+    throw new Error('Payload owner invÃ¡lido: action obrigatÃ³ria.')
   }
 
   const safePayload = sanitizeOwnerPayload(payload)
@@ -436,13 +437,13 @@ export async function callOwnerAdmin<T = unknown>(payload: OwnerActionPayload) {
   if (!token) {
     const refreshedToken = await refreshSession()
     if (!refreshedToken) {
-      throw new Error('Sessão expirada. Faça login novamente para continuar.')
+      throw new Error('SessÃ£o expirada. FaÃ§a login novamente para continuar.')
     }
     token = refreshedToken
   }
 
   if (!token) {
-    throw new Error('Sessão expirada. Faça login novamente para continuar.')
+    throw new Error('SessÃ£o expirada. FaÃ§a login novamente para continuar.')
   }
 
   try {
@@ -600,6 +601,10 @@ export async function listSupportTickets(): Promise<OwnerSupportTicket[]> {
 export async function respondSupportTicket(ticketId: string, response: string, status = 'resolvido') {
   return callOwnerAdmin({ action: 'respond_support_ticket', ticket_id: ticketId, response, status })
 }
+export async function deleteSupportTicket(ticketId: string) {
+  return callOwnerAdmin({ action: 'delete_support_ticket', ticket_id: ticketId })
+}
+
 
 export async function listAuditLogs(filters?: Record<string, unknown>): Promise<OwnerAuditLog[]> {
   const data = await callOwnerAdmin<{ logs: OwnerAuditLog[] }>({ action: 'list_audit_logs', filters: filters ?? {} })
@@ -759,3 +764,5 @@ export async function deleteCompanyByOwner(payload: {
   // Operacao destrutiva deve ocorrer apenas no backend owner-portal-admin.
   return callOwnerAdmin({ action: 'delete_company', ...payload, include_auth_users: true })
 }
+
+

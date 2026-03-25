@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from 'react'
-import { AlertTriangle, LifeBuoy, Loader2, MessageSquarePlus } from 'lucide-react'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { AlertTriangle, ChevronDown, ChevronUp, LifeBuoy, Loader2, MessageSquarePlus, Send } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -22,15 +22,33 @@ const isImageAttachmentUrl = (url: unknown) => {
   return ['.png', '.jpg', '.jpeg', '.webp', '.gif', '.bmp', '.svg'].some((extension) => normalized.endsWith(extension))
 }
 
+const statusBadge = (status: string) => {
+  const s = status.toLowerCase()
+  if (s === 'resolvido' || s === 'resolved' || s === 'fechado') return 'bg-emerald-100 text-emerald-700 border-emerald-200'
+  if (s === 'em_analise' || s === 'pending') return 'bg-sky-100 text-sky-700 border-sky-200'
+  return 'bg-amber-100 text-amber-700 border-amber-200'
+}
+
+const priorityBadge = (priority: string) => {
+  const p = priority.toLowerCase()
+  if (p === 'critica' || p === 'critical') return 'bg-purple-100 text-purple-700 border-purple-200'
+  if (p === 'alta' || p === 'high' || p === 'urgente') return 'bg-red-100 text-red-700 border-red-200'
+  if (p === 'media' || p === 'medium') return 'bg-amber-100 text-amber-700 border-amber-200'
+  return 'bg-slate-100 text-slate-600 border-slate-200'
+}
+
 export default function Suporte() {
   const { tenantId, user } = useAuth()
   const [subject, setSubject] = useState('')
   const [message, setMessage] = useState('')
   const [priority, setPriority] = useState('media')
-  const [replyDrafts, setReplyDrafts] = useState<Record<string, string>>({})
+  const [replyText, setReplyText] = useState('')
   const [createAttachments, setCreateAttachments] = useState<File[]>([])
-  const [replyAttachments, setReplyAttachments] = useState<Record<string, File[]>>({})
+  const [replyAttachments, setReplyAttachments] = useState<File[]>([])
   const [uploading, setUploading] = useState(false)
+  const [selectedTicketId, setSelectedTicketId] = useState<string | null>(null)
+  const [showNewTicketForm, setShowNewTicketForm] = useState(false)
+  const threadEndRef = useRef<HTMLDivElement>(null)
 
   const canUploadAttachment = Boolean(tenantId && user?.id)
 
@@ -49,11 +67,27 @@ export default function Suporte() {
     markMessagesRead.mutate()
   }, [markMessagesRead, unreadClientTotal])
 
+  const selectedTicket = useMemo(
+    () => (tickets ?? []).find((t) => t.id === selectedTicketId) ?? null,
+    [tickets, selectedTicketId],
+  )
+
+  const threadMessages = useMemo(() => {
+    if (!selectedTicket) return []
+    return selectedTicket.messages ?? []
+  }, [selectedTicket])
+
+  useEffect(() => {
+    if (threadEndRef.current) {
+      threadEndRef.current.scrollIntoView({ behavior: 'smooth' })
+    }
+  }, [threadMessages.length])
+
   const totals = useMemo(() => {
     const all = tickets ?? []
     return {
       total: all.length,
-      aberto: all.filter((t) => t.status === 'aberto').length,
+      aberto: all.filter((t) => t.status === 'aberto' || t.status === 'em_analise').length,
       resolvido: all.filter((t) => t.status === 'resolvido').length,
     }
   }, [tickets])
@@ -65,39 +99,22 @@ export default function Suporte() {
     const trimmedMessage = message.trim()
 
     if (!trimmedSubject || !trimmedMessage) {
-      toast({
-        title: 'Campos obrigatorios',
-        description: 'Informe assunto e descricao do problema.',
-        variant: 'destructive',
-      })
+      toast({ title: 'Campos obrigatorios', description: 'Informe assunto e descricao do problema.', variant: 'destructive' })
       return
     }
 
     try {
       setUploading(true)
       const uploadedAttachments = await uploadSupportFiles(createAttachments, 'new-ticket')
-      await createTicket.mutateAsync({
-        subject: trimmedSubject,
-        message: trimmedMessage,
-        priority,
-        attachments: uploadedAttachments,
-      })
-
+      await createTicket.mutateAsync({ subject: trimmedSubject, message: trimmedMessage, priority, attachments: uploadedAttachments })
       setSubject('')
       setMessage('')
       setPriority('media')
       setCreateAttachments([])
-
-      toast({
-        title: 'Chamado aberto',
-        description: 'Sua solicitacao foi registrada no suporte do sistema.',
-      })
+      setShowNewTicketForm(false)
+      toast({ title: 'Chamado aberto', description: 'Sua solicitacao foi registrada no suporte do sistema.' })
     } catch (err: any) {
-      toast({
-        title: 'Erro ao abrir chamado',
-        description: String(err?.message ?? 'Falha ao registrar chamado.'),
-        variant: 'destructive',
-      })
+      toast({ title: 'Erro ao abrir chamado', description: String(err?.message ?? 'Falha ao registrar chamado.'), variant: 'destructive' })
     } finally {
       setUploading(false)
     }
@@ -105,41 +122,32 @@ export default function Suporte() {
 
   const uploadSupportFiles = async (files: File[], ticketId: string) => {
     if (!canUploadAttachment || files.length === 0 || !tenantId || !user?.id) return [] as string[]
-
     const validFiles = files.filter((file) => file.type.startsWith('image/'))
     const urls: string[] = []
-
     for (const file of validFiles) {
       const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_')
       const filePath = `${tenantId}/${user.id}/${ticketId}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}-${safeName}`
       const publicUrl = await uploadToStorage('support-attachments', filePath, file)
       urls.push(publicUrl)
     }
-
     return urls
   }
 
-  const handleSendFollowUp = async (ticketId: string) => {
-    const content = (replyDrafts[ticketId] ?? '').trim()
-    const files = replyAttachments[ticketId] ?? []
+  const handleSendFollowUp = async () => {
+    if (!selectedTicketId) return
+    const content = replyText.trim()
+    const files = replyAttachments
     if (!content && files.length === 0) return
 
     try {
       setUploading(true)
-      const uploadedAttachments = await uploadSupportFiles(files, ticketId)
-      await addTicketMessage.mutateAsync({ ticketId, message: content || 'Anexo enviado pelo cliente.', attachments: uploadedAttachments })
-      setReplyDrafts((current) => ({ ...current, [ticketId]: '' }))
-      setReplyAttachments((current) => ({ ...current, [ticketId]: [] }))
-      toast({
-        title: 'Mensagem enviada',
-        description: 'Sua dúvida foi registrada no chamado.',
-      })
+      const uploadedAttachments = await uploadSupportFiles(files, selectedTicketId)
+      await addTicketMessage.mutateAsync({ ticketId: selectedTicketId, message: content || 'Anexo enviado pelo cliente.', attachments: uploadedAttachments })
+      setReplyText('')
+      setReplyAttachments([])
+      toast({ title: 'Mensagem enviada', description: 'Sua d\u00favida foi registrada no chamado.' })
     } catch (err: any) {
-      toast({
-        title: 'Falha ao enviar mensagem',
-        description: String(err?.message ?? 'Não foi possível registrar sua dúvida.'),
-        variant: 'destructive',
-      })
+      toast({ title: 'Falha ao enviar mensagem', description: String(err?.message ?? 'N\u00e3o foi poss\u00edvel registrar sua d\u00favida.'), variant: 'destructive' })
     } finally {
       setUploading(false)
     }
@@ -158,218 +166,233 @@ export default function Suporte() {
   }
 
   return (
-    <div className="module-page space-y-6">
-      <div className="module-page-header">
-        <h1 className="text-2xl font-bold">Suporte do Sistema</h1>
-        <p className="text-muted-foreground">Abra chamados para erros, lentidao, indisponibilidade ou comportamento incorreto do sistema.</p>
+    <div className="module-page space-y-4">
+      <div className="module-page-header flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold">Suporte do Sistema</h1>
+          <p className="text-sm text-muted-foreground">Abra chamados e acompanhe suas solicita\u00e7\u00f5es.</p>
+        </div>
+        <Button
+          variant={showNewTicketForm ? 'outline' : 'default'}
+          size="sm"
+          className="gap-2"
+          onClick={() => setShowNewTicketForm((v) => !v)}
+        >
+          {showNewTicketForm ? <ChevronUp className="h-4 w-4" /> : <MessageSquarePlus className="h-4 w-4" />}
+          {showNewTicketForm ? 'Fechar formul\u00e1rio' : 'Novo chamado'}
+        </Button>
       </div>
 
-      <section className="grid gap-3 md:grid-cols-4">
-        <div className="rounded-lg border bg-card p-4">
-          <p className="text-xs text-muted-foreground">Total de chamados</p>
+      {/* Stats */}
+      <section className="grid gap-3 grid-cols-2 md:grid-cols-4">
+        <div className="rounded-lg border bg-card p-3">
+          <p className="text-xs text-muted-foreground">Total</p>
           <p className="mt-1 text-xl font-semibold">{totals.total}</p>
         </div>
-        <div className="rounded-lg border bg-card p-4">
+        <div className="rounded-lg border bg-card p-3">
           <p className="text-xs text-muted-foreground">Em aberto</p>
           <p className="mt-1 text-xl font-semibold text-amber-600">{totals.aberto}</p>
         </div>
-        <div className="rounded-lg border bg-card p-4">
+        <div className="rounded-lg border bg-card p-3">
           <p className="text-xs text-muted-foreground">Resolvidos</p>
           <p className="mt-1 text-xl font-semibold text-emerald-600">{totals.resolvido}</p>
         </div>
-        <div className="rounded-lg border bg-card p-4">
-          <p className="text-xs text-muted-foreground">Mensagens não lidas</p>
-          <p className="mt-1 text-xl font-semibold text-info">{unreadClientTotal}</p>
+        <div className="rounded-lg border bg-card p-3">
+          <p className="text-xs text-muted-foreground">N\u00e3o lidas</p>
+          <p className="mt-1 text-xl font-semibold text-sky-600">{unreadClientTotal}</p>
         </div>
       </section>
 
-      <section className="rounded-lg border bg-card p-4">
-        <h2 className="flex items-center gap-2 text-base font-semibold">
-          <MessageSquarePlus className="h-4 w-4" />
-          Abrir novo chamado
-        </h2>
-        <form onSubmit={handleSubmit} className="mt-4 grid gap-4">
-          <div className="grid gap-2">
-            <Label htmlFor="support-subject">Assunto</Label>
-            <Input
-              id="support-subject"
-              value={subject}
-              maxLength={160}
-              onChange={(event) => setSubject(event.target.value)}
-              placeholder="Ex: Erro ao fechar ordem de servico"
-            />
-          </div>
+      {/* New ticket form (collapsible) */}
+      {showNewTicketForm && (
+        <section className="rounded-lg border bg-card p-4 animate-in fade-in slide-in-from-top-2 duration-200">
+          <h2 className="flex items-center gap-2 text-base font-semibold mb-3">
+            <MessageSquarePlus className="h-4 w-4" />
+            Abrir novo chamado
+          </h2>
+          <form onSubmit={handleSubmit} className="grid gap-3 md:grid-cols-2">
+            <div className="grid gap-2">
+              <Label htmlFor="support-subject">Assunto</Label>
+              <Input id="support-subject" value={subject} maxLength={160} onChange={(e) => setSubject(e.target.value)} placeholder="Ex: Erro ao fechar ordem de servico" />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="support-priority">Prioridade</Label>
+              <select id="support-priority" value={priority} onChange={(e) => setPriority(e.target.value)} className="h-10 rounded-md border bg-background px-3 text-sm">
+                {PRIORITY_OPTIONS.map((opt) => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
+              </select>
+            </div>
+            <div className="grid gap-2 md:col-span-2">
+              <Label htmlFor="support-message">Descri\u00e7\u00e3o detalhada</Label>
+              <Textarea id="support-message" rows={4} value={message} onChange={(e) => setMessage(e.target.value)} placeholder="Descreva o que aconteceu, em qual tela e como reproduzir." />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="support-attachment">Anexo de imagem (opcional)</Label>
+              <Input id="support-attachment" type="file" accept="image/*" multiple onChange={(e) => setCreateAttachments(Array.from(e.target.files ?? []))} />
+            </div>
+            <div className="flex items-end justify-end">
+              <Button type="submit" disabled={createTicket.isPending || uploading} className="gap-2">
+                {(createTicket.isPending || uploading) && <Loader2 className="h-4 w-4 animate-spin" />}
+                Enviar chamado
+              </Button>
+            </div>
+          </form>
+        </section>
+      )}
 
-          <div className="grid gap-2">
-            <Label htmlFor="support-priority">Prioridade</Label>
-            <select
-              id="support-priority"
-              value={priority}
-              onChange={(event) => setPriority(event.target.value)}
-              className="h-10 rounded-md border bg-background px-3 text-sm"
-            >
-              {PRIORITY_OPTIONS.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-          </div>
+      {/* Main grid: ticket list + detail panel */}
+      <div className="grid gap-4 xl:grid-cols-5">
+        {/* Ticket List */}
+        <div className="xl:col-span-2">
+          <div className="rounded-lg border bg-card p-3">
+            <h2 className="flex items-center gap-2 text-sm font-semibold mb-2">
+              <LifeBuoy className="h-4 w-4" />
+              Chamados ({(tickets ?? []).length})
+            </h2>
 
-          <div className="grid gap-2">
-            <Label htmlFor="support-message">Descricao detalhada</Label>
-            <Textarea
-              id="support-message"
-              rows={5}
-              value={message}
-              onChange={(event) => setMessage(event.target.value)}
-              placeholder="Descreva o que aconteceu, em qual tela e como reproduzir."
-            />
-          </div>
-
-          <div className="grid gap-2">
-            <Label htmlFor="support-attachment">Anexo de imagem (opcional)</Label>
-            <Input
-              id="support-attachment"
-              type="file"
-              accept="image/*"
-              multiple
-              onChange={(event) => setCreateAttachments(Array.from(event.target.files ?? []))}
-            />
-            <p className="text-xs text-muted-foreground">Envie print do erro para acelerar o diagnóstico.</p>
-          </div>
-
-          <div className="flex justify-end">
-            <Button type="submit" disabled={createTicket.isPending || uploading} className="gap-2">
-              {(createTicket.isPending || uploading) && <Loader2 className="h-4 w-4 animate-spin" />}
-              Enviar chamado
-            </Button>
-          </div>
-        </form>
-      </section>
-
-      <section className="rounded-lg border bg-card p-4">
-        <h2 className="flex items-center gap-2 text-base font-semibold">
-          <LifeBuoy className="h-4 w-4" />
-          Historico de chamados
-        </h2>
-
-        {isLoading ? (
-          <div className="py-6 text-sm text-muted-foreground">Carregando chamados...</div>
-        ) : (tickets ?? []).length === 0 ? (
-          <div className="py-6 text-sm text-muted-foreground">Nenhum chamado registrado ate o momento.</div>
-        ) : (
-          <div className="mt-3 space-y-3">
-            {(tickets ?? []).map((ticket) => (
-              <article key={ticket.id} className="rounded-md border bg-background p-3">
-                <div className="flex flex-wrap items-center gap-2">
-                  <p className="font-medium">{ticket.subject}</p>
-                  <span className="rounded border px-2 py-0.5 text-xs uppercase">{ticket.status}</span>
-                  <span className="rounded border px-2 py-0.5 text-xs uppercase">{ticket.priority ?? 'media'}</span>
-                  {Number(ticket.unread_client_messages ?? 0) > 0 && (
-                    <span className="rounded border border-primary/40 bg-primary/10 px-2 py-0.5 text-xs font-semibold text-primary">
-                      {ticket.unread_client_messages} nova(s)
-                    </span>
-                  )}
-                </div>
-
-                <div className="mt-3 space-y-2">
-                  {(ticket.messages ?? []).length > 0 ? (
-                    (ticket.messages ?? []).map((entry) => {
-                      const isOwner = entry.sender === 'owner'
-                      return (
-                        <div
-                          key={entry.id}
-                          className={isOwner
-                            ? 'rounded-md border border-emerald-200 bg-emerald-50 p-2 text-sm text-emerald-900'
-                            : 'rounded-md border border-border bg-card p-2 text-sm text-foreground'}
-                        >
-                          <p className="text-[11px] font-semibold uppercase tracking-wide opacity-80">
-                            {isOwner ? 'Suporte' : 'Você'}
-                          </p>
-                          <p className="mt-1 whitespace-pre-wrap">{entry.message}</p>
-                          {Array.isArray(entry.attachments) && entry.attachments.length > 0 && (
-                            <div className="mt-2 space-y-1">
-                              {entry.attachments.map((url) => (
-                                <div key={url} className="space-y-1">
-                                  {isImageAttachmentUrl(url) && (
-                                    <a href={url} target="_blank" rel="noopener noreferrer" className="block">
-                                      <img
-                                        src={url}
-                                        alt="Anexo do chamado"
-                                        loading="lazy"
-                                        className="max-h-52 rounded-md border border-border object-contain"
-                                      />
-                                    </a>
-                                  )}
-                                  <a href={url} target="_blank" rel="noopener noreferrer" className="block text-xs text-info underline">
-                                    Ver anexo
-                                  </a>
-                                </div>
-                              ))}
-                            </div>
-                          )}
-                          <p className="mt-1 text-[10px] opacity-70">
-                            {new Date(entry.created_at).toLocaleString('pt-BR')}
-                          </p>
+            {isLoading ? (
+              <div className="py-8 text-center text-sm text-muted-foreground">
+                <Loader2 className="mx-auto h-5 w-5 animate-spin mb-2" />
+                Carregando...
+              </div>
+            ) : (tickets ?? []).length === 0 ? (
+              <div className="py-8 text-center text-sm text-muted-foreground">Nenhum chamado registrado.</div>
+            ) : (
+              <div className="max-h-[560px] overflow-auto space-y-1">
+                {(tickets ?? []).map((ticket) => {
+                  const isSelected = ticket.id === selectedTicketId
+                  const unread = Number(ticket.unread_client_messages ?? 0)
+                  const created = new Date(ticket.created_at).toLocaleDateString('pt-BR')
+                  return (
+                    <button
+                      key={ticket.id}
+                      type="button"
+                      onClick={() => setSelectedTicketId(ticket.id)}
+                      className={`w-full text-left p-3 rounded-lg border transition-all ${isSelected ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/30 hover:bg-accent/50'}`}
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0 flex-1">
+                          <p className={`text-sm font-medium truncate ${isSelected ? 'text-primary' : ''}`}>{ticket.subject}</p>
                         </div>
-                      )
-                    })
-                  ) : (
-                    <p className="text-sm text-muted-foreground whitespace-pre-wrap">{ticket.message}</p>
+                        {unread > 0 && (
+                          <span className="shrink-0 rounded-full bg-primary text-primary-foreground text-[10px] font-bold px-1.5 py-0.5">{unread}</span>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2 mt-1.5">
+                        <span className={`rounded border px-1.5 py-0.5 text-[10px] font-medium ${statusBadge(ticket.status)}`}>{ticket.status}</span>
+                        <span className={`rounded border px-1.5 py-0.5 text-[10px] font-medium ${priorityBadge(ticket.priority ?? 'media')}`}>{ticket.priority ?? 'media'}</span>
+                        <span className="text-[10px] text-muted-foreground ml-auto">{created}</span>
+                      </div>
+                    </button>
+                  )
+                })}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Detail & Thread */}
+        <div className="xl:col-span-3 space-y-3">
+          {selectedTicket ? (
+            <>
+              {/* Ticket header */}
+              <div className="rounded-lg border bg-card p-4">
+                <h3 className="font-semibold text-base">{selectedTicket.subject}</h3>
+                <div className="flex flex-wrap items-center gap-3 mt-2 text-xs">
+                  <span className={`rounded border px-2 py-0.5 font-medium ${statusBadge(selectedTicket.status)}`}>{selectedTicket.status}</span>
+                  <span className={`rounded border px-2 py-0.5 font-medium ${priorityBadge(selectedTicket.priority ?? 'media')}`}>{selectedTicket.priority ?? 'media'}</span>
+                  <span className="text-muted-foreground">Criado em {new Date(selectedTicket.created_at).toLocaleString('pt-BR')}</span>
+                </div>
+              </div>
+
+              {/* Thread conversation */}
+              <div className="rounded-lg border bg-card p-4">
+                <h4 className="text-sm font-semibold mb-3">Conversa ({threadMessages.length} mensagens)</h4>
+                <div className="max-h-[380px] overflow-auto space-y-2 pr-1">
+                  {threadMessages.length === 0 && (
+                    <p className="text-sm text-muted-foreground py-4 text-center">Nenhuma mensagem ainda</p>
                   )}
+                  {threadMessages.map((entry) => {
+                    const isOwner = entry.sender === 'owner' || entry.sender === 'system'
+                    return (
+                      <div
+                        key={entry.id}
+                        className={`p-3 rounded-lg text-sm ${isOwner
+                          ? 'bg-emerald-50 border border-emerald-200 ml-8 dark:bg-emerald-950/30 dark:border-emerald-800'
+                          : 'bg-muted border border-border mr-8'}`}
+                      >
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className={`text-[10px] font-bold uppercase ${isOwner ? 'text-emerald-600' : 'text-muted-foreground'}`}>
+                            {isOwner ? 'Suporte' : 'Voc\u00ea'}
+                          </span>
+                          <span className="text-[10px] text-muted-foreground">
+                            {new Date(entry.created_at).toLocaleString('pt-BR')}
+                          </span>
+                        </div>
+                        <p className="whitespace-pre-wrap">{entry.message}</p>
+                        {Array.isArray(entry.attachments) && entry.attachments.length > 0 && (
+                          <div className="mt-2 flex flex-wrap gap-2">
+                            {entry.attachments.map((url) => (
+                              <div key={url}>
+                                {isImageAttachmentUrl(url) ? (
+                                  <a href={url} target="_blank" rel="noopener noreferrer" className="block">
+                                    <img src={url} alt="Anexo" loading="lazy" className="max-h-40 rounded-md border border-border object-contain hover:opacity-90 transition-opacity" />
+                                  </a>
+                                ) : (
+                                  <a href={url} target="_blank" rel="noopener noreferrer" className="text-xs text-primary underline">Ver anexo</a>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )
+                  })}
+                  <div ref={threadEndRef} />
                 </div>
 
-                {/* Always show reply form - even for resolved tickets (will reopen on send) */}
-                <div className="mt-3 space-y-2">
+                {/* Reply form */}
+                <div className="mt-3 space-y-2 border-t pt-3">
                   <Textarea
                     rows={3}
-                    value={replyDrafts[ticket.id] ?? ''}
-                    onChange={(event) =>
-                      setReplyDrafts((current) => ({
-                        ...current,
-                        [ticket.id]: event.target.value,
-                      }))
-                    }
-                    placeholder={ticket.status === 'resolvido' ? 'Reabrir chamado com nova mensagem...' : 'Enviar nova dúvida ou atualização neste chamado'}
+                    value={replyText}
+                    onChange={(e) => setReplyText(e.target.value)}
+                    placeholder={selectedTicket.status === 'resolvido' ? 'Reabrir chamado com nova mensagem...' : 'Enviar nova mensagem neste chamado...'}
                   />
-                  <div>
-                    <label className="block text-xs text-muted-foreground mb-1">Anexar imagens (opcional)</label>
-                    <Input
-                      type="file"
-                      accept="image/*"
-                      multiple
-                      onChange={(event) =>
-                        setReplyAttachments((current) => ({
-                          ...current,
-                          [ticket.id]: Array.from(event.target.files ?? []),
-                        }))
-                      }
-                    />
-                    {(replyAttachments[ticket.id] ?? []).length > 0 && (
-                      <p className="text-xs text-muted-foreground mt-1">{(replyAttachments[ticket.id] ?? []).length} arquivo(s) selecionado(s)</p>
-                    )}
-                  </div>
-                  <div className="flex justify-end">
+                  <div className="flex items-center gap-3">
+                    <div className="flex-1">
+                      <Input
+                        type="file"
+                        accept="image/*"
+                        multiple
+                        className="text-xs"
+                        onChange={(e) => setReplyAttachments(Array.from(e.target.files ?? []))}
+                      />
+                      {replyAttachments.length > 0 && (
+                        <p className="text-[10px] text-muted-foreground mt-0.5">{replyAttachments.length} arquivo(s)</p>
+                      )}
+                    </div>
                     <Button
                       type="button"
                       size="sm"
-                      disabled={addTicketMessage.isPending || uploading || (!(replyDrafts[ticket.id] ?? '').trim() && (replyAttachments[ticket.id] ?? []).length === 0)}
-                      onClick={() => void handleSendFollowUp(ticket.id)}
+                      className="gap-2"
+                      disabled={addTicketMessage.isPending || uploading || (!replyText.trim() && replyAttachments.length === 0)}
+                      onClick={() => void handleSendFollowUp()}
                     >
-                      {ticket.status === 'resolvido' ? 'Reabrir e enviar' : 'Enviar mensagem'}
+                      {(addTicketMessage.isPending || uploading) ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
+                      {selectedTicket.status === 'resolvido' ? 'Reabrir' : 'Enviar'}
                     </Button>
                   </div>
                 </div>
-
-                <p className="mt-2 text-xs text-muted-foreground">
-                  Atualizado em {new Date(ticket.updated_at).toLocaleString('pt-BR')}
-                </p>
-              </article>
-            ))}
-          </div>
-        )}
-      </section>
+              </div>
+            </>
+          ) : (
+            <div className="rounded-lg border bg-card p-8 text-center">
+              <LifeBuoy className="mx-auto h-10 w-10 text-muted-foreground/30" />
+              <p className="mt-3 text-sm text-muted-foreground">Selecione um chamado na lista para visualizar a conversa</p>
+            </div>
+          )}
+        </div>
+      </div>
     </div>
   )
 }

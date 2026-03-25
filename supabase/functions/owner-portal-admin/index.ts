@@ -31,6 +31,7 @@ type Payload = {
     | "list_support_tickets"
     | "respond_support_ticket"
     | "mark_ticket_read_owner"
+    | "delete_support_ticket"
     | "list_audit_logs"
     | "get_company_settings"
     | "update_company_settings"
@@ -50,6 +51,7 @@ type Payload = {
     | "cleanup_company_data"
     | "delete_company"
     | "purge_table_data"
+    "delete_support_ticket",
     | "asaas_link_subscription"
     | "asaas_sync_subscription"
     | "list_subscription_payments"
@@ -3653,6 +3655,23 @@ Deno.serve(async (req) => {
       .eq("id", body.ticket_id)
       .gt("unread_owner_messages", 0);
     if (error) return fail(error.message, 400, null, req);
+    return ok({ success: true }, 200, req);
+  }
+
+  if (body.action === "delete_support_ticket") {
+    if (!body.ticket_id) return fail("ticket_id is required", 400, null, req);
+    const { error } = await admin
+      .from("support_tickets")
+      .delete()
+      .eq("id", body.ticket_id);
+    if (error) return fail(error.message, 400, null, req);
+    await logOwnerMasterHiddenAudit(admin, {
+      actorId: auth.user.id,
+      actorEmail: auth.user.email,
+      empresaId: null,
+      actionType: "DELETE_SUPPORT_TICKET",
+      details: { ticket_id: body.ticket_id, at: new Date().toISOString() },
+    }).catch(() => null);
     return ok({ success: true }, 200, req);
   }
 

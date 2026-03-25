@@ -1568,6 +1568,25 @@ export default function Owner() {
                               <span className="text-slate-400">({getRequesterInfo(selectedTicket).email})</span>
                             )}
                           </div>
+                          {isOwnerMaster && (
+                            <div className="flex justify-end">
+                              <button
+                                type="button"
+                                className="rounded-lg border border-rose-300 bg-rose-50 px-3 py-1.5 text-xs font-medium text-rose-700 hover:bg-rose-100 disabled:opacity-50 transition-colors"
+                                disabled={busy}
+                                onClick={() => openCriticalAction({
+                                  title: 'Excluir ticket de suporte',
+                                  description: `Excluir definitivamente o ticket "${String(selectedTicket.subject ?? '')}" e todo seu histórico de mensagens.`,
+                                  confirmText: 'EXCLUIR',
+                                  action: 'delete_support_ticket',
+                                  payload: { ticket_id: selectedTicketId },
+                                  successMessage: 'Ticket excluído com sucesso.',
+                                })}
+                              >
+                                Excluir ticket
+                              </button>
+                            </div>
+                          )}
                         </SurfaceCard>
 
                         {/* Thread - full conversation */}
