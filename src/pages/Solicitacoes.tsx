@@ -4,11 +4,11 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Plus, Search, Clock, GitBranch } from 'lucide-react';
+import { Plus, Search, Clock, Eye, CheckCircle2, XCircle, GitBranch, AlertTriangle } from 'lucide-react';
 import { useSolicitacoes, useCreateSolicitacao, useUpdateSolicitacao, type SolicitacaoRow } from '@/hooks/useSolicitacoes';
 import { useEquipamentos } from '@/hooks/useEquipamentos';
 import { useAuth } from '@/contexts/AuthContext';
@@ -19,6 +19,9 @@ export default function Solicitacoes() {
   const { user } = useAuth();
   const [search, setSearch] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [selectedSol, setSelectedSol] = useState<SolicitacaoRow | null>(null);
+  const [rejectReason, setRejectReason] = useState('');
+  const [showRejectInput, setShowRejectInput] = useState(false);
   const [formData, setFormData] = useState({
     tag: '',
     solicitante_nome: '',
@@ -50,34 +53,38 @@ export default function Solicitacoes() {
 
   const canReviewSolicitacao = user?.tipo !== 'SOLICITANTE';
 
-  const canConvertToOS = (solicitacao: SolicitacaoRow) => {
-    return solicitacao.status === 'APROVADA' && !solicitacao.os_id;
+  const handleOpenDetail = (sol: SolicitacaoRow) => {
+    setSelectedSol(sol);
+    setShowRejectInput(false);
+    setRejectReason('');
   };
 
-  const canApproveOrReject = (solicitacao: SolicitacaoRow) => {
-    return canReviewSolicitacao && solicitacao.status === 'PENDENTE';
+  const handleCloseDetail = () => {
+    setSelectedSol(null);
+    setShowRejectInput(false);
+    setRejectReason('');
   };
 
-  const handleAprovar = async (solicitacao: SolicitacaoRow) => {
+  const handleAprovar = async () => {
+    if (!selectedSol) return;
+    await updateMutation.mutateAsync({ id: selectedSol.id, status: 'APROVADA' });
+    setSelectedSol({ ...selectedSol, status: 'APROVADA' });
+  };
+
+  const handleRejeitar = async () => {
+    if (!selectedSol || !rejectReason.trim()) return;
     await updateMutation.mutateAsync({
-      id: solicitacao.id,
-      status: 'APROVADA',
-    });
-  };
-
-  const handleRejeitar = async (solicitacao: SolicitacaoRow) => {
-    await updateMutation.mutateAsync({
-      id: solicitacao.id,
+      id: selectedSol.id,
       status: 'REJEITADA',
+      observacoes: rejectReason.trim(),
     });
+    handleCloseDetail();
   };
 
-  const handleConverterParaOS = (solicitacao: SolicitacaoRow) => {
-    navigate('/os/nova', {
-      state: {
-        solicitacao,
-      },
-    });
+  const handleConverterParaOS = () => {
+    if (!selectedSol) return;
+    handleCloseDetail();
+    navigate('/os/nova', { state: { solicitacao: selectedSol } });
   };
 
   const filteredSolicitacoes = solicitacoes?.filter(s => {
@@ -120,6 +127,15 @@ export default function Solicitacoes() {
       'PROGRAMAVEL': 'bg-info/10 text-info',
     };
     return styles[classificacao] || '';
+  };
+
+  const getImpactoBadge = (impacto: string) => {
+    const styles: Record<string, string> = {
+      'ALTO': 'bg-destructive/10 text-destructive',
+      'MEDIO': 'bg-warning/10 text-warning',
+      'BAIXO': 'bg-success/10 text-success',
+    };
+    return styles[impacto] || '';
   };
 
   if (isLoading) {
@@ -176,46 +192,17 @@ export default function Solicitacoes() {
                   <td>{sol.solicitante_nome}</td>
                   <td><Badge className={getClassificacaoBadge(sol.classificacao)}>{sol.classificacao}</Badge></td>
                   <td><Badge className={getStatusBadge(sol.status)}>{sol.status}</Badge></td>
-                  <td className="flex items-center gap-1"><Clock className="h-3 w-3" />{sol.sla_horas}h</td>
+                  <td>
+                    <span className="inline-flex items-center gap-1">
+                      <Clock className="h-3 w-3 shrink-0" />{sol.sla_horas}h
+                    </span>
+                  </td>
                   <td>{new Date(sol.created_at).toLocaleDateString('pt-BR')}</td>
                   <td className="text-right">
-                    <div className="flex items-center justify-end gap-2">
-                      {canApproveOrReject(sol) && (
-                        <>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => handleRejeitar(sol)}
-                            disabled={updateMutation.isPending}
-                          >
-                            Rejeitar
-                          </Button>
-                          <Button
-                            size="sm"
-                            onClick={() => handleAprovar(sol)}
-                            disabled={updateMutation.isPending}
-                          >
-                            Aprovar
-                          </Button>
-                        </>
-                      )}
-
-                      {canConvertToOS(sol) ? (
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="gap-1"
-                          onClick={() => handleConverterParaOS(sol)}
-                        >
-                          <GitBranch className="h-3 w-3" />
-                          Converter em O.S
-                        </Button>
-                      ) : (
-                        <span className="text-xs text-muted-foreground">
-                          {sol.os_id ? 'Vinculada' : sol.status === 'PENDENTE' ? 'Aguardando aprovação' : 'Sem ação'}
-                        </span>
-                      )}
-                    </div>
+                    <Button size="sm" variant="outline" className="gap-1" onClick={() => handleOpenDetail(sol)}>
+                      <Eye className="h-3.5 w-3.5" />
+                      Ver
+                    </Button>
                   </td>
                 </tr>
               ))
@@ -224,6 +211,154 @@ export default function Solicitacoes() {
         </table>
       </div>
 
+      {/* ── Modal de Detalhes da Solicitação ── */}
+      <Dialog open={!!selectedSol} onOpenChange={(open) => { if (!open) handleCloseDetail(); }}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              Solicitação #{selectedSol?.numero_solicitacao}
+              {selectedSol && <Badge className={getStatusBadge(selectedSol.status)}>{selectedSol.status}</Badge>}
+            </DialogTitle>
+            <DialogDescription>Detalhes completos da solicitação de manutenção</DialogDescription>
+          </DialogHeader>
+
+          {selectedSol && (
+            <div className="space-y-5 pt-2">
+              {/* Informações principais */}
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide">TAG do Equipamento</p>
+                  <p className="font-mono text-primary font-semibold">{selectedSol.tag}</p>
+                </div>
+                <div className="space-y-1">
+                  <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide">Solicitante</p>
+                  <p className="font-medium">{selectedSol.solicitante_nome}</p>
+                  {selectedSol.solicitante_setor && (
+                    <p className="text-xs text-muted-foreground">{selectedSol.solicitante_setor}</p>
+                  )}
+                </div>
+              </div>
+
+              <div className="grid grid-cols-3 gap-4">
+                <div className="space-y-1">
+                  <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide">Classificação</p>
+                  <Badge className={getClassificacaoBadge(selectedSol.classificacao)}>{selectedSol.classificacao}</Badge>
+                </div>
+                <div className="space-y-1">
+                  <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide">Impacto</p>
+                  <Badge className={getImpactoBadge(selectedSol.impacto)}>{selectedSol.impacto}</Badge>
+                </div>
+                <div className="space-y-1">
+                  <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide">SLA</p>
+                  <p className="inline-flex items-center gap-1 font-medium">
+                    <Clock className="h-3.5 w-3.5 text-muted-foreground" />
+                    {selectedSol.sla_horas}h
+                    {selectedSol.data_limite && (
+                      <span className="text-xs text-muted-foreground ml-1">
+                        (até {new Date(selectedSol.data_limite).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })})
+                      </span>
+                    )}
+                  </p>
+                </div>
+              </div>
+
+              {/* Descrição da Falha */}
+              <div className="space-y-1">
+                <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide">Descrição da Falha</p>
+                <div className="bg-muted/50 border border-border rounded-md p-3 text-sm whitespace-pre-wrap">
+                  {selectedSol.descricao_falha}
+                </div>
+              </div>
+
+              {/* Observações (motivo de rejeição, etc.) */}
+              {selectedSol.observacoes && (
+                <div className="space-y-1">
+                  <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide">Observações</p>
+                  <div className="bg-muted/50 border border-border rounded-md p-3 text-sm whitespace-pre-wrap">
+                    {selectedSol.observacoes}
+                  </div>
+                </div>
+              )}
+
+              {/* Data */}
+              <div className="grid grid-cols-2 gap-4 text-sm text-muted-foreground">
+                <p>Criada em: {new Date(selectedSol.created_at).toLocaleString('pt-BR')}</p>
+                {selectedSol.os_id && <p className="text-success font-medium">Vinculada a uma O.S.</p>}
+              </div>
+
+              {/* ── Área de Input de Rejeição ── */}
+              {showRejectInput && (
+                <div className="space-y-2 border border-destructive/30 bg-destructive/5 rounded-md p-3">
+                  <div className="flex items-center gap-2 text-destructive text-sm font-medium">
+                    <AlertTriangle className="h-4 w-4" />
+                    Informe o motivo da rejeição
+                  </div>
+                  <Textarea
+                    value={rejectReason}
+                    onChange={(e) => setRejectReason(e.target.value)}
+                    placeholder="Descreva o motivo da rejeição..."
+                    rows={3}
+                    autoFocus
+                  />
+                  <div className="flex gap-2">
+                    <Button
+                      size="sm"
+                      variant="destructive"
+                      disabled={!rejectReason.trim() || updateMutation.isPending}
+                      onClick={handleRejeitar}
+                    >
+                      {updateMutation.isPending ? 'Rejeitando...' : 'Confirmar Rejeição'}
+                    </Button>
+                    <Button size="sm" variant="outline" onClick={() => { setShowRejectInput(false); setRejectReason(''); }}>
+                      Cancelar
+                    </Button>
+                  </div>
+                </div>
+              )}
+
+              {/* ── Botões de Ação ── */}
+              <div className="flex items-center gap-3 pt-2 border-t border-border">
+                {/* PENDENTE → Aprovar / Rejeitar */}
+                {canReviewSolicitacao && selectedSol.status === 'PENDENTE' && !showRejectInput && (
+                  <>
+                    <Button className="gap-1.5" onClick={handleAprovar} disabled={updateMutation.isPending}>
+                      <CheckCircle2 className="h-4 w-4" />
+                      {updateMutation.isPending ? 'Aprovando...' : 'Aprovar'}
+                    </Button>
+                    <Button variant="outline" className="gap-1.5 text-destructive hover:text-destructive" onClick={() => setShowRejectInput(true)}>
+                      <XCircle className="h-4 w-4" />
+                      Rejeitar
+                    </Button>
+                  </>
+                )}
+
+                {/* APROVADA e sem OS → Converter em O.S */}
+                {selectedSol.status === 'APROVADA' && !selectedSol.os_id && (
+                  <Button className="gap-1.5" onClick={handleConverterParaOS}>
+                    <GitBranch className="h-4 w-4" />
+                    Converter em Ordem de Serviço
+                  </Button>
+                )}
+
+                {/* Status finais */}
+                {selectedSol.os_id && (
+                  <span className="text-sm text-success font-medium">Já vinculada a uma O.S.</span>
+                )}
+                {selectedSol.status === 'REJEITADA' && (
+                  <span className="text-sm text-destructive font-medium">Solicitação rejeitada</span>
+                )}
+                {selectedSol.status === 'CANCELADA' && (
+                  <span className="text-sm text-muted-foreground font-medium">Solicitação cancelada</span>
+                )}
+
+                <Button variant="ghost" className="ml-auto" onClick={handleCloseDetail}>Fechar</Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Modal Nova Solicitação ── */}
       <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
         <DialogContent className="max-w-lg">
           <DialogHeader><DialogTitle>Nova Solicitação</DialogTitle></DialogHeader>
