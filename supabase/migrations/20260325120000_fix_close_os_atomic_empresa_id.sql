@@ -280,20 +280,18 @@ begin
           end if;
         end if;
 
-        insert into public.materiais_utilizados (
-          execucao_id,
+        insert into public.materiais_os (
           empresa_id,
+          os_id,
           material_id,
           quantidade,
-          custo_unitario,
-          custo_total
+          custo_unitario
         ) values (
-          v_execucao_id,
           v_os_empresa_id,
+          p_os_id,
           v_material_id,
           v_qtd,
-          v_unit,
-          v_item_total
+          v_unit
         );
 
         update public.materiais

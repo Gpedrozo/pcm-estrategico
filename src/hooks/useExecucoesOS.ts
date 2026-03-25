@@ -1,4 +1,4 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+﻿import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { insertWithColumnFallback } from '@/lib/supabaseCompat';
@@ -90,7 +90,7 @@ export function useExecucoesOS() {
   return useQuery({
     queryKey: ['execucoes-os', tenantId],
     queryFn: async () => {
-      if (!tenantId) throw new Error('Tenant não resolvido.');
+      if (!tenantId) throw new Error('Tenant nÃ£o resolvido.');
 
       const { data, error } = await supabase
         .from('execucoes_os')
@@ -112,7 +112,7 @@ export function useExecucaoByOSId(osId: string | undefined) {
     queryKey: ['execucao-os', tenantId, osId],
     queryFn: async () => {
       if (!osId) return null;
-      if (!tenantId) throw new Error('Tenant não resolvido.');
+      if (!tenantId) throw new Error('Tenant nÃ£o resolvido.');
       
       const { data, error } = await supabase
         .from('execucoes_os')
@@ -151,8 +151,8 @@ export function useCreateExecucaoOS() {
     },
     onError: (error: any) => {
       toast({
-        title: 'Erro ao registrar execução',
-        description: error.message || 'Ocorreu um erro ao registrar a execução.',
+        title: 'Erro ao registrar execuÃ§Ã£o',
+        description: error.message || 'Ocorreu um erro ao registrar a execuÃ§Ã£o.',
         variant: 'destructive',
       });
     },
@@ -208,8 +208,8 @@ export function useCloseOSAtomic() {
     },
     onError: (error: any) => {
       toast({
-        title: 'Erro ao fechar O.S (modo atômico)',
-        description: error?.message || 'Falha no fechamento atômico da O.S.',
+        title: 'Erro ao fechar O.S (modo atÃ´mico)',
+        description: error?.message || 'Falha no fechamento atÃ´mico da O.S.',
         variant: 'destructive',
       });
     },
