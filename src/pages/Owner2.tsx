@@ -1415,6 +1415,15 @@ export default function Owner() {
               }
               return fallback
             })()
+
+            // Resolve requester name from joined profiles
+            const getRequesterInfo = (ticket: Record<string, unknown>) => {
+              const profile = ticket.profiles as Record<string, unknown> | null
+              const nome = profile ? String(profile.nome ?? '').trim() : ''
+              const email = profile ? String(profile.email ?? '').trim() : ''
+              return { nome: nome || email || 'Desconhecido', email }
+            }
+
             const openCount = tickets.filter((t) => {
               const st = String(t.status ?? '').toLowerCase()
               return st === 'aberto' || st === 'em_analise' || st === 'open' || st === 'pending'
@@ -1461,6 +1470,16 @@ export default function Owner() {
               }
             }
 
+            const handleSelectTicket = async (tid: string) => {
+              setSelectedTicketId(tid)
+              const ticket = tickets.find((t) => String(t.id) === tid)
+              if (ticket && Number(ticket.unread_owner_messages ?? 0) > 0) {
+                try {
+                  await execute.mutateAsync({ action: 'mark_ticket_read_owner' as any, payload: { ticket_id: tid } })
+                } catch { /* silent - non-critical */ }
+              }
+            }
+
             return (
               <div className="space-y-4">
                 {/* Stats */}
@@ -1486,18 +1505,19 @@ export default function Owner() {
                           const created = t.created_at ? new Date(String(t.created_at)).toLocaleDateString('pt-BR') : '—'
                           const empresa = t.empresas as Record<string, unknown> | null
                           const empresaNome = empresa ? String(empresa.nome ?? empresa.slug ?? '') : ''
+                          const requester = getRequesterInfo(t)
                           return (
                             <button
                               key={tid}
                               type="button"
-                              onClick={() => setSelectedTicketId(tid)}
+                              onClick={() => void handleSelectTicket(tid)}
                               className={`w-full text-left p-3 rounded-lg border transition-all ${isSelected ? 'border-sky-400 bg-sky-50' : 'border-slate-200 hover:border-slate-300 hover:bg-slate-50'}`}
                             >
                               <div className="flex items-start justify-between gap-2">
                                 <div className="min-w-0 flex-1">
                                   <p className={`text-sm font-medium truncate ${isSelected ? 'text-sky-800' : ''}`}>{String(t.subject ?? 'Sem assunto')}</p>
-                                  <p className="text-xs text-slate-400 mt-0.5 truncate">{String(t.message ?? '').slice(0, 80)}</p>
-                                  {empresaNome && <p className="text-[10px] text-slate-400 mt-0.5">{empresaNome}</p>}
+                                  <p className="text-xs text-slate-500 mt-0.5 truncate">{requester.nome}</p>
+                                  {empresaNome && <p className="text-[10px] text-slate-400">{empresaNome}</p>}
                                 </div>
                                 {unread > 0 && (
                                   <span className="shrink-0 rounded-full bg-sky-600 text-white text-[10px] font-bold px-1.5 py-0.5">{unread}</span>
@@ -1529,6 +1549,13 @@ export default function Owner() {
                               const emp = selectedTicket.empresas as Record<string, unknown> | null
                               return emp ? String(emp.nome ?? emp.slug ?? String(selectedTicket.empresa_id ?? '—').slice(0, 8)) : String(selectedTicket.empresa_id ?? '—').slice(0, 8)
                             })()}</div>
+                          </div>
+                          <div className="flex items-center gap-3 text-xs mb-3 p-2 rounded-lg bg-slate-50 border border-slate-200">
+                            <span className="text-slate-400">Solicitante:</span>
+                            <span className="font-medium">{getRequesterInfo(selectedTicket).nome}</span>
+                            {getRequesterInfo(selectedTicket).email && (
+                              <span className="text-slate-400">({getRequesterInfo(selectedTicket).email})</span>
+                            )}
                           </div>
                         </SurfaceCard>
 

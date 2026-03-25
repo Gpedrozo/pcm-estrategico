@@ -34,6 +34,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useBranding } from '@/contexts/BrandingContext';
 import { useOptionalTenant } from '@/contexts/TenantContext';
 import { supabase } from '@/integrations/supabase/client';
+import { useSupportTickets } from '@/hooks/useSupportTickets';
 import {
   Sidebar,
   SidebarContent,
@@ -112,6 +113,12 @@ export function AppSidebar() {
   const location = useLocation();
   const [resolvedCompanyName, setResolvedCompanyName] = useState<string | null>(null);
 
+  const { data: supportTickets } = useSupportTickets();
+  const unreadClientCount = (supportTickets ?? []).reduce(
+    (sum, t) => sum + (t.unread_client_messages ?? 0),
+    0,
+  );
+
   useEffect(() => {
     let isMounted = true;
 
@@ -165,6 +172,11 @@ export function AppSidebar() {
         >
           <item.icon className="h-5 w-5" />
           <span>{item.title}</span>
+          {item.url === '/suporte' && unreadClientCount > 0 && (
+            <span className="ml-auto inline-flex h-5 min-w-[20px] items-center justify-center rounded-full bg-red-500 px-1.5 text-[11px] font-bold leading-none text-white">
+              {unreadClientCount > 99 ? '99+' : unreadClientCount}
+            </span>
+          )}
         </NavLink>
       </SidebarMenuButton>
     </SidebarMenuItem>

@@ -30,6 +30,7 @@ type Payload = {
     | "delete_contract"
     | "list_support_tickets"
     | "respond_support_ticket"
+    | "mark_ticket_read_owner"
     | "list_audit_logs"
     | "get_company_settings"
     | "update_company_settings"
@@ -259,6 +260,7 @@ const SUPPORTED_OWNER_ACTIONS: Payload["action"][] = [
   "delete_contract",
   "list_support_tickets",
   "respond_support_ticket",
+  "mark_ticket_read_owner",
   "list_audit_logs",
   "get_company_settings",
   "update_company_settings",
@@ -3637,6 +3639,17 @@ Deno.serve(async (req) => {
         last_message_at: now,
       })
       .eq("id", body.ticket_id);
+    if (error) return fail(error.message, 400, null, req);
+    return ok({ success: true }, 200, req);
+  }
+
+  if (body.action === "mark_ticket_read_owner") {
+    if (!body.ticket_id) return fail("ticket_id is required", 400, null, req);
+    const { error } = await admin
+      .from("support_tickets")
+      .update({ unread_owner_messages: 0 })
+      .eq("id", body.ticket_id)
+      .gt("unread_owner_messages", 0);
     if (error) return fail(error.message, 400, null, req);
     return ok({ success: true }, 200, req);
   }
