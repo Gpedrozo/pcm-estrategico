@@ -5,6 +5,7 @@ import { deleteMaintenanceSchedule, upsertMaintenanceSchedule } from '@/services
 import { insertWithColumnFallback, updateWithColumnFallback } from '@/lib/supabaseCompat';
 import { useAuth } from '@/contexts/AuthContext';
 import { writeAuditLog } from '@/lib/audit';
+import { logger } from '@/lib/logger';
 
 export interface PlanoPreventivo {
   id: string;
@@ -115,17 +116,21 @@ export function useCreatePlanoPreventivo() {
         } as Record<string, unknown>,
       );
 
-      await upsertMaintenanceSchedule({
-        tipo: 'preventiva',
-        origemId: data.id,
-        empresaId: tenantId!,
-        equipamentoId: data.equipamento_id,
-        titulo: `${data.codigo} • ${data.nome}`,
-        descricao: data.descricao,
-        dataProgramada: data.proxima_execucao || new Date().toISOString(),
-        status: data.ativo ? 'programado' : 'inativo',
-        responsavel: data.responsavel_nome,
-      });
+      try {
+        await upsertMaintenanceSchedule({
+          tipo: 'preventiva',
+          origemId: data.id,
+          empresaId: tenantId!,
+          equipamentoId: data.equipamento_id,
+          titulo: `${data.codigo} • ${data.nome}`,
+          descricao: data.descricao,
+          dataProgramada: data.proxima_execucao || new Date().toISOString(),
+          status: data.ativo ? 'programado' : 'inativo',
+          responsavel: data.responsavel_nome,
+        });
+      } catch (scheduleError) {
+        logger.warn('usePlanosPreventivos.create.schedule_sync_failed', { planoId: data.id, error: String(scheduleError) });
+      }
       return data as PlanoPreventivo;
     },
     onSuccess: () => {
@@ -168,17 +173,21 @@ export function useUpdatePlanoPreventivo() {
         updates as Record<string, unknown>,
       );
 
-      await upsertMaintenanceSchedule({
-        tipo: 'preventiva',
-        origemId: data.id,
-        empresaId: tenantId!,
-        equipamentoId: data.equipamento_id,
-        titulo: `${data.codigo} • ${data.nome}`,
-        descricao: data.descricao,
-        dataProgramada: data.proxima_execucao || new Date().toISOString(),
-        status: data.ativo ? 'programado' : 'inativo',
-        responsavel: data.responsavel_nome,
-      });
+      try {
+        await upsertMaintenanceSchedule({
+          tipo: 'preventiva',
+          origemId: data.id,
+          empresaId: tenantId!,
+          equipamentoId: data.equipamento_id,
+          titulo: `${data.codigo} • ${data.nome}`,
+          descricao: data.descricao,
+          dataProgramada: data.proxima_execucao || new Date().toISOString(),
+          status: data.ativo ? 'programado' : 'inativo',
+          responsavel: data.responsavel_nome,
+        });
+      } catch (scheduleError) {
+        logger.warn('usePlanosPreventivos.update.schedule_sync_failed', { planoId: data.id, error: String(scheduleError) });
+      }
       return data as PlanoPreventivo;
     },
     onSuccess: () => {
@@ -208,7 +217,7 @@ export function useDeletePlanoPreventivo() {
     mutationFn: async (id: string) => {
       if (!tenantId) throw new Error('Tenant não resolvido.');
 
-      await deleteMaintenanceSchedule('preventiva', id);
+      try { await deleteMaintenanceSchedule('preventiva', id); } catch { /* schedule cleanup best-effort */ }
 
       const { error } = await supabase
         .from('planos_preventivos')

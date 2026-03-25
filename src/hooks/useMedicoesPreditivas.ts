@@ -127,17 +127,19 @@ export function useCreateMedicaoPreditiva() {
         { ...medicao, empresa_id: tenantId } as Record<string, unknown>,
       );
 
-      await upsertMaintenanceSchedule({
-        tipo: 'preditiva',
-        origemId: data.id,
-        empresaId: tenantId,
-        equipamentoId: data.equipamento_id,
-        titulo: `${data.tag} • ${data.tipo_medicao}`,
-        descricao: data.observacoes,
-        dataProgramada: data.created_at || new Date().toISOString(),
-        status: data.status || 'programado',
-        responsavel: data.responsavel_nome,
-      });
+      try {
+        await upsertMaintenanceSchedule({
+          tipo: 'preditiva',
+          origemId: data.id,
+          empresaId: tenantId,
+          equipamentoId: data.equipamento_id,
+          titulo: `${data.tag} • ${data.tipo_medicao}`,
+          descricao: data.observacoes,
+          dataProgramada: data.created_at || new Date().toISOString(),
+          status: data.status || 'programado',
+          responsavel: data.responsavel_nome,
+        });
+      } catch { /* schedule sync best-effort */ }
 
       return data as MedicaoPreditivaRow;
     },
@@ -176,17 +178,19 @@ export function useUpdateMedicaoPreditiva() {
         updates as Record<string, unknown>,
       );
 
-      await upsertMaintenanceSchedule({
-        tipo: 'preditiva',
-        origemId: data.id,
-        empresaId: tenantId!,
-        equipamentoId: data.equipamento_id,
-        titulo: `${data.tag} • ${data.tipo_medicao}`,
-        descricao: data.observacoes,
-        dataProgramada: data.created_at || new Date().toISOString(),
-        status: data.status || 'programado',
-        responsavel: data.responsavel_nome,
-      });
+      try {
+        await upsertMaintenanceSchedule({
+          tipo: 'preditiva',
+          origemId: data.id,
+          empresaId: tenantId!,
+          equipamentoId: data.equipamento_id,
+          titulo: `${data.tag} • ${data.tipo_medicao}`,
+          descricao: data.observacoes,
+          dataProgramada: data.created_at || new Date().toISOString(),
+          status: data.status || 'programado',
+          responsavel: data.responsavel_nome,
+        });
+      } catch { /* schedule sync best-effort */ }
 
       return data as MedicaoPreditivaRow;
     },
@@ -213,7 +217,7 @@ export function useDeleteMedicaoPreditiva() {
 
   return useMutation({
     mutationFn: async (id: string) => {
-      await deleteMaintenanceSchedule('preditiva', id);
+      try { await deleteMaintenanceSchedule('preditiva', id); } catch { /* best-effort */ }
 
       const { error } = await supabase
         .from('medicoes_preditivas')

@@ -8,6 +8,7 @@ import {
   type MaintenanceScheduleUpsertInput,
   upsertMaintenanceSchedule,
 } from '@/services/maintenanceSchedule';
+import { isMissingTableError } from '@/lib/supabaseCompat';
 
 export function useMaintenanceSchedule(fromIso?: string, toIso?: string) {
   const { tenantId } = useAuth();
@@ -28,7 +29,11 @@ export function useMaintenanceSchedule(fromIso?: string, toIso?: string) {
       if (toIso) tenantQuery = tenantQuery.lte('data_programada', toIso);
 
       const { data, error } = await tenantQuery;
-      if (error) throw error;
+
+      if (error) {
+        if (isMissingTableError(error)) return [];
+        throw error;
+      }
       return (data || []) as MaintenanceScheduleRow[];
     },
   });

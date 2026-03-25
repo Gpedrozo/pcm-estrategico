@@ -140,17 +140,19 @@ const useCreateMedicao = () => {
         data as Record<string, unknown>,
       );
 
-      await upsertMaintenanceSchedule({
-        tipo: 'preditiva',
-        origemId: result.id,
-        empresaId: tenantId!,
-        equipamentoId: result.equipamento_id || null,
-        titulo: `${result.tag} • ${result.tipo_medicao}`,
-        descricao: result.observacoes,
-        dataProgramada: result.created_at || new Date().toISOString(),
-        status: result.status || 'programado',
-        responsavel: result.responsavel_nome,
-      });
+      try {
+        await upsertMaintenanceSchedule({
+          tipo: 'preditiva',
+          origemId: result.id,
+          empresaId: tenantId!,
+          equipamentoId: result.equipamento_id || null,
+          titulo: `${result.tag} • ${result.tipo_medicao}`,
+          descricao: result.observacoes,
+          dataProgramada: result.created_at || new Date().toISOString(),
+          status: result.status || 'programado',
+          responsavel: result.responsavel_nome,
+        });
+      } catch { /* schedule sync best-effort */ }
 
       return result;
     },
