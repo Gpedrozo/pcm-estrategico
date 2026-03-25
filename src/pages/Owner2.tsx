@@ -108,6 +108,7 @@ export default function Owner() {
 
   const [selectedTicketId, setSelectedTicketId] = useState('')
   const [ticketResponse, setTicketResponse] = useState('')
+  const [ticketResponseStatus, setTicketResponseStatus] = useState('em_andamento')
 
   const [systemUserId, setSystemUserId] = useState('')
   const [selectedTableName, setSelectedTableName] = useState('')
@@ -1388,46 +1389,165 @@ export default function Owner() {
             </div>
           )}
 
-          {activeTab === 'suporte' && (
-            <div className="grid gap-4 xl:grid-cols-2">
-              <SurfaceCard title="Responder ticket">
-                <div className="grid gap-2">
-                  <select className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" value={selectedTicketId} onChange={(e) => setSelectedTicketId(e.target.value)}>
-                    <option value="">Selecione o ticket</option>
-                    {tickets.map((t) => <option key={String(t.id)} value={String(t.id)}>{String(t.subject ?? t.id)}</option>)}
-                  </select>
-                  <textarea className="min-h-[120px] rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" value={ticketResponse} onChange={(e) => setTicketResponse(e.target.value)} placeholder="Resposta para o cliente" />
-                  <button className="rounded-lg bg-sky-700 px-3 py-2 text-sm font-semibold text-white" disabled={busy || !selectedTicketId || !ticketResponse} onClick={() => runAction('respond_support_ticket', { ticket_id: selectedTicketId, response: ticketResponse, status: 'resolvido' }, 'Ticket respondido.')}>Enviar resposta</button>
-                </div>
-              </SurfaceCard>
+          {activeTab === 'suporte' && (() => {
+            const selectedTicket = tickets.find((t) => String(t.id) === selectedTicketId) ?? null
+            const ticketMessages = (() => {
+              if (!selectedTicket) return []
+              const msgs = selectedTicket.messages
+              if (Array.isArray(msgs)) return msgs as Record<string, unknown>[]
+              if (selectedTicket.owner_response) return [{ sender: 'owner', content: String(selectedTicket.owner_response), created_at: selectedTicket.updated_at }]
+              return []
+            })()
+            const openCount = tickets.filter((t) => {
+              const st = String(t.status ?? '').toLowerCase()
+              return st === 'aberto' || st === 'em_andamento' || st === 'open' || st === 'pending'
+            }).length
+            const resolvedCount = tickets.filter((t) => {
+              const st = String(t.status ?? '').toLowerCase()
+              return st === 'resolvido' || st === 'resolved' || st === 'fechado' || st === 'closed'
+            }).length
 
-              <SurfaceCard title="Tickets">
-                <div className="max-h-[420px] overflow-auto rounded-xl border border-slate-200">
-                  <table className="w-full text-xs">
-                    <thead className="bg-slate-100">
-                      <tr>
-                        <th className="px-2 py-2 text-left">ID</th>
-                        <th className="px-2 py-2 text-left">Assunto</th>
-                        <th className="px-2 py-2 text-left">Status</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {tickets.map((t) => {
-                        const st = String(t.status ?? '-')
-                        return (
-                          <tr key={String(t.id)} className="border-t border-slate-200">
-                            <td className="px-2 py-2">{String(t.id ?? '-')}</td>
-                            <td className="px-2 py-2">{String(t.subject ?? '-')}</td>
-                            <td className="px-2 py-2"><span className={`rounded border px-2 py-0.5 ${statusColor(st)}`}>{st}</span></td>
-                          </tr>
-                        )
-                      })}
-                    </tbody>
-                  </table>
+            const priorityBadge = (p: string) => {
+              const pl = p.toLowerCase()
+              if (pl === 'alta' || pl === 'high' || pl === 'urgente') return 'bg-red-100 text-red-700 border-red-200'
+              if (pl === 'media' || pl === 'medium' || pl === 'média') return 'bg-amber-100 text-amber-700 border-amber-200'
+              return 'bg-slate-100 text-slate-600 border-slate-200'
+            }
+
+            return (
+              <div className="space-y-4">
+                {/* Stats */}
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                  <MetricTile icon={LifeBuoy} label="Total" value={tickets.length} />
+                  <MetricTile icon={AlertTriangle} label="Abertos" value={openCount} color="text-amber-600" />
+                  <MetricTile icon={ShieldCheck} label="Resolvidos" value={resolvedCount} color="text-emerald-600" />
+                  <MetricTile icon={Clock} label="Não lidos" value={tickets.reduce((acc, t) => acc + (Number(t.unread_client_messages ?? 0)), 0)} color="text-sky-600" />
                 </div>
-              </SurfaceCard>
-            </div>
-          )}
+
+                <div className="grid gap-4 xl:grid-cols-5">
+                  {/* Ticket List */}
+                  <div className="xl:col-span-2">
+                    <SurfaceCard title={`Tickets (${tickets.length})`}>
+                      <div className="max-h-[520px] overflow-auto space-y-1">
+                        {tickets.length === 0 && <p className="text-sm text-slate-400 py-4 text-center">Nenhum ticket</p>}
+                        {tickets.map((t) => {
+                          const tid = String(t.id)
+                          const st = String(t.status ?? 'aberto')
+                          const pri = String(t.priority ?? 'baixa')
+                          const unread = Number(t.unread_client_messages ?? 0)
+                          const isSelected = tid === selectedTicketId
+                          const created = t.created_at ? new Date(String(t.created_at)).toLocaleDateString('pt-BR') : '—'
+                          return (
+                            <button
+                              key={tid}
+                              type="button"
+                              onClick={() => setSelectedTicketId(tid)}
+                              className={`w-full text-left p-3 rounded-lg border transition-all ${isSelected ? 'border-sky-400 bg-sky-50' : 'border-slate-200 hover:border-slate-300 hover:bg-slate-50'}`}
+                            >
+                              <div className="flex items-start justify-between gap-2">
+                                <div className="min-w-0 flex-1">
+                                  <p className={`text-sm font-medium truncate ${isSelected ? 'text-sky-800' : ''}`}>{String(t.subject ?? 'Sem assunto')}</p>
+                                  <p className="text-xs text-slate-400 mt-0.5 truncate">{String(t.message ?? '').slice(0, 80)}</p>
+                                </div>
+                                {unread > 0 && (
+                                  <span className="shrink-0 rounded-full bg-sky-600 text-white text-[10px] font-bold px-1.5 py-0.5">{unread}</span>
+                                )}
+                              </div>
+                              <div className="flex items-center gap-2 mt-2">
+                                <span className={`rounded border px-1.5 py-0.5 text-[10px] font-medium ${statusColor(st)}`}>{st}</span>
+                                <span className={`rounded border px-1.5 py-0.5 text-[10px] font-medium ${priorityBadge(pri)}`}>{pri}</span>
+                                <span className="text-[10px] text-slate-400 ml-auto">{created}</span>
+                              </div>
+                            </button>
+                          )
+                        })}
+                      </div>
+                    </SurfaceCard>
+                  </div>
+
+                  {/* Detail & Response */}
+                  <div className="xl:col-span-3 space-y-4">
+                    {selectedTicket ? (
+                      <>
+                        {/* Ticket Header */}
+                        <SurfaceCard title={String(selectedTicket.subject ?? 'Ticket')}>
+                          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs mb-3">
+                            <div><span className="text-slate-400">Status:</span> <span className={`rounded border px-1.5 py-0.5 font-medium ${statusColor(String(selectedTicket.status ?? ''))}`}>{String(selectedTicket.status ?? '—')}</span></div>
+                            <div><span className="text-slate-400">Prioridade:</span> <span className={`rounded border px-1.5 py-0.5 font-medium ${priorityBadge(String(selectedTicket.priority ?? 'baixa'))}`}>{String(selectedTicket.priority ?? '—')}</span></div>
+                            <div><span className="text-slate-400">Criado:</span> {selectedTicket.created_at ? new Date(String(selectedTicket.created_at)).toLocaleString('pt-BR') : '—'}</div>
+                            <div><span className="text-slate-400">Empresa:</span> {String(selectedTicket.empresa_id ?? '—').slice(0, 8)}</div>
+                          </div>
+                          <div className="rounded-lg bg-slate-50 border border-slate-200 p-3 text-sm whitespace-pre-wrap">
+                            {String(selectedTicket.message ?? 'Sem mensagem')}
+                          </div>
+                        </SurfaceCard>
+
+                        {/* Thread */}
+                        {ticketMessages.length > 0 && (
+                          <SurfaceCard title={`Conversa (${ticketMessages.length})`}>
+                            <div className="max-h-[300px] overflow-auto space-y-2">
+                              {ticketMessages.map((msg, idx) => {
+                                const sender = String((msg as any).sender ?? 'client')
+                                const isOwner = sender === 'owner' || sender === 'system'
+                                const content = String((msg as any).content ?? (msg as any).message ?? '')
+                                const time = (msg as any).created_at ? new Date(String((msg as any).created_at)).toLocaleString('pt-BR') : ''
+                                return (
+                                  <div key={idx} className={`p-3 rounded-lg text-sm ${isOwner ? 'bg-sky-50 border border-sky-200 ml-6' : 'bg-slate-50 border border-slate-200 mr-6'}`}>
+                                    <div className="flex items-center gap-2 mb-1">
+                                      <span className={`text-[10px] font-bold uppercase ${isOwner ? 'text-sky-600' : 'text-slate-500'}`}>{isOwner ? 'Suporte' : 'Cliente'}</span>
+                                      {time && <span className="text-[10px] text-slate-400">{time}</span>}
+                                    </div>
+                                    <p className="whitespace-pre-wrap">{content}</p>
+                                  </div>
+                                )
+                              })}
+                            </div>
+                          </SurfaceCard>
+                        )}
+
+                        {/* Response Form */}
+                        <SurfaceCard title="Responder">
+                          <div className="grid gap-3">
+                            <textarea
+                              className="min-h-[100px] rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm focus:border-sky-400 focus:ring-1 focus:ring-sky-200 outline-none"
+                              value={ticketResponse}
+                              onChange={(e) => setTicketResponse(e.target.value)}
+                              placeholder="Digite sua resposta ao cliente..."
+                            />
+                            <div className="flex items-center gap-3">
+                              <select
+                                className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm"
+                                value={ticketResponseStatus}
+                                onChange={(e) => setTicketResponseStatus(e.target.value)}
+                              >
+                                <option value="em_andamento">Em andamento</option>
+                                <option value="resolvido">Resolvido</option>
+                                <option value="aberto">Reabrir</option>
+                              </select>
+                              <button
+                                className="rounded-lg bg-sky-700 px-4 py-2 text-sm font-semibold text-white hover:bg-sky-800 disabled:opacity-50 transition-colors"
+                                disabled={busy || !selectedTicketId || !ticketResponse.trim()}
+                                onClick={async () => {
+                                  await runAction('respond_support_ticket', { ticket_id: selectedTicketId, response: ticketResponse, status: ticketResponseStatus }, 'Ticket respondido com sucesso.')
+                                  setTicketResponse('')
+                                }}
+                              >
+                                Enviar resposta
+                              </button>
+                            </div>
+                          </div>
+                        </SurfaceCard>
+                      </>
+                    ) : (
+                      <SurfaceCard title="Detalhes">
+                        <p className="text-sm text-slate-400 py-8 text-center">Selecione um ticket na lista para visualizar</p>
+                      </SurfaceCard>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )
+          })()}
 
           {activeTab === 'configuracoes' && (
             <div className="grid gap-4 xl:grid-cols-2">

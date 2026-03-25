@@ -22,6 +22,8 @@ import { useCreateExecucaoOS, useCloseOSAtomic } from '@/hooks/useExecucoesOS';
 import { useLogAuditoria } from '@/hooks/useAuditoria';
 import { useAuth } from '@/contexts/AuthContext';
 import { logger } from '@/lib/logger';
+import { updateWithColumnFallback } from '@/lib/supabaseCompat';
+import { supabase } from '@/integrations/supabase/client';
 import { 
   ArrowLeft, 
   Check, 
@@ -362,12 +364,20 @@ export default function FecharOS() {
           });
         }
 
-        await updateOSMutation.mutateAsync({
-          id: selectedOS.id,
-          status: 'FECHADA',
-          data_fechamento: new Date().toISOString(),
-          usuario_fechamento: user?.id || null,
-        });
+        await updateWithColumnFallback(
+          (payload) =>
+            supabase
+              .from('ordens_servico')
+              .update(payload)
+              .eq('id', selectedOS.id)
+              .select()
+              .single(),
+          {
+            status: 'FECHADA',
+            data_fechamento: new Date().toISOString(),
+            usuario_fechamento: user?.id || null,
+          },
+        );
 
         toast({
           title: 'Fechamento concluído com fallback',
@@ -384,11 +394,19 @@ export default function FecharOS() {
       });
 
       navigate('/os/historico');
-    } catch (error) {
-      logger.error('fechar_os_failed', { error: String(error) });
+    } catch (error: any) {
+      const errorMsg =
+        error instanceof Error
+          ? error.message
+          : typeof error?.message === 'string'
+            ? error.message
+            : typeof error === 'string'
+              ? error
+              : 'Falha inesperada ao concluir fechamento.';
+      logger.error('fechar_os_failed', { error: errorMsg, raw: String(error) });
       toast({
         title: 'Erro ao fechar O.S',
-        description: error instanceof Error ? error.message : 'Falha inesperada ao concluir fechamento.',
+        description: errorMsg,
         variant: 'destructive',
       });
     } finally {
