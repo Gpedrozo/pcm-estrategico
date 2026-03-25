@@ -19,7 +19,8 @@ import {
   Printer,
   ExternalLink,
   Edit,
-  XCircle
+  XCircle,
+  Plus
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useEquipamentos } from '@/hooks/useEquipamentos';
@@ -48,6 +49,7 @@ export default function Programacao() {
   );
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
   const [rescheduleDate, setRescheduleDate] = useState('');
+  const [newActivityDate, setNewActivityDate] = useState<string | null>(null);
   const [calendarFilter, setCalendarFilter] = useState<CalendarFilter>('all');
 
   const weekStartIso = currentWeekStart.toISOString();
@@ -631,9 +633,18 @@ export default function Programacao() {
                   <span className={isToday ? 'text-primary font-bold' : ''}>
                     {format(day, 'EEE', { locale: ptBR })}
                   </span>
-                  <span className={`text-lg ${isToday ? 'bg-primary text-primary-foreground rounded-full w-7 h-7 flex items-center justify-center' : ''}`}>
-                    {format(day, 'd')}
-                  </span>
+                  <div className="flex items-center gap-1">
+                    <button
+                      onClick={() => setNewActivityDate(dayKey)}
+                      className="h-5 w-5 rounded-full hover:bg-primary/10 flex items-center justify-center text-muted-foreground hover:text-primary transition-colors"
+                      title="Programar atividade"
+                    >
+                      <Plus className="h-3 w-3" />
+                    </button>
+                    <span className={`text-lg ${isToday ? 'bg-primary text-primary-foreground rounded-full w-7 h-7 flex items-center justify-center' : ''}`}>
+                      {format(day, 'd')}
+                    </span>
+                  </div>
                 </CardTitle>
               </CardHeader>
               <CardContent className="p-2 space-y-2 overflow-y-auto max-h-[250px]">
@@ -766,6 +777,37 @@ export default function Programacao() {
               </div>
             </div>
           )}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!newActivityDate} onOpenChange={(open) => !open && setNewActivityDate(null)}>
+        <DialogContent className="max-w-xs">
+          <DialogHeader>
+            <DialogTitle>Programar Atividade</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            Selecione o tipo para {newActivityDate && format(parseISO(newActivityDate), 'dd/MM/yyyy')}:
+          </p>
+          <div className="grid grid-cols-1 gap-2">
+            {[
+              { label: 'Preventiva', path: '/preventiva' },
+              { label: 'Lubrificação', path: '/lubrificacao' },
+              { label: 'Inspeção', path: '/inspecoes' },
+              { label: 'Preditiva', path: '/preditiva' },
+            ].map((item) => (
+              <Button
+                key={item.path}
+                variant="outline"
+                className="justify-start"
+                onClick={() => {
+                  navigate(item.path, { state: { dataProgramada: newActivityDate } });
+                  setNewActivityDate(null);
+                }}
+              >
+                {item.label}
+              </Button>
+            ))}
+          </div>
         </DialogContent>
       </Dialog>
     </div>

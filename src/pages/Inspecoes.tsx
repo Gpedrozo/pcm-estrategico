@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -25,6 +25,7 @@ import { useEquipamentos } from '@/hooks/useEquipamentos';
 import { useDadosEmpresa } from '@/hooks/useDadosEmpresa';
 import { InspecaoPrintTemplate } from '@/components/inspecao/InspecaoPrintTemplate';
 import { PrintPreviewDialog } from '@/components/print/PrintPreviewDialog';
+import { useLocation } from 'react-router-dom';
 
 interface ChecklistItem {
   item: string;
@@ -62,6 +63,7 @@ const INSPECTION_MODELS: Record<string, ChecklistItem[]> = {
 
 export default function Inspecoes() {
   const { user } = useAuth();
+  const location = useLocation();
   const { data: equipamentos } = useEquipamentos();
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
@@ -86,6 +88,12 @@ export default function Inspecoes() {
   const createMutation = useCreateInspecao();
   const updateMutation = useUpdateInspecao();
   const createOSMutation = useCreateOrdemServico();
+
+  useEffect(() => {
+    if ((location.state as any)?.dataProgramada) {
+      setIsModalOpen(true);
+    }
+  }, [location.state]);
 
   const filteredInspecoes = useMemo(() => {
     return (inspecoes || []).filter((i) => {

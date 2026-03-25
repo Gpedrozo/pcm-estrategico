@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -31,6 +31,7 @@ import { toast } from '@/hooks/use-toast';
 import { upsertMaintenanceSchedule } from '@/services/maintenanceSchedule';
 import { getSupabaseErrorMessage, insertWithColumnFallback } from '@/lib/supabaseCompat';
 import { useCreateOrdemServico } from '@/hooks/useOrdensServico';
+import { useLocation } from 'react-router-dom';
 import {
   CartesianGrid,
   Legend,
@@ -173,6 +174,7 @@ const useCreateMedicao = () => {
 
 export default function Preditiva() {
   const { user, tenantId } = useAuth();
+  const location = useLocation();
   const [search, setSearch] = useState('');
   const [activeTab, setActiveTab] = useState('medicoes');
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -201,6 +203,12 @@ export default function Preditiva() {
   const createMutation = useCreateMedicao();
   const createOSMutation = useCreateOrdemServico();
   const [osSuggestion, setOsSuggestion] = useState<OSSuggestionPayload | null>(null);
+
+  useEffect(() => {
+    if ((location.state as any)?.dataProgramada) {
+      setIsModalOpen(true);
+    }
+  }, [location.state]);
 
   const equipamentoByTag = useMemo(() => {
     const map = new Map<string, (typeof equipamentos)[number]>();

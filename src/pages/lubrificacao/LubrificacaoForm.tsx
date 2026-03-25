@@ -16,6 +16,7 @@ interface LubrificacaoFormProps {
   equipamentos: EquipamentoRow[];
   initialData?: PlanoLubrificacao | null;
   onSubmit: (data: PlanoLubrificacaoInsert) => Promise<void>;
+  dataProgramada?: string;
 }
 
 const addPeriod = (baseIso: string, tipo: 'dias' | 'semanas' | 'meses' | 'horas', valor: number) => {
@@ -27,7 +28,7 @@ const addPeriod = (baseIso: string, tipo: 'dias' | 'semanas' | 'meses' | 'horas'
   return d.toISOString();
 };
 
-export function LubrificacaoForm({ open, onOpenChange, equipamentos, initialData, onSubmit }: LubrificacaoFormProps) {
+export function LubrificacaoForm({ open, onOpenChange, equipamentos, initialData, onSubmit, dataProgramada }: LubrificacaoFormProps) {
   const nextNumber = useNextDocumentNumber();
   const [form, setForm] = useState<PlanoLubrificacaoInsert>({
     codigo: '',
@@ -54,6 +55,9 @@ export function LubrificacaoForm({ open, onOpenChange, equipamentos, initialData
     if (!open) return;
     if (!initialData) {
       const now = new Date().toISOString();
+      const proxExec = dataProgramada
+        ? new Date(dataProgramada + 'T08:00:00').toISOString()
+        : addPeriod(now, 'dias', 30);
       setForm({
         codigo: '',
         nome: '',
@@ -70,7 +74,7 @@ export function LubrificacaoForm({ open, onOpenChange, equipamentos, initialData
         responsavel: '',
         prioridade: 'media',
         ultima_execucao: now,
-        proxima_execucao: addPeriod(now, 'dias', 30),
+        proxima_execucao: proxExec,
         status: 'programado',
         ativo: true,
       });

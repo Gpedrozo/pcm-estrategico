@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Plus, Droplet } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -14,14 +14,25 @@ import { LubrificacaoForm } from './lubrificacao/LubrificacaoForm';
 import { LubrificacaoList } from './lubrificacao/LubrificacaoList';
 import { LubrificacaoDetalhe } from './lubrificacao/LubrificacaoDetalhe';
 import { getSupabaseErrorMessage } from '@/lib/supabaseCompat';
+import { useLocation } from 'react-router-dom';
 
 export default function Lubrificacao() {
+  const location = useLocation();
   const [search, setSearch] = useState('');
   const [equipamentoFilter, setEquipamentoFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
   const [selectedPlano, setSelectedPlano] = useState<PlanoLubrificacao | null>(null);
   const [formOpen, setFormOpen] = useState(false);
   const [editingPlano, setEditingPlano] = useState<PlanoLubrificacao | null>(null);
+
+  const dataProgramadaFromCalendar = (location.state as any)?.dataProgramada as string | undefined;
+
+  useEffect(() => {
+    if (dataProgramadaFromCalendar) {
+      setEditingPlano(null);
+      setFormOpen(true);
+    }
+  }, [dataProgramadaFromCalendar]);
 
   const { data: planos, isLoading, isError, error } = usePlanosLubrificacao();
   const { data: equipamentos } = useEquipamentos();
@@ -165,6 +176,7 @@ export default function Lubrificacao() {
         equipamentos={equipamentos || []}
         initialData={editingPlano}
         onSubmit={handleSubmit}
+        dataProgramada={dataProgramadaFromCalendar}
       />
     </div>
   );

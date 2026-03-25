@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -23,8 +23,10 @@ import { useTemplatesPreventivos, useCreateTemplate, useDeleteTemplate } from '@
 import { useMecanicos } from '@/hooks/useMecanicos';
 import PlanoDetailPanel from '@/components/preventiva/PlanoDetailPanel';
 import PlanoFormDialog from '@/components/preventiva/PlanoFormDialog';
+import { useLocation } from 'react-router-dom';
 
 export default function Preventiva() {
+  const location = useLocation();
   const [search, setSearch] = useState('');
   const [selectedPlanoId, setSelectedPlanoId] = useState<string | null>(null);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
@@ -32,6 +34,12 @@ export default function Preventiva() {
 
   const { data: planos, isLoading, isError, error } = usePlanosPreventivos();
   const { data: equipamentos } = useEquipamentos();
+
+  useEffect(() => {
+    if ((location.state as any)?.dataProgramada) {
+      setIsCreateOpen(true);
+    }
+  }, [location.state]);
 
   const equipmentTagById = useMemo(() => {
     const map = new Map<string, string>();
