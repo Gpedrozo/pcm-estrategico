@@ -3542,7 +3542,7 @@ Deno.serve(async (req) => {
   if (body.action === "list_support_tickets") {
     const { data, error } = await admin
       .from("support_tickets")
-      .select("*")
+      .select("id,empresa_id,user_id,subject,message,status,priority,owner_response,messages,unread_owner_messages,unread_client_messages,notification_email_pending,notification_whatsapp_pending,last_message_sender,last_message_at,created_at,updated_at")
       .order("updated_at", { ascending: false })
       .limit(1000);
     if (error) return fail(error.message, 400, null, req);

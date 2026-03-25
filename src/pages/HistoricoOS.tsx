@@ -692,16 +692,15 @@ export default function HistoricoOS() {
                     paginatedOS.map((os) => (
                       <tr
                         key={os.id}
-                        onMouseEnter={(event) => {
-                          setHoveredOS(os);
-                          setHoverPoint({ x: event.clientX, y: event.clientY });
-                        }}
-                        onMouseMove={(event) => {
-                          setHoverPoint({ x: event.clientX, y: event.clientY });
-                        }}
-                        onMouseLeave={() => {
-                          setHoveredOS(null);
-                          setHoverPoint(null);
+                        className="cursor-pointer"
+                        onClick={(event) => {
+                          if (hoveredOS?.id === os.id) {
+                            setHoveredOS(null);
+                            setHoverPoint(null);
+                          } else {
+                            setHoveredOS(os);
+                            setHoverPoint({ x: event.clientX, y: event.clientY });
+                          }
                         }}
                       >
                         <td className="font-mono font-medium">{os.numero_os}</td>
@@ -885,16 +884,22 @@ export default function HistoricoOS() {
 
         {hoveredOS && hoverPoint && (
           <div
-            className="pointer-events-none fixed z-50 w-[360px] max-w-[calc(100vw-2rem)] rounded-lg border border-border bg-background/95 p-4 shadow-2xl backdrop-blur"
+            className="fixed z-50 w-[360px] max-w-[calc(100vw-2rem)] rounded-lg border border-border bg-background/95 p-4 shadow-2xl backdrop-blur"
             style={{
               left: Math.min(hoverPoint.x + 14, window.innerWidth - 380),
               top: Math.max(12, hoverPoint.y + 14),
             }}
           >
-            <div className="mb-3 flex items-center justify-between gap-2">
+            <div className="mb-1 flex items-center justify-between gap-2">
               <span className="font-mono text-sm font-semibold">O.S {hoveredOS.numero_os}</span>
-              <OSStatusBadge status={normalizeOSStatus(hoveredOS.status)} />
+              <button
+                className="rounded p-0.5 text-muted-foreground hover:text-foreground"
+                onClick={() => { setHoveredOS(null); setHoverPoint(null); }}
+              >
+                <X className="h-4 w-4" />
+              </button>
             </div>
+            <div className="mb-3"><OSStatusBadge status={normalizeOSStatus(hoveredOS.status)} /></div>
 
             <div className="space-y-2 text-sm">
               <div className="grid grid-cols-2 gap-2">
@@ -934,6 +939,15 @@ export default function HistoricoOS() {
                       <p className="font-medium">{formatDateTime(execucaoByOsId.get(hoveredOS.id)?.data_fim, execucaoByOsId.get(hoveredOS.id)?.hora_fim)}</p>
                     </div>
                   </div>
+                </div>
+              ) : hoveredOS.status === 'CANCELADA' ? (
+                <div className="rounded-md border border-rose-500/30 bg-rose-500/5 p-3 text-xs">
+                  <p className="font-semibold uppercase tracking-wide text-rose-700 dark:text-rose-300">O.S cancelada</p>
+                  {(hoveredOS as any).motivo_cancelamento ? (
+                    <p className="mt-1 text-muted-foreground">Motivo: {(hoveredOS as any).motivo_cancelamento}</p>
+                  ) : (
+                    <p className="mt-1 text-muted-foreground">Sem motivo registrado.</p>
+                  )}
                 </div>
               ) : (
                 <div className="rounded-md border border-amber-500/30 bg-amber-500/5 p-3 text-xs">

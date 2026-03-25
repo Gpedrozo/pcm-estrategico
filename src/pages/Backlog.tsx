@@ -15,6 +15,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Textarea } from '@/components/ui/textarea';
 import { Calendar, Clock, AlertTriangle, Filter, LayoutGrid, List } from 'lucide-react';
 import { useOrdensServico, useUpdateOrdemServico } from '@/hooks/useOrdensServico';
 import { OSStatusBadge } from '@/components/os/OSStatusBadge';
@@ -31,6 +32,7 @@ export default function Backlog() {
   const [filterPriority, setFilterPriority] = useState<string>('all');
   const [viewMode, setViewMode] = useState<'list' | 'grid'>('list');
   const [osToCancel, setOsToCancel] = useState<{ id: string; numero_os: number } | null>(null);
+  const [cancelReason, setCancelReason] = useState('');
   
   const { data: ordensServico, isLoading } = useOrdensServico();
   const updateOrdemServico = useUpdateOrdemServico();
@@ -125,6 +127,7 @@ export default function Backlog() {
         status: 'CANCELADA',
         data_fechamento: new Date().toISOString(),
         usuario_fechamento: user?.id ?? null,
+        motivo_cancelamento: cancelReason.trim(),
       });
 
       toast({
@@ -132,6 +135,7 @@ export default function Backlog() {
         description: `A ordem de serviço nº ${osToCancel.numero_os} foi cancelada e permanece visível para leitura e impressão.`,
       });
       setOsToCancel(null);
+      setCancelReason('');
     } catch {
       // O erro é tratado no hook de atualização.
     }
@@ -291,7 +295,12 @@ export default function Backlog() {
                         <td className="font-mono font-medium">{os.numero_os}</td>
                         <td className="font-mono text-primary font-medium">{os.tag}</td>
                         <td>{os.equipamento}</td>
-                        <td className="max-w-[200px] truncate">{os.problema}</td>
+                        <td className="max-w-[200px] truncate">
+                          {os.problema}
+                          {os.status === 'CANCELADA' && (os as any).motivo_cancelamento && (
+                            <p className="text-xs text-rose-600 mt-0.5 truncate" title={(os as any).motivo_cancelamento}>Motivo: {(os as any).motivo_cancelamento}</p>
+                          )}
+                        </td>
                         <td><OSTypeBadge tipo={normalizeOSType(os.tipo)} /></td>
                         <td>
                           <Badge className={getPriorityToneClass(os.prioridade, prioridadesOS)}>
@@ -334,7 +343,7 @@ export default function Backlog() {
         </div>
       )}
 
-      <AlertDialog open={!!osToCancel} onOpenChange={(open) => !open && setOsToCancel(null)}>
+      <AlertDialog open={!!osToCancel} onOpenChange={(open) => { if (!open) { setOsToCancel(null); setCancelReason(''); } }}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Cancelar ordem de serviço</AlertDialogTitle>
@@ -342,11 +351,21 @@ export default function Backlog() {
               Confirma o cancelamento da O.S nº {osToCancel?.numero_os}? A O.S continuará visível no backlog como CANCELADA, sem possibilidade de nova movimentação.
             </AlertDialogDescription>
           </AlertDialogHeader>
+          <div className="py-2">
+            <label className="text-sm font-medium">Motivo do cancelamento *</label>
+            <Textarea
+              placeholder="Descreva o motivo do cancelamento..."
+              value={cancelReason}
+              onChange={(e) => setCancelReason(e.target.value)}
+              className="mt-1.5"
+              rows={3}
+            />
+          </div>
           <AlertDialogFooter>
             <AlertDialogCancel disabled={updateOrdemServico.isPending}>Voltar</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleCancelOS}
-              disabled={updateOrdemServico.isPending}
+              disabled={updateOrdemServico.isPending || !cancelReason.trim()}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               {updateOrdemServico.isPending ? 'Cancelando...' : 'Confirmar cancelamento'}
