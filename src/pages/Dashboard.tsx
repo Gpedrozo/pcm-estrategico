@@ -138,17 +138,17 @@ export default function Dashboard() {
         <h2 className="text-lg font-semibold text-foreground mb-4">Indicadores Operacionais</h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <IndicatorCard
-            title="O.S Abertas"
-            value={ind.osAbertas}
-            subtitle="Aguardando atendimento"
-            icon={FileText}
-            variant="warning"
-          />
-          <IndicatorCard
             title="Solicitações Não Atendidas"
             value={solicitacoesNaoAtendidas}
             subtitle="Pendentes de análise"
             icon={AlertTriangle}
+            variant="warning"
+          />
+          <IndicatorCard
+            title="O.S Abertas"
+            value={ind.osAbertas}
+            subtitle="Aguardando atendimento"
+            icon={FileText}
             variant="warning"
           />
           <IndicatorCard
