@@ -156,7 +156,8 @@ export function useSupportTickets() {
       })
     },
     enabled: Boolean(tenantId && user?.id),
-    staleTime: 20_000,
+    staleTime: 15_000,
+    refetchInterval: 15_000,
   })
 }
 
@@ -336,10 +337,10 @@ export function useMarkSupportMessagesReadByClient() {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: async () => {
+    mutationFn: async (ticketId?: string) => {
       if (!tenantId || !user?.id) return
 
-      const { error } = await supabase
+      let query = supabase
         .from('support_tickets')
         .update({
           unread_client_messages: 0,
@@ -347,9 +348,15 @@ export function useMarkSupportMessagesReadByClient() {
           notification_whatsapp_pending: false,
         })
         .eq('empresa_id', tenantId)
-        .eq('user_id', user.id)
         .gt('unread_client_messages', 0)
 
+      if (ticketId) {
+        query = query.eq('id', ticketId)
+      } else {
+        query = query.eq('user_id', user.id)
+      }
+
+      const { error } = await query
       if (error && !isMissingSupportTicketColumnsError(error)) throw error
     },
     onSuccess: () => {

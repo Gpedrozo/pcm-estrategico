@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   Activity,
   AlertTriangle,
@@ -117,6 +117,7 @@ export default function Owner() {
   const [ticketResponseStatus, setTicketResponseStatus] = useState('em_analise')
   const [ticketAttachments, setTicketAttachments] = useState<File[]>([])
   const [ticketUploading, setTicketUploading] = useState(false)
+  const ownerThreadEndRef = useRef<HTMLDivElement>(null)
 
   const [systemUserId, setSystemUserId] = useState('')
   const [selectedTableName, setSelectedTableName] = useState('')
@@ -1502,6 +1503,8 @@ export default function Owner() {
                   await execute.mutateAsync({ action: 'mark_ticket_read_owner' as any, payload: { ticket_id: tid } })
                 } catch { /* silent - non-critical */ }
               }
+              // Scroll to bottom after selecting
+              setTimeout(() => ownerThreadEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 100)
             }
 
             return (
@@ -1647,6 +1650,7 @@ export default function Owner() {
                                 </div>
                               )
                             })}
+                            <div ref={ownerThreadEndRef} />
                           </div>
                         </SurfaceCard>
 

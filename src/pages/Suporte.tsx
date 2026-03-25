@@ -62,26 +62,31 @@ export default function Suporte() {
     [tickets],
   )
 
-  useEffect(() => {
-    if (unreadClientTotal <= 0 || markMessagesRead.isPending) return
-    markMessagesRead.mutate()
-  }, [markMessagesRead, unreadClientTotal])
-
   const selectedTicket = useMemo(
     () => (tickets ?? []).find((t) => t.id === selectedTicketId) ?? null,
     [tickets, selectedTicketId],
   )
+
+  // Mark read per-ticket when selecting a ticket with unread messages
+  const handleSelectTicket = (ticketId: string) => {
+    setSelectedTicketId(ticketId)
+    const ticket = (tickets ?? []).find((t) => t.id === ticketId)
+    if (ticket && Number(ticket.unread_client_messages ?? 0) > 0 && !markMessagesRead.isPending) {
+      markMessagesRead.mutate(ticketId)
+    }
+  }
 
   const threadMessages = useMemo(() => {
     if (!selectedTicket) return []
     return selectedTicket.messages ?? []
   }, [selectedTicket])
 
+  // Scroll to bottom when messages change or ticket switches
   useEffect(() => {
     if (threadEndRef.current) {
       threadEndRef.current.scrollIntoView({ behavior: 'smooth' })
     }
-  }, [threadMessages.length])
+  }, [threadMessages.length, selectedTicketId])
 
   const totals = useMemo(() => {
     const all = tickets ?? []
@@ -266,7 +271,7 @@ export default function Suporte() {
                     <button
                       key={ticket.id}
                       type="button"
-                      onClick={() => setSelectedTicketId(ticket.id)}
+                      onClick={() => handleSelectTicket(ticket.id)}
                       className={`w-full text-left p-3 rounded-lg border transition-all ${isSelected ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/30 hover:bg-accent/50'}`}
                     >
                       <div className="flex items-start justify-between gap-2">
