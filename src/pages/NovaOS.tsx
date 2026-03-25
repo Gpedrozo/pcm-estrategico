@@ -228,9 +228,9 @@ export default function NovaOS() {
   }
 
   return (
-    <div className="module-page max-w-5xl mx-auto space-y-6 pb-6">
+    <div className="module-page max-w-6xl mx-auto space-y-4 pb-4">
       {/* Header */}
-      <div className="module-page-header flex items-start gap-4">
+      <div className="module-page-header flex items-start gap-3">
         <Button variant="outline" size="icon" className="shrink-0" onClick={() => navigate(-1)}>
             <ArrowLeft className="h-5 w-5" />
         </Button>
@@ -258,8 +258,8 @@ export default function NovaOS() {
       )}
 
       {/* Form Card */}
-      <div className="bg-card border border-border rounded-lg p-4 md:p-6">
-        <form onSubmit={handleSubmit} className="space-y-6">
+      <div className="bg-card border border-border rounded-lg p-3 md:p-4">
+        <form onSubmit={handleSubmit} className="space-y-4">
           {/* Date */}
           <div className="grid grid-cols-2 gap-4 p-4 bg-muted/40 rounded-lg border border-border/60">
             <div>
@@ -445,7 +445,7 @@ export default function NovaOS() {
 
       {/* Recently Emitted OS */}
       {recentOS.length > 0 && (
-        <div className="bg-card border border-border rounded-lg p-4 md:p-6">
+        <div className="bg-card border border-border rounded-lg p-3 md:p-4">
           <h2 className="text-lg font-semibold text-foreground flex items-center gap-2 mb-4">
             <FileText className="h-5 w-5 text-primary" />
             Últimas O.S. Emitidas

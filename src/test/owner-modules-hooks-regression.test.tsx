@@ -95,7 +95,7 @@ describe('owner v1 page stability', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Planos' }))
     await waitFor(() => {
-      expect(screen.getAllByText('Criar plano').length).toBeGreaterThan(0)
+      expect(screen.getAllByText('+ Cadastrar Novo Plano').length).toBeGreaterThan(0)
     })
   })
 })

@@ -101,6 +101,7 @@ export default function Owner() {
   const [subscriptionEndsAt, setSubscriptionEndsAt] = useState('')
   const [subscriptionRenewalAt, setSubscriptionRenewalAt] = useState('')
   const [planCodeToChange, setPlanCodeToChange] = useState('')
+  const [showPlanForm, setShowPlanForm] = useState(false)
 
   const [selectedContractId, setSelectedContractId] = useState('')
   const [contractContent, setContractContent] = useState('')
@@ -1164,80 +1165,94 @@ export default function Owner() {
           )}
 
           {activeTab === 'comercial' && (
-            <div className="space-y-4">
-              {/* Planos */}
-              <div className="grid gap-4 xl:grid-cols-2">
-                <SurfaceCard title="Planos" subtitle="Crie e ajuste planos base com periodicidade padrão">
-                  <div className="grid gap-2">
-                    <input className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" value={planCode} onChange={(e) => setPlanCode(e.target.value)} placeholder="Código" />
-                    <input className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" value={planName} onChange={(e) => setPlanName(e.target.value)} placeholder="Nome" />
-                    <input className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" value={planPrice} onChange={(e) => setPlanPrice(e.target.value)} placeholder="Preço mensal" />
-                    <select className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" value={planDefaultPeriod} onChange={(e) => setPlanDefaultPeriod(e.target.value as 'monthly' | 'quarterly' | 'yearly')}>
-                      <option value="monthly">Periodicidade padrão: Mensal</option>
-                      <option value="quarterly">Periodicidade padrão: Trimestral</option>
-                      <option value="yearly">Periodicidade padrão: Anual</option>
-                    </select>
-                    <button className="rounded-lg bg-sky-700 px-3 py-2 text-sm font-semibold text-white" disabled={busy || !planCode || !planName} onClick={() => runAction('create_plan', { plan: { code: planCode.toUpperCase(), name: planName, description: `Periodicidade padrão: ${planDefaultPeriod}`, price_month: Number(planPrice || 0), user_limit: 10, data_limit_mb: 2048, module_flags: { default_periodicity: planDefaultPeriod }, active: true } }, 'Plano criado com sucesso.')}>Criar plano</button>
+            <div className="space-y-6">
+              {/* Catálogo de Planos */}
+              <SurfaceCard title="Catálogo de Planos" subtitle="Gerencie os planos disponíveis para as empresas">
+                <div className="mb-3">
+                  <button className="rounded-lg bg-sky-700 px-3 py-2 text-sm font-semibold text-white" onClick={() => setShowPlanForm(!showPlanForm)}>{showPlanForm ? 'Cancelar' : '+ Cadastrar Novo Plano'}</button>
+                </div>
+                {showPlanForm && (
+                  <div className="mb-4 grid gap-2 rounded-lg border border-slate-200 bg-slate-50 p-3">
+                    <div className="grid gap-2 sm:grid-cols-2">
+                      <input className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" value={planCode} onChange={(e) => setPlanCode(e.target.value)} placeholder="Código" />
+                      <input className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" value={planName} onChange={(e) => setPlanName(e.target.value)} placeholder="Nome" />
+                    </div>
+                    <div className="grid gap-2 sm:grid-cols-2">
+                      <input className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" value={planPrice} onChange={(e) => setPlanPrice(e.target.value)} placeholder="Preço mensal" />
+                      <select className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" value={planDefaultPeriod} onChange={(e) => setPlanDefaultPeriod(e.target.value as 'monthly' | 'quarterly' | 'yearly')}>
+                        <option value="monthly">Mensal</option>
+                        <option value="quarterly">Trimestral</option>
+                        <option value="yearly">Anual</option>
+                      </select>
+                    </div>
+                    <button className="rounded-lg bg-sky-700 px-3 py-2 text-sm font-semibold text-white" disabled={busy || !planCode || !planName} onClick={() => { runAction('create_plan', { plan: { code: planCode.toUpperCase(), name: planName, description: `Periodicidade padrão: ${planDefaultPeriod}`, price_month: Number(planPrice || 0), user_limit: 10, data_limit_mb: 2048, module_flags: { default_periodicity: planDefaultPeriod }, active: true } }, 'Plano criado com sucesso.'); setShowPlanForm(false); }}>Criar plano</button>
                   </div>
-                </SurfaceCard>
-
-                <SurfaceCard title="Catálogo de planos">
-                  <div className="max-h-[420px] overflow-auto rounded-xl border border-slate-200">
-                    <table className="w-full text-xs">
-                      <thead className="bg-slate-100">
-                        <tr>
-                          <th className="px-2 py-2 text-left">Código</th>
-                          <th className="px-2 py-2 text-left">Nome</th>
-                          <th className="px-2 py-2 text-left">Preço</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {plans.map((p) => (
+                )}
+                <div className="max-h-[420px] overflow-auto rounded-xl border border-slate-200">
+                  <table className="w-full text-xs">
+                    <thead className="bg-slate-100">
+                      <tr>
+                        <th className="px-2 py-2 text-left">Código</th>
+                        <th className="px-2 py-2 text-left">Nome</th>
+                        <th className="px-2 py-2 text-left">Preço</th>
+                        <th className="px-2 py-2 text-left">Período</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {plans.map((p) => {
+                        const flags = (p as Record<string, unknown>).module_flags as Record<string, unknown> | undefined
+                        const periodLabel = flags?.default_periodicity === 'yearly' ? 'Anual' : flags?.default_periodicity === 'quarterly' ? 'Trimestral' : 'Mensal'
+                        return (
                           <tr key={String(p.id)} className="border-t border-slate-200">
                             <td className="px-2 py-2">{String(p.code ?? '-')}</td>
                             <td className="px-2 py-2">{String(p.name ?? '-')}</td>
                             <td className="px-2 py-2">R$ {Number(p.price_month ?? 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                            <td className="px-2 py-2">{periodLabel}</td>
                           </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </SurfaceCard>
-              </div>
-
-              {/* Assinaturas */}
-              <div className="grid gap-4 xl:grid-cols-2">
-              <SurfaceCard title="Assinaturas por empresa" subtitle="Cada empresa com plano, valor e periodicidade próprios">
-                <div className="grid gap-2">
-                  <select className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" value={subscriptionPlanId} onChange={(e) => setSubscriptionPlanId(e.target.value)}>
-                    <option value="">Plano</option>
-                    {plans.map((p) => <option key={String(p.id)} value={String(p.id)}>{String(p.name ?? p.code ?? p.id)}</option>)}
-                  </select>
-                  <input className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" value={subscriptionAmount} onChange={(e) => setSubscriptionAmount(e.target.value)} placeholder="Valor" />
-                  <select className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" value={subscriptionPeriod} onChange={(e) => setSubscriptionPeriod(e.target.value as 'monthly' | 'quarterly' | 'yearly' | 'custom')}>
-                    <option value="monthly">Periodicidade: Mensal</option>
-                    <option value="quarterly">Periodicidade: Trimestral</option>
-                    <option value="yearly">Periodicidade: Anual</option>
-                    <option value="custom">Periodicidade: Customizada</option>
-                  </select>
-                  <select className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" value={subscriptionStatus} onChange={(e) => setSubscriptionStatus(e.target.value as 'ativa' | 'atrasada' | 'cancelada' | 'teste')}>
-                    <option value="teste">Status inicial: TESTE</option>
-                    <option value="ativa">Status inicial: Ativa</option>
-                    <option value="atrasada">Status inicial: Atrasada</option>
-                    <option value="cancelada">Status inicial: Cancelada</option>
-                  </select>
-                  <input className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" type="date" value={subscriptionStartsAt} onChange={(e) => setSubscriptionStartsAt(e.target.value)} placeholder="Início" />
-                  <input className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" type="date" value={subscriptionRenewalAt} onChange={(e) => setSubscriptionRenewalAt(e.target.value)} placeholder="Próximo vencimento" />
-                  <input className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" type="date" value={subscriptionEndsAt} onChange={(e) => setSubscriptionEndsAt(e.target.value)} placeholder="Fim (opcional)" />
-                  <button className="rounded-lg bg-sky-700 px-3 py-2 text-sm font-semibold text-white" disabled={busy || !companyId || !subscriptionPlanId} onClick={() => runAction('create_subscription', { subscription: { empresa_id: companyId, plan_id: subscriptionPlanId, amount: Number(subscriptionAmount || 0), period: subscriptionPeriod, starts_at: subscriptionStartsAt || undefined, renewal_at: subscriptionRenewalAt || undefined, ends_at: subscriptionEndsAt || undefined, status: subscriptionStatus } }, 'Assinatura criada com sucesso.')}>Criar assinatura</button>
-                  <button className="rounded-lg border border-slate-300 px-3 py-2 text-sm" disabled={busy || !companyId} onClick={() => runAction('set_subscription_status', { empresa_id: companyId, status: 'ativa' }, 'Assinatura ativada.')}>Ativar assinatura da empresa</button>
-                  <button className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-700" disabled={busy || !isOwnerMaster} onClick={() => runAction('enforce_subscription_expiry', {}, 'Vencimentos processados. Empresas vencidas foram bloqueadas.')}>Processar vencimentos e bloquear</button>
-                  <input className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" value={planCodeToChange} onChange={(e) => setPlanCodeToChange(e.target.value)} placeholder="Código do novo plano" />
-                  <button className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-700" disabled={busy || !companyId || !planCodeToChange} onClick={() => runAction('change_plan', { empresa_id: companyId, plano_codigo: planCodeToChange.toUpperCase() }, 'Plano da empresa alterado.')}>Trocar plano</button>
+                        )
+                      })}
+                      {plans.length === 0 && <tr><td colSpan={4} className="px-2 py-3 text-slate-500">Nenhum plano cadastrado.</td></tr>}
+                    </tbody>
+                  </table>
                 </div>
               </SurfaceCard>
 
-              <SurfaceCard title="Assinaturas">
+              {/* Assinaturas */}
+              <SurfaceCard title="Assinaturas" subtitle="Cada empresa com plano, valor e periodicidade próprios">
+                <div className="mb-4 grid gap-2 rounded-lg border border-slate-200 bg-slate-50 p-3">
+                  <p className="text-xs font-semibold text-slate-600">Nova assinatura (empresa selecionada: {companyId || 'nenhuma'})</p>
+                  <div className="grid gap-2 sm:grid-cols-3">
+                    <select className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" value={subscriptionPlanId} onChange={(e) => setSubscriptionPlanId(e.target.value)}>
+                      <option value="">Plano</option>
+                      {plans.map((p) => <option key={String(p.id)} value={String(p.id)}>{String(p.name ?? p.code ?? p.id)}</option>)}
+                    </select>
+                    <input className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" value={subscriptionAmount} onChange={(e) => setSubscriptionAmount(e.target.value)} placeholder="Valor" />
+                    <select className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" value={subscriptionPeriod} onChange={(e) => setSubscriptionPeriod(e.target.value as 'monthly' | 'quarterly' | 'yearly' | 'custom')}>
+                      <option value="monthly">Mensal</option>
+                      <option value="quarterly">Trimestral</option>
+                      <option value="yearly">Anual</option>
+                      <option value="custom">Customizada</option>
+                    </select>
+                  </div>
+                  <div className="grid gap-2 sm:grid-cols-4">
+                    <select className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" value={subscriptionStatus} onChange={(e) => setSubscriptionStatus(e.target.value as 'ativa' | 'atrasada' | 'cancelada' | 'teste')}>
+                      <option value="teste">TESTE</option>
+                      <option value="ativa">Ativa</option>
+                      <option value="atrasada">Atrasada</option>
+                      <option value="cancelada">Cancelada</option>
+                    </select>
+                    <input className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" type="date" value={subscriptionStartsAt} onChange={(e) => setSubscriptionStartsAt(e.target.value)} title="Início" />
+                    <input className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" type="date" value={subscriptionRenewalAt} onChange={(e) => setSubscriptionRenewalAt(e.target.value)} title="Próximo vencimento" />
+                    <input className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" type="date" value={subscriptionEndsAt} onChange={(e) => setSubscriptionEndsAt(e.target.value)} title="Fim (opcional)" />
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    <button className="rounded-lg bg-sky-700 px-3 py-2 text-sm font-semibold text-white" disabled={busy || !companyId || !subscriptionPlanId} onClick={() => runAction('create_subscription', { subscription: { empresa_id: companyId, plan_id: subscriptionPlanId, amount: Number(subscriptionAmount || 0), period: subscriptionPeriod, starts_at: subscriptionStartsAt || undefined, renewal_at: subscriptionRenewalAt || undefined, ends_at: subscriptionEndsAt || undefined, status: subscriptionStatus } }, 'Assinatura criada com sucesso.')}>Criar assinatura</button>
+                    <button className="rounded-lg border border-slate-300 px-3 py-2 text-sm" disabled={busy || !companyId} onClick={() => runAction('set_subscription_status', { empresa_id: companyId, status: 'ativa' }, 'Assinatura ativada.')}>Ativar assinatura</button>
+                    <button className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-700" disabled={busy || !isOwnerMaster} onClick={() => runAction('enforce_subscription_expiry', {}, 'Vencimentos processados.')}>Processar vencimentos</button>
+                    <input className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" value={planCodeToChange} onChange={(e) => setPlanCodeToChange(e.target.value)} placeholder="Código novo plano" />
+                    <button className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-700" disabled={busy || !companyId || !planCodeToChange} onClick={() => runAction('change_plan', { empresa_id: companyId, plano_codigo: planCodeToChange.toUpperCase() }, 'Plano alterado.')}>Trocar plano</button>
+                  </div>
+                </div>
                 <div className="max-h-[420px] overflow-auto rounded-xl border border-slate-200">
                   <table className="w-full text-xs">
                     <thead className="bg-slate-100">
@@ -1245,24 +1260,34 @@ export default function Owner() {
                         <th className="px-2 py-2 text-left">Empresa</th>
                         <th className="px-2 py-2 text-left">Plano</th>
                         <th className="px-2 py-2 text-left">Status</th>
+                        <th className="px-2 py-2 text-left">Validade</th>
+                        <th className="px-2 py-2 text-left">Ação</th>
                       </tr>
                     </thead>
                     <tbody>
                       {subscriptions.map((s, idx) => {
                         const st = String(s.status ?? '-')
+                        const sa = (s as Record<string, unknown>).starts_at as string | null
+                        const ea = (s as Record<string, unknown>).ends_at as string | null
+                        const fmtDate = (d: string | null) => d ? new Date(d).toLocaleDateString('pt-BR') : '–'
+                        const planObj = plans.find((p) => String(p.id) === String(s.plan_id ?? (s as Record<string, unknown>).plano_id))
                         return (
                           <tr key={`${String(s.id ?? 'sub')}-${idx}`} className="border-t border-slate-200">
                             <td className="px-2 py-2">{String(s.empresa_id ?? '-')}</td>
-                            <td className="px-2 py-2">{String(s.plan_id ?? s.plano_id ?? '-')}</td>
+                            <td className="px-2 py-2">{planObj ? String(planObj.name ?? planObj.code) : String(s.plan_id ?? (s as Record<string, unknown>).plano_id ?? '-')}</td>
                             <td className="px-2 py-2"><span className={`rounded border px-2 py-0.5 ${statusColor(st)}`}>{st}</span></td>
+                            <td className="px-2 py-2 whitespace-nowrap">{fmtDate(sa)} — {fmtDate(ea)}</td>
+                            <td className="px-2 py-2">
+                              <button className="rounded border border-sky-300 bg-sky-50 px-2 py-0.5 text-[11px] text-sky-700" disabled={busy} onClick={() => runAction('set_subscription_status', { empresa_id: String(s.empresa_id ?? ''), status: 'ativa' }, 'Ativada.')}>Ativar</button>
+                            </td>
                           </tr>
                         )
                       })}
+                      {subscriptions.length === 0 && <tr><td colSpan={5} className="px-2 py-3 text-slate-500">Nenhuma assinatura.</td></tr>}
                     </tbody>
                   </table>
                 </div>
               </SurfaceCard>
-              </div>
             </div>
           )}
 
