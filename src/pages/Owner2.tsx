@@ -1411,37 +1411,27 @@ export default function Owner() {
 
           {activeTab === 'suporte' && (() => {
             const selectedTicket = tickets.find((t) => String(t.id) === selectedTicketId) ?? null
+
+            // Normalise thread messages with legacy-field fallback
             const ticketMessages = (() => {
               if (!selectedTicket) return [] as Record<string, unknown>[]
-              const msgs = selectedTicket.messages
-              if (Array.isArray(msgs) && msgs.length > 0) {
-                // Ensure original client message is present (legacy tickets may only have owner msgs)
-                const hasClientMsg = msgs.some((m: any) => String(m.sender ?? '') === 'client')
-                if (!hasClientMsg) {
-                  const clientMsg = String(selectedTicket.message ?? '').trim()
-                  if (clientMsg) {
-                    return [
-                      { id: `legacy-client-${String(selectedTicket.id)}`, sender: 'client', message: clientMsg, created_at: selectedTicket.created_at },
-                      ...msgs,
-                    ] as Record<string, unknown>[]
-                  }
+              const raw = selectedTicket.messages
+              if (Array.isArray(raw) && raw.length > 0) {
+                const hasClient = raw.some((m: any) => String(m.sender ?? '') === 'client')
+                if (!hasClient) {
+                  const txt = String(selectedTicket.message ?? '').trim()
+                  if (txt) return [{ id: `lc-${String(selectedTicket.id)}`, sender: 'client', message: txt, created_at: selectedTicket.created_at, attachments: [] }, ...raw] as Record<string, unknown>[]
                 }
-                return msgs as Record<string, unknown>[]
+                return raw as Record<string, unknown>[]
               }
-              // Fallback: build thread from legacy fields
-              const fallback: Record<string, unknown>[] = []
-              const clientMsg = String(selectedTicket.message ?? '').trim()
-              if (clientMsg) {
-                fallback.push({ id: `legacy-client-${String(selectedTicket.id)}`, sender: 'client', message: clientMsg, created_at: selectedTicket.created_at })
-              }
-              const ownerResp = String(selectedTicket.owner_response ?? '').trim()
-              if (ownerResp) {
-                fallback.push({ id: `legacy-owner-${String(selectedTicket.id)}`, sender: 'owner', message: ownerResp, created_at: selectedTicket.updated_at ?? selectedTicket.responded_at })
-              }
-              return fallback
+              const fb: Record<string, unknown>[] = []
+              const cMsg = String(selectedTicket.message ?? '').trim()
+              if (cMsg) fb.push({ id: `lc-${String(selectedTicket.id)}`, sender: 'client', message: cMsg, created_at: selectedTicket.created_at, attachments: [] })
+              const oMsg = String(selectedTicket.owner_response ?? '').trim()
+              if (oMsg) fb.push({ id: `lo-${String(selectedTicket.id)}`, sender: 'owner', message: oMsg, created_at: selectedTicket.updated_at ?? selectedTicket.responded_at, attachments: [] })
+              return fb
             })()
 
-            // Resolve requester name from joined profiles
             const getRequesterInfo = (ticket: Record<string, unknown>) => {
               const profile = ticket.profiles as Record<string, unknown> | null
               const nome = profile ? String(profile.nome ?? '').trim() : ''
@@ -1449,16 +1439,10 @@ export default function Owner() {
               return { nome: nome || email || 'Desconhecido', email }
             }
 
-            const openCount = tickets.filter((t) => {
-              const st = String(t.status ?? '').toLowerCase()
-              return st === 'aberto' || st === 'em_analise' || st === 'open' || st === 'pending'
-            }).length
-            const resolvedCount = tickets.filter((t) => {
-              const st = String(t.status ?? '').toLowerCase()
-              return st === 'resolvido' || st === 'resolved' || st === 'fechado' || st === 'closed'
-            }).length
+            const openCount = tickets.filter((t) => { const s = String(t.status ?? '').toLowerCase(); return s === 'aberto' || s === 'em_analise' || s === 'open' || s === 'pending' }).length
+            const resolvedCount = tickets.filter((t) => { const s = String(t.status ?? '').toLowerCase(); return s === 'resolvido' || s === 'resolved' || s === 'fechado' || s === 'closed' }).length
 
-            const priorityBadge = (p: string) => {
+            const priBadge = (p: string) => {
               const pl = p.toLowerCase()
               if (pl === 'critica' || pl === 'critical') return 'bg-purple-100 text-purple-700 border-purple-200'
               if (pl === 'alta' || pl === 'high' || pl === 'urgente') return 'bg-red-100 text-red-700 border-red-200'
@@ -1470,55 +1454,39 @@ export default function Owner() {
               if (!selectedTicketId || !ticketResponse.trim()) return
               try {
                 setTicketUploading(true)
-                let attachmentUrls: string[] = []
+                const attachmentUrls: string[] = []
                 if (ticketAttachments.length > 0 && user?.id) {
-                  const validFiles = ticketAttachments.filter((f) => f.type.startsWith('image/'))
-                  for (const file of validFiles) {
+                  for (const file of ticketAttachments.filter((f) => f.type.startsWith('image/'))) {
                     const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_')
                     const path = `owner/${user.id}/${selectedTicketId}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}-${safeName}`
-                    const publicUrl = await uploadToStorage('support-attachments', path, file)
-                    attachmentUrls.push(publicUrl)
+                    attachmentUrls.push(await uploadToStorage('support-attachments', path, file))
                   }
                 }
-                await runAction('respond_support_ticket', {
-                  ticket_id: selectedTicketId,
-                  response: ticketResponse,
-                  status: ticketResponseStatus,
-                  attachments: attachmentUrls,
-                }, 'Ticket respondido com sucesso.')
+                await runAction('respond_support_ticket', { ticket_id: selectedTicketId, response: ticketResponse, status: ticketResponseStatus, attachments: attachmentUrls }, 'Ticket respondido com sucesso.')
                 setTicketResponse('')
                 setTicketAttachments([])
-              } catch {
-                // error is handled by runAction
-              } finally {
-                setTicketUploading(false)
-              }
+              } catch { /* handled by runAction */ } finally { setTicketUploading(false) }
             }
 
             const handleSelectTicket = async (tid: string) => {
               setSelectedTicketId(tid)
               const ticket = tickets.find((t) => String(t.id) === tid)
               if (ticket && Number(ticket.unread_owner_messages ?? 0) > 0) {
-                try {
-                  await execute.mutateAsync({ action: 'mark_ticket_read_owner' as any, payload: { ticket_id: tid } })
-                } catch { /* silent - non-critical */ }
+                try { await execute.mutateAsync({ action: 'mark_ticket_read_owner' as any, payload: { ticket_id: tid } }) } catch { /* non-critical */ }
               }
-              // Scroll to bottom after selecting
               setTimeout(() => ownerThreadEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 100)
             }
 
             return (
               <div className="space-y-4">
-                {/* Stats */}
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                   <MetricTile icon={LifeBuoy} label="Total" value={tickets.length} />
                   <MetricTile icon={AlertTriangle} label="Abertos" value={openCount} tone="amber" />
                   <MetricTile icon={ShieldCheck} label="Resolvidos" value={resolvedCount} tone="emerald" />
-                  <MetricTile icon={Clock} label="Não lidos" value={tickets.reduce((acc, t) => acc + (Number(t.unread_owner_messages ?? 0)), 0)} tone="sky" />
+                  <MetricTile icon={Clock} label="Não lidos" value={unreadOwnerCount} tone="sky" />
                 </div>
 
                 <div className="grid gap-4 xl:grid-cols-5">
-                  {/* Ticket List */}
                   <div className="xl:col-span-2">
                     <SurfaceCard title={`Tickets (${tickets.length})`}>
                       <div className="max-h-[520px] overflow-auto space-y-1">
@@ -1528,31 +1496,24 @@ export default function Owner() {
                           const st = String(t.status ?? 'aberto')
                           const pri = String(t.priority ?? 'baixa')
                           const unread = Number(t.unread_owner_messages ?? 0)
-                          const isSelected = tid === selectedTicketId
+                          const isSel = tid === selectedTicketId
                           const created = t.created_at ? new Date(String(t.created_at)).toLocaleDateString('pt-BR') : '—'
-                          const empresa = t.empresas as Record<string, unknown> | null
-                          const empresaNome = empresa ? String(empresa.nome ?? empresa.slug ?? '') : ''
-                          const requester = getRequesterInfo(t)
+                          const emp = t.empresas as Record<string, unknown> | null
+                          const empNome = emp ? String(emp.nome ?? emp.slug ?? '') : ''
+                          const req = getRequesterInfo(t)
                           return (
-                            <button
-                              key={tid}
-                              type="button"
-                              onClick={() => void handleSelectTicket(tid)}
-                              className={`w-full text-left p-3 rounded-lg border transition-all ${isSelected ? 'border-sky-400 bg-sky-50' : 'border-slate-200 hover:border-slate-300 hover:bg-slate-50'}`}
-                            >
+                            <button key={tid} type="button" onClick={() => void handleSelectTicket(tid)} className={`w-full text-left p-3 rounded-lg border transition-all ${isSel ? 'border-sky-400 bg-sky-50' : 'border-slate-200 hover:border-slate-300 hover:bg-slate-50'}`}>
                               <div className="flex items-start justify-between gap-2">
                                 <div className="min-w-0 flex-1">
-                                  <p className={`text-sm font-medium truncate ${isSelected ? 'text-sky-800' : ''}`}>{String(t.subject ?? 'Sem assunto')}</p>
-                                  <p className="text-xs text-slate-500 mt-0.5 truncate">{requester.nome}</p>
-                                  {empresaNome && <p className="text-[10px] text-slate-400">{empresaNome}</p>}
+                                  <p className={`text-sm font-medium truncate ${isSel ? 'text-sky-800' : ''}`}>{String(t.subject ?? 'Sem assunto')}</p>
+                                  <p className="text-xs text-slate-500 mt-0.5 truncate">{req.nome}</p>
+                                  {empNome && <p className="text-[10px] text-slate-400">{empNome}</p>}
                                 </div>
-                                {unread > 0 && (
-                                  <span className="shrink-0 rounded-full bg-sky-600 text-white text-[10px] font-bold px-1.5 py-0.5">{unread}</span>
-                                )}
+                                {unread > 0 && <span className="shrink-0 rounded-full bg-sky-600 text-white text-[10px] font-bold px-1.5 py-0.5">{unread}</span>}
                               </div>
                               <div className="flex items-center gap-2 mt-2">
                                 <span className={`rounded border px-1.5 py-0.5 text-[10px] font-medium ${statusColor(st)}`}>{st}</span>
-                                <span className={`rounded border px-1.5 py-0.5 text-[10px] font-medium ${priorityBadge(pri)}`}>{pri}</span>
+                                <span className={`rounded border px-1.5 py-0.5 text-[10px] font-medium ${priBadge(pri)}`}>{pri}</span>
                                 <span className="text-[10px] text-slate-400 ml-auto">{created}</span>
                               </div>
                             </button>
@@ -1562,84 +1523,58 @@ export default function Owner() {
                     </SurfaceCard>
                   </div>
 
-                  {/* Detail & Response */}
                   <div className="xl:col-span-3 space-y-4">
                     {selectedTicket ? (
                       <>
-                        {/* Ticket Header */}
                         <SurfaceCard title={String(selectedTicket.subject ?? 'Ticket')}>
                           <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs mb-3">
                             <div><span className="text-slate-400">Status:</span> <span className={`rounded border px-1.5 py-0.5 font-medium ${statusColor(String(selectedTicket.status ?? ''))}`}>{String(selectedTicket.status ?? '—')}</span></div>
-                            <div><span className="text-slate-400">Prioridade:</span> <span className={`rounded border px-1.5 py-0.5 font-medium ${priorityBadge(String(selectedTicket.priority ?? 'baixa'))}`}>{String(selectedTicket.priority ?? '—')}</span></div>
+                            <div><span className="text-slate-400">Prioridade:</span> <span className={`rounded border px-1.5 py-0.5 font-medium ${priBadge(String(selectedTicket.priority ?? 'baixa'))}`}>{String(selectedTicket.priority ?? '—')}</span></div>
                             <div><span className="text-slate-400">Criado:</span> {selectedTicket.created_at ? new Date(String(selectedTicket.created_at)).toLocaleString('pt-BR') : '—'}</div>
-                            <div><span className="text-slate-400">Empresa:</span> {(() => {
-                              const emp = selectedTicket.empresas as Record<string, unknown> | null
-                              return emp ? String(emp.nome ?? emp.slug ?? String(selectedTicket.empresa_id ?? '—').slice(0, 8)) : String(selectedTicket.empresa_id ?? '—').slice(0, 8)
-                            })()}</div>
+                            <div><span className="text-slate-400">Empresa:</span> {(() => { const emp = selectedTicket.empresas as Record<string, unknown> | null; return emp ? String(emp.nome ?? emp.slug ?? String(selectedTicket.empresa_id ?? '—').slice(0, 8)) : String(selectedTicket.empresa_id ?? '—').slice(0, 8) })()}</div>
                           </div>
                           <div className="flex items-center gap-3 text-xs mb-3 p-2 rounded-lg bg-slate-50 border border-slate-200">
                             <span className="text-slate-400">Solicitante:</span>
                             <span className="font-medium">{getRequesterInfo(selectedTicket).nome}</span>
-                            {getRequesterInfo(selectedTicket).email && (
-                              <span className="text-slate-400">({getRequesterInfo(selectedTicket).email})</span>
-                            )}
+                            {getRequesterInfo(selectedTicket).email && <span className="text-slate-400">({getRequesterInfo(selectedTicket).email})</span>}
                           </div>
                           {isOwnerMaster && (
                             <div className="flex justify-end">
-                              <button
-                                type="button"
-                                className="rounded-lg border border-rose-300 bg-rose-50 px-3 py-1.5 text-xs font-medium text-rose-700 hover:bg-rose-100 disabled:opacity-50 transition-colors"
-                                disabled={busy}
-                                onClick={() => openCriticalAction({
-                                  title: 'Excluir ticket de suporte',
-                                  description: `Excluir definitivamente o ticket "${String(selectedTicket.subject ?? '')}" e todo seu histórico de mensagens.`,
-                                  confirmText: 'EXCLUIR',
-                                  action: 'delete_support_ticket',
-                                  payload: { ticket_id: selectedTicketId },
-                                  successMessage: 'Ticket excluído com sucesso.',
-                                })}
-                              >
+                              <button type="button" className="rounded-lg border border-rose-300 bg-rose-50 px-3 py-1.5 text-xs font-medium text-rose-700 hover:bg-rose-100 disabled:opacity-50 transition-colors" disabled={busy} onClick={() => openCriticalAction({ title: 'Excluir ticket de suporte', description: `Excluir definitivamente o ticket "${String(selectedTicket.subject ?? '')}" e todo seu histórico de mensagens.`, confirmText: 'EXCLUIR', action: 'delete_support_ticket', payload: { ticket_id: selectedTicketId }, successMessage: 'Ticket excluído com sucesso.' })}>
                                 Excluir ticket
                               </button>
                             </div>
                           )}
                         </SurfaceCard>
 
-                        {/* Thread - full conversation */}
                         <SurfaceCard title={`Conversa (${ticketMessages.length} mensagens)`}>
                           <div className="max-h-[420px] overflow-auto space-y-2 pr-1">
-                            {ticketMessages.length === 0 && (
-                              <p className="text-sm text-slate-400 py-4 text-center">Nenhuma mensagem ainda</p>
-                            )}
+                            {ticketMessages.length === 0 && <p className="text-sm text-slate-400 py-4 text-center">Nenhuma mensagem ainda</p>}
                             {ticketMessages.map((msg, idx) => {
                               const sender = String((msg as any).sender ?? 'client')
-                              const isOwner = sender === 'owner' || sender === 'system'
+                              const isOwnerMsg = sender === 'owner' || sender === 'system'
                               const content = String((msg as any).message ?? (msg as any).content ?? '')
                               const time = (msg as any).created_at ? new Date(String((msg as any).created_at)).toLocaleString('pt-BR') : ''
-                              const attachments = Array.isArray((msg as any).attachments) ? (msg as any).attachments as string[] : []
+                              const atts = Array.isArray((msg as any).attachments) ? (msg as any).attachments as string[] : []
                               return (
-                                <div key={(msg as any).id ?? idx} className={`p-3 rounded-lg text-sm ${isOwner ? 'bg-sky-50 border border-sky-200 ml-8' : 'bg-slate-50 border border-slate-200 mr-8'}`}>
+                                <div key={(msg as any).id ?? idx} className={`p-3 rounded-lg text-sm ${isOwnerMsg ? 'bg-sky-50 border border-sky-200 ml-8' : 'bg-slate-50 border border-slate-200 mr-8'}`}>
                                   <div className="flex items-center gap-2 mb-1">
-                                    <span className={`text-[10px] font-bold uppercase ${isOwner ? 'text-sky-600' : 'text-slate-500'}`}>{isOwner ? 'Suporte (Owner)' : 'Cliente'}</span>
+                                    <span className={`text-[10px] font-bold uppercase ${isOwnerMsg ? 'text-sky-600' : 'text-slate-500'}`}>{isOwnerMsg ? 'Suporte (Owner)' : 'Cliente'}</span>
                                     {time && <span className="text-[10px] text-slate-400">{time}</span>}
                                   </div>
                                   <p className="whitespace-pre-wrap">{content}</p>
-                                  {/* Read indicator: show on last owner message when client has read it */}
-                                  {isOwner && idx === ticketMessages.length - 1 && Number(selectedTicket?.unread_client_messages ?? 1) === 0 && (
+                                  {isOwnerMsg && idx === ticketMessages.length - 1 && Number(selectedTicket?.unread_client_messages ?? 1) === 0 && (
                                     <p className="text-[10px] text-emerald-500 mt-1 flex items-center gap-1">✓✓ Lido pelo cliente</p>
                                   )}
-                                  {/* Read indicator: show on last client message when owner has read it */}
-                                  {!isOwner && idx === ticketMessages.length - 1 && Number(selectedTicket?.unread_owner_messages ?? 1) === 0 && String(selectedTicket?.last_message_sender ?? '') === 'client' && (
+                                  {!isOwnerMsg && idx === ticketMessages.length - 1 && Number(selectedTicket?.unread_owner_messages ?? 1) === 0 && String(selectedTicket?.last_message_sender ?? '') === 'client' && (
                                     <p className="text-[10px] text-sky-500 mt-1 flex items-center gap-1">✓✓ Lido por você</p>
                                   )}
-                                  {attachments.length > 0 && (
+                                  {atts.length > 0 && (
                                     <div className="mt-2 flex flex-wrap gap-2">
-                                      {attachments.map((url, aidx) => (
-                                        <div key={aidx}>
+                                      {atts.map((url, ai) => (
+                                        <div key={ai}>
                                           {isImageUrl(url) ? (
-                                            <a href={url} target="_blank" rel="noopener noreferrer" className="block">
-                                              <img src={url} alt="Anexo" loading="lazy" className="max-h-40 rounded-md border border-slate-200 object-contain hover:opacity-90 transition-opacity" />
-                                            </a>
+                                            <a href={url} target="_blank" rel="noopener noreferrer" className="block"><img src={url} alt="Anexo" loading="lazy" className="max-h-40 rounded-md border border-slate-200 object-contain hover:opacity-90 transition-opacity" /></a>
                                           ) : (
                                             <a href={url} target="_blank" rel="noopener noreferrer" className="text-xs text-sky-600 underline">Ver anexo</a>
                                           )}
@@ -1654,43 +1589,21 @@ export default function Owner() {
                           </div>
                         </SurfaceCard>
 
-                        {/* Response Form */}
                         <SurfaceCard title="Responder">
                           <div className="grid gap-3">
-                            <textarea
-                              className="min-h-[100px] rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm focus:border-sky-400 focus:ring-1 focus:ring-sky-200 outline-none"
-                              value={ticketResponse}
-                              onChange={(e) => setTicketResponse(e.target.value)}
-                              placeholder="Digite sua resposta ao cliente..."
-                            />
+                            <textarea className="min-h-[100px] rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm focus:border-sky-400 focus:ring-1 focus:ring-sky-200 outline-none" value={ticketResponse} onChange={(e) => setTicketResponse(e.target.value)} placeholder="Digite sua resposta ao cliente..." />
                             <div className="space-y-2">
                               <label className="block text-xs text-slate-500">Anexar imagens (opcional)</label>
-                              <input
-                                type="file"
-                                accept="image/*"
-                                multiple
-                                className="block w-full text-sm text-slate-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border file:border-slate-300 file:text-sm file:bg-white file:text-slate-700 hover:file:bg-slate-50"
-                                onChange={(e) => setTicketAttachments(Array.from(e.target.files ?? []))}
-                              />
-                              {ticketAttachments.length > 0 && (
-                                <p className="text-xs text-slate-400">{ticketAttachments.length} arquivo(s) selecionado(s)</p>
-                              )}
+                              <input type="file" accept="image/*" multiple className="block w-full text-sm text-slate-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border file:border-slate-300 file:text-sm file:bg-white file:text-slate-700 hover:file:bg-slate-50" onChange={(e) => setTicketAttachments(Array.from(e.target.files ?? []))} />
+                              {ticketAttachments.length > 0 && <p className="text-xs text-slate-400">{ticketAttachments.length} arquivo(s) selecionado(s)</p>}
                             </div>
                             <div className="flex items-center gap-3">
-                              <select
-                                className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm"
-                                value={ticketResponseStatus}
-                                onChange={(e) => setTicketResponseStatus(e.target.value)}
-                              >
+                              <select className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" value={ticketResponseStatus} onChange={(e) => setTicketResponseStatus(e.target.value)}>
                                 <option value="em_analise">Em análise</option>
                                 <option value="resolvido">Resolvido</option>
                                 <option value="aberto">Reabrir</option>
                               </select>
-                              <button
-                                className="rounded-lg bg-sky-700 px-4 py-2 text-sm font-semibold text-white hover:bg-sky-800 disabled:opacity-50 transition-colors"
-                                disabled={busy || ticketUploading || !selectedTicketId || !ticketResponse.trim()}
-                                onClick={handleOwnerUploadAndRespond}
-                              >
+                              <button className="rounded-lg bg-sky-700 px-4 py-2 text-sm font-semibold text-white hover:bg-sky-800 disabled:opacity-50 transition-colors" disabled={busy || ticketUploading || !selectedTicketId || !ticketResponse.trim()} onClick={handleOwnerUploadAndRespond}>
                                 {ticketUploading ? 'Enviando...' : 'Enviar resposta'}
                               </button>
                             </div>

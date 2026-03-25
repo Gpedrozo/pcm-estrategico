@@ -6,20 +6,29 @@ import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { toast } from '@/hooks/use-toast'
 import { useAuth } from '@/contexts/AuthContext'
-import { useAddSupportTicketMessage, useCreateSupportTicket, useMarkSupportMessagesReadByClient, useSupportTickets } from '@/hooks/useSupportTickets'
+import {
+  useAddSupportTicketMessage,
+  useCreateSupportTicket,
+  useMarkSupportMessagesReadByClient,
+  useSupportTickets,
+} from '@/hooks/useSupportTickets'
 import { uploadToStorage } from '@/services/storage'
+
+// ---------------------------------------------------------------------------
+// Constants & helpers
+// ---------------------------------------------------------------------------
 
 const PRIORITY_OPTIONS = [
   { value: 'baixa', label: 'Baixa' },
-  { value: 'media', label: 'Media' },
+  { value: 'media', label: 'Média' },
   { value: 'alta', label: 'Alta' },
-  { value: 'critica', label: 'Critica' },
+  { value: 'critica', label: 'Crítica' },
 ]
 
-const isImageAttachmentUrl = (url: unknown) => {
+const isImageUrl = (url: unknown) => {
   if (typeof url !== 'string') return false
   const normalized = url.split('?')[0].toLowerCase()
-  return ['.png', '.jpg', '.jpeg', '.webp', '.gif', '.bmp', '.svg'].some((extension) => normalized.endsWith(extension))
+  return ['.png', '.jpg', '.jpeg', '.webp', '.gif', '.bmp', '.svg'].some((ext) => normalized.endsWith(ext))
 }
 
 const statusBadge = (status: string) => {
@@ -37,8 +46,14 @@ const priorityBadge = (priority: string) => {
   return 'bg-slate-100 text-slate-600 border-slate-200'
 }
 
+// ---------------------------------------------------------------------------
+// Component
+// ---------------------------------------------------------------------------
+
 export default function Suporte() {
   const { tenantId, user } = useAuth()
+
+  // Form state
   const [subject, setSubject] = useState('')
   const [message, setMessage] = useState('')
   const [priority, setPriority] = useState('media')
@@ -52,13 +67,15 @@ export default function Suporte() {
 
   const canUploadAttachment = Boolean(tenantId && user?.id)
 
+  // Hooks
   const { data: tickets, isLoading, error } = useSupportTickets()
   const createTicket = useCreateSupportTicket()
   const addTicketMessage = useAddSupportTicketMessage()
   const markMessagesRead = useMarkSupportMessagesReadByClient()
 
+  // Derived
   const unreadClientTotal = useMemo(
-    () => (tickets ?? []).reduce((acc, ticket) => acc + Number(ticket.unread_client_messages ?? 0), 0),
+    () => (tickets ?? []).reduce((acc, t) => acc + Number(t.unread_client_messages ?? 0), 0),
     [tickets],
   )
 
@@ -67,26 +84,10 @@ export default function Suporte() {
     [tickets, selectedTicketId],
   )
 
-  // Mark read per-ticket when selecting a ticket with unread messages
-  const handleSelectTicket = (ticketId: string) => {
-    setSelectedTicketId(ticketId)
-    const ticket = (tickets ?? []).find((t) => t.id === ticketId)
-    if (ticket && Number(ticket.unread_client_messages ?? 0) > 0 && !markMessagesRead.isPending) {
-      markMessagesRead.mutate(ticketId)
-    }
-  }
-
   const threadMessages = useMemo(() => {
     if (!selectedTicket) return []
     return selectedTicket.messages ?? []
   }, [selectedTicket])
-
-  // Scroll to bottom when messages change or ticket switches
-  useEffect(() => {
-    if (threadEndRef.current) {
-      threadEndRef.current.scrollIntoView({ behavior: 'smooth' })
-    }
-  }, [threadMessages.length, selectedTicketId])
 
   const totals = useMemo(() => {
     const all = tickets ?? []
@@ -97,27 +98,57 @@ export default function Suporte() {
     }
   }, [tickets])
 
+  // Mark read only when selecting a specific ticket
+  const handleSelectTicket = (ticketId: string) => {
+    setSelectedTicketId(ticketId)
+    const ticket = (tickets ?? []).find((t) => t.id === ticketId)
+    if (ticket && Number(ticket.unread_client_messages ?? 0) > 0 && !markMessagesRead.isPending) {
+      markMessagesRead.mutate(ticketId)
+    }
+  }
+
+  // Scroll to bottom on new messages or ticket switch
+  useEffect(() => {
+    if (threadEndRef.current) {
+      setTimeout(() => threadEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 50)
+    }
+  }, [threadMessages.length, selectedTicketId])
+
+  // File upload helper
+  const uploadSupportFiles = async (files: File[], ticketId: string) => {
+    if (!canUploadAttachment || files.length === 0 || !tenantId || !user?.id) return [] as string[]
+    const validFiles = files.filter((f) => f.type.startsWith('image/'))
+    const urls: string[] = []
+    for (const file of validFiles) {
+      const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_')
+      const path = `${tenantId}/${user.id}/${ticketId}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}-${safeName}`
+      const publicUrl = await uploadToStorage('support-attachments', path, file)
+      urls.push(publicUrl)
+    }
+    return urls
+  }
+
+  // Create ticket
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault()
-
     const trimmedSubject = subject.trim()
     const trimmedMessage = message.trim()
 
     if (!trimmedSubject || !trimmedMessage) {
-      toast({ title: 'Campos obrigatorios', description: 'Informe assunto e descricao do problema.', variant: 'destructive' })
+      toast({ title: 'Campos obrigatórios', description: 'Informe assunto e descrição do problema.', variant: 'destructive' })
       return
     }
 
     try {
       setUploading(true)
-      const uploadedAttachments = await uploadSupportFiles(createAttachments, 'new-ticket')
-      await createTicket.mutateAsync({ subject: trimmedSubject, message: trimmedMessage, priority, attachments: uploadedAttachments })
+      const uploadedUrls = await uploadSupportFiles(createAttachments, 'new-ticket')
+      await createTicket.mutateAsync({ subject: trimmedSubject, message: trimmedMessage, priority, attachments: uploadedUrls })
       setSubject('')
       setMessage('')
       setPriority('media')
       setCreateAttachments([])
       setShowNewTicketForm(false)
-      toast({ title: 'Chamado aberto', description: 'Sua solicitacao foi registrada no suporte do sistema.' })
+      toast({ title: 'Chamado aberto', description: 'Sua solicitação foi registrada no suporte do sistema.' })
     } catch (err: any) {
       toast({ title: 'Erro ao abrir chamado', description: String(err?.message ?? 'Falha ao registrar chamado.'), variant: 'destructive' })
     } finally {
@@ -125,39 +156,31 @@ export default function Suporte() {
     }
   }
 
-  const uploadSupportFiles = async (files: File[], ticketId: string) => {
-    if (!canUploadAttachment || files.length === 0 || !tenantId || !user?.id) return [] as string[]
-    const validFiles = files.filter((file) => file.type.startsWith('image/'))
-    const urls: string[] = []
-    for (const file of validFiles) {
-      const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_')
-      const filePath = `${tenantId}/${user.id}/${ticketId}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}-${safeName}`
-      const publicUrl = await uploadToStorage('support-attachments', filePath, file)
-      urls.push(publicUrl)
-    }
-    return urls
-  }
-
+  // Reply / follow-up
   const handleSendFollowUp = async () => {
     if (!selectedTicketId) return
     const content = replyText.trim()
-    const files = replyAttachments
-    if (!content && files.length === 0) return
+    if (!content && replyAttachments.length === 0) return
 
     try {
       setUploading(true)
-      const uploadedAttachments = await uploadSupportFiles(files, selectedTicketId)
-      await addTicketMessage.mutateAsync({ ticketId: selectedTicketId, message: content || 'Anexo enviado pelo cliente.', attachments: uploadedAttachments })
+      const uploadedUrls = await uploadSupportFiles(replyAttachments, selectedTicketId)
+      await addTicketMessage.mutateAsync({
+        ticketId: selectedTicketId,
+        message: content || 'Anexo enviado pelo cliente.',
+        attachments: uploadedUrls,
+      })
       setReplyText('')
       setReplyAttachments([])
-      toast({ title: 'Mensagem enviada', description: 'Sua dúvida foi registrada no chamado.' })
+      toast({ title: 'Mensagem enviada', description: 'Sua mensagem foi registrada no chamado.' })
     } catch (err: any) {
-      toast({ title: 'Falha ao enviar mensagem', description: String(err?.message ?? 'Não foi possível registrar sua dúvida.'), variant: 'destructive' })
+      toast({ title: 'Falha ao enviar mensagem', description: String(err?.message ?? 'Não foi possível registrar sua mensagem.'), variant: 'destructive' })
     } finally {
       setUploading(false)
     }
   }
 
+  // Error state
   if (error) {
     return (
       <div className="flex min-h-[40vh] items-center justify-center">
@@ -172,6 +195,7 @@ export default function Suporte() {
 
   return (
     <div className="module-page space-y-4">
+      {/* Header */}
       <div className="module-page-header flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold">Suporte do Sistema</h1>
@@ -208,7 +232,7 @@ export default function Suporte() {
         </div>
       </section>
 
-      {/* New ticket form (collapsible) */}
+      {/* New ticket form */}
       {showNewTicketForm && (
         <section className="rounded-lg border bg-card p-4 animate-in fade-in slide-in-from-top-2 duration-200">
           <h2 className="flex items-center gap-2 text-base font-semibold mb-3">
@@ -218,7 +242,7 @@ export default function Suporte() {
           <form onSubmit={handleSubmit} className="grid gap-3 md:grid-cols-2">
             <div className="grid gap-2">
               <Label htmlFor="support-subject">Assunto</Label>
-              <Input id="support-subject" value={subject} maxLength={160} onChange={(e) => setSubject(e.target.value)} placeholder="Ex: Erro ao fechar ordem de servico" />
+              <Input id="support-subject" value={subject} maxLength={160} onChange={(e) => setSubject(e.target.value)} placeholder="Ex: Erro ao fechar ordem de serviço" />
             </div>
             <div className="grid gap-2">
               <Label htmlFor="support-priority">Prioridade</Label>
@@ -349,7 +373,7 @@ export default function Suporte() {
                           <div className="mt-2 flex flex-wrap gap-2">
                             {entry.attachments.map((url) => (
                               <div key={url}>
-                                {isImageAttachmentUrl(url) ? (
+                                {isImageUrl(url) ? (
                                   <a href={url} target="_blank" rel="noopener noreferrer" className="block">
                                     <img src={url} alt="Anexo" loading="lazy" className="max-h-40 rounded-md border border-border object-contain hover:opacity-90 transition-opacity" />
                                   </a>

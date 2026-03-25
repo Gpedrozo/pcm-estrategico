@@ -121,8 +121,8 @@ export function useOwner2Tickets(enabled = true) {
     queryKey: owner2Keys.tickets,
     queryFn: async () => ({ tickets: await listSupportTickets() }),
     enabled,
-    staleTime: 15_000,
-    refetchInterval: 15_000,
+    staleTime: 10_000,
+    refetchInterval: 10_000,
     retry: 0,
   })
 }
