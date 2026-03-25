@@ -1,4 +1,4 @@
-﻿import { supabase } from '@/integrations/supabase/client'
+import { supabase } from '@/integrations/supabase/client'
 
 export type OwnerAction =
   | 'health_check'
@@ -604,7 +604,6 @@ export async function respondSupportTicket(ticketId: string, response: string, s
 export async function deleteSupportTicket(ticketId: string) {
   return callOwnerAdmin({ action: 'delete_support_ticket', ticket_id: ticketId })
 }
-
 
 export async function listAuditLogs(filters?: Record<string, unknown>): Promise<OwnerAuditLog[]> {
   const data = await callOwnerAdmin<{ logs: OwnerAuditLog[] }>({ action: 'list_audit_logs', filters: filters ?? {} })

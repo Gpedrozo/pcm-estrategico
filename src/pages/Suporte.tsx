@@ -145,9 +145,9 @@ export default function Suporte() {
       await addTicketMessage.mutateAsync({ ticketId: selectedTicketId, message: content || 'Anexo enviado pelo cliente.', attachments: uploadedAttachments })
       setReplyText('')
       setReplyAttachments([])
-      toast({ title: 'Mensagem enviada', description: 'Sua d\u00favida foi registrada no chamado.' })
+      toast({ title: 'Mensagem enviada', description: 'Sua dúvida foi registrada no chamado.' })
     } catch (err: any) {
-      toast({ title: 'Falha ao enviar mensagem', description: String(err?.message ?? 'N\u00e3o foi poss\u00edvel registrar sua d\u00favida.'), variant: 'destructive' })
+      toast({ title: 'Falha ao enviar mensagem', description: String(err?.message ?? 'Não foi possível registrar sua dúvida.'), variant: 'destructive' })
     } finally {
       setUploading(false)
     }
@@ -170,7 +170,7 @@ export default function Suporte() {
       <div className="module-page-header flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold">Suporte do Sistema</h1>
-          <p className="text-sm text-muted-foreground">Abra chamados e acompanhe suas solicita\u00e7\u00f5es.</p>
+          <p className="text-sm text-muted-foreground">Abra chamados e acompanhe suas solicitações.</p>
         </div>
         <Button
           variant={showNewTicketForm ? 'outline' : 'default'}
@@ -179,7 +179,7 @@ export default function Suporte() {
           onClick={() => setShowNewTicketForm((v) => !v)}
         >
           {showNewTicketForm ? <ChevronUp className="h-4 w-4" /> : <MessageSquarePlus className="h-4 w-4" />}
-          {showNewTicketForm ? 'Fechar formul\u00e1rio' : 'Novo chamado'}
+          {showNewTicketForm ? 'Fechar formulário' : 'Novo chamado'}
         </Button>
       </div>
 
@@ -198,7 +198,7 @@ export default function Suporte() {
           <p className="mt-1 text-xl font-semibold text-emerald-600">{totals.resolvido}</p>
         </div>
         <div className="rounded-lg border bg-card p-3">
-          <p className="text-xs text-muted-foreground">N\u00e3o lidas</p>
+          <p className="text-xs text-muted-foreground">Não lidas</p>
           <p className="mt-1 text-xl font-semibold text-sky-600">{unreadClientTotal}</p>
         </div>
       </section>
@@ -222,7 +222,7 @@ export default function Suporte() {
               </select>
             </div>
             <div className="grid gap-2 md:col-span-2">
-              <Label htmlFor="support-message">Descri\u00e7\u00e3o detalhada</Label>
+              <Label htmlFor="support-message">Descrição detalhada</Label>
               <Textarea id="support-message" rows={4} value={message} onChange={(e) => setMessage(e.target.value)} placeholder="Descreva o que aconteceu, em qual tela e como reproduzir." />
             </div>
             <div className="grid gap-2">
@@ -322,7 +322,7 @@ export default function Suporte() {
                       >
                         <div className="flex items-center gap-2 mb-1">
                           <span className={`text-[10px] font-bold uppercase ${isOwner ? 'text-emerald-600' : 'text-muted-foreground'}`}>
-                            {isOwner ? 'Suporte' : 'Voc\u00ea'}
+                            {isOwner ? 'Suporte' : 'Você'}
                           </span>
                           <span className="text-[10px] text-muted-foreground">
                             {new Date(entry.created_at).toLocaleString('pt-BR')}
