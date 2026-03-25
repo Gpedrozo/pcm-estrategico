@@ -162,6 +162,7 @@ type Payload = {
   include_auth_users?: boolean;
   page?: number;
   page_size?: number;
+  attachments?: unknown[];
 };
 
 type OwnerActionPayload = Payload;
@@ -1742,7 +1743,7 @@ Deno.serve(async (req) => {
       blockedCompanies = Number(blockedCompaniesResult.count ?? 0);
     }
 
-    const mrr = (revenue ?? []).reduce((acc, item: any) => acc + Number(item.amount ?? 0), 0);
+    const mrr = (revenue ?? []).reduce((acc: number, item: any) => acc + Number(item.amount ?? 0), 0);
     const arr = mrr * 12;
     const usageByPlan = (plans ?? []).reduce((acc: Record<string, number>, item: any) => {
       const planName = item?.plans?.name ?? "Sem plano";
@@ -2358,7 +2359,8 @@ Deno.serve(async (req) => {
           status: mappedStatus,
           starts_at: createdSubscription.starts_at ?? startsAt,
           ends_at: createdSubscription.ends_at ?? null,
-        }, { onConflict: "empresa_id" }).then(({ error: csError }) => {
+        }, { onConflict: "empresa_id" }).then((result: any) => {
+          const csError = result?.error;
           if (csError && !isSchemaOrMissingObjectError(csError.message)) {
             // Fallback insert
             return admin.from("company_subscriptions").insert({
@@ -3632,7 +3634,7 @@ Deno.serve(async (req) => {
         owner_response: body.response,
         owner_responder_id: auth.user.id,
         responded_at: now,
-        status: ["aberto","em_analise","resolvido"].includes(body.status) ? body.status : "resolvido",
+        status: body.status && ["aberto","em_analise","resolvido"].includes(body.status) ? body.status : "resolvido",
         messages: existingMessages,
         unread_client_messages: currentUnread + 1,
         last_message_sender: "owner",
@@ -3856,15 +3858,12 @@ Deno.serve(async (req) => {
 
     if (sessionError) {
       await writeOperationalLog(admin, {
-        level: "warning",
-        source: "owner-portal-admin",
-        message: "owner_impersonation_session_persist_failed",
-        details: {
-          error: sessionError.message,
-          actor_user_id: auth.user.id,
-          empresa_id: company.id,
-          operation_id: operationId,
-        },
+        scope: "owner-portal-admin",
+        action: "owner_impersonation_session_persist_failed",
+        errorMessage: sessionError.message,
+        userId: auth.user.id,
+        empresaId: company.id,
+        metadata: { operation_id: operationId },
       });
     }
 
@@ -4186,7 +4185,8 @@ Deno.serve(async (req) => {
 
     let deletedAuthUsers = 0;
     if (includeAuthUsers && userIds.length > 0) {
-      deletedAuthUsers = await deleteAuthUsers(admin, userIds);
+      const authResult = await deleteAuthUsers(admin, userIds);
+      deletedAuthUsers = authResult.removed;
     }
 
     const totalDeleted = Object.values(deletedByTable).reduce((acc: number, value) => acc + Number(value ?? 0), 0);
@@ -4580,7 +4580,7 @@ Deno.serve(async (req) => {
   }
 
   if (body.action === "cleanup_owner_stress_data") {
-    const summary = {
+    const summary: Record<string, unknown> = {
       companies: 0,
       plans: 0,
       users: 0,

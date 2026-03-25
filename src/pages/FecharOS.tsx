@@ -365,13 +365,14 @@ export default function FecharOS() {
         }
 
         await updateWithColumnFallback(
-          (payload) =>
+          async (payload) =>
             supabase
               .from('ordens_servico')
               .update(payload)
               .eq('id', selectedOS.id)
               .select()
-              .single(),
+              .single()
+              .then((r) => r),
           {
             status: 'FECHADA',
             data_fechamento: new Date().toISOString(),

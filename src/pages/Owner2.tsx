@@ -1496,9 +1496,9 @@ export default function Owner() {
                 {/* Stats */}
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                   <MetricTile icon={LifeBuoy} label="Total" value={tickets.length} />
-                  <MetricTile icon={AlertTriangle} label="Abertos" value={openCount} color="text-amber-600" />
-                  <MetricTile icon={ShieldCheck} label="Resolvidos" value={resolvedCount} color="text-emerald-600" />
-                  <MetricTile icon={Clock} label="Não lidos" value={tickets.reduce((acc, t) => acc + (Number(t.unread_owner_messages ?? 0)), 0)} color="text-sky-600" />
+                  <MetricTile icon={AlertTriangle} label="Abertos" value={openCount} tone="amber" />
+                  <MetricTile icon={ShieldCheck} label="Resolvidos" value={resolvedCount} tone="emerald" />
+                  <MetricTile icon={Clock} label="Não lidos" value={tickets.reduce((acc, t) => acc + (Number(t.unread_owner_messages ?? 0)), 0)} tone="sky" />
                 </div>
 
                 <div className="grid gap-4 xl:grid-cols-5">

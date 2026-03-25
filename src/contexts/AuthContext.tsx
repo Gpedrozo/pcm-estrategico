@@ -598,9 +598,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           .select('role')
           .eq('user_id', userId);
 
-        roleData = (fallbackRoleQuery.data || []).map((item: { role: AppRole }) => ({
+        roleData = (fallbackRoleQuery.data || []).map((item: any) => ({
           role: item.role,
-          empresa_id: null as string | null,
+          empresa_id: '' as string,
         }));
 
         if (fallbackRoleQuery.error) {
