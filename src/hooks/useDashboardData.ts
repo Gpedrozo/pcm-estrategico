@@ -4,6 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useIndicadores } from './useIndicadores';
 import { useOrdensServico } from './useOrdensServico';
 import { useExecucoesOS } from './useExecucoesOS';
+import { useSolicitacoes } from './useSolicitacoes';
 import { format, subMonths, startOfMonth, parseISO, differenceInDays, differenceInHours } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useAuth } from '@/contexts/AuthContext';
@@ -55,6 +56,12 @@ export function useDashboardData() {
   const { data: indicadores, isLoading: loadingIndicadores } = useIndicadores();
   const { data: ordensServico, isLoading: loadingOS } = useOrdensServico();
   const { data: execucoes, isLoading: loadingExec } = useExecucoesOS();
+  const { data: solicitacoes } = useSolicitacoes();
+
+  const solicitacoesNaoAtendidas = useMemo(() => {
+    if (!solicitacoes) return 0;
+    return solicitacoes.filter(s => s.status === 'PENDENTE').length;
+  }, [solicitacoes]);
   const { data: dashboardKpis, isLoading: loadingDbKpis } = useQuery({
     queryKey: ['dashboard-kpis-db', tenantId],
     queryFn: async () => {
@@ -358,6 +365,7 @@ export function useDashboardData() {
 
   return {
     indicadores,
+    solicitacoesNaoAtendidas,
     osDistribuicaoPorTipo,
     osDistribuicaoPorStatus,
     custosMensais,

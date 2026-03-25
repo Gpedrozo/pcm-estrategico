@@ -25,6 +25,7 @@ interface OSPrintDialogProps {
 export function OSPrintDialog({ os, trigger, solicitacaoNumero: solicitacaoNumeroProp }: OSPrintDialogProps) {
   const { data: empresa } = useDadosEmpresa();
   const [resolvedSolNum, setResolvedSolNum] = useState<number | null>(null);
+  const [servicoExecutado, setServicoExecutado] = useState<string | null>(null);
   const docNum = `OS-${String(os.numero_os).padStart(6, '0')}`;
 
   useEffect(() => {
@@ -34,6 +35,12 @@ export function OSPrintDialog({ os, trigger, solicitacaoNumero: solicitacaoNumer
       .then(({ data }) => { setResolvedSolNum(data ? (data as { numero_solicitacao: number }).numero_solicitacao : null); });
   }, [os.id, solicitacaoNumeroProp]);
 
+  useEffect(() => {
+    if (!os.id) { setServicoExecutado(null); return; }
+    supabase.from('execucoes_os').select('servico_executado').eq('ordem_servico_id', os.id).order('created_at', { ascending: false }).limit(1).maybeSingle()
+      .then(({ data }) => { setServicoExecutado(data ? (data as { servico_executado: string | null }).servico_executado : null); });
+  }, [os.id]);
+
   return (
     <PrintPreviewDialog
       title={`Imprimir Ordem de Serviço — ${docNum}`}
@@ -41,7 +48,7 @@ export function OSPrintDialog({ os, trigger, solicitacaoNumero: solicitacaoNumer
       documentTitle={docNum}
       trigger={trigger}
     >
-      {(ref) => <OSPrintTemplate ref={ref} os={os} empresa={empresa} solicitacaoNumero={resolvedSolNum} />}
+      {(ref) => <OSPrintTemplate ref={ref} os={os} empresa={empresa} solicitacaoNumero={resolvedSolNum} servicoExecutado={servicoExecutado} />}
     </PrintPreviewDialog>
   );
 }

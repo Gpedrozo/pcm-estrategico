@@ -29,10 +29,11 @@ interface OSPrintTemplateProps {
   documentNumber?: string;
   layoutVersion?: string;
   solicitacaoNumero?: number | null;
+  servicoExecutado?: string | null;
 }
 
 export const OSPrintTemplate = forwardRef<HTMLDivElement, OSPrintTemplateProps>(
-  ({ os, empresa, documentNumber, layoutVersion, solicitacaoNumero }, ref) => {
+  ({ os, empresa, documentNumber, layoutVersion, solicitacaoNumero, servicoExecutado }, ref) => {
     const dataSolicitacao = format(new Date(os.data_solicitacao), 'dd/MM/yyyy', { locale: ptBR });
     const docNum = documentNumber || `OS-${String(os.numero_os).padStart(6, '0')}`;
 
@@ -100,10 +101,16 @@ export const OSPrintTemplate = forwardRef<HTMLDivElement, OSPrintTemplateProps>(
         {/* ═══ SERVICE ═══ */}
         <div className="border-b-2 border-black">
           <PrintSectionHeader label="SERVIÇO EXECUTADO" />
-          <div className="px-3 py-2 text-[8px] bg-amber-50 border-b border-black text-amber-900">
-            <span className="font-bold">Atenção:</span> descrever obrigatoriamente o serviço executado com o máximo de detalhes possível, incluindo etapas realizadas, componentes atendidos, ajustes efetuados, medições/testes e condição final do equipamento.
-          </div>
-          <PrintBlankLines count={5} />
+          {servicoExecutado ? (
+            <div className="p-3 text-[10px] whitespace-pre-wrap">{servicoExecutado.toUpperCase()}</div>
+          ) : (
+            <>
+              <div className="px-3 py-2 text-[8px] bg-amber-50 border-b border-black text-amber-900">
+                <span className="font-bold">Atenção:</span> descrever obrigatoriamente o serviço executado com o máximo de detalhes possível, incluindo etapas realizadas, componentes atendidos, ajustes efetuados, medições/testes e condição final do equipamento.
+              </div>
+              <PrintBlankLines count={5} />
+            </>
+          )}
         </div>
 
         {/* ═══ PARTS ═══ */}

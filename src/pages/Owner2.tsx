@@ -1164,48 +1164,49 @@ export default function Owner() {
           )}
 
           {activeTab === 'comercial' && (
-            <div className="grid gap-4 xl:grid-cols-2">
-              <SurfaceCard title="Planos" subtitle="Crie e ajuste planos base com periodicidade padrão">
-                <div className="grid gap-2">
-                  <input className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" value={planCode} onChange={(e) => setPlanCode(e.target.value)} placeholder="Código" />
-                  <input className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" value={planName} onChange={(e) => setPlanName(e.target.value)} placeholder="Nome" />
-                  <input className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" value={planPrice} onChange={(e) => setPlanPrice(e.target.value)} placeholder="Preço mensal" />
-                  <select className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" value={planDefaultPeriod} onChange={(e) => setPlanDefaultPeriod(e.target.value as 'monthly' | 'quarterly' | 'yearly')}>
-                    <option value="monthly">Periodicidade padrão: Mensal</option>
-                    <option value="quarterly">Periodicidade padrão: Trimestral</option>
-                    <option value="yearly">Periodicidade padrão: Anual</option>
-                  </select>
-                  <button className="rounded-lg bg-sky-700 px-3 py-2 text-sm font-semibold text-white" disabled={busy || !planCode || !planName} onClick={() => runAction('create_plan', { plan: { code: planCode.toUpperCase(), name: planName, description: `Periodicidade padrão: ${planDefaultPeriod}`, price_month: Number(planPrice || 0), user_limit: 10, data_limit_mb: 2048, module_flags: { default_periodicity: planDefaultPeriod }, active: true } }, 'Plano criado com sucesso.')}>Criar plano</button>
-                </div>
-              </SurfaceCard>
+            <div className="space-y-4">
+              {/* Planos */}
+              <div className="grid gap-4 xl:grid-cols-2">
+                <SurfaceCard title="Planos" subtitle="Crie e ajuste planos base com periodicidade padrão">
+                  <div className="grid gap-2">
+                    <input className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" value={planCode} onChange={(e) => setPlanCode(e.target.value)} placeholder="Código" />
+                    <input className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" value={planName} onChange={(e) => setPlanName(e.target.value)} placeholder="Nome" />
+                    <input className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" value={planPrice} onChange={(e) => setPlanPrice(e.target.value)} placeholder="Preço mensal" />
+                    <select className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" value={planDefaultPeriod} onChange={(e) => setPlanDefaultPeriod(e.target.value as 'monthly' | 'quarterly' | 'yearly')}>
+                      <option value="monthly">Periodicidade padrão: Mensal</option>
+                      <option value="quarterly">Periodicidade padrão: Trimestral</option>
+                      <option value="yearly">Periodicidade padrão: Anual</option>
+                    </select>
+                    <button className="rounded-lg bg-sky-700 px-3 py-2 text-sm font-semibold text-white" disabled={busy || !planCode || !planName} onClick={() => runAction('create_plan', { plan: { code: planCode.toUpperCase(), name: planName, description: `Periodicidade padrão: ${planDefaultPeriod}`, price_month: Number(planPrice || 0), user_limit: 10, data_limit_mb: 2048, module_flags: { default_periodicity: planDefaultPeriod }, active: true } }, 'Plano criado com sucesso.')}>Criar plano</button>
+                  </div>
+                </SurfaceCard>
 
-              <SurfaceCard title="Catálogo de planos">
-                <div className="max-h-[420px] overflow-auto rounded-xl border border-slate-200">
-                  <table className="w-full text-xs">
-                    <thead className="bg-slate-100">
-                      <tr>
-                        <th className="px-2 py-2 text-left">Código</th>
-                        <th className="px-2 py-2 text-left">Nome</th>
-                        <th className="px-2 py-2 text-left">Preço</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {plans.map((p) => (
-                        <tr key={String(p.id)} className="border-t border-slate-200">
-                          <td className="px-2 py-2">{String(p.code ?? '-')}</td>
-                          <td className="px-2 py-2">{String(p.name ?? '-')}</td>
-                          <td className="px-2 py-2">R$ {Number(p.price_month ?? 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                <SurfaceCard title="Catálogo de planos">
+                  <div className="max-h-[420px] overflow-auto rounded-xl border border-slate-200">
+                    <table className="w-full text-xs">
+                      <thead className="bg-slate-100">
+                        <tr>
+                          <th className="px-2 py-2 text-left">Código</th>
+                          <th className="px-2 py-2 text-left">Nome</th>
+                          <th className="px-2 py-2 text-left">Preço</th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </SurfaceCard>
-            </div>
-          )}
+                      </thead>
+                      <tbody>
+                        {plans.map((p) => (
+                          <tr key={String(p.id)} className="border-t border-slate-200">
+                            <td className="px-2 py-2">{String(p.code ?? '-')}</td>
+                            <td className="px-2 py-2">{String(p.name ?? '-')}</td>
+                            <td className="px-2 py-2">R$ {Number(p.price_month ?? 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </SurfaceCard>
+              </div>
 
-          {activeTab === 'comercial' && (
-            <div className="grid gap-4 xl:grid-cols-2">
+              {/* Assinaturas */}
+              <div className="grid gap-4 xl:grid-cols-2">
               <SurfaceCard title="Assinaturas por empresa" subtitle="Cada empresa com plano, valor e periodicidade próprios">
                 <div className="grid gap-2">
                   <select className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" value={subscriptionPlanId} onChange={(e) => setSubscriptionPlanId(e.target.value)}>
@@ -1236,7 +1237,7 @@ export default function Owner() {
                 </div>
               </SurfaceCard>
 
-              <SurfaceCard title="Assinaturas ativas">
+              <SurfaceCard title="Assinaturas">
                 <div className="max-h-[420px] overflow-auto rounded-xl border border-slate-200">
                   <table className="w-full text-xs">
                     <thead className="bg-slate-100">
@@ -1261,6 +1262,7 @@ export default function Owner() {
                   </table>
                 </div>
               </SurfaceCard>
+              </div>
             </div>
           )}
 

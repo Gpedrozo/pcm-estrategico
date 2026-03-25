@@ -193,12 +193,12 @@ export default function Solicitacoes() {
               <tr><td colSpan={8} className="text-center py-8 text-muted-foreground">Nenhuma solicitação encontrada</td></tr>
             ) : (
               filteredSolicitacoes.map((sol) => (
-                <tr key={sol.id}>
+                <tr key={sol.id} className={sol.status === 'PENDENTE' ? 'border-l-4 border-l-warning bg-warning/5' : ''}>
                   <td className="font-mono font-medium">{sol.numero_solicitacao}</td>
                   <td className="font-mono text-primary">{sol.tag}</td>
                   <td>{sol.solicitante_nome}</td>
                   <td><Badge className={getClassificacaoBadge(sol.classificacao)}>{sol.classificacao}</Badge></td>
-                  <td><Badge className={getStatusBadge(sol.status)}>{sol.status}</Badge></td>
+                  <td><Badge className={`${getStatusBadge(sol.status)}${sol.status === 'PENDENTE' ? ' animate-pulse' : ''}`}>{sol.status}</Badge></td>
                   <td>
                     <span className="inline-flex items-center gap-1">
                       <Clock className="h-3 w-3 shrink-0" />{sol.sla_horas}h

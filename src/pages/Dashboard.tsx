@@ -9,7 +9,8 @@ import {
   Target,
   TrendingUp,
   DollarSign,
-  Calendar
+  Calendar,
+  AlertTriangle
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -34,6 +35,7 @@ export default function Dashboard() {
   const { data: padronizacoes } = useTenantPadronizacoes();
   const { 
     indicadores, 
+    solicitacoesNaoAtendidas,
     osDistribuicaoPorTipo,
     osDistribuicaoPorStatus,
     custosMensais,
@@ -143,11 +145,11 @@ export default function Dashboard() {
             variant="warning"
           />
           <IndicatorCard
-            title="Em Andamento"
-            value={ind.osEmAndamento}
-            subtitle="Em execução"
-            icon={FilePlus}
-            variant="info"
+            title="Solicitações Não Atendidas"
+            value={solicitacoesNaoAtendidas}
+            subtitle="Pendentes de análise"
+            icon={AlertTriangle}
+            variant="warning"
           />
           <IndicatorCard
             title="O.S Fechadas"

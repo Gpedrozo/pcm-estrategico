@@ -2,7 +2,7 @@ import { Outlet, Navigate, useLocation } from 'react-router-dom';
 import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
 import { AppSidebar } from './AppSidebar';
 import { useAuth } from '@/contexts/AuthContext';
-import { Menu, Loader2 } from 'lucide-react';
+import { Menu, Loader2, AlertTriangle } from 'lucide-react';
 import type { OwnerCompany } from '@/services/ownerPortal.service';
 import { NotificationCenter } from '@/components/notifications/NotificationCenter';
 import { GlobalSearch } from './GlobalSearch';
@@ -10,6 +10,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { getImpersonationExpiresAt, getImpersonationPayload, impersonateCompany, listPlatformCompanies, stopImpersonation } from '@/services/ownerPortal.service';
 import { supabase } from '@/integrations/supabase/client';
 import { resolveOrRepairTenantHost } from '@/lib/tenantDomain';
+import { useSubscriptionAlert } from '@/hooks/useSubscriptionAlert';
 import { createSessionTransferHash } from '@/lib/sessionTransfer';
 import { logger } from '@/lib/logger';
 import { isPersistableAppPath, persistLastAppRoute } from '@/lib/navigationState';
@@ -31,6 +32,26 @@ export function AppLayout() {
   const [companySearch, setCompanySearch] = useState('');
   const [isDomainRedirectRunning, setIsDomainRedirectRunning] = useState(false);
   const { data: tenantVisualIdentity } = useTenantVisualIdentity();
+  const { data: subscriptionAlert } = useSubscriptionAlert();
+  const [subscriptionAlertDismissed, setSubscriptionAlertDismissed] = useState(false);
+
+  const subscriptionAlertMessage = useMemo(() => {
+    if (!subscriptionAlert || subscriptionAlertDismissed) return null;
+    const { status, renewal_at, plan_name } = subscriptionAlert;
+    if (status === 'cancelled' || status === 'suspended') {
+      return `Sua assinatura ${plan_name ? `(${plan_name}) ` : ''}está ${status === 'cancelled' ? 'cancelada' : 'suspensa'}. Entre em contato com o suporte para reativar.`;
+    }
+    if (status === 'past_due') {
+      return `Sua assinatura ${plan_name ? `(${plan_name}) ` : ''}está com pagamento atrasado. Regularize para evitar bloqueio.`;
+    }
+    if (status === 'trial' || status === 'teste') {
+      const expiresLabel = renewal_at
+        ? ` até ${new Date(renewal_at).toLocaleDateString('pt-BR')}`
+        : '';
+      return `Você está no período de teste${plan_name ? ` do plano ${plan_name}` : ''}${expiresLabel}. Contrate um plano para garantir a continuidade.`;
+    }
+    return null;
+  }, [subscriptionAlert, subscriptionAlertDismissed]);
 
   useApplyTenantVisualIdentity(tenantVisualIdentity);
 
@@ -377,6 +398,22 @@ export function AppLayout() {
                   className="rounded border border-amber-500 px-2 py-1 hover:bg-amber-200 disabled:opacity-60"
                 >
                   Encerrar modo cliente
+                </button>
+              </div>
+            </div>
+          )}
+          {subscriptionAlertMessage && (
+            <div className="border-b border-red-300/40 bg-red-50 px-4 py-2 text-red-900">
+              <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
+                <p className="flex items-center gap-1.5 font-medium">
+                  <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
+                  {subscriptionAlertMessage}
+                </p>
+                <button
+                  onClick={() => setSubscriptionAlertDismissed(true)}
+                  className="rounded border border-red-400 px-2 py-1 hover:bg-red-100"
+                >
+                  Fechar
                 </button>
               </div>
             </div>

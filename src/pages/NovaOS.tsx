@@ -28,9 +28,10 @@ import { useSolicitacoesPendentes, useUpdateSolicitacao, type SolicitacaoRow } f
 import { resolvePrioridadeFromClassificacao, useTenantPadronizacoes } from '@/hooks/useTenantPadronizacoes';
 import { useDadosEmpresa } from '@/hooks/useDadosEmpresa';
 import { useAuth } from '@/contexts/AuthContext';
-import { ArrowLeft, Check, Loader2, Printer, CheckCircle, AlertTriangle } from 'lucide-react';
+import { ArrowLeft, Check, Loader2, Printer, CheckCircle, AlertTriangle, FileText } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { OSPrintTemplate } from '@/components/os/OSPrintTemplate';
+import { useRecentOrdensServico } from '@/hooks/useOrdensServico';
 
 type TipoOS = 'CORRETIVA' | 'PREVENTIVA' | 'PREDITIVA' | 'INSPECAO' | 'MELHORIA';
 
@@ -48,6 +49,7 @@ export default function NovaOS() {
   const { data: solicitacoesPendentes = [] } = useSolicitacoesPendentes();
   const createOSMutation = useCreateOrdemServico();
   const updateSolicitacaoMutation = useUpdateSolicitacao();
+  const { data: recentOS = [] } = useRecentOrdensServico(10);
 
   const prioridadesOS = padronizacoes?.prioridades_os?.length
     ? padronizacoes.prioridades_os
@@ -440,6 +442,42 @@ export default function NovaOS() {
           </div>
         </form>
       </div>
+
+      {/* Recently Emitted OS */}
+      {recentOS.length > 0 && (
+        <div className="bg-card border border-border rounded-lg p-4 md:p-6">
+          <h2 className="text-lg font-semibold text-foreground flex items-center gap-2 mb-4">
+            <FileText className="h-5 w-5 text-primary" />
+            Últimas O.S. Emitidas
+          </h2>
+          <div className="overflow-x-auto">
+            <table className="data-table w-full text-sm">
+              <thead>
+                <tr>
+                  <th>Nº O.S</th>
+                  <th>TAG</th>
+                  <th>Tipo</th>
+                  <th>Prioridade</th>
+                  <th>Status</th>
+                  <th>Data</th>
+                </tr>
+              </thead>
+              <tbody>
+                {recentOS.map((os) => (
+                  <tr key={os.id}>
+                    <td className="font-mono font-medium">{String(os.numero_os).padStart(4, '0')}</td>
+                    <td className="font-mono text-primary">{os.tag}</td>
+                    <td>{os.tipo}</td>
+                    <td>{os.prioridade}</td>
+                    <td><span className="text-xs font-medium">{os.status}</span></td>
+                    <td>{new Date(os.created_at).toLocaleDateString('pt-BR')}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
 
       {/* Success Modal with Print Option */}
       <Dialog open={showSuccessModal} onOpenChange={setShowSuccessModal}>
