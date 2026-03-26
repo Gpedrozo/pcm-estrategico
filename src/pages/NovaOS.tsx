@@ -228,256 +228,257 @@ export default function NovaOS() {
   }
 
   return (
-    <div className="module-page max-w-6xl mx-auto space-y-4 pb-4">
+    <div className="module-page max-w-7xl mx-auto space-y-3 pb-4">
       {/* Header */}
       <div className="module-page-header flex items-start gap-3">
         <Button variant="outline" size="icon" className="shrink-0" onClick={() => navigate(-1)}>
             <ArrowLeft className="h-5 w-5" />
         </Button>
-        <div className="space-y-1">
+        <div className="space-y-0.5">
           <h1 className="text-2xl font-bold text-foreground">Emitir Ordem de Servico</h1>
-          <p className="text-muted-foreground max-w-3xl">
+          <p className="text-sm text-muted-foreground max-w-3xl">
             {solicitacaoOrigem
               ? `Conversao da solicitacao #${solicitacaoOrigem.numero_solicitacao} em O.S com preenchimento automatico.`
-              : 'Preencha os dados operacionais para criar uma nova O.S com rastreabilidade completa.'}
+              : 'Preencha os dados para criar uma nova O.S com rastreabilidade completa.'}
           </p>
         </div>
       </div>
 
       {solicitacaoVinculada && (
-        <div className="rounded-lg border border-info/30 bg-info/5 p-3 text-sm text-info">
+        <div className="rounded-lg border border-info/30 bg-info/5 p-2.5 text-sm text-info">
           Solicitação vinculada: #{solicitacaoVinculada.numero_solicitacao} • TAG {solicitacaoVinculada.tag}. Ao salvar, a solicitação será marcada como CONVERTIDA automaticamente.
         </div>
       )}
 
       {formData.tag && solicitacoesAbertasDaTag.length > 0 && (
-        <div className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">
+        <div className="rounded-lg border border-amber-300 bg-amber-50 p-2.5 text-sm text-amber-900">
           <p className="font-semibold">Esta TAG possui {solicitacoesAbertasDaTag.length} solicitacao(oes) em aberto.</p>
           <p>Verifique antes de emitir uma nova Ordem de Servico.</p>
         </div>
       )}
 
-      {/* Form Card */}
-      <div className="bg-card border border-border rounded-lg p-3 md:p-4">
-        <form onSubmit={handleSubmit} className="space-y-4">
-          {/* Date */}
-          <div className="grid grid-cols-2 gap-4 p-4 bg-muted/40 rounded-lg border border-border/60">
-            <div>
-              <Label className="text-xs text-muted-foreground">Nº da O.S</Label>
-              <p className="text-2xl font-bold font-mono text-primary">(Auto)</p>
-            </div>
-            <div>
-              <Label className="text-xs text-muted-foreground">Data de Solicitação</Label>
-              <p className="text-lg font-medium">
-                {new Date().toLocaleDateString('pt-BR')}
-              </p>
-            </div>
-          </div>
-
-          {/* TAG and Equipment */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2 rounded-xl border border-border/70 p-4 bg-background/70">
-              <Label htmlFor="tag">TAG do Equipamento *</Label>
-              <Select 
-                value={formData.tag} 
-                onValueChange={handleTagChange}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione a TAG" />
-                </SelectTrigger>
-                <SelectContent>
-                  {equipamentosAtivos.map((eq) => (
-                    <SelectItem key={eq.id} value={eq.tag}>
-                      {eq.tag} - {eq.nome}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+      {/* Two-column layout: Form (left) + Recent OS (right) */}
+      <div className="grid grid-cols-1 lg:grid-cols-[1fr,360px] gap-4 items-start">
+        {/* Form Card */}
+        <div className="bg-card border border-border rounded-lg p-3 md:p-4">
+          <form onSubmit={handleSubmit} className="space-y-3">
+            {/* Date */}
+            <div className="grid grid-cols-2 gap-3 p-3 bg-muted/40 rounded-lg">
+              <div>
+                <Label className="text-xs text-muted-foreground">Nº da O.S</Label>
+                <p className="text-xl font-bold font-mono text-primary">(Auto)</p>
+              </div>
+              <div>
+                <Label className="text-xs text-muted-foreground">Data de Solicitação</Label>
+                <p className="text-base font-medium">
+                  {new Date().toLocaleDateString('pt-BR')}
+                </p>
+              </div>
             </div>
 
-            <div className="space-y-2 rounded-xl border border-border/70 p-4 bg-background/70">
-              <Label>Equipamento</Label>
-              <Input
-                value={selectedEquipamento?.nome || ''}
-                disabled
-                className="bg-muted"
-                placeholder="Selecione uma TAG"
-              />
-            </div>
-          </div>
+            {/* TAG and Equipment */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label htmlFor="tag">TAG do Equipamento *</Label>
+                <Select 
+                  value={formData.tag} 
+                  onValueChange={handleTagChange}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione a TAG" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {equipamentosAtivos.map((eq) => (
+                      <SelectItem key={eq.id} value={eq.tag}>
+                        {eq.tag} - {eq.nome}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
 
-          {/* Type and Priority */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2 rounded-xl border border-border/70 p-4 bg-background/70">
-              <Label htmlFor="tipo">Tipo de Manutenção *</Label>
-              <Select 
-                value={formData.tipo} 
-                onValueChange={(value) => setFormData({ ...formData, tipo: value as TipoOS })}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione o tipo" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="CORRETIVA">Corretiva</SelectItem>
-                  <SelectItem value="PREVENTIVA">Preventiva</SelectItem>
-                  <SelectItem value="PREDITIVA">Preditiva</SelectItem>
-                  <SelectItem value="INSPECAO">Inspeção</SelectItem>
-                  <SelectItem value="MELHORIA">Melhoria</SelectItem>
-                </SelectContent>
-              </Select>
+              <div className="space-y-1.5">
+                <Label>Equipamento</Label>
+                <Input
+                  value={selectedEquipamento?.nome || ''}
+                  disabled
+                  className="bg-muted"
+                  placeholder="Selecione uma TAG"
+                />
+              </div>
             </div>
 
-            <div className="space-y-2 rounded-xl border border-border/70 p-4 bg-background/70">
-              <Label htmlFor="prioridade">Prioridade</Label>
-              <Select 
-                value={formData.prioridade} 
-                onValueChange={(value) => setFormData({ ...formData, prioridade: value })}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {prioridadesOS.map((prioridade) => (
-                    <SelectItem key={prioridade} value={prioridade}>
-                      {prioridade}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
+            {/* Type and Priority */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label htmlFor="tipo">Tipo de Manutenção *</Label>
+                <Select 
+                  value={formData.tipo} 
+                  onValueChange={(value) => setFormData({ ...formData, tipo: value as TipoOS })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione o tipo" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="CORRETIVA">Corretiva</SelectItem>
+                    <SelectItem value="PREVENTIVA">Preventiva</SelectItem>
+                    <SelectItem value="PREDITIVA">Preditiva</SelectItem>
+                    <SelectItem value="INSPECAO">Inspeção</SelectItem>
+                    <SelectItem value="MELHORIA">Melhoria</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
 
-          {/* Requester */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2 rounded-xl border border-border/70 p-4 bg-background/70">
-              <Label htmlFor="solicitante">Solicitante *</Label>
-              <Input
-                id="solicitante"
-                value={formData.solicitante}
-                onChange={(e) => setFormData({ ...formData, solicitante: e.target.value })}
-                placeholder="Nome ou setor solicitante"
+              <div className="space-y-1.5">
+                <Label htmlFor="prioridade">Prioridade</Label>
+                <Select 
+                  value={formData.prioridade} 
+                  onValueChange={(value) => setFormData({ ...formData, prioridade: value })}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {prioridadesOS.map((prioridade) => (
+                      <SelectItem key={prioridade} value={prioridade}>
+                        {prioridade}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            {/* Requester + Mechanic */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label htmlFor="solicitante">Solicitante *</Label>
+                <Input
+                  id="solicitante"
+                  value={formData.solicitante}
+                  onChange={(e) => setFormData({ ...formData, solicitante: e.target.value })}
+                  placeholder="Nome ou setor solicitante"
+                  required
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <Label>Mecânico responsável (opcional)</Label>
+                <Select
+                  value={formData.mecanicoResponsavelId || 'none'}
+                  onValueChange={(value) => setFormData({ ...formData, mecanicoResponsavelId: value === 'none' ? '' : value })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecionar mecânico" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">Não designar agora</SelectItem>
+                    {(mecanicosAtivos || []).map((mecanico) => (
+                      <SelectItem key={mecanico.id} value={mecanico.id}>
+                        {mecanico.nome}{mecanico.codigo_acesso ? ` • ${mecanico.codigo_acesso}` : ''}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            {/* Problem Description */}
+            <div className="space-y-1.5">
+              <Label htmlFor="problema">Problema Apresentado *</Label>
+              <Textarea
+                id="problema"
+                value={formData.problema}
+                onChange={(e) => setFormData({ ...formData, problema: e.target.value })}
+                placeholder="Descreva detalhadamente o problema ou serviço a ser executado..."
+                rows={3}
+                minLength={problemaMinLength}
                 required
               />
-            </div>
-
-            <div className="space-y-2 rounded-xl border border-border/70 p-4 bg-background/70">
-              <Label>Mecânico responsável (opcional)</Label>
-              <Select
-                value={formData.mecanicoResponsavelId || 'none'}
-                onValueChange={(value) => setFormData({ ...formData, mecanicoResponsavelId: value === 'none' ? '' : value })}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecionar mecânico" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">Não designar agora</SelectItem>
-                  {(mecanicosAtivos || []).map((mecanico) => (
-                    <SelectItem key={mecanico.id} value={mecanico.id}>
-                      {mecanico.nome}{mecanico.codigo_acesso ? ` • ${mecanico.codigo_acesso}` : ''}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-
-          {/* Problem Description */}
-          <div className="space-y-2 rounded-xl border border-border/70 p-4 bg-background/70">
-            <Label htmlFor="problema">Problema Apresentado *</Label>
-            <Textarea
-              id="problema"
-              value={formData.problema}
-              onChange={(e) => setFormData({ ...formData, problema: e.target.value })}
-              placeholder="Descreva detalhadamente o problema ou serviço a ser executado..."
-              rows={4}
-              minLength={problemaMinLength}
-              required
-            />
-            {!problemaValido && formData.problema.length > 0 && (
-              <p className="text-xs text-destructive">Descrição do problema deve ter no mínimo 5 caracteres.</p>
-            )}
-          </div>
-
-          {/* Estimates */}
-          <div className="space-y-2 rounded-xl border border-border/70 p-4 bg-background/70">
-            <Label htmlFor="tempoEstimado">Tempo Estimado (min)</Label>
-            <Input
-              id="tempoEstimado"
-              type="number"
-              min="0"
-              value={formData.tempoEstimado}
-              onChange={(e) => setFormData({ ...formData, tempoEstimado: e.target.value })}
-              placeholder="Ex: 120"
-            />
-          </div>
-
-          {/* User Info */}
-          <div className="p-3 bg-muted/50 rounded-xl text-sm border border-border/60">
-            <span className="text-muted-foreground">Usuário de abertura: </span>
-            <span className="font-medium">{user?.nome}</span>
-          </div>
-
-          {/* Actions */}
-          <div className="flex flex-col sm:flex-row gap-3 pt-4 border-t border-border">
-            <Button 
-              type="submit" 
-              className="flex-1 gap-2 h-11"
-              disabled={createOSMutation.isPending || !formData.tag || !formData.tipo || !formData.solicitante || !problemaValido}
-            >
-              {createOSMutation.isPending ? (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  Salvando...
-                </>
-              ) : (
-                <>
-                  <Check className="h-4 w-4" />
-                  Salvar O.S
-                </>
+              {!problemaValido && formData.problema.length > 0 && (
+                <p className="text-xs text-destructive">Descrição do problema deve ter no mínimo 5 caracteres.</p>
               )}
-            </Button>
-            <Button type="button" variant="outline" className="h-11" onClick={() => navigate(-1)}>
-              Cancelar
-            </Button>
-          </div>
-        </form>
-      </div>
+            </div>
 
-      {/* Recently Emitted OS */}
-      {recentOS.length > 0 && (
-        <div className="bg-card border border-border rounded-lg p-3 md:p-4">
-          <h2 className="text-lg font-semibold text-foreground flex items-center gap-2 mb-4">
-            <FileText className="h-5 w-5 text-primary" />
-            Últimas O.S. Emitidas
-          </h2>
-          <div className="overflow-x-auto">
-            <table className="data-table w-full text-sm">
-              <thead>
-                <tr>
-                  <th>Nº O.S</th>
-                  <th>TAG</th>
-                  <th>Tipo</th>
-                  <th>Prioridade</th>
-                  <th>Status</th>
-                  <th>Data</th>
-                </tr>
-              </thead>
-              <tbody>
-                {recentOS.map((os) => (
-                  <tr key={os.id}>
-                    <td className="font-mono font-medium">{String(os.numero_os).padStart(4, '0')}</td>
-                    <td className="font-mono text-primary">{os.tag}</td>
-                    <td>{os.tipo}</td>
-                    <td>{os.prioridade}</td>
-                    <td><span className="text-xs font-medium">{os.status}</span></td>
-                    <td>{new Date(os.created_at).toLocaleDateString('pt-BR')}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+            {/* Estimates + User Info */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label htmlFor="tempoEstimado">Tempo Estimado (min)</Label>
+                <Input
+                  id="tempoEstimado"
+                  type="number"
+                  min="0"
+                  value={formData.tempoEstimado}
+                  onChange={(e) => setFormData({ ...formData, tempoEstimado: e.target.value })}
+                  placeholder="Ex: 120"
+                />
+              </div>
+              <div className="flex items-end">
+                <div className="p-2.5 bg-muted/50 rounded-lg text-sm w-full">
+                  <span className="text-muted-foreground">Usuário: </span>
+                  <span className="font-medium">{user?.nome}</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Actions */}
+            <div className="flex flex-col sm:flex-row gap-2 pt-3 border-t border-border">
+              <Button 
+                type="submit" 
+                className="flex-1 gap-2 h-10"
+                disabled={createOSMutation.isPending || !formData.tag || !formData.tipo || !formData.solicitante || !problemaValido}
+              >
+                {createOSMutation.isPending ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Salvando...
+                  </>
+                ) : (
+                  <>
+                    <Check className="h-4 w-4" />
+                    Salvar O.S
+                  </>
+                )}
+              </Button>
+              <Button type="button" variant="outline" className="h-10" onClick={() => navigate(-1)}>
+                Cancelar
+              </Button>
+            </div>
+          </form>
         </div>
-      )}
+
+        {/* Recently Emitted OS — sidebar */}
+        {recentOS.length > 0 && (
+          <div className="bg-card border border-border rounded-lg p-3 lg:sticky lg:top-4">
+            <h2 className="text-sm font-semibold text-foreground flex items-center gap-2 mb-3">
+              <FileText className="h-4 w-4 text-primary" />
+              Últimas O.S. Emitidas
+            </h2>
+            <div className="overflow-x-auto">
+              <table className="data-table w-full text-xs">
+                <thead>
+                  <tr>
+                    <th>Nº</th>
+                    <th>TAG</th>
+                    <th>Tipo</th>
+                    <th>Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {recentOS.map((os) => (
+                    <tr key={os.id}>
+                      <td className="font-mono font-medium">{String(os.numero_os).padStart(4, '0')}</td>
+                      <td className="font-mono text-primary">{os.tag}</td>
+                      <td>{os.tipo}</td>
+                      <td><span className="text-xs font-medium">{os.status}</span></td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+      </div>
 
       {/* Success Modal with Print Option */}
       <Dialog open={showSuccessModal} onOpenChange={setShowSuccessModal}>

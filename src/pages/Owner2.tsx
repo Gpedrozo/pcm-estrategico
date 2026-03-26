@@ -102,6 +102,7 @@ export default function Owner() {
   const [subscriptionRenewalAt, setSubscriptionRenewalAt] = useState('')
   const [planCodeToChange, setPlanCodeToChange] = useState('')
   const [showPlanForm, setShowPlanForm] = useState(false)
+  const [editingPlanId, setEditingPlanId] = useState('')
 
   const [selectedContractId, setSelectedContractId] = useState('')
   const [contractContent, setContractContent] = useState('')
@@ -1168,11 +1169,12 @@ export default function Owner() {
             <div className="space-y-6">
               {/* Catálogo de Planos */}
               <SurfaceCard title="Catálogo de Planos" subtitle="Gerencie os planos disponíveis para as empresas">
-                <div className="mb-3">
-                  <button className="rounded-lg bg-sky-700 px-3 py-2 text-sm font-semibold text-white" onClick={() => setShowPlanForm(!showPlanForm)}>{showPlanForm ? 'Cancelar' : '+ Cadastrar Novo Plano'}</button>
+                <div className="mb-3 flex flex-wrap gap-2">
+                  <button className="rounded-lg bg-sky-700 px-3 py-2 text-sm font-semibold text-white" onClick={() => { setShowPlanForm(!showPlanForm); setEditingPlanId(''); setPlanCode(''); setPlanName(''); setPlanPrice('0'); setPlanDefaultPeriod('monthly'); }}>{showPlanForm && !editingPlanId ? 'Cancelar' : '+ Cadastrar Novo Plano'}</button>
                 </div>
-                {showPlanForm && (
+                {(showPlanForm || editingPlanId) && (
                   <div className="mb-4 grid gap-2 rounded-lg border border-slate-200 bg-slate-50 p-3">
+                    <p className="text-xs font-semibold text-slate-600">{editingPlanId ? 'Editar Plano' : 'Novo Plano'}</p>
                     <div className="grid gap-2 sm:grid-cols-2">
                       <input className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" value={planCode} onChange={(e) => setPlanCode(e.target.value)} placeholder="Código" />
                       <input className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" value={planName} onChange={(e) => setPlanName(e.target.value)} placeholder="Nome" />
@@ -1185,7 +1187,14 @@ export default function Owner() {
                         <option value="yearly">Anual</option>
                       </select>
                     </div>
-                    <button className="rounded-lg bg-sky-700 px-3 py-2 text-sm font-semibold text-white" disabled={busy || !planCode || !planName} onClick={() => { runAction('create_plan', { plan: { code: planCode.toUpperCase(), name: planName, description: `Periodicidade padrão: ${planDefaultPeriod}`, price_month: Number(planPrice || 0), user_limit: 10, data_limit_mb: 2048, module_flags: { default_periodicity: planDefaultPeriod }, active: true } }, 'Plano criado com sucesso.'); setShowPlanForm(false); }}>Criar plano</button>
+                    {editingPlanId ? (
+                      <div className="flex gap-2">
+                        <button className="rounded-lg bg-amber-600 px-3 py-2 text-sm font-semibold text-white" disabled={busy || !planCode || !planName} onClick={() => { runAction('update_plan', { plan: { id: editingPlanId, code: planCode.toUpperCase(), name: planName, description: `Periodicidade padrão: ${planDefaultPeriod}`, price_month: Number(planPrice || 0), module_flags: { default_periodicity: planDefaultPeriod } } }, 'Plano atualizado com sucesso.'); setEditingPlanId(''); setPlanCode(''); setPlanName(''); setPlanPrice('0'); setPlanDefaultPeriod('monthly'); }}>Alterar plano</button>
+                        <button className="rounded-lg border border-slate-300 px-3 py-2 text-sm" onClick={() => { setEditingPlanId(''); setPlanCode(''); setPlanName(''); setPlanPrice('0'); setPlanDefaultPeriod('monthly'); }}>Cancelar edição</button>
+                      </div>
+                    ) : (
+                      <button className="rounded-lg bg-sky-700 px-3 py-2 text-sm font-semibold text-white" disabled={busy || !planCode || !planName} onClick={() => { runAction('create_plan', { plan: { code: planCode.toUpperCase(), name: planName, description: `Periodicidade padrão: ${planDefaultPeriod}`, price_month: Number(planPrice || 0), user_limit: 10, data_limit_mb: 2048, module_flags: { default_periodicity: planDefaultPeriod }, active: true } }, 'Plano criado com sucesso.'); setShowPlanForm(false); }}>Criar plano</button>
+                    )}
                   </div>
                 )}
                 <div className="max-h-[420px] overflow-auto rounded-xl border border-slate-200">
@@ -1196,6 +1205,7 @@ export default function Owner() {
                         <th className="px-2 py-2 text-left">Nome</th>
                         <th className="px-2 py-2 text-left">Preço</th>
                         <th className="px-2 py-2 text-left">Período</th>
+                        <th className="px-2 py-2 text-left">Ação</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -1203,15 +1213,18 @@ export default function Owner() {
                         const flags = (p as Record<string, unknown>).module_flags as Record<string, unknown> | undefined
                         const periodLabel = flags?.default_periodicity === 'yearly' ? 'Anual' : flags?.default_periodicity === 'quarterly' ? 'Trimestral' : 'Mensal'
                         return (
-                          <tr key={String(p.id)} className="border-t border-slate-200">
+                          <tr key={String(p.id)} className={`border-t border-slate-200 ${editingPlanId === String(p.id) ? 'bg-amber-50' : ''}`}>
                             <td className="px-2 py-2">{String(p.code ?? '-')}</td>
                             <td className="px-2 py-2">{String(p.name ?? '-')}</td>
                             <td className="px-2 py-2">R$ {Number(p.price_month ?? 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                             <td className="px-2 py-2">{periodLabel}</td>
+                            <td className="px-2 py-2">
+                              <button className="rounded border border-amber-300 bg-amber-50 px-2 py-0.5 text-[11px] text-amber-700" onClick={() => { setEditingPlanId(String(p.id)); setPlanCode(String(p.code ?? '')); setPlanName(String(p.name ?? '')); setPlanPrice(String(p.price_month ?? '0')); setPlanDefaultPeriod((flags?.default_periodicity as 'monthly' | 'quarterly' | 'yearly') || 'monthly'); setShowPlanForm(false); }}>Editar</button>
+                            </td>
                           </tr>
                         )
                       })}
-                      {plans.length === 0 && <tr><td colSpan={4} className="px-2 py-3 text-slate-500">Nenhum plano cadastrado.</td></tr>}
+                      {plans.length === 0 && <tr><td colSpan={5} className="px-2 py-3 text-slate-500">Nenhum plano cadastrado.</td></tr>}
                     </tbody>
                   </table>
                 </div>
