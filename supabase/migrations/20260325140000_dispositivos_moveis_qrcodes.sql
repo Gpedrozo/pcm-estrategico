@@ -100,8 +100,8 @@ CREATE POLICY "dispositivos_moveis_owner_read"
   ON public.dispositivos_moveis FOR SELECT
   USING (
     EXISTS (
-      SELECT 1 FROM public.profiles
-      WHERE id = auth.uid() AND tipo IN ('SYSTEM_OWNER', 'SYSTEM_ADMIN')
+      SELECT 1 FROM public.user_roles
+      WHERE user_id = auth.uid() AND role::text IN ('SYSTEM_OWNER', 'SYSTEM_ADMIN')
     )
   );
 
@@ -109,8 +109,8 @@ CREATE POLICY "dispositivos_moveis_owner_update"
   ON public.dispositivos_moveis FOR UPDATE
   USING (
     EXISTS (
-      SELECT 1 FROM public.profiles
-      WHERE id = auth.uid() AND tipo IN ('SYSTEM_OWNER', 'SYSTEM_ADMIN')
+      SELECT 1 FROM public.user_roles
+      WHERE user_id = auth.uid() AND role::text IN ('SYSTEM_OWNER', 'SYSTEM_ADMIN')
     )
   );
 
@@ -118,8 +118,8 @@ CREATE POLICY "qrcodes_vinculacao_owner_all"
   ON public.qrcodes_vinculacao FOR ALL
   USING (
     EXISTS (
-      SELECT 1 FROM public.profiles
-      WHERE id = auth.uid() AND tipo IN ('SYSTEM_OWNER', 'SYSTEM_ADMIN')
+      SELECT 1 FROM public.user_roles
+      WHERE user_id = auth.uid() AND role::text IN ('SYSTEM_OWNER', 'SYSTEM_ADMIN')
     )
   );
 
