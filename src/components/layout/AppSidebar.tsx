@@ -30,6 +30,7 @@ import {
   Droplet,
   HardHat,
   UserCircle,
+  Smartphone,
 } from 'lucide-react';
 import { NavLink, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
@@ -50,6 +51,7 @@ import {
   SidebarFooter,
 } from '@/components/ui/sidebar';
 import { cn } from '@/lib/utils';
+import { InstaladorAPKDialog } from '@/components/ajuda/InstaladorAPKDialog';
 
 const mainMenuItems = [
   { title: 'Dashboard', url: '/dashboard', icon: LayoutDashboard },
@@ -127,6 +129,7 @@ export function AppSidebar() {
   const tenant = tenantContext?.tenant ?? null;
   const location = useLocation();
   const [resolvedCompanyName, setResolvedCompanyName] = useState<string | null>(null);
+  const [instaladorOpen, setInstaladorOpen] = useState(false);
 
   const { data: supportTickets } = useSupportTickets();
   const unreadClientCount = (supportTickets ?? []).reduce(
@@ -323,9 +326,22 @@ export function AppSidebar() {
           <SidebarGroupContent>
             <SidebarMenu>
               {ajudaMenuItems.map(renderMenuLink)}
+              <SidebarMenuItem>
+                <SidebarMenuButton asChild>
+                  <button
+                    onClick={() => setInstaladorOpen(true)}
+                    className="flex items-center gap-3 px-3 py-2 rounded-md transition-colors text-sidebar-foreground hover:bg-sidebar-accent/50 w-full text-left"
+                  >
+                    <Smartphone className="h-5 w-5" />
+                    <span>Instalador</span>
+                  </button>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
+
+        <InstaladorAPKDialog open={instaladorOpen} onOpenChange={setInstaladorOpen} />
 
         {isAdmin && (
           <SidebarGroup className="mt-4">
