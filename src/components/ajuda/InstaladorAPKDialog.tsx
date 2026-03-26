@@ -33,19 +33,20 @@ export function InstaladorAPKDialog({ open, onOpenChange }: InstaladorAPKDialogP
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-xl">
             <Smartphone className="h-6 w-6 text-blue-600" />
-            Instalador \u2014 App Mec\u00e2nico
+            Instalador — App Mecânico
           </DialogTitle>
           <DialogDescription>
-            Baixe e instale o aplicativo para acessar as ordens de servi\u00e7o diretamente no celular.
+            Baixe e instale o aplicativo para acessar as ordens de serviço diretamente no celular.
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4 mt-2">
+          {/* Download Section */}
           <div className="rounded-lg border bg-blue-50 dark:bg-blue-950/30 p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="font-semibold text-blue-900 dark:text-blue-100">PCM Mec\u00e2nico.apk</p>
-                <p className="text-sm text-blue-700 dark:text-blue-300">~6 MB \u2014 Android 5.0+</p>
+                <p className="font-semibold text-blue-900 dark:text-blue-100">PCM Mecânico.apk</p>
+                <p className="text-sm text-blue-700 dark:text-blue-300">~6 MB — Android 5.0+</p>
               </div>
               <Button onClick={handleDownload} className="gap-2" variant={downloaded ? "outline" : "default"}>
                 {downloaded ? <CheckCircle2 className="h-4 w-4 text-green-600" /> : <Download className="h-4 w-4" />}
@@ -54,6 +55,7 @@ export function InstaladorAPKDialog({ open, onOpenChange }: InstaladorAPKDialogP
             </div>
           </div>
 
+          {/* Step-by-step instructions */}
           <div className="space-y-3">
             <h3 className="font-semibold text-base flex items-center gap-2">
               <ArrowRight className="h-4 w-4" />
@@ -62,51 +64,53 @@ export function InstaladorAPKDialog({ open, onOpenChange }: InstaladorAPKDialogP
 
             <div className="space-y-2">
               <Step number={1} title="Transfira o APK para o celular">
-                Envie o arquivo <strong>PCM-Mecanico.apk</strong> para o celular via cabo USB,
+                Envie o arquivo <strong>PCM-Mecanico.apk</strong> para o celular via cabo USB, 
                 WhatsApp, Google Drive ou e-mail.
               </Step>
 
               <Step number={2} title="Permita fontes desconhecidas">
-                No celular, ao abrir o arquivo, o Android pedir\u00e1 permiss\u00e3o para instalar apps
-                de fontes desconhecidas. Toque em <strong>\u201cConfigura\u00e7\u00f5es\u201d</strong> e ative a op\u00e7\u00e3o.
+                No celular, ao abrir o arquivo, o Android pedirá permissão para instalar apps 
+                de fontes desconhecidas. Toque em <strong>"Configurações"</strong> e ative a opção.
               </Step>
 
               <Step number={3} title="Instale o aplicativo">
-                Toque em <strong>\u201cInstalar\u201d</strong> e aguarde. Ap\u00f3s a instala\u00e7\u00e3o,
-                toque em <strong>\u201cAbrir\u201d</strong>.
+                Toque em <strong>"Instalar"</strong> e aguarde. Após a instalação, 
+                toque em <strong>"Abrir"</strong>.
               </Step>
             </div>
           </div>
 
+          {/* QR Code connection */}
           <div className="space-y-3">
             <h3 className="font-semibold text-base flex items-center gap-2">
               <QrCode className="h-4 w-4" />
-              Como conectar \u00e0 empresa
+              Como conectar à empresa
             </h3>
 
             <div className="space-y-2">
               <Step number={4} title="Gere o QR Code no sistema">
-                No painel web, acesse <strong>Administra\u00e7\u00e3o \u2192 Dispositivos M\u00f3veis</strong> e
-                gere um QR Code de vincula\u00e7\u00e3o para o mec\u00e2nico.
+                No painel web, acesse <strong>Administração → Dispositivos Móveis</strong> e 
+                gere um QR Code de vinculação para o mecânico.
               </Step>
 
               <Step number={5} title="Escaneie com o app">
-                Abra o app no celular e escaneie o QR Code exibido na tela do computador.
-                O dispositivo ser\u00e1 vinculado automaticamente \u00e0 empresa e ao mec\u00e2nico.
+                Abra o app no celular e escaneie o QR Code exibido na tela do computador. 
+                O dispositivo será vinculado automaticamente à empresa e ao mecânico.
               </Step>
 
               <Step number={6} title="Pronto!">
-                O mec\u00e2nico j\u00e1 pode receber e executar ordens de servi\u00e7o diretamente pelo celular.
+                O mecânico já pode receber e executar ordens de serviço diretamente pelo celular.
               </Step>
             </div>
           </div>
 
+          {/* Security note */}
           <div className="rounded-lg border bg-amber-50 dark:bg-amber-950/30 p-3 flex gap-3 items-start">
             <Shield className="h-5 w-5 text-amber-600 mt-0.5 flex-shrink-0" />
             <div className="text-sm text-amber-900 dark:text-amber-100">
-              <strong>Seguran\u00e7a:</strong> O APK \u00e9 assinado exclusivamente para este sistema.
-              Cada dispositivo precisa ser autorizado via QR Code pelo administrador \u2014
-              n\u00e3o \u00e9 poss\u00edvel acessar dados sem vincula\u00e7\u00e3o pr\u00e9via.
+              <strong>Segurança:</strong> O APK é assinado exclusivamente para este sistema. 
+              Cada dispositivo precisa ser autorizado via QR Code pelo administrador — 
+              não é possível acessar dados sem vinculação prévia.
             </div>
           </div>
         </div>
