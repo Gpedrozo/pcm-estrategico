@@ -118,13 +118,19 @@ export default function Solicitacoes() {
 
   const getStatusBadge = (status: string) => {
     const styles: Record<string, string> = {
-      'PENDENTE': 'bg-warning/10 text-warning',
-      'APROVADA': 'bg-info/10 text-info',
-      'CONVERTIDA': 'bg-success/10 text-success',
+      'PENDENTE': 'bg-amber-500/20 text-amber-700 font-semibold border border-amber-400/50',
+      'APROVADA': 'bg-sky-500/20 text-sky-700 font-semibold border border-sky-400/50',
+      'CONVERTIDA': 'bg-emerald-500/15 text-emerald-700 border border-emerald-300/50',
       'REJEITADA': 'bg-destructive/10 text-destructive',
       'CANCELADA': 'bg-muted text-muted-foreground',
     };
     return styles[status] || styles['PENDENTE'];
+  };
+
+  const getRowHighlight = (sol: SolicitacaoRow) => {
+    if (sol.status === 'PENDENTE') return 'border-l-4 border-l-amber-500 bg-amber-50 dark:bg-amber-950/30';
+    if (sol.status === 'APROVADA' && !sol.os_id) return 'border-l-4 border-l-sky-500 bg-sky-50 dark:bg-sky-950/30';
+    return '';
   };
 
   const getClassificacaoBadge = (classificacao: string) => {
@@ -174,6 +180,15 @@ export default function Solicitacoes() {
         </div>
       </div>
 
+      {/* Legenda de status */}
+      <div className="bg-card border border-border rounded-lg p-3 flex flex-wrap items-center gap-x-5 gap-y-2 text-xs">
+        <span className="font-semibold text-sm text-foreground">Legenda:</span>
+        <span className="inline-flex items-center gap-1.5"><span className="h-3 w-3 rounded-sm bg-amber-500 border border-amber-600 inline-block" /> <strong className="text-amber-700">Não lida</strong> — Pendente de aprovação ou rejeição</span>
+        <span className="inline-flex items-center gap-1.5"><span className="h-3 w-3 rounded-sm bg-sky-500 border border-sky-600 inline-block" /> <strong className="text-sky-700">Aprovada, sem O.S.</strong> — Aprovada mas sem O.S. emitida</span>
+        <span className="inline-flex items-center gap-1.5"><span className="h-3 w-3 rounded-sm bg-emerald-500 border border-emerald-600 inline-block" /> <strong className="text-emerald-700">Convertida</strong> — Já gerou Ordem de Serviço</span>
+        <span className="inline-flex items-center gap-1.5"><span className="h-3 w-3 rounded-sm bg-red-400 border border-red-500 inline-block" /> <span className="text-muted-foreground">Rejeitada / Cancelada</span></span>
+      </div>
+
       <div className="bg-card border border-border rounded-lg overflow-hidden">
         <table className="table-industrial">
           <thead>
@@ -193,7 +208,7 @@ export default function Solicitacoes() {
               <tr><td colSpan={8} className="text-center py-8 text-muted-foreground">Nenhuma solicitação encontrada</td></tr>
             ) : (
               filteredSolicitacoes.map((sol) => (
-                <tr key={sol.id} className={sol.status === 'PENDENTE' ? 'border-l-4 border-l-warning bg-warning/5' : ''}>
+                <tr key={sol.id} className={getRowHighlight(sol)}>
                   <td className="font-mono font-medium">{sol.numero_solicitacao}</td>
                   <td className="font-mono text-primary">{sol.tag}</td>
                   <td>{sol.solicitante_nome}</td>
