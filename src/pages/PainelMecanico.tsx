@@ -22,6 +22,8 @@ import {
   BarChart3,
   LogOut,
   Timer,
+  MessageSquare,
+  FilePlus,
 } from 'lucide-react';
 
 type MecanicoLogado = {
@@ -292,6 +294,22 @@ export default function PainelMecanico() {
             </div>
           </CardContent>
         </Card>
+      </div>
+
+      {/* Ações Rápidas */}
+      <div className="flex flex-wrap gap-3">
+        <Button onClick={() => navigate('/solicitacoes')} variant="outline" className="gap-2">
+          <MessageSquare className="h-4 w-4" />
+          Nova Solicitação
+        </Button>
+        <Button onClick={() => navigate('/os/nova')} variant="outline" className="gap-2">
+          <FilePlus className="h-4 w-4" />
+          Emitir O.S.
+        </Button>
+        <Button onClick={() => navigate('/os/historico')} variant="outline" className="gap-2">
+          <History className="h-4 w-4" />
+          Ver Todas as O.S.
+        </Button>
       </div>
 
       {/* Tabs: Minhas O.S. / Histórico */}

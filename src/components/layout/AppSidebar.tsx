@@ -69,6 +69,14 @@ const operadorMenuItems = [
   { title: 'Solicitações', url: '/solicitacoes', icon: MessageSquare },
 ];
 
+const mecanicoMenuItems = [
+  { title: 'Painel Mecânico', url: '/painel-mecanico', icon: HardHat },
+  { title: 'Solicitações', url: '/solicitacoes', icon: MessageSquare },
+  { title: 'Emitir O.S', url: '/os/nova', icon: FilePlus },
+  { title: 'Fechar O.S', url: '/os/fechar', icon: FileCheck },
+  { title: 'Histórico', url: '/os/historico', icon: History },
+];
+
 const planejamentoMenuItems = [
   { title: 'Lubrificação', url: '/lubrificacao', icon: Droplet },
   { title: 'Programação', url: '/programacao', icon: CalendarClock },
@@ -162,8 +170,10 @@ export function AppSidebar() {
   const isActive = (path: string) => location.pathname === path;
 
   const isSolicitanteOnly = effectiveRole === 'SOLICITANTE';
+  const isTechnicianOnly = effectiveRole === 'TECHNICIAN';
   const isUsuarioOrBelow = isSolicitanteOnly || effectiveRole === 'USUARIO';
   const isAdminOrAbove = isAdmin || effectiveRole === 'MASTER_TI' || effectiveRole === 'SYSTEM_OWNER' || effectiveRole === 'SYSTEM_ADMIN';
+  const isRestrictedRole = isSolicitanteOnly || isTechnicianOnly;
 
   const renderMenuLink = (item: { title: string; url: string; icon: React.ElementType }) => (
     <SidebarMenuItem key={item.url}>
@@ -233,13 +243,15 @@ export function AppSidebar() {
             <SidebarMenu>
               {isSolicitanteOnly
                 ? operadorMenuItems.map(renderMenuLink)
-                : osMenuItems.map(renderMenuLink)
+                : isTechnicianOnly
+                  ? mecanicoMenuItems.map(renderMenuLink)
+                  : osMenuItems.map(renderMenuLink)
               }
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
 
-        {!isSolicitanteOnly && (
+        {!isRestrictedRole && (
           <SidebarGroup className="mt-4">
             <SidebarGroupLabel className="text-sidebar-foreground/50 uppercase text-xs font-semibold px-3 mb-2">
               Planejamento
@@ -265,7 +277,7 @@ export function AppSidebar() {
           </SidebarGroup>
         )}
 
-        {!isSolicitanteOnly && (
+        {!isRestrictedRole && (
           <SidebarGroup className="mt-4">
             <SidebarGroupLabel className="text-sidebar-foreground/50 uppercase text-xs font-semibold px-3 mb-2">
               Catálogos
