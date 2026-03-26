@@ -74,6 +74,7 @@ const MecanicoHome = lazyWithRetry(() => import('./pages/mecanico/MecanicoHome')
 const MecanicoExecucao = lazyWithRetry(() => import('./pages/mecanico/MecanicoExecucao'))
 const MecanicoNovaSolicitacao = lazyWithRetry(() => import('./pages/mecanico/MecanicoNovaSolicitacao'))
 const MecanicoHistorico = lazyWithRetry(() => import('./pages/mecanico/MecanicoHistorico'))
+const MecanicoFinalizar = lazyWithRetry(() => import('./pages/mecanico/MecanicoFinalizar'))
 
 // Manual de Operação v2 (22 chapters)
 const ManualLayout = lazyWithRetry(() => import('./components/manual/ManualLayout'))
@@ -329,6 +330,7 @@ function TenantRoutes() {
                 <Route path="/mecanico/os/:id" element={<MecanicoExecucao />} />
                 <Route path="/mecanico/solicitar" element={<MecanicoNovaSolicitacao />} />
                 <Route path="/mecanico/historico" element={<MecanicoHistorico />} />
+                <Route path="/mecanico/finalizar/:id" element={<MecanicoFinalizar />} />
 
                 <Route path="/dashboard" element={<Dashboard />} />
                 <Route path="/solicitacoes" element={<Solicitacoes />} />

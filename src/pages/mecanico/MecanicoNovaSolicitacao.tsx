@@ -1,9 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { useCreateSolicitacao } from '@/hooks/useSolicitacoes';
 import { useEquipamentos } from '@/hooks/useEquipamentos';
@@ -26,10 +24,19 @@ import { cn } from '@/lib/utils';
 
 type Impacto = 'ALTO' | 'MEDIO' | 'BAIXO';
 
-const IMPACTO_OPTIONS: { value: Impacto; label: string; desc: string; icon: React.ElementType; color: string }[] = [
-  { value: 'ALTO', label: 'Parou', desc: 'Equipamento parado', icon: AlertTriangle, color: 'border-red-400 bg-red-50 text-red-800 dark:bg-red-950/30 dark:text-red-300' },
-  { value: 'MEDIO', label: 'Reduzido', desc: 'Produção reduzida', icon: AlertCircle, color: 'border-yellow-400 bg-yellow-50 text-yellow-800 dark:bg-yellow-950/30 dark:text-yellow-300' },
-  { value: 'BAIXO', label: 'Normal', desc: 'Sem impacto agora', icon: Shield, color: 'border-green-400 bg-green-50 text-green-800 dark:bg-green-950/30 dark:text-green-300' },
+const IMPACTO_OPTIONS: { value: Impacto; label: string; desc: string; icon: React.ElementType; color: string; selected: string }[] = [
+  { value: 'ALTO', label: 'Parou', desc: 'Equipamento parado', icon: AlertTriangle, color: 'border-border bg-card', selected: 'border-red-500 bg-red-500/10 text-red-800 dark:text-red-300 ring-2 ring-red-400/50' },
+  { value: 'MEDIO', label: 'Reduzido', desc: 'Produção reduzida', icon: AlertCircle, color: 'border-border bg-card', selected: 'border-yellow-500 bg-yellow-500/10 text-yellow-800 dark:text-yellow-300 ring-2 ring-yellow-400/50' },
+  { value: 'BAIXO', label: 'Normal', desc: 'Sem impacto agora', icon: Shield, color: 'border-border bg-card', selected: 'border-green-500 bg-green-500/10 text-green-800 dark:text-green-300 ring-2 ring-green-400/50' },
+];
+
+const DESCRICAO_CHIPS = [
+  'Vazamento',
+  'Vibração excessiva',
+  'Barulho estranho',
+  'Aquecimento',
+  'Não liga',
+  'Travando',
 ];
 
 export default function MecanicoNovaSolicitacao() {
@@ -54,6 +61,13 @@ export default function MecanicoNovaSolicitacao() {
   }).slice(0, 8);
 
   const equipSelecionado = (equipamentos || []).find(e => e.id === equipamentoId);
+
+  const handleDescChip = (chip: string) => {
+    setDescricao(prev => {
+      if (prev.includes(chip)) return prev;
+      return prev ? `${prev}, ${chip.toLowerCase()}` : chip;
+    });
+  };
 
   const handleFoto = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -102,71 +116,70 @@ export default function MecanicoNovaSolicitacao() {
   if (enviado) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
-        <Card className="w-full max-w-sm">
-          <CardContent className="pt-8 pb-6 px-6 text-center space-y-4">
-            <div className="mx-auto w-16 h-16 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center">
-              <CheckCircle2 className="h-8 w-8 text-green-600" />
-            </div>
-            <h2 className="text-xl font-bold">Solicitação Enviada!</h2>
-            <p className="text-sm text-muted-foreground">
-              Sua solicitação foi registrada e será analisada pela equipe de planejamento.
-            </p>
-            <Button className="w-full h-12 text-base" onClick={() => navigate('/mecanico')}>
-              Voltar ao Painel
-            </Button>
-          </CardContent>
-        </Card>
+        <div className="w-full max-w-sm text-center space-y-5">
+          <div className="mx-auto w-20 h-20 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center">
+            <CheckCircle2 className="h-10 w-10 text-green-600" />
+          </div>
+          <h2 className="text-2xl font-black">Solicitação Enviada!</h2>
+          <p className="text-base text-muted-foreground">
+            Sua solicitação foi registrada e será analisada pela equipe de planejamento.
+          </p>
+          <Button className="w-full h-16 text-lg font-bold rounded-2xl" onClick={() => navigate('/mecanico')}>
+            Voltar ao Painel
+          </Button>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="space-y-5 py-4">
+    <div className="space-y-5 py-4 pb-8">
       {/* Header */}
       <div className="flex items-center gap-3">
-        <button onClick={() => navigate('/mecanico')} className="p-2 rounded-lg hover:bg-muted active:scale-95">
-          <ArrowLeft className="h-5 w-5" />
+        <button onClick={() => navigate('/mecanico')} className="min-w-[48px] min-h-[48px] flex items-center justify-center rounded-2xl border-2 hover:bg-muted active:scale-90 transition-all">
+          <ArrowLeft className="h-6 w-6" />
         </button>
-        <h1 className="text-lg font-bold">Nova Solicitação</h1>
+        <h1 className="text-xl font-black">Nova Solicitação</h1>
       </div>
 
       {/* Equipamento */}
       <div className="space-y-2">
-        <Label className="text-base">Equipamento *</Label>
+        <p className="text-base font-bold">Equipamento *</p>
         {equipSelecionado ? (
-          <Card className="border-primary">
-            <CardContent className="p-3 flex items-center justify-between">
-              <div>
-                <p className="font-semibold text-sm">{equipSelecionado.nome}</p>
-                <p className="text-xs text-muted-foreground">{equipSelecionado.tag}</p>
-              </div>
-              <button onClick={() => { setEquipamentoId(null); setEquipSearch(''); }} className="p-1">
-                <X className="h-4 w-4 text-muted-foreground" />
-              </button>
-            </CardContent>
-          </Card>
+          <div className="rounded-2xl border-2 border-primary p-4 flex items-center justify-between">
+            <div>
+              <p className="font-bold text-base">{equipSelecionado.nome}</p>
+              <p className="text-sm text-muted-foreground">{equipSelecionado.tag}</p>
+            </div>
+            <button
+              onClick={() => { setEquipamentoId(null); setEquipSearch(''); }}
+              className="min-w-[40px] min-h-[40px] flex items-center justify-center rounded-xl border hover:bg-muted"
+            >
+              <X className="h-5 w-5 text-muted-foreground" />
+            </button>
+          </div>
         ) : (
           <div className="space-y-2">
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
               <Input
                 value={equipSearch}
                 onChange={e => setEquipSearch(e.target.value)}
                 placeholder="Buscar por TAG ou nome..."
-                className="pl-9 h-12 text-base"
+                className="pl-11 h-14 text-base rounded-2xl border-2"
                 autoFocus
               />
             </div>
             {equipFiltrados.length > 0 && (
-              <div className="border rounded-xl overflow-hidden divide-y max-h-48 overflow-y-auto">
+              <div className="border-2 rounded-2xl overflow-hidden divide-y max-h-48 overflow-y-auto">
                 {equipFiltrados.map(e => (
                   <button
                     key={e.id}
                     onClick={() => { setEquipamentoId(e.id); setEquipSearch(''); }}
-                    className="w-full p-3 text-left hover:bg-muted active:bg-muted/80 transition-colors"
+                    className="w-full p-4 text-left hover:bg-muted active:bg-muted/80 transition-colors"
                   >
-                    <p className="font-medium text-sm">{e.nome}</p>
-                    <p className="text-xs text-muted-foreground">{e.tag}</p>
+                    <p className="font-semibold text-base">{e.nome}</p>
+                    <p className="text-sm text-muted-foreground">{e.tag}</p>
                   </button>
                 ))}
               </div>
@@ -175,33 +188,49 @@ export default function MecanicoNovaSolicitacao() {
         )}
       </div>
 
-      {/* Descrição */}
+      {/* Descrição com chips */}
       <div className="space-y-2">
-        <Label className="text-base">Descreva o problema *</Label>
+        <p className="text-base font-bold">Descreva o problema *</p>
+        <div className="flex flex-wrap gap-2 mb-2">
+          {DESCRICAO_CHIPS.map(chip => (
+            <button
+              key={chip}
+              onClick={() => handleDescChip(chip)}
+              className={cn(
+                'px-4 py-2 rounded-full border-2 text-sm font-semibold transition-all active:scale-95',
+                descricao.toLowerCase().includes(chip.toLowerCase())
+                  ? 'border-primary bg-primary/10 text-primary'
+                  : 'border-border bg-card'
+              )}
+            >
+              {chip}
+            </button>
+          ))}
+        </div>
         <Textarea
           value={descricao}
           onChange={e => setDescricao(e.target.value)}
           placeholder="Ex: motor fazendo barulho estranho, vibração excessiva..."
           rows={4}
-          className="text-base"
+          className="text-base rounded-2xl border-2"
         />
       </div>
 
-      {/* Impacto */}
+      {/* Impacto — cards grandes */}
       <div className="space-y-2">
-        <Label className="text-base">Quão grave é?</Label>
+        <p className="text-base font-bold">Quão grave é?</p>
         <div className="grid grid-cols-3 gap-2">
           {IMPACTO_OPTIONS.map(opt => (
             <button
               key={opt.value}
               onClick={() => setImpacto(opt.value)}
               className={cn(
-                'flex flex-col items-center gap-1 p-3 rounded-xl border-2 transition-all active:scale-95',
-                impacto === opt.value ? opt.color + ' border-2' : 'border-border bg-card',
+                'flex flex-col items-center gap-1.5 p-4 rounded-2xl border-2 transition-all active:scale-95',
+                impacto === opt.value ? opt.selected : opt.color,
               )}
             >
-              <opt.icon className="h-6 w-6" />
-              <span className="text-sm font-semibold">{opt.label}</span>
+              <opt.icon className="h-7 w-7" />
+              <span className="text-sm font-bold">{opt.label}</span>
               <span className="text-[10px] opacity-70">{opt.desc}</span>
             </button>
           ))}
@@ -210,21 +239,21 @@ export default function MecanicoNovaSolicitacao() {
 
       {/* Foto */}
       <div className="space-y-2">
-        <Label className="text-base">Foto (opcional)</Label>
+        <p className="text-base font-bold">Foto (opcional)</p>
         {fotoUrl ? (
-          <div className="relative w-32 h-32 rounded-xl overflow-hidden border">
+          <div className="relative w-32 h-32 rounded-2xl overflow-hidden border-2">
             <img src={fotoUrl} alt="Anexo" className="w-full h-full object-cover" />
             <button
               onClick={() => setFotoUrl(null)}
-              className="absolute top-1 right-1 bg-black/50 rounded-full p-1"
+              className="absolute top-1.5 right-1.5 bg-black/60 rounded-full p-1"
             >
-              <X className="h-3.5 w-3.5 text-white" />
+              <X className="h-4 w-4 text-white" />
             </button>
           </div>
         ) : (
-          <label className="flex items-center gap-3 p-4 rounded-xl border border-dashed bg-card cursor-pointer active:bg-muted/50 transition-colors">
-            {uploading ? <Loader2 className="h-6 w-6 animate-spin text-primary" /> : <Camera className="h-6 w-6 text-primary" />}
-            <span className="text-sm text-muted-foreground">{uploading ? 'Enviando...' : 'Tirar foto ou anexar imagem'}</span>
+          <label className="flex items-center gap-3 p-5 rounded-2xl border-2 border-dashed bg-card cursor-pointer active:bg-muted/50 transition-colors">
+            {uploading ? <Loader2 className="h-8 w-8 animate-spin text-primary" /> : <Camera className="h-8 w-8 text-primary" />}
+            <span className="text-base text-muted-foreground font-medium">{uploading ? 'Enviando...' : 'Tirar foto ou anexar imagem'}</span>
             <input type="file" accept="image/*" capture="environment" onChange={handleFoto} className="hidden" disabled={uploading} />
           </label>
         )}
@@ -232,11 +261,11 @@ export default function MecanicoNovaSolicitacao() {
 
       {/* Enviar */}
       <Button
-        className="w-full h-14 text-lg font-bold gap-2 rounded-xl active:scale-95"
+        className="w-full h-20 text-xl font-black gap-3 rounded-2xl active:scale-95 transition-all shadow-lg"
         onClick={handleEnviar}
         disabled={createSolicitacao.isPending}
       >
-        {createSolicitacao.isPending ? <Loader2 className="h-5 w-5 animate-spin" /> : <Send className="h-5 w-5" />}
+        {createSolicitacao.isPending ? <Loader2 className="h-7 w-7 animate-spin" /> : <Send className="h-7 w-7" />}
         ENVIAR SOLICITAÇÃO
       </Button>
     </div>
