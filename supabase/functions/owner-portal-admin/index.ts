@@ -3130,7 +3130,7 @@ Deno.serve(async (req) => {
     const planCode = body.plan?.code?.trim();
     if (!planId && !planCode) return fail("plan id or code is required", 400, null, req);
 
-    const updatePayload = {
+    const raw: Record<string, unknown> = {
       code: body.plan?.code,
       name: body.plan?.name,
       description: body.plan?.description,
@@ -3142,6 +3142,8 @@ Deno.serve(async (req) => {
       price_month: body.plan?.price_month,
       active: body.plan?.active,
     };
+    const updatePayload = Object.fromEntries(Object.entries(raw).filter(([, v]) => v !== undefined));
+    if (Object.keys(updatePayload).length === 0) return fail("no fields to update", 400, null, req);
 
     let query = admin
       .from("plans")
