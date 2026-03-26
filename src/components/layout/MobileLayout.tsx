@@ -3,6 +3,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Loader2 } from 'lucide-react';
 import { MobileTopBar } from './MobileTopBar';
 import { MobileBottomNav } from './MobileBottomNav';
+import DeviceBindingGuard from '@/components/mobile/DeviceBindingGuard';
+import { useOfflineSync } from '@/hooks/useOfflineSync';
 
 export function MobileLayout() {
   const { isAuthenticated, isLoading, isHydrating, authStatus, effectiveRole, forcePasswordChange } = useAuth();
@@ -38,13 +40,28 @@ export function MobileLayout() {
     return <Navigate to={defaultPath} replace />;
   }
 
+  const { isOnline, pendingCount } = useOfflineSync();
+
   return (
-    <div className="min-h-screen bg-background flex flex-col">
-      <MobileTopBar />
-      <main className="flex-1 pt-14 pb-20 px-4 overflow-y-auto overscroll-y-contain">
-        <Outlet />
-      </main>
-      <MobileBottomNav />
-    </div>
+    <DeviceBindingGuard>
+      <div className="min-h-screen bg-background flex flex-col">
+        <MobileTopBar />
+        {/* Status bar offline/sync */}
+        {(!isOnline || pendingCount > 0) && (
+          <div className={`fixed top-14 left-0 right-0 z-40 px-4 py-1.5 text-xs font-medium text-center transition-colors ${
+            isOnline
+              ? 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300'
+              : 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300'
+          }`}>
+            {!isOnline ? '🔴 Offline' : ''}
+            {pendingCount > 0 ? ` · ${pendingCount} ação(ões) pendente(s)` : ''}
+          </div>
+        )}
+        <main className={`flex-1 pt-14 pb-20 px-4 overflow-y-auto overscroll-y-contain ${(!isOnline || pendingCount > 0) ? 'pt-[4.5rem]' : ''}`}>
+          <Outlet />
+        </main>
+        <MobileBottomNav />
+      </div>
+    </DeviceBindingGuard>
   );
 }

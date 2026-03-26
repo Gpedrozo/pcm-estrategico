@@ -39,6 +39,7 @@ import {
 import { OWNER_TABS, OWNER_TAB_LABELS, type OwnerTab, type CompanyCredentialNote, type CriticalActionRequest } from './owner2/owner2Types'
 import { normalizeEmail, resolveOwnerMasterEmail, safeArray, asObject, asBool, asNumber, statusColor, downloadCsv, TENANT_BASE_DOMAIN, KNOWN_OWNER_MASTER_EMAILS } from './owner2/owner2Helpers'
 import { SurfaceCard, MetricTile } from './owner2/owner2Components'
+import OwnerDispositivosTab from '@/components/owner/OwnerDispositivosTab'
 
 const isImageUrl = (url: unknown) => {
   if (typeof url !== 'string') return false
@@ -1885,6 +1886,10 @@ export default function Owner() {
                 </table>
               </div>
             </SurfaceCard>
+          )}
+
+          {activeTab === 'dispositivos' && (
+            <OwnerDispositivosTab selectedEmpresaId={selectedEmpresaId} empresas={companies} runAction={runAction} busy={busy} />
           )}
 
           {activeTab === 'sistema' && (

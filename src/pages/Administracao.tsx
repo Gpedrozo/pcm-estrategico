@@ -29,7 +29,9 @@ import {
   BadgeDollarSign,
   Save,
   RefreshCw,
+  Smartphone,
 } from 'lucide-react';
+import DispositivosMoveis from '@/components/admin/DispositivosMoveis';
 import { toast } from '@/hooks/use-toast';
 import { useTenantAdminConfig, useSaveTenantAdminConfig } from '@/hooks/useTenantAdminConfig';
 import {
@@ -284,6 +286,7 @@ export default function Administracao() {
           <TabsTrigger value="alertas" className="gap-2"><Bell className="h-4 w-4" /> Alertas</TabsTrigger>
           <TabsTrigger value="indicadores" className="gap-2"><BarChart3 className="h-4 w-4" /> Indicadores</TabsTrigger>
           <TabsTrigger value="integracoes" className="gap-2"><Plug className="h-4 w-4" /> Integracoes</TabsTrigger>
+          <TabsTrigger value="dispositivos" className="gap-2"><Smartphone className="h-4 w-4" /> Dispositivos</TabsTrigger>
         </TabsList>
 
         <TabsContent value="identidade">
@@ -669,6 +672,10 @@ export default function Administracao() {
               <p>Proximo passo: incluir cadastro de credenciais + health check por integracao.</p>
             </CardContent>
           </Card>
+        </TabsContent>
+
+        <TabsContent value="dispositivos">
+          <DispositivosMoveis />
         </TabsContent>
       </Tabs>
     </div>

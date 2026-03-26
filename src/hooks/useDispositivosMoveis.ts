@@ -1,0 +1,208 @@
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
+import { useToast } from '@/hooks/use-toast';
+
+export interface DispositivoMovel {
+  id: string;
+  empresa_id: string;
+  device_id: string;
+  device_nome: string | null;
+  device_os: string | null;
+  token: string;
+  mecanico_ultimo_id: string | null;
+  ultimo_acesso: string | null;
+  ultimo_ip: string | null;
+  os_pendentes_offline: number;
+  ativo: boolean;
+  desativado_por: string | null;
+  desativado_em: string | null;
+  motivo_desativacao: string | null;
+  created_at: string;
+}
+
+export interface QRCodeVinculacao {
+  id: string;
+  empresa_id: string;
+  token: string;
+  tipo: 'UNICO' | 'MULTIPLO';
+  usos: number;
+  max_usos: number | null;
+  expira_em: string | null;
+  ativo: boolean;
+  created_at: string;
+  created_by: string | null;
+}
+
+/* ─── Dispositivos ─── */
+
+export function useDispositivosMoveis(empresaId?: string) {
+  const { tenantId } = useAuth();
+  const eid = empresaId || tenantId;
+
+  return useQuery({
+    queryKey: ['dispositivos-moveis', eid],
+    queryFn: async () => {
+      let q = supabase.from('dispositivos_moveis').select('*').order('created_at', { ascending: false });
+      if (eid) q = q.eq('empresa_id', eid);
+      const { data, error } = await q;
+      if (error) throw error;
+      return (data || []) as DispositivoMovel[];
+    },
+    enabled: !!eid,
+  });
+}
+
+export function useToggleDispositivo() {
+  const qc = useQueryClient();
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: async ({ id, ativo, motivo }: { id: string; ativo: boolean; motivo?: string }) => {
+      const updates: Record<string, unknown> = { ativo };
+      if (!ativo) {
+        updates.desativado_em = new Date().toISOString();
+        updates.motivo_desativacao = motivo || 'Desativado pelo administrador';
+      } else {
+        updates.desativado_em = null;
+        updates.desativado_por = null;
+        updates.motivo_desativacao = null;
+      }
+      const { error } = await supabase.from('dispositivos_moveis').update(updates).eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: (_, { ativo }) => {
+      qc.invalidateQueries({ queryKey: ['dispositivos-moveis'] });
+      toast({ title: ativo ? 'Dispositivo reativado' : 'Dispositivo desativado' });
+    },
+    onError: (e: Error) => toast({ title: 'Erro', description: e.message, variant: 'destructive' }),
+  });
+}
+
+export function useRemoveDispositivo() {
+  const qc = useQueryClient();
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from('dispositivos_moveis').delete().eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['dispositivos-moveis'] });
+      toast({ title: 'Dispositivo removido' });
+    },
+    onError: (e: Error) => toast({ title: 'Erro', description: e.message, variant: 'destructive' }),
+  });
+}
+
+export function useDesativarTodosDispositivos() {
+  const qc = useQueryClient();
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: async (empresaId: string) => {
+      const { error } = await supabase.from('dispositivos_moveis')
+        .update({
+          ativo: false,
+          desativado_em: new Date().toISOString(),
+          motivo_desativacao: 'Todos os dispositivos desativados pelo administrador',
+        })
+        .eq('empresa_id', empresaId)
+        .eq('ativo', true);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['dispositivos-moveis'] });
+      toast({ title: 'Todos os dispositivos desativados' });
+    },
+    onError: (e: Error) => toast({ title: 'Erro', description: e.message, variant: 'destructive' }),
+  });
+}
+
+/* ─── QR Codes ─── */
+
+export function useQRCodesVinculacao(empresaId?: string) {
+  const { tenantId } = useAuth();
+  const eid = empresaId || tenantId;
+
+  return useQuery({
+    queryKey: ['qrcodes-vinculacao', eid],
+    queryFn: async () => {
+      let q = supabase.from('qrcodes_vinculacao').select('*').order('created_at', { ascending: false });
+      if (eid) q = q.eq('empresa_id', eid);
+      const { data, error } = await q;
+      if (error) throw error;
+      return (data || []) as QRCodeVinculacao[];
+    },
+    enabled: !!eid,
+  });
+}
+
+export function useCreateQRCode() {
+  const qc = useQueryClient();
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: async (input: {
+      empresa_id: string;
+      tipo: 'UNICO' | 'MULTIPLO';
+      max_usos?: number;
+      expira_em?: string;
+      created_by?: string;
+    }) => {
+      const { data, error } = await supabase.from('qrcodes_vinculacao').insert(input).select().single();
+      if (error) throw error;
+      return data as QRCodeVinculacao;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['qrcodes-vinculacao'] });
+      toast({ title: 'QR Code gerado!' });
+    },
+    onError: (e: Error) => toast({ title: 'Erro', description: e.message, variant: 'destructive' }),
+  });
+}
+
+export function useRevogarQRCode() {
+  const qc = useQueryClient();
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from('qrcodes_vinculacao').update({ ativo: false }).eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['qrcodes-vinculacao'] });
+      toast({ title: 'QR Code revogado' });
+    },
+    onError: (e: Error) => toast({ title: 'Erro', description: e.message, variant: 'destructive' }),
+  });
+}
+
+/* ─── RPC: Vincular Dispositivo (chamado pelo app mobile) ─── */
+
+export function useVincularDispositivo() {
+  return useMutation({
+    mutationFn: async (input: {
+      p_qr_token: string;
+      p_device_id: string;
+      p_device_nome?: string;
+      p_device_os?: string;
+    }) => {
+      const { data, error } = await supabase.rpc('vincular_dispositivo', input);
+      if (error) throw error;
+      return data as { ok: boolean; erro?: string; device_token?: string; empresa_id?: string; empresa_nome?: string; tenant_slug?: string };
+    },
+  });
+}
+
+export function useVerificarDispositivo() {
+  return useMutation({
+    mutationFn: async (deviceToken: string) => {
+      const { data, error } = await supabase.rpc('verificar_dispositivo', { p_device_token: deviceToken });
+      if (error) throw error;
+      return data as { ok: boolean; status: string; motivo?: string; empresa_id?: string; empresa_nome?: string; tenant_slug?: string };
+    },
+  });
+}

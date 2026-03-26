@@ -1,0 +1,246 @@
+import { useState } from 'react';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
+import { Separator } from '@/components/ui/separator';
+import {
+  useDispositivosMoveis,
+  useToggleDispositivo,
+  useRemoveDispositivo,
+  useDesativarTodosDispositivos,
+} from '@/hooks/useDispositivosMoveis';
+import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
+import {
+  Smartphone,
+  Shield,
+  ShieldOff,
+  Trash2,
+  Ban,
+  Wifi,
+  WifiOff,
+  Clock,
+  AlertTriangle,
+  Settings,
+  Building2,
+} from 'lucide-react';
+
+interface Props {
+  selectedEmpresaId: string | null;
+  empresas: Record<string, unknown>[];
+  runAction: (action: string, payload: Record<string, unknown>, successMsg: string) => void;
+  busy: boolean;
+}
+
+export default function OwnerDispositivosTab({ selectedEmpresaId, empresas, runAction, busy }: Props) {
+  const { toast } = useToast();
+  const { data: dispositivos, isLoading } = useDispositivosMoveis(selectedEmpresaId || undefined);
+  const toggleDevice = useToggleDispositivo();
+  const removeDevice = useRemoveDispositivo();
+  const desativarTodos = useDesativarTodosDispositivos();
+
+  const [maxDispositivos, setMaxDispositivos] = useState('10');
+
+  const ativos = (dispositivos || []).filter(d => d.ativo);
+  const inativos = (dispositivos || []).filter(d => !d.ativo);
+
+  const timeSince = (d: string | null) => {
+    if (!d) return 'Nunca';
+    const diff = Date.now() - new Date(d).getTime();
+    const mins = Math.floor(diff / 60000);
+    if (mins < 60) return `${mins}m`;
+    const hrs = Math.floor(mins / 60);
+    if (hrs < 24) return `${hrs}h`;
+    return `${Math.floor(hrs / 24)}d`;
+  };
+
+  const handleToggleEmpresaDispositivos = async (ativo: boolean) => {
+    if (!selectedEmpresaId) return;
+    const { error } = await supabase
+      .from('empresas')
+      .update({ dispositivos_moveis_ativos: ativo })
+      .eq('id', selectedEmpresaId);
+    if (error) {
+      toast({ title: 'Erro', description: error.message, variant: 'destructive' });
+    } else {
+      toast({ title: ativo ? 'Dispositivos móveis ativados' : 'Dispositivos móveis desativados para esta empresa' });
+    }
+  };
+
+  const handleUpdateMaxDispositivos = async () => {
+    if (!selectedEmpresaId) return;
+    const val = parseInt(maxDispositivos);
+    if (isNaN(val) || val < 1) return;
+    const { error } = await supabase
+      .from('empresas')
+      .update({ max_dispositivos_moveis: val })
+      .eq('id', selectedEmpresaId);
+    if (error) {
+      toast({ title: 'Erro', description: error.message, variant: 'destructive' });
+    } else {
+      toast({ title: `Limite atualizado para ${val} dispositivos` });
+    }
+  };
+
+  if (!selectedEmpresaId) {
+    return (
+      <div className="rounded-xl border border-slate-200 bg-white p-8 text-center">
+        <Building2 className="h-10 w-10 mx-auto mb-3 text-slate-300" />
+        <p className="text-sm text-slate-500">Selecione uma empresa no topo para gerenciar dispositivos.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="grid gap-4">
+      {/* Configurações da Empresa */}
+      <div className="rounded-xl border border-slate-200 bg-white p-4 space-y-4">
+        <h3 className="text-sm font-semibold text-slate-900 flex items-center gap-2">
+          <Settings className="h-4 w-4" /> Configurações de Dispositivos Móveis
+        </h3>
+
+        <div className="flex items-center justify-between gap-4">
+          <div>
+            <p className="text-sm font-medium">Dispositivos Móveis Ativos</p>
+            <p className="text-xs text-slate-500">Desativar bloqueia TODOS os dispositivos desta empresa</p>
+          </div>
+          <Switch
+            defaultChecked={true}
+            onCheckedChange={handleToggleEmpresaDispositivos}
+          />
+        </div>
+
+        <Separator />
+
+        <div className="flex items-center gap-3">
+          <div className="flex-1">
+            <Label className="text-xs">Limite máximo de dispositivos</Label>
+            <div className="flex gap-2 mt-1">
+              <Input
+                type="number"
+                min={1}
+                max={100}
+                value={maxDispositivos}
+                onChange={e => setMaxDispositivos(e.target.value)}
+                className="w-24 h-8 text-sm"
+              />
+              <Button size="sm" variant="outline" onClick={handleUpdateMaxDispositivos}>
+                Salvar
+              </Button>
+            </div>
+          </div>
+          <div className="text-right">
+            <p className="text-2xl font-bold text-slate-900">{ativos.length}</p>
+            <p className="text-xs text-slate-500">ativos agora</p>
+          </div>
+        </div>
+
+        {ativos.length > 0 && (
+          <>
+            <Separator />
+            <Button
+              variant="destructive"
+              size="sm"
+              className="w-full"
+              onClick={() => {
+                if (confirm('ATENÇÃO: Isso vai desativar TODOS os dispositivos desta empresa. Continuar?')) {
+                  desativarTodos.mutate(selectedEmpresaId);
+                }
+              }}
+              disabled={desativarTodos.isPending}
+            >
+              <Ban className="h-4 w-4 mr-1" />
+              Desativar Todos os Dispositivos ({ativos.length})
+            </Button>
+          </>
+        )}
+      </div>
+
+      {/* Lista de Dispositivos */}
+      <div className="rounded-xl border border-slate-200 bg-white p-4">
+        <h3 className="text-sm font-semibold text-slate-900 flex items-center gap-2 mb-4">
+          <Smartphone className="h-4 w-4" /> Dispositivos ({(dispositivos || []).length})
+        </h3>
+
+        {isLoading ? (
+          <p className="text-sm text-slate-400 text-center py-4">Carregando...</p>
+        ) : (dispositivos || []).length === 0 ? (
+          <p className="text-sm text-slate-400 text-center py-8">
+            Nenhum dispositivo vinculado a esta empresa.
+          </p>
+        ) : (
+          <div className="overflow-auto max-h-[600px]">
+            <table className="w-full text-xs">
+              <thead className="bg-slate-50 sticky top-0">
+                <tr>
+                  <th className="px-2 py-2 text-left">Dispositivo</th>
+                  <th className="px-2 py-2 text-left">SO</th>
+                  <th className="px-2 py-2 text-left">Status</th>
+                  <th className="px-2 py-2 text-left">Último Acesso</th>
+                  <th className="px-2 py-2 text-left">Pendentes</th>
+                  <th className="px-2 py-2 text-right">Ações</th>
+                </tr>
+              </thead>
+              <tbody>
+                {(dispositivos || []).map(d => (
+                  <tr key={d.id} className={`border-t border-slate-100 ${!d.ativo ? 'opacity-50' : ''}`}>
+                    <td className="px-2 py-2 font-medium">{d.device_nome || 'Desconhecido'}</td>
+                    <td className="px-2 py-2 max-w-[120px] truncate">{(d.device_os || '').slice(0, 30)}</td>
+                    <td className="px-2 py-2">
+                      {d.ativo ? (
+                        <span className="inline-flex items-center gap-1 text-green-700">
+                          <Wifi className="h-3 w-3" /> Ativo
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 text-red-600">
+                          <WifiOff className="h-3 w-3" /> Desativado
+                        </span>
+                      )}
+                    </td>
+                    <td className="px-2 py-2">{timeSince(d.ultimo_acesso)}</td>
+                    <td className="px-2 py-2">
+                      {d.os_pendentes_offline > 0 ? (
+                        <Badge variant="outline" className="text-amber-700 border-amber-300">{d.os_pendentes_offline}</Badge>
+                      ) : '0'}
+                    </td>
+                    <td className="px-2 py-2 text-right space-x-1">
+                      {d.ativo ? (
+                        <button
+                          className="rounded px-2 py-1 text-xs border border-red-200 text-red-600 hover:bg-red-50"
+                          onClick={() => toggleDevice.mutate({ id: d.id, ativo: false })}
+                          disabled={toggleDevice.isPending}
+                        >
+                          Desativar
+                        </button>
+                      ) : (
+                        <button
+                          className="rounded px-2 py-1 text-xs border border-green-200 text-green-600 hover:bg-green-50"
+                          onClick={() => toggleDevice.mutate({ id: d.id, ativo: true })}
+                          disabled={toggleDevice.isPending}
+                        >
+                          Reativar
+                        </button>
+                      )}
+                      <button
+                        className="rounded px-2 py-1 text-xs border border-slate-200 text-slate-500 hover:bg-slate-50"
+                        onClick={() => {
+                          if (confirm('Remover permanentemente este dispositivo?')) removeDevice.mutate(d.id);
+                        }}
+                        disabled={removeDevice.isPending}
+                      >
+                        Remover
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
