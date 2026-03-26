@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { 
+import {
   LayoutDashboard, 
   FileText, 
   FilePlus, 
@@ -28,6 +28,8 @@ import {
   BarChart3,
   FileArchive,
   Droplet,
+  HardHat,
+  UserCircle,
 } from 'lucide-react';
 import { NavLink, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
@@ -59,7 +61,13 @@ const osMenuItems = [
   { title: 'Emitir O.S', url: '/os/nova', icon: FilePlus },
   { title: 'Fechar O.S', url: '/os/fechar', icon: FileCheck },
   { title: 'Portal Mecânico', url: '/os/portal-mecanico', icon: Wrench },
+  { title: 'Painel Mecânico', url: '/painel-mecanico', icon: HardHat },
   { title: 'Histórico', url: '/os/historico', icon: History },
+];
+
+const operadorMenuItems = [
+  { title: 'Painel do Operador', url: '/painel-operador', icon: UserCircle },
+  { title: 'Solicitações', url: '/solicitacoes', icon: MessageSquare },
 ];
 
 const planejamentoMenuItems = [
@@ -225,7 +233,7 @@ export function AppSidebar() {
           <SidebarGroupContent>
             <SidebarMenu>
               {isSolicitanteOnly
-                ? osMenuItems.filter(i => i.url === '/solicitacoes').map(renderMenuLink)
+                ? operadorMenuItems.map(renderMenuLink)
                 : osMenuItems.map(renderMenuLink)
               }
             </SidebarMenu>

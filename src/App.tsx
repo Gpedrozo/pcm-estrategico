@@ -65,6 +65,8 @@ const ArquivosOwner = lazyWithRetry(() => import('./pages/ArquivosOwner'))
 const RootCauseAIPage = lazyWithRetry(() => import('./modules/rootCauseAI/RootCauseAIPage'))
 const ManualOperacao = lazyWithRetry(() => import('./pages/ManualOperacao'))
 const SystemStatus = lazyWithRetry(() => import('./pages/SystemStatus'))
+const PainelMecanico = lazyWithRetry(() => import('./pages/PainelMecanico'))
+const PainelOperador = lazyWithRetry(() => import('./pages/PainelOperador'))
 
 // Manual de Operação v2 (22 chapters)
 const ManualLayout = lazyWithRetry(() => import('./components/manual/ManualLayout'))
@@ -321,6 +323,8 @@ function TenantRoutes() {
                 <Route path="/os/fechar" element={<FecharOS />} />
                 <Route path="/os/portal-mecanico" element={<PortalMecanicoOS />} />
                 <Route path="/os/historico" element={<HistoricoOS />} />
+                <Route path="/painel-mecanico" element={<PainelMecanico />} />
+                <Route path="/painel-operador" element={<PainelOperador />} />
                 <Route path="/backlog" element={<Backlog />} />
                 <Route path="/programacao" element={<Programacao />} />
                 <Route path="/preventiva" element={<Preventiva />} />

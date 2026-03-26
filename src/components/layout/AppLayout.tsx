@@ -343,7 +343,7 @@ export function AppLayout() {
     );
   }
 
-  const solicitanteAllowedPaths = ['/dashboard', '/solicitacoes', '/manuais-operacao', '/manual', '/suporte'];
+  const solicitanteAllowedPaths = ['/dashboard', '/solicitacoes', '/painel-operador', '/manuais-operacao', '/manual', '/suporte'];
 
   if (effectiveRole === 'SOLICITANTE' && !solicitanteAllowedPaths.some(p => location.pathname === p || location.pathname.startsWith(p + '/'))) {
     return <Navigate to="/solicitacoes" replace />;
