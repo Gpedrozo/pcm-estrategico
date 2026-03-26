@@ -1,0 +1,14 @@
+[
+  {
+    "relation": [
+      "delegate_permission/common.handle_all_urls"
+    ],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "br.com.gppis.twa",
+      "sha256_cert_fingerprints": [
+        "EA:F6:87:15:50:6C:5C:AB:BE:6E:6A:FA:88:81:74:D3:17:D9:AF:D7:BC:74:BF:8F:81:96:D8:C9:E1:D3:2D:03"
+      ]
+    }
+  }
+]
