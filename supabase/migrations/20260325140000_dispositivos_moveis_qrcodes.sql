@@ -1,4 +1,4 @@
-﻿-- Migration: dispositivos_moveis + qrcodes_vinculacao
+-- Migration: dispositivos_moveis + qrcodes_vinculacao
 -- Suporte a vinculaÃ§Ã£o de dispositivos mÃ³veis por QR Code (multi-tenant)
 
 -- Tabela de dispositivos vinculados
