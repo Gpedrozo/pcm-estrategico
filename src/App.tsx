@@ -8,6 +8,7 @@ import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { usePermission } from "@/hooks/usePermission";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { ExperienceRouter } from "@/components/layout/ExperienceRouter";
+import { MecanicoLayout } from "@/components/layout/MecanicoLayout";
 import { EnvironmentGuard } from "@/components/guards/EnvironmentGuard";
 import { MasterTIGuard } from "@/components/guards/MasterTIGuard";
 import { TenantDomainMiddleware } from '@/components/guards/TenantDomainMiddleware';
@@ -326,8 +327,8 @@ function TenantRoutes() {
                 <Route path="/reset-password" element={<ResetPassword />} />
                 <Route path="/instalar" element={<Instalar />} />
 
-              <Route element={<ExperienceRouter />}>
-                {/* Rotas mobile mecânico */}
+              {/* Rotas mobile mecânico — fora do ExperienceRouter, sem Supabase login */}
+              <Route element={<MecanicoLayout />}>
                 <Route path="/mecanico" element={<MecanicoHome />} />
                 <Route path="/mecanico/os/:id" element={<MecanicoExecucao />} />
                 <Route path="/mecanico/solicitar" element={<MecanicoNovaSolicitacao />} />
@@ -335,7 +336,9 @@ function TenantRoutes() {
                 <Route path="/mecanico/finalizar/:id" element={<MecanicoFinalizar />} />
                 <Route path="/mecanico/equipamento" element={<MecanicoEquipamento />} />
                 <Route path="/mecanico/preventivas" element={<MecanicoPreventivas />} />
+              </Route>
 
+              <Route element={<ExperienceRouter />}>
                 <Route path="/dashboard" element={<Dashboard />} />
                 <Route path="/solicitacoes" element={<Solicitacoes />} />
                 <Route path="/os/nova" element={<NovaOS />} />

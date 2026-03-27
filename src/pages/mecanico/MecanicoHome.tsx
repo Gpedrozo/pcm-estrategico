@@ -90,14 +90,16 @@ export default function MecanicoHome() {
       return;
     }
     setMecanicoId(m.id);
-    try { sessionStorage.setItem('mecanico_logado_id', m.id); } catch {}
+    try { sessionStorage.setItem('mecanico_logado_id', m.id);
+      sessionStorage.setItem('mecanico_logado_nome', m.nome); } catch {}
   };
 
   const handleLogout = () => {
     setMecanicoId(null);
     setCodigo('');
     setSenha('');
-    try { sessionStorage.removeItem('mecanico_logado_id'); } catch {}
+    try { sessionStorage.removeItem('mecanico_logado_id');
+      sessionStorage.removeItem('mecanico_logado_nome'); } catch {}
   };
 
   /* ─── Tela de Login (inputs enormes para mãos sujas) ─── */
