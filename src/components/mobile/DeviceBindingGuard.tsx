@@ -1,10 +1,9 @@
-import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useVincularDispositivo, useVerificarDispositivo } from '@/hooks/useDispositivosMoveis';
 import { getDeviceConfig, saveDeviceConfig, clearDeviceConfig } from '@/lib/offlineSync';
-import { Loader2, QrCode, Keyboard, ShieldAlert, Wifi, WifiOff, Wrench, RefreshCw } from 'lucide-react';
+import { Loader2, QrCode, Keyboard, ShieldAlert, Wifi, WifiOff, Wrench, RefreshCw, Camera, X } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 
@@ -12,9 +11,8 @@ type BindingState = 'LOADING' | 'UNBOUND' | 'BOUND' | 'BLOCKED';
 
 /**
  * Guard que exige vinculação do dispositivo via QR Code antes de usar o app.
- * Se não vinculado → tela de escaneamento.
- * Se vinculado + ativo → renderiza children normalmente.
- * Se desativado → tela de bloqueio.
+ * Abre câmera real via html5-qrcode para escanear QR Code.
+ * Fallback: input manual do token.
  */
 export default function DeviceBindingGuard({ children }: { children: React.ReactNode }) {
   const [state, setState] = useState<BindingState>('LOADING');
@@ -22,6 +20,10 @@ export default function DeviceBindingGuard({ children }: { children: React.React
   const [bloqueioMotivo, setBloqueioMotivo] = useState('');
   const [manualToken, setManualToken] = useState('');
   const [showManual, setShowManual] = useState(false);
+  const [scanning, setScanning] = useState(false);
+  const [cameraError, setCameraError] = useState('');
+  const scannerRef = useRef<any>(null);
+  const scannerContainerId = 'qr-scanner-container';
   const verificar = useVerificarDispositivo();
   const vincular = useVincularDispositivo();
   const { toast } = useToast();
@@ -48,13 +50,11 @@ export default function DeviceBindingGuard({ children }: { children: React.React
           setEmpresaNome(res.empresa_nome || '');
           setState('BLOCKED');
         } else {
-          // Token não encontrado, desvincular
           clearDeviceConfig();
           setState('UNBOUND');
         }
       },
       onError: () => {
-        // Se offline, permite acesso com dados cacheados
         setState('BOUND');
       },
     });
@@ -69,7 +69,7 @@ export default function DeviceBindingGuard({ children }: { children: React.React
     return id;
   };
 
-  const handleVincular = async (token: string) => {
+  const handleVincular = useCallback(async (token: string) => {
     const deviceId = getDeviceId();
     vincular.mutate(
       {
@@ -97,7 +97,79 @@ export default function DeviceBindingGuard({ children }: { children: React.React
         },
       },
     );
+  }, [vincular, toast]);
+
+  /* ── Extrair token de URL (deep link) ou texto cru ── */
+  const extractToken = (text: string): string => {
+    try {
+      const url = new URL(text);
+      return url.searchParams.get('token') || text;
+    } catch {
+      return text.trim();
+    }
   };
+
+  /* ── Scanner de câmera com html5-qrcode ── */
+  const stopScanner = useCallback(async () => {
+    try {
+      if (scannerRef.current) {
+        await scannerRef.current.stop();
+        scannerRef.current.clear();
+        scannerRef.current = null;
+      }
+    } catch { /* scanner already stopped */ }
+    setScanning(false);
+  }, []);
+
+  const startScanner = useCallback(async () => {
+    setCameraError('');
+    setScanning(true);
+
+    try {
+      const { Html5Qrcode } = await import('html5-qrcode');
+
+      // Pequeno delay para o DOM renderizar o container
+      await new Promise(r => setTimeout(r, 100));
+
+      const scanner = new Html5Qrcode(scannerContainerId);
+      scannerRef.current = scanner;
+
+      await scanner.start(
+        { facingMode: 'environment' },
+        {
+          fps: 10,
+          qrbox: { width: 250, height: 250 },
+          aspectRatio: 1,
+        },
+        async (decodedText) => {
+          // QR lido com sucesso
+          await stopScanner();
+          const token = extractToken(decodedText);
+          if (token) {
+            handleVincular(token);
+          }
+        },
+        () => { /* ignora frames sem QR */ },
+      );
+    } catch (err: any) {
+      setScanning(false);
+      const msg = err?.message || String(err);
+      if (msg.includes('NotAllowedError') || msg.includes('Permission')) {
+        setCameraError('Permissão de câmera negada. Permita o acesso nas configurações do dispositivo.');
+      } else if (msg.includes('NotFoundError') || msg.includes('Requested device not found')) {
+        setCameraError('Nenhuma câmera encontrada neste dispositivo.');
+      } else {
+        setCameraError(`Erro ao abrir câmera: ${msg}`);
+      }
+      toast({ title: 'Câmera indisponível', description: 'Use o campo manual para digitar o token.', variant: 'destructive' });
+      setShowManual(true);
+    }
+  }, [handleVincular, stopScanner, toast]);
+
+  // Cleanup scanner ao desmontar
+  useEffect(() => {
+    return () => { stopScanner(); };
+  }, [stopScanner]);
 
   // Verifica URL de vinculação (deep link via QR)
   useEffect(() => {
@@ -105,10 +177,9 @@ export default function DeviceBindingGuard({ children }: { children: React.React
     const token = params.get('token');
     if (token && state === 'UNBOUND') {
       handleVincular(token);
-      // Limpa URL
       window.history.replaceState({}, '', window.location.pathname);
     }
-  }, [state]);
+  }, [state, handleVincular]);
 
   /* ─── LOADING ─── */
   if (state === 'LOADING') {
@@ -125,9 +196,9 @@ export default function DeviceBindingGuard({ children }: { children: React.React
   /* ─── UNBOUND (não vinculado) ─── */
   if (state === 'UNBOUND') {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background p-6">
+      <div className="min-h-screen flex items-center justify-center bg-background p-4">
         <Card className="w-full max-w-sm shadow-xl">
-          <CardContent className="pt-8 pb-6 px-6 space-y-6">
+          <CardContent className="pt-8 pb-6 px-6 space-y-5">
             <div className="text-center space-y-3">
               <div className="mx-auto w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center">
                 <Wrench className="h-10 w-10 text-primary" />
@@ -139,42 +210,87 @@ export default function DeviceBindingGuard({ children }: { children: React.React
               </p>
             </div>
 
-            <Button
-              className="w-full h-16 text-lg font-bold gap-3 rounded-xl active:scale-95"
-              onClick={() => {
-                // Em produção, aqui abriria o scanner de câmera nativo
-                // Por enquanto, usa input manual como fallback
-                setShowManual(true);
-                toast({ title: 'Scanner QR', description: 'Use o campo abaixo para digitar o código, ou escaneie o QR Code.' });
-              }}
-              disabled={vincular.isPending}
-            >
-              {vincular.isPending ? <Loader2 className="h-6 w-6 animate-spin" /> : <QrCode className="h-6 w-6" />}
-              ESCANEAR QR CODE
-            </Button>
-
-            {showManual && (
-              <div className="space-y-3 pt-2">
-                <p className="text-xs text-muted-foreground flex items-center gap-1">
-                  <Keyboard className="h-3 w-3" /> Ou digite o código manualmente:
-                </p>
-                <div className="flex gap-2">
-                  <Input
-                    value={manualToken}
-                    onChange={e => setManualToken(e.target.value.trim())}
-                    placeholder="Token de vinculação..."
-                    className="h-12 text-base font-mono"
+            {/* ── Área do scanner de câmera ── */}
+            {scanning && (
+              <div className="space-y-3">
+                <div className="relative">
+                  <div
+                    id={scannerContainerId}
+                    className="w-full rounded-xl overflow-hidden border-2 border-primary/30"
+                    style={{ minHeight: 280 }}
                   />
                   <Button
-                    className="h-12 px-4"
-                    onClick={() => { if (manualToken) handleVincular(manualToken); }}
-                    disabled={!manualToken || vincular.isPending}
+                    variant="destructive"
+                    size="icon"
+                    className="absolute top-2 right-2 h-8 w-8 rounded-full z-10"
+                    onClick={stopScanner}
                   >
-                    OK
+                    <X className="h-4 w-4" />
                   </Button>
                 </div>
+                <p className="text-xs text-center text-muted-foreground animate-pulse">
+                  Aponte a câmera para o QR Code...
+                </p>
               </div>
             )}
+
+            {cameraError && !scanning && (
+              <div className="text-xs text-red-600 bg-red-50 dark:bg-red-950/20 rounded-lg p-3 text-center">
+                {cameraError}
+              </div>
+            )}
+
+            {!scanning && (
+              <Button
+                className="w-full h-16 text-lg font-bold gap-3 rounded-xl active:scale-95"
+                onClick={startScanner}
+                disabled={vincular.isPending}
+              >
+                {vincular.isPending ? (
+                  <Loader2 className="h-6 w-6 animate-spin" />
+                ) : (
+                  <Camera className="h-6 w-6" />
+                )}
+                ESCANEAR QR CODE
+              </Button>
+            )}
+
+            {/* ── Fallback: input manual ── */}
+            <div className="space-y-3 pt-1">
+              {!showManual && !scanning && (
+                <Button
+                  variant="outline"
+                  className="w-full h-12 gap-2"
+                  onClick={() => setShowManual(true)}
+                >
+                  <Keyboard className="h-4 w-4" />
+                  Digitar código manualmente
+                </Button>
+              )}
+
+              {showManual && (
+                <div className="space-y-2">
+                  <p className="text-xs text-muted-foreground flex items-center gap-1">
+                    <Keyboard className="h-3 w-3" /> Digite o token de vinculação:
+                  </p>
+                  <div className="flex gap-2">
+                    <Input
+                      value={manualToken}
+                      onChange={e => setManualToken(e.target.value.trim())}
+                      placeholder="Token de vinculação..."
+                      className="h-12 text-base font-mono"
+                    />
+                    <Button
+                      className="h-12 px-4"
+                      onClick={() => { if (manualToken) handleVincular(manualToken); }}
+                      disabled={!manualToken || vincular.isPending}
+                    >
+                      OK
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </div>
 
             <div className="flex items-center justify-center gap-1 text-xs text-muted-foreground">
               {navigator.onLine ? (
