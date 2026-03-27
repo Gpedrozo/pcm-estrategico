@@ -12,7 +12,8 @@ interface NavItem {
 const mechanicNav: NavItem[] = [
   { label: 'Início', icon: Home, to: '/mecanico' },
   { label: 'Minhas OS', icon: ClipboardList, to: '/mecanico/historico' },
-  { label: 'Solicitar', icon: Plus, to: '/mecanico/solicitar' },
+  { label: 'Equipam.', icon: Search, to: '/mecanico/equipamento' },
+  { label: 'Preventivas', icon: Calendar, to: '/mecanico/preventivas' },
   { label: 'Ajuda', icon: HelpCircle, to: '/suporte' },
 ];
 
