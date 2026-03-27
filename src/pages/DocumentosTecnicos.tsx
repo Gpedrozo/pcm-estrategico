@@ -1,4 +1,4 @@
-import { useState } from 'react';
+﻿import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -73,7 +73,17 @@ const useCreateDocumento = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (data: { codigo: string; titulo: string; tipo: string; tag?: string; descricao?: string; versao?: string; status?: string }) => {
+    mutationFn: async (data: { 
+      codigo: string; 
+      titulo: string; 
+      tipo: string; 
+      tag?: string; 
+      descricao?: string; 
+      versao?: string; 
+      status?: string;
+      arquivo_url?: string;
+      arquivo_nome?: string;
+    }) => {
       if (!tenantId) throw new Error('Tenant não identificado para cadastro do documento.');
 
       const { data: result, error } = await supabase
@@ -100,6 +110,7 @@ export default function DocumentosTecnicos() {
   const [activeTab, setActiveTab] = useState('todos');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [arquivo, setArquivo] = useState<File | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
   const [formData, setFormData] = useState({
     codigo: '',
     titulo: '',
@@ -113,6 +124,19 @@ export default function DocumentosTecnicos() {
   const { data: equipamentos } = useEquipamentos();
   const createMutation = useCreateDocumento();
 
+  const TIPOS_PERMITIDOS = ['application/pdf', 'image/png', 'image/jpeg', 'image/jpg', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
+  const TAMANHO_MAXIMO = 50 * 1024 * 1024; // 50MB
+
+  const validarArquivo = (file: File): string | null => {
+    if (file.size > TAMANHO_MAXIMO) {
+      return `Arquivo muito grande. Máximo permitido: 50MB (seu arquivo: ${(file.size / 1024 / 1024).toFixed(2)}MB)`;
+    }
+    if (!TIPOS_PERMITIDOS.includes(file.type)) {
+      return `Tipo de arquivo não permitido. Permitidos: PDF, PNG, JPG, DOC, DOCX (seu arquivo: ${file.type})`;
+    }
+    return null;
+  };
+
   const filteredDocumentos = documentos?.filter(doc => {
     if (!search) return true;
     const searchLower = search.toLowerCase();
@@ -124,29 +148,73 @@ export default function DocumentosTecnicos() {
     return doc.tipo === activeTab;
   }) || [];
 
+  const handleArquivoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) {
+      setArquivo(null);
+      return;
+    }
+    
+    const validacao = validarArquivo(file);
+    if (validacao) {
+      toast({ title: 'Erro ao selecionar arquivo', description: validacao, variant: 'destructive' });
+      setArquivo(null);
+      e.target.value = '';
+      return;
+    }
+    
+    setArquivo(file);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (!formData.codigo.trim()) {
+      toast({ title: 'Erro', description: 'Código do documento é obrigatório', variant: 'destructive' });
+      return;
+    }
+
+    if (!formData.titulo.trim()) {
+      toast({ title: 'Erro', description: 'Título do documento é obrigatório', variant: 'destructive' });
+      return;
+    }
 
     let arquivo_url: string | undefined;
     let arquivo_nome: string | undefined;
 
     if (arquivo) {
-      const path = `documentos-tecnicos/${Date.now()}-${arquivo.name}`;
-      arquivo_url = await uploadToStorage('public', path, arquivo);
-      arquivo_nome = arquivo.name;
+      try {
+        setIsUploading(true);
+        const path = `documentos-tecnicos/${Date.now()}-${arquivo.name}`;
+        arquivo_url = await uploadToStorage('public', path, arquivo);
+        arquivo_nome = arquivo.name;
+        toast({ title: 'Arquivo enviado com sucesso' });
+      } catch (error) {
+        const mensagem = error instanceof Error ? error.message : 'Erro desconhecido ao fazer upload';
+        toast({ title: 'Erro ao enviar arquivo', description: mensagem, variant: 'destructive' });
+        setIsUploading(false);
+        return;
+      }
     }
 
-    await createMutation.mutateAsync({
-      ...formData,
-      status: 'RASCUNHO',
-      arquivo_url,
-      arquivo_nome,
-    });
-    setIsModalOpen(false);
-    setArquivo(null);
-    setFormData({
-      codigo: '', titulo: '', tipo: 'POP', tag: '', descricao: '', versao: '1.0'
-    });
+    try {
+      await createMutation.mutateAsync({
+        ...formData,
+        status: 'RASCUNHO',
+        arquivo_url,
+        arquivo_nome,
+      });
+      setIsModalOpen(false);
+      setArquivo(null);
+      setFormData({
+        codigo: '', titulo: '', tipo: 'POP', tag: '', descricao: '', versao: '1.0'
+      });
+    } catch (error) {
+      const mensagem = error instanceof Error ? error.message : 'Erro ao cadastrar documento';
+      toast({ title: 'Erro', description: mensagem, variant: 'destructive' });
+    } finally {
+      setIsUploading(false);
+    }
   };
 
   const handleVisualizar = (doc: DocumentoTecnico) => {
@@ -411,16 +479,35 @@ export default function DocumentosTecnicos() {
             </div>
 
             <div className="space-y-2">
-              <Label>Arquivo</Label>
-              <Input type="file" onChange={(e) => setArquivo(e.target.files?.[0] || null)} />
-              {arquivo && <p className="text-xs text-muted-foreground">Selecionado: {arquivo.name}</p>}
+              <Label>Arquivo (PDF, PNG, JPG, DOC, DOCX - máx. 50MB)</Label>
+              <Input 
+                type="file" 
+                onChange={handleArquivoChange}
+                disabled={isUploading || createMutation.isPending}
+                accept=".pdf,.png,.jpg,.jpeg,.doc,.docx"
+              />
+              {arquivo && (
+                <div className="flex items-center justify-between text-xs text-muted-foreground bg-muted p-2 rounded">
+                  <span>✓ {arquivo.name}</span>
+                  <span>({(arquivo.size / 1024 / 1024).toFixed(2)}MB)</span>
+                </div>
+              )}
             </div>
 
             <div className="flex gap-3 pt-4">
-              <Button type="submit" className="flex-1" disabled={createMutation.isPending}>
-                Cadastrar Documento
+              <Button 
+                type="submit" 
+                className="flex-1" 
+                disabled={createMutation.isPending || isUploading}
+              >
+                {isUploading ? 'Enviando arquivo...' : createMutation.isPending ? 'Salvando...' : 'Cadastrar Documento'}
               </Button>
-              <Button type="button" variant="outline" onClick={() => setIsModalOpen(false)}>
+              <Button 
+                type="button" 
+                variant="outline" 
+                onClick={() => setIsModalOpen(false)}
+                disabled={isUploading || createMutation.isPending}
+              >
                 Cancelar
               </Button>
             </div>
