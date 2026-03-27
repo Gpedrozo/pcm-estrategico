@@ -1,5 +1,5 @@
--- Migration: dispositivos_moveis + qrcodes_vinculacao
--- Suporte a vinculação de dispositivos móveis por QR Code (multi-tenant)
+﻿-- Migration: dispositivos_moveis + qrcodes_vinculacao
+-- Suporte a vinculaÃ§Ã£o de dispositivos mÃ³veis por QR Code (multi-tenant)
 
 -- Tabela de dispositivos vinculados
 CREATE TABLE IF NOT EXISTS public.dispositivos_moveis (
@@ -21,7 +21,7 @@ CREATE TABLE IF NOT EXISTS public.dispositivos_moveis (
   UNIQUE(empresa_id, device_id)
 );
 
--- Tabela de QR Codes de vinculação
+-- Tabela de QR Codes de vinculaÃ§Ã£o
 CREATE TABLE IF NOT EXISTS public.qrcodes_vinculacao (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   empresa_id UUID NOT NULL REFERENCES public.empresas(id) ON DELETE CASCADE,
@@ -36,7 +36,7 @@ CREATE TABLE IF NOT EXISTS public.qrcodes_vinculacao (
   UNIQUE(token)
 );
 
--- Configuração de limites por empresa
+-- ConfiguraÃ§Ã£o de limites por empresa
 ALTER TABLE public.empresas
   ADD COLUMN IF NOT EXISTS max_dispositivos_moveis INT DEFAULT 10,
   ADD COLUMN IF NOT EXISTS dispositivos_moveis_ativos BOOLEAN DEFAULT true;
@@ -145,17 +145,17 @@ BEGIN
   SELECT * INTO v_qr FROM qrcodes_vinculacao
     WHERE token = p_qr_token AND ativo = true;
   IF NOT FOUND THEN
-    RETURN jsonb_build_object('ok', false, 'erro', 'QR Code inválido ou revogado');
+    RETURN jsonb_build_object('ok', false, 'erro', 'QR Code invÃ¡lido ou revogado');
   END IF;
 
-  -- Verifica expiração
+  -- Verifica expiraÃ§Ã£o
   IF v_qr.expira_em IS NOT NULL AND v_qr.expira_em < now() THEN
     RETURN jsonb_build_object('ok', false, 'erro', 'QR Code expirado');
   END IF;
 
-  -- Verifica tipo UNICO já usado
+  -- Verifica tipo UNICO jÃ¡ usado
   IF v_qr.tipo = 'UNICO' AND v_qr.usos > 0 THEN
-    RETURN jsonb_build_object('ok', false, 'erro', 'QR Code de uso único já utilizado');
+    RETURN jsonb_build_object('ok', false, 'erro', 'QR Code de uso Ãºnico jÃ¡ utilizado');
   END IF;
 
   -- Verifica max_usos
@@ -166,7 +166,7 @@ BEGIN
   -- Busca empresa
   SELECT * INTO v_empresa FROM empresas WHERE id = v_qr.empresa_id;
   IF NOT FOUND OR v_empresa.dispositivos_moveis_ativos IS NOT TRUE THEN
-    RETURN jsonb_build_object('ok', false, 'erro', 'Dispositivos móveis desativados para esta empresa');
+    RETURN jsonb_build_object('ok', false, 'erro', 'Dispositivos mÃ³veis desativados para esta empresa');
   END IF;
 
   -- Verifica limite de dispositivos
@@ -176,7 +176,7 @@ BEGIN
     RETURN jsonb_build_object('ok', false, 'erro', 'Limite de dispositivos atingido (' || v_empresa.max_dispositivos_moveis || ')');
   END IF;
 
-  -- Verifica se device_id já está vinculado a esta empresa
+  -- Verifica se device_id jÃ¡ estÃ¡ vinculado a esta empresa
   SELECT * INTO v_device FROM dispositivos_moveis
     WHERE empresa_id = v_empresa.id AND device_id = p_device_id;
 
@@ -208,13 +208,13 @@ BEGIN
     'ok', true,
     'device_token', v_device.token,
     'empresa_id', v_empresa.id,
-    'empresa_nome', COALESCE(v_empresa.nome_fantasia, v_empresa.razao_social),
+    'empresa_nome', v_empresa.nome,
     'tenant_slug', v_empresa.slug
   );
 END;
 $$;
 
--- RPC: verificar se dispositivo está ativo (chamado pelo app a cada abertura)
+-- RPC: verificar se dispositivo estÃ¡ ativo (chamado pelo app a cada abertura)
 CREATE OR REPLACE FUNCTION public.verificar_dispositivo(p_device_token UUID)
 RETURNS JSONB
 LANGUAGE plpgsql
@@ -241,15 +241,16 @@ BEGIN
     RETURN jsonb_build_object('ok', false, 'status', 'EMPRESA_DESATIVOU');
   END IF;
 
-  -- Atualiza último acesso
+  -- Atualiza Ãºltimo acesso
   UPDATE dispositivos_moveis SET ultimo_acesso = now() WHERE id = v_device.id;
 
   RETURN jsonb_build_object(
     'ok', true,
     'status', 'ATIVO',
     'empresa_id', v_empresa.id,
-    'empresa_nome', COALESCE(v_empresa.nome_fantasia, v_empresa.razao_social),
+    'empresa_nome', v_empresa.nome,
     'tenant_slug', v_empresa.slug
   );
 END;
 $$;
+
