@@ -18,6 +18,10 @@ import {
   ChevronRight,
   Zap,
   Activity,
+  Search,
+  Calendar,
+  Plus,
+  BookOpen,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -200,6 +204,25 @@ export default function MecanicoHome() {
           </div>
         </div>
       )}
+
+      {/* Atalhos rápidos */}
+      <div className="grid grid-cols-4 gap-2">
+        {[
+          { label: 'Equipamento', icon: Search, to: '/mecanico/equipamento' },
+          { label: 'Preventivas', icon: Calendar, to: '/mecanico/preventivas' },
+          { label: 'Solicitar', icon: Plus, to: '/mecanico/solicitar' },
+          { label: 'Manuais', icon: BookOpen, to: '/manuais-operacao' },
+        ].map(a => (
+          <button
+            key={a.to}
+            onClick={() => navigate(a.to)}
+            className="flex flex-col items-center gap-1.5 p-4 rounded-2xl border-2 border-border bg-card hover:bg-muted active:scale-95 transition-all"
+          >
+            <a.icon className="h-6 w-6 text-primary" />
+            <span className="text-xs font-bold">{a.label}</span>
+          </button>
+        ))}
+      </div>
 
       {/* Lista de O.S. */}
       <div className="space-y-3">

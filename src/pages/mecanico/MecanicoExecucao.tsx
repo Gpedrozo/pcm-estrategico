@@ -6,6 +6,7 @@ import { useOrdensServico, useUpdateOrdemServico } from '@/hooks/useOrdensServic
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { Textarea } from '@/components/ui/textarea';
 import {
   ArrowLeft,
   Play,
@@ -20,6 +21,7 @@ import {
   Square,
   Check,
   Flag,
+  Undo2,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -57,6 +59,10 @@ export default function MecanicoExecucao() {
   // Checklist de segurança
   const [checklistOk, setChecklistOk] = useState<boolean[]>(CHECKLIST_SEGURANCA.map(() => false));
   const allChecked = checklistOk.every(Boolean);
+
+  // Devolver OS
+  const [showDevolver, setShowDevolver] = useState(false);
+  const [justificativa, setJustificativa] = useState('');
 
   // Cronômetro persistente (survives component remount)
   const timerKey = `mec_timer_${id}`;
@@ -121,6 +127,27 @@ export default function MecanicoExecucao() {
     navigate(`/mecanico/finalizar/${os.id}`, {
       state: { fotos, elapsed },
     });
+  };
+
+  const handleDevolver = () => {
+    if (!os || !justificativa.trim()) {
+      toast({ title: 'Informe a justificativa', variant: 'destructive' });
+      return;
+    }
+    updateOS.mutate(
+      {
+        id: os.id,
+        status: 'ABERTA',
+        observacoes: `[DEVOLVIDA] ${justificativa.trim()}${os.observacoes ? '\n---\n' + os.observacoes : ''}`,
+      },
+      {
+        onSuccess: () => {
+          try { sessionStorage.removeItem(timerKey); } catch {}
+          toast({ title: 'OS devolvida', description: 'Encaminhada de volta ao planejamento.' });
+          navigate('/mecanico');
+        },
+      },
+    );
   };
 
   const handleFotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -335,6 +362,49 @@ export default function MecanicoExecucao() {
             <Flag className="h-8 w-8" />
             FINALIZAR O.S.
           </Button>
+
+          {/* Devolver OS */}
+          {!showDevolver ? (
+            <Button
+              variant="outline"
+              className="w-full h-14 text-base font-bold gap-2 rounded-2xl border-2 border-red-300 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 active:scale-95"
+              onClick={() => setShowDevolver(true)}
+            >
+              <Undo2 className="h-5 w-5" />
+              DEVOLVER O.S.
+            </Button>
+          ) : (
+            <div className="rounded-2xl border-2 border-red-300 p-4 space-y-3">
+              <p className="text-base font-bold text-red-600 flex items-center gap-2">
+                <Undo2 className="h-5 w-5" />
+                Justificativa da devolução *
+              </p>
+              <Textarea
+                value={justificativa}
+                onChange={e => setJustificativa(e.target.value)}
+                placeholder="Ex: Falta peça de reposição, equipamento em uso, precisa de equipe especializada..."
+                rows={3}
+                className="text-base rounded-2xl border-2"
+                autoFocus
+              />
+              <div className="grid grid-cols-2 gap-2">
+                <Button
+                  variant="outline"
+                  className="h-14 text-base font-bold rounded-2xl border-2 active:scale-95"
+                  onClick={() => { setShowDevolver(false); setJustificativa(''); }}
+                >
+                  Cancelar
+                </Button>
+                <Button
+                  className="h-14 text-base font-bold rounded-2xl bg-red-600 hover:bg-red-700 active:scale-95"
+                  onClick={handleDevolver}
+                  disabled={!justificativa.trim() || updateOS.isPending}
+                >
+                  {updateOS.isPending ? <Loader2 className="h-5 w-5 animate-spin" /> : 'Confirmar'}
+                </Button>
+              </div>
+            </div>
+          )}
         </div>
       )}
 

@@ -1,5 +1,5 @@
 import { NavLink, useLocation } from 'react-router-dom';
-import { Home, ClipboardList, Plus, HelpCircle, MessageSquare } from 'lucide-react';
+import { Home, ClipboardList, Plus, HelpCircle, MessageSquare, Search, Calendar } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { cn } from '@/lib/utils';
 
