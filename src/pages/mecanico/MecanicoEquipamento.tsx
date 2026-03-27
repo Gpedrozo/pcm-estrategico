@@ -119,7 +119,7 @@ export default function MecanicoEquipamento() {
                       {(os.status || '').replace('_', ' ')}
                     </span>
                   </div>
-                  <p className="text-sm text-muted-foreground line-clamp-2">{os.problema || os.descricao_falha || '—'}</p>
+                  <p className="text-sm text-muted-foreground line-clamp-2">{os.problema || '—'}</p>
                   <p className="text-xs text-muted-foreground">
                     {os.data_solicitacao ? new Date(os.data_solicitacao).toLocaleDateString('pt-BR') : ''}
                     {os.tipo && ` • ${os.tipo}`}

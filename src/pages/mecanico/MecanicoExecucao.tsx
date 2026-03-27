@@ -138,7 +138,7 @@ export default function MecanicoExecucao() {
       {
         id: os.id,
         status: 'ABERTA',
-        observacoes: `[DEVOLVIDA] ${justificativa.trim()}${os.observacoes ? '\n---\n' + os.observacoes : ''}`,
+        licoes_aprendidas: `[DEVOLVIDA] ${justificativa.trim()}${os.licoes_aprendidas ? '\n---\n' + os.licoes_aprendidas : ''}`,
       },
       {
         onSuccess: () => {

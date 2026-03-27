@@ -31,14 +31,16 @@ export function OSPrintDialog({ os, trigger, solicitacaoNumero: solicitacaoNumer
   useEffect(() => {
     if (solicitacaoNumeroProp != null) { setResolvedSolNum(solicitacaoNumeroProp); return; }
     if (!os.id) { setResolvedSolNum(null); return; }
+    // @ts-expect-error — solicitacoes_manutencao not yet in generated types
     supabase.from('solicitacoes_manutencao').select('numero_solicitacao').eq('os_id', os.id).limit(1).single()
-      .then(({ data }) => { setResolvedSolNum(data ? (data as { numero_solicitacao: number }).numero_solicitacao : null); });
+      .then(({ data }: { data: { numero_solicitacao: number } | null }) => { setResolvedSolNum(data ? data.numero_solicitacao : null); });
   }, [os.id, solicitacaoNumeroProp]);
 
   useEffect(() => {
     if (!os.id) { setServicoExecutado(null); return; }
+    // @ts-expect-error — execucoes_os not yet in generated types
     supabase.from('execucoes_os').select('servico_executado').eq('ordem_servico_id', os.id).order('created_at', { ascending: false }).limit(1).maybeSingle()
-      .then(({ data }) => { setServicoExecutado(data ? (data as { servico_executado: string | null }).servico_executado : null); });
+      .then(({ data }: { data: { servico_executado: string | null } | null }) => { setServicoExecutado(data ? data.servico_executado : null); });
   }, [os.id]);
 
   return (

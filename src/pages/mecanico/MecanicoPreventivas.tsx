@@ -116,7 +116,7 @@ export default function MecanicoPreventivas() {
                 </div>
 
                 <p className="text-base font-semibold">{os.equipamento || os.tag || '—'}</p>
-                <p className="text-sm text-muted-foreground line-clamp-1">{os.problema || os.descricao_falha || '—'}</p>
+                <p className="text-sm text-muted-foreground line-clamp-1">{os.problema || '—'}</p>
 
                 <div className="flex items-center gap-3 mt-2 text-xs text-muted-foreground">
                   {dataStr && (
