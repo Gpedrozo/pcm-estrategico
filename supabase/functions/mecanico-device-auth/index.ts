@@ -18,7 +18,8 @@ function anonClient() {
 }
 
 function devicePassword(deviceToken: string) {
-  const secret = env("SUPABASE_JWT_SECRET").slice(0, 12);
+  // SERVICE_ROLE_KEY está sempre disponível em Edge Functions; JWT_SECRET não
+  const secret = env("SUPABASE_SERVICE_ROLE_KEY").slice(-12);
   return `pcm-da-${deviceToken}-${secret}`;
 }
 
