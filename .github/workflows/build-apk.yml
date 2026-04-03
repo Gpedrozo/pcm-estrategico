@@ -36,24 +36,47 @@ jobs:
       - name: Install dependencies
         run: npm ci --legacy-peer-deps
 
-      - name: Debug - check expo and plugins
+      - name: Debug info
         run: |
-          echo "=== npx expo --version ==="
+          node --version
+          npm --version
           npx expo --version || true
-          echo "=== @expo/config-plugins version ==="
           node -e "console.log(require('@expo/config-plugins/package.json').version)" || true
-          echo "=== expo-camera plugin ==="
-          ls -la node_modules/expo-camera/app.plugin.js 2>&1 || true
-          echo "=== expo-image-picker plugin ==="
-          ls -la node_modules/expo-image-picker/app.plugin.js 2>&1 || true
-          echo "=== check createPermissionsPlugin ==="
-          node -e "const c = require('@expo/config-plugins'); console.log('createPermissionsPlugin:', typeof c.IOSConfig?.Permissions?.createPermissionsPlugin)" || true
+          cat app.json
 
       - name: Generate native project (expo prebuild)
-        run: npx expo prebuild --platform android --clean --no-install
+        id: prebuild
+        continue-on-error: true
+        run: |
+          npx expo prebuild --platform android --clean --no-install 2>&1 | tee prebuild-output.txt
+          echo "PREBUILD_EXIT=${PIPESTATUS[0]}" >> "$GITHUB_ENV"
         env:
           EXPO_NO_TELEMETRY: 1
           CI: "1"
+
+      - name: Show prebuild result
+        if: always()
+        run: |
+          echo "## Expo Prebuild Output" >> "$GITHUB_STEP_SUMMARY"
+          echo "```" >> "$GITHUB_STEP_SUMMARY"
+          cat prebuild-output.txt >> "$GITHUB_STEP_SUMMARY" 2>/dev/null || echo "No output captured" >> "$GITHUB_STEP_SUMMARY"
+          echo "```" >> "$GITHUB_STEP_SUMMARY"
+          echo "=== Full prebuild output ==="
+          cat prebuild-output.txt 2>/dev/null || echo "No output"
+          echo "=== Exit code: $PREBUILD_EXIT ==="
+
+      - name: Upload prebuild log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: prebuild-log
+          path: mecanico-app/prebuild-output.txt
+          retention-days: 7
+          if-no-files-found: ignore
+
+      - name: Fail if prebuild failed
+        if: steps.prebuild.outcome != 'success'
+        run: exit 1
 
       - name: Build APK (release)
         run: |
@@ -81,15 +104,12 @@ jobs:
           name: PCM Mecanico v1.0.0 (Build ${{ github.run_number }})
           body: |
             ## App Mecanico Industrial - PCM
-
             APK para instalacao direta em dispositivos Android 6.0+
-
             ### Como instalar:
             1. Baixe o arquivo pcm-mecanico.apk abaixo
             2. No celular, permita instalacao de fontes desconhecidas
             3. Instale o APK
             4. Abra o app e escaneie o QR Code de vinculacao
-
             **Build automatico #${{ github.run_number }}**
           files: mecanico-app/output/pcm-mecanico.apk
           draft: false
