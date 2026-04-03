@@ -412,23 +412,51 @@ export async function callOwnerAdmin<T = unknown>(payload: OwnerActionPayload) {
     return data.session.access_token
   }
 
-  const invokeWithToken = async (accessToken: string) => {
-    const { data, error } = await supabase.functions.invoke('owner-portal-admin', {
-      body: safePayload,
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-      },
-    })
+  const invokeWithToken = async (accessToken: string, retryCount = 0): Promise<T> => {
+    const maxRetries = 3;
+    const baseDelay = 1000; // 1 second
+    
+    try {
+      const { data, error } = await supabase.functions.invoke('owner-portal-admin', {
+        body: safePayload,
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+        },
+      })
 
-    if (error) {
-      throw error
+      if (error) {
+        const errorMsg = String(error?.message ?? '').toLowerCase();
+        const isConnectionError = errorMsg.includes('failed to send') || 
+                                  errorMsg.includes('network') || 
+                                  errorMsg.includes('timeout');
+        
+        if (isConnectionError && retryCount < maxRetries) {
+          // Retry on connection errors with exponential backoff
+          const delay = baseDelay * Math.pow(2, retryCount);
+          console.warn(`[Owner API] Connection error, retrying in ${delay}ms (attempt ${retryCount + 1}/${maxRetries})`);
+          await new Promise(resolve => setTimeout(resolve, delay));
+          return invokeWithToken(accessToken, retryCount + 1);
+        }
+        
+        throw error
+      }
+
+      if (isOwnerErrorResponse(data)) {
+        throw new Error(data.error)
+      }
+
+      return data as T
+    } catch (err) {
+      const errMsg = String((err as any)?.message ?? '').toLowerCase();
+      if ((errMsg.includes('failed to send') || errMsg.includes('network')) && retryCount < maxRetries) {
+        const delay = baseDelay * Math.pow(2, retryCount);
+        console.warn(`[Owner API] Retry after connection error (attempt ${retryCount + 1}/${maxRetries})`);
+        await new Promise(resolve => setTimeout(resolve, delay));
+        return invokeWithToken(accessToken, retryCount + 1);
+      }
+      throw err;
     }
-
-    if (isOwnerErrorResponse(data)) {
-      throw new Error(data.error)
-    }
-
-    return data as T
   }
 
   const { data: sessionResult } = await supabase.auth.getSession()
@@ -450,14 +478,23 @@ export async function callOwnerAdmin<T = unknown>(payload: OwnerActionPayload) {
     return await invokeWithToken(token)
   } catch (error) {
     if (!isUnauthorizedOwnerError(error)) {
-      const message = await parseErrorMessage(error)
+      const errorMsg = String((error as any)?.message ?? '').toLowerCase();
+      const isConnectionError = errorMsg.includes('failed to send') || 
+                                errorMsg.includes('network') || 
+                                errorMsg.includes('timeout');
+      
+      if (isConnectionError) {
+        console.error('[Owner API] Edge Function connection failed after retries:', errorMsg);
+      }
+      
+      const message = isConnectionError ? errorMsg : await parseErrorMessage(error)
 
       if (safePayload.action === 'create_company' && (isProfileBindingErrorMessage(message) || isRoleBindingErrorMessage(message))) {
         const recovered = await tryRecoverCreateCompanyByLookup(safePayload, message)
         if (recovered) return recovered as T
       }
 
-      if (safePayload.action === 'list_companies' && isEmpresasCnpjSchemaError(message)) {
+      if (safePayload.action === 'list_companies' && (isEmpresasCnpjSchemaError(message) || isConnectionError)) {
         return await listCompaniesFallback() as T
       }
 
@@ -466,14 +503,19 @@ export async function callOwnerAdmin<T = unknown>(payload: OwnerActionPayload) {
 
     const refreshedToken = await refreshSession()
     if (!refreshedToken) {
-      const message = await parseErrorMessage(error)
+      const errorMsg = String((error as any)?.message ?? '').toLowerCase();
+      const isConnectionError = errorMsg.includes('failed to send') || 
+                                errorMsg.includes('network') || 
+                                errorMsg.includes('timeout');
+      
+      const message = isConnectionError ? errorMsg : await parseErrorMessage(error)
 
       if (safePayload.action === 'create_company' && (isProfileBindingErrorMessage(message) || isRoleBindingErrorMessage(message))) {
         const recovered = await tryRecoverCreateCompanyByLookup(safePayload, message)
         if (recovered) return recovered as T
       }
 
-      if (safePayload.action === 'list_companies' && isEmpresasCnpjSchemaError(message)) {
+      if (safePayload.action === 'list_companies' && (isEmpresasCnpjSchemaError(message) || isConnectionError)) {
         return await listCompaniesFallback() as T
       }
 
@@ -483,14 +525,19 @@ export async function callOwnerAdmin<T = unknown>(payload: OwnerActionPayload) {
     try {
       return await invokeWithToken(refreshedToken)
     } catch (retryError) {
-      const message = await parseErrorMessage(retryError)
+      const retryErrorMsg = String((retryError as any)?.message ?? '').toLowerCase();
+      const isRetryConnectionError = retryErrorMsg.includes('failed to send') || 
+                                     retryErrorMsg.includes('network') || 
+                                     retryErrorMsg.includes('timeout');
+      
+      const message = isRetryConnectionError ? retryErrorMsg : await parseErrorMessage(retryError)
 
       if (safePayload.action === 'create_company' && (isProfileBindingErrorMessage(message) || isRoleBindingErrorMessage(message))) {
         const recovered = await tryRecoverCreateCompanyByLookup(safePayload, message)
         if (recovered) return recovered as T
       }
 
-      if (safePayload.action === 'list_companies' && isEmpresasCnpjSchemaError(message)) {
+      if (safePayload.action === 'list_companies' && (isEmpresasCnpjSchemaError(message) || isRetryConnectionError)) {
         return await listCompaniesFallback() as T
       }
 
