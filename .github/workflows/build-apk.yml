@@ -1,0 +1,84 @@
+name: Build Android APK
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'mecanico-app/**'
+    branches: [main]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: mecanico-app
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Setup Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Generate native project (expo prebuild)
+        run: npx expo prebuild --platform android --clean --no-install
+        env:
+          EXPO_NO_TELEMETRY: 1
+
+      - name: Install android deps
+        run: npm install
+
+      - name: Build APK (release)
+        run: |
+          cd android
+          chmod +x gradlew
+          ./gradlew assembleRelease --no-daemon
+
+      - name: Rename APK
+        run: |
+          mkdir -p output
+          cp android/app/build/outputs/apk/release/app-release.apk output/pcm-mecanico.apk
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: pcm-mecanico-apk
+          path: mecanico-app/output/pcm-mecanico.apk
+          retention-days: 90
+
+      - name: Create GitHub Release
+        if: github.event_name == 'workflow_dispatch'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v1.0.0-build.${{ github.run_number }}
+          name: PCM Mecânico v1.0.0 (Build ${{ github.run_number }})
+          body: |
+            ## App Mecânico Industrial - PCM
+
+            APK para instalação direta em dispositivos Android 6.0+
+
+            ### Como instalar:
+            1. Baixe o arquivo `pcm-mecanico.apk` abaixo
+            2. No celular, permita instalação de fontes desconhecidas
+            3. Instale o APK
+            4. Abra o app e escaneie o QR Code de vinculação
+
+            **Build automático #${{ github.run_number }}**
+          files: mecanico-app/output/pcm-mecanico.apk
+          draft: false
+          prerelease: false
