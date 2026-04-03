@@ -1,0 +1,200 @@
+// ============================================================
+// Sync Engine — Background sync with exponential backoff
+// ============================================================
+
+import * as Network from 'expo-network';
+import { supabase } from './supabase';
+import {
+  getPendingSyncItems,
+  markSyncItemDone,
+  markSyncItemError,
+  upsertOrdemServico,
+  upsertExecucao,
+  upsertEquipamento,
+  getDeviceConfig,
+} from './database';
+
+const MAX_RETRIES = 5;
+let syncTimer: ReturnType<typeof setTimeout> | null = null;
+let isSyncing = false;
+
+export async function isOnline(): Promise<boolean> {
+  try {
+    const state = await Network.getNetworkStateAsync();
+    return state.isConnected === true && state.isInternetReachable !== false;
+  } catch {
+    return false;
+  }
+}
+
+// ============================================================
+// Push — Send pending local changes to server
+// ============================================================
+
+async function pushPendingChanges(): Promise<number> {
+  const items = await getPendingSyncItems();
+  let synced = 0;
+
+  for (const item of items) {
+    if (item.retry_count >= MAX_RETRIES) continue;
+
+    try {
+      const payload = JSON.parse(item.payload);
+      const table = item.table_name;
+
+      if (item.operation === 'INSERT' || item.operation === 'UPDATE') {
+        // Remove local-only fields before sending
+        const { sync_status, local_updated_at, fotos, ...serverPayload } = payload;
+
+        const { error } = await supabase.from(table).upsert(serverPayload);
+        if (error) throw error;
+
+        // If execucao with fotos, upload them
+        if (table === 'execucoes_os' && fotos && Array.isArray(fotos)) {
+          for (const fotoUri of fotos) {
+            try {
+              await uploadPhoto(payload.id, fotoUri, payload.empresa_id);
+            } catch (photoErr) {
+              console.warn('[sync] photo upload failed:', photoErr);
+            }
+          }
+        }
+      } else if (item.operation === 'DELETE') {
+        const { error } = await supabase.from(table).delete().eq('id', item.record_id);
+        if (error) throw error;
+      }
+
+      await markSyncItemDone(item.id);
+      synced++;
+    } catch (err: any) {
+      await markSyncItemError(item.id, err?.message || String(err));
+    }
+  }
+
+  return synced;
+}
+
+async function uploadPhoto(execucaoId: string, localUri: string, empresaId: string): Promise<void> {
+  const response = await fetch(localUri);
+  const blob = await response.blob();
+  const ext = localUri.split('.').pop() || 'jpg';
+  const path = `${empresaId}/execucoes/${execucaoId}/${Date.now()}.${ext}`;
+
+  const { error } = await supabase.storage
+    .from('execucoes-fotos')
+    .upload(path, blob, { contentType: `image/${ext}` });
+
+  if (error) throw error;
+}
+
+// ============================================================
+// Pull — Fetch latest data from server into local DB
+// ============================================================
+
+export async function pullData(empresaId: string): Promise<void> {
+  if (!empresaId) return;
+
+  // Pull Ordens de Servico
+  const { data: osList } = await supabase
+    .from('ordens_servico')
+    .select('*')
+    .eq('empresa_id', empresaId)
+    .order('data_solicitacao', { ascending: false })
+    .limit(200);
+
+  if (osList) {
+    for (const os of osList) {
+      await upsertOrdemServico(os);
+    }
+  }
+
+  // Pull Execucoes
+  const { data: execList } = await supabase
+    .from('execucoes_os')
+    .select('*')
+    .eq('empresa_id', empresaId)
+    .order('created_at', { ascending: false })
+    .limit(500);
+
+  if (execList) {
+    for (const exec of execList) {
+      await upsertExecucao({ ...exec, sync_status: 'synced' });
+    }
+  }
+
+  // Pull Equipamentos
+  const { data: eqList } = await supabase
+    .from('equipamentos')
+    .select('*')
+    .eq('empresa_id', empresaId)
+    .limit(500);
+
+  if (eqList) {
+    for (const eq of eqList) {
+      await upsertEquipamento(eq);
+    }
+  }
+}
+
+// ============================================================
+// Full Sync Cycle
+// ============================================================
+
+export async function runSyncCycle(empresaIdOverride?: string): Promise<{ pushed: number; pulled: boolean }> {
+  if (isSyncing) return { pushed: 0, pulled: false };
+  isSyncing = true;
+
+  try {
+    const online = await isOnline();
+    if (!online) return { pushed: 0, pulled: false };
+
+    // Push first
+    const pushed = await pushPendingChanges();
+
+    // Then pull
+    const empresaId = empresaIdOverride || await getDeviceConfig('empresa_id');
+    if (empresaId) {
+      await pullData(empresaId);
+    }
+
+    return { pushed, pulled: !!empresaId };
+  } catch (err) {
+    console.error('[sync] cycle error:', err);
+    return { pushed: 0, pulled: false };
+  } finally {
+    isSyncing = false;
+  }
+}
+
+// ============================================================
+// Background Sync Timer (exponential backoff on error)
+// ============================================================
+
+let backoffMs = 30_000; // Start at 30s
+const MAX_BACKOFF = 300_000; // 5 min max
+const NORMAL_INTERVAL = 30_000; // 30s when healthy
+
+export function startSyncTimer() {
+  stopSyncTimer();
+
+  async function tick() {
+    try {
+      const result = await runSyncCycle();
+      if (result.pushed > 0 || result.pulled) {
+        backoffMs = NORMAL_INTERVAL; // Reset on success
+      }
+    } catch {
+      backoffMs = Math.min(backoffMs * 2, MAX_BACKOFF);
+    }
+    syncTimer = setTimeout(tick, backoffMs);
+  }
+
+  syncTimer = setTimeout(tick, 5000); // First sync after 5s
+}
+
+export function stopSyncTimer() {
+  if (syncTimer) {
+    clearTimeout(syncTimer);
+    syncTimer = null;
+  }
+}
