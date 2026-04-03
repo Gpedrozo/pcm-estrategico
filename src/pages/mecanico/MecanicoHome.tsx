@@ -69,7 +69,7 @@ export default function MecanicoHome() {
     currentSessionIdRef.current = sessionId;
   }, [sessionId]);
 
-  // Cleanup ao desmontar: fazer logout se necess├írio
+  // Cleanup ao desmontar: fazer logout se necessário
   useEffect(() => {
     return () => {
       if (currentSessionIdRef.current) {
@@ -109,37 +109,41 @@ export default function MecanicoHome() {
   });
   const emAndamento = pendentes.filter(os => os.status === 'EM_ANDAMENTO');
 
-  // Nova fun├º├úo: handleLogin com valida├º├úo no servidor
+  // Nova função: handleLogin com validação no servidor
   const handleLogin = async () => {
     const code = codigo.trim().toUpperCase();
     if (!code || !senha.trim()) {
-      toast({ title: 'Dados obrigat├│rios', description: 'Informe c├│digo e senha.', variant: 'destructive' });
+      toast({ title: 'Dados obrigatórios', description: 'Informe código e senha.', variant: 'destructive' });
       return;
     }
 
     setLoggingIn(true);
 
     try {
-      // Obter device_token do localStorage (j├í foi vinculado via QR)
+      // Obter device_token do localStorage (já foi vinculado via QR)
       const deviceToken = await getDeviceConfig('device_token') as string | null;
       const empresaId = await getDeviceConfig('empresa_id') as string | null;
       const dispositivoId = await getDeviceConfig('dispositivo_id') as string | null;
 
-      if (!deviceToken || !empresaId || !dispositivoId) {
+      if (!deviceToken || !empresaId) {
         toast({
-          title: 'Erro',
-          description: 'Dispositivo n├úo vinculado. Fa├ºa o QR Code novamente.',
+          title: 'Dispositivo não vinculado',
+          description: 'Reabra o aplicativo e escaneie o QR Code novamente.',
           variant: 'destructive',
         });
         setLoggingIn(false);
         return;
       }
 
+      // dispositivoId pode ser null em devices vinculados antes da migração.
+      // Nesse caso, usamos o device_token como fallback identifier.
+      const effectiveDispositivoId = dispositivoId || deviceToken;
+
       // 1. Validar credenciais NO SERVIDOR (FASE 2)
       validarCredenciais.mutate(
         {
           empresa_id: empresaId,
-          dispositivo_id: dispositivoId,
+          dispositivo_id: effectiveDispositivoId,
           codigo_acesso: code,
           senha_acesso: senha,
         },
@@ -148,7 +152,7 @@ export default function MecanicoHome() {
             if (!result.ok) {
               toast({
                 title: `Erro: ${result.resultado}`,
-                description: result.motivo || 'Falha na valida├º├úo',
+                description: result.motivo || 'Falha na validação',
                 variant: 'destructive',
               });
               
@@ -170,7 +174,7 @@ export default function MecanicoHome() {
             registrarLogin.mutate(
               {
                 empresa_id: empresaId,
-                dispositivo_id: dispositivoId,
+                dispositivo_id: effectiveDispositivoId,
                 mecanico_id: mecanicoId,
                 device_token: deviceToken,
                 codigo_acesso: code,
@@ -210,7 +214,7 @@ export default function MecanicoHome() {
           },
           onError: (e: Error) => {
             toast({
-              title: 'Erro na valida├º├úo',
+              title: 'Erro na validação',
               description: e.message,
               variant: 'destructive',
             });
@@ -233,7 +237,7 @@ export default function MecanicoHome() {
     if (sessionId) {
       registrarLogout.mutate({
         session_id: sessionId,
-        motivo: 'Logout manual (troca de mec├ónico)',
+        motivo: 'Logout manual (troca de mecânico)',
       });
     }
 
@@ -250,7 +254,7 @@ export default function MecanicoHome() {
     } catch {}
   };
 
-  /* ÔöÇÔöÇÔöÇ Tela de Login (inputs enormes para m├úos sujas) ÔöÇÔöÇÔöÇ */
+  /* ÔöÇÔöÇÔöÇ Tela de Login (inputs enormes para mãos sujas) ÔöÇÔöÇÔöÇ */
   if (!mecanico) {
     return (
       <div className="flex items-center justify-center min-h-[80vh] px-4">
@@ -259,15 +263,15 @@ export default function MecanicoHome() {
             <div className="mx-auto w-24 h-24 rounded-2xl bg-primary/10 flex items-center justify-center shadow-lg">
               <Wrench className="h-12 w-12 text-primary" />
             </div>
-            <h1 className="text-2xl font-black tracking-tight">Painel do Mec├ónico</h1>
-            <p className="text-base text-muted-foreground">Digite seu c├│digo e senha</p>
+            <h1 className="text-2xl font-black tracking-tight">Painel do Mecânico</h1>
+            <p className="text-base text-muted-foreground">Digite seu código e senha</p>
           </div>
           <div className="space-y-4">
             <Input
               value={codigo}
               onChange={e => setCodigo(e.target.value.toUpperCase())}
               onKeyDown={e => e.key === 'Enter' && handleLogin()}
-              placeholder="C├ôDIGO (ex: MEC-001)"
+              placeholder="CÓDIGO (ex: MEC-001)"
               autoFocus
               className="h-16 text-xl font-mono text-center tracking-widest rounded-2xl border-2 focus:border-primary"
             />
@@ -309,7 +313,7 @@ export default function MecanicoHome() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-black tracking-tight">
-            Ol├í, {mecanico.nome.split(' ')[0]}!
+            Olá, {mecanico.nome.split(' ')[0]}!
           </h1>
           <p className="text-base text-muted-foreground flex items-center gap-1.5">
             <Activity className="h-4 w-4" />
@@ -319,19 +323,19 @@ export default function MecanicoHome() {
         <button
           onClick={handleLogout}
           className="min-w-[52px] min-h-[52px] flex items-center justify-center rounded-2xl border-2 border-muted hover:bg-muted active:scale-90 transition-all"
-          title="Trocar mec├ónico"
+          title="Trocar mecânico"
         >
           <LogOut className="h-6 w-6 text-muted-foreground" />
         </button>
       </div>
 
-      {/* Stats Cards ÔÇö gradientes coloridos */}
+      {/* Stats Cards — gradientes coloridos */}
       <div className="grid grid-cols-2 gap-3">
         {[
           { label: 'Urgentes', value: urgentes.length, icon: AlertTriangle, gradient: 'from-red-500 to-red-600', pulse: urgentes.length > 0 },
           { label: 'Em Andamento', value: emAndamento.length, icon: Timer, gradient: 'from-amber-500 to-amber-600', pulse: false },
           { label: 'Pendentes', value: pendentes.length, icon: ClipboardCheck, gradient: 'from-blue-500 to-blue-600', pulse: false },
-          { label: 'Conclu├¡das', value: minhasOrdens.filter(os => os.status === 'FECHADA').length, icon: CheckCircle2, gradient: 'from-green-500 to-green-600', pulse: false },
+          { label: 'Concluídas', value: minhasOrdens.filter(os => os.status === 'FECHADA').length, icon: CheckCircle2, gradient: 'from-green-500 to-green-600', pulse: false },
         ].map(stat => (
           <div
             key={stat.label}
@@ -360,12 +364,12 @@ export default function MecanicoHome() {
             <p className="font-bold text-red-700 dark:text-red-400">
               {urgentes.length} O.S. URGENTE{urgentes.length !== 1 ? 'S' : ''}
             </p>
-            <p className="text-sm text-red-600/80 dark:text-red-400/80">Requer aten├º├úo imediata</p>
+            <p className="text-sm text-red-600/80 dark:text-red-400/80">Requer atenção imediata</p>
           </div>
         </div>
       )}
 
-      {/* Atalhos r├ípidos */}
+      {/* Atalhos rápidos */}
       <div className="grid grid-cols-4 gap-2">
         {[
           { label: 'Equipamento', icon: Search, to: '/mecanico/equipamento' },
@@ -386,7 +390,7 @@ export default function MecanicoHome() {
 
       {/* Lista de O.S. */}
       <div className="space-y-3">
-        <h2 className="text-lg font-bold">Suas Ordens de Servi├ºo</h2>
+        <h2 className="text-lg font-bold">Suas Ordens de Serviço</h2>
 
         {pendentes.length === 0 ? (
           <div className="rounded-2xl border-2 border-dashed p-10 text-center text-muted-foreground">

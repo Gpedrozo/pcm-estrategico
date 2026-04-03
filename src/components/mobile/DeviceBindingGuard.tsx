@@ -41,9 +41,12 @@ export default function DeviceBindingGuard({ children }: { children: React.React
     }
 
     verificar.mutate(deviceToken, {
-      onSuccess: (res) => {
+      onSuccess: async (res) => {
         if (res.ok) {
           setEmpresaNome(res.empresa_nome || '');
+          // Persist dispositivo_id + empresa_id on every verify (keeps config fresh)
+          if (res.dispositivo_id) await saveDeviceConfig('dispositivo_id', res.dispositivo_id);
+          if (res.empresa_id) await saveDeviceConfig('empresa_id', res.empresa_id);
           setState('BOUND');
         } else if (res.status === 'DESATIVADO' || res.status === 'EMPRESA_DESATIVOU') {
           setBloqueioMotivo(res.motivo || 'Dispositivo desativado pelo administrador.');
@@ -55,6 +58,7 @@ export default function DeviceBindingGuard({ children }: { children: React.React
         }
       },
       onError: () => {
+        // Offline or transient error → assume still bound so user can work
         setState('BOUND');
       },
     });
@@ -82,6 +86,7 @@ export default function DeviceBindingGuard({ children }: { children: React.React
         onSuccess: async (res) => {
           if (res.ok) {
             await saveDeviceConfig('device_token', res.device_token);
+            await saveDeviceConfig('dispositivo_id', res.dispositivo_id);
             await saveDeviceConfig('empresa_id', res.empresa_id);
             await saveDeviceConfig('empresa_nome', res.empresa_nome);
             await saveDeviceConfig('tenant_slug', res.tenant_slug);
@@ -113,9 +118,10 @@ export default function DeviceBindingGuard({ children }: { children: React.React
   const stopScanner = useCallback(async () => {
     try {
       if (scannerRef.current) {
-        await scannerRef.current.stop();
-        scannerRef.current.clear();
+        const s = scannerRef.current;
         scannerRef.current = null;
+        await s.stop().catch(() => {});
+        s.clear();
       }
     } catch { /* scanner already stopped */ }
     setScanning(false);
@@ -128,8 +134,15 @@ export default function DeviceBindingGuard({ children }: { children: React.React
     try {
       const { Html5Qrcode } = await import('html5-qrcode');
 
-      // Pequeno delay para o DOM renderizar o container
-      await new Promise(r => setTimeout(r, 100));
+      // Wait for DOM to render the container
+      await new Promise(r => setTimeout(r, 200));
+
+      const container = document.getElementById(scannerContainerId);
+      if (!container) {
+        setScanning(false);
+        setCameraError('Container do scanner não encontrado.');
+        return;
+      }
 
       const scanner = new Html5Qrcode(scannerContainerId);
       scannerRef.current = scanner;
@@ -138,11 +151,12 @@ export default function DeviceBindingGuard({ children }: { children: React.React
         { facingMode: 'environment' },
         {
           fps: 10,
-          qrbox: { width: 280, height: 280 },
+          qrbox: { width: 250, height: 250 },
+          aspectRatio: 1,
           disableFlip: false,
         },
         async (decodedText) => {
-          // QR lido com sucesso
+          // QR lido com sucesso — stop scanner before processing
           await stopScanner();
           const token = extractToken(decodedText);
           if (token) {
@@ -153,6 +167,7 @@ export default function DeviceBindingGuard({ children }: { children: React.React
       );
     } catch (err: any) {
       setScanning(false);
+      scannerRef.current = null;
       const msg = err?.message || String(err);
       if (msg.includes('NotAllowedError') || msg.includes('Permission')) {
         setCameraError('Permissão de câmera negada. Permita o acesso nas configurações do dispositivo.');

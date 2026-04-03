@@ -20,7 +20,7 @@ export interface MecanicoValidacaoResult {
 }
 
 /**
- * Hook para registrar login do mec├ónico no servidor
+ * Hook para registrar login do mecânico no servidor
  * Capture IP, User Agent, etc., para auditoria
  */
 export function useMecanicoLogin() {
@@ -62,7 +62,7 @@ export function useMecanicoLogin() {
 }
 
 /**
- * Hook para registrar logout do mec├ónico no servidor
+ * Hook para registrar logout do mecânico no servidor
  */
 export function useMecanicoLogout() {
   const { toast } = useToast();
@@ -86,8 +86,8 @@ export function useMecanicoLogout() {
 }
 
 /**
- * Hook para validar credenciais do mec├ónico NO SERVIDOR
- * Implementa rate limiting autom├ítico
+ * Hook para validar credenciais do mecânico NO SERVIDOR
+ * Implementa rate limiting automático
  */
 export function useMecanicoValidarCredenciais() {
   const { toast } = useToast();
@@ -119,13 +119,13 @@ export function useMecanicoValidarCredenciais() {
     },
     onError: (e: Error) => {
       console.error('Validation error:', e);
-      toast({ title: 'Erro na valida├º├úo', description: e.message, variant: 'destructive' });
+      toast({ title: 'Erro na validação', description: e.message, variant: 'destructive' });
     },
   });
 }
 
 /**
- * Hook para obter lista de mec├ónicos online agora (real-time)
+ * Hook para obter lista de mecânicos online agora (real-time)
  */
 export function useMecanicosOnlineAgora() {
   return useQuery({
@@ -144,7 +144,7 @@ export function useMecanicosOnlineAgora() {
 }
 
 /**
- * Hook para obter relat├│rio de sess├Áes de mec├ónicos (hist├│rico)
+ * Hook para obter relatório de sess├Áes de mecânicos (histórico)
  */
 export function useRelatorioSessoesMecanicos(filters?: {
   mecanico_id?: string;

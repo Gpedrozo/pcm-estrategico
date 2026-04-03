@@ -149,6 +149,7 @@ Deno.serve(async (req: Request) => {
       access_token: session.access_token,
       refresh_token: session.refresh_token,
       expires_in: session.expires_in,
+      dispositivo_id: device.id,
       empresa_id: empresa.id,
       empresa_nome: empresa.nome,
       tenant_slug: empresa.slug,

@@ -4,19 +4,25 @@ import { getDeviceConfig } from '@/lib/offlineSync';
 import { useAuth } from '@/contexts/AuthContext';
 
 const MAX_RETRIES = 3;
-const RETRY_DELAY_MS = 2000;
+const RETRY_BASE_MS = 2000;
 
 async function invokeWithRetry(deviceToken: string, retries = MAX_RETRIES): Promise<{ data: any; error: any }> {
   for (let attempt = 0; attempt <= retries; attempt++) {
-    const { data, error } = await supabase.functions.invoke(
-      'mecanico-device-auth',
-      { body: { device_token: deviceToken } },
-    );
-    if (!error && data?.access_token) return { data, error: null };
-    if (attempt < retries) {
-      await new Promise(r => setTimeout(r, RETRY_DELAY_MS * (attempt + 1)));
-    } else {
-      return { data, error };
+    try {
+      const { data, error } = await supabase.functions.invoke(
+        'mecanico-device-auth',
+        { body: { device_token: deviceToken } },
+      );
+      if (!error && data?.access_token) return { data, error: null };
+
+      // If last attempt, return the error
+      if (attempt === retries) return { data, error: error || new Error(data?.error || 'Auth failed') };
+
+      // Progressive backoff
+      await new Promise(r => setTimeout(r, RETRY_BASE_MS * (attempt + 1)));
+    } catch (networkErr) {
+      if (attempt === retries) return { data: null, error: networkErr };
+      await new Promise(r => setTimeout(r, RETRY_BASE_MS * (attempt + 1)));
     }
   }
   return { data: null, error: new Error('Max retries reached') };
@@ -31,6 +37,7 @@ export function useMecanicoDeviceAuth() {
   const calledRef = useRef(false);
 
   useEffect(() => {
+    // If already authenticated via normal login, skip device auth
     if (isAuthenticated && authStatus === 'authenticated') {
       setIsReady(true);
       setIsLoading(false);
@@ -49,8 +56,19 @@ export function useMecanicoDeviceAuth() {
       try {
         const deviceToken = await getDeviceConfig('device_token') as string | null;
         if (!deviceToken) {
-          setError('Dispositivo não vinculado');
-          setIsLoading(false);
+          if (!cancelled) {
+            setError('Dispositivo não vinculado. Escaneie o QR Code novamente.');
+            setIsLoading(false);
+          }
+          return;
+        }
+
+        // Check network before calling edge function
+        if (!navigator.onLine) {
+          if (!cancelled) {
+            setError('Sem conexão com a internet. Verifique seu Wi-Fi ou dados móveis.');
+            setIsLoading(false);
+          }
           return;
         }
 
@@ -59,7 +77,8 @@ export function useMecanicoDeviceAuth() {
         if (cancelled) return;
 
         if (fnError || !data?.access_token) {
-          setError(data?.error || fnError?.message || 'Failed to send a request to the Edge Function');
+          const msg = data?.error || fnError?.message || 'Falha na autenticação do dispositivo';
+          setError(msg);
           setIsLoading(false);
           return;
         }
@@ -72,10 +91,12 @@ export function useMecanicoDeviceAuth() {
         if (cancelled) return;
 
         if (sessionError) {
-          setError(sessionError.message);
+          setError(`Erro de sessão: ${sessionError.message}`);
           setIsLoading(false);
           return;
         }
+
+        // Session set will trigger AuthContext → isAuthenticated → isReady
       } catch (err) {
         if (!cancelled) {
           setError(String(err));
@@ -89,14 +110,19 @@ export function useMecanicoDeviceAuth() {
     return () => { cancelled = true; };
   }, [isAuthenticated, authStatus, retryCount]);
 
+  // React to AuthContext changes after session is set
   useEffect(() => {
     if (isAuthenticated && authStatus === 'authenticated') {
       setIsReady(true);
       setIsLoading(false);
+      setError(null);
     }
   }, [isAuthenticated, authStatus]);
 
-  const retry = () => setRetryCount(c => c + 1);
+  const retry = () => {
+    calledRef.current = false;
+    setRetryCount(c => c + 1);
+  };
 
   return { isReady, isLoading, error, retry };
 }

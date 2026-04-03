@@ -192,7 +192,7 @@ export function useVincularDispositivo() {
     }) => {
       const { data, error } = await supabase.rpc('vincular_dispositivo', input);
       if (error) throw error;
-      return data as { ok: boolean; erro?: string; device_token?: string; empresa_id?: string; empresa_nome?: string; tenant_slug?: string };
+      return data as { ok: boolean; erro?: string; device_token?: string; dispositivo_id?: string; empresa_id?: string; empresa_nome?: string; tenant_slug?: string };
     },
   });
 }
@@ -202,7 +202,7 @@ export function useVerificarDispositivo() {
     mutationFn: async (deviceToken: string) => {
       const { data, error } = await supabase.rpc('verificar_dispositivo', { p_device_token: deviceToken });
       if (error) throw error;
-      return data as { ok: boolean; status: string; motivo?: string; empresa_id?: string; empresa_nome?: string; tenant_slug?: string };
+      return data as { ok: boolean; status: string; motivo?: string; dispositivo_id?: string; empresa_id?: string; empresa_nome?: string; tenant_slug?: string };
     },
   });
 }

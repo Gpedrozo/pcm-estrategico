@@ -1889,7 +1889,7 @@ export default function Owner() {
           )}
 
           {activeTab === 'dispositivos' && (
-            <OwnerDispositivosTab selectedEmpresaId={selectedEmpresaId} empresas={companies} runAction={runAction} busy={busy} />
+            <OwnerDispositivosTab selectedEmpresaId={companyId || null} empresas={companies} runAction={runAction} busy={busy} />
           )}
 
           {activeTab === 'sistema' && (

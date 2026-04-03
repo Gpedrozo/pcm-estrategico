@@ -1,5 +1,5 @@
 import { Outlet } from 'react-router-dom';
-import { Loader2, AlertTriangle, RefreshCw } from 'lucide-react';
+import { Loader2, AlertTriangle, RefreshCw, WifiOff } from 'lucide-react';
 import DeviceBindingGuard from '@/components/mobile/DeviceBindingGuard';
 import { MecanicoTopBar } from './MecanicoTopBar';
 import { MobileBottomNav } from './MobileBottomNav';
@@ -12,24 +12,36 @@ function MecanicoSessionBridge({ children }: { children: React.ReactNode }) {
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="text-center space-y-3">
-          <Loader2 className="h-10 w-10 animate-spin text-primary mx-auto" />
-          <p className="text-sm text-muted-foreground">Conectando dispositivo...</p>
+        <div className="text-center space-y-4">
+          <Loader2 className="h-12 w-12 animate-spin text-primary mx-auto" />
+          <div>
+            <p className="text-base font-medium">Conectando dispositivo...</p>
+            <p className="text-xs text-muted-foreground mt-1">Aguarde enquanto autenticamos</p>
+          </div>
         </div>
       </div>
     );
   }
 
   if (error) {
+    const isOffline = !navigator.onLine;
     return (
       <div className="min-h-screen flex items-center justify-center bg-background p-6">
-        <div className="max-w-sm text-center space-y-4">
-          <AlertTriangle className="h-10 w-10 text-destructive mx-auto" />
-          <h2 className="text-lg font-semibold">Erro de conexão</h2>
-          <p className="text-sm text-muted-foreground">{error}</p>
+        <div className="max-w-sm w-full text-center space-y-5">
+          {isOffline ? (
+            <WifiOff className="h-12 w-12 text-amber-500 mx-auto" />
+          ) : (
+            <AlertTriangle className="h-12 w-12 text-destructive mx-auto" />
+          )}
+          <div>
+            <h2 className="text-lg font-bold">
+              {isOffline ? 'Sem conexão' : 'Erro de conexão'}
+            </h2>
+            <p className="text-sm text-muted-foreground mt-2 leading-relaxed">{error}</p>
+          </div>
           <button
             onClick={retry}
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-medium"
+            className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-primary text-primary-foreground text-sm font-bold active:scale-95 transition-transform shadow-md"
           >
             <RefreshCw className="h-4 w-4" />
             Tentar novamente
@@ -42,7 +54,7 @@ function MecanicoSessionBridge({ children }: { children: React.ReactNode }) {
   if (!isReady) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <Loader2 className="h-10 w-10 animate-spin text-primary" />
       </div>
     );
   }
