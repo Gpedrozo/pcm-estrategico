@@ -18,12 +18,7 @@ export function InstaladorAPKDialog({ open, onOpenChange }: InstaladorAPKDialogP
   const [downloaded, setDownloaded] = useState(false);
 
   const handleDownload = () => {
-    const link = document.createElement('a');
-    link.href = '/downloads/PCM-Mecanico.apk';
-    link.download = 'PCM-Mecanico.apk';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    window.open(https://expo.dev/accounts/gpedrozo/projects/mecanico-app/builds, _blank);
     setDownloaded(true);
   };
 
@@ -63,9 +58,8 @@ export function InstaladorAPKDialog({ open, onOpenChange }: InstaladorAPKDialogP
             </h3>
 
             <div className="space-y-2">
-              <Step number={1} title="Transfira o APK para o celular">
-                Envie o arquivo <strong>PCM-Mecanico.apk</strong> para o celular via cabo USB, 
-                WhatsApp, Google Drive ou e-mail.
+              <Step number={1} title="Baixe o APK no celular">
+                Abra o link de download diretamente no navegador do celular, ou envie o arquivo via WhatsApp, Google Drive ou e-mail.
               </Step>
 
               <Step number={2} title="Permita fontes desconhecidas">
