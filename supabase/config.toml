@@ -62,3 +62,7 @@ verify_jwt = false
 
 [functions.auth-change-password]
 verify_jwt = true
+
+[functions.mecanico-device-auth]
+verify_jwt = false
+

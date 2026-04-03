@@ -6,6 +6,26 @@ import { useAuth } from '@/contexts/AuthContext';
 const MAX_RETRIES = 3;
 const RETRY_BASE_MS = 2000;
 
+function classifyError(error: any): string {
+  const msg = String(error?.message || error || '').toLowerCase();
+  if (msg.includes('failed to send') || msg.includes('fetch') || msg.includes('networkerror')) {
+    return 'Erro de rede ao conectar com o servidor. Verifique sua conexão Wi-Fi/dados móveis e tente novamente.';
+  }
+  if (msg.includes('cors') || msg.includes('origin')) {
+    return 'Erro de permissão de origem (CORS). Contate o administrador do sistema.';
+  }
+  if (msg.includes('not found') || msg.includes('404')) {
+    return 'Serviço de autenticação não encontrado no servidor. Contate o administrador.';
+  }
+  if (msg.includes('device not found') || msg.includes('inactive')) {
+    return 'Dispositivo não encontrado ou desativado. Escaneie o QR Code novamente.';
+  }
+  if (msg.includes('company not found')) {
+    return 'Empresa não encontrada. Contate o administrador.';
+  }
+  return msg || 'Falha na autenticação do dispositivo';
+}
+
 async function invokeWithRetry(deviceToken: string, retries = MAX_RETRIES): Promise<{ data: any; error: any }> {
   for (let attempt = 0; attempt <= retries; attempt++) {
     try {
@@ -13,7 +33,11 @@ async function invokeWithRetry(deviceToken: string, retries = MAX_RETRIES): Prom
         'mecanico-device-auth',
         { body: { device_token: deviceToken } },
       );
+
       if (!error && data?.access_token) return { data, error: null };
+
+      // Log full details for debugging
+      console.error(`[device-auth] attempt ${attempt + 1}/${retries + 1} failed:`, { data, error: error?.message || error });
 
       // If last attempt, return the error
       if (attempt === retries) return { data, error: error || new Error(data?.error || 'Auth failed') };
@@ -21,6 +45,7 @@ async function invokeWithRetry(deviceToken: string, retries = MAX_RETRIES): Prom
       // Progressive backoff
       await new Promise(r => setTimeout(r, RETRY_BASE_MS * (attempt + 1)));
     } catch (networkErr) {
+      console.error(`[device-auth] attempt ${attempt + 1}/${retries + 1} network error:`, networkErr);
       if (attempt === retries) return { data: null, error: networkErr };
       await new Promise(r => setTimeout(r, RETRY_BASE_MS * (attempt + 1)));
     }
@@ -77,7 +102,9 @@ export function useMecanicoDeviceAuth() {
         if (cancelled) return;
 
         if (fnError || !data?.access_token) {
-          const msg = data?.error || fnError?.message || 'Falha na autenticação do dispositivo';
+          const rawMsg = data?.error || fnError?.message || 'Falha na autenticação do dispositivo';
+          const msg = classifyError(fnError || rawMsg);
+          console.error('[device-auth] final error:', { rawMsg, fnError, data });
           setError(msg);
           setIsLoading(false);
           return;

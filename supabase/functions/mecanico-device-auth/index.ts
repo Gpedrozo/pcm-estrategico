@@ -1,6 +1,5 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "jsr:@supabase/supabase-js@2";
-import { fail, ok, preflight, rejectIfOriginNotAllowed } from "../_shared/response.ts";
 
 declare const Deno: any;
 
@@ -23,18 +22,35 @@ function devicePassword(deviceToken: string) {
   return `pcm-da-${deviceToken}-${secret}`;
 }
 
-Deno.serve(async (req: Request) => {
-  if (req.method === "OPTIONS") return preflight(req);
+// Mobile device auth always allows any origin
+// Security is enforced by the device_token credential, not the origin
+function mobileCorsHeaders(req: Request) {
+  return {
+    "Access-Control-Allow-Origin": req.headers.get("origin") || "*",
+    "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+    "Access-Control-Allow-Methods": "POST, OPTIONS",
+    "Vary": "Origin",
+  };
+}
 
-  const rejected = rejectIfOriginNotAllowed(req);
-  if (rejected) return rejected;
+function jsonResponse(body: unknown, status: number, req: Request) {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { ...mobileCorsHeaders(req), "Content-Type": "application/json" },
+  });
+}
+
+Deno.serve(async (req: Request) => {
+  if (req.method === "OPTIONS") {
+    return new Response(null, { headers: mobileCorsHeaders(req) });
+  }
 
   try {
     const body = await req.json().catch(() => ({}));
     const deviceToken = String(body.device_token ?? "").trim();
 
     if (!deviceToken) {
-      return fail("device_token is required", 400, null, req);
+      return jsonResponse({ error: "device_token is required" }, 400, req);
     }
 
     const admin = adminClient();
@@ -47,7 +63,7 @@ Deno.serve(async (req: Request) => {
       .maybeSingle();
 
     if (deviceError || !device) {
-      return fail("Device not found or inactive", 401, null, req);
+      return jsonResponse({ error: "Device not found or inactive" }, 401, req);
     }
 
     const { data: empresa, error: empresaError } = await admin
@@ -57,7 +73,7 @@ Deno.serve(async (req: Request) => {
       .single();
 
     if (empresaError || !empresa) {
-      return fail("Company not found", 401, null, req);
+      return jsonResponse({ error: "Company not found" }, 401, req);
     }
 
     const email = `device-${device.device_id}@mecanico.pcm.local`;
@@ -84,7 +100,7 @@ Deno.serve(async (req: Request) => {
       });
 
       if (createError || !newUser?.user) {
-        return fail("Failed to create device user", 500, { detail: createError?.message }, req);
+        return jsonResponse({ error: "Failed to create device user", detail: createError?.message }, 500, req);
       }
 
       await admin.from("profiles").upsert({
@@ -104,7 +120,7 @@ Deno.serve(async (req: Request) => {
       signIn = await anonClient().auth.signInWithPassword({ email, password });
 
       if (signIn.error || !signIn.data?.session) {
-        return fail("Failed to authenticate device user", 500, null, req);
+        return jsonResponse({ error: "Failed to authenticate device user" }, 500, req);
       }
     } else {
       const userId = signIn.data.user?.id;
@@ -145,7 +161,7 @@ Deno.serve(async (req: Request) => {
       .update({ ultimo_acesso: new Date().toISOString() })
       .eq("id", device.id);
 
-    return ok({
+    return jsonResponse({
       access_token: session.access_token,
       refresh_token: session.refresh_token,
       expires_in: session.expires_in,
@@ -155,6 +171,6 @@ Deno.serve(async (req: Request) => {
       tenant_slug: empresa.slug,
     }, 200, req);
   } catch (err) {
-    return fail("Internal error", 500, { detail: String(err) }, req);
+    return jsonResponse({ error: "Internal error", detail: String(err) }, 500, req);
   }
 });
