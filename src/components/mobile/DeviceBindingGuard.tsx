@@ -138,8 +138,8 @@ export default function DeviceBindingGuard({ children }: { children: React.React
         { facingMode: 'environment' },
         {
           fps: 10,
-          qrbox: { width: 250, height: 250 },
-          aspectRatio: 1,
+          qrbox: { width: 280, height: 280 },
+          disableFlip: false,
         },
         async (decodedText) => {
           // QR lido com sucesso
@@ -195,6 +195,34 @@ export default function DeviceBindingGuard({ children }: { children: React.React
 
   /* ─── UNBOUND (não vinculado) ─── */
   if (state === 'UNBOUND') {
+    /* ── Fullscreen scanner overlay ── */
+    if (scanning) {
+      return (
+        <div className="fixed inset-0 z-50 bg-black flex flex-col">
+          <div className="flex items-center justify-between px-4 py-3 bg-black/80">
+            <p className="text-white text-sm font-medium animate-pulse">
+              Aponte a câmera para o QR Code...
+            </p>
+            <Button
+              variant="destructive"
+              size="icon"
+              className="h-9 w-9 rounded-full"
+              onClick={stopScanner}
+            >
+              <X className="h-5 w-5" />
+            </Button>
+          </div>
+          <div className="flex-1 relative">
+            <div
+              id={scannerContainerId}
+              className="absolute inset-0"
+              style={{ minHeight: '100%' }}
+            />
+          </div>
+        </div>
+      );
+    }
+
     return (
       <div className="min-h-screen flex items-center justify-center bg-background p-4">
         <Card className="w-full max-w-sm shadow-xl">
@@ -209,30 +237,6 @@ export default function DeviceBindingGuard({ children }: { children: React.React
                 Peça ao administrador o <strong>QR Code de conexão</strong>.
               </p>
             </div>
-
-            {/* ── Área do scanner de câmera ── */}
-            {scanning && (
-              <div className="space-y-3">
-                <div className="relative">
-                  <div
-                    id={scannerContainerId}
-                    className="w-full rounded-xl overflow-hidden border-2 border-primary/30"
-                    style={{ minHeight: 280 }}
-                  />
-                  <Button
-                    variant="destructive"
-                    size="icon"
-                    className="absolute top-2 right-2 h-8 w-8 rounded-full z-10"
-                    onClick={stopScanner}
-                  >
-                    <X className="h-4 w-4" />
-                  </Button>
-                </div>
-                <p className="text-xs text-center text-muted-foreground animate-pulse">
-                  Aponte a câmera para o QR Code...
-                </p>
-              </div>
-            )}
 
             {cameraError && !scanning && (
               <div className="text-xs text-red-600 bg-red-50 dark:bg-red-950/20 rounded-lg p-3 text-center">

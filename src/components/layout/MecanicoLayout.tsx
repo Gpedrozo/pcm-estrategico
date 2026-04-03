@@ -7,7 +7,7 @@ import { useMecanicoDeviceAuth } from '@/hooks/useMecanicoDeviceAuth';
 import { useOfflineSync } from '@/hooks/useOfflineSync';
 
 function MecanicoSessionBridge({ children }: { children: React.ReactNode }) {
-  const { isReady, isLoading, error } = useMecanicoDeviceAuth();
+  const { isReady, isLoading, error, retry } = useMecanicoDeviceAuth();
 
   if (isLoading) {
     return (
@@ -28,7 +28,7 @@ function MecanicoSessionBridge({ children }: { children: React.ReactNode }) {
           <h2 className="text-lg font-semibold">Erro de conexão</h2>
           <p className="text-sm text-muted-foreground">{error}</p>
           <button
-            onClick={() => window.location.reload()}
+            onClick={retry}
             className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-medium"
           >
             <RefreshCw className="h-4 w-4" />
