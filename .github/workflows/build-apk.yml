@@ -36,47 +36,20 @@ jobs:
       - name: Install dependencies
         run: npm ci --legacy-peer-deps
 
-      - name: Debug info
-        run: |
-          node --version
-          npm --version
-          npx expo --version || true
-          node -e "console.log(require('@expo/config-plugins/package.json').version)" || true
-          cat app.json
-
       - name: Generate native project (expo prebuild)
-        id: prebuild
-        continue-on-error: true
-        run: |
-          npx expo prebuild --platform android --clean --no-install 2>&1 | tee prebuild-output.txt
-          echo "PREBUILD_EXIT=${PIPESTATUS[0]}" >> "$GITHUB_ENV"
+        run: npx expo prebuild --platform android --clean --no-install
         env:
           EXPO_NO_TELEMETRY: 1
           CI: "1"
 
-      - name: Show prebuild result
-        if: always()
+      - name: Verify android directory
         run: |
-          echo "## Expo Prebuild Output" >> "$GITHUB_STEP_SUMMARY"
-          echo "```" >> "$GITHUB_STEP_SUMMARY"
-          cat prebuild-output.txt >> "$GITHUB_STEP_SUMMARY" 2>/dev/null || echo "No output captured" >> "$GITHUB_STEP_SUMMARY"
-          echo "```" >> "$GITHUB_STEP_SUMMARY"
-          echo "=== Full prebuild output ==="
-          cat prebuild-output.txt 2>/dev/null || echo "No output"
-          echo "=== Exit code: $PREBUILD_EXIT ==="
-
-      - name: Upload prebuild log
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: prebuild-log
-          path: mecanico-app/prebuild-output.txt
-          retention-days: 7
-          if-no-files-found: ignore
-
-      - name: Fail if prebuild failed
-        if: steps.prebuild.outcome != 'success'
-        run: exit 1
+          echo "=== android dir contents ==="
+          ls -la android/ || echo "android/ directory not found!"
+          echo "=== android/gradlew ==="
+          ls -la android/gradlew || echo "gradlew not found!"
+          echo "=== android/app/build.gradle ==="
+          head -20 android/app/build.gradle || echo "build.gradle not found!"
 
       - name: Build APK (release)
         run: |
@@ -97,7 +70,6 @@ jobs:
           retention-days: 90
 
       - name: Create GitHub Release
-        if: github.event_name == 'workflow_dispatch'
         uses: softprops/action-gh-release@v2
         with:
           tag_name: v1.0.0-build.${{ github.run_number }}
