@@ -7,7 +7,7 @@ import {
   DialogDescription,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Download, Smartphone, QrCode, Shield, CheckCircle2, ArrowRight, ExternalLink } from 'lucide-react';
+import { Download, Smartphone, QrCode, Shield, CheckCircle2, ArrowRight, ExternalLink, AlertTriangle } from 'lucide-react';
 
 interface InstaladorAPKDialogProps {
   open: boolean;
