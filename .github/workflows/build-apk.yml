@@ -40,7 +40,10 @@ jobs:
         working-directory: mecanico-app/android
         run: |
           chmod +x gradlew
-          ./gradlew assembleRelease --no-daemon
+          ./gradlew assembleRelease --no-daemon --stacktrace 2>&1 || {
+            echo "::error::Gradle build failed. Last 100 lines above."
+            exit 1
+          }
 
       - name: Rename and prepare APK
         run: |
