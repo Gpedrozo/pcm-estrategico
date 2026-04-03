@@ -36,43 +36,27 @@ jobs:
       - name: Install dependencies
         run: npm ci --legacy-peer-deps
 
-      - name: Debug - check expo version
+      - name: Validate expo config
         run: |
-          npx expo --version || echo "expo CLI not found"
-          node -e "console.log(require('expo/package.json').version)" || echo "expo pkg not found"
-          ls -la node_modules/.bin/expo || echo "no expo bin"
+          echo "=== expo version ==="
+          npx expo --version
+          echo "=== expo config ==="
+          npx expo config --type prebuild 2>&1 | head -100
+          echo "=== config done ==="
 
       - name: Generate native project (expo prebuild)
-        id: prebuild
         run: |
-          set -o pipefail
-          npx expo prebuild --platform android --clean --no-install 2>&1 | tee prebuild.log
-          echo "PREBUILD_EXIT=0" >> $GITHUB_ENV
-        continue-on-error: true
+          npx expo prebuild --platform android 2>&1 || {
+            echo "PREBUILD FAILED with exit code $?"
+            echo "## Prebuild Failed" >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+            echo "expo prebuild failed - check logs above" >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+            exit 1
+          }
         env:
           EXPO_NO_TELEMETRY: 1
           CI: "1"
-
-      - name: Capture prebuild failure
-        if: steps.prebuild.outcome == 'failure'
-        run: |
-          echo "PREBUILD_EXIT=1" >> $GITHUB_ENV
-          echo "## Prebuild Failed" >> $GITHUB_STEP_SUMMARY
-          echo '```' >> $GITHUB_STEP_SUMMARY
-          cat prebuild.log >> $GITHUB_STEP_SUMMARY || echo "No log file" >> $GITHUB_STEP_SUMMARY
-          echo '```' >> $GITHUB_STEP_SUMMARY
-
-      - name: Upload prebuild log
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: prebuild-log
-          path: mecanico-app/prebuild.log
-          if-no-files-found: warn
-
-      - name: Fail if prebuild failed
-        if: env.PREBUILD_EXIT == '1'
-        run: exit 1
 
       - name: Verify android directory
         run: |
