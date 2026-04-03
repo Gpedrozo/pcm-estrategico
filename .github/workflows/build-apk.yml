@@ -11,18 +11,10 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: mecanico-app
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 20
 
       - name: Setup Java 17
         uses: actions/setup-java@v4
@@ -33,50 +25,16 @@ jobs:
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
 
-      - name: Install dependencies
-        run: npm ci --legacy-peer-deps
-
-      - name: Validate expo config
-        run: |
-          echo "=== expo version ==="
-          npx expo --version
-          echo "=== expo config ==="
-          npx expo config --type prebuild 2>&1 | head -100
-          echo "=== config done ==="
-
-      - name: Generate native project (expo prebuild)
-        run: |
-          npx expo prebuild --platform android 2>&1 || {
-            echo "PREBUILD FAILED with exit code $?"
-            echo "## Prebuild Failed" >> $GITHUB_STEP_SUMMARY
-            echo '```' >> $GITHUB_STEP_SUMMARY
-            echo "expo prebuild failed - check logs above" >> $GITHUB_STEP_SUMMARY
-            echo '```' >> $GITHUB_STEP_SUMMARY
-            exit 1
-          }
-        env:
-          EXPO_NO_TELEMETRY: 1
-          CI: "1"
-
-      - name: Verify android directory
-        run: |
-          echo "=== android dir ==="
-          ls -la android/ || echo "NO android dir"
-          echo "=== gradlew ==="
-          ls -la android/gradlew || echo "NO gradlew"
-          echo "=== build.gradle ==="
-          head -30 android/app/build.gradle || echo "NO build.gradle"
-
       - name: Build APK (release)
+        working-directory: mecanico-app/android
         run: |
-          cd android
           chmod +x gradlew
           ./gradlew assembleRelease --no-daemon
 
-      - name: Rename APK
+      - name: Rename and prepare APK
         run: |
-          mkdir -p output
-          cp android/app/build/outputs/apk/release/app-release.apk output/pcm-mecanico.apk
+          mkdir -p mecanico-app/output
+          cp mecanico-app/android/app/build/outputs/apk/release/app-release.apk mecanico-app/output/pcm-mecanico.apk
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
