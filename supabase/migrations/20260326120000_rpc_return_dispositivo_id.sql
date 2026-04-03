@@ -20,39 +20,47 @@ DECLARE
   v_device dispositivos_moveis;
   v_count INT;
 BEGIN
+  -- Busca QR
   SELECT * INTO v_qr FROM qrcodes_vinculacao
     WHERE token = p_qr_token AND ativo = true;
   IF NOT FOUND THEN
     RETURN jsonb_build_object('ok', false, 'erro', 'QR Code inválido ou revogado');
   END IF;
 
+  -- Verifica expiração
   IF v_qr.expira_em IS NOT NULL AND v_qr.expira_em < now() THEN
     RETURN jsonb_build_object('ok', false, 'erro', 'QR Code expirado');
   END IF;
 
+  -- Verifica tipo UNICO já usado
   IF v_qr.tipo = 'UNICO' AND v_qr.usos > 0 THEN
     RETURN jsonb_build_object('ok', false, 'erro', 'QR Code de uso único já utilizado');
   END IF;
 
+  -- Verifica max_usos
   IF v_qr.max_usos IS NOT NULL AND v_qr.usos >= v_qr.max_usos THEN
     RETURN jsonb_build_object('ok', false, 'erro', 'Limite de usos deste QR atingido');
   END IF;
 
+  -- Busca empresa
   SELECT * INTO v_empresa FROM empresas WHERE id = v_qr.empresa_id;
   IF NOT FOUND OR v_empresa.dispositivos_moveis_ativos IS NOT TRUE THEN
     RETURN jsonb_build_object('ok', false, 'erro', 'Dispositivos móveis desativados para esta empresa');
   END IF;
 
+  -- Verifica limite de dispositivos
   SELECT count(*) INTO v_count FROM dispositivos_moveis
     WHERE empresa_id = v_empresa.id AND ativo = true;
   IF v_count >= COALESCE(v_empresa.max_dispositivos_moveis, 10) THEN
     RETURN jsonb_build_object('ok', false, 'erro', 'Limite de dispositivos atingido (' || v_empresa.max_dispositivos_moveis || ')');
   END IF;
 
+  -- Verifica se device_id já está vinculado a esta empresa
   SELECT * INTO v_device FROM dispositivos_moveis
     WHERE empresa_id = v_empresa.id AND device_id = p_device_id;
 
   IF FOUND THEN
+    -- Reativa se desativado
     UPDATE dispositivos_moveis SET
       ativo = true,
       device_nome = COALESCE(p_device_nome, device_nome),
@@ -69,6 +77,7 @@ BEGIN
     RETURNING * INTO v_device;
   END IF;
 
+  -- Incrementa uso do QR
   UPDATE qrcodes_vinculacao SET usos = usos + 1 WHERE id = v_qr.id;
   IF v_qr.tipo = 'UNICO' THEN
     UPDATE qrcodes_vinculacao SET ativo = false WHERE id = v_qr.id;
@@ -115,6 +124,7 @@ BEGIN
       'empresa_nome', v_empresa.nome);
   END IF;
 
+  -- Atualiza último acesso
   UPDATE dispositivos_moveis SET ultimo_acesso = now() WHERE id = v_device.id;
 
   RETURN jsonb_build_object(

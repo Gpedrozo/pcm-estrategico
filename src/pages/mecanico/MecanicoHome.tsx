@@ -31,7 +31,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
-/* ÔöÇÔöÇÔöÇ Prioridade helpers ÔöÇÔöÇÔöÇ */
+/* ─── Prioridade helpers ─── */
 const PRIO: Record<string, { color: string; border: string; bg: string; order: number; pulse: boolean }> = {
   URGENTE:    { color: 'bg-red-600',    border: 'border-red-500',    bg: 'bg-red-500/10',    order: 0, pulse: true },
   EMERGENCIA: { color: 'bg-red-600',    border: 'border-red-500',    bg: 'bg-red-500/10',    order: 0, pulse: true },
@@ -120,7 +120,7 @@ export default function MecanicoHome() {
     setLoggingIn(true);
 
     try {
-      // Obter device_token do localStorage (já foi vinculado via QR)
+      // Obter config do dispositivo (já vinculado via QR)
       const deviceToken = await getDeviceConfig('device_token') as string | null;
       const empresaId = await getDeviceConfig('empresa_id') as string | null;
       const dispositivoId = await getDeviceConfig('dispositivo_id') as string | null;
@@ -254,7 +254,7 @@ export default function MecanicoHome() {
     } catch {}
   };
 
-  /* ÔöÇÔöÇÔöÇ Tela de Login (inputs enormes para mãos sujas) ÔöÇÔöÇÔöÇ */
+  /* ─── Tela de Login (inputs enormes para mãos sujas) ─── */
   if (!mecanico) {
     return (
       <div className="flex items-center justify-center min-h-[80vh] px-4">
@@ -306,7 +306,7 @@ export default function MecanicoHome() {
     );
   }
 
-  /* ÔöÇÔöÇÔöÇ Painel Principal ÔöÇÔöÇÔöÇ */
+  /* ─── Painel Principal ─── */
   return (
     <div className="space-y-6 py-4">
       {/* Header */}

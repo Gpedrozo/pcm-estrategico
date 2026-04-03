@@ -144,7 +144,7 @@ export function useMecanicosOnlineAgora() {
 }
 
 /**
- * Hook para obter relatório de sess├Áes de mecânicos (histórico)
+ * Hook para obter relatório de sessões de mecânicos (histórico)
  */
 export function useRelatorioSessoesMecanicos(filters?: {
   mecanico_id?: string;
