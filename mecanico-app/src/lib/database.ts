@@ -187,7 +187,7 @@ export async function getOrdensServico(empresaId?: string, statusFilter?: string
     params.push(statusFilter);
   }
   if (conditions.length) sql += ' WHERE ' + conditions.join(' AND ');
-  sql += " ORDER BY CASE prioridade WHEN 'emergencial' THEN 0 WHEN 'alta' THEN 1 WHEN 'media' THEN 2 WHEN 'baixa' THEN 3 END, data_solicitacao DESC";
+  sql += ' ORDER BY CASE prioridade WHEN \'emergencial\' THEN 0 WHEN \'alta\' THEN 1 WHEN \'media\' THEN 2 WHEN \'baixa\' THEN 3 END, data_solicitacao DESC';
   return database.getAllAsync(sql, params);
 }
 
@@ -259,15 +259,12 @@ export async function addToSyncQueue(item: {
   table_name: string;
   record_id: string;
   operation: string;
-  payload: string;
-  status?: string;
-  created_at?: string;
-  attempts?: number;
+  payload: Record<string, any>;
 }): Promise<void> {
   const database = await getDB();
   await database.runAsync(
     `INSERT INTO sync_queue (id, table_name, record_id, operation, payload, status) VALUES (?, ?, ?, ?, ?, 'pending')`,
-    [item.id, item.table_name, item.record_id, item.operation, item.payload]
+    [item.id, item.table_name, item.record_id, item.operation, JSON.stringify(item.payload)]
   );
 }
 

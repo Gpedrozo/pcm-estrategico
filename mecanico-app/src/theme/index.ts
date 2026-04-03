@@ -35,13 +35,11 @@ export const COLORS = {
   textSecondary: '#757575',
   textOnPrimary: '#FFFFFF',
   textOnDark: '#FFFFFF',
-  textHint: '#9E9E9E',
   border: '#E0E0E0',
   divider: '#EEEEEE',
   disabled: '#BDBDBD',
 
   // Dark header
-  header: '#1A1A2E',
   headerBg: '#1A1A2E',
   headerText: '#FFFFFF',
 };
@@ -64,8 +62,6 @@ export const SIZES = {
   // Botões grandes (uso com luva)
   buttonHeight: 60,
   buttonHeightLG: 72,
-  buttonLG: 60,
-  buttonXL: 72,
   inputHeight: 60,
   iconButton: 56,
 
@@ -194,8 +190,6 @@ export function prioridadeColor(p: string): string {
 
 export function statusLabel(s: string): string {
   const map: Record<string, string> = {
-    aberta: 'Aberta',
-    em_andamento: 'Em Andamento',
     solicitada: 'Solicitada',
     emitida: 'Emitida',
     em_execucao: 'Em Execução',
@@ -213,13 +207,11 @@ export function statusColor(s: string): string {
       return COLORS.success;
     case 'cancelada':
       return COLORS.disabled;
-    case 'em_andamento':
     case 'em_execucao':
       return COLORS.primary;
     case 'pausada':
     case 'aguardando_materiais':
       return COLORS.warning;
-    case 'aberta':
     case 'solicitada':
     case 'emitida':
       return COLORS.critical;

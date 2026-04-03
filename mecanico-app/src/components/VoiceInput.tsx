@@ -33,10 +33,17 @@ export default function VoiceInput({
     }
 
     try {
+      // Use expo-speech for TTS availability check, 
+      // and native SpeechRecognition via expo module
+      // For React Native, we use the @react-native-voice/voice pattern
+      // Since we're using Expo, we'll implement via a simple native bridge
+      
       setIsListening(true);
       
+      // Platform-specific speech recognition
       if (Platform.OS === 'android' || Platform.OS === 'ios') {
         try {
+          // Dynamic import to avoid crashes if not available
           const Voice = require('@react-native-voice/voice').default;
           
           Voice.onSpeechResults = (e: any) => {
@@ -58,6 +65,7 @@ export default function VoiceInput({
 
           await Voice.start('pt-BR');
         } catch {
+          // Fallback: speech recognition not available
           setIsListening(false);
           Alert.alert(
             'Voz indisponível',

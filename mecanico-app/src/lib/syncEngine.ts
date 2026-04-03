@@ -140,7 +140,7 @@ export async function pullData(empresaId: string): Promise<void> {
 // Full Sync Cycle
 // ============================================================
 
-export async function runSyncCycle(empresaIdOverride?: string): Promise<{ pushed: number; pulled: boolean }> {
+export async function runSyncCycle(): Promise<{ pushed: number; pulled: boolean }> {
   if (isSyncing) return { pushed: 0, pulled: false };
   isSyncing = true;
 
@@ -152,7 +152,7 @@ export async function runSyncCycle(empresaIdOverride?: string): Promise<{ pushed
     const pushed = await pushPendingChanges();
 
     // Then pull
-    const empresaId = empresaIdOverride || await getDeviceConfig('empresa_id');
+    const empresaId = await getDeviceConfig('empresa_id');
     if (empresaId) {
       await pullData(empresaId);
     }
