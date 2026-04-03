@@ -68,7 +68,7 @@ export default function HomeScreen() {
     setRefreshing(true);
     try {
       if (empresaId) {
-        await runSyncCycle(empresaId);
+        await runSyncCycle();
       }
       await loadOrdens();
     } finally {

@@ -62,14 +62,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   // ── Check if device is bound (has device_token) ──
   const checkDeviceBinding = useCallback(async () => {
-    setState(s => ({ ...s, isLoading: true, error: null }));
+    setState((s: AuthState) => ({ ...s, isLoading: true, error: null }));
     try {
       const deviceToken = await getDeviceConfig('device_token');
       const empresaId = await getDeviceConfig('empresa_id');
       const empresaNome = await getDeviceConfig('empresa_nome');
 
       if (deviceToken) {
-        setState(s => ({
+        setState((s: AuthState) => ({
           ...s,
           isDeviceBound: true,
           empresaId,
@@ -77,7 +77,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           isLoading: false,
         }));
       } else {
-        setState(s => ({
+        setState((s: AuthState) => ({
           ...s,
           isDeviceBound: false,
           isAuthenticated: false,
@@ -85,7 +85,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }));
       }
     } catch (err: any) {
-      setState(s => ({
+      setState((s: AuthState) => ({
         ...s,
         isLoading: false,
         error: 'Erro ao verificar dispositivo',
@@ -95,7 +95,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   // ── Bind device via QR Code (calls RPC vincular_dispositivo) ──
   const bindDevice = useCallback(async (qrToken: string): Promise<{ ok: boolean; error?: string }> => {
-    setState(s => ({ ...s, isLoading: true, error: null }));
+    setState((s: AuthState) => ({ ...s, isLoading: true, error: null }));
     try {
       const deviceId = await getOrCreateDeviceId();
 
@@ -115,7 +115,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         await saveDeviceConfig('empresa_nome', data.empresa_nome);
         await saveDeviceConfig('tenant_slug', data.tenant_slug);
 
-        setState(s => ({
+        setState((s: AuthState) => ({
           ...s,
           isDeviceBound: true,
           empresaId: data.empresa_id,
@@ -126,23 +126,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return { ok: true };
       } else {
         const errMsg = data?.erro || 'Falha na vinculação';
-        setState(s => ({ ...s, isLoading: false, error: errMsg }));
+        setState((s: AuthState) => ({ ...s, isLoading: false, error: errMsg }));
         return { ok: false, error: errMsg };
       }
     } catch (err: any) {
       const msg = err?.message || 'Erro ao vincular dispositivo';
-      setState(s => ({ ...s, isLoading: false, error: msg }));
+      setState((s: AuthState) => ({ ...s, isLoading: false, error: msg }));
       return { ok: false, error: msg };
     }
   }, []);
 
   // ── Authenticate device (calls edge function mecanico-device-auth) ──
   const authenticateDevice = useCallback(async () => {
-    setState(s => ({ ...s, isLoading: true, error: null }));
+    setState((s: AuthState) => ({ ...s, isLoading: true, error: null }));
     try {
       const deviceToken = await getDeviceConfig('device_token');
       if (!deviceToken) {
-        setState(s => ({
+        setState((s: AuthState) => ({
           ...s,
           isLoading: false,
           isDeviceBound: false,
@@ -171,7 +171,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         // If device not found, clear binding
         if (errorMsg.includes('não encontrado') || errorMsg.includes('desativado')) {
           await clearDeviceConfig();
-          setState(s => ({
+          setState((s: AuthState) => ({
             ...s,
             isLoading: false,
             isDeviceBound: false,
@@ -180,7 +180,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           }));
           return;
         }
-        setState(s => ({ ...s, isLoading: false, error: errorMsg }));
+        setState((s: AuthState) => ({ ...s, isLoading: false, error: errorMsg }));
         return;
       }
 
@@ -191,7 +191,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       });
 
       if (sessionError) {
-        setState(s => ({
+        setState((s: AuthState) => ({
           ...s,
           isLoading: false,
           error: `Erro de sessão: ${sessionError.message}`,
@@ -204,7 +204,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (data.empresa_nome) await saveDeviceConfig('empresa_nome', data.empresa_nome);
       if (data.dispositivo_id) await saveDeviceConfig('dispositivo_id', data.dispositivo_id);
 
-      setState(s => ({
+      setState((s: AuthState) => ({
         ...s,
         isLoading: false,
         isAuthenticated: true,
@@ -220,7 +220,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       lastActivityRef.current = Date.now();
     } catch (err: any) {
-      setState(s => ({
+      setState((s: AuthState) => ({
         ...s,
         isLoading: false,
         error: 'Erro de conexão. Verifique sua internet.',

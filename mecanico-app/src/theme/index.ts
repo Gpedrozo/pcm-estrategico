@@ -38,6 +38,7 @@ export const COLORS = {
   border: '#E0E0E0',
   divider: '#EEEEEE',
   disabled: '#BDBDBD',
+  textHint: '#9E9E9E',
 
   // Dark header
   headerBg: '#1A1A2E',
@@ -64,6 +65,8 @@ export const SIZES = {
   buttonHeightLG: 72,
   inputHeight: 60,
   iconButton: 56,
+
+  buttonLG: 72,
 
   // Border radius
   radiusSM: 8,
@@ -127,95 +130,22 @@ export const commonStyles = StyleSheet.create({
     fontSize: SIZES.fontLG,
     fontWeight: '700',
   },
-  input: {
-    height: SIZES.inputHeight,
-    borderWidth: 1.5,
-    borderColor: COLORS.border,
-    borderRadius: SIZES.radiusMD,
-    paddingHorizontal: SIZES.paddingMD,
-    fontSize: SIZES.fontMD,
-    color: COLORS.textPrimary,
-    backgroundColor: COLORS.surface,
+  inputContainer: {
+    marginBottom: SIZES.paddingMD,
   },
-  textareaContainer: {
-    minHeight: 120,
-    borderWidth: 1.5,
-    borderColor: COLORS.border,
-    borderRadius: SIZES.radiusMD,
-    backgroundColor: COLORS.surface,
-  },
-  textarea: {
-    flex: 1,
-    paddingHorizontal: SIZES.paddingMD,
-    paddingVertical: SIZES.paddingSM,
-    fontSize: SIZES.fontMD,
-    color: COLORS.textPrimary,
-    textAlignVertical: 'top',
-  },
-  label: {
-    fontSize: SIZES.fontMD,
+  inputLabel: {
+    fontSize: SIZES.fontSM,
     fontWeight: '600',
-    color: COLORS.textPrimary,
+    color: COLORS.textSecondary,
     marginBottom: 6,
   },
-  sectionTitle: {
-    fontSize: SIZES.fontLG,
-    fontWeight: '700',
-    color: COLORS.textPrimary,
-    marginBottom: SIZES.paddingSM,
-  },
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  center: {
-    justifyContent: 'center',
-    alignItems: 'center',
+  input: {
+    height: SIZES.inputHeight,
+    borderRadius: SIZES.radiusMD,
+    borderWidth: 1.5,
+    borderColor: COLORS.border,
+    paddingHorizontal: SIZES.paddingMD,
+    fontSize: SIZES.fontMD,
+    backgroundColor: COLORS.surface,
   },
 });
-
-export function prioridadeColor(p: string): string {
-  switch (p) {
-    case 'emergencial':
-    case 'alta':
-      return COLORS.prioridadeAlta;
-    case 'media':
-      return COLORS.prioridadeMedia;
-    case 'baixa':
-      return COLORS.prioridadeBaixa;
-    default:
-      return COLORS.textSecondary;
-  }
-}
-
-export function statusLabel(s: string): string {
-  const map: Record<string, string> = {
-    solicitada: 'Solicitada',
-    emitida: 'Emitida',
-    em_execucao: 'Em Execução',
-    pausada: 'Pausada',
-    concluida: 'Concluída',
-    cancelada: 'Cancelada',
-    aguardando_materiais: 'Aguardando Materiais',
-  };
-  return map[s] ?? s;
-}
-
-export function statusColor(s: string): string {
-  switch (s) {
-    case 'concluida':
-      return COLORS.success;
-    case 'cancelada':
-      return COLORS.disabled;
-    case 'em_execucao':
-      return COLORS.primary;
-    case 'pausada':
-    case 'aguardando_materiais':
-      return COLORS.warning;
-    case 'solicitada':
-    case 'emitida':
-      return COLORS.critical;
-    default:
-      return COLORS.textSecondary;
-  }
-}
