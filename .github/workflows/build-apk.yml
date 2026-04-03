@@ -41,12 +41,6 @@ jobs:
           EXPO_NO_TELEMETRY: 1
           CI: "1"
 
-      - name: Patch settings.gradle (skip legacy native_modules for Expo)
-        run: |
-          cd android
-          sed -i 's/if (getRNMinorVersion() < 75)/if (false)/' settings.gradle
-          echo "=== Patched settings.gradle (disabled legacy native_modules.gradle) ==="
-
       - name: Build APK (release)
         run: |
           cd android
