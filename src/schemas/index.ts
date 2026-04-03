@@ -54,7 +54,7 @@ export const OrdensServicoCreateSchema = z.object({
   tempoEstimado: z.number().nonnegative('Tempo deve ser positivo em minutos').default(0),
 });
 
-export const OrdensServicoUpdateSchema = OrdensServicoCreateSchema.omit({ empresa_id: type: true }).partial();
+export const OrdensServicoUpdateSchema = OrdensServicoCreateSchema.omit({ empresa_id: true }).partial();
 export type OrdensServicoCreate = z.infer<typeof OrdensServicoCreateSchema>;
 export type OrdensServicoUpdate = z.infer<typeof OrdensServicoUpdateSchema>;
 
