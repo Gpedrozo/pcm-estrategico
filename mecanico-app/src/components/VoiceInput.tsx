@@ -33,58 +33,20 @@ export default function VoiceInput({
     }
 
     try {
-      // Use expo-speech for TTS availability check, 
-      // and native SpeechRecognition via expo module
-      // For React Native, we use the @react-native-voice/voice pattern
-      // Since we're using Expo, we'll implement via a simple native bridge
-      
       setIsListening(true);
-      
-      // Platform-specific speech recognition
-      if (Platform.OS === 'android' || Platform.OS === 'ios') {
-        try {
-          // Dynamic import to avoid crashes if not available
-          const Voice = require('@react-native-voice/voice').default;
-          
-          Voice.onSpeechResults = (e: any) => {
-            const text = e?.value?.[0] || '';
-            if (text) {
-              onChangeText(value ? `${value} ${text}` : text);
-            }
-            setIsListening(false);
-          };
 
-          Voice.onSpeechEnd = () => {
-            setIsListening(false);
-          };
-
-          Voice.onSpeechError = () => {
-            setIsListening(false);
-            Alert.alert('Erro', 'Não foi possível reconhecer a fala. Tente novamente.');
-          };
-
-          await Voice.start('pt-BR');
-        } catch {
-          // Fallback: speech recognition not available
-          setIsListening(false);
-          Alert.alert(
-            'Voz indisponível',
-            'O reconhecimento de voz não está disponível neste dispositivo. Digite manualmente.',
-          );
-        }
-      }
+      // Speech recognition — will be available in a future update
+      setIsListening(false);
+      Alert.alert(
+        'Em breve',
+        'O reconhecimento de voz estará disponível em uma próxima atualização. Por enquanto, digite manualmente.',
+      );
     } catch {
       setIsListening(false);
     }
   }, [value, onChangeText]);
 
   const stopListening = useCallback(async () => {
-    try {
-      const Voice = require('@react-native-voice/voice').default;
-      await Voice.stop();
-    } catch {
-      // ignore
-    }
     setIsListening(false);
   }, []);
 
@@ -120,62 +82,53 @@ export default function VoiceInput({
 }
 
 const styles = StyleSheet.create({
-  container: {
-    marginBottom: SIZES.paddingMD,
-  },
+  container: { marginBottom: SIZES.md },
   label: {
-    fontSize: SIZES.fontMD,
+    fontSize: 14,
     fontWeight: '600',
-    color: COLORS.textPrimary,
+    color: COLORS.text,
     marginBottom: 6,
   },
   inputRow: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    gap: 10,
   },
   textareaWrap: {
     flex: 1,
-    borderWidth: 1.5,
+    borderWidth: 1,
     borderColor: COLORS.border,
-    borderRadius: SIZES.radiusMD,
+    borderRadius: 8,
     backgroundColor: COLORS.surface,
-    overflow: 'hidden',
+    marginRight: 8,
   },
   textarea: {
-    flex: 1,
-    paddingHorizontal: SIZES.paddingMD,
-    paddingVertical: 10,
-    fontSize: SIZES.fontMD,
-    color: COLORS.textPrimary,
+    fontSize: 15,
+    color: COLORS.text,
+    padding: 10,
   },
   singleLine: {
-    height: SIZES.inputHeight,
+    height: 44,
   },
   micButton: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    backgroundColor: COLORS.primaryLight,
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: COLORS.primary,
     justifyContent: 'center',
     alignItems: 'center',
-    borderWidth: 2,
-    borderColor: COLORS.primary,
   },
   micButtonActive: {
-    backgroundColor: COLORS.critical,
-    borderColor: COLORS.critical,
+    backgroundColor: COLORS.danger || '#e74c3c',
   },
   micIcon: {
     fontSize: 24,
   },
   micLabel: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: COLORS.primary,
+    fontSize: 10,
+    color: '#fff',
     marginTop: 2,
   },
   micLabelActive: {
-    color: COLORS.textOnPrimary,
+    color: '#fff',
   },
 });

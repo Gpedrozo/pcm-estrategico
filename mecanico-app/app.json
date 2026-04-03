@@ -37,9 +37,6 @@
       [
         "expo-image-picker",
         { "photosPermission": "Necessário para anexar fotos às execuções." }
-      ],
-      [
-        "expo-sqlite"
       ]
     ]
   }
