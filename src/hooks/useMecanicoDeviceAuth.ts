@@ -6,51 +6,73 @@ import { useAuth } from '@/contexts/AuthContext';
 const MAX_RETRIES = 3;
 const RETRY_BASE_MS = 2000;
 
-function classifyError(error: any): string {
-  const msg = String(error?.message || error || '').toLowerCase();
-  if (msg.includes('failed to send') || msg.includes('fetch') || msg.includes('networkerror')) {
-    return 'Erro de rede ao conectar com o servidor. Verifique sua conexão Wi-Fi/dados móveis e tente novamente.';
-  }
-  if (msg.includes('cors') || msg.includes('origin')) {
-    return 'Erro de permissão de origem (CORS). Contate o administrador do sistema.';
-  }
-  if (msg.includes('not found') || msg.includes('404')) {
-    return 'Serviço de autenticação não encontrado no servidor. Contate o administrador.';
-  }
-  if (msg.includes('device not found') || msg.includes('inactive')) {
-    return 'Dispositivo não encontrado ou desativado. Escaneie o QR Code novamente.';
-  }
-  if (msg.includes('company not found')) {
-    return 'Empresa não encontrada. Contate o administrador.';
-  }
-  return msg || 'Falha na autenticação do dispositivo';
-}
-
-async function invokeWithRetry(deviceToken: string, retries = MAX_RETRIES): Promise<{ data: any; error: any }> {
+/**
+ * Chama a edge function mecanico-device-auth.
+ * A edge function SEMPRE retorna HTTP 200 com { ok: true/false, ... }.
+ * Isso evita o bug do supabase-js que descarta o body em respostas non-2xx.
+ */
+async function invokeWithRetry(
+  deviceToken: string,
+  retries = MAX_RETRIES,
+): Promise<{ data: any; networkError: string | null }> {
   for (let attempt = 0; attempt <= retries; attempt++) {
     try {
+      // Verifica rede antes de cada tentativa
+      if (!navigator.onLine) {
+        if (attempt === retries)
+          return { data: null, networkError: 'Sem conexão com a internet. Verifique seu Wi-Fi ou dados móveis.' };
+        await new Promise(r => setTimeout(r, RETRY_BASE_MS * (attempt + 1)));
+        continue;
+      }
+
       const { data, error } = await supabase.functions.invoke(
         'mecanico-device-auth',
         { body: { device_token: deviceToken } },
       );
 
-      if (!error && data?.access_token) return { data, error: null };
+      // Se recebeu data com ok:true e access_token, sucesso imediato
+      if (data?.ok && data?.access_token) {
+        return { data, networkError: null };
+      }
 
-      // Log full details for debugging
-      console.error(`[device-auth] attempt ${attempt + 1}/${retries + 1} failed:`, { data, error: error?.message || error });
+      // Se recebeu data com ok:false, é erro de negócio — não faz retry
+      if (data && data.ok === false) {
+        console.warn(`[device-auth] erro de negócio:`, data.error);
+        return { data, networkError: null };
+      }
 
-      // If last attempt, return the error
-      if (attempt === retries) return { data, error: error || new Error(data?.error || 'Auth failed') };
+      // Se error do supabase-js (ex: rede), faz retry
+      if (error) {
+        const msg = String(error.message || error);
+        console.error(`[device-auth] attempt ${attempt + 1}/${retries + 1}:`, msg);
+        if (attempt === retries) return { data: null, networkError: msg };
+        await new Promise(r => setTimeout(r, RETRY_BASE_MS * (attempt + 1)));
+        continue;
+      }
 
-      // Progressive backoff
+      // Resposta inesperada — trata como erro
+      console.error(`[device-auth] unexpected response:`, data);
+      if (attempt === retries) return { data, networkError: null };
       await new Promise(r => setTimeout(r, RETRY_BASE_MS * (attempt + 1)));
-    } catch (networkErr) {
-      console.error(`[device-auth] attempt ${attempt + 1}/${retries + 1} network error:`, networkErr);
-      if (attempt === retries) return { data: null, error: networkErr };
+    } catch (networkErr: any) {
+      console.error(`[device-auth] attempt ${attempt + 1}/${retries + 1} exception:`, networkErr);
+      if (attempt === retries)
+        return { data: null, networkError: networkErr?.message || String(networkErr) };
       await new Promise(r => setTimeout(r, RETRY_BASE_MS * (attempt + 1)));
     }
   }
-  return { data: null, error: new Error('Max retries reached') };
+  return { data: null, networkError: 'Máximo de tentativas atingido' };
+}
+
+function humanizeError(rawError: string | null | undefined): string {
+  if (!rawError) return 'Falha na autenticação do dispositivo';
+  const msg = rawError.toLowerCase();
+  if (msg.includes('rede') || msg.includes('fetch') || msg.includes('network') || msg.includes('failed to send'))
+    return 'Erro de rede. Verifique sua conexão Wi-Fi/dados móveis e tente novamente.';
+  if (msg.includes('cors') || msg.includes('origin'))
+    return 'Erro de permissão de origem (CORS). Contate o administrador.';
+  // Retorna o erro original — a edge function já manda em PT-BR
+  return rawError;
 }
 
 export function useMecanicoDeviceAuth() {
@@ -62,14 +84,13 @@ export function useMecanicoDeviceAuth() {
   const calledRef = useRef(false);
 
   useEffect(() => {
-    // If already authenticated via normal login, skip device auth
+    // Se já autenticado via login normal, pula device auth
     if (isAuthenticated && authStatus === 'authenticated') {
       setIsReady(true);
       setIsLoading(false);
       return;
     }
 
-    // Allow re-run on retry
     if (calledRef.current && retryCount === 0) return;
     calledRef.current = true;
 
@@ -88,28 +109,26 @@ export function useMecanicoDeviceAuth() {
           return;
         }
 
-        // Check network before calling edge function
-        if (!navigator.onLine) {
-          if (!cancelled) {
-            setError('Sem conexão com a internet. Verifique seu Wi-Fi ou dados móveis.');
-            setIsLoading(false);
-          }
-          return;
-        }
-
-        const { data, error: fnError } = await invokeWithRetry(deviceToken);
-
+        const { data, networkError } = await invokeWithRetry(deviceToken);
         if (cancelled) return;
 
-        if (fnError || !data?.access_token) {
-          const rawMsg = data?.error || fnError?.message || 'Falha na autenticação do dispositivo';
-          const msg = classifyError(fnError || rawMsg);
-          console.error('[device-auth] final error:', { rawMsg, fnError, data });
-          setError(msg);
+        // Erro de rede puro (não chegou no servidor)
+        if (networkError) {
+          setError(humanizeError(networkError));
           setIsLoading(false);
           return;
         }
 
+        // Erro de negócio retornado pela edge function
+        if (!data?.ok) {
+          const msg = data?.error || 'Falha na autenticação do dispositivo';
+          console.error('[device-auth] business error:', msg, data?.detail);
+          setError(humanizeError(msg));
+          setIsLoading(false);
+          return;
+        }
+
+        // Sucesso — define sessão Supabase
         const { error: sessionError } = await supabase.auth.setSession({
           access_token: data.access_token,
           refresh_token: data.refresh_token,
@@ -118,26 +137,25 @@ export function useMecanicoDeviceAuth() {
         if (cancelled) return;
 
         if (sessionError) {
-          setError(`Erro de sessão: ${sessionError.message}`);
+          setError(`Erro ao definir sessão: ${sessionError.message}`);
           setIsLoading(false);
           return;
         }
 
-        // Session set will trigger AuthContext → isAuthenticated → isReady
-      } catch (err) {
+        // setSession dispara AuthContext → isAuthenticated → isReady
+      } catch (err: any) {
         if (!cancelled) {
-          setError(String(err));
+          setError(humanizeError(err?.message || String(err)));
           setIsLoading(false);
         }
       }
     }
 
     authenticate();
-
     return () => { cancelled = true; };
   }, [isAuthenticated, authStatus, retryCount]);
 
-  // React to AuthContext changes after session is set
+  // Reage a mudanças do AuthContext após setSession
   useEffect(() => {
     if (isAuthenticated && authStatus === 'authenticated') {
       setIsReady(true);
