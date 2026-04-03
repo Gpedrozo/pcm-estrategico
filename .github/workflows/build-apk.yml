@@ -33,15 +33,13 @@ jobs:
         uses: android-actions/setup-android@v3
 
       - name: Install dependencies
-        run: npm install
+        run: npm ci --legacy-peer-deps
 
       - name: Generate native project (expo prebuild)
         run: npx expo prebuild --platform android --clean --no-install
         env:
           EXPO_NO_TELEMETRY: 1
-
-      - name: Install android deps
-        run: npm install
+          CI: "1"
 
       - name: Build APK (release)
         run: |
@@ -66,19 +64,18 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: v1.0.0-build.${{ github.run_number }}
-          name: PCM Mecânico v1.0.0 (Build ${{ github.run_number }})
+          name: PCM Mecanico v1.0.0 (Build ${{ github.run_number }})
           body: |
-            ## App Mecânico Industrial - PCM
+            ## App Mecanico Industrial - PCM
 
-            APK para instalação direta em dispositivos Android 6.0+
+            APK para instalacao direta em dispositivos Android 6.0+
 
             ### Como instalar:
             1. Baixe o arquivo `pcm-mecanico.apk` abaixo
-            2. No celular, permita instalação de fontes desconhecidas
+            2. No celular, permita instalacao de fontes desconhecidas
             3. Instale o APK
-            4. Abra o app e escaneie o QR Code de vinculação
+            4. Abra o app e escaneie o QR Code de vinculacao
 
-            **Build automático #${{ github.run_number }}**
+            **Build automatico #${{ github.run_number }}**
           files: mecanico-app/output/pcm-mecanico.apk
           draft: false
-          prerelease: false
