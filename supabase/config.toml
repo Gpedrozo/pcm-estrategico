@@ -65,4 +65,3 @@ verify_jwt = true
 
 [functions.mecanico-device-auth]
 verify_jwt = false
-
