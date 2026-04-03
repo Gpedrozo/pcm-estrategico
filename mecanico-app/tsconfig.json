@@ -3,7 +3,7 @@
     "strict": true,
     "target": "ESNext",
     "module": "CommonJS",
-    "lib": ["ES2020"],
+    "lib": ["ES2020", "DOM"],
     "jsx": "react-native",
     "moduleResolution": "node",
     "esModuleInterop": true,

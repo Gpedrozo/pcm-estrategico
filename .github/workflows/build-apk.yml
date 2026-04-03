@@ -36,14 +36,46 @@ jobs:
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
 
+      - name: Accept Android SDK licenses
+        run: yes | sdkmanager --licenses || true
+
+      - name: Verify environment
+        working-directory: mecanico-app
+        run: |
+          echo "=== Node version ==="
+          node --version
+          echo "=== Java version ==="
+          java -version
+          echo "=== ANDROID_HOME ==="
+          echo $ANDROID_HOME
+          echo "=== node_modules check ==="
+          ls node_modules/react-native/package.json 2>/dev/null && echo "react-native OK" || echo "react-native MISSING"
+          ls node_modules/expo/package.json 2>/dev/null && echo "expo OK" || echo "expo MISSING"
+          ls node_modules/@expo/cli/package.json 2>/dev/null && echo "@expo/cli OK" || echo "@expo/cli MISSING"
+          echo "=== android dir check ==="
+          ls android/gradlew && echo "gradlew OK" || echo "gradlew MISSING"
+
       - name: Build APK (release)
         working-directory: mecanico-app/android
         run: |
           chmod +x gradlew
-          ./gradlew assembleRelease --no-daemon --stacktrace 2>&1 || {
-            echo "::error::Gradle build failed. Last 100 lines above."
-            exit 1
-          }
+          ./gradlew assembleRelease --no-daemon --stacktrace 2>&1 | tee /tmp/gradle-output.txt
+          RESULT=${PIPESTATUS[0]}
+          if [ $RESULT -ne 0 ]; then
+            echo "::group::Gradle full output (last 200 lines)"
+            tail -200 /tmp/gradle-output.txt
+            echo "::endgroup::"
+            echo "::error::Gradle build failed with exit code $RESULT"
+            exit $RESULT
+          fi
+
+      - name: Upload build logs on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: gradle-build-logs
+          path: /tmp/gradle-output.txt
+          retention-days: 7
 
       - name: Rename and prepare APK
         run: |
