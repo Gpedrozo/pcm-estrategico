@@ -14,15 +14,20 @@ interface InstaladorAPKDialogProps {
   onOpenChange: (open: boolean) => void;
 }
 
-// Build URL do EAS — atualizar após primeiro build com eas build
-const EAS_APK_URL = 'https://expo.dev/accounts/gpedrozo/projects/mecanico-app/builds';
+// URL direta do APK no GitHub Releases — atualizar após upload do build
+const APK_DOWNLOAD_URL = 'https://github.com/Gpedrozo/pcm-estrategico/releases/latest/download/pcm-mecanico.apk';
+const RELEASES_PAGE_URL = 'https://github.com/Gpedrozo/pcm-estrategico/releases';
 
 export function InstaladorAPKDialog({ open, onOpenChange }: InstaladorAPKDialogProps) {
   const [downloaded, setDownloaded] = useState(false);
 
   const handleDownload = () => {
-    window.open(EAS_APK_URL, '_blank');
+    window.open(APK_DOWNLOAD_URL, '_blank');
     setDownloaded(true);
+  };
+
+  const handleOpenReleases = () => {
+    window.open(RELEASES_PAGE_URL, '_blank');
   };
 
   return (
@@ -47,8 +52,14 @@ export function InstaladorAPKDialog({ open, onOpenChange }: InstaladorAPKDialogP
                 <p className="text-sm text-blue-700 dark:text-blue-300">React Native — Android 6.0+</p>
               </div>
               <Button onClick={handleDownload} className="gap-2" variant={downloaded ? "outline" : "default"}>
-                {downloaded ? <CheckCircle2 className="h-4 w-4 text-green-600" /> : <ExternalLink className="h-4 w-4" />}
-                {downloaded ? 'Aberto' : 'Baixar APK'}
+                {downloaded ? <CheckCircle2 className="h-4 w-4 text-green-600" /> : <Download className="h-4 w-4" />}
+                {downloaded ? 'Baixando...' : 'Baixar APK'}
+              </Button>
+            </div>
+            <div className="mt-2 flex items-center gap-2">
+              <Button onClick={handleOpenReleases} variant="ghost" size="sm" className="gap-1 text-xs text-blue-600 h-auto p-1">
+                <ExternalLink className="h-3 w-3" />
+                Ver todas as versões
               </Button>
             </div>
           </div>
