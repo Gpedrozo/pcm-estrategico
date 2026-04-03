@@ -18,7 +18,7 @@ export function InstaladorAPKDialog({ open, onOpenChange }: InstaladorAPKDialogP
   const [downloaded, setDownloaded] = useState(false);
 
   const handleDownload = () => {
-    window.open(https://expo.dev/accounts/gpedrozo/projects/mecanico-app/builds, _blank);
+    window.open(EAS_APK_URL, '_blank');
     setDownloaded(true);
   };
 
