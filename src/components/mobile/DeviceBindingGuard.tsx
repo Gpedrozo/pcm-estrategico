@@ -147,21 +147,30 @@ export default function DeviceBindingGuard({ children }: { children: React.React
       const scanner = new Html5Qrcode(scannerContainerId);
       scannerRef.current = scanner;
 
+      let decoded = false;
+
       await scanner.start(
         { facingMode: 'environment' },
         {
-          fps: 10,
-          qrbox: { width: 250, height: 250 },
-          aspectRatio: 1,
+          fps: 15,
+          qrbox: (viewfinderWidth: number, viewfinderHeight: number) => {
+            const minEdge = Math.min(viewfinderWidth, viewfinderHeight);
+            const size = Math.floor(minEdge * 0.75);
+            return { width: size, height: size };
+          },
           disableFlip: false,
         },
-        async (decodedText) => {
-          // QR lido com sucesso — stop scanner before processing
-          await stopScanner();
-          const token = extractToken(decodedText);
-          if (token) {
-            handleVincular(token);
-          }
+        (decodedText) => {
+          // Guard contra múltiplas leituras enquanto o scanner para
+          if (decoded) return;
+          decoded = true;
+          // Stop scanner de forma não-bloqueante, depois processa o token
+          stopScanner().then(() => {
+            const token = extractToken(decodedText);
+            if (token) {
+              handleVincular(token);
+            }
+          });
         },
         () => { /* ignora frames sem QR */ },
       );
