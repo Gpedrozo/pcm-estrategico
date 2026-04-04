@@ -43,9 +43,31 @@ export default function MecanicoSelectScreen() {
   const [validating, setValidating] = useState(false);
   const senhaInputRef = useRef<TextInput>(null);
 
-  // Busca mecânicos direto do Supabase (fonte confiável)
+  // Busca mecânicos via RPC SECURITY DEFINER (ignora RLS) → fallback query direta
   const fetchFromSupabase = useCallback(async (): Promise<MecanicoItem[]> => {
     if (!empresaId) return [];
+
+    // Tentativa 1: RPC (SECURITY DEFINER — nunca bloqueado por RLS)
+    try {
+      const { data: rpcData, error: rpcError } = await supabase.rpc(
+        'listar_mecanicos_empresa',
+        { p_empresa_id: empresaId }
+      );
+      if (!rpcError && rpcData && rpcData.length > 0) {
+        console.log(`[MecanicoSelect] RPC retornou ${rpcData.length} mecânicos`);
+        for (const mec of rpcData) {
+          await upsertMecanico({ ...mec, empresa_id: empresaId, ativo: true });
+        }
+        return rpcData;
+      }
+      if (rpcError) {
+        console.warn('[MecanicoSelect] RPC error (tentando query direta):', rpcError.message);
+      }
+    } catch (err) {
+      console.warn('[MecanicoSelect] RPC exception:', err);
+    }
+
+    // Tentativa 2: Query direta (funciona se session OK + RLS permite)
     try {
       const { data, error } = await supabase
         .from('mecanicos')
@@ -56,23 +78,21 @@ export default function MecanicoSelectScreen() {
         .order('nome', { ascending: true })
         .limit(200);
 
-      if (error) {
-        console.warn('[MecanicoSelect] Supabase fetch error:', error.message);
-        return [];
-      }
-
-      // Persiste no SQLite local para uso offline
-      if (data && data.length > 0) {
+      if (!error && data && data.length > 0) {
+        console.log(`[MecanicoSelect] Query direta retornou ${data.length} mecânicos`);
         for (const mec of data) {
           await upsertMecanico({ ...mec, empresa_id: empresaId, ativo: true });
         }
+        return data;
       }
-
-      return data || [];
+      if (error) {
+        console.warn('[MecanicoSelect] Query direta error:', error.message);
+      }
     } catch (err) {
-      console.warn('[MecanicoSelect] fetchFromSupabase exception:', err);
-      return [];
+      console.warn('[MecanicoSelect] Query direta exception:', err);
     }
+
+    return [];
   }, [empresaId]);
 
   const loadMecanicos = useCallback(async () => {
@@ -81,8 +101,9 @@ export default function MecanicoSelectScreen() {
       // 1. Tenta local primeiro (rápido, offline)
       let list = await getMecanicos(empresaId);
 
-      // 2. Se local vazio, busca direto do Supabase
+      // 2. Se local vazio, busca do Supabase via RPC (SECURITY DEFINER)
       if (list.length === 0) {
+        console.log('[MecanicoSelect] SQLite vazio, buscando do Supabase...');
         list = await fetchFromSupabase();
       }
 
@@ -94,17 +115,36 @@ export default function MecanicoSelectScreen() {
     }
   }, [empresaId, fetchFromSupabase]);
 
-  // Na montagem: sync + load. Se sync não trouxe nada, busca direto.
+  // Na montagem: busca imediata do local, depois tenta Supabase em paralelo
   useEffect(() => {
     let mounted = true;
     async function init() {
       if (!empresaId) return;
+
+      // Passo 1: Carrega do SQLite imediatamente (pode ter dados do bind)
       try {
-        // Tenta sync completo primeiro
+        const localList = await getMecanicos(empresaId);
+        if (mounted && localList.length > 0) {
+          setMecanicos(localList);
+          setLoading(false);
+          console.log(`[MecanicoSelect] ${localList.length} mecânicos carregados do SQLite`);
+        }
+      } catch { /* ignore */ }
+
+      // Passo 2: Busca fresco do Supabase (RPC ou query)
+      try {
+        const freshList = await fetchFromSupabase();
+        if (mounted && freshList.length > 0) {
+          setMecanicos(freshList);
+          setLoading(false);
+          return;
+        }
+      } catch { /* ignore */ }
+
+      // Passo 3: Se ainda vazio, tenta sync completo e recarrega
+      try {
         await runSyncCycle();
-      } catch {
-        // sync falhou — segue com fallback
-      }
+      } catch { /* ignore */ }
       if (mounted) {
         await loadMecanicos();
       }

@@ -9,6 +9,7 @@ import {
   getDeviceConfig,
   saveDeviceConfig,
   clearDeviceConfig,
+  upsertMecanico,
 } from '../lib/database';
 import { startSyncTimer, stopSyncTimer, runSyncCycle } from '../lib/syncEngine';
 
@@ -187,6 +188,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         await saveDeviceConfig('empresa_nome', data.empresa_nome);
         await saveDeviceConfig('tenant_slug', data.tenant_slug);
 
+        // Persist mecanicos from edge function response into SQLite
+        if (Array.isArray(data.mecanicos) && data.mecanicos.length > 0) {
+          for (const mec of data.mecanicos) {
+            await upsertMecanico({ ...mec, empresa_id: data.empresa_id, ativo: true });
+          }
+          console.log(`[AuthContext] ${data.mecanicos.length} mecânicos persistidos do bind`);
+        }
+
         // Try to set Supabase session (bind+auth in one step)
         // If setSession fails (e.g. "Invalid API key" on some RN environments),
         // we still consider the bind+auth successful since we have valid tokens
@@ -298,6 +307,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (data.empresa_id) await saveDeviceConfig('empresa_id', data.empresa_id);
       if (data.empresa_nome) await saveDeviceConfig('empresa_nome', data.empresa_nome);
       if (data.dispositivo_id) await saveDeviceConfig('dispositivo_id', data.dispositivo_id);
+
+      // Persist mecanicos from edge function response into SQLite
+      if (Array.isArray(data.mecanicos) && data.mecanicos.length > 0) {
+        for (const mec of data.mecanicos) {
+          await upsertMecanico({ ...mec, empresa_id: data.empresa_id, ativo: true });
+        }
+        console.log(`[AuthContext] ${data.mecanicos.length} mecânicos persistidos do re-auth`);
+      }
 
       setState((s: AuthState) => ({
         ...s,

@@ -327,6 +327,22 @@ async function authenticateWithDevice(
       .update({ ultimo_acesso: new Date().toISOString() })
       .eq("id", device.id);
 
+    // Busca mecânicos ativos da empresa (admin bypassa RLS)
+    let mecanicos: { id: string; nome: string; tipo: string }[] = [];
+    try {
+      const { data: mecList } = await admin
+        .from("mecanicos")
+        .select("id, nome, tipo")
+        .eq("empresa_id", empresa.id)
+        .eq("ativo", true)
+        .is("deleted_at", null)
+        .order("nome", { ascending: true })
+        .limit(200);
+      if (mecList) mecanicos = mecList;
+    } catch (e) {
+      console.warn("[device-auth] falha ao buscar mecanicos:", e);
+    }
+
     return respond({
       ok: true,
       access_token: session.access_token,
@@ -337,5 +353,6 @@ async function authenticateWithDevice(
       empresa_id: empresa.id,
       empresa_nome: empresa.nome,
       tenant_slug: empresa.slug,
+      mecanicos,
     }, req);
 }

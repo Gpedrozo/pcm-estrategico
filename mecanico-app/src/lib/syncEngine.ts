@@ -140,17 +140,32 @@ export async function pullData(empresaId: string): Promise<void> {
     }
   }
 
-  // Pull Mecanicos
-  const { data: mecList } = await supabase
+  // Pull Mecanicos — tenta query direta, fallback para RPC SECURITY DEFINER
+  let mecList: any[] | null = null;
+  const { data: mecDirect, error: mecErr } = await supabase
     .from('mecanicos')
     .select('*')
     .eq('empresa_id', empresaId)
     .eq('ativo', true)
     .limit(200);
 
+  if (!mecErr && mecDirect && mecDirect.length > 0) {
+    mecList = mecDirect;
+  } else {
+    // Fallback: RPC que bypassa RLS
+    try {
+      const { data: mecRpc } = await supabase.rpc('listar_mecanicos_empresa', {
+        p_empresa_id: empresaId,
+      });
+      if (mecRpc && mecRpc.length > 0) {
+        mecList = mecRpc;
+      }
+    } catch { /* ignore rpc error */ }
+  }
+
   if (mecList) {
     for (const mec of mecList) {
-      await upsertMecanico(mec);
+      await upsertMecanico({ ...mec, empresa_id: empresaId, ativo: true });
     }
   }
 
