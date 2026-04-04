@@ -39,11 +39,14 @@
       ]
     }
   ],
-  "rewrites": [
+  "redirects": [
     {
       "source": "/download/app",
-      "destination": "https://github.com/Gpedrozo/pcm-estrategico/releases/latest/download/pcm-mecanico.apk"
-    },
+      "destination": "https://github.com/Gpedrozo/pcm-estrategico/releases/latest/download/pcm-mecanico.apk",
+      "permanent": false
+    }
+  ],
+  "rewrites": [
     {
       "source": "/(.*)",
       "destination": "/index.html"
