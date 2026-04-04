@@ -93,39 +93,76 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
-  // ── Bind device via QR Code (calls RPC vincular_dispositivo) ──
+  // ── Bind device via QR Code (calls edge function mecanico-device-auth in bind mode) ──
   const bindDevice = useCallback(async (qrToken: string): Promise<{ ok: boolean; error?: string }> => {
     setState((s: AuthState) => ({ ...s, isLoading: true, error: null }));
     try {
       const deviceId = await getOrCreateDeviceId();
 
-      const { data, error } = await supabase.rpc('vincular_dispositivo', {
-        p_qr_token: qrToken,
-        p_device_id: deviceId,
-        p_device_nome: 'Android App',
-        p_device_os: 'React Native',
-      });
+      // Call edge function in bind mode (qr_token + device_id)
+      const response = await fetch(
+        `${SUPABASE_URL}/functions/v1/mecanico-device-auth`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'apikey': SUPABASE_ANON_KEY,
+          },
+          body: JSON.stringify({
+            qr_token: qrToken,
+            device_id: deviceId,
+            device_nome: 'Android App',
+            device_os: 'React Native',
+          }),
+        }
+      );
 
-      if (error) throw error;
+      const data = await response.json();
 
       if (data?.ok) {
+        // Save device config
         await saveDeviceConfig('device_token', data.device_token);
         await saveDeviceConfig('dispositivo_id', data.dispositivo_id);
         await saveDeviceConfig('empresa_id', data.empresa_id);
         await saveDeviceConfig('empresa_nome', data.empresa_nome);
         await saveDeviceConfig('tenant_slug', data.tenant_slug);
 
+        // Set Supabase session (bind+auth in one step)
+        const { error: sessionError } = await supabase.auth.setSession({
+          access_token: data.access_token,
+          refresh_token: data.refresh_token,
+        });
+
+        if (sessionError) {
+          setState((s: AuthState) => ({
+            ...s,
+            isDeviceBound: true,
+            empresaId: data.empresa_id,
+            empresaNome: data.empresa_nome,
+            isLoading: false,
+            error: `Vinculado, mas erro de sessão: ${sessionError.message}`,
+          }));
+          return { ok: true }; // bound but not authenticated yet
+        }
+
+        // Start background sync
+        startSyncTimer();
+        runSyncCycle();
+
         setState((s: AuthState) => ({
           ...s,
           isDeviceBound: true,
+          isAuthenticated: true,
           empresaId: data.empresa_id,
           empresaNome: data.empresa_nome,
           isLoading: false,
+          error: null,
         }));
 
+        lastActivityRef.current = Date.now();
         return { ok: true };
       } else {
-        const errMsg = data?.erro || 'Falha na vinculação';
+        const errMsg = data?.error || 'Falha na vinculação';
         setState((s: AuthState) => ({ ...s, isLoading: false, error: errMsg }));
         return { ok: false, error: errMsg };
       }

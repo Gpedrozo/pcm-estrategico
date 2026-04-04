@@ -49,12 +49,120 @@ Deno.serve(async (req: Request) => {
   try {
     const body = await req.json().catch(() => ({}));
     const deviceToken = String(body.device_token ?? "").trim();
-
-    if (!deviceToken) {
-      return respond({ ok: false, error: "device_token obrigatório" }, req);
-    }
+    const qrToken = String(body.qr_token ?? "").trim();
+    const deviceId = String(body.device_id ?? "").trim();
+    const deviceNome = String(body.device_nome ?? "Android App").trim();
+    const deviceOs = String(body.device_os ?? "React Native").trim();
 
     const admin = adminClient();
+
+    // ── MODE 1: Bind via QR Code (qr_token + device_id) ──
+    if (qrToken && deviceId) {
+      console.log("[device-auth] BIND mode: qr_token=", qrToken.slice(0, 8), "device_id=", deviceId.slice(0, 8));
+
+      // Validate QR code
+      const { data: qr, error: qrErr } = await admin
+        .from("qrcodes_vinculacao")
+        .select("*")
+        .eq("token", qrToken)
+        .eq("ativo", true)
+        .maybeSingle();
+
+      if (qrErr || !qr) {
+        return respond({ ok: false, error: "QR Code inválido ou revogado" }, req);
+      }
+      if (qr.expira_em && new Date(qr.expira_em) < new Date()) {
+        return respond({ ok: false, error: "QR Code expirado" }, req);
+      }
+      if (qr.tipo === "UNICO" && qr.usos > 0) {
+        return respond({ ok: false, error: "QR Code de uso único já utilizado" }, req);
+      }
+      if (qr.max_usos != null && qr.usos >= qr.max_usos) {
+        return respond({ ok: false, error: "Limite de usos deste QR atingido" }, req);
+      }
+
+      // Validate empresa
+      const { data: empresa, error: empErr } = await admin
+        .from("empresas")
+        .select("id, slug, nome, dispositivos_moveis_ativos, max_dispositivos_moveis")
+        .eq("id", qr.empresa_id)
+        .single();
+
+      if (empErr || !empresa || !empresa.dispositivos_moveis_ativos) {
+        return respond({ ok: false, error: "Dispositivos móveis desativados para esta empresa" }, req);
+      }
+
+      // Check device limit
+      const { count } = await admin
+        .from("dispositivos_moveis")
+        .select("id", { count: "exact", head: true })
+        .eq("empresa_id", empresa.id)
+        .eq("ativo", true);
+
+      const maxDevices = empresa.max_dispositivos_moveis ?? 10;
+      // Check if this device already exists (won't count as new)
+      const { data: existingDevice } = await admin
+        .from("dispositivos_moveis")
+        .select("id, ativo")
+        .eq("empresa_id", empresa.id)
+        .eq("device_id", deviceId)
+        .maybeSingle();
+
+      if (!existingDevice && (count ?? 0) >= maxDevices) {
+        return respond({ ok: false, error: `Limite de dispositivos atingido (${maxDevices})` }, req);
+      }
+
+      // Upsert device
+      let device: any;
+      if (existingDevice) {
+        const { data: updated, error: upErr } = await admin
+          .from("dispositivos_moveis")
+          .update({
+            ativo: true,
+            device_nome: deviceNome,
+            device_os: deviceOs,
+            desativado_por: null,
+            desativado_em: null,
+            motivo_desativacao: null,
+            ultimo_acesso: new Date().toISOString(),
+          })
+          .eq("id", existingDevice.id)
+          .select("id, device_id, token, empresa_id")
+          .single();
+        if (upErr) return respond({ ok: false, error: "Erro ao reativar dispositivo", detail: upErr.message }, req);
+        device = updated;
+      } else {
+        const { data: inserted, error: insErr } = await admin
+          .from("dispositivos_moveis")
+          .insert({
+            empresa_id: empresa.id,
+            device_id: deviceId,
+            device_nome: deviceNome,
+            device_os: deviceOs,
+            ultimo_acesso: new Date().toISOString(),
+          })
+          .select("id, device_id, token, empresa_id")
+          .single();
+        if (insErr) return respond({ ok: false, error: "Erro ao registrar dispositivo", detail: insErr.message }, req);
+        device = inserted;
+      }
+
+      // Increment QR usage
+      await admin.from("qrcodes_vinculacao").update({ usos: qr.usos + 1 }).eq("id", qr.id);
+      if (qr.tipo === "UNICO") {
+        await admin.from("qrcodes_vinculacao").update({ ativo: false }).eq("id", qr.id);
+      }
+
+      console.log("[device-auth] BIND success, device_token=", device.token?.slice(0, 8));
+
+      // Now authenticate the newly bound device (fall through to auth logic)
+      return await authenticateWithDevice(admin, device, empresa, req);
+    }
+
+    // ── MODE 2: Re-authenticate existing device (device_token) ──
+    if (!deviceToken) {
+      return respond({ ok: false, error: "device_token ou qr_token+device_id obrigatório" }, req);
+    }
 
     // 1. Busca dispositivo ativo pelo token
     const { data: device, error: deviceError } = await admin
@@ -83,6 +191,20 @@ Deno.serve(async (req: Request) => {
       return respond({ ok: false, error: "Empresa não encontrada" }, req);
     }
 
+    return await authenticateWithDevice(admin, device, empresa, req);
+  } catch (err) {
+    console.error("[device-auth] exception:", err);
+    return respond({ ok: false, error: "Erro interno do servidor", detail: String(err) }, req);
+  }
+});
+
+// ── Shared authentication logic ──
+async function authenticateWithDevice(
+  admin: any,
+  device: { id: string; device_id: string; device_nome?: string; token: string; empresa_id: string },
+  empresa: { id: string; slug: string; nome: string },
+  req: Request
+): Promise<Response> {
     const email = `device-${device.device_id}@mecanico.pcm.local`;
     const password = devicePassword(device.token);
 
@@ -210,13 +332,10 @@ Deno.serve(async (req: Request) => {
       access_token: session.access_token,
       refresh_token: session.refresh_token,
       expires_in: session.expires_in,
+      device_token: device.token,
       dispositivo_id: device.id,
       empresa_id: empresa.id,
       empresa_nome: empresa.nome,
       tenant_slug: empresa.slug,
     }, req);
-  } catch (err) {
-    console.error("[device-auth] exception:", err);
-    return respond({ ok: false, error: "Erro interno do servidor", detail: String(err) }, req);
-  }
-});
+}

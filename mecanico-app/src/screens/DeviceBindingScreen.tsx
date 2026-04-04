@@ -38,11 +38,15 @@ export default function DeviceBindingScreen() {
     }
     setLoading(true);
     try {
-      await bindDevice(trimmed);
-      // AuthContext handles navigation after successful bind
+      const result = await bindDevice(trimmed);
+      if (!result.ok) {
+        Alert.alert('Erro ao vincular', result.error || 'Falha na vinculação. Tente novamente.');
+        setLoading(false);
+        setScanned(false);
+      }
+      // If ok, AuthContext sets isDeviceBound=true → navigator switches to Main
     } catch (err: any) {
       Alert.alert('Erro ao vincular', err?.message || 'Tente novamente.');
-    } finally {
       setLoading(false);
       setScanned(false);
     }
