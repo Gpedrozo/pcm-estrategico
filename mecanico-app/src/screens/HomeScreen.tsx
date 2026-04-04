@@ -33,6 +33,7 @@ export default function HomeScreen() {
   const [syncStatus, setSyncStatus] = useState<'online' | 'pending' | 'offline'>('online');
   const [pendingCount, setPendingCount] = useState(0);
   const [meusOsIds, setMeusOsIds] = useState<Set<string>>(new Set());
+  const [initialSyncDone, setInitialSyncDone] = useState(false);
 
   const loadData = useCallback(async () => {
     if (!empresaId) return;
@@ -50,6 +51,21 @@ export default function HomeScreen() {
       setSyncStatus(!online ? 'offline' : pending > 0 ? 'pending' : 'online');
       setSolicStats(ss);
 
+      // Se SQLite está vazio e temos conexão, aguardar sync e recarregar
+      if (os.length === 0 && online && !initialSyncDone) {
+        setInitialSyncDone(true);
+        await runSyncCycle(true);
+        // Re-read after sync
+        const [s2, os2, ss2] = await Promise.all([
+          getOSStats(empresaId),
+          getOrdensServico(empresaId),
+          getSolicitacoesStats(empresaId),
+        ]);
+        setStats(s2);
+        setOrdens(os2);
+        setSolicStats(ss2);
+      }
+
       // Buscar OS atribuídas ao mecânico via execucoes_os
       if (mecanicoId) {
         const db = await getDB();
@@ -62,7 +78,7 @@ export default function HomeScreen() {
     } catch {
       /* ignore local read errors */
     }
-  }, [empresaId, mecanicoId]);
+  }, [empresaId, mecanicoId, initialSyncDone]);
 
   useEffect(() => { loadData(); }, [loadData]);
   useEffect(() => {

@@ -20,7 +20,7 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import uuid from 'react-native-uuid';
 import { useAuth } from '../contexts/AuthContext';
 import { getSolicitacoes, upsertSolicitacao, addToSyncQueue, getSolicitacoesStats } from '../lib/database';
-import { runSyncCycle } from '../lib/syncEngine';
+import { runSyncCycle, isOnline } from '../lib/syncEngine';
 import EmptyState from '../components/EmptyState';
 import { COLORS, SIZES } from '../theme';
 import type { RootStackParamList, SolicitacaoManutencao } from '../types';
@@ -57,6 +57,7 @@ export default function SolicitacoesListScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [motivoRejeicao, setMotivoRejeicao] = useState('');
   const [rejectingId, setRejectingId] = useState<string | null>(null);
+  const [initialSyncDone, setInitialSyncDone] = useState(false);
 
   const loadData = useCallback(async () => {
     if (!empresaId) return;
@@ -67,8 +68,23 @@ export default function SolicitacoesListScreen() {
       ]);
       setSolicitacoes(list);
       setStats(st);
+
+      // Se SQLite está vazio e temos conexão, aguardar sync e recarregar
+      if (list.length === 0 && !initialSyncDone) {
+        const online = await isOnline();
+        if (online) {
+          setInitialSyncDone(true);
+          await runSyncCycle(true);
+          const [list2, st2] = await Promise.all([
+            getSolicitacoes(empresaId, filtro === 'todas' ? undefined : filtro),
+            getSolicitacoesStats(empresaId),
+          ]);
+          setSolicitacoes(list2);
+          setStats(st2);
+        }
+      }
     } catch { /* ignore */ }
-  }, [empresaId, filtro]);
+  }, [empresaId, filtro, initialSyncDone]);
 
   useEffect(() => { loadData(); }, [loadData]);
   useEffect(() => {
