@@ -29,7 +29,10 @@ import {
   ArrowDown,
   Route,
   GripVertical,
+  Lock,
+  Camera,
 } from 'lucide-react';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
   useRotasLubrificacao,
   useCreateRotaLubrificacao,
@@ -69,6 +72,8 @@ interface PontoForm {
   tempo_estimado_min: number;
   instrucoes: string;
   referencia_manual: string;
+  requer_parada: boolean;
+  imagem_url: string;
   plano_id: string;
 }
 
@@ -84,6 +89,8 @@ const emptyPonto = (): PontoForm => ({
   tempo_estimado_min: 0,
   instrucoes: '',
   referencia_manual: '',
+  requer_parada: false,
+  imagem_url: '',
   plano_id: '',
 });
 
@@ -163,6 +170,8 @@ export default function RotasLubrificacao() {
         tempo_estimado_min: p.tempo_estimado_min,
         instrucoes: p.instrucoes || '',
         referencia_manual: p.referencia_manual || '',
+        requer_parada: p.requer_parada ?? false,
+        imagem_url: p.imagem_url || '',
         plano_id: p.plano_id || '',
       })));
     } else {
@@ -189,11 +198,11 @@ export default function RotasLubrificacao() {
     }
 
     const pontosPayload: RotaPontoInsert[] = pontos
-      .filter((p) => p.codigo_ponto && p.descricao)
+      .filter((p) => p.descricao)
       .map((p, i) => ({
         rota_id: rotaId,
         ordem: i,
-        codigo_ponto: p.codigo_ponto,
+        codigo_ponto: `P${i + 1}`,
         descricao: p.descricao,
         equipamento_tag: p.equipamento_tag || null,
         localizacao: p.localizacao || null,
@@ -203,6 +212,8 @@ export default function RotasLubrificacao() {
         tempo_estimado_min: p.tempo_estimado_min || 0,
         instrucoes: p.instrucoes || null,
         referencia_manual: p.referencia_manual || null,
+        requer_parada: p.requer_parada,
+        imagem_url: p.imagem_url || null,
         plano_id: p.plano_id || null,
       }));
 
@@ -338,9 +349,9 @@ export default function RotasLubrificacao() {
                     {pontosDB?.map((p, i) => (
                       <div key={p.id} className="p-2 rounded border border-border bg-muted/30 text-xs">
                         <div className="flex items-center gap-2">
-                          <span className="font-mono font-bold text-primary">{i + 1}.</span>
-                          <span className="font-semibold">{p.codigo_ponto}</span>
+                          <span className="font-mono font-bold text-primary">Item {i + 1}.</span>
                           {p.equipamento_tag && <Badge variant="secondary" className="text-[10px]">{p.equipamento_tag}</Badge>}
+                          {p.requer_parada && <Badge variant="destructive" className="text-[10px] gap-0.5"><Lock className="h-2.5 w-2.5" /> Parada</Badge>}
                         </div>
                         <p className="mt-0.5">{p.descricao}</p>
                         {p.lubrificante && <p className="text-muted-foreground">Lub: {p.lubrificante} {p.quantidade ? `(${p.quantidade})` : ''}</p>}
@@ -438,23 +449,41 @@ export default function RotasLubrificacao() {
                     </div>
 
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-                      <Input placeholder="Código (ex: 8.1.1)" value={ponto.codigo_ponto} onChange={(e) => updatePonto(index, 'codigo_ponto', e.target.value)} />
+                      <Input placeholder="Descrição do ponto *" value={ponto.descricao} onChange={(e) => updatePonto(index, 'descricao', e.target.value)} className="md:col-span-2" />
                       <Input placeholder="TAG do equipamento" value={ponto.equipamento_tag} onChange={(e) => updatePonto(index, 'equipamento_tag', e.target.value)} />
-                      <Input placeholder="Localização" value={ponto.localizacao} onChange={(e) => updatePonto(index, 'localizacao', e.target.value)} />
                       <Input placeholder="Tempo (min)" type="number" value={ponto.tempo_estimado_min || ''} onChange={(e) => updatePonto(index, 'tempo_estimado_min', Number(e.target.value))} />
                     </div>
 
-                    <Input placeholder="Descrição do ponto *" value={ponto.descricao} onChange={(e) => updatePonto(index, 'descricao', e.target.value)} />
-
-                    <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                      <Input placeholder="Localização" value={ponto.localizacao} onChange={(e) => updatePonto(index, 'localizacao', e.target.value)} />
                       <Input placeholder="Lubrificante" value={ponto.lubrificante} onChange={(e) => updatePonto(index, 'lubrificante', e.target.value)} />
                       <Input placeholder="Quantidade" value={ponto.quantidade} onChange={(e) => updatePonto(index, 'quantidade', e.target.value)} />
-                      <Input placeholder="Ferramenta" value={ponto.ferramenta} onChange={(e) => updatePonto(index, 'ferramenta', e.target.value)} />
+                      <Input placeholder="Método / Ferramenta" value={ponto.ferramenta} onChange={(e) => updatePonto(index, 'ferramenta', e.target.value)} />
                     </div>
 
-                    <Textarea placeholder="Instruções / Recomendações" value={ponto.instrucoes} onChange={(e) => updatePonto(index, 'instrucoes', e.target.value)} rows={2} />
+                    <Input placeholder="Instruções / Recomendações" value={ponto.instrucoes} onChange={(e) => updatePonto(index, 'instrucoes', e.target.value)} />
 
                     <Input placeholder="Referência manual (ex: página 5:15)" value={ponto.referencia_manual} onChange={(e) => updatePonto(index, 'referencia_manual', e.target.value)} />
+
+                    <div className="flex items-center gap-4">
+                      <div className="flex items-center gap-2">
+                        <Checkbox
+                          id={`rota-parada-${index}`}
+                          checked={ponto.requer_parada}
+                          onCheckedChange={(v) => updatePonto(index, 'requer_parada' as any, !!v as any)}
+                        />
+                        <label htmlFor={`rota-parada-${index}`} className="text-xs flex items-center gap-1 cursor-pointer">
+                          <Lock className="h-3 w-3" /> Requer parada de máquina
+                        </label>
+                      </div>
+                      <div className="flex items-center gap-2 flex-1">
+                        <Camera className="h-3.5 w-3.5 text-muted-foreground" />
+                        <Input placeholder="URL da imagem do ponto" value={ponto.imagem_url} onChange={(e) => updatePonto(index, 'imagem_url', e.target.value)} className="flex-1 text-xs h-7" />
+                      </div>
+                    </div>
+                    {ponto.imagem_url && (
+                      <img src={ponto.imagem_url} alt="Ponto" className="max-h-20 rounded border object-contain" />
+                    )}
                   </div>
                 ))}
               </div>

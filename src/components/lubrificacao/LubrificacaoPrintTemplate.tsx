@@ -117,7 +117,8 @@ export const LubrificacaoPrintTemplate = forwardRef<HTMLDivElement, Lubrificacao
               <span>{ultimaExec}</span>
             </div>
           </div>
-          {plano.ponto_lubrificacao && (
+          {/* R4: ponto_lubrificacao só aparece quando NÃO há pontos */}
+          {pontos.length === 0 && plano.ponto_lubrificacao && (
             <div className="mt-0.5">
               <span className="font-bold text-gray-500 text-[8px]">PONTO DE LUBRIFICAÇÃO: </span>
               <span>{plano.ponto_lubrificacao}</span>
@@ -178,11 +179,11 @@ export const LubrificacaoPrintTemplate = forwardRef<HTMLDivElement, Lubrificacao
 
           {/* Header */}
           <div className="flex border-b border-black text-[8px] font-bold text-gray-600 uppercase bg-gray-50">
-            <div className="w-[7mm] border-r border-black p-1 text-center">Nº</div>
-            <div className="w-[16mm] border-r border-black p-1">CÓDIGO</div>
+            <div className="w-[7mm] border-r border-black p-1 text-center">ITEM</div>
             <div className="flex-1 p-1 pl-2">DESCRIÇÃO / PONTO</div>
             <div className="w-[24mm] border-l border-black p-1">LUBRIFICANTE</div>
             <div className="w-[14mm] border-l border-black p-1 text-center">QTD</div>
+            <div className="w-[14mm] border-l border-black p-1 text-center">MÉTODO</div>
             <div className="w-[12mm] border-l border-black p-1 text-center">MIN</div>
             <div className="w-[10mm] border-l border-black p-1 text-center">✓</div>
           </div>
@@ -193,19 +194,20 @@ export const LubrificacaoPrintTemplate = forwardRef<HTMLDivElement, Lubrificacao
                 {/* Main row */}
                 <div className="flex border-b border-black text-[9px]">
                   <div className="w-[7mm] border-r border-black p-1 text-center font-black">{i + 1}</div>
-                  <div className="w-[16mm] border-r border-black p-1 font-mono font-semibold">{p.codigo_ponto}</div>
                   <div className="flex-1 p-1 pl-2 min-h-[6mm]">
                     <span>{p.descricao}</span>
-                    {/* Sub-info: TAG + Localização inline */}
-                    {(p.equipamento_tag || p.localizacao) && (
+                    {/* R2: Sub-info TAG + Local só quando plano NÃO tem equipamento (multi-ativo) */}
+                    {!plano.equipamento_id && (p.equipamento_tag || p.localizacao) && (
                       <div className="text-[7px] text-gray-500 mt-0.5">
                         {p.equipamento_tag && <span className="font-mono mr-2">TAG: {p.equipamento_tag}</span>}
                         {p.localizacao && <span>Local: {p.localizacao}</span>}
                       </div>
                     )}
                   </div>
-                  <div className="w-[24mm] border-l border-black p-1 text-[8px]">{p.lubrificante || '—'}</div>
+                  {/* R3: Coluna lubrificante mostra valor somente se diferir do padrão do plano */}
+                  <div className="w-[24mm] border-l border-black p-1 text-[8px]">{p.lubrificante && p.lubrificante !== (plano.lubrificante || '') ? p.lubrificante : '—'}</div>
                   <div className="w-[14mm] border-l border-black p-1 text-center">{p.quantidade || '—'}</div>
+                  <div className="w-[14mm] border-l border-black p-1 text-center text-[8px]">{p.ferramenta || '—'}</div>
                   <div className="w-[12mm] border-l border-black p-1 text-center font-mono">{p.tempo_estimado_min}</div>
                   <div className="w-[10mm] border-l border-black p-1 flex items-center justify-center">
                     <span className="inline-block w-4 h-4 border border-black"></span>
@@ -218,9 +220,9 @@ export const LubrificacaoPrintTemplate = forwardRef<HTMLDivElement, Lubrificacao
             Array.from({ length: 10 }).map((_, i) => (
               <div key={i} className="flex border-b border-black text-[9px]">
                 <div className="w-[7mm] border-r border-black p-1 text-center text-gray-400">{i + 1}</div>
-                <div className="w-[16mm] border-r border-black p-1"></div>
                 <div className="flex-1 p-1 pl-2 min-h-[7mm]"></div>
                 <div className="w-[24mm] border-l border-black p-1"></div>
+                <div className="w-[14mm] border-l border-black p-1"></div>
                 <div className="w-[14mm] border-l border-black p-1"></div>
                 <div className="w-[12mm] border-l border-black p-1"></div>
                 <div className="w-[10mm] border-l border-black p-1 flex items-center justify-center">
@@ -243,9 +245,12 @@ export const LubrificacaoPrintTemplate = forwardRef<HTMLDivElement, Lubrificacao
           <div className="border-b-2 border-black">
             <PrintSectionHeader label="INSTRUÇÕES POR PONTO" />
             <div className="p-2 text-[9px] space-y-0.5">
-              {pontos.filter((p) => p.instrucoes).map((p) => (
-                <p key={p.id}><strong className="font-mono">{p.codigo_ponto}:</strong> {p.instrucoes}</p>
-              ))}
+              {pontos.filter((p) => p.instrucoes).map((p, _i, filteredArr) => {
+                const itemIdx = pontos.indexOf(p);
+                return (
+                  <p key={p.id}><strong className="font-mono">Item {itemIdx + 1}:</strong> {p.instrucoes}</p>
+                );
+              })}
             </div>
           </div>
         )}

@@ -156,13 +156,12 @@ export default function MecanicoSelectScreen() {
   const handleRefresh = useCallback(async () => {
     setRefreshing(true);
     try {
-      // Força busca do Supabase (sempre atualizado)
+      // Força sync completo (full refresh) + busca fresca
+      await runSyncCycle(true);
       const freshList = await fetchFromSupabase();
       if (freshList.length > 0) {
         setMecanicos(freshList);
       } else {
-        // Fallback: tenta sync + local
-        await runSyncCycle();
         await loadMecanicos();
       }
     } finally {
@@ -186,7 +185,7 @@ export default function MecanicoSelectScreen() {
     setValidating(false);
   }, []);
 
-  // Valida senha via RPC do Supabase
+  // Valida senha via Edge Function (bypassa problema de API key no PostgREST)
   const handleValidarSenha = useCallback(async () => {
     if (!selectedMec) return;
 

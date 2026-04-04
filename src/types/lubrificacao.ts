@@ -116,6 +116,8 @@ export interface RotaPonto {
   tempo_estimado_min: number;
   instrucoes: string | null;
   referencia_manual: string | null;
+  requer_parada: boolean;
+  imagem_url: string | null;
   created_at: string;
 }
 
@@ -133,4 +135,63 @@ export interface RotaPontoInsert {
   tempo_estimado_min?: number;
   instrucoes?: string | null;
   referencia_manual?: string | null;
+  requer_parada?: boolean;
+  imagem_url?: string | null;
+}
+
+// --- Estoque de Lubrificantes ---
+
+export type TipoLubrificante = 'graxa' | 'oleo' | 'spray' | 'outro';
+
+export interface Lubrificante {
+  id: string;
+  empresa_id: string;
+  codigo: string;
+  nome: string;
+  fabricante: string | null;
+  tipo: TipoLubrificante;
+  viscosidade: string | null;
+  unidade_medida: string;
+  estoque_atual: number;
+  estoque_minimo: number;
+  cor_identificacao: string | null;
+  ativo: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface LubrificanteInsert {
+  codigo: string;
+  nome: string;
+  fabricante?: string | null;
+  tipo: TipoLubrificante;
+  viscosidade?: string | null;
+  unidade_medida: string;
+  estoque_atual?: number;
+  estoque_minimo?: number;
+  cor_identificacao?: string | null;
+  ativo?: boolean;
+}
+
+export type TipoMovimentacao = 'entrada' | 'saida';
+
+export interface MovimentacaoLubrificante {
+  id: string;
+  empresa_id: string;
+  lubrificante_id: string;
+  tipo: TipoMovimentacao;
+  quantidade: number;
+  execucao_id: string | null;
+  observacoes: string | null;
+  data: string;
+  created_at: string;
+}
+
+export interface MovimentacaoLubrificanteInsert {
+  lubrificante_id: string;
+  tipo: TipoMovimentacao;
+  quantidade: number;
+  execucao_id?: string | null;
+  observacoes?: string | null;
+  data?: string;
 }

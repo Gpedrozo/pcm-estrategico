@@ -61,6 +61,9 @@ const ConfiguracoesEmpresa = lazyWithRetry(() => import('./pages/ConfiguracoesEm
 const Administracao = lazyWithRetry(() => import('./pages/Administracao'))
 const MasterTI = lazyWithRetry(() => import('./pages/MasterTI'))
 const Lubrificacao = lazyWithRetry(() => import('./pages/Lubrificacao'))
+const RotasLubrificacao = lazyWithRetry(() => import('./pages/lubrificacao/RotasLubrificacao'))
+const CronogramaLubrificacao = lazyWithRetry(() => import('./pages/lubrificacao/CronogramaLubrificacao'))
+const EstoqueLubrificantes = lazyWithRetry(() => import('./pages/lubrificacao/EstoqueLubrificantes'))
 const NotFound = lazyWithRetry(() => import('./pages/NotFound'))
 const Instalar = lazyWithRetry(() => import('./pages/Instalar'))
 const ArquivosOwner = lazyWithRetry(() => import('./pages/ArquivosOwner'))
@@ -363,6 +366,9 @@ function TenantRoutes() {
                 <Route path="/contratos" element={<Contratos />} />
                 <Route path="/documentos" element={<DocumentosTecnicos />} />
                 <Route path="/lubrificacao" element={<Lubrificacao />} />
+                <Route path="/lubrificacao/rotas" element={<RotasLubrificacao />} />
+                <Route path="/lubrificacao/cronograma" element={<CronogramaLubrificacao />} />
+                <Route path="/lubrificacao/estoque" element={<EstoqueLubrificantes />} />
                 <Route path="/custos" element={<Custos />} />
                 <Route path="/relatorios" element={<Relatorios />} />
                 <Route path="/ssma" element={<SSMA />} />

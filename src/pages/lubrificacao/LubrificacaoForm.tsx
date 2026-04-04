@@ -11,7 +11,8 @@ import type { PlanoLubrificacao, PlanoLubrificacaoInsert, RotaPontoInsert } from
 import type { EquipamentoRow } from '@/hooks/useEquipamentos';
 import { usePontosPlano, useSavePontosPlano } from '@/hooks/usePontosPlano';
 import { useNextDocumentNumber } from '@/hooks/useDocumentEngine';
-import { Hash, Loader2, Plus, Trash2, ArrowUp, ArrowDown, GripVertical, Check, Copy } from 'lucide-react';
+import { Hash, Loader2, Plus, Trash2, ArrowUp, ArrowDown, GripVertical, Check, Copy, ChevronDown, Lock, Camera } from 'lucide-react';
+import { Checkbox } from '@/components/ui/checkbox';
 import { useToast } from '@/hooks/use-toast';
 import { useFormDraft } from '@/hooks/useFormDraft';
 
@@ -32,32 +33,38 @@ const formatMinHHMM = (min: number) => {
 
 interface PontoForm {
   key: string;
-  codigo_ponto: string;
   descricao: string;
   equipamento_tag: string;
   localizacao: string;
   lubrificante: string;
+  lubOverride: boolean;
   quantidade: string;
   ferramenta: string;
   tempo_estimado_min: number;
   instrucoes: string;
   referencia_manual: string;
+  requer_parada: boolean;
+  imagem_url: string;
+  expanded: boolean;
   tagComboOpen?: boolean;
   tagSearch?: string;
 }
 
-const emptyPonto = (): PontoForm => ({
+const emptyPonto = (lubrificantePadrao?: string): PontoForm => ({
   key: `${Date.now()}-${Math.random()}`,
-  codigo_ponto: '',
   descricao: '',
   equipamento_tag: '',
   localizacao: '',
-  lubrificante: '',
+  lubrificante: lubrificantePadrao || '',
+  lubOverride: false,
   quantidade: '',
   ferramenta: '',
   tempo_estimado_min: 0,
   instrucoes: '',
   referencia_manual: '',
+  requer_parada: false,
+  imagem_url: '',
+  expanded: false,
 });
 
 interface LubrificacaoFormProps {
@@ -154,18 +161,22 @@ export function LubrificacaoForm({ open, onOpenChange, equipamentos, initialData
   useEffect(() => {
     if (!open) return;
     if (initialData && pontosDB && pontosDB.length > 0) {
+      const lubPadrao = initialData.lubrificante || '';
       setPontos(pontosDB.map((p) => ({
         key: p.id,
-        codigo_ponto: p.codigo_ponto,
         descricao: p.descricao,
         equipamento_tag: p.equipamento_tag || '',
         localizacao: p.localizacao || '',
         lubrificante: p.lubrificante || '',
+        lubOverride: !!(p.lubrificante && p.lubrificante !== lubPadrao),
         quantidade: p.quantidade || '',
         ferramenta: p.ferramenta || '',
         tempo_estimado_min: p.tempo_estimado_min,
         instrucoes: p.instrucoes || '',
         referencia_manual: p.referencia_manual || '',
+        requer_parada: p.requer_parada ?? false,
+        imagem_url: p.imagem_url || '',
+        expanded: false,
       })));
     } else if (!initialData) {
       setPontos([]);
@@ -220,10 +231,10 @@ export function LubrificacaoForm({ open, onOpenChange, equipamentos, initialData
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
 
-    // Validate pontos: all must have codigo_ponto and descricao
-    const invalidPontos = pontos.filter((p) => !p.codigo_ponto || !p.descricao);
+    // Validate pontos: all must have descricao
+    const invalidPontos = pontos.filter((p) => !p.descricao);
     if (invalidPontos.length > 0) {
-      toast({ title: 'Pontos incompletos', description: `${invalidPontos.length} ponto(s) sem código ou descrição. Preencha ou remova-os.`, variant: 'destructive' });
+      toast({ title: 'Pontos incompletos', description: `${invalidPontos.length} ponto(s) sem descrição. Preencha ou remova-os.`, variant: 'destructive' });
       return;
     }
 
@@ -241,16 +252,18 @@ export function LubrificacaoForm({ open, onOpenChange, equipamentos, initialData
           plano_id: planoId,
           rota_id: null,
           ordem: i,
-          codigo_ponto: p.codigo_ponto,
+          codigo_ponto: `P${i + 1}`,
           descricao: p.descricao,
           equipamento_tag: p.equipamento_tag || null,
           localizacao: p.localizacao || null,
-          lubrificante: p.lubrificante || null,
+          lubrificante: p.lubOverride ? (p.lubrificante || null) : (form.lubrificante || null),
           quantidade: p.quantidade || null,
           ferramenta: p.ferramenta || null,
           tempo_estimado_min: p.tempo_estimado_min || 0,
           instrucoes: p.instrucoes || null,
           referencia_manual: p.referencia_manual || null,
+          requer_parada: p.requer_parada,
+          imagem_url: p.imagem_url || null,
         }));
         await savePontos.mutateAsync({ planoId, pontos: pontosPayload });
       }
@@ -295,7 +308,7 @@ export function LubrificacaoForm({ open, onOpenChange, equipamentos, initialData
                 </div>
               </div>
               <div className="space-y-2 md:col-span-2">
-                <Label>Descrição do Plano *</Label>
+                <Label>Nome do Plano *</Label>
                 <Input value={form.nome || ''} onChange={(e) => setField('nome', e.target.value)} required />
               </div>
             </div>
@@ -322,10 +335,13 @@ export function LubrificacaoForm({ open, onOpenChange, equipamentos, initialData
                   </SelectContent>
                 </Select>
               </div>
-              <div className="space-y-2">
-                <Label>Ponto de Lubrificação (opcional)</Label>
-                <Input value={form.ponto_lubrificacao || ''} onChange={(e) => setField('ponto_lubrificacao', e.target.value)} placeholder="Ex: Mancal lado acoplamento" />
-              </div>
+              {/* R4: ponto_lubrificacao só aparece quando NÃO há pontos detalhados */}
+              {pontos.length === 0 && (
+                <div className="space-y-2">
+                  <Label>Ponto de Lubrificação (plano simples)</Label>
+                  <Input value={form.ponto_lubrificacao || ''} onChange={(e) => setField('ponto_lubrificacao', e.target.value)} placeholder="Ex: Mancal lado acoplamento" />
+                </div>
+              )}
             </div>
           </FormSection>
 
@@ -333,8 +349,8 @@ export function LubrificacaoForm({ open, onOpenChange, equipamentos, initialData
           <FormSection title="Lubrificação">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="space-y-2">
-                <Label>Lubrificante (opcional)</Label>
-                <Input value={form.lubrificante || ''} onChange={(e) => setField('lubrificante', e.target.value)} />
+                <Label>Lubrificante Padrão</Label>
+                <Input value={form.lubrificante || ''} onChange={(e) => setField('lubrificante', e.target.value)} placeholder="Ex: Graxa Mobil EP2" />
               </div>
               <div className="space-y-2">
                 <Label>Responsável</Label>
@@ -355,7 +371,7 @@ export function LubrificacaoForm({ open, onOpenChange, equipamentos, initialData
             </div>
 
             <div className="space-y-2">
-              <Label>Descrição</Label>
+              <Label>Escopo / Instruções Gerais</Label>
               <Textarea value={form.descricao || ''} onChange={(e) => setField('descricao', e.target.value)} rows={3} />
             </div>
           </FormSection>
@@ -380,8 +396,8 @@ export function LubrificacaoForm({ open, onOpenChange, equipamentos, initialData
                 </Select>
               </div>
               <div className="space-y-2">
-                <Label>Tempo Estimado (min)</Label>
-                <Input type="number" value={form.tempo_estimado ?? 0} onChange={(e) => setField('tempo_estimado', Number(e.target.value) || 0)} />
+                <Label>{pontos.length > 0 ? `Tempo Estimado (soma dos pontos: ${form.tempo_estimado || 0} min)` : 'Tempo Estimado (min)'}</Label>
+                <Input type="number" value={form.tempo_estimado ?? 0} onChange={(e) => setField('tempo_estimado', Number(e.target.value) || 0)} disabled={pontos.length > 0} />
               </div>
               <div className="space-y-2">
                 <Label>Status</Label>
@@ -409,29 +425,30 @@ export function LubrificacaoForm({ open, onOpenChange, equipamentos, initialData
             </div>
           </FormSection>
 
-          {/* ═══ PONTOS DA ROTA ═══ */}
+          {/* ═══ PONTOS DE LUBRIFICAÇÃO ═══ */}
           <div className="border-t pt-4 space-y-3">
             <div className="flex items-center justify-between">
               <div>
-                <h3 className="font-semibold text-sm">Pontos da Rota de Lubrificação</h3>
+                <h3 className="font-semibold text-sm">Pontos de Lubrificação</h3>
                 <p className="text-xs text-muted-foreground">Checklist que será impresso na ficha de execução</p>
               </div>
-              <Button type="button" size="sm" variant="outline" className="gap-1" onClick={() => setPontos((prev) => [...prev, emptyPonto()])}>
+              <Button type="button" size="sm" variant="outline" className="gap-1" onClick={() => setPontos((prev) => [...prev, emptyPonto(form.lubrificante || '')])}>
                 <Plus className="h-3.5 w-3.5" /> Adicionar Ponto
               </Button>
             </div>
 
             {pontos.length === 0 && (
               <div className="text-center py-6 text-muted-foreground text-sm border border-dashed rounded-lg">
-                Nenhum ponto cadastrado. Clique em "Adicionar Ponto" para criar o checklist da rota.
+                Nenhum ponto cadastrado. Clique em "Adicionar Ponto" para criar o checklist.
               </div>
             )}
 
             {pontos.map((ponto, index) => (
               <div key={ponto.key} className="border border-border rounded-lg p-3 space-y-2 bg-muted/20">
+                {/* Header: nº + actions */}
                 <div className="flex items-center gap-2 mb-1">
                   <GripVertical className="h-4 w-4 text-muted-foreground" />
-                  <span className="font-mono font-bold text-primary text-sm">{index + 1}</span>
+                  <span className="font-mono font-bold text-primary text-sm">Item {index + 1}</span>
                   <div className="flex gap-1 ml-auto">
                     <Button type="button" size="icon" variant="ghost" className="h-6 w-6" onClick={() => movePonto(index, -1)} disabled={index === 0}>
                       <ArrowUp className="h-3 w-3" />
@@ -439,9 +456,9 @@ export function LubrificacaoForm({ open, onOpenChange, equipamentos, initialData
                     <Button type="button" size="icon" variant="ghost" className="h-6 w-6" onClick={() => movePonto(index, 1)} disabled={index === pontos.length - 1}>
                       <ArrowDown className="h-3 w-3" />
                     </Button>
-              <Button type="button" size="icon" variant="ghost" className="h-6 w-6" onClick={() => {
+                    <Button type="button" size="icon" variant="ghost" className="h-6 w-6" onClick={() => {
                       const src = pontos[index];
-                      const dup: PontoForm = { ...src, key: `${Date.now()}-${Math.random()}`, codigo_ponto: '' };
+                      const dup: PontoForm = { ...src, key: `${Date.now()}-${Math.random()}` };
                       setPontos((prev) => [...prev.slice(0, index + 1), dup, ...prev.slice(index + 1)]);
                     }} title="Duplicar ponto">
                       <Copy className="h-3 w-3" />
@@ -452,55 +469,109 @@ export function LubrificacaoForm({ open, onOpenChange, equipamentos, initialData
                   </div>
                 </div>
 
+                {/* Linha 1: Descrição + Tempo (+ TAG/Local se multi-ativo) */}
+                <div className={`grid gap-2 ${!form.equipamento_id ? 'grid-cols-2 md:grid-cols-4' : 'grid-cols-1 md:grid-cols-[1fr_80px]'}`}>
+                  <Input placeholder="Descrição do componente / ponto *" value={ponto.descricao} onChange={(e) => updatePonto(index, 'descricao', e.target.value)} className={!form.equipamento_id ? 'md:col-span-2' : ''} />
+                  {/* R2: TAG e Localização só aparecem quando plano NÃO tem equipamento */}
+                  {!form.equipamento_id && (
+                    <Popover open={ponto.tagComboOpen} onOpenChange={(o) => updatePonto(index, 'tagComboOpen' as any, o as any)}>
+                      <PopoverTrigger asChild>
+                        <Button type="button" variant="outline" className="w-full justify-between font-normal text-xs h-9 px-2">
+                          {ponto.equipamento_tag || 'TAG do ativo...'}
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-[260px] p-0" align="start">
+                        <Command shouldFilter={false}>
+                          <CommandInput placeholder="Buscar TAG..." value={ponto.tagSearch || ''} onValueChange={(v) => updatePonto(index, 'tagSearch' as any, v as any)} />
+                          <CommandList>
+                            <CommandEmpty>Nenhum equipamento.</CommandEmpty>
+                            <CommandGroup>
+                              {equipamentosAtivos
+                                .filter((eq) => !ponto.tagSearch || eq.tag.toLowerCase().includes((ponto.tagSearch || '').toLowerCase()) || eq.nome.toLowerCase().includes((ponto.tagSearch || '').toLowerCase()))
+                                .slice(0, 30)
+                                .map((eq) => (
+                                  <CommandItem key={eq.id} value={eq.tag} onSelect={() => {
+                                    updatePonto(index, 'equipamento_tag', eq.tag);
+                                    updatePonto(index, 'localizacao', eq.localizacao || '');
+                                    updatePonto(index, 'tagComboOpen' as any, false as any);
+                                    updatePonto(index, 'tagSearch' as any, '' as any);
+                                  }}>
+                                    <Check className={`mr-2 h-3 w-3 ${ponto.equipamento_tag === eq.tag ? 'opacity-100' : 'opacity-0'}`} />
+                                    <span className="font-mono text-xs">{eq.tag}</span>
+                                    <span className="ml-1 text-muted-foreground text-xs truncate">{eq.nome}</span>
+                                  </CommandItem>
+                                ))}
+                            </CommandGroup>
+                          </CommandList>
+                        </Command>
+                      </PopoverContent>
+                    </Popover>
+                  )}
+                  <Input placeholder="Tempo (min)" type="number" value={ponto.tempo_estimado_min || ''} onChange={(e) => updatePonto(index, 'tempo_estimado_min', Number(e.target.value))} className="w-full" />
+                </div>
+
+                {/* Linha 2: Quantidade + Método/Ferramenta + Instruções + Lub override */}
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-                  <Input placeholder="Código (ex: 8.1.1)" value={ponto.codigo_ponto} onChange={(e) => updatePonto(index, 'codigo_ponto', e.target.value)} />
-                  {/* TAG with combobox */}
-                  <Popover open={ponto.tagComboOpen} onOpenChange={(o) => updatePonto(index, 'tagComboOpen' as any, o as any)}>
-                    <PopoverTrigger asChild>
-                      <Button type="button" variant="outline" className="w-full justify-between font-normal text-xs h-9 px-2">
-                        {ponto.equipamento_tag || 'TAG do ativo...'}
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-[260px] p-0" align="start">
-                      <Command shouldFilter={false}>
-                        <CommandInput placeholder="Buscar TAG..." value={ponto.tagSearch || ''} onValueChange={(v) => updatePonto(index, 'tagSearch' as any, v as any)} />
-                        <CommandList>
-                          <CommandEmpty>Nenhum equipamento.</CommandEmpty>
-                          <CommandGroup>
-                            {equipamentosAtivos
-                              .filter((eq) => !ponto.tagSearch || eq.tag.toLowerCase().includes((ponto.tagSearch || '').toLowerCase()) || eq.nome.toLowerCase().includes((ponto.tagSearch || '').toLowerCase()))
-                              .slice(0, 30)
-                              .map((eq) => (
-                                <CommandItem key={eq.id} value={eq.tag} onSelect={() => {
-                                  updatePonto(index, 'equipamento_tag', eq.tag);
-                                  updatePonto(index, 'localizacao', eq.localizacao || '');
-                                  updatePonto(index, 'tagComboOpen' as any, false as any);
-                                  updatePonto(index, 'tagSearch' as any, '' as any);
-                                }}>
-                                  <Check className={`mr-2 h-3 w-3 ${ponto.equipamento_tag === eq.tag ? 'opacity-100' : 'opacity-0'}`} />
-                                  <span className="font-mono text-xs">{eq.tag}</span>
-                                  <span className="ml-1 text-muted-foreground text-xs truncate">{eq.nome}</span>
-                                </CommandItem>
-                              ))}
-                          </CommandGroup>
-                        </CommandList>
-                      </Command>
-                    </PopoverContent>
-                  </Popover>
-                  <Input placeholder="Localização" value={ponto.localizacao} onChange={(e) => updatePonto(index, 'localizacao', e.target.value)} />
-                  <Input placeholder="Tempo (min)" type="number" value={ponto.tempo_estimado_min || ''} onChange={(e) => updatePonto(index, 'tempo_estimado_min', Number(e.target.value))} />
-                </div>
-
-                <Input placeholder="Descrição do ponto *" value={ponto.descricao} onChange={(e) => updatePonto(index, 'descricao', e.target.value)} />
-
-                <div className="grid grid-cols-3 gap-2">
-                  <Input placeholder="Lubrificante" value={ponto.lubrificante} onChange={(e) => updatePonto(index, 'lubrificante', e.target.value)} />
                   <Input placeholder="Quantidade" value={ponto.quantidade} onChange={(e) => updatePonto(index, 'quantidade', e.target.value)} />
-                  <Input placeholder="Ferramenta" value={ponto.ferramenta} onChange={(e) => updatePonto(index, 'ferramenta', e.target.value)} />
+                  <Input placeholder="Método / Ferramenta" value={ponto.ferramenta} onChange={(e) => updatePonto(index, 'ferramenta', e.target.value)} />
+                  <Input placeholder="Instruções / Recomendações" value={ponto.instrucoes} onChange={(e) => updatePonto(index, 'instrucoes', e.target.value)} className="md:col-span-2" />
                 </div>
 
-                <Input placeholder="Instruções / Recomendações" value={ponto.instrucoes} onChange={(e) => updatePonto(index, 'instrucoes', e.target.value)} />
-                <Input placeholder="Ref. manual (ex: MAN-001 pg.42)" value={ponto.referencia_manual} onChange={(e) => updatePonto(index, 'referencia_manual', e.target.value)} />
+                {/* R3: Lubrificante herdado do plano */}
+                <div className="flex items-center gap-2 text-xs">
+                  {!ponto.lubOverride ? (
+                    <>
+                      <span className="text-muted-foreground">Lubrificante: <strong>{form.lubrificante || '(não definido no plano)'}</strong> (herdado do plano)</span>
+                      <Button type="button" variant="link" size="sm" className="h-auto p-0 text-xs" onClick={() => updatePonto(index, 'lubOverride' as any, true as any)}>
+                        Lubrificante diferente?
+                      </Button>
+                    </>
+                  ) : (
+                    <div className="flex gap-2 items-center w-full">
+                      <Input placeholder="Lubrificante específico" value={ponto.lubrificante} onChange={(e) => updatePonto(index, 'lubrificante', e.target.value)} className="flex-1" />
+                      <Button type="button" variant="link" size="sm" className="h-auto p-0 text-xs whitespace-nowrap" onClick={() => {
+                        updatePonto(index, 'lubOverride' as any, false as any);
+                        updatePonto(index, 'lubrificante', form.lubrificante || '');
+                      }}>
+                        Usar padrão
+                      </Button>
+                    </div>
+                  )}
+                </div>
+
+                {/* Linha 3 (collapsible): Ref. manual + Local + requer_parada + imagem */}
+                {(ponto.referencia_manual || ponto.expanded || (!form.equipamento_id && ponto.localizacao) || ponto.requer_parada || ponto.imagem_url) && (
+                  <div className="space-y-2">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                      {!form.equipamento_id && <Input placeholder="Localização" value={ponto.localizacao} onChange={(e) => updatePonto(index, 'localizacao', e.target.value)} />}
+                      <Input placeholder="Ref. manual (ex: MAN-001 pg.42)" value={ponto.referencia_manual} onChange={(e) => updatePonto(index, 'referencia_manual', e.target.value)} />
+                    </div>
+                    <div className="flex items-center gap-4">
+                      <div className="flex items-center gap-2">
+                        <Checkbox
+                          id={`parada-${index}`}
+                          checked={ponto.requer_parada}
+                          onCheckedChange={(v) => updatePonto(index, 'requer_parada' as any, !!v as any)}
+                        />
+                        <label htmlFor={`parada-${index}`} className="text-xs flex items-center gap-1 cursor-pointer">
+                          <Lock className="h-3 w-3" /> Requer parada de máquina
+                        </label>
+                      </div>
+                      <div className="flex items-center gap-2 flex-1">
+                        <Camera className="h-3.5 w-3.5 text-muted-foreground" />
+                        <Input placeholder="URL da imagem do ponto" value={ponto.imagem_url} onChange={(e) => updatePonto(index, 'imagem_url', e.target.value)} className="flex-1 text-xs h-7" />
+                      </div>
+                    </div>
+                    {ponto.imagem_url && (
+                      <img src={ponto.imagem_url} alt="Ponto" className="max-h-20 rounded border object-contain" />
+                    )}
+                  </div>
+                )}
+                {!ponto.expanded && !ponto.referencia_manual && (
+                  <Button type="button" variant="link" size="sm" className="h-auto p-0 text-xs text-muted-foreground" onClick={() => updatePonto(index, 'expanded' as any, true as any)}>
+                    <ChevronDown className="h-3 w-3 mr-1" /> Mais campos
+                  </Button>
+                )}
               </div>
             ))}
 
@@ -508,7 +579,7 @@ export function LubrificacaoForm({ open, onOpenChange, equipamentos, initialData
               <div className="bg-muted/40 rounded-lg p-3 flex flex-wrap gap-4 text-xs">
                 <span>Pontos: <strong>{pontos.length}</strong></span>
                 <span>Tempo total: <strong>{formatMinHHMM(pontos.reduce((a, p) => a + (p.tempo_estimado_min || 0), 0))}</strong></span>
-                <span>Lubrificantes distintos: <strong>{new Set(pontos.map((p) => p.lubrificante).filter(Boolean)).size}</strong></span>
+                <span>Lubrificantes distintos: <strong>{new Set(pontos.map((p) => p.lubOverride ? p.lubrificante : form.lubrificante).filter(Boolean)).size}</strong></span>
               </div>
             )}
           </div>

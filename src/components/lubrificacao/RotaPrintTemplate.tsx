@@ -75,14 +75,13 @@ export const RotaPrintTemplate = forwardRef<HTMLDivElement, RotaPrintTemplatePro
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '8px' }}>
             <thead>
               <tr>
-                <th style={thStyle}>Nº</th>
-                <th style={thStyle}>CÓDIGO</th>
+                <th style={thStyle}>ITEM</th>
                 <th style={thStyle}>TAG</th>
                 <th style={{ ...thStyle, minWidth: '30mm' }}>DESCRIÇÃO</th>
                 <th style={thStyle}>LOCALIZAÇÃO</th>
                 <th style={thStyle}>LUBRIFICANTE</th>
                 <th style={thStyle}>QTD</th>
-                <th style={thStyle}>FERRAMENTA</th>
+                <th style={thStyle}>MÉTODO</th>
                 <th style={thStyle}>MIN</th>
                 <th style={{ ...thStyle, width: '8mm', textAlign: 'center' }}>OK</th>
                 <th style={{ ...thStyle, width: '8mm', textAlign: 'center' }}>NOK</th>
@@ -92,7 +91,7 @@ export const RotaPrintTemplate = forwardRef<HTMLDivElement, RotaPrintTemplatePro
             <tbody>
               {pontos.length === 0 ? (
                 <tr>
-                  <td colSpan={12} style={{ ...tdStyle, textAlign: 'center', padding: '8px', color: '#999' }}>
+                  <td colSpan={11} style={{ ...tdStyle, textAlign: 'center', padding: '8px', color: '#999' }}>
                     Nenhum ponto cadastrado nesta rota.
                   </td>
                 </tr>
@@ -100,7 +99,6 @@ export const RotaPrintTemplate = forwardRef<HTMLDivElement, RotaPrintTemplatePro
                 pontos.map((p, i) => (
                   <tr key={p.id}>
                     <td style={{ ...tdStyle, textAlign: 'center', fontWeight: 'bold' }}>{i + 1}</td>
-                    <td style={{ ...tdStyle, fontFamily: 'monospace', fontWeight: 600 }}>{p.codigo_ponto}</td>
                     <td style={tdStyle}>{p.equipamento_tag || '—'}</td>
                     <td style={tdStyle}>{p.descricao}</td>
                     <td style={tdStyle}>{p.localizacao || '—'}</td>
@@ -127,12 +125,15 @@ export const RotaPrintTemplate = forwardRef<HTMLDivElement, RotaPrintTemplatePro
           <>
             <PrintSectionHeader label="INSTRUÇÕES / RECOMENDAÇÕES" />
             <div className="p-2 text-[8px] border-b-2 border-black space-y-1">
-              {pontos.filter((p) => p.instrucoes).map((p, i) => (
-                <p key={p.id}>
-                  <strong>{p.codigo_ponto}:</strong> {p.instrucoes}
-                  {p.referencia_manual && <span className="text-gray-500"> (Ref: {p.referencia_manual})</span>}
-                </p>
-              ))}
+              {pontos.filter((p) => p.instrucoes).map((p, i) => {
+                const itemIdx = pontos.indexOf(p);
+                return (
+                  <p key={p.id}>
+                    <strong>Item {itemIdx + 1}:</strong> {p.instrucoes}
+                    {p.referencia_manual && <span className="text-gray-500"> (Ref: {p.referencia_manual})</span>}
+                  </p>
+                );
+              })}
             </div>
           </>
         )}
