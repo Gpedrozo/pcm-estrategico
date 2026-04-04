@@ -1,4 +1,4 @@
-import { forwardRef } from 'react';
+import { forwardRef, useMemo } from 'react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import type { DadosEmpresa } from '@/hooks/useDadosEmpresa';
@@ -26,6 +26,19 @@ const formatMin = (min: number) => {
   return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
 };
 
+const prioridadeLabel: Record<string, string> = {
+  critica: 'CRÍTICA', alta: 'ALTA', media: 'MÉDIA', baixa: 'BAIXA',
+};
+
+const EPI_ITEMS = [
+  'Óculos de proteção',
+  'Luvas nitrílicas',
+  'Protetor auricular',
+  'Calçado de segurança',
+  'Avental / uniforme',
+  'Máscara respiratória',
+];
+
 export const LubrificacaoPrintTemplate = forwardRef<HTMLDivElement, LubrificacaoPrintTemplateProps>(
   ({ plano, pontos = [], empresa, equipamentoNome }, ref) => {
     const docNum = `LUB-${plano.codigo}`;
@@ -33,13 +46,42 @@ export const LubrificacaoPrintTemplate = forwardRef<HTMLDivElement, Lubrificacao
       ? `${plano.periodicidade} ${plano.tipo_periodicidade || 'dias'}`
       : 'N/A';
 
-    const proximaExec = plano.ultima_execucao
+    const proximaExec = plano.proxima_execucao
+      ? format(new Date(plano.proxima_execucao), 'dd/MM/yyyy', { locale: ptBR })
+      : 'N/A';
+
+    const ultimaExec = plano.ultima_execucao
       ? format(new Date(plano.ultima_execucao), 'dd/MM/yyyy', { locale: ptBR })
       : 'N/A';
 
-    const prioridadeLabel: Record<string, string> = {
-      critica: 'CRÍTICA', alta: 'ALTA', media: 'MÉDIA', baixa: 'BAIXA',
-    };
+    const tempoTotal = pontos.length > 0
+      ? pontos.reduce((sum, p) => sum + (p.tempo_estimado_min || 0), 0)
+      : (plano.tempo_estimado || 0);
+
+    // Consolidated lubricant summary
+    const lubSummary = useMemo(() => {
+      const map = new Map<string, { qty: string[]; count: number }>();
+      pontos.forEach((p) => {
+        const lub = (p.lubrificante || '').trim();
+        if (!lub) return;
+        const entry = map.get(lub) || { qty: [], count: 0 };
+        entry.count++;
+        if (p.quantidade) entry.qty.push(p.quantidade);
+        map.set(lub, entry);
+      });
+      return Array.from(map.entries()).map(([name, data]) => ({
+        name,
+        count: data.count,
+        qty: data.qty.join(', ') || '—',
+      }));
+    }, [pontos]);
+
+    // Pontos that have ferramenta listed
+    const ferramentas = useMemo(() => {
+      const set = new Set<string>();
+      pontos.forEach((p) => { if (p.ferramenta) set.add(p.ferramenta); });
+      return Array.from(set);
+    }, [pontos]);
 
     return (
       <DocumentPrintBase
@@ -48,121 +90,202 @@ export const LubrificacaoPrintTemplate = forwardRef<HTMLDivElement, Lubrificacao
         documentNumber={docNum}
         empresa={empresa}
       >
-        {/* ═══ PLAN INFO ═══ */}
+        {/* ═══ ROW 1: EQUIPAMENTO + TAG + PRIORIDADE + RESPONSÁVEL ═══ */}
         <PrintInfoGrid items={[
           { label: 'EQUIPAMENTO', value: equipamentoNome || 'N/A' },
-          { label: 'PERIODICIDADE', value: periodicidade },
-          { label: 'TEMPO ESTIMADO', value: formatMin(plano.tempo_estimado || 0) },
-          { label: 'ÚLTIMA EXECUÇÃO', value: proximaExec },
+          { label: 'PRIORIDADE', value: prioridadeLabel[plano.prioridade || 'media'] || 'MÉDIA', mono: true },
+          { label: 'RESPONSÁVEL', value: plano.responsavel_nome || '—' },
         ]} />
 
-        {/* ═══ PLAN NAME ═══ */}
+        {/* ═══ ROW 2: LUBRIFICANTE + PERIODICIDADE + TEMPO + DATAS ═══ */}
+        <PrintInfoGrid items={[
+          { label: 'LUBRIFICANTE PRINCIPAL', value: plano.lubrificante || '—' },
+          { label: 'PERIODICIDADE', value: periodicidade },
+          { label: 'TEMPO ESTIMADO', value: formatMin(tempoTotal) },
+          { label: 'PRÓXIMA EXECUÇÃO', value: proximaExec, mono: true },
+        ]} />
+
+        {/* ═══ PLAN NAME + PONTO ═══ */}
         <div className="border-b-2 border-black p-2 text-[9px]">
-          <span className="font-bold text-gray-500 text-[8px]">PLANO: </span>
-          <span className="font-semibold">{plano.nome.toUpperCase()}</span>
-          {plano.responsavel_nome && (
-            <span className="ml-4 text-gray-500">Responsável: {plano.responsavel_nome}</span>
-          )}
-          {plano.prioridade && (
-            <span className="ml-4 text-gray-500">
-              Prioridade: {prioridadeLabel[plano.prioridade] || '—'}
-            </span>
+          <div className="flex justify-between">
+            <div>
+              <span className="font-bold text-gray-500 text-[8px]">PLANO: </span>
+              <span className="font-semibold">{plano.nome.toUpperCase()}</span>
+            </div>
+            <div>
+              <span className="font-bold text-gray-500 text-[8px]">ÚLT. EXECUÇÃO: </span>
+              <span>{ultimaExec}</span>
+            </div>
+          </div>
+          {plano.ponto_lubrificacao && (
+            <div className="mt-0.5">
+              <span className="font-bold text-gray-500 text-[8px]">PONTO DE LUBRIFICAÇÃO: </span>
+              <span>{plano.ponto_lubrificacao}</span>
+            </div>
           )}
         </div>
-
-        {/* ═══ LUBRICATION DETAILS ═══ */}
-        <PrintInfoGrid items={[
-          { label: 'PONTO DE LUBRIFICAÇÃO', value: plano.ponto_lubrificacao || '—' },
-          { label: 'LUBRIFICANTE', value: plano.lubrificante || '—' },
-        ]} />
 
         {/* ═══ DESCRIPTION ═══ */}
         {plano.descricao && (
           <div className="border-b-2 border-black">
-            <PrintSectionHeader label="DESCRIÇÃO" />
-            <div className="p-2 min-h-[10mm] text-[9px]">{plano.descricao}</div>
+            <PrintSectionHeader label="DESCRIÇÃO / ESCOPO DO SERVIÇO" />
+            <div className="p-2 min-h-[10mm] text-[9px] whitespace-pre-wrap">{plano.descricao}</div>
           </div>
         )}
 
-        {/* ═══ CHECKLIST TABLE ═══ */}
+        {/* ═══ EPI / SEGURANÇA ═══ */}
+        <div className="border-b-2 border-black">
+          <PrintSectionHeader label="EPI / REQUISITOS DE SEGURANÇA" />
+          <div className="grid grid-cols-3 p-2 gap-x-4 gap-y-1 text-[9px]">
+            {EPI_ITEMS.map((item) => (
+              <label key={item} className="flex items-center gap-1.5">
+                <span className="inline-block w-3.5 h-3.5 border border-black flex-shrink-0"></span>
+                <span>{item}</span>
+              </label>
+            ))}
+          </div>
+          <div className="px-2 pb-1.5 text-[8px]">
+            <span className="font-bold text-gray-500">Outros: </span>
+            <span className="border-b border-dashed border-gray-400 inline-block w-[120mm]">&nbsp;</span>
+          </div>
+        </div>
+
+        {/* ═══ CONDIÇÃO PRÉ-EXECUÇÃO ═══ */}
+        <div className="border-b-2 border-black">
+          <PrintSectionHeader label="CONDIÇÃO DO EQUIPAMENTO PRÉ-EXECUÇÃO" />
+          <div className="p-2 text-[9px]">
+            <div className="flex gap-6 mb-1">
+              {['Normal', 'Com vibração', 'Superaquecido', 'Vazamento', 'Ruído anormal', 'Outro'].map((cond) => (
+                <label key={cond} className="flex items-center gap-1.5">
+                  <span className="inline-block w-3.5 h-3.5 border border-black flex-shrink-0"></span>
+                  <span>{cond}</span>
+                </label>
+              ))}
+            </div>
+            <div className="mt-1">
+              <span className="font-bold text-gray-500 text-[8px]">Observação: </span>
+              <span className="border-b border-dashed border-gray-400 inline-block w-[140mm]">&nbsp;</span>
+            </div>
+          </div>
+        </div>
+
+        {/* ═══ CHECKLIST TABLE (7 colunas legíveis) ═══ */}
         <div className="border-b-2 border-black">
           <div className="bg-gray-100 p-2 font-bold text-[9px] border-b border-black tracking-wider flex justify-between">
             <span>CHECKLIST DE LUBRIFICAÇÃO</span>
-            {pontos.length > 0 && <span className="font-normal text-gray-500">{pontos.length} pontos</span>}
+            <span>{pontos.length > 0 ? `${pontos.length} pontos • Tempo total: ${formatMin(tempoTotal)}` : ''}</span>
           </div>
 
-          <div className="flex border-b border-black text-[7px] font-bold text-gray-500 uppercase">
-            <div className="w-[7mm] border-r border-black p-1 text-center">#</div>
-            <div className="w-[14mm] border-r border-black p-1">CÓD</div>
-            <div className="w-[14mm] border-r border-black p-1">TAG</div>
+          {/* Header */}
+          <div className="flex border-b border-black text-[8px] font-bold text-gray-600 uppercase bg-gray-50">
+            <div className="w-[7mm] border-r border-black p-1 text-center">Nº</div>
+            <div className="w-[16mm] border-r border-black p-1">CÓDIGO</div>
             <div className="flex-1 p-1 pl-2">DESCRIÇÃO / PONTO</div>
-            <div className="w-[20mm] border-l border-black p-1">LUBRIFICANTE</div>
-            <div className="w-[12mm] border-l border-black p-1 text-center">QTD</div>
-            <div className="w-[14mm] border-l border-black p-1 text-center">FERRAM.</div>
-            <div className="w-[10mm] border-l border-black p-1 text-center">MIN</div>
-            <div className="w-[8mm] border-l border-black p-1 text-center">OK</div>
-            <div className="w-[8mm] border-l border-black p-1 text-center">NOK</div>
-            <div className="w-[20mm] border-l border-black p-1">OBS</div>
+            <div className="w-[24mm] border-l border-black p-1">LUBRIFICANTE</div>
+            <div className="w-[14mm] border-l border-black p-1 text-center">QTD</div>
+            <div className="w-[12mm] border-l border-black p-1 text-center">MIN</div>
+            <div className="w-[10mm] border-l border-black p-1 text-center">✓</div>
           </div>
 
           {pontos.length > 0 ? (
             pontos.map((p, i) => (
-              <div key={p.id} className="flex border-b border-black text-[8px]">
-                <div className="w-[7mm] border-r border-black p-1 text-center font-bold">{i + 1}</div>
-                <div className="w-[14mm] border-r border-black p-1 font-mono font-semibold">{p.codigo_ponto}</div>
-                <div className="w-[14mm] border-r border-black p-1 font-mono text-[7px]">{p.equipamento_tag || '—'}</div>
-                <div className="flex-1 p-1 pl-2 min-h-[5mm]">{p.descricao}</div>
-                <div className="w-[20mm] border-l border-black p-1 text-[7px]">{p.lubrificante || '—'}</div>
-                <div className="w-[12mm] border-l border-black p-1 text-center">{p.quantidade || '—'}</div>
-                <div className="w-[14mm] border-l border-black p-1 text-center text-[7px]">{p.ferramenta || '—'}</div>
-                <div className="w-[10mm] border-l border-black p-1 text-center">{p.tempo_estimado_min}</div>
-                <div className="w-[8mm] border-l border-black p-1 flex items-center justify-center">
-                  <span className="inline-block w-3 h-3 border border-black"></span>
+              <div key={p.id}>
+                {/* Main row */}
+                <div className="flex border-b border-black text-[9px]">
+                  <div className="w-[7mm] border-r border-black p-1 text-center font-black">{i + 1}</div>
+                  <div className="w-[16mm] border-r border-black p-1 font-mono font-semibold">{p.codigo_ponto}</div>
+                  <div className="flex-1 p-1 pl-2 min-h-[6mm]">
+                    <span>{p.descricao}</span>
+                    {/* Sub-info: TAG + Localização inline */}
+                    {(p.equipamento_tag || p.localizacao) && (
+                      <div className="text-[7px] text-gray-500 mt-0.5">
+                        {p.equipamento_tag && <span className="font-mono mr-2">TAG: {p.equipamento_tag}</span>}
+                        {p.localizacao && <span>Local: {p.localizacao}</span>}
+                      </div>
+                    )}
+                  </div>
+                  <div className="w-[24mm] border-l border-black p-1 text-[8px]">{p.lubrificante || '—'}</div>
+                  <div className="w-[14mm] border-l border-black p-1 text-center">{p.quantidade || '—'}</div>
+                  <div className="w-[12mm] border-l border-black p-1 text-center font-mono">{p.tempo_estimado_min}</div>
+                  <div className="w-[10mm] border-l border-black p-1 flex items-center justify-center">
+                    <span className="inline-block w-4 h-4 border border-black"></span>
+                  </div>
                 </div>
-                <div className="w-[8mm] border-l border-black p-1 flex items-center justify-center">
-                  <span className="inline-block w-3 h-3 border border-black"></span>
-                </div>
-                <div className="w-[20mm] border-l border-black p-1"></div>
               </div>
             ))
           ) : (
-            /* Fallback: 8 blank lines for manual filling */
-            Array.from({ length: 8 }).map((_, i) => (
+            /* Fallback: 10 blank lines for manual filling */
+            Array.from({ length: 10 }).map((_, i) => (
               <div key={i} className="flex border-b border-black text-[9px]">
                 <div className="w-[7mm] border-r border-black p-1 text-center text-gray-400">{i + 1}</div>
-                <div className="w-[14mm] border-r border-black p-1"></div>
-                <div className="w-[14mm] border-r border-black p-1"></div>
-                <div className="flex-1 p-1 pl-2 min-h-[6mm]"></div>
-                <div className="w-[20mm] border-l border-black p-1"></div>
-                <div className="w-[12mm] border-l border-black p-1"></div>
+                <div className="w-[16mm] border-r border-black p-1"></div>
+                <div className="flex-1 p-1 pl-2 min-h-[7mm]"></div>
+                <div className="w-[24mm] border-l border-black p-1"></div>
                 <div className="w-[14mm] border-l border-black p-1"></div>
-                <div className="w-[10mm] border-l border-black p-1"></div>
-                <div className="w-[8mm] border-l border-black p-1 flex items-center justify-center">
-                  <span className="inline-block w-3 h-3 border border-black"></span>
+                <div className="w-[12mm] border-l border-black p-1"></div>
+                <div className="w-[10mm] border-l border-black p-1 flex items-center justify-center">
+                  <span className="inline-block w-4 h-4 border border-black"></span>
                 </div>
-                <div className="w-[8mm] border-l border-black p-1 flex items-center justify-center">
-                  <span className="inline-block w-3 h-3 border border-black"></span>
-                </div>
-                <div className="w-[20mm] border-l border-black p-1"></div>
               </div>
             ))
           )}
+
+          {/* Legenda */}
+          <div className="px-2 py-1 text-[7px] text-gray-500 bg-gray-50 border-t border-black flex gap-6">
+            <span>✓ = Conforme / Executado</span>
+            <span>Em branco = Não executado</span>
+            <span>NA = Não aplicável</span>
+          </div>
         </div>
 
         {/* ═══ INSTRUCTIONS FROM PONTOS ═══ */}
         {pontos.some((p) => p.instrucoes) && (
           <div className="border-b-2 border-black">
             <PrintSectionHeader label="INSTRUÇÕES POR PONTO" />
-            <div className="p-2 text-[8px] space-y-0.5">
+            <div className="p-2 text-[9px] space-y-0.5">
               {pontos.filter((p) => p.instrucoes).map((p) => (
-                <p key={p.id}><strong>{p.codigo_ponto}:</strong> {p.instrucoes}</p>
+                <p key={p.id}><strong className="font-mono">{p.codigo_ponto}:</strong> {p.instrucoes}</p>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* ═══ RESUMO DE LUBRIFICANTES ═══ */}
+        {lubSummary.length > 0 && (
+          <div className="border-b-2 border-black">
+            <PrintSectionHeader label="RESUMO DE LUBRIFICANTES" />
+            <div className="flex border-b border-black text-[8px] font-bold text-gray-600 bg-gray-50">
+              <div className="flex-1 p-1.5 pl-2">LUBRIFICANTE</div>
+              <div className="w-[20mm] border-l border-black p-1.5 text-center">PONTOS</div>
+              <div className="w-[30mm] border-l border-black p-1.5 text-center">QTD. TOTAL</div>
+            </div>
+            {lubSummary.map((item, i) => (
+              <div key={i} className="flex border-b border-black text-[9px]">
+                <div className="flex-1 p-1.5 pl-2 font-semibold">{item.name}</div>
+                <div className="w-[20mm] border-l border-black p-1.5 text-center">{item.count}</div>
+                <div className="w-[30mm] border-l border-black p-1.5 text-center">{item.qty}</div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* ═══ FERRAMENTAS NECESSÁRIAS ═══ */}
+        {ferramentas.length > 0 && (
+          <div className="border-b-2 border-black">
+            <PrintSectionHeader label="FERRAMENTAS NECESSÁRIAS" />
+            <div className="p-2 text-[9px]">
+              {ferramentas.map((f, i) => (
+                <span key={i} className="inline-block mr-4">
+                  <span className="inline-block w-3.5 h-3.5 border border-black mr-1 align-middle"></span>
+                  {f}
+                </span>
               ))}
             </div>
           </div>
         )}
 
         {/* ═══ EXECUTOR ═══ */}
-        <PrintExecutorBlock count={2} label="EXECUTOR" />
+        <PrintExecutorBlock count={2} label="LUBRIFICADOR" />
 
         {/* ═══ TIME ═══ */}
         <PrintTimeRow />

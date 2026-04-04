@@ -11,9 +11,24 @@ import type { PlanoLubrificacao, PlanoLubrificacaoInsert, RotaPontoInsert } from
 import type { EquipamentoRow } from '@/hooks/useEquipamentos';
 import { usePontosPlano, useSavePontosPlano } from '@/hooks/usePontosPlano';
 import { useNextDocumentNumber } from '@/hooks/useDocumentEngine';
-import { Hash, Loader2, Plus, Trash2, ArrowUp, ArrowDown, GripVertical, Check } from 'lucide-react';
+import { Hash, Loader2, Plus, Trash2, ArrowUp, ArrowDown, GripVertical, Check, Copy } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useFormDraft } from '@/hooks/useFormDraft';
+
+function FormSection({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <fieldset className="border border-border rounded-lg p-4 space-y-4">
+      <legend className="px-2 text-sm font-semibold text-primary tracking-wide uppercase">{title}</legend>
+      {children}
+    </fieldset>
+  );
+}
+
+const formatMinHHMM = (min: number) => {
+  const h = Math.floor(min / 60);
+  const m = min % 60;
+  return `${h.toString().padStart(2, '0')}h${m.toString().padStart(2, '0')}min`;
+};
 
 interface PontoForm {
   key: string;
@@ -254,136 +269,145 @@ export function LubrificacaoForm({ open, onOpenChange, equipamentos, initialData
           <DialogTitle>{initialData ? 'Editar Plano de Lubrificação' : 'Novo Plano de Lubrificação'}</DialogTitle>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="space-y-2">
-              <Label>Código *</Label>
-              <div className="flex gap-2">
-                <Input
-                  value={form.codigo || ''}
-                  onChange={(e) => setField('codigo', e.target.value.toUpperCase())}
-                  placeholder="LB-000001"
-                  required
-                />
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="icon"
-                  onClick={() => nextNumber.mutate('LUBRIFICACAO', { onSuccess: (codigo) => setField('codigo', codigo) })}
-                  disabled={nextNumber.isPending}
-                  title="Gerar próximo código"
-                >
-                  {nextNumber.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Hash className="h-4 w-4" />}
-                </Button>
+        <form onSubmit={handleSubmit} className="space-y-5">
+          {/* ═══ SEÇÃO 1: IDENTIFICAÇÃO ═══ */}
+          <FormSection title="Identificação">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="space-y-2">
+                <Label>Código *</Label>
+                <div className="flex gap-2">
+                  <Input
+                    value={form.codigo || ''}
+                    onChange={(e) => setField('codigo', e.target.value.toUpperCase())}
+                    placeholder="LB-000001"
+                    required
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    onClick={() => nextNumber.mutate('LUBRIFICACAO', { onSuccess: (codigo) => setField('codigo', codigo) })}
+                    disabled={nextNumber.isPending}
+                    title="Gerar próximo código"
+                  >
+                    {nextNumber.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Hash className="h-4 w-4" />}
+                  </Button>
+                </div>
+              </div>
+              <div className="space-y-2 md:col-span-2">
+                <Label>Descrição do Plano *</Label>
+                <Input value={form.nome || ''} onChange={(e) => setField('nome', e.target.value)} required />
               </div>
             </div>
-            <div className="space-y-2 md:col-span-2">
-              <Label>Descrição do Plano *</Label>
-              <Input value={form.nome || ''} onChange={(e) => setField('nome', e.target.value)} required />
-            </div>
-          </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label>Equipamento</Label>
-              <Select
-                value={form.equipamento_id || 'none'}
-                onValueChange={(value) => {
-                  if (value === 'none') {
-                    setForm((prev) => ({ ...prev, equipamento_id: null }));
-                    return;
-                  }
-                  setForm((prev) => ({ ...prev, equipamento_id: value }));
-                }}
-              >
-                <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">Não informado</SelectItem>
-                  {equipamentos.filter((item) => item.ativo).map((item) => (
-                    <SelectItem key={item.id} value={item.id}>{item.tag} - {item.nome}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Equipamento</Label>
+                <Select
+                  value={form.equipamento_id || 'none'}
+                  onValueChange={(value) => {
+                    if (value === 'none') {
+                      setForm((prev) => ({ ...prev, equipamento_id: null }));
+                      return;
+                    }
+                    setForm((prev) => ({ ...prev, equipamento_id: value }));
+                  }}
+                >
+                  <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">Não informado</SelectItem>
+                    {equipamentos.filter((item) => item.ativo).map((item) => (
+                      <SelectItem key={item.id} value={item.id}>{item.tag} - {item.nome}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Ponto de Lubrificação (opcional)</Label>
+                <Input value={form.ponto_lubrificacao || ''} onChange={(e) => setField('ponto_lubrificacao', e.target.value)} placeholder="Ex: Mancal lado acoplamento" />
+              </div>
             </div>
-            <div className="space-y-2">
-              <Label>Ponto de Lubrificação (opcional)</Label>
-              <Input value={form.ponto_lubrificacao || ''} onChange={(e) => setField('ponto_lubrificacao', e.target.value)} placeholder="Ex: Mancal lado acoplamento" />
-            </div>
-          </div>
+          </FormSection>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="space-y-2">
-              <Label>Lubrificante (opcional)</Label>
-              <Input value={form.lubrificante || ''} onChange={(e) => setField('lubrificante', e.target.value)} />
+          {/* ═══ SEÇÃO 2: LUBRIFICAÇÃO ═══ */}
+          <FormSection title="Lubrificação">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="space-y-2">
+                <Label>Lubrificante (opcional)</Label>
+                <Input value={form.lubrificante || ''} onChange={(e) => setField('lubrificante', e.target.value)} />
+              </div>
+              <div className="space-y-2">
+                <Label>Responsável</Label>
+                <Input value={form.responsavel_nome || ''} onChange={(e) => setField('responsavel_nome', e.target.value)} />
+              </div>
+              <div className="space-y-2">
+                <Label>Prioridade</Label>
+                <Select value={form.prioridade || 'media'} onValueChange={(value: 'baixa' | 'media' | 'alta' | 'critica') => setField('prioridade', value)}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="baixa">Baixa</SelectItem>
+                    <SelectItem value="media">Média</SelectItem>
+                    <SelectItem value="alta">Alta</SelectItem>
+                    <SelectItem value="critica">Crítica</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
-            <div className="space-y-2">
-              <Label>Responsável</Label>
-              <Input value={form.responsavel_nome || ''} onChange={(e) => setField('responsavel_nome', e.target.value)} />
-            </div>
-          </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <div className="space-y-2">
-              <Label>Periodicidade</Label>
-              <Input type="number" value={form.periodicidade ?? 0} onChange={(e) => setField('periodicidade', Number(e.target.value) || 0)} />
+              <Label>Descrição</Label>
+              <Textarea value={form.descricao || ''} onChange={(e) => setField('descricao', e.target.value)} rows={3} />
             </div>
-            <div className="space-y-2">
-              <Label>Tipo</Label>
-              <Select value={form.tipo_periodicidade || 'dias'} onValueChange={(value: 'dias' | 'semanas' | 'meses' | 'horas') => setField('tipo_periodicidade', value)}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="dias">Dias</SelectItem>
-                  <SelectItem value="semanas">Semanas</SelectItem>
-                  <SelectItem value="meses">Meses</SelectItem>
-                  <SelectItem value="horas">Horas</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label>Tempo Estimado (min)</Label>
-              <Input type="number" value={form.tempo_estimado ?? 0} onChange={(e) => setField('tempo_estimado', Number(e.target.value) || 0)} />
-            </div>
-            <div className="space-y-2">
-              <Label>Prioridade</Label>
-              <Select value={form.prioridade || 'media'} onValueChange={(value: 'baixa' | 'media' | 'alta' | 'critica') => setField('prioridade', value)}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="baixa">Baixa</SelectItem>
-                  <SelectItem value="media">Média</SelectItem>
-                  <SelectItem value="alta">Alta</SelectItem>
-                  <SelectItem value="critica">Crítica</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
+          </FormSection>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="space-y-2">
-              <Label>Última Execução</Label>
-              <Input type="datetime-local" value={(form.ultima_execucao || '').slice(0, 16)} onChange={(e) => setField('ultima_execucao', new Date(e.target.value).toISOString())} />
+          {/* ═══ SEÇÃO 3: PROGRAMAÇÃO ═══ */}
+          <FormSection title="Programação">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <div className="space-y-2">
+                <Label>Periodicidade</Label>
+                <Input type="number" value={form.periodicidade ?? 0} onChange={(e) => setField('periodicidade', Number(e.target.value) || 0)} />
+              </div>
+              <div className="space-y-2">
+                <Label>Tipo</Label>
+                <Select value={form.tipo_periodicidade || 'dias'} onValueChange={(value: 'dias' | 'semanas' | 'meses' | 'horas') => setField('tipo_periodicidade', value)}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="dias">Dias</SelectItem>
+                    <SelectItem value="semanas">Semanas</SelectItem>
+                    <SelectItem value="meses">Meses</SelectItem>
+                    <SelectItem value="horas">Horas</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Tempo Estimado (min)</Label>
+                <Input type="number" value={form.tempo_estimado ?? 0} onChange={(e) => setField('tempo_estimado', Number(e.target.value) || 0)} />
+              </div>
+              <div className="space-y-2">
+                <Label>Status</Label>
+                <Select value={form.status || 'programado'} onValueChange={(value) => setField('status', value)}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="programado">Programado</SelectItem>
+                    <SelectItem value="executado">Executado</SelectItem>
+                    <SelectItem value="vencido">Vencido</SelectItem>
+                    <SelectItem value="inativo">Inativo</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
-            <div className="space-y-2">
-              <Label>Próxima Execução (automático)</Label>
-              <Input value={new Date(form.proxima_execucao || '').toLocaleString('pt-BR')} disabled />
-            </div>
-            <div className="space-y-2">
-              <Label>Status</Label>
-              <Select value={form.status || 'programado'} onValueChange={(value) => setField('status', value)}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="programado">Programado</SelectItem>
-                  <SelectItem value="executado">Executado</SelectItem>
-                  <SelectItem value="vencido">Vencido</SelectItem>
-                  <SelectItem value="inativo">Inativo</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
 
-          <div className="space-y-2">
-            <Label>Descrição</Label>
-            <Textarea value={form.descricao || ''} onChange={(e) => setField('descricao', e.target.value)} rows={3} />
-          </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Última Execução</Label>
+                <Input type="datetime-local" value={(form.ultima_execucao || '').slice(0, 16)} onChange={(e) => setField('ultima_execucao', new Date(e.target.value).toISOString())} />
+              </div>
+              <div className="space-y-2">
+                <Label>Próxima Execução (automático)</Label>
+                <Input value={new Date(form.proxima_execucao || '').toLocaleString('pt-BR')} disabled />
+              </div>
+            </div>
+          </FormSection>
 
           {/* ═══ PONTOS DA ROTA ═══ */}
           <div className="border-t pt-4 space-y-3">
@@ -414,6 +438,13 @@ export function LubrificacaoForm({ open, onOpenChange, equipamentos, initialData
                     </Button>
                     <Button type="button" size="icon" variant="ghost" className="h-6 w-6" onClick={() => movePonto(index, 1)} disabled={index === pontos.length - 1}>
                       <ArrowDown className="h-3 w-3" />
+                    </Button>
+              <Button type="button" size="icon" variant="ghost" className="h-6 w-6" onClick={() => {
+                      const src = pontos[index];
+                      const dup: PontoForm = { ...src, key: `${Date.now()}-${Math.random()}`, codigo_ponto: '' };
+                      setPontos((prev) => [...prev.slice(0, index + 1), dup, ...prev.slice(index + 1)]);
+                    }} title="Duplicar ponto">
+                      <Copy className="h-3 w-3" />
                     </Button>
                     <Button type="button" size="icon" variant="ghost" className="h-6 w-6 text-destructive" onClick={() => setPontos((prev) => prev.filter((_, i) => i !== index))}>
                       <Trash2 className="h-3 w-3" />
@@ -474,7 +505,11 @@ export function LubrificacaoForm({ open, onOpenChange, equipamentos, initialData
             ))}
 
             {pontos.length > 0 && (
-              <p className="text-xs text-muted-foreground">Tempo total estimado: <strong>{pontos.reduce((a, p) => a + (p.tempo_estimado_min || 0), 0)} min</strong></p>
+              <div className="bg-muted/40 rounded-lg p-3 flex flex-wrap gap-4 text-xs">
+                <span>Pontos: <strong>{pontos.length}</strong></span>
+                <span>Tempo total: <strong>{formatMinHHMM(pontos.reduce((a, p) => a + (p.tempo_estimado_min || 0), 0))}</strong></span>
+                <span>Lubrificantes distintos: <strong>{new Set(pontos.map((p) => p.lubrificante).filter(Boolean)).size}</strong></span>
+              </div>
             )}
           </div>
 
