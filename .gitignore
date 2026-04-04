@@ -31,3 +31,13 @@ supabase/.temp/
 !.env.example
 !.env.*.example
 .env*.local
+
+# Temp scripts and debug artifacts
+_*.mjs
+.tmp_*
+backup_*.sql
+supabase-push-output.txt
+deploy_migration.js
+deploy_dispositivos_fix.*
+list_tables.mjs
+verify_creation.mjs

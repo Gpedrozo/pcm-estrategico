@@ -1,1 +1,0 @@
-{"query":"SELECT u.id as user_id, u.email, count(i.*) as identities_count, string_agg(i.provider, ',' ORDER BY i.provider) as providers FROM auth.users u LEFT JOIN auth.identities i ON i.user_id = u.id WHERE u.email = 'pedrozo@gppis.com.br' GROUP BY u.id, u.email"}
