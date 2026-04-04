@@ -1,5 +1,6 @@
 // ============================================================
-// OSDetailScreen — Full OS info, execution history, action button
+// OSDetailScreen — Centro de comando da OS
+// Botões: INICIAR / FINALIZAR / APONTAMENTO / PARADA / MATERIAL
 // ============================================================
 
 import React, { useState, useEffect, useCallback } from 'react';
@@ -10,25 +11,71 @@ import {
   TouchableOpacity,
   StyleSheet,
   RefreshControl,
+  Alert,
 } from 'react-native';
 import { useRoute, useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp, NativeStackScreenProps } from '@react-navigation/native-stack';
-import { getOrdemServicoById, getExecucoesByOS } from '../lib/database';
+import uuid from 'react-native-uuid';
+import { useAuth } from '../contexts/AuthContext';
+import {
+  getOrdemServicoById,
+  getExecucoesByOS,
+  getExecucaoEmAndamento,
+  upsertExecucao,
+  upsertOrdemServico,
+  addToSyncQueue,
+} from '../lib/database';
 import LoadingScreen from '../components/LoadingScreen';
-import { COLORS, SIZES, prioridadeColor, statusLabel, statusColor } from '../theme';
+import { COLORS, SIZES } from '../theme';
 import type { OrdemServico, ExecucaoOS, RootStackParamList } from '../types';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'OSDetail'>;
 
+const PRIORIDADE_COLORS: Record<string, string> = {
+  emergencial: '#B71C1C',
+  alta: '#D32F2F',
+  media: '#F57C00',
+  baixa: '#2E7D32',
+};
+
+const STATUS_LABELS: Record<string, string> = {
+  aberta: 'ABERTA',
+  solicitada: 'SOLICITADA',
+  emitida: 'EMITIDA',
+  em_andamento: 'EM ANDAMENTO',
+  em_execucao: 'EXECUTANDO',
+  programada: 'PROGRAMADA',
+  concluida: 'CONCLUÍDA',
+  cancelada: 'CANCELADA',
+  pausada: 'PAUSADA',
+  aguardando_materiais: 'AGUARD. MATERIAL',
+};
+
+const STATUS_COLORS: Record<string, string> = {
+  aberta: '#D32F2F',
+  solicitada: '#F57C00',
+  emitida: '#F57C00',
+  em_andamento: '#1565C0',
+  em_execucao: '#1565C0',
+  programada: '#F57C00',
+  concluida: '#2E7D32',
+  cancelada: '#757575',
+  pausada: '#F57C00',
+  aguardando_materiais: '#F57C00',
+};
+
 export default function OSDetailScreen() {
   const route = useRoute<Props['route']>();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+  const { empresaId, mecanicoId, mecanicoNome } = useAuth();
   const { osId } = route.params;
 
   const [os, setOS] = useState<OrdemServico | null>(null);
   const [execucoes, setExecucoes] = useState<ExecucaoOS[]>([]);
+  const [minhaExecAberta, setMinhaExecAberta] = useState<ExecucaoOS | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [actionLoading, setActionLoading] = useState(false);
 
   const load = useCallback(async () => {
     try {
@@ -38,15 +85,20 @@ export default function OSDetailScreen() {
       ]);
       setOS(osData);
       setExecucoes(execData);
+
+      // Verificar se EU tenho atividade em andamento nesta OS
+      if (mecanicoId) {
+        const emAndamento = execData.find(
+          (e: any) => e.mecanico_id === mecanicoId && e.hora_inicio && !e.hora_fim
+        );
+        setMinhaExecAberta(emAndamento || null);
+      }
     } finally {
       setLoading(false);
     }
-  }, [osId]);
+  }, [osId, mecanicoId]);
 
-  useEffect(() => {
-    load();
-  }, [load]);
-
+  useEffect(() => { load(); }, [load]);
   useEffect(() => {
     const unsub = navigation.addListener('focus', load);
     return unsub;
@@ -58,6 +110,88 @@ export default function OSDetailScreen() {
     setRefreshing(false);
   };
 
+  // ── INICIAR ATIVIDADE ──
+  const handleIniciar = async () => {
+    if (!empresaId || !mecanicoId) return;
+
+    // Verificar se já tem atividade aberta em qualquer OS
+    const emAndamento = await getExecucaoEmAndamento(mecanicoId);
+    if (emAndamento && emAndamento.os_id !== osId) {
+      Alert.alert(
+        'Atividade em andamento',
+        'Você já tem uma atividade aberta em outra OS. Deseja finalizar a anterior?',
+        [
+          { text: 'Cancelar', style: 'cancel' },
+          { text: 'Finalizar anterior', onPress: () => navigation.navigate('Execution', { osId: emAndamento.os_id, execucaoId: emAndamento.id, mode: 'auto' }) },
+        ]
+      );
+      return;
+    }
+
+    setActionLoading(true);
+    try {
+      const execId = uuid.v4() as string;
+      const now = new Date().toISOString();
+
+      const execucao = {
+        id: execId,
+        empresa_id: empresaId,
+        os_id: osId,
+        mecanico_id: mecanicoId,
+        mecanico_nome: mecanicoNome,
+        hora_inicio: now,
+        hora_fim: null,
+        tempo_execucao: null,
+        servico_executado: null,
+        causa: null,
+        observacoes: null,
+        data_execucao: now,
+        custo_mao_obra: null,
+        custo_materiais: null,
+        custo_total: null,
+        created_at: now,
+        sync_status: 'pending',
+      };
+
+      await upsertExecucao(execucao);
+
+      // Atualizar status da OS para em_andamento
+      if (os && ['aberta', 'solicitada', 'emitida'].includes(os.status)) {
+        const updated = { ...os, status: 'em_andamento', updated_at: now };
+        await upsertOrdemServico(updated);
+        await addToSyncQueue({
+          id: uuid.v4() as string,
+          table_name: 'ordens_servico',
+          record_id: osId,
+          operation: 'UPDATE',
+          payload: { id: osId, status: 'em_andamento', updated_at: now },
+        });
+      }
+
+      await addToSyncQueue({
+        id: uuid.v4() as string,
+        table_name: 'execucoes_os',
+        record_id: execId,
+        operation: 'INSERT',
+        payload: execucao,
+      });
+
+      Alert.alert('✅ Atividade iniciada!', `Início registrado às ${formatTime(now)}`);
+      await load();
+    } catch (err: any) {
+      Alert.alert('Erro', err?.message || 'Erro ao iniciar atividade');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  // ── FINALIZAR ATIVIDADE → abre ExecutionScreen em modo auto ──
+  const handleFinalizar = () => {
+    if (minhaExecAberta) {
+      navigation.navigate('Execution', { osId, execucaoId: minhaExecAberta.id, mode: 'auto' });
+    }
+  };
+
   if (loading) return <LoadingScreen message="Carregando OS..." />;
   if (!os) {
     return (
@@ -67,10 +201,10 @@ export default function OSDetailScreen() {
     );
   }
 
-  const canExecute = os.status === 'aberta' || os.status === 'em_andamento';
-  const prColor = prioridadeColor(os.prioridade);
-  const stColor = statusColor(os.status);
-  const stLabel = statusLabel(os.status);
+  const prColor = PRIORIDADE_COLORS[os.prioridade] || COLORS.textSecondary;
+  const stColor = STATUS_COLORS[os.status] || COLORS.textSecondary;
+  const stLabel = STATUS_LABELS[os.status] || os.status?.toUpperCase();
+  const canAct = ['aberta', 'solicitada', 'emitida', 'em_andamento', 'em_execucao'].includes(os.status);
 
   return (
     <View style={styles.container}>
@@ -86,78 +220,118 @@ export default function OSDetailScreen() {
               <Text style={styles.statusBadgeText}>{stLabel}</Text>
             </View>
           </View>
-          <Text style={styles.tipo}>{os.tipo?.toUpperCase()}</Text>
+          <Text style={styles.tipo}>{os.tipo?.toUpperCase()} — {os.prioridade?.toUpperCase()}</Text>
+          {os.equipamento && <Text style={styles.equipamento}>🏭 {os.equipamento}</Text>}
         </View>
 
-        {/* Info card */}
+        {/* Problema */}
+        {os.problema && (
+          <View style={styles.card}>
+            <Text style={styles.sectionTitle}>📝 Problema</Text>
+            <Text style={styles.problemText}>{os.problema}</Text>
+          </View>
+        )}
+
+        {/* ── BOTÕES DE AÇÃO ── */}
+        {canAct && (
+          <View style={styles.actionsCard}>
+            {!minhaExecAberta ? (
+              <TouchableOpacity
+                style={[styles.bigButton, { backgroundColor: COLORS.success }]}
+                onPress={handleIniciar}
+                disabled={actionLoading}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.bigButtonText}>
+                  {actionLoading ? '⏳ Aguarde...' : '▶️  INICIAR ATIVIDADE'}
+                </Text>
+              </TouchableOpacity>
+            ) : (
+              <TouchableOpacity
+                style={[styles.bigButton, { backgroundColor: COLORS.critical }]}
+                onPress={handleFinalizar}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.bigButtonText}>✅  FINALIZAR ATIVIDADE</Text>
+                <Text style={styles.bigButtonSub}>
+                  Iniciado às {formatTime(minhaExecAberta.hora_inicio)}
+                </Text>
+              </TouchableOpacity>
+            )}
+
+            <View style={styles.actionRow}>
+              <TouchableOpacity
+                style={styles.actionButton}
+                onPress={() => navigation.navigate('Execution', { osId, mode: 'manual' })}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.actionIcon}>➕</Text>
+                <Text style={styles.actionLabel}>APONTAR{'\n'}MANUAL</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.actionButton}
+                onPress={() => navigation.navigate('Parada', { osId, equipamentoNome: os.equipamento })}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.actionIcon}>⛔</Text>
+                <Text style={styles.actionLabel}>REGISTRAR{'\n'}PARADA</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.actionButton}
+                onPress={() => navigation.navigate('RequisicaoMaterial', { osId })}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.actionIcon}>🔩</Text>
+                <Text style={styles.actionLabel}>SOLICITAR{'\n'}MATERIAL</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        )}
+
+        {/* Info */}
         <View style={styles.card}>
-          <InfoRow label="Equipamento" value={os.equipamento || '—'} />
-          <InfoRow label="Prioridade" value={os.prioridade?.toUpperCase()} color={prColor} />
           <InfoRow label="Solicitante" value={os.solicitante || '—'} />
           <InfoRow label="Data Solicitação" value={formatDate(os.data_solicitacao)} />
-          {os.data_fechamento && <InfoRow label="Data Fechamento" value={formatDate(os.data_fechamento)} />}
           {os.tempo_estimado != null && <InfoRow label="Tempo Estimado" value={`${os.tempo_estimado} min`} />}
         </View>
 
-        {/* Problem */}
-        <View style={styles.card}>
-          <Text style={styles.sectionTitle}>Problema / Descrição</Text>
-          <Text style={styles.problemText}>{os.problema || 'Nenhuma descrição informada.'}</Text>
-        </View>
-
-        {/* Execution history */}
+        {/* Apontamentos anteriores */}
         <View style={styles.card}>
           <Text style={styles.sectionTitle}>
-            Execuções ({execucoes.length})
+            📋 Apontamentos ({execucoes.length})
           </Text>
           {execucoes.length === 0 ? (
-            <Text style={styles.emptyExec}>Nenhuma execução registrada.</Text>
+            <Text style={styles.emptyExec}>Nenhum apontamento registrado.</Text>
           ) : (
             execucoes.map((ex) => (
               <View key={ex.id} style={styles.execRow}>
                 <View style={styles.execHeader}>
-                  <Text style={styles.execMecanico}>{ex.mecanico_nome || 'Mecânico'}</Text>
-                  <Text style={styles.execDate}>{formatDate(ex.data_execucao)}</Text>
-                </View>
-                <Text style={styles.execServico} numberOfLines={2}>
-                  {ex.servico_executado || '—'}
-                </Text>
-                {(ex.hora_inicio || ex.hora_fim) && (
+                  <Text style={styles.execMecanico}>👤 {ex.mecanico_nome || 'Mecânico'}</Text>
                   <Text style={styles.execTime}>
-                    {formatTime(ex.hora_inicio)} → {formatTime(ex.hora_fim)}
-                    {ex.tempo_execucao ? `  (${ex.tempo_execucao} min)` : ''}
+                    {formatTime(ex.hora_inicio)} → {ex.hora_fim ? formatTime(ex.hora_fim) : '⏳'}
                   </Text>
+                </View>
+                {ex.servico_executado && (
+                  <Text style={styles.execServico} numberOfLines={2}>{ex.servico_executado}</Text>
                 )}
               </View>
             ))
           )}
         </View>
       </ScrollView>
-
-      {/* Action button */}
-      {canExecute && (
-        <View style={styles.actionBar}>
-          <TouchableOpacity
-            style={styles.executeButton}
-            onPress={() => navigation.navigate('Execution', { osId: os.id })}
-            activeOpacity={0.7}
-          >
-            <Text style={styles.executeButtonIcon}>🔧</Text>
-            <Text style={styles.executeButtonText}>EXECUTAR SERVIÇO</Text>
-          </TouchableOpacity>
-        </View>
-      )}
     </View>
   );
 }
 
 // ─── Helpers ───
 
-function InfoRow({ label, value, color }: { label: string; value: string; color?: string }) {
+function InfoRow({ label, value }: { label: string; value: string }) {
   return (
     <View style={styles.infoRow}>
       <Text style={styles.infoLabel}>{label}</Text>
-      <Text style={[styles.infoValue, color ? { color } : null]}>{value}</Text>
+      <Text style={styles.infoValue}>{value}</Text>
     </View>
   );
 }
@@ -167,9 +341,7 @@ function formatDate(iso?: string | null): string {
   try {
     const d = new Date(iso);
     return `${d.getDate().toString().padStart(2, '0')}/${(d.getMonth() + 1).toString().padStart(2, '0')}/${d.getFullYear()}`;
-  } catch {
-    return iso;
-  }
+  } catch { return String(iso); }
 }
 
 function formatTime(iso?: string | null): string {
@@ -177,30 +349,14 @@ function formatTime(iso?: string | null): string {
   try {
     const d = new Date(iso);
     return `${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}`;
-  } catch {
-    return iso;
-  }
+  } catch { return String(iso); }
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: COLORS.background,
-  },
-  centered: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: COLORS.background,
-  },
-  errorText: {
-    fontSize: SIZES.fontLG,
-    color: COLORS.textSecondary,
-  },
-  scrollContent: {
-    padding: SIZES.paddingMD,
-    paddingBottom: 120,
-  },
+  container: { flex: 1, backgroundColor: COLORS.background },
+  centered: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: COLORS.background },
+  errorText: { fontSize: SIZES.fontLG, color: COLORS.textSecondary },
+  scrollContent: { padding: SIZES.paddingMD, paddingBottom: 40 },
   card: {
     backgroundColor: COLORS.surface,
     borderRadius: SIZES.radiusMD,
@@ -209,124 +365,51 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: COLORS.border,
   },
-  headerRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 4,
-  },
-  osNumber: {
-    fontSize: SIZES.fontXL,
-    fontWeight: '800',
-    color: COLORS.textPrimary,
-  },
-  statusBadge: {
-    paddingHorizontal: 12,
-    paddingVertical: 4,
-    borderRadius: 20,
-  },
-  statusBadgeText: {
-    color: '#FFF',
-    fontSize: 13,
-    fontWeight: '700',
-  },
-  tipo: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: COLORS.textSecondary,
-  },
-  sectionTitle: {
-    fontSize: SIZES.fontMD,
-    fontWeight: '700',
-    color: COLORS.textPrimary,
-    marginBottom: 10,
-  },
-  infoRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingVertical: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.divider,
-  },
-  infoLabel: {
-    fontSize: SIZES.fontSM,
-    color: COLORS.textSecondary,
-    fontWeight: '500',
-  },
-  infoValue: {
-    fontSize: SIZES.fontSM,
-    color: COLORS.textPrimary,
-    fontWeight: '600',
-    maxWidth: '55%',
-    textAlign: 'right',
-  },
-  problemText: {
-    fontSize: SIZES.fontSM,
-    color: COLORS.textPrimary,
-    lineHeight: 22,
-  },
-  emptyExec: {
-    fontSize: SIZES.fontSM,
-    color: COLORS.textHint,
-    fontStyle: 'italic',
-    textAlign: 'center',
-    paddingVertical: 16,
-  },
-  execRow: {
-    paddingVertical: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.divider,
-  },
-  execHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 4,
-  },
-  execMecanico: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: COLORS.textPrimary,
-  },
-  execDate: {
-    fontSize: 13,
-    color: COLORS.textSecondary,
-  },
-  execServico: {
-    fontSize: 13,
-    color: COLORS.textPrimary,
-    lineHeight: 20,
-  },
-  execTime: {
-    fontSize: 12,
-    color: COLORS.textHint,
-    marginTop: 4,
-  },
-  actionBar: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    padding: SIZES.paddingMD,
-    paddingBottom: 32,
-    backgroundColor: COLORS.background,
-    borderTopWidth: 1,
-    borderTopColor: COLORS.divider,
-  },
-  executeButton: {
-    height: SIZES.buttonXL,
+  headerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 },
+  osNumber: { fontSize: SIZES.fontXL, fontWeight: '800', color: COLORS.textPrimary },
+  statusBadge: { paddingHorizontal: 12, paddingVertical: 4, borderRadius: 20 },
+  statusBadgeText: { color: '#FFF', fontSize: 13, fontWeight: '700' },
+  tipo: { fontSize: 13, fontWeight: '600', color: COLORS.textSecondary },
+  equipamento: { fontSize: SIZES.fontMD, fontWeight: '600', color: COLORS.textPrimary, marginTop: 8 },
+  sectionTitle: { fontSize: SIZES.fontMD, fontWeight: '700', color: COLORS.textPrimary, marginBottom: 10 },
+  problemText: { fontSize: SIZES.fontSM, color: COLORS.textPrimary, lineHeight: 22 },
+  actionsCard: {
+    backgroundColor: COLORS.surface,
     borderRadius: SIZES.radiusMD,
-    backgroundColor: COLORS.success,
+    padding: SIZES.paddingMD,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+  },
+  bigButton: {
+    height: SIZES.buttonHeightLG,
+    borderRadius: SIZES.radiusLG,
     justifyContent: 'center',
     alignItems: 'center',
-    flexDirection: 'row',
-    gap: 10,
+    elevation: 3,
   },
-  executeButtonIcon: {
-    fontSize: 26,
+  bigButtonText: { fontSize: SIZES.fontLG, fontWeight: '800', color: '#FFF' },
+  bigButtonSub: { fontSize: 13, color: 'rgba(255,255,255,0.8)', marginTop: 2 },
+  actionRow: { flexDirection: 'row', gap: 10, marginTop: 12 },
+  actionButton: {
+    flex: 1,
+    height: 80,
+    backgroundColor: COLORS.background,
+    borderRadius: SIZES.radiusMD,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1.5,
+    borderColor: COLORS.border,
   },
-  executeButtonText: {
-    fontSize: SIZES.fontLG,
-    fontWeight: '800',
-    color: '#FFF',
-  },
+  actionIcon: { fontSize: 26, marginBottom: 4 },
+  actionLabel: { fontSize: 11, fontWeight: '700', color: COLORS.textSecondary, textAlign: 'center' },
+  infoRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: COLORS.divider },
+  infoLabel: { fontSize: SIZES.fontSM, color: COLORS.textSecondary, fontWeight: '500' },
+  infoValue: { fontSize: SIZES.fontSM, color: COLORS.textPrimary, fontWeight: '600', maxWidth: '55%', textAlign: 'right' },
+  emptyExec: { fontSize: SIZES.fontSM, color: COLORS.textHint, fontStyle: 'italic', textAlign: 'center', paddingVertical: 16 },
+  execRow: { paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: COLORS.divider },
+  execHeader: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4 },
+  execMecanico: { fontSize: 14, fontWeight: '600', color: COLORS.textPrimary },
+  execTime: { fontSize: 13, color: COLORS.textSecondary },
+  execServico: { fontSize: 13, color: COLORS.textPrimary, lineHeight: 20 },
 });

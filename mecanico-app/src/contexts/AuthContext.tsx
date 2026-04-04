@@ -24,6 +24,7 @@ interface AuthState {
   empresaNome: string | null;
   mecanicoId: string | null;
   mecanicoNome: string | null;
+  mecanicoSelected: boolean;
   error: string | null;
   /** True when auto-auth attempts are exhausted without success */
   authExhausted: boolean;
@@ -32,6 +33,7 @@ interface AuthState {
 interface AuthContextValue extends AuthState {
   bindDevice: (qrToken: string) => Promise<{ ok: boolean; error?: string }>;
   authenticateDevice: () => Promise<void>;
+  selectMecanico: (id: string, nome: string) => Promise<void>;
   logout: () => Promise<void>;
   retry: () => void;
 }
@@ -53,6 +55,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     empresaNome: null,
     mecanicoId: null,
     mecanicoNome: null,
+    mecanicoSelected: false,
     error: null,
     authExhausted: false,
   });
@@ -89,6 +92,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const deviceToken = await getDeviceConfig('device_token');
       const empresaId = await getDeviceConfig('empresa_id');
       const empresaNome = await getDeviceConfig('empresa_nome');
+      const mecanicoId = await getDeviceConfig('mecanico_id');
+      const mecanicoNome = await getDeviceConfig('mecanico_nome');
 
       if (deviceToken) {
         // Before calling edge function, check if Supabase already has a valid session
@@ -104,6 +109,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               isAuthenticated: true,
               empresaId,
               empresaNome,
+              mecanicoId: mecanicoId || null,
+              mecanicoNome: mecanicoNome || null,
+              mecanicoSelected: !!mecanicoId,
               isLoading: false,
               error: null,
               authExhausted: false,
@@ -118,6 +126,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             isDeviceBound: true,
             empresaId,
             empresaNome,
+            mecanicoId: mecanicoId || null,
+            mecanicoNome: mecanicoNome || null,
+            mecanicoSelected: !!mecanicoId,
             isLoading: false,
           }));
         }
@@ -314,6 +325,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
+  // ── Select Mecanico (quem está usando o dispositivo) ──
+  const selectMecanico = useCallback(async (id: string, nome: string) => {
+    await saveDeviceConfig('mecanico_id', id);
+    await saveDeviceConfig('mecanico_nome', nome);
+    setState((s: AuthState) => ({
+      ...s,
+      mecanicoId: id,
+      mecanicoNome: nome,
+      mecanicoSelected: true,
+    }));
+  }, []);
+
   // ── Logout ──
   const logout = useCallback(async () => {
     stopSyncTimer();
@@ -327,6 +350,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       empresaNome: null,
       mecanicoId: null,
       mecanicoNome: null,
+      mecanicoSelected: false,
       error: null,
       authExhausted: false,
     });
@@ -422,6 +446,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         ...state,
         bindDevice,
         authenticateDevice,
+        selectMecanico,
         logout,
         retry,
       }}

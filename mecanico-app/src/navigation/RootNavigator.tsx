@@ -10,9 +10,16 @@ import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { useAuth } from '../contexts/AuthContext';
 
 import DeviceBindingScreen from '../screens/DeviceBindingScreen';
+import MecanicoSelectScreen from '../screens/MecanicoSelectScreen';
 import HomeScreen from '../screens/HomeScreen';
 import OSDetailScreen from '../screens/OSDetailScreen';
 import ExecutionScreen from '../screens/ExecutionScreen';
+import ParadaScreen from '../screens/ParadaScreen';
+import SolicitarServicoScreen from '../screens/SolicitarServicoScreen';
+import EquipamentoDetalheScreen from '../screens/EquipamentoDetalheScreen';
+import RequisicaoMaterialScreen from '../screens/RequisicaoMaterialScreen';
+import ChecklistScreen from '../screens/ChecklistScreen';
+import CatalogoScreen from '../screens/CatalogoScreen';
 import QRScanScreen from '../screens/QRScanScreen';
 import HistoryScreen from '../screens/HistoryScreen';
 import LoadingScreen from '../components/LoadingScreen';
@@ -27,8 +34,9 @@ const Tab = createBottomTabNavigator<MainTabParamList>();
 function TabIcon({ name, focused }: { name: string; focused: boolean }) {
   const icons: Record<string, string> = {
     HomeTab: '🏠',
+    OrdensTab: '📋',
     QRTab: '📷',
-    HistoryTab: '📜',
+    MaisTab: '⚙️',
   };
   return (
     <Text style={{ fontSize: focused ? 28 : 24, opacity: focused ? 1 : 0.5 }}>
@@ -60,7 +68,7 @@ function MainTabNavigator() {
       <Tab.Screen
         name="HomeTab"
         component={HomeScreen}
-        options={{ tabBarLabel: 'Ordens' }}
+        options={{ tabBarLabel: 'Início' }}
       />
       <Tab.Screen
         name="QRTab"
@@ -68,7 +76,7 @@ function MainTabNavigator() {
         options={{ tabBarLabel: 'QR Scan' }}
       />
       <Tab.Screen
-        name="HistoryTab"
+        name="MaisTab"
         component={HistoryScreen}
         options={{ tabBarLabel: 'Histórico' }}
       />
@@ -78,7 +86,7 @@ function MainTabNavigator() {
 
 // ─── Root Stack Navigator ───
 export default function RootNavigator() {
-  const { isLoading, isDeviceBound, isAuthenticated, error, authExhausted, retry, logout } = useAuth();
+  const { isLoading, isDeviceBound, isAuthenticated, mecanicoSelected, error, authExhausted, retry, logout } = useAuth();
 
   // Still loading initial check
   if (isLoading) {
@@ -116,10 +124,19 @@ export default function RootNavigator() {
     return <LoadingScreen message="Autenticando..." />;
   }
 
+  // Authenticated but no mecanico selected — show select screen
+  if (!mecanicoSelected) {
+    return (
+      <Stack.Navigator screenOptions={{ headerShown: false }}>
+        <Stack.Screen name="MecanicoSelect" component={MecanicoSelectScreen} />
+      </Stack.Navigator>
+    );
+  }
+
   return (
     <Stack.Navigator
       screenOptions={{
-        headerStyle: { backgroundColor: COLORS.header },
+        headerStyle: { backgroundColor: COLORS.headerBg },
         headerTintColor: '#FFF',
         headerTitleStyle: { fontWeight: '700', fontSize: SIZES.fontMD },
         headerBackTitle: 'Voltar',
@@ -139,7 +156,39 @@ export default function RootNavigator() {
       <Stack.Screen
         name="Execution"
         component={ExecutionScreen}
-        options={{ title: 'Registrar Execução' }}
+        options={({ route }) => ({
+          title: (route.params as any)?.mode === 'auto' ? 'Finalizar Atividade' : 'Apontamento Manual',
+        })}
+      />
+      <Stack.Screen
+        name="Parada"
+        component={ParadaScreen}
+        options={{ title: 'Registrar Parada' }}
+      />
+      <Stack.Screen
+        name="SolicitarServico"
+        component={SolicitarServicoScreen}
+        options={{ title: 'Solicitar Serviço' }}
+      />
+      <Stack.Screen
+        name="EquipamentoDetalhe"
+        component={EquipamentoDetalheScreen}
+        options={{ title: 'Equipamento' }}
+      />
+      <Stack.Screen
+        name="RequisicaoMaterial"
+        component={RequisicaoMaterialScreen}
+        options={{ title: 'Solicitar Material' }}
+      />
+      <Stack.Screen
+        name="Checklist"
+        component={ChecklistScreen}
+        options={{ title: 'Checklist' }}
+      />
+      <Stack.Screen
+        name="Catalogo"
+        component={CatalogoScreen}
+        options={{ title: 'Catálogos Técnicos' }}
       />
     </Stack.Navigator>
   );

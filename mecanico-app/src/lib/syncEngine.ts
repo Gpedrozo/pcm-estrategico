@@ -11,6 +11,11 @@ import {
   upsertOrdemServico,
   upsertExecucao,
   upsertEquipamento,
+  upsertMecanico,
+  upsertMaterial,
+  upsertDocumento,
+  upsertParada,
+  upsertRequisicao,
   getDeviceConfig,
 } from './database';
 
@@ -132,6 +137,76 @@ export async function pullData(empresaId: string): Promise<void> {
   if (eqList) {
     for (const eq of eqList) {
       await upsertEquipamento(eq);
+    }
+  }
+
+  // Pull Mecanicos
+  const { data: mecList } = await supabase
+    .from('mecanicos')
+    .select('*')
+    .eq('empresa_id', empresaId)
+    .eq('ativo', true)
+    .limit(200);
+
+  if (mecList) {
+    for (const mec of mecList) {
+      await upsertMecanico(mec);
+    }
+  }
+
+  // Pull Materiais (catálogo)
+  // Supabase column is 'nome', SQLite uses 'descricao' — map on pull
+  const { data: matList } = await supabase
+    .from('materiais')
+    .select('id, empresa_id, codigo, nome, unidade, estoque_atual')
+    .eq('empresa_id', empresaId)
+    .limit(500);
+
+  if (matList) {
+    for (const mat of matList) {
+      await upsertMaterial({ ...mat, descricao: mat.nome });
+    }
+  }
+
+  // Pull Documentos Técnicos
+  // Supabase column is 'titulo', SQLite uses 'nome' — map on pull
+  const { data: docList } = await supabase
+    .from('documentos_tecnicos')
+    .select('id, empresa_id, equipamento_id, tipo, titulo, arquivo_url, created_at')
+    .eq('empresa_id', empresaId)
+    .limit(300);
+
+  if (docList) {
+    for (const doc of docList) {
+      await upsertDocumento({ ...doc, nome: doc.titulo });
+    }
+  }
+
+  // Pull Paradas (para exibir paradas de outros mecânicos)
+  const { data: paradaList } = await supabase
+    .from('paradas_equipamento')
+    .select('*')
+    .eq('empresa_id', empresaId)
+    .order('inicio', { ascending: false })
+    .limit(200);
+
+  if (paradaList) {
+    for (const p of paradaList) {
+      await upsertParada({ ...p, sync_status: 'synced' });
+    }
+  }
+
+  // Pull Requisicoes (para ver status)
+  const { data: reqList } = await supabase
+    .from('requisicoes_material')
+    .select('*')
+    .eq('empresa_id', empresaId)
+    .order('created_at', { ascending: false })
+    .limit(200);
+
+  if (reqList) {
+    for (const r of reqList) {
+      await upsertRequisicao({ ...r, sync_status: 'synced' });
     }
   }
 }

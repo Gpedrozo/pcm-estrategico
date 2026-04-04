@@ -1,10 +1,11 @@
 // ============================================================
-// VoiceInput — Speech-to-Text button for field input
+// VoiceInput — Speech-to-Text real com @react-native-voice/voice
 // ONLY transcribes, never records/stores audio
 // ============================================================
 
-import React, { useState, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { View, TouchableOpacity, TextInput, Text, StyleSheet, Platform, Alert } from 'react-native';
+import Voice, { SpeechResultsEvent, SpeechErrorEvent } from '@react-native-voice/voice';
 import { COLORS, SIZES } from '../theme';
 
 interface VoiceInputProps {
@@ -25,6 +26,47 @@ export default function VoiceInput({
   numberOfLines = 4,
 }: VoiceInputProps) {
   const [isListening, setIsListening] = useState(false);
+  const [partialResult, setPartialResult] = useState('');
+  const baseValueRef = useRef(value);
+
+  useEffect(() => {
+    const onSpeechResults = (e: SpeechResultsEvent) => {
+      const transcript = e.value?.[0] || '';
+      if (transcript) {
+        const base = baseValueRef.current;
+        const separator = base && !base.endsWith(' ') ? ' ' : '';
+        onChangeText(base + separator + transcript);
+      }
+      setPartialResult('');
+    };
+
+    const onSpeechPartialResults = (e: SpeechResultsEvent) => {
+      setPartialResult(e.value?.[0] || '');
+    };
+
+    const onSpeechEnd = () => {
+      setIsListening(false);
+      setPartialResult('');
+    };
+
+    const onSpeechError = (e: SpeechErrorEvent) => {
+      setIsListening(false);
+      setPartialResult('');
+      // code 5 = CLIENT_ERROR (no match / silence) — não mostrar alert
+      if (e.error?.code !== '5' && e.error?.code !== '7') {
+        console.warn('Voice error:', e.error);
+      }
+    };
+
+    Voice.onSpeechResults = onSpeechResults;
+    Voice.onSpeechPartialResults = onSpeechPartialResults;
+    Voice.onSpeechEnd = onSpeechEnd;
+    Voice.onSpeechError = onSpeechError;
+
+    return () => {
+      Voice.destroy().then(Voice.removeAllListeners).catch(() => {});
+    };
+  }, [onChangeText]);
 
   const startListening = useCallback(async () => {
     if (Platform.OS === 'web') {
@@ -33,38 +75,60 @@ export default function VoiceInput({
     }
 
     try {
+      // Guarda valor atual para append
+      baseValueRef.current = value;
       setIsListening(true);
-
-      // Speech recognition — will be available in a future update
+      await Voice.start('pt-BR');
+    } catch (err: any) {
       setIsListening(false);
-      Alert.alert(
-        'Em breve',
-        'O reconhecimento de voz estará disponível em uma próxima atualização. Por enquanto, digite manualmente.',
-      );
-    } catch {
-      setIsListening(false);
+      // Fallback se o dispositivo não suportar Voice
+      if (err?.code === 'not_available' || err?.message?.includes('not available')) {
+        Alert.alert(
+          'Indisponível',
+          'Reconhecimento de voz não suportado neste dispositivo.',
+        );
+      } else {
+        console.warn('Voice start error:', err);
+      }
     }
-  }, [value, onChangeText]);
+  }, [value]);
 
   const stopListening = useCallback(async () => {
+    try {
+      await Voice.stop();
+    } catch {
+      // ignore
+    }
     setIsListening(false);
+    setPartialResult('');
   }, []);
+
+  // Texto exibido no input — valor real + parcial ao vivo
+  const displayValue = isListening && partialResult
+    ? value + (value && !value.endsWith(' ') ? ' ' : '') + partialResult
+    : value;
 
   return (
     <View style={styles.container}>
-      <Text style={styles.label}>{label}</Text>
+      {label ? <Text style={styles.label}>{label}</Text> : null}
       <View style={styles.inputRow}>
         <View style={[styles.textareaWrap, multiline && { minHeight: numberOfLines * 28 }]}>
           <TextInput
             style={[styles.textarea, !multiline && styles.singleLine]}
-            value={value}
+            value={displayValue}
             onChangeText={onChangeText}
             placeholder={placeholder}
-            placeholderTextColor={COLORS.disabled}
+            placeholderTextColor={COLORS.textHint}
             multiline={multiline}
             numberOfLines={numberOfLines}
             textAlignVertical={multiline ? 'top' : 'center'}
+            editable={!isListening}
           />
+          {isListening && (
+            <View style={styles.listeningBanner}>
+              <Text style={styles.listeningText}>🔴 Ouvindo...</Text>
+            </View>
+          )}
         </View>
         <TouchableOpacity
           style={[styles.micButton, isListening && styles.micButtonActive]}
@@ -82,11 +146,11 @@ export default function VoiceInput({
 }
 
 const styles = StyleSheet.create({
-  container: { marginBottom: SIZES.md },
+  container: { marginBottom: SIZES.paddingMD },
   label: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: COLORS.text,
+    fontSize: SIZES.fontSM,
+    fontWeight: '700',
+    color: COLORS.textPrimary,
     marginBottom: 6,
   },
   inputRow: {
@@ -97,38 +161,52 @@ const styles = StyleSheet.create({
     flex: 1,
     borderWidth: 1,
     borderColor: COLORS.border,
-    borderRadius: 8,
+    borderRadius: SIZES.radiusSM,
     backgroundColor: COLORS.surface,
     marginRight: 8,
+    overflow: 'hidden',
   },
   textarea: {
-    fontSize: 15,
-    color: COLORS.text,
-    padding: 10,
+    fontSize: SIZES.fontMD,
+    color: COLORS.textPrimary,
+    padding: 12,
   },
   singleLine: {
-    height: 44,
+    height: SIZES.inputHeight,
+  },
+  listeningBanner: {
+    backgroundColor: COLORS.criticalBg,
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderTopWidth: 1,
+    borderTopColor: COLORS.critical,
+  },
+  listeningText: {
+    fontSize: SIZES.fontXS,
+    color: COLORS.critical,
+    fontWeight: '700',
   },
   micButton: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
+    width: 64,
+    height: 64,
+    borderRadius: 32,
     backgroundColor: COLORS.primary,
     justifyContent: 'center',
     alignItems: 'center',
   },
   micButtonActive: {
-    backgroundColor: COLORS.danger || '#e74c3c',
+    backgroundColor: COLORS.critical,
   },
   micIcon: {
-    fontSize: 24,
+    fontSize: 26,
   },
   micLabel: {
-    fontSize: 10,
-    color: '#fff',
+    fontSize: 11,
+    color: '#FFF',
     marginTop: 2,
+    fontWeight: '600',
   },
   micLabelActive: {
-    color: '#fff',
+    color: '#FFF',
   },
 });

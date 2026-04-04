@@ -1,9 +1,9 @@
 // ============================================================
-// ExecutionScreen — Register work on an OS
-// Flexible times, voice input, photos, auto-save
+// ExecutionScreen — Modo AUTO (finalizar atividade iniciada)
+//                   Modo MANUAL (apontamento retroativo)
 // ============================================================
 
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -21,183 +21,162 @@ import { useAuth } from '../contexts/AuthContext';
 import {
   getOrdemServicoById,
   upsertExecucao,
-  upsertOrdemServico,
-  saveAutoSave,
-  getAutoSave,
-  clearAutoSave,
   addToSyncQueue,
+  getExecucoesByOS,
 } from '../lib/database';
 import VoiceInput from '../components/VoiceInput';
 import DateTimePickerField from '../components/DateTimePickerField';
 import PhotoPicker from '../components/PhotoPicker';
 import LoadingScreen from '../components/LoadingScreen';
 import { COLORS, SIZES } from '../theme';
-import type { RootStackParamList, OrdemServico } from '../types';
+import type { RootStackParamList, OrdemServico, ExecucaoOS } from '../types';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Execution'>;
-
-interface FormState {
-  horaInicio: string;
-  horaFim: string;
-  servicoExecutado: string;
-  causaRaiz: string;
-  observacoes: string;
-  photos: string[];
-}
-
-const EMPTY_FORM: FormState = {
-  horaInicio: '',
-  horaFim: '',
-  servicoExecutado: '',
-  causaRaiz: '',
-  observacoes: '',
-  photos: [],
-};
 
 export default function ExecutionScreen() {
   const route = useRoute<Props['route']>();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const { empresaId, mecanicoId, mecanicoNome } = useAuth();
-  const { osId } = route.params;
+  const { osId, execucaoId, mode = 'manual' } = route.params;
+
+  const isAutoMode = mode === 'auto' && !!execucaoId;
 
   const [os, setOS] = useState<OrdemServico | null>(null);
-  const [form, setForm] = useState<FormState>(EMPTY_FORM);
+  const [execAberta, setExecAberta] = useState<ExecucaoOS | null>(null);
+  const [servicoExecutado, setServicoExecutado] = useState('');
+  const [causaRaiz, setCausaRaiz] = useState('');
+  const [observacoes, setObservacoes] = useState('');
+  const [photos, setPhotos] = useState<string[]>([]);
+  // Campos só do modo manual
+  const [horaInicio, setHoraInicio] = useState('');
+  const [horaFim, setHoraFim] = useState('');
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
-  const autoSaveTimer = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  // Load OS + restore autosave
   useEffect(() => {
     (async () => {
       try {
         const osData = await getOrdemServicoById(osId);
         setOS(osData);
-        const saved = await getAutoSave(osId);
-        if (saved) {
-          try {
-            const parsed = JSON.parse(saved) as FormState;
-            setForm(parsed);
-          } catch { /* corrupt, ignore */ }
+
+        if (isAutoMode && execucaoId) {
+          const execs = await getExecucoesByOS(osId);
+          const exec = execs.find((e: any) => e.id === execucaoId);
+          if (exec) setExecAberta(exec);
         }
       } finally {
         setLoading(false);
       }
     })();
-  }, [osId]);
-
-  // Auto-save every 15s
-  const formRef = useRef(form);
-  formRef.current = form;
-
-  useEffect(() => {
-    autoSaveTimer.current = setInterval(() => {
-      saveAutoSave(osId, JSON.stringify(formRef.current)).catch(() => {});
-    }, 15_000);
-    return () => {
-      if (autoSaveTimer.current) clearInterval(autoSaveTimer.current);
-      // Final save on unmount
-      saveAutoSave(osId, JSON.stringify(formRef.current)).catch(() => {});
-    };
-  }, [osId]);
-
-  const updateField = useCallback(<K extends keyof FormState>(key: K, value: FormState[K]) => {
-    setForm((prev) => ({ ...prev, [key]: value }));
-  }, []);
+  }, [osId, execucaoId, isAutoMode]);
 
   const handleSave = async () => {
-    if (!form.servicoExecutado.trim()) {
-      Alert.alert('Campo obrigatório', 'Descreva o serviço executado.');
+    if (!servicoExecutado.trim()) {
+      Alert.alert('Campo obrigatório', 'Descreva o que foi feito.');
       return;
     }
-    if (!form.horaInicio) {
+    if (!isAutoMode && !horaInicio) {
       Alert.alert('Campo obrigatório', 'Informe a hora de início.');
       return;
     }
 
     setSaving(true);
     try {
-      const execId = uuid.v4() as string;
       const now = new Date().toISOString();
 
-      // Calculate tempo_execucao in minutes
-      let tempoExecucao: number | null = null;
-      if (form.horaInicio && form.horaFim) {
-        const diff = new Date(form.horaFim).getTime() - new Date(form.horaInicio).getTime();
-        if (diff > 0) tempoExecucao = Math.round(diff / 60000);
-      }
+      if (isAutoMode && execAberta) {
+        // ── MODO AUTO: Finalizar execução existente ──
+        const diff = new Date(now).getTime() - new Date(execAberta.hora_inicio!).getTime();
+        const tempoMin = Math.max(1, Math.round(diff / 60000));
 
-      const execucao = {
-        id: execId,
-        empresa_id: empresaId || '',
-        os_id: osId,
-        mecanico_id: mecanicoId || null,
-        mecanico_nome: mecanicoNome || null,
-        hora_inicio: form.horaInicio,
-        hora_fim: form.horaFim || null,
-        tempo_execucao: tempoExecucao,
-        servico_executado: form.servicoExecutado.trim(),
-        custo_mao_obra: null,
-        custo_materiais: null,
-        custo_total: null,
-        data_execucao: now,
-        created_at: now,
-      };
+        const updated = {
+          ...execAberta,
+          hora_fim: now,
+          tempo_execucao: tempoMin,
+          servico_executado: servicoExecutado.trim(),
+          causa: causaRaiz.trim() || null,
+          observacoes: observacoes.trim() || null,
+          fotos: photos.length > 0 ? photos : null,
+          sync_status: 'pending',
+        };
 
-      // Save to local DB
-      await upsertExecucao(execucao);
-
-      // Update OS status to em_andamento
-      if (os && os.status === 'aberta') {
-        const updatedOS = { ...os, status: 'em_andamento' as const, updated_at: now };
-        await upsertOrdemServico(updatedOS);
-      }
-
-      // Queue for sync — execution
-      await addToSyncQueue({
-        id: uuid.v4() as string,
-        table_name: 'execucoes_os',
-        record_id: execId,
-        operation: 'INSERT',
-        payload: JSON.stringify(execucao),
-        status: 'pending',
-        created_at: now,
-        attempts: 0,
-      });
-
-      // Queue photos for upload
-      for (const photoUri of form.photos) {
+        await upsertExecucao(updated);
         await addToSyncQueue({
           id: uuid.v4() as string,
-          table_name: 'execucao_photos',
-          record_id: execId,
-          operation: 'UPLOAD',
-          payload: JSON.stringify({ execucao_id: execId, uri: photoUri }),
-          status: 'pending',
-          created_at: now,
-          attempts: 0,
-        });
-      }
-
-      // Queue OS status update
-      if (os && os.status === 'aberta') {
-        await addToSyncQueue({
-          id: uuid.v4() as string,
-          table_name: 'ordens_servico',
-          record_id: osId,
+          table_name: 'execucoes_os',
+          record_id: execAberta.id,
           operation: 'UPDATE',
-          payload: JSON.stringify({ id: osId, status: 'em_andamento', updated_at: now }),
-          status: 'pending',
-          created_at: now,
-          attempts: 0,
+          payload: updated,
         });
+
+        // Upload fotos
+        for (const photoUri of photos) {
+          await addToSyncQueue({
+            id: uuid.v4() as string,
+            table_name: 'execucao_photos',
+            record_id: execAberta.id,
+            operation: 'UPLOAD',
+            payload: { execucao_id: execAberta.id, uri: photoUri },
+          });
+        }
+
+        Alert.alert(
+          '✅ Atividade finalizada!',
+          `Tempo: ${tempoMin} minutos`,
+          [{ text: 'OK', onPress: () => navigation.goBack() }]
+        );
+      } else {
+        // ── MODO MANUAL: Criar novo apontamento ──
+        const execId = uuid.v4() as string;
+        let tempoExecucao: number | null = null;
+        if (horaInicio && horaFim) {
+          const diff = new Date(horaFim).getTime() - new Date(horaInicio).getTime();
+          if (diff > 0) tempoExecucao = Math.round(diff / 60000);
+        }
+
+        const execucao = {
+          id: execId,
+          empresa_id: empresaId || '',
+          os_id: osId,
+          mecanico_id: mecanicoId || null,
+          mecanico_nome: mecanicoNome || null,
+          hora_inicio: horaInicio,
+          hora_fim: horaFim || null,
+          tempo_execucao: tempoExecucao,
+          servico_executado: servicoExecutado.trim(),
+          causa: causaRaiz.trim() || null,
+          observacoes: observacoes.trim() || null,
+          data_execucao: now,
+          custo_mao_obra: null,
+          custo_materiais: null,
+          custo_total: null,
+          created_at: now,
+          sync_status: 'pending',
+        };
+
+        await upsertExecucao(execucao);
+        await addToSyncQueue({
+          id: uuid.v4() as string,
+          table_name: 'execucoes_os',
+          record_id: execId,
+          operation: 'INSERT',
+          payload: execucao,
+        });
+
+        for (const photoUri of photos) {
+          await addToSyncQueue({
+            id: uuid.v4() as string,
+            table_name: 'execucao_photos',
+            record_id: execId,
+            operation: 'UPLOAD',
+            payload: { execucao_id: execId, uri: photoUri },
+          });
+        }
+
+        Alert.alert('✅ Apontamento salvo!', 'Registro criado com sucesso.', [
+          { text: 'OK', onPress: () => navigation.goBack() },
+        ]);
       }
-
-      // Clear autosave
-      await clearAutoSave(osId);
-
-      Alert.alert('✅ Serviço registrado!', 'A execução foi salva com sucesso.', [
-        { text: 'OK', onPress: () => navigation.goBack() },
-      ]);
     } catch (err: any) {
       Alert.alert('Erro ao salvar', err?.message || 'Tente novamente.');
     } finally {
@@ -207,38 +186,46 @@ export default function ExecutionScreen() {
 
   if (loading) return <LoadingScreen message="Carregando..." />;
 
+  const formatTime = (iso?: string | null) => {
+    if (!iso) return '--:--';
+    try { const d = new Date(iso); return `${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}`; }
+    catch { return String(iso); }
+  };
+
   return (
-    <KeyboardAvoidingView
-      style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-    >
+    <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
         {/* OS reference */}
         {os && (
           <View style={styles.osRef}>
-            <Text style={styles.osRefText}>OS {os.numero_os} — {os.equipamento || 'Equipamento'}</Text>
+            <Text style={styles.osRefText}>
+              {isAutoMode ? '✅ FINALIZAR ATIVIDADE' : '➕ APONTAMENTO MANUAL'}
+            </Text>
+            <Text style={styles.osRefSub}>OS {os.numero_os} — {os.equipamento || 'Equipamento'}</Text>
           </View>
         )}
 
-        {/* Hora início */}
-        <DateTimePickerField
-          label="Hora Início *"
-          value={form.horaInicio}
-          onChange={(v) => updateField('horaInicio', v)}
-        />
+        {/* Tempo info (modo auto) */}
+        {isAutoMode && execAberta && (
+          <View style={styles.timeInfo}>
+            <Text style={styles.timeLabel}>⏱ Iniciado às {formatTime(execAberta.hora_inicio)}</Text>
+            <Text style={styles.timeHint}>Hora de fim será registrada automaticamente</Text>
+          </View>
+        )}
 
-        {/* Hora fim */}
-        <DateTimePickerField
-          label="Hora Fim"
-          value={form.horaFim}
-          onChange={(v) => updateField('horaFim', v)}
-        />
+        {/* Campos de hora (modo manual) */}
+        {!isAutoMode && (
+          <>
+            <DateTimePickerField label="Hora Início *" value={horaInicio} onChange={setHoraInicio} />
+            <DateTimePickerField label="Hora Fim" value={horaFim} onChange={setHoraFim} />
+          </>
+        )}
 
-        {/* Serviço executado */}
+        {/* Serviço executado — COM VOZ */}
         <VoiceInput
-          label="Serviço Executado *"
-          value={form.servicoExecutado}
-          onChangeText={(v) => updateField('servicoExecutado', v)}
+          label="O que foi feito? *"
+          value={servicoExecutado}
+          onChangeText={setServicoExecutado}
           placeholder="Descreva o serviço realizado..."
           multiline
           numberOfLines={4}
@@ -246,10 +233,10 @@ export default function ExecutionScreen() {
 
         {/* Causa raiz */}
         <VoiceInput
-          label="Causa Raiz"
-          value={form.causaRaiz}
-          onChangeText={(v) => updateField('causaRaiz', v)}
-          placeholder="Qual a causa do problema? (opcional)"
+          label="Causa do problema"
+          value={causaRaiz}
+          onChangeText={setCausaRaiz}
+          placeholder="Qual a causa? (opcional)"
           multiline
           numberOfLines={3}
         />
@@ -257,19 +244,15 @@ export default function ExecutionScreen() {
         {/* Observações */}
         <VoiceInput
           label="Observações"
-          value={form.observacoes}
-          onChangeText={(v) => updateField('observacoes', v)}
+          value={observacoes}
+          onChangeText={setObservacoes}
           placeholder="Notas adicionais... (opcional)"
           multiline
           numberOfLines={3}
         />
 
         {/* Photos */}
-        <PhotoPicker
-          photos={form.photos}
-          onPhotosChange={(p) => updateField('photos', p)}
-          maxPhotos={5}
-        />
+        <PhotoPicker photos={photos} onPhotosChange={setPhotos} maxPhotos={5} />
       </ScrollView>
 
       {/* Save bar */}
@@ -281,7 +264,7 @@ export default function ExecutionScreen() {
           activeOpacity={0.7}
         >
           <Text style={styles.saveButtonText}>
-            {saving ? 'Salvando...' : '💾  SALVAR EXECUÇÃO'}
+            {saving ? '⏳ Salvando...' : isAutoMode ? '✅  FINALIZAR E SALVAR' : '💾  SALVAR APONTAMENTO'}
           </Text>
         </TouchableOpacity>
       </View>
@@ -290,30 +273,29 @@ export default function ExecutionScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: COLORS.background,
-  },
-  scrollContent: {
-    padding: SIZES.paddingMD,
-    paddingBottom: 120,
-  },
+  container: { flex: 1, backgroundColor: COLORS.background },
+  scrollContent: { padding: SIZES.paddingMD, paddingBottom: 120 },
   osRef: {
-    backgroundColor: COLORS.primary + '15',
-    borderRadius: SIZES.radiusSM,
-    padding: 10,
+    backgroundColor: COLORS.primaryLight,
+    borderRadius: SIZES.radiusMD,
+    padding: 16,
     marginBottom: 16,
   },
-  osRefText: {
-    fontSize: SIZES.fontSM,
-    fontWeight: '600',
-    color: COLORS.primary,
+  osRefText: { fontSize: SIZES.fontLG, fontWeight: '800', color: COLORS.primaryDark },
+  osRefSub: { fontSize: SIZES.fontSM, color: COLORS.primaryDark, marginTop: 4, opacity: 0.8 },
+  timeInfo: {
+    backgroundColor: COLORS.successBg,
+    borderRadius: SIZES.radiusMD,
+    padding: 16,
+    marginBottom: 16,
+    borderLeftWidth: 4,
+    borderLeftColor: COLORS.success,
   },
+  timeLabel: { fontSize: SIZES.fontMD, fontWeight: '700', color: COLORS.success },
+  timeHint: { fontSize: SIZES.fontSM, color: COLORS.textSecondary, marginTop: 4 },
   actionBar: {
     position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
+    bottom: 0, left: 0, right: 0,
     padding: SIZES.paddingMD,
     paddingBottom: 32,
     backgroundColor: COLORS.background,
@@ -321,18 +303,12 @@ const styles = StyleSheet.create({
     borderTopColor: COLORS.divider,
   },
   saveButton: {
-    height: SIZES.buttonXL,
+    height: SIZES.buttonHeightLG,
     borderRadius: SIZES.radiusMD,
     backgroundColor: COLORS.primary,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  saveButtonText: {
-    fontSize: SIZES.fontLG,
-    fontWeight: '800',
-    color: '#FFF',
-  },
-  buttonDisabled: {
-    opacity: 0.6,
-  },
+  saveButtonText: { fontSize: SIZES.fontLG, fontWeight: '800', color: '#FFF' },
+  buttonDisabled: { opacity: 0.6 },
 });

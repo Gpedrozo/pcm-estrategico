@@ -1,5 +1,6 @@
 // ============================================================
-// HomeScreen — OS list with filter tabs, search, refresh
+// HomeScreen — Dashboard de AÇÃO para o mecânico
+// Contadores + Botões grandes + Lista resumida
 // ============================================================
 
 import React, { useState, useEffect, useCallback } from 'react';
@@ -8,143 +9,158 @@ import {
   Text,
   FlatList,
   TouchableOpacity,
-  TextInput,
   StyleSheet,
   RefreshControl,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useAuth } from '../contexts/AuthContext';
-import { getOrdensServico } from '../lib/database';
-import { runSyncCycle } from '../lib/syncEngine';
+import { getOrdensServico, getOSStats, getProximaOS, getSyncQueueCount } from '../lib/database';
+import { runSyncCycle, isOnline } from '../lib/syncEngine';
 import OSCard from '../components/OSCard';
-import SyncStatusBar from '../components/SyncStatusBar';
 import EmptyState from '../components/EmptyState';
 import { COLORS, SIZES } from '../theme';
-import type { OrdemServico, RootStackParamList, OSStatus } from '../types';
-
-type Filter = 'abertas' | 'andamento' | 'todas';
-
-const FILTER_LABELS: Record<Filter, string> = {
-  abertas: 'Abertas',
-  andamento: 'Em Andamento',
-  todas: 'Todas',
-};
-
-const FILTER_STATUSES: Record<Filter, OSStatus[] | null> = {
-  abertas: ['aberta'],
-  andamento: ['em_andamento'],
-  todas: null,
-};
+import type { OrdemServico, RootStackParamList } from '../types';
 
 export default function HomeScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
-  const { empresaId, empresaNome } = useAuth();
+  const { empresaId, mecanicoNome } = useAuth();
+
+  const [stats, setStats] = useState({ abertas: 0, programadas: 0, emAndamento: 0, finalizadasHoje: 0 });
   const [ordens, setOrdens] = useState<OrdemServico[]>([]);
-  const [filter, setFilter] = useState<Filter>('abertas');
-  const [search, setSearch] = useState('');
   const [refreshing, setRefreshing] = useState(false);
+  const [syncStatus, setSyncStatus] = useState<'online' | 'pending' | 'offline'>('online');
+  const [pendingCount, setPendingCount] = useState(0);
 
-  const loadOrdens = useCallback(async () => {
+  const loadData = useCallback(async () => {
+    if (!empresaId) return;
     try {
-      const all = await getOrdensServico();
-      setOrdens(all);
+      const [s, os, pending, online] = await Promise.all([
+        getOSStats(empresaId),
+        getOrdensServico(empresaId),
+        getSyncQueueCount(),
+        isOnline(),
+      ]);
+      setStats(s);
+      setOrdens(os);
+      setPendingCount(pending);
+      setSyncStatus(!online ? 'offline' : pending > 0 ? 'pending' : 'online');
     } catch {
-      /* local DB read, ignore */
+      /* ignore local read errors */
     }
-  }, []);
+  }, [empresaId]);
 
+  useEffect(() => { loadData(); }, [loadData]);
   useEffect(() => {
-    loadOrdens();
-  }, [loadOrdens]);
-
-  // Reload when returning to this screen
-  useEffect(() => {
-    const unsub = navigation.addListener('focus', loadOrdens);
+    const unsub = navigation.addListener('focus', loadData);
     return unsub;
-  }, [navigation, loadOrdens]);
+  }, [navigation, loadData]);
 
   const onRefresh = async () => {
     setRefreshing(true);
     try {
-      if (empresaId) {
-        await runSyncCycle();
-      }
-      await loadOrdens();
+      await runSyncCycle();
+      await loadData();
     } finally {
       setRefreshing(false);
     }
   };
 
-  // Filter + search
-  const filtered = ordens.filter((os) => {
-    const statuses = FILTER_STATUSES[filter];
-    if (statuses && !statuses.includes(os.status)) return false;
-    if (search.trim()) {
-      const q = search.toLowerCase();
-      return (
-        os.numero_os?.toLowerCase().includes(q) ||
-        os.equipamento?.toLowerCase().includes(q) ||
-        os.problema?.toLowerCase().includes(q)
-      );
+  const atenderProxima = async () => {
+    if (!empresaId) return;
+    const prox = await getProximaOS(empresaId);
+    if (prox) {
+      navigation.navigate('OSDetail', { osId: prox.id });
     }
-    return true;
-  });
+  };
+
+  // OS ativas (abertas + em andamento) para a lista
+  const osAtivas = ordens.filter((o) =>
+    ['aberta', 'solicitada', 'emitida', 'em_andamento', 'em_execucao'].includes(o.status)
+  );
+
+  const syncColor = syncStatus === 'online' ? COLORS.success : syncStatus === 'pending' ? COLORS.warning : COLORS.critical;
+  const syncLabel = syncStatus === 'online' ? '🟢 Sincronizado' : syncStatus === 'pending' ? `🟡 ${pendingCount} pendência${pendingCount !== 1 ? 's' : ''}` : '🔴 Offline';
 
   return (
     <View style={styles.container}>
-      <SyncStatusBar />
-
       {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.empresaNome}>{empresaNome || 'PCM Mecânico'}</Text>
-        <Text style={styles.headerGreeting}>
-          {filtered.length} ordem{filtered.length !== 1 ? 's' : ''} de serviço
-        </Text>
+        <View style={styles.headerTop}>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.greeting}>👤 {mecanicoNome || 'Mecânico'}</Text>
+            <Text style={styles.syncLabel}>{syncLabel}</Text>
+          </View>
+        </View>
       </View>
 
-      {/* Search */}
-      <View style={styles.searchRow}>
-        <TextInput
-          style={styles.searchInput}
-          placeholder="🔍  Buscar OS, equipamento..."
-          placeholderTextColor={COLORS.textHint}
-          value={search}
-          onChangeText={setSearch}
-          returnKeyType="search"
-        />
-      </View>
-
-      {/* Filter tabs */}
-      <View style={styles.filterRow}>
-        {(Object.keys(FILTER_LABELS) as Filter[]).map((key) => (
-          <TouchableOpacity
-            key={key}
-            style={[styles.filterTab, filter === key && styles.filterTabActive]}
-            onPress={() => setFilter(key)}
-            activeOpacity={0.7}
-          >
-            <Text style={[styles.filterTabText, filter === key && styles.filterTabTextActive]}>
-              {FILTER_LABELS[key]}
-            </Text>
-          </TouchableOpacity>
-        ))}
-      </View>
-
-      {/* OS List */}
       <FlatList
-        data={filtered}
+        data={osAtivas}
         keyExtractor={(item) => item.id}
         renderItem={({ item }) => (
           <OSCard os={item} onPress={() => navigation.navigate('OSDetail', { osId: item.id })} />
         )}
         contentContainerStyle={styles.listContent}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[COLORS.primary]} />}
+        ListHeaderComponent={
+          <View>
+            {/* Stats Cards */}
+            <View style={styles.statsRow}>
+              <View style={[styles.statCard, { borderLeftColor: COLORS.critical }]}>  
+                <Text style={[styles.statNumber, { color: COLORS.critical }]}>{stats.abertas}</Text>
+                <Text style={styles.statLabel}>ABERTAS</Text>
+              </View>
+              <View style={[styles.statCard, { borderLeftColor: COLORS.warning }]}>  
+                <Text style={[styles.statNumber, { color: COLORS.warning }]}>{stats.programadas}</Text>
+                <Text style={styles.statLabel}>PROGRAMADAS</Text>
+              </View>
+              <View style={[styles.statCard, { borderLeftColor: COLORS.primary }]}>  
+                <Text style={[styles.statNumber, { color: COLORS.primary }]}>{stats.emAndamento}</Text>
+                <Text style={styles.statLabel}>EXECUTANDO</Text>
+              </View>
+            </View>
+
+            {/* Main Action Buttons */}
+            <View style={styles.actionsSection}>
+              <TouchableOpacity
+                style={styles.mainButton}
+                onPress={atenderProxima}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.mainButtonText}>▶️  ATENDER PRÓXIMA O.S</Text>
+              </TouchableOpacity>
+
+              <View style={styles.secondaryRow}>
+                <TouchableOpacity
+                  style={styles.secondaryButton}
+                  onPress={() => navigation.navigate('SolicitarServico', {})}
+                  activeOpacity={0.7}
+                >
+                  <Text style={styles.secondaryIcon}>➕</Text>
+                  <Text style={styles.secondaryText}>SOLICITAR{'\n'}SERVIÇO</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.secondaryButton}
+                  onPress={() => navigation.navigate('EquipamentoDetalhe', { equipamentoId: '__search__' })}
+                  activeOpacity={0.7}
+                >
+                  <Text style={styles.secondaryIcon}>🔍</Text>
+                  <Text style={styles.secondaryText}>BUSCAR{'\n'}EQUIPAMENTO</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+
+            {/* Section title */}
+            {osAtivas.length > 0 && (
+              <Text style={styles.sectionTitle}>📋 MINHAS ORDENS ({osAtivas.length})</Text>
+            )}
+          </View>
+        }
         ListEmptyComponent={
           <EmptyState
-            icon="📋"
-            title={filter === 'todas' ? 'Nenhuma OS encontrada' : `Nenhuma OS ${FILTER_LABELS[filter].toLowerCase()}`}
-            subtitle={search ? 'Tente buscar com outros termos' : 'Puxe para baixo para atualizar'}
+            icon="✅"
+            title="Tudo em dia!"
+            subtitle="Nenhuma OS pendente. Puxe para baixo para atualizar."
           />
         }
       />
@@ -158,62 +174,109 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.background,
   },
   header: {
-    paddingHorizontal: SIZES.paddingMD,
-    paddingTop: 12,
-    paddingBottom: 8,
+    backgroundColor: COLORS.headerBg,
+    paddingTop: 50,
+    paddingBottom: 16,
+    paddingHorizontal: SIZES.paddingLG,
   },
-  empresaNome: {
-    fontSize: SIZES.fontXL,
-    fontWeight: '800',
-    color: COLORS.primary,
-  },
-  headerGreeting: {
-    fontSize: SIZES.fontSM,
-    color: COLORS.textSecondary,
-    marginTop: 2,
-  },
-  searchRow: {
-    paddingHorizontal: SIZES.paddingMD,
-    marginBottom: 8,
-  },
-  searchInput: {
-    height: 48,
-    borderRadius: SIZES.radiusMD,
-    backgroundColor: COLORS.surface,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    paddingHorizontal: 14,
-    fontSize: SIZES.fontSM,
-    color: COLORS.textPrimary,
-  },
-  filterRow: {
+  headerTop: {
     flexDirection: 'row',
-    paddingHorizontal: SIZES.paddingMD,
-    marginBottom: 8,
-    gap: 8,
-  },
-  filterTab: {
-    flex: 1,
-    height: 40,
-    borderRadius: SIZES.radiusSM,
-    borderWidth: 1.5,
-    borderColor: COLORS.border,
-    justifyContent: 'center',
     alignItems: 'center',
   },
-  filterTabActive: {
-    backgroundColor: COLORS.primary,
-    borderColor: COLORS.primary,
-  },
-  filterTabText: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: COLORS.textSecondary,
-  },
-  filterTabTextActive: {
+  greeting: {
+    fontSize: SIZES.fontLG,
+    fontWeight: '700',
     color: '#FFF',
+  },
+  syncLabel: {
+    fontSize: SIZES.fontSM,
+    color: 'rgba(255,255,255,0.7)',
+    marginTop: 4,
   },
   listContent: {
     paddingBottom: 100,
+  },
+  statsRow: {
+    flexDirection: 'row',
+    paddingHorizontal: SIZES.paddingMD,
+    paddingTop: SIZES.paddingMD,
+    gap: 8,
+  },
+  statCard: {
+    flex: 1,
+    backgroundColor: COLORS.surface,
+    borderRadius: SIZES.radiusMD,
+    paddingVertical: 14,
+    paddingHorizontal: 10,
+    alignItems: 'center',
+    borderLeftWidth: 4,
+    elevation: 1,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+  },
+  statNumber: {
+    fontSize: SIZES.fontXXL,
+    fontWeight: '800',
+  },
+  statLabel: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: COLORS.textSecondary,
+    marginTop: 2,
+  },
+  actionsSection: {
+    padding: SIZES.paddingMD,
+  },
+  mainButton: {
+    height: SIZES.buttonHeightLG,
+    backgroundColor: COLORS.success,
+    borderRadius: SIZES.radiusLG,
+    justifyContent: 'center',
+    alignItems: 'center',
+    elevation: 3,
+    shadowColor: COLORS.success,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+  },
+  mainButtonText: {
+    fontSize: SIZES.fontLG,
+    fontWeight: '800',
+    color: '#FFF',
+  },
+  secondaryRow: {
+    flexDirection: 'row',
+    gap: 12,
+    marginTop: 12,
+  },
+  secondaryButton: {
+    flex: 1,
+    height: 80,
+    backgroundColor: COLORS.surface,
+    borderRadius: SIZES.radiusMD,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1.5,
+    borderColor: COLORS.border,
+  },
+  secondaryIcon: {
+    fontSize: 28,
+    marginBottom: 4,
+  },
+  secondaryText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: COLORS.textSecondary,
+    textAlign: 'center',
+  },
+  sectionTitle: {
+    fontSize: SIZES.fontMD,
+    fontWeight: '700',
+    color: COLORS.textPrimary,
+    paddingHorizontal: SIZES.paddingMD,
+    paddingTop: SIZES.paddingMD,
+    paddingBottom: 8,
   },
 });

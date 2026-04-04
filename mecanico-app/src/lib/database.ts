@@ -109,11 +109,70 @@ async function initSchema(database: SQLite.SQLiteDatabase) {
       saved_at TEXT DEFAULT (datetime('now'))
     );
 
+    CREATE TABLE IF NOT EXISTS paradas_equipamento (
+      id TEXT PRIMARY KEY,
+      empresa_id TEXT NOT NULL,
+      equipamento_id TEXT,
+      os_id TEXT,
+      mecanico_id TEXT,
+      mecanico_nome TEXT,
+      tipo TEXT NOT NULL,
+      inicio TEXT NOT NULL,
+      fim TEXT,
+      observacao TEXT,
+      created_at TEXT DEFAULT (datetime('now')),
+      updated_at TEXT,
+      sync_status TEXT DEFAULT 'pending',
+      local_updated_at TEXT DEFAULT (datetime('now'))
+    );
+
+    CREATE TABLE IF NOT EXISTS requisicoes_material (
+      id TEXT PRIMARY KEY,
+      empresa_id TEXT NOT NULL,
+      os_id TEXT,
+      mecanico_id TEXT,
+      mecanico_nome TEXT,
+      material_id TEXT,
+      descricao_livre TEXT,
+      quantidade REAL NOT NULL,
+      status TEXT DEFAULT 'pendente',
+      observacao TEXT,
+      created_at TEXT DEFAULT (datetime('now')),
+      sync_status TEXT DEFAULT 'pending',
+      local_updated_at TEXT DEFAULT (datetime('now'))
+    );
+
+    CREATE TABLE IF NOT EXISTS materiais (
+      id TEXT PRIMARY KEY,
+      empresa_id TEXT NOT NULL,
+      codigo TEXT,
+      descricao TEXT,
+      unidade TEXT,
+      estoque_atual REAL,
+      local_updated_at TEXT DEFAULT (datetime('now'))
+    );
+
+    CREATE TABLE IF NOT EXISTS documentos_tecnicos (
+      id TEXT PRIMARY KEY,
+      empresa_id TEXT NOT NULL,
+      equipamento_id TEXT,
+      tipo TEXT,
+      nome TEXT,
+      arquivo_url TEXT,
+      created_at TEXT,
+      local_updated_at TEXT DEFAULT (datetime('now'))
+    );
+
     CREATE INDEX IF NOT EXISTS idx_os_empresa ON ordens_servico(empresa_id);
     CREATE INDEX IF NOT EXISTS idx_os_status ON ordens_servico(status);
     CREATE INDEX IF NOT EXISTS idx_exec_os ON execucoes_os(os_id);
     CREATE INDEX IF NOT EXISTS idx_sync_status ON sync_queue(status);
     CREATE INDEX IF NOT EXISTS idx_equip_qr ON equipamentos(qr_code);
+    CREATE INDEX IF NOT EXISTS idx_parada_os ON paradas_equipamento(os_id);
+    CREATE INDEX IF NOT EXISTS idx_parada_equip ON paradas_equipamento(equipamento_id);
+    CREATE INDEX IF NOT EXISTS idx_req_os ON requisicoes_material(os_id);
+    CREATE INDEX IF NOT EXISTS idx_mat_empresa ON materiais(empresa_id);
+    CREATE INDEX IF NOT EXISTS idx_doc_equip ON documentos_tecnicos(equipamento_id);
   `);
 }
 
@@ -294,4 +353,228 @@ export async function getSyncQueueCount(): Promise<number> {
     "SELECT COUNT(*) as cnt FROM sync_queue WHERE status IN ('pending', 'error')"
   );
   return row?.cnt ?? 0;
+}
+
+// ============================================================
+// Mecanicos
+// ============================================================
+
+export async function getMecanicos(empresaId: string): Promise<any[]> {
+  const database = await getDB();
+  return database.getAllAsync(
+    'SELECT * FROM mecanicos WHERE empresa_id = ? AND ativo = 1 ORDER BY nome ASC',
+    [empresaId]
+  );
+}
+
+export async function getMecanicoById(id: string): Promise<any | null> {
+  const database = await getDB();
+  return database.getFirstAsync('SELECT * FROM mecanicos WHERE id = ?', [id]);
+}
+
+export async function upsertMecanico(m: Record<string, any>): Promise<void> {
+  const database = await getDB();
+  await database.runAsync(
+    `INSERT OR REPLACE INTO mecanicos (id, empresa_id, nome, tipo, ativo, local_updated_at) VALUES (?, ?, ?, ?, ?, datetime('now'))`,
+    [m.id, m.empresa_id, m.nome, m.tipo, m.ativo ?? 1]
+  );
+}
+
+// ============================================================
+// Paradas de Equipamento
+// ============================================================
+
+export async function getParadasByOS(osId: string): Promise<any[]> {
+  const database = await getDB();
+  return database.getAllAsync(
+    'SELECT * FROM paradas_equipamento WHERE os_id = ? ORDER BY inicio DESC',
+    [osId]
+  );
+}
+
+export async function getParadaAberta(equipamentoId: string): Promise<any | null> {
+  const database = await getDB();
+  return database.getFirstAsync(
+    'SELECT * FROM paradas_equipamento WHERE equipamento_id = ? AND fim IS NULL ORDER BY inicio DESC LIMIT 1',
+    [equipamentoId]
+  );
+}
+
+export async function upsertParada(p: Record<string, any>): Promise<void> {
+  const database = await getDB();
+  await database.runAsync(
+    `INSERT OR REPLACE INTO paradas_equipamento 
+     (id, empresa_id, equipamento_id, os_id, mecanico_id, mecanico_nome, tipo, inicio, fim, observacao, created_at, updated_at, sync_status, local_updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))`,
+    [p.id, p.empresa_id, p.equipamento_id, p.os_id, p.mecanico_id, p.mecanico_nome, p.tipo, p.inicio, p.fim, p.observacao, p.created_at, p.updated_at, p.sync_status || 'pending']
+  );
+}
+
+// ============================================================
+// Requisicoes de Material
+// ============================================================
+
+export async function getRequisicoesByOS(osId: string): Promise<any[]> {
+  const database = await getDB();
+  return database.getAllAsync(
+    'SELECT * FROM requisicoes_material WHERE os_id = ? ORDER BY created_at DESC',
+    [osId]
+  );
+}
+
+export async function upsertRequisicao(r: Record<string, any>): Promise<void> {
+  const database = await getDB();
+  await database.runAsync(
+    `INSERT OR REPLACE INTO requisicoes_material 
+     (id, empresa_id, os_id, mecanico_id, mecanico_nome, material_id, descricao_livre, quantidade, status, observacao, created_at, sync_status, local_updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))`,
+    [r.id, r.empresa_id, r.os_id, r.mecanico_id, r.mecanico_nome, r.material_id, r.descricao_livre, r.quantidade, r.status || 'pendente', r.observacao, r.created_at, r.sync_status || 'pending']
+  );
+}
+
+// ============================================================
+// Materiais (catálogo — read only local)
+// ============================================================
+
+export async function getMateriais(empresaId: string, busca?: string): Promise<any[]> {
+  const database = await getDB();
+  if (busca) {
+    return database.getAllAsync(
+      "SELECT * FROM materiais WHERE empresa_id = ? AND (descricao LIKE ? OR codigo LIKE ?) ORDER BY descricao ASC LIMIT 50",
+      [empresaId, `%${busca}%`, `%${busca}%`]
+    );
+  }
+  return database.getAllAsync(
+    'SELECT * FROM materiais WHERE empresa_id = ? ORDER BY descricao ASC LIMIT 100',
+    [empresaId]
+  );
+}
+
+export async function upsertMaterial(m: Record<string, any>): Promise<void> {
+  const database = await getDB();
+  await database.runAsync(
+    `INSERT OR REPLACE INTO materiais (id, empresa_id, codigo, descricao, unidade, estoque_atual, local_updated_at) VALUES (?, ?, ?, ?, ?, ?, datetime('now'))`,
+    [m.id, m.empresa_id, m.codigo, m.descricao, m.unidade, m.estoque_atual]
+  );
+}
+
+// ============================================================
+// Documentos Técnicos (read only local)
+// ============================================================
+
+export async function getDocumentosByEquipamento(equipamentoId: string): Promise<any[]> {
+  const database = await getDB();
+  return database.getAllAsync(
+    'SELECT * FROM documentos_tecnicos WHERE equipamento_id = ? ORDER BY nome ASC',
+    [equipamentoId]
+  );
+}
+
+export async function upsertDocumento(d: Record<string, any>): Promise<void> {
+  const database = await getDB();
+  await database.runAsync(
+    `INSERT OR REPLACE INTO documentos_tecnicos (id, empresa_id, equipamento_id, tipo, nome, arquivo_url, created_at, local_updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'))`,
+    [d.id, d.empresa_id, d.equipamento_id, d.tipo, d.nome, d.arquivo_url, d.created_at]
+  );
+}
+
+// ============================================================
+// Equipamentos — busca por nome/tag
+// ============================================================
+
+export async function searchEquipamentos(empresaId: string, busca: string): Promise<any[]> {
+  const database = await getDB();
+  return database.getAllAsync(
+    "SELECT * FROM equipamentos WHERE empresa_id = ? AND (nome LIKE ? OR qr_code LIKE ?) ORDER BY nome ASC LIMIT 30",
+    [empresaId, `%${busca}%`, `%${busca}%`]
+  );
+}
+
+export async function getAllEquipamentos(empresaId: string): Promise<any[]> {
+  const database = await getDB();
+  return database.getAllAsync(
+    'SELECT * FROM equipamentos WHERE empresa_id = ? ORDER BY nome ASC LIMIT 200',
+    [empresaId]
+  );
+}
+
+export async function getEquipamentoById(id: string): Promise<any | null> {
+  const database = await getDB();
+  return database.getFirstAsync('SELECT * FROM equipamentos WHERE id = ?', [id]);
+}
+
+// ============================================================
+// OS Stats (contadores para dashboard)
+// ============================================================
+
+export async function getOSStats(empresaId: string): Promise<{ abertas: number; programadas: number; emAndamento: number; finalizadasHoje: number }> {
+  const database = await getDB();
+  const hoje = new Date().toISOString().split('T')[0];
+
+  const abertas = await database.getFirstAsync<{ cnt: number }>(
+    "SELECT COUNT(*) as cnt FROM ordens_servico WHERE empresa_id = ? AND status IN ('aberta', 'solicitada', 'emitida')",
+    [empresaId]
+  );
+  const programadas = await database.getFirstAsync<{ cnt: number }>(
+    "SELECT COUNT(*) as cnt FROM ordens_servico WHERE empresa_id = ? AND status = 'programada'",
+    [empresaId]
+  );
+  const emAndamento = await database.getFirstAsync<{ cnt: number }>(
+    "SELECT COUNT(*) as cnt FROM ordens_servico WHERE empresa_id = ? AND status IN ('em_andamento', 'em_execucao')",
+    [empresaId]
+  );
+  const finalizadas = await database.getFirstAsync<{ cnt: number }>(
+    "SELECT COUNT(*) as cnt FROM ordens_servico WHERE empresa_id = ? AND status = 'concluida' AND data_fechamento LIKE ?",
+    [empresaId, `${hoje}%`]
+  );
+
+  return {
+    abertas: abertas?.cnt ?? 0,
+    programadas: programadas?.cnt ?? 0,
+    emAndamento: emAndamento?.cnt ?? 0,
+    finalizadasHoje: finalizadas?.cnt ?? 0,
+  };
+}
+
+// ============================================================
+// OS — busca a próxima OS mais urgente
+// ============================================================
+
+export async function getProximaOS(empresaId: string): Promise<any | null> {
+  const database = await getDB();
+  return database.getFirstAsync(
+    `SELECT * FROM ordens_servico WHERE empresa_id = ? AND status IN ('aberta', 'solicitada', 'emitida', 'em_andamento', 'em_execucao')
+     ORDER BY CASE prioridade WHEN 'emergencial' THEN 0 WHEN 'alta' THEN 1 WHEN 'media' THEN 2 WHEN 'baixa' THEN 3 END, data_solicitacao ASC
+     LIMIT 1`,
+    [empresaId]
+  );
+}
+
+// ============================================================
+// Execucoes — buscar todas do mecânico (histórico)
+// ============================================================
+
+export async function getExecucoesHistorico(empresaId: string, limit: number = 50): Promise<any[]> {
+  const database = await getDB();
+  return database.getAllAsync(
+    `SELECT e.*, o.numero_os, o.equipamento, o.problema, o.tipo as os_tipo
+     FROM execucoes_os e
+     LEFT JOIN ordens_servico o ON e.os_id = o.id
+     WHERE e.empresa_id = ?
+     ORDER BY e.created_at DESC
+     LIMIT ?`,
+    [empresaId, limit]
+  );
+}
+
+// ============================================================
+// Execucoes — buscar atividade em andamento de um mecânico
+// ============================================================
+
+export async function getExecucaoEmAndamento(mecanicoId: string): Promise<any | null> {
+  const database = await getDB();
+  return database.getFirstAsync(
+    "SELECT * FROM execucoes_os WHERE mecanico_id = ? AND hora_inicio IS NOT NULL AND hora_fim IS NULL ORDER BY hora_inicio DESC LIMIT 1",
+    [mecanicoId]
+  );
 }

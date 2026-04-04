@@ -11,32 +11,28 @@ import {
   RefreshControl,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
-import * as SQLite from 'expo-sqlite';
 import SyncStatusBar from '../components/SyncStatusBar';
 import EmptyState from '../components/EmptyState';
+import { getExecucoesHistorico } from '../lib/database';
+import { useAuth } from '../contexts/AuthContext';
 import { COLORS, SIZES } from '../theme';
 import type { ExecucaoOS } from '../types';
 
 export default function HistoryScreen() {
   const navigation = useNavigation();
+  const { empresaId } = useAuth();
   const [execucoes, setExecucoes] = useState<(ExecucaoOS & { numero_os?: string; equipamento?: string })[]>([]);
   const [refreshing, setRefreshing] = useState(false);
 
   const load = useCallback(async () => {
     try {
-      const db = await SQLite.openDatabaseAsync('mecanico_pcm');
-      const rows = await db.getAllAsync<ExecucaoOS & { numero_os?: string; equipamento?: string }>(
-        `SELECT e.*, o.numero_os, o.equipamento
-         FROM execucoes_os e
-         LEFT JOIN ordens_servico o ON e.os_id = o.id
-         ORDER BY e.created_at DESC
-         LIMIT 100`
-      );
+      if (!empresaId) return;
+      const rows = await getExecucoesHistorico(empresaId, 100);
       setExecucoes(rows);
     } catch {
       /* ignore */
     }
-  }, []);
+  }, [empresaId]);
 
   useEffect(() => {
     load();

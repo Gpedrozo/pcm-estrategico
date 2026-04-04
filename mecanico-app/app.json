@@ -37,6 +37,13 @@
       [
         "expo-image-picker",
         { "photosPermission": "Necessário para anexar fotos às execuções." }
+      ],
+      [
+        "@react-native-voice/voice",
+        {
+          "microphonePermission": "Necessário para transcrever voz em texto nos campos.",
+          "speechRecognitionPermission": "Necessário para reconhecimento de voz."
+        }
       ]
     ]
   }

@@ -4,7 +4,40 @@
 
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
-import { COLORS, SIZES, SHADOWS, prioridadeColor, statusLabel, statusColor } from '../theme';
+import { COLORS, SIZES, SHADOWS } from '../theme';
+
+const PRIORIDADE_COLORS: Record<string, string> = {
+  emergencial: '#B71C1C',
+  alta: '#D32F2F',
+  media: '#F57C00',
+  baixa: '#2E7D32',
+};
+
+const STATUS_LABELS: Record<string, string> = {
+  aberta: 'ABERTA',
+  solicitada: 'SOLICITADA',
+  emitida: 'EMITIDA',
+  em_andamento: 'EM ANDAMENTO',
+  em_execucao: 'EXECUTANDO',
+  programada: 'PROGRAMADA',
+  concluida: 'CONCLUÍDA',
+  cancelada: 'CANCELADA',
+  pausada: 'PAUSADA',
+  aguardando_materiais: 'AGUARD. MATERIAL',
+};
+
+const STATUS_COLORS: Record<string, string> = {
+  aberta: '#D32F2F',
+  solicitada: '#F57C00',
+  emitida: '#F57C00',
+  em_andamento: '#1565C0',
+  em_execucao: '#1565C0',
+  programada: '#F57C00',
+  concluida: '#2E7D32',
+  cancelada: '#757575',
+  pausada: '#F57C00',
+  aguardando_materiais: '#F57C00',
+};
 
 interface OSCardProps {
   os: {
@@ -21,8 +54,8 @@ interface OSCardProps {
 }
 
 export default function OSCard({ os, onPress }: OSCardProps) {
-  const prioColor = prioridadeColor(os.prioridade);
-  const stColor = statusColor(os.status);
+  const prioColor = PRIORIDADE_COLORS[os.prioridade] || COLORS.textSecondary;
+  const stColor = STATUS_COLORS[os.status] || COLORS.textSecondary;
 
   return (
     <TouchableOpacity
@@ -35,7 +68,7 @@ export default function OSCard({ os, onPress }: OSCardProps) {
           <Text style={styles.osNumber}>OS #{os.numero_os}</Text>
           <View style={[styles.statusBadge, { backgroundColor: stColor + '20' }]}>
             <Text style={[styles.statusText, { color: stColor }]}>
-              {statusLabel(os.status)}
+              {STATUS_LABELS[os.status] || os.status?.toUpperCase()}
             </Text>
           </View>
         </View>

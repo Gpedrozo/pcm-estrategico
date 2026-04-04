@@ -87,18 +87,85 @@ export interface AutoSaveState {
   saved_at: string;
 }
 
+// ── Paradas de Equipamento ──
+export type TipoParada = 'mecanica' | 'eletrica' | 'operacional' | 'instrumentacao';
+
+export interface ParadaEquipamento {
+  id: string;
+  empresa_id: string;
+  equipamento_id?: string;
+  os_id?: string;
+  mecanico_id?: string;
+  mecanico_nome?: string;
+  tipo: TipoParada;
+  inicio: string;
+  fim?: string;
+  observacao?: string;
+  created_at: string;
+  updated_at?: string;
+  sync_status?: SyncStatus;
+  local_updated_at?: string;
+}
+
+// ── Requisição de Material ──
+export type StatusRequisicao = 'pendente' | 'aprovada' | 'entregue' | 'recusada';
+
+export interface RequisicaoMaterial {
+  id: string;
+  empresa_id: string;
+  os_id?: string;
+  mecanico_id?: string;
+  mecanico_nome?: string;
+  material_id?: string;
+  descricao_livre?: string;
+  quantidade: number;
+  status: StatusRequisicao;
+  observacao?: string;
+  created_at: string;
+  sync_status?: SyncStatus;
+  local_updated_at?: string;
+}
+
+// ── Material (catálogo) ──
+export interface Material {
+  id: string;
+  empresa_id: string;
+  codigo?: string;
+  descricao: string;
+  unidade?: string;
+  estoque_atual?: number;
+}
+
+// ── Documento Técnico ──
+export interface DocumentoTecnico {
+  id: string;
+  empresa_id: string;
+  equipamento_id?: string;
+  tipo?: string;
+  nome: string;
+  arquivo_url?: string;
+  created_at?: string;
+}
+
 // Navigation
 export type RootStackParamList = {
   DeviceBinding: undefined;
+  MecanicoSelect: undefined;
   Main: undefined;
   OSDetail: { osId: string };
-  Execution: { osId: string; execucaoId?: string };
+  Execution: { osId: string; execucaoId?: string; mode?: 'auto' | 'manual' };
+  Parada: { osId: string; equipamentoId?: string; equipamentoNome?: string };
+  SolicitarServico: { equipamentoId?: string; equipamentoNome?: string };
+  EquipamentoDetalhe: { equipamentoId: string };
+  RequisicaoMaterial: { osId: string };
+  Checklist: { osId: string; execucaoId: string; checklistData?: string };
+  Catalogo: { equipamentoId?: string };
 };
 
 export type MainTabParamList = {
   HomeTab: undefined;
   QRTab: undefined;
-  HistoryTab: undefined;
+  MaisTab: undefined;
 };
 
 // Auth

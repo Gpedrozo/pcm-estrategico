@@ -46,7 +46,7 @@ export default function App() {
 
   return (
     <SafeAreaProvider onLayout={onLayoutReady}>
-      <StatusBar barStyle="light-content" backgroundColor={COLORS.header} />
+      <StatusBar barStyle="light-content" backgroundColor={COLORS.headerBg} />
       <AuthProvider>
         <NavigationContainer>
           <RootNavigator />
