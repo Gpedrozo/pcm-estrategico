@@ -25,6 +25,7 @@ import {
   upsertOrdemServico,
   addToSyncQueue,
 } from '../lib/database';
+import { runSyncCycle } from '../lib/syncEngine';
 import LoadingScreen from '../components/LoadingScreen';
 import { COLORS, SIZES } from '../theme';
 import type { OrdemServico, ExecucaoOS, RootStackParamList } from '../types';
@@ -106,8 +107,12 @@ export default function OSDetailScreen() {
 
   const onRefresh = async () => {
     setRefreshing(true);
-    await load();
-    setRefreshing(false);
+    try {
+      await runSyncCycle(true);
+      await load();
+    } finally {
+      setRefreshing(false);
+    }
   };
 
   // ── INICIAR ATIVIDADE ──

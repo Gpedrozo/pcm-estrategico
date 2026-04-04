@@ -59,7 +59,7 @@ export default function HomeScreen() {
   const onRefresh = async () => {
     setRefreshing(true);
     try {
-      await runSyncCycle();
+      await runSyncCycle(true);
       await loadData();
     } finally {
       setRefreshing(false);

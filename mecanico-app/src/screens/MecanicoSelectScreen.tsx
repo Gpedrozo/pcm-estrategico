@@ -20,7 +20,7 @@ import {
 } from 'react-native';
 import { useAuth } from '../contexts/AuthContext';
 import { getMecanicos, upsertMecanico } from '../lib/database';
-import { supabase } from '../lib/supabase';
+import { supabase, SUPABASE_URL, SUPABASE_ANON_KEY } from '../lib/supabase';
 import { runSyncCycle } from '../lib/syncEngine';
 import { COLORS, SIZES } from '../theme';
 
@@ -143,7 +143,7 @@ export default function MecanicoSelectScreen() {
 
       // Passo 3: Se ainda vazio, tenta sync completo e recarrega
       try {
-        await runSyncCycle();
+        await runSyncCycle(true);
       } catch { /* ignore */ }
       if (mounted) {
         await loadMecanicos();
@@ -200,24 +200,34 @@ export default function MecanicoSelectScreen() {
     setSenhaError('');
 
     try {
-      const { data, error } = await supabase.rpc('validar_senha_mecanico', {
-        p_mecanico_id: selectedMec.id,
-        p_senha: senhaTrimmed,
-      });
-
-      if (error) {
-        console.warn('[MecanicoSelect] RPC error:', error.message);
-        // Fallback: se RPC não existe ainda, permite acesso (compatibilidade)
-        if (error.message.includes('function') || error.message.includes('does not exist')) {
-          await selectMecanico(selectedMec.id, selectedMec.nome);
-          return;
+      // Usa edge function que funciona com service_role internamente
+      const response = await fetch(
+        `${SUPABASE_URL}/functions/v1/mecanico-device-auth`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+            'apikey': SUPABASE_ANON_KEY,
+          },
+          body: JSON.stringify({
+            action: 'validar_senha',
+            mecanico_id: selectedMec.id,
+            senha: senhaTrimmed,
+          }),
         }
-        setSenhaError('Erro ao validar. Tente novamente.');
+      );
+
+      const result = await response.json();
+
+      if (!result.ok) {
+        console.warn('[MecanicoSelect] Validação error:', result.error);
+        setSenhaError(result.error || 'Erro ao validar. Tente novamente.');
         setValidating(false);
         return;
       }
 
-      if (data === true) {
+      if (result.valid === true) {
         // Senha correta — prossegue
         await selectMecanico(selectedMec.id, selectedMec.nome);
       } else {

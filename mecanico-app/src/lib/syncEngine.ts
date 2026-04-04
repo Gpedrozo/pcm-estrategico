@@ -17,6 +17,7 @@ import {
   upsertParada,
   upsertRequisicao,
   getDeviceConfig,
+  saveDeviceConfig,
 } from './database';
 
 const MAX_RETRIES = 5;
@@ -96,30 +97,46 @@ async function uploadPhoto(execucaoId: string, localUri: string, empresaId: stri
 // Pull — Fetch latest data from server into local DB
 // ============================================================
 
-export async function pullData(empresaId: string): Promise<void> {
+export async function pullData(empresaId: string, forceFullRefresh = false): Promise<void> {
   if (!empresaId) return;
 
+  // Incremental sync: use last_sync_timestamp to only fetch changed records
+  // forceFullRefresh = true when user manually pulls to refresh
+  const lastSync = forceFullRefresh ? null : await getDeviceConfig('last_sync_timestamp');
+  const sinceTs = lastSync || '1970-01-01T00:00:00Z';
+
+  // Helper: build query with optional updated_at filter
+  function withTimestamp(query: any) {
+    if (lastSync) {
+      return query.gte('updated_at', sinceTs);
+    }
+    return query;
+  }
+
   // Pull Ordens de Servico
-  const { data: osList } = await supabase
+  const { data: osList } = await withTimestamp(
+    supabase
     .from('ordens_servico')
     .select('*')
     .eq('empresa_id', empresaId)
     .order('data_solicitacao', { ascending: false })
-    .limit(200);
+  ).limit(1000);
 
   if (osList) {
     for (const os of osList) {
       await upsertOrdemServico(os);
     }
+    console.log(`[sync] pulled ${osList.length} OS${lastSync ? ' (incremental)' : ' (full)'}`);
   }
 
   // Pull Execucoes
-  const { data: execList } = await supabase
+  const { data: execList } = await withTimestamp(
+    supabase
     .from('execucoes_os')
     .select('*')
     .eq('empresa_id', empresaId)
     .order('created_at', { ascending: false })
-    .limit(500);
+  ).limit(1000);
 
   if (execList) {
     for (const exec of execList) {
@@ -128,11 +145,12 @@ export async function pullData(empresaId: string): Promise<void> {
   }
 
   // Pull Equipamentos
-  const { data: eqList } = await supabase
+  const { data: eqList } = await withTimestamp(
+    supabase
     .from('equipamentos')
     .select('*')
     .eq('empresa_id', empresaId)
-    .limit(500);
+  ).limit(1000);
 
   if (eqList) {
     for (const eq of eqList) {
@@ -147,7 +165,7 @@ export async function pullData(empresaId: string): Promise<void> {
     .select('*')
     .eq('empresa_id', empresaId)
     .eq('ativo', true)
-    .limit(200);
+    .limit(500);
 
   if (!mecErr && mecDirect && mecDirect.length > 0) {
     mecList = mecDirect;
@@ -170,12 +188,12 @@ export async function pullData(empresaId: string): Promise<void> {
   }
 
   // Pull Materiais (catálogo)
-  // Supabase column is 'nome', SQLite uses 'descricao' — map on pull
-  const { data: matList } = await supabase
+  const { data: matList } = await withTimestamp(
+    supabase
     .from('materiais')
     .select('id, empresa_id, codigo, nome, unidade, estoque_atual')
     .eq('empresa_id', empresaId)
-    .limit(500);
+  ).limit(1000);
 
   if (matList) {
     for (const mat of matList) {
@@ -184,12 +202,12 @@ export async function pullData(empresaId: string): Promise<void> {
   }
 
   // Pull Documentos Técnicos
-  // Supabase column is 'titulo', SQLite uses 'nome' — map on pull
-  const { data: docList } = await supabase
+  const { data: docList } = await withTimestamp(
+    supabase
     .from('documentos_tecnicos')
     .select('id, empresa_id, equipamento_id, tipo, titulo, arquivo_url, created_at')
     .eq('empresa_id', empresaId)
-    .limit(300);
+  ).limit(500);
 
   if (docList) {
     for (const doc of docList) {
@@ -197,13 +215,14 @@ export async function pullData(empresaId: string): Promise<void> {
     }
   }
 
-  // Pull Paradas (para exibir paradas de outros mecânicos)
-  const { data: paradaList } = await supabase
+  // Pull Paradas
+  const { data: paradaList } = await withTimestamp(
+    supabase
     .from('paradas_equipamento')
     .select('*')
     .eq('empresa_id', empresaId)
     .order('inicio', { ascending: false })
-    .limit(200);
+  ).limit(500);
 
   if (paradaList) {
     for (const p of paradaList) {
@@ -211,26 +230,30 @@ export async function pullData(empresaId: string): Promise<void> {
     }
   }
 
-  // Pull Requisicoes (para ver status)
-  const { data: reqList } = await supabase
+  // Pull Requisicoes
+  const { data: reqList } = await withTimestamp(
+    supabase
     .from('requisicoes_material')
     .select('*')
     .eq('empresa_id', empresaId)
     .order('created_at', { ascending: false })
-    .limit(200);
+  ).limit(500);
 
   if (reqList) {
     for (const r of reqList) {
       await upsertRequisicao({ ...r, sync_status: 'synced' });
     }
   }
+
+  // Save sync timestamp for next incremental pull
+  await saveDeviceConfig('last_sync_timestamp', new Date().toISOString());
 }
 
 // ============================================================
 // Full Sync Cycle
 // ============================================================
 
-export async function runSyncCycle(): Promise<{ pushed: number; pulled: boolean }> {
+export async function runSyncCycle(forceFullRefresh = false): Promise<{ pushed: number; pulled: boolean }> {
   if (isSyncing) return { pushed: 0, pulled: false };
   isSyncing = true;
 
@@ -244,7 +267,7 @@ export async function runSyncCycle(): Promise<{ pushed: number; pulled: boolean 
     // Then pull
     const empresaId = await getDeviceConfig('empresa_id');
     if (empresaId) {
-      await pullData(empresaId);
+      await pullData(empresaId, forceFullRefresh);
     }
 
     return { pushed, pulled: !!empresaId };

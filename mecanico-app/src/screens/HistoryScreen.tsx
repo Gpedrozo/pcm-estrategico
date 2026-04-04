@@ -14,6 +14,7 @@ import { useNavigation } from '@react-navigation/native';
 import SyncStatusBar from '../components/SyncStatusBar';
 import EmptyState from '../components/EmptyState';
 import { getExecucoesHistorico } from '../lib/database';
+import { runSyncCycle } from '../lib/syncEngine';
 import { useAuth } from '../contexts/AuthContext';
 import { COLORS, SIZES } from '../theme';
 import type { ExecucaoOS } from '../types';
@@ -45,8 +46,12 @@ export default function HistoryScreen() {
 
   const onRefresh = async () => {
     setRefreshing(true);
-    await load();
-    setRefreshing(false);
+    try {
+      await runSyncCycle(true);
+      await load();
+    } finally {
+      setRefreshing(false);
+    }
   };
 
   const formatDateTime = (iso?: string | null) => {

@@ -159,6 +159,33 @@ Deno.serve(async (req: Request) => {
       return await authenticateWithDevice(admin, device, empresa, req);
     }
 
+    // MODE 3: Validate mechanic password (action=validar_senha)
+    const action = String(body.action ?? "").trim();
+    if (action === "validar_senha") {
+      const mecanicoId = String(body.mecanico_id ?? "").trim();
+      const senhaInput = String(body.senha ?? "").trim();
+      if (!mecanicoId || !senhaInput) {
+        return respond({ ok: false, error: "mecanico_id e senha obrigat\u00f3rios" }, req);
+      }
+      try {
+        const { data: mec, error: mecErr } = await admin
+          .from("mecanicos")
+          .select("id, senha_acesso")
+          .eq("id", mecanicoId)
+          .eq("ativo", true)
+          .is("deleted_at", null)
+          .maybeSingle();
+        if (mecErr) return respond({ ok: false, error: "Erro ao buscar mec\u00e2nico" }, req);
+        if (!mec) return respond({ ok: false, error: "Mec\u00e2nico n\u00e3o encontrado" }, req);
+        if (!mec.senha_acesso) return respond({ ok: true, valid: true }, req);
+        const valid = mec.senha_acesso === senhaInput;
+        return respond({ ok: true, valid }, req);
+      } catch (e) {
+        console.error("[device-auth] validar_senha error:", e);
+        return respond({ ok: false, error: "Erro ao validar senha" }, req);
+      }
+    }
+
     // ── MODE 2: Re-authenticate existing device (device_token) ──
     if (!deviceToken) {
       return respond({ ok: false, error: "device_token ou qr_token+device_id obrigatório" }, req);
