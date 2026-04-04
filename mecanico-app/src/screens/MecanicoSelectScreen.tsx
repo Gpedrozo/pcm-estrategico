@@ -19,7 +19,7 @@ import {
   Alert,
 } from 'react-native';
 import { useAuth } from '../contexts/AuthContext';
-import { getMecanicos } from '../lib/database';
+import { getMecanicos, upsertMecanico } from '../lib/database';
 import { supabase } from '../lib/supabase';
 import { runSyncCycle } from '../lib/syncEngine';
 import { COLORS, SIZES } from '../theme';
@@ -43,31 +43,92 @@ export default function MecanicoSelectScreen() {
   const [validating, setValidating] = useState(false);
   const senhaInputRef = useRef<TextInput>(null);
 
+  // Busca mecânicos direto do Supabase (fonte confiável)
+  const fetchFromSupabase = useCallback(async (): Promise<MecanicoItem[]> => {
+    if (!empresaId) return [];
+    try {
+      const { data, error } = await supabase
+        .from('mecanicos')
+        .select('id, nome, tipo')
+        .eq('empresa_id', empresaId)
+        .eq('ativo', true)
+        .is('deleted_at', null)
+        .order('nome', { ascending: true })
+        .limit(200);
+
+      if (error) {
+        console.warn('[MecanicoSelect] Supabase fetch error:', error.message);
+        return [];
+      }
+
+      // Persiste no SQLite local para uso offline
+      if (data && data.length > 0) {
+        for (const mec of data) {
+          await upsertMecanico({ ...mec, empresa_id: empresaId, ativo: true });
+        }
+      }
+
+      return data || [];
+    } catch (err) {
+      console.warn('[MecanicoSelect] fetchFromSupabase exception:', err);
+      return [];
+    }
+  }, [empresaId]);
+
   const loadMecanicos = useCallback(async () => {
     if (!empresaId) return;
     try {
-      const list = await getMecanicos(empresaId);
+      // 1. Tenta local primeiro (rápido, offline)
+      let list = await getMecanicos(empresaId);
+
+      // 2. Se local vazio, busca direto do Supabase
+      if (list.length === 0) {
+        list = await fetchFromSupabase();
+      }
+
       setMecanicos(list);
     } catch (err) {
       console.warn('[MecanicoSelect] erro ao carregar:', err);
     } finally {
       setLoading(false);
     }
-  }, [empresaId]);
+  }, [empresaId, fetchFromSupabase]);
 
+  // Na montagem: sync + load. Se sync não trouxe nada, busca direto.
   useEffect(() => {
-    loadMecanicos();
-  }, [loadMecanicos]);
+    let mounted = true;
+    async function init() {
+      if (!empresaId) return;
+      try {
+        // Tenta sync completo primeiro
+        await runSyncCycle();
+      } catch {
+        // sync falhou — segue com fallback
+      }
+      if (mounted) {
+        await loadMecanicos();
+      }
+    }
+    init();
+    return () => { mounted = false; };
+  }, [empresaId, loadMecanicos]);
 
   const handleRefresh = useCallback(async () => {
     setRefreshing(true);
     try {
-      await runSyncCycle();
-      await loadMecanicos();
+      // Força busca do Supabase (sempre atualizado)
+      const freshList = await fetchFromSupabase();
+      if (freshList.length > 0) {
+        setMecanicos(freshList);
+      } else {
+        // Fallback: tenta sync + local
+        await runSyncCycle();
+        await loadMecanicos();
+      }
     } finally {
       setRefreshing(false);
     }
-  }, [loadMecanicos]);
+  }, [fetchFromSupabase, loadMecanicos]);
 
   // Abre modal de senha ao tocar no mecânico
   const handleTapMecanico = useCallback((mec: MecanicoItem) => {
