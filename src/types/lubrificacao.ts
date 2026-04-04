@@ -1,31 +1,19 @@
 export interface PlanoLubrificacao {
   id: string;
+  empresa_id: string;
+  equipamento_id: string | null;
   codigo: string;
   nome: string;
-  equipamento_id: string | null;
-  tag: string | null;
-  localizacao: string | null;
-  ponto: string | null;
-  tipo_lubrificante: string | null;
-  codigo_lubrificante: string | null;
-  quantidade: number | null;
-  ferramenta: string | null;
-  periodicidade_tipo: 'DIAS' | 'SEMANAS' | 'MESES' | 'HORAS';
-  periodicidade_valor: number | null;
-  tempo_estimado_min: number;
-  responsavel: string | null;
-  observacoes: string | null;
-  nivel_criticidade: 'ALTA' | 'MEDIA' | 'BAIXA' | null;
-  instrucoes: string | null;
-  anexos: any;
   descricao: string | null;
   ponto_lubrificacao: string | null;
   lubrificante: string | null;
   periodicidade: number | null;
   tipo_periodicidade: 'dias' | 'semanas' | 'meses' | 'horas' | null;
+  proxima_execucao: string | null;
+  ultima_execucao: string | null;
   tempo_estimado: number | null;
   prioridade: 'baixa' | 'media' | 'alta' | 'critica' | null;
-  ultima_execucao: string | null;
+  responsavel_nome: string | null;
   status: string | null;
   ativo: boolean;
   created_at: string;
@@ -36,21 +24,6 @@ export interface PlanoLubrificacaoInsert {
   codigo: string;
   nome: string;
   equipamento_id?: string | null;
-  tag?: string | null;
-  localizacao?: string | null;
-  ponto?: string | null;
-  tipo_lubrificante?: string | null;
-  codigo_lubrificante?: string | null;
-  quantidade?: number | null;
-  ferramenta?: string | null;
-  periodicidade_tipo?: 'DIAS' | 'SEMANAS' | 'MESES' | 'HORAS';
-  periodicidade_valor?: number | null;
-  tempo_estimado_min?: number;
-  responsavel?: string | null;
-  observacoes?: string | null;
-  nivel_criticidade?: 'ALTA' | 'MEDIA' | 'BAIXA' | null;
-  instrucoes?: string | null;
-  anexos?: any;
   descricao?: string | null;
   ponto_lubrificacao?: string | null;
   lubrificante?: string | null;
@@ -58,6 +31,7 @@ export interface PlanoLubrificacaoInsert {
   tipo_periodicidade?: 'dias' | 'semanas' | 'meses' | 'horas' | null;
   tempo_estimado?: number | null;
   prioridade?: 'baixa' | 'media' | 'alta' | 'critica' | null;
+  responsavel_nome?: string | null;
   ultima_execucao?: string | null;
   proxima_execucao?: string | null;
   status?: string | null;
@@ -129,7 +103,7 @@ export interface RotaLubrificacaoInsert {
 
 export interface RotaPonto {
   id: string;
-  rota_id: string;
+  rota_id: string | null;
   plano_id: string | null;
   ordem: number;
   codigo_ponto: string;
@@ -146,7 +120,7 @@ export interface RotaPonto {
 }
 
 export interface RotaPontoInsert {
-  rota_id: string;
+  rota_id?: string | null;
   plano_id?: string | null;
   ordem: number;
   codigo_ponto: string;

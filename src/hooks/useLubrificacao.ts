@@ -102,10 +102,10 @@ export function useCreatePlanoLubrificacao() {
           empresaId: tenantId,
           equipamentoId: payload.equipamento_id,
           titulo: `${payload.codigo} • ${payload.nome}`,
-          descricao: payload.descricao || payload.observacoes,
+          descricao: payload.descricao,
           dataProgramada: payload.proxima_execucao || new Date().toISOString(),
           status: payload.status || (payload.ativo ? 'programado' : 'inativo'),
-          responsavel: payload.responsavel_nome || payload.responsavel,
+          responsavel: payload.responsavel_nome,
         });
       } catch (scheduleError) {
         logger.warn('useLubrificacao.create.schedule_sync_failed', {
@@ -161,10 +161,10 @@ export function useUpdatePlanoLubrificacao() {
           empresaId: tenantId,
           equipamentoId: source.equipamento_id,
           titulo: source.codigo && source.nome ? `${source.codigo} • ${source.nome}` : `Plano ${source.id}`,
-          descricao: source.descricao || source.observacoes,
+          descricao: source.descricao,
           dataProgramada: source.proxima_execucao || new Date().toISOString(),
           status: source.status || (source.ativo ? 'programado' : 'inativo'),
-          responsavel: source.responsavel_nome || source.responsavel,
+          responsavel: source.responsavel_nome,
         });
       } catch (scheduleError) {
         logger.warn('useLubrificacao.update.schedule_sync_failed', {

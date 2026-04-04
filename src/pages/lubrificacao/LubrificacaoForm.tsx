@@ -50,7 +50,7 @@ interface LubrificacaoFormProps {
   onOpenChange: (open: boolean) => void;
   equipamentos: EquipamentoRow[];
   initialData?: PlanoLubrificacao | null;
-  onSubmit: (data: PlanoLubrificacaoInsert) => Promise<void>;
+  onSubmit: (data: PlanoLubrificacaoInsert) => Promise<any>;
   dataProgramada?: string;
 }
 
@@ -74,16 +74,13 @@ export function LubrificacaoForm({ open, onOpenChange, equipamentos, initialData
     codigo: '',
     nome: '',
     equipamento_id: null,
-    tag: null,
-    localizacao: null,
     ponto_lubrificacao: '',
     descricao: '',
     lubrificante: '',
-    quantidade: 0,
     periodicidade: 30,
     tipo_periodicidade: 'dias',
     tempo_estimado: 60,
-    responsavel: '',
+    responsavel_nome: '',
     prioridade: 'media',
     ultima_execucao: new Date().toISOString(),
     proxima_execucao: addPeriod(new Date().toISOString(), 'dias', 30),
@@ -103,16 +100,13 @@ export function LubrificacaoForm({ open, onOpenChange, equipamentos, initialData
         codigo: '',
         nome: '',
         equipamento_id: null,
-        tag: null,
-        localizacao: null,
         ponto_lubrificacao: '',
         descricao: '',
         lubrificante: '',
-        quantidade: 0,
         periodicidade: 30,
         tipo_periodicidade: 'dias',
         tempo_estimado: 60,
-        responsavel: '',
+        responsavel_nome: '',
         prioridade: 'media',
         ultima_execucao: now,
         proxima_execucao: proxExec,
@@ -126,16 +120,13 @@ export function LubrificacaoForm({ open, onOpenChange, equipamentos, initialData
       codigo: initialData.codigo,
       nome: initialData.nome,
       equipamento_id: initialData.equipamento_id,
-      tag: initialData.tag,
-      localizacao: initialData.localizacao,
-      ponto_lubrificacao: initialData.ponto_lubrificacao || initialData.ponto || '',
-      descricao: initialData.descricao || initialData.observacoes || '',
-      lubrificante: initialData.lubrificante || initialData.tipo_lubrificante || '',
-      quantidade: initialData.quantidade,
-      periodicidade: initialData.periodicidade || initialData.periodicidade_valor || 30,
+      ponto_lubrificacao: initialData.ponto_lubrificacao || '',
+      descricao: initialData.descricao || '',
+      lubrificante: initialData.lubrificante || '',
+      periodicidade: initialData.periodicidade || 30,
       tipo_periodicidade: initialData.tipo_periodicidade || 'dias',
-      tempo_estimado: initialData.tempo_estimado || initialData.tempo_estimado_min || 60,
-      responsavel: initialData.responsavel,
+      tempo_estimado: initialData.tempo_estimado || 60,
+      responsavel_nome: initialData.responsavel_nome || '',
       prioridade: initialData.prioridade || 'media',
       ultima_execucao: initialData.ultima_execucao || new Date().toISOString(),
       proxima_execucao: initialData.proxima_execucao || new Date().toISOString(),
@@ -205,25 +196,24 @@ export function LubrificacaoForm({ open, onOpenChange, equipamentos, initialData
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
 
-    const result = await onSubmit({
-      ...form,
-      tag: form.tag || null,
-      localizacao: form.localizacao || null,
-      periodicidade_valor: Number(form.periodicidade || 0),
-      periodicidade_tipo: (form.tipo_periodicidade || 'dias').toUpperCase() as 'DIAS' | 'SEMANAS' | 'MESES' | 'HORAS',
-      tempo_estimado_min: Number(form.tempo_estimado || 0),
-      ponto: form.ponto_lubrificacao,
-      observacoes: form.descricao,
-      tipo_lubrificante: form.lubrificante,
-      proxima_execucao: form.proxima_execucao,
-    });
+    // Validate pontos: all must have codigo_ponto and descricao
+    const invalidPontos = pontos.filter((p) => !p.codigo_ponto || !p.descricao);
+    if (invalidPontos.length > 0) {
+      toast({ title: 'Pontos incompletos', description: `${invalidPontos.length} ponto(s) sem código ou descrição. Preencha ou remova-os.`, variant: 'destructive' });
+      return;
+    }
 
-    // Save pontos if plano has id (edit mode)
-    const planoId = initialData?.id || (result as any)?.id;
-    if (planoId && pontos.length > 0) {
-      const pontosPayload: RotaPontoInsert[] = pontos
-        .filter((p) => p.codigo_ponto && p.descricao)
-        .map((p, i) => ({
+    try {
+      const result = await onSubmit({
+        ...form,
+        responsavel_nome: form.responsavel_nome || null,
+        proxima_execucao: form.proxima_execucao,
+      });
+
+      // Save pontos after plano is persisted
+      const planoId = initialData?.id || result?.id;
+      if (planoId) {
+        const pontosPayload: RotaPontoInsert[] = pontos.map((p, i) => ({
           plano_id: planoId,
           rota_id: null,
           ordem: i,
@@ -238,11 +228,14 @@ export function LubrificacaoForm({ open, onOpenChange, equipamentos, initialData
           instrucoes: p.instrucoes || null,
           referencia_manual: p.referencia_manual || null,
         }));
-      await savePontos.mutateAsync({ planoId, pontos: pontosPayload });
-    } else if (planoId && pontos.length === 0) {
-      await savePontos.mutateAsync({ planoId, pontos: [] });
+        await savePontos.mutateAsync({ planoId, pontos: pontosPayload });
+      }
+
+      clearLubDraft();
+      onOpenChange(false);
+    } catch (err) {
+      toast({ title: 'Erro ao salvar', description: err instanceof Error ? err.message : 'Falha ao salvar plano ou pontos.', variant: 'destructive' });
     }
-    clearLubDraft();
   };
 
   return (
@@ -291,14 +284,7 @@ export function LubrificacaoForm({ open, onOpenChange, equipamentos, initialData
                     setForm((prev) => ({ ...prev, equipamento_id: null }));
                     return;
                   }
-
-                  const equipamento = equipamentos.find((item) => item.id === value);
-                  setForm((prev) => ({
-                    ...prev,
-                    equipamento_id: value,
-                    tag: equipamento?.tag || prev.tag || null,
-                    localizacao: equipamento?.localizacao || prev.localizacao || null,
-                  }));
+                  setForm((prev) => ({ ...prev, equipamento_id: value }));
                 }}
               >
                 <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
@@ -309,17 +295,6 @@ export function LubrificacaoForm({ open, onOpenChange, equipamentos, initialData
                   ))}
                 </SelectContent>
               </Select>
-            </div>
-            <div className="space-y-2">
-              <Label>TAG vinculada (opcional)</Label>
-              <Input value={form.tag || ''} onChange={(e) => setField('tag', e.target.value || null)} placeholder="Ex: EQ-1001" />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label>Rota / Setor / Estrutura (opcional)</Label>
-              <Input value={form.localizacao || ''} onChange={(e) => setField('localizacao', e.target.value || null)} placeholder="Ex: Linha 2 > Misturador > Mancal A" />
             </div>
             <div className="space-y-2">
               <Label>Ponto de Lubrificação (opcional)</Label>
@@ -333,12 +308,8 @@ export function LubrificacaoForm({ open, onOpenChange, equipamentos, initialData
               <Input value={form.lubrificante || ''} onChange={(e) => setField('lubrificante', e.target.value)} />
             </div>
             <div className="space-y-2">
-              <Label>Quantidade</Label>
-              <Input type="number" step="0.01" value={form.quantidade ?? 0} onChange={(e) => setField('quantidade', Number(e.target.value) || 0)} />
-            </div>
-            <div className="space-y-2">
               <Label>Responsável</Label>
-              <Input value={form.responsavel || ''} onChange={(e) => setField('responsavel', e.target.value)} />
+              <Input value={form.responsavel_nome || ''} onChange={(e) => setField('responsavel_nome', e.target.value)} />
             </div>
           </div>
 

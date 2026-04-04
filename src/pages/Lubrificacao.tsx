@@ -47,7 +47,7 @@ export default function Lubrificacao() {
       const matchesSearch = !s
         || item.codigo.toLowerCase().includes(s)
         || item.nome.toLowerCase().includes(s)
-        || (item.lubrificante || item.tipo_lubrificante || '').toLowerCase().includes(s);
+        || (item.lubrificante || '').toLowerCase().includes(s);
 
       const matchesEquipamento = equipamentoFilter === 'all' || item.equipamento_id === equipamentoFilter;
       const currentStatus = item.status || (item.ativo ? 'programado' : 'inativo');
@@ -110,8 +110,6 @@ export default function Lubrificacao() {
       result = await createPlano.mutateAsync(payload);
     }
 
-    setFormOpen(false);
-    setEditingPlano(null);
     return result;
   };
 

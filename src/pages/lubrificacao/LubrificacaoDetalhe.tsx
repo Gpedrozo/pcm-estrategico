@@ -58,14 +58,11 @@ export function LubrificacaoDetalhe({ plano, equipamentos, onEdit }: Lubrificaca
       <CardContent>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
           <div><span className="text-muted-foreground">Equipamento:</span> {equipamento ? `${equipamento.tag} - ${equipamento.nome}` : '—'}</div>
-          <div><span className="text-muted-foreground">TAG vinculada:</span> {plano.tag || equipamento?.tag || '—'}</div>
-          <div><span className="text-muted-foreground">Rota / Estrutura:</span> {plano.localizacao || equipamento?.localizacao || '—'}</div>
-          <div><span className="text-muted-foreground">Ponto:</span> {plano.ponto_lubrificacao || plano.ponto || '—'}</div>
-          <div><span className="text-muted-foreground">Lubrificante:</span> {plano.lubrificante || plano.tipo_lubrificante || '—'}</div>
-          <div><span className="text-muted-foreground">Quantidade:</span> {plano.quantidade ?? '—'}</div>
-          <div><span className="text-muted-foreground">Periodicidade:</span> {plano.periodicidade || plano.periodicidade_valor || '—'} {plano.tipo_periodicidade || plano.periodicidade_tipo || ''}</div>
-          <div><span className="text-muted-foreground">Tempo Estimado:</span> {plano.tempo_estimado || plano.tempo_estimado_min || 0} min</div>
-          <div><span className="text-muted-foreground">Responsável:</span> {plano.responsavel || '—'}</div>
+          <div><span className="text-muted-foreground">Ponto:</span> {plano.ponto_lubrificacao || '—'}</div>
+          <div><span className="text-muted-foreground">Lubrificante:</span> {plano.lubrificante || '—'}</div>
+          <div><span className="text-muted-foreground">Periodicidade:</span> {plano.periodicidade || '—'} {plano.tipo_periodicidade || ''}</div>
+          <div><span className="text-muted-foreground">Tempo Estimado:</span> {plano.tempo_estimado || 0} min</div>
+          <div><span className="text-muted-foreground">Responsável:</span> {plano.responsavel_nome || '—'}</div>
           <div><span className="text-muted-foreground">Prioridade:</span> {plano.prioridade || 'media'}</div>
           <div><span className="text-muted-foreground">Última Execução:</span> {plano.ultima_execucao ? new Date(plano.ultima_execucao).toLocaleString('pt-BR') : '—'}</div>
           <div><span className="text-muted-foreground">Próxima Execução:</span> {plano.proxima_execucao ? new Date(plano.proxima_execucao).toLocaleString('pt-BR') : '—'}</div>
@@ -73,7 +70,7 @@ export function LubrificacaoDetalhe({ plano, equipamentos, onEdit }: Lubrificaca
 
         <div className="mt-4">
           <p className="text-sm text-muted-foreground">Descrição</p>
-          <p className="text-sm mt-1">{plano.descricao || plano.observacoes || 'Sem descrição.'}</p>
+          <p className="text-sm mt-1">{plano.descricao || 'Sem descrição.'}</p>
         </div>
 
         {/* Pontos da Rota */}

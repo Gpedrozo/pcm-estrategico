@@ -96,8 +96,6 @@ export function LubrificacaoList({
                     <td>
                       <div className="space-y-0.5">
                         <p>{equipamentoNome(plano.equipamento_id)}</p>
-                        {plano.tag && <p className="text-[11px] text-muted-foreground font-mono">TAG: {plano.tag}</p>}
-                        {plano.localizacao && <p className="text-[11px] text-muted-foreground truncate">{plano.localizacao}</p>}
                       </div>
                     </td>
                     <td>

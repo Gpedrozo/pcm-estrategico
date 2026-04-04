@@ -28,18 +28,15 @@ const formatMin = (min: number) => {
 export const LubrificacaoPrintTemplate = forwardRef<HTMLDivElement, LubrificacaoPrintTemplateProps>(
   ({ plano, pontos = [], empresa }, ref) => {
     const docNum = `LUB-${plano.codigo}`;
-    const periodicidade = plano.periodicidade_valor
-      ? `${plano.periodicidade_valor} ${plano.periodicidade_tipo || 'DIAS'}`
-      : plano.periodicidade
-        ? `${plano.periodicidade} ${plano.tipo_periodicidade || 'dias'}`
-        : 'N/A';
+    const periodicidade = plano.periodicidade
+      ? `${plano.periodicidade} ${plano.tipo_periodicidade || 'dias'}`
+      : 'N/A';
 
     const proximaExec = plano.ultima_execucao
       ? format(new Date(plano.ultima_execucao), 'dd/MM/yyyy', { locale: ptBR })
       : 'N/A';
 
-    const criticidadeLabel: Record<string, string> = {
-      ALTA: 'ALTA', MEDIA: 'MÉDIA', BAIXA: 'BAIXA',
+    const prioridadeLabel: Record<string, string> = {
       critica: 'CRÍTICA', alta: 'ALTA', media: 'MÉDIA', baixa: 'BAIXA',
     };
 
@@ -52,9 +49,9 @@ export const LubrificacaoPrintTemplate = forwardRef<HTMLDivElement, Lubrificacao
       >
         {/* ═══ PLAN INFO ═══ */}
         <PrintInfoGrid items={[
-          { label: 'TAG / MÁQUINA', value: plano.tag || 'N/A', mono: true },
+          { label: 'EQUIPAMENTO', value: plano.equipamento_id ? `ID: ${plano.equipamento_id}` : 'N/A' },
           { label: 'PERIODICIDADE', value: periodicidade },
-          { label: 'TEMPO ESTIMADO', value: formatMin(plano.tempo_estimado_min || plano.tempo_estimado || 0) },
+          { label: 'TEMPO ESTIMADO', value: formatMin(plano.tempo_estimado || 0) },
           { label: 'ÚLTIMA EXECUÇÃO', value: proximaExec },
         ]} />
 
@@ -62,42 +59,31 @@ export const LubrificacaoPrintTemplate = forwardRef<HTMLDivElement, Lubrificacao
         <div className="border-b-2 border-black p-2 text-[9px]">
           <span className="font-bold text-gray-500 text-[8px]">PLANO: </span>
           <span className="font-semibold">{plano.nome.toUpperCase()}</span>
-          {plano.responsavel && (
-            <span className="ml-4 text-gray-500">Responsável: {plano.responsavel}</span>
+          {plano.responsavel_nome && (
+            <span className="ml-4 text-gray-500">Responsável: {plano.responsavel_nome}</span>
           )}
-          {(plano.nivel_criticidade || plano.prioridade) && (
+          {plano.prioridade && (
             <span className="ml-4 text-gray-500">
-              Criticidade: {criticidadeLabel[plano.nivel_criticidade || plano.prioridade || ''] || '—'}
+              Prioridade: {prioridadeLabel[plano.prioridade] || '—'}
             </span>
           )}
         </div>
 
         {/* ═══ LUBRICATION DETAILS ═══ */}
         <PrintInfoGrid items={[
-          { label: 'PONTO DE LUBRIFICAÇÃO', value: plano.ponto_lubrificacao || plano.ponto || '—' },
-          { label: 'LUBRIFICANTE', value: plano.tipo_lubrificante || plano.lubrificante || '—' },
-          { label: 'CÓD. LUBRIFICANTE', value: plano.codigo_lubrificante || '—' },
-          { label: 'QTD. PREVISTA', value: plano.quantidade ? `${plano.quantidade}` : '—' },
+          { label: 'PONTO DE LUBRIFICAÇÃO', value: plano.ponto_lubrificacao || '—' },
+          { label: 'LUBRIFICANTE', value: plano.lubrificante || '—' },
         ]} />
 
         <PrintInfoGrid items={[
-          { label: 'LOCALIZAÇÃO', value: plano.localizacao || '—' },
-          { label: 'FERRAMENTA', value: plano.ferramenta || '—' },
+          { label: 'DESCRIÇÃO', value: plano.descricao || '—' },
         ]} />
 
         {/* ═══ DESCRIPTION ═══ */}
         {plano.descricao && (
           <div className="border-b-2 border-black">
-            <PrintSectionHeader label="DESCRIÇÃO" />
+            <PrintSectionHeader label="DESCRIÇÃO DETALHADA" />
             <div className="p-2 min-h-[10mm] text-[9px]">{plano.descricao}</div>
-          </div>
-        )}
-
-        {/* ═══ INSTRUCTIONS ═══ */}
-        {plano.instrucoes && (
-          <div className="border-b-2 border-black">
-            <PrintSectionHeader label="INSTRUÇÕES DE EXECUÇÃO" />
-            <div className="p-2 min-h-[12mm] text-[9px] whitespace-pre-wrap">{plano.instrucoes}</div>
           </div>
         )}
 
@@ -196,10 +182,7 @@ export const LubrificacaoPrintTemplate = forwardRef<HTMLDivElement, Lubrificacao
         {/* ═══ OBSERVATIONS ═══ */}
         <div className="border-b-2 border-black">
           <PrintSectionHeader label="OBSERVAÇÕES" />
-          {plano.observacoes && (
-            <div className="p-2 text-[9px] text-gray-600">{plano.observacoes}</div>
-          )}
-          <PrintBlankLines count={2} />
+          <PrintBlankLines count={3} />
         </div>
       </DocumentPrintBase>
     );
