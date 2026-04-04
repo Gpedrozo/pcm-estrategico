@@ -67,9 +67,8 @@ export default function DispositivosMoveis() {
   };
 
   const handleCopyLink = (token: string) => {
-    const url = `${window.location.origin}/app/vincular?token=${token}`;
-    navigator.clipboard.writeText(url);
-    toast({ title: 'Link copiado!' });
+    navigator.clipboard.writeText(token);
+    toast({ title: 'Código copiado!' });
   };
 
   const formatDate = (d: string | null) => d ? new Date(d).toLocaleString('pt-BR') : '—';

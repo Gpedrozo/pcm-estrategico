@@ -13,8 +13,8 @@ import {
 import { startSyncTimer, stopSyncTimer, runSyncCycle } from '../lib/syncEngine';
 
 const INACTIVITY_TIMEOUT_MS = 60 * 60 * 1000; // 1 hour
-const AUTO_AUTH_MAX_ATTEMPTS = 2;
-const AUTO_AUTH_COOLDOWN_MS = 10_000; // 10s between auto-auth attempts
+const AUTO_AUTH_MAX_ATTEMPTS = 3;
+const AUTO_AUTH_COOLDOWN_MS = 5_000; // 5s between auto-auth attempts
 
 interface AuthState {
   isLoading: boolean;
@@ -25,6 +25,8 @@ interface AuthState {
   mecanicoId: string | null;
   mecanicoNome: string | null;
   error: string | null;
+  /** True when auto-auth attempts are exhausted without success */
+  authExhausted: boolean;
 }
 
 interface AuthContextValue extends AuthState {
@@ -52,6 +54,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     mecanicoId: null,
     mecanicoNome: null,
     error: null,
+    authExhausted: false,
   });
 
   const lastActivityRef = useRef(Date.now());
@@ -59,44 +62,85 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const autoAuthAttemptRef = useRef(0);
   const lastAutoAuthTimestampRef = useRef(0);
   const isAuthenticatingRef = useRef(false);
+  const mountedRef = useRef(true);
 
   // Track user activity for inactivity timeout
   const updateActivity = useCallback(() => {
     lastActivityRef.current = Date.now();
   }, []);
 
+  // ── Check if Supabase already has a valid session (persisted) ──
+  const checkExistingSession = useCallback(async (): Promise<boolean> => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.access_token && session?.user) {
+        return true;
+      }
+    } catch {
+      // ignore — will fallback to edge function auth
+    }
+    return false;
+  }, []);
+
   // ── Check if device is bound (has device_token) ──
   const checkDeviceBinding = useCallback(async () => {
-    setState((s: AuthState) => ({ ...s, isLoading: true, error: null }));
+    setState((s: AuthState) => ({ ...s, isLoading: true, error: null, authExhausted: false }));
     try {
       const deviceToken = await getDeviceConfig('device_token');
       const empresaId = await getDeviceConfig('empresa_id');
       const empresaNome = await getDeviceConfig('empresa_nome');
 
       if (deviceToken) {
-        setState((s: AuthState) => ({
-          ...s,
-          isDeviceBound: true,
-          empresaId,
-          empresaNome,
-          isLoading: false,
-        }));
+        // Before calling edge function, check if Supabase already has a valid session
+        const hasSession = await checkExistingSession();
+        if (hasSession) {
+          // Session already valid — skip edge function auth entirely
+          startSyncTimer();
+          runSyncCycle();
+          if (mountedRef.current) {
+            setState((s: AuthState) => ({
+              ...s,
+              isDeviceBound: true,
+              isAuthenticated: true,
+              empresaId,
+              empresaNome,
+              isLoading: false,
+              error: null,
+              authExhausted: false,
+            }));
+          }
+          return;
+        }
+
+        if (mountedRef.current) {
+          setState((s: AuthState) => ({
+            ...s,
+            isDeviceBound: true,
+            empresaId,
+            empresaNome,
+            isLoading: false,
+          }));
+        }
       } else {
-        setState((s: AuthState) => ({
-          ...s,
-          isDeviceBound: false,
-          isAuthenticated: false,
-          isLoading: false,
-        }));
+        if (mountedRef.current) {
+          setState((s: AuthState) => ({
+            ...s,
+            isDeviceBound: false,
+            isAuthenticated: false,
+            isLoading: false,
+          }));
+        }
       }
     } catch (err: any) {
-      setState((s: AuthState) => ({
-        ...s,
-        isLoading: false,
-        error: 'Erro ao verificar dispositivo',
-      }));
+      if (mountedRef.current) {
+        setState((s: AuthState) => ({
+          ...s,
+          isLoading: false,
+          error: 'Erro ao verificar dispositivo',
+        }));
+      }
     }
-  }, []);
+  }, [checkExistingSession]);
 
   // ── Bind device via QR Code (calls edge function mecanico-device-auth in bind mode) ──
   const bindDevice = useCallback(async (qrToken: string): Promise<{ ok: boolean; error?: string }> => {
@@ -288,6 +332,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       mecanicoId: null,
       mecanicoNome: null,
       error: null,
+      authExhausted: false,
     });
   }, []);
 
@@ -296,14 +341,39 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     autoAuthAttemptRef.current = 0; // reset auto-auth attempts on manual retry
     lastAutoAuthTimestampRef.current = 0; // reset cooldown
     isAuthenticatingRef.current = false; // unlock
-    setState((s: AuthState) => ({ ...s, error: null }));
+    setState((s: AuthState) => ({ ...s, error: null, authExhausted: false }));
     checkDeviceBinding();
   }, [checkDeviceBinding]);
 
   // ── Initial check on mount ──
   useEffect(() => {
+    mountedRef.current = true;
     checkDeviceBinding();
+    return () => { mountedRef.current = false; };
   }, [checkDeviceBinding]);
+
+  // ── Listen for Supabase auth state changes (session restore, token refresh) ──
+  useEffect(() => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (!mountedRef.current) return;
+      if (event === 'SIGNED_OUT') {
+        setState((s: AuthState) => ({
+          ...s,
+          isAuthenticated: false,
+        }));
+      }
+      if ((event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') && session) {
+        setState((s: AuthState) => {
+          // Only auto-mark authenticated if device is bound
+          if (s.isDeviceBound) {
+            return { ...s, isAuthenticated: true, isLoading: false, error: null, authExhausted: false };
+          }
+          return s;
+        });
+      }
+    });
+    return () => subscription.unsubscribe();
+  }, []);
 
   // ── Auto-authenticate when device is bound but not authenticated ──
   useEffect(() => {
@@ -312,6 +382,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       !state.isAuthenticated &&
       !state.isLoading &&
       !state.error &&
+      !state.authExhausted &&
       !isAuthenticatingRef.current
     ) {
       const now = Date.now();
@@ -320,10 +391,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         autoAuthAttemptRef.current++;
         lastAutoAuthTimestampRef.current = now;
         authenticateDevice();
+      } else if (autoAuthAttemptRef.current >= AUTO_AUTH_MAX_ATTEMPTS) {
+        // All attempts exhausted — show error instead of staying stuck
+        setState((s: AuthState) => ({
+          ...s,
+          authExhausted: true,
+          error: 'Não foi possível autenticar. Verifique sua conexão.',
+        }));
       }
     }
-    // NOTE: counter is only reset via retry() — never automatically
-  }, [state.isDeviceBound, state.isAuthenticated, state.isLoading, state.error, authenticateDevice]);
+  }, [state.isDeviceBound, state.isAuthenticated, state.isLoading, state.error, state.authExhausted, authenticateDevice]);
 
   // ── Inactivity timeout ──
   useEffect(() => {

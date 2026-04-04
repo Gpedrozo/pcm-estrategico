@@ -78,7 +78,7 @@ function MainTabNavigator() {
 
 // ─── Root Stack Navigator ───
 export default function RootNavigator() {
-  const { isLoading, isDeviceBound, isAuthenticated, error, retry, logout } = useAuth();
+  const { isLoading, isDeviceBound, isAuthenticated, error, authExhausted, retry, logout } = useAuth();
 
   // Still loading initial check
   if (isLoading) {
@@ -95,12 +95,12 @@ export default function RootNavigator() {
   }
 
   // Bound but auth failed — show error with retry
-  if (!isAuthenticated && error) {
+  if (!isAuthenticated && (error || authExhausted)) {
     return (
       <View style={errStyles.container}>
         <Text style={errStyles.icon}>⚠️</Text>
         <Text style={errStyles.title}>Erro de autenticação</Text>
-        <Text style={errStyles.message}>{error}</Text>
+        <Text style={errStyles.message}>{error || 'Não foi possível autenticar. Verifique sua conexão.'}</Text>
         <TouchableOpacity style={errStyles.retryBtn} onPress={retry} activeOpacity={0.7}>
           <Text style={errStyles.retryText}>Tentar novamente</Text>
         </TouchableOpacity>
@@ -111,7 +111,7 @@ export default function RootNavigator() {
     );
   }
 
-  // Bound, no error, but not yet authenticated (authenticateDevice running)
+  // Bound, authenticating in progress — show loading (has escape via authExhausted)
   if (!isAuthenticated) {
     return <LoadingScreen message="Autenticando..." />;
   }
