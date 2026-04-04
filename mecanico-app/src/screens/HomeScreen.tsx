@@ -94,8 +94,8 @@ export default function HomeScreen() {
   );
 
   // Separar: OS do mecânico logado primeiro, depois as demais
-  const minhasOS = osAtivas.filter((o: any) => meusOsIds.has(o.id) || o.solicitante === mecanicoNome);
-  const outrasOS = osAtivas.filter((o: any) => !meusOsIds.has(o.id) && o.solicitante !== mecanicoNome);
+  const minhasOS = osAtivas.filter((o) => meusOsIds.has(o.id) || o.solicitante === mecanicoNome);
+  const outrasOS = osAtivas.filter((o) => !meusOsIds.has(o.id) && o.solicitante !== mecanicoNome);
   const osOrdenadas = [...minhasOS, ...outrasOS];
 
   const syncColor = syncStatus === 'online' ? COLORS.success : syncStatus === 'pending' ? COLORS.warning : COLORS.critical;

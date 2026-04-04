@@ -23,7 +23,7 @@ import { getSolicitacoes, upsertSolicitacao, addToSyncQueue, getSolicitacoesStat
 import { runSyncCycle } from '../lib/syncEngine';
 import EmptyState from '../components/EmptyState';
 import { COLORS, SIZES } from '../theme';
-import type { RootStackParamList } from '../types';
+import type { RootStackParamList, SolicitacaoManutencao } from '../types';
 
 const STATUS_CONFIG: Record<string, { label: string; color: string; icon: string }> = {
   PENDENTE: { label: 'PENDENTE', color: '#F59E0B', icon: '⏳' },
@@ -51,7 +51,7 @@ export default function SolicitacoesListScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const { empresaId, mecanicoNome, mecanicoId } = useAuth();
 
-  const [solicitacoes, setSolicitacoes] = useState<any[]>([]);
+  const [solicitacoes, setSolicitacoes] = useState<SolicitacaoManutencao[]>([]);
   const [filtro, setFiltro] = useState('todas');
   const [stats, setStats] = useState({ pendentes: 0, aprovadas: 0, total: 0 });
   const [refreshing, setRefreshing] = useState(false);
@@ -86,7 +86,7 @@ export default function SolicitacoesListScreen() {
     }
   };
 
-  const handleAceitar = async (solic: any) => {
+  const handleAceitar = async (solic: SolicitacaoManutencao) => {
     Alert.alert(
       'Aceitar Solicitação?',
       `Deseja aprovar a solicitação #${solic.numero_solicitacao || ''}?\n\n${solic.descricao_falha}`,
@@ -96,7 +96,7 @@ export default function SolicitacoesListScreen() {
           text: 'Aprovar',
           onPress: async () => {
             const now = new Date().toISOString();
-            const updated = {
+            const updated: SolicitacaoManutencao = {
               ...solic,
               status: 'APROVADA',
               usuario_aprovacao: mecanicoId,
@@ -120,18 +120,18 @@ export default function SolicitacoesListScreen() {
     );
   };
 
-  const handleRejeitar = async (solic: any) => {
+  const handleRejeitar = async (solic: SolicitacaoManutencao) => {
     setRejectingId(solic.id);
     setMotivoRejeicao('');
   };
 
-  const confirmRejeitar = async (solic: any) => {
+  const confirmRejeitar = async (solic: SolicitacaoManutencao) => {
     if (!motivoRejeicao.trim()) {
       Alert.alert('Obrigatório', 'Informe o motivo da rejeição.');
       return;
     }
     const now = new Date().toISOString();
-    const updated = {
+    const updated: SolicitacaoManutencao = {
       ...solic,
       status: 'REJEITADA',
       observacoes: motivoRejeicao.trim(),
@@ -161,7 +161,7 @@ export default function SolicitacoesListScreen() {
     } catch { return ''; }
   };
 
-  const renderItem = ({ item }: { item: any }) => {
+  const renderItem = ({ item }: { item: SolicitacaoManutencao }) => {
     const st = STATUS_CONFIG[item.status] || STATUS_CONFIG.PENDENTE;
     const imp = IMPACTO_CONFIG[item.impacto] || IMPACTO_CONFIG.MEDIO;
     const cls = CLASSIF_CONFIG[item.classificacao] || CLASSIF_CONFIG.PROGRAMAVEL;
