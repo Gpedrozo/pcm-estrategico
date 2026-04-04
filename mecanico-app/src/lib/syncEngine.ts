@@ -3,7 +3,7 @@
 // ============================================================
 
 import * as Network from 'expo-network';
-import { supabase } from './supabase';
+import { supabase, SUPABASE_URL, SUPABASE_ANON_KEY } from './supabase';
 import {
   getPendingSyncItems,
   markSyncItemDone,
@@ -98,8 +98,60 @@ async function uploadPhoto(execucaoId: string, localUri: string, empresaId: stri
 // Pull — Fetch latest data from server into local DB
 // ============================================================
 
+// Ensure supabase client has a valid authenticated session.
+// If no session exists, try re-auth via edge function using stored device_token.
+async function ensureSession(): Promise<boolean> {
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (session?.access_token) return true;
+
+    // No session — try to restore via edge function
+    const deviceToken = await getDeviceConfig('device_token');
+    if (!deviceToken) {
+      console.warn('[sync] no session and no device_token — cannot authenticate');
+      return false;
+    }
+
+    console.log('[sync] no active session, re-authenticating via edge function...');
+    const response = await fetch(`${SUPABASE_URL}/functions/v1/mecanico-device-auth`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'apikey': SUPABASE_ANON_KEY },
+      body: JSON.stringify({ device_token: deviceToken }),
+    });
+
+    const data = await response.json();
+    if (!data?.ok || !data?.access_token) {
+      console.warn('[sync] edge function re-auth failed:', data?.error || 'unknown');
+      return false;
+    }
+
+    const { error } = await supabase.auth.setSession({
+      access_token: data.access_token,
+      refresh_token: data.refresh_token,
+    });
+
+    if (error) {
+      console.warn('[sync] setSession failed:', error.message);
+      return false;
+    }
+
+    console.log('[sync] session restored successfully');
+    return true;
+  } catch (err) {
+    console.warn('[sync] ensureSession error:', err);
+    return false;
+  }
+}
+
 export async function pullData(empresaId: string, forceFullRefresh = false): Promise<void> {
   if (!empresaId) return;
+
+  // Ensure we have a valid authenticated session before querying PostgREST
+  const hasSession = await ensureSession();
+  if (!hasSession) {
+    console.warn('[sync] pullData aborted — no valid session');
+    return;
+  }
 
   // Incremental sync: use last_sync_timestamp to only fetch changed records
   // forceFullRefresh = true when user manually pulls to refresh
@@ -115,13 +167,17 @@ export async function pullData(empresaId: string, forceFullRefresh = false): Pro
   }
 
   // Pull Ordens de Servico
-  const { data: osList } = await withTimestamp(
+  const { data: osList, error: osError } = await withTimestamp(
     supabase
     .from('ordens_servico')
     .select('*')
     .eq('empresa_id', empresaId)
     .order('data_solicitacao', { ascending: false })
   ).limit(1000);
+
+  if (osError) {
+    console.error('[sync] ordens_servico query error:', osError.message, osError.code);
+  }
 
   if (osList) {
     for (const os of osList) {
