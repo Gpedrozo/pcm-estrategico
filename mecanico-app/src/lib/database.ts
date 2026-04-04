@@ -163,6 +163,29 @@ async function initSchema(database: SQLite.SQLiteDatabase) {
       local_updated_at TEXT DEFAULT (datetime('now'))
     );
 
+    CREATE TABLE IF NOT EXISTS solicitacoes_manutencao (
+      id TEXT PRIMARY KEY,
+      empresa_id TEXT NOT NULL,
+      numero_solicitacao INTEGER,
+      equipamento_id TEXT,
+      tag TEXT,
+      solicitante_nome TEXT NOT NULL,
+      solicitante_setor TEXT,
+      descricao_falha TEXT NOT NULL,
+      impacto TEXT DEFAULT 'MEDIO',
+      classificacao TEXT DEFAULT 'PROGRAMAVEL',
+      status TEXT DEFAULT 'PENDENTE',
+      os_id TEXT,
+      observacoes TEXT,
+      usuario_aprovacao TEXT,
+      data_aprovacao TEXT,
+      data_limite TEXT,
+      created_at TEXT,
+      updated_at TEXT,
+      sync_status TEXT DEFAULT 'synced',
+      local_updated_at TEXT DEFAULT (datetime('now'))
+    );
+
     CREATE INDEX IF NOT EXISTS idx_os_empresa ON ordens_servico(empresa_id);
     CREATE INDEX IF NOT EXISTS idx_os_status ON ordens_servico(status);
     CREATE INDEX IF NOT EXISTS idx_exec_os ON execucoes_os(os_id);
@@ -173,6 +196,8 @@ async function initSchema(database: SQLite.SQLiteDatabase) {
     CREATE INDEX IF NOT EXISTS idx_req_os ON requisicoes_material(os_id);
     CREATE INDEX IF NOT EXISTS idx_mat_empresa ON materiais(empresa_id);
     CREATE INDEX IF NOT EXISTS idx_doc_equip ON documentos_tecnicos(equipamento_id);
+    CREATE INDEX IF NOT EXISTS idx_solic_empresa ON solicitacoes_manutencao(empresa_id);
+    CREATE INDEX IF NOT EXISTS idx_solic_status ON solicitacoes_manutencao(status);
   `);
 }
 
@@ -512,19 +537,19 @@ export async function getOSStats(empresaId: string): Promise<{ abertas: number; 
   const hoje = new Date().toISOString().split('T')[0];
 
   const abertas = await database.getFirstAsync<{ cnt: number }>(
-    "SELECT COUNT(*) as cnt FROM ordens_servico WHERE empresa_id = ? AND status IN ('aberta', 'solicitada', 'emitida')",
+    "SELECT COUNT(*) as cnt FROM ordens_servico WHERE empresa_id = ? AND UPPER(status) IN ('ABERTA', 'SOLICITADA', 'EMITIDA')",
     [empresaId]
   );
   const programadas = await database.getFirstAsync<{ cnt: number }>(
-    "SELECT COUNT(*) as cnt FROM ordens_servico WHERE empresa_id = ? AND status = 'programada'",
+    "SELECT COUNT(*) as cnt FROM ordens_servico WHERE empresa_id = ? AND UPPER(status) = 'PROGRAMADA'",
     [empresaId]
   );
   const emAndamento = await database.getFirstAsync<{ cnt: number }>(
-    "SELECT COUNT(*) as cnt FROM ordens_servico WHERE empresa_id = ? AND status IN ('em_andamento', 'em_execucao')",
+    "SELECT COUNT(*) as cnt FROM ordens_servico WHERE empresa_id = ? AND UPPER(status) IN ('EM_ANDAMENTO', 'EM_EXECUCAO')",
     [empresaId]
   );
   const finalizadas = await database.getFirstAsync<{ cnt: number }>(
-    "SELECT COUNT(*) as cnt FROM ordens_servico WHERE empresa_id = ? AND status = 'concluida' AND data_fechamento LIKE ?",
+    "SELECT COUNT(*) as cnt FROM ordens_servico WHERE empresa_id = ? AND UPPER(status) IN ('CONCLUIDA', 'FECHADA') AND data_fechamento LIKE ?",
     [empresaId, `${hoje}%`]
   );
 
@@ -543,8 +568,8 @@ export async function getOSStats(empresaId: string): Promise<{ abertas: number; 
 export async function getProximaOS(empresaId: string): Promise<any | null> {
   const database = await getDB();
   return database.getFirstAsync(
-    `SELECT * FROM ordens_servico WHERE empresa_id = ? AND status IN ('aberta', 'solicitada', 'emitida', 'em_andamento', 'em_execucao')
-     ORDER BY CASE prioridade WHEN 'emergencial' THEN 0 WHEN 'alta' THEN 1 WHEN 'media' THEN 2 WHEN 'baixa' THEN 3 END, data_solicitacao ASC
+    `SELECT * FROM ordens_servico WHERE empresa_id = ? AND UPPER(status) IN ('ABERTA', 'SOLICITADA', 'EMITIDA', 'EM_ANDAMENTO', 'EM_EXECUCAO')
+     ORDER BY CASE UPPER(prioridade) WHEN 'EMERGENCIAL' THEN 0 WHEN 'ALTA' THEN 1 WHEN 'MEDIA' THEN 2 WHEN 'BAIXA' THEN 3 ELSE 4 END, data_solicitacao ASC
      LIMIT 1`,
     [empresaId]
   );
@@ -577,4 +602,56 @@ export async function getExecucaoEmAndamento(mecanicoId: string): Promise<any | 
     "SELECT * FROM execucoes_os WHERE mecanico_id = ? AND hora_inicio IS NOT NULL AND hora_fim IS NULL ORDER BY hora_inicio DESC LIMIT 1",
     [mecanicoId]
   );
+}
+
+// ============================================================
+// Solicitações de Manutenção
+// ============================================================
+
+export async function getSolicitacoes(empresaId: string, statusFilter?: string): Promise<any[]> {
+  const database = await getDB();
+  let sql = 'SELECT * FROM solicitacoes_manutencao WHERE empresa_id = ?';
+  const params: any[] = [empresaId];
+  if (statusFilter && statusFilter !== 'todas') {
+    sql += ' AND status = ?';
+    params.push(statusFilter);
+  }
+  sql += ' ORDER BY CASE classificacao WHEN \'EMERGENCIAL\' THEN 0 WHEN \'URGENTE\' THEN 1 WHEN \'PROGRAMAVEL\' THEN 2 END, created_at DESC';
+  return database.getAllAsync(sql, params);
+}
+
+export async function getSolicitacaoById(id: string): Promise<any | null> {
+  const database = await getDB();
+  return database.getFirstAsync('SELECT * FROM solicitacoes_manutencao WHERE id = ?', [id]);
+}
+
+export async function upsertSolicitacao(s: Record<string, any>): Promise<void> {
+  const database = await getDB();
+  await database.runAsync(
+    `INSERT OR REPLACE INTO solicitacoes_manutencao 
+     (id, empresa_id, numero_solicitacao, equipamento_id, tag, solicitante_nome, solicitante_setor, descricao_falha, impacto, classificacao, status, os_id, observacoes, usuario_aprovacao, data_aprovacao, data_limite, created_at, updated_at, sync_status, local_updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))`,
+    [s.id, s.empresa_id, s.numero_solicitacao, s.equipamento_id, s.tag, s.solicitante_nome, s.solicitante_setor, s.descricao_falha, s.impacto || 'MEDIO', s.classificacao || 'PROGRAMAVEL', s.status || 'PENDENTE', s.os_id, s.observacoes, s.usuario_aprovacao, s.data_aprovacao, s.data_limite, s.created_at, s.updated_at, s.sync_status || 'synced']
+  );
+}
+
+export async function getSolicitacoesStats(empresaId: string): Promise<{ pendentes: number; aprovadas: number; total: number }> {
+  const database = await getDB();
+  const pendentes = await database.getFirstAsync<{ cnt: number }>(
+    "SELECT COUNT(*) as cnt FROM solicitacoes_manutencao WHERE empresa_id = ? AND status = 'PENDENTE'",
+    [empresaId]
+  );
+  const aprovadas = await database.getFirstAsync<{ cnt: number }>(
+    "SELECT COUNT(*) as cnt FROM solicitacoes_manutencao WHERE empresa_id = ? AND status = 'APROVADA'",
+    [empresaId]
+  );
+  const total = await database.getFirstAsync<{ cnt: number }>(
+    "SELECT COUNT(*) as cnt FROM solicitacoes_manutencao WHERE empresa_id = ?",
+    [empresaId]
+  );
+  return {
+    pendentes: pendentes?.cnt ?? 0,
+    aprovadas: aprovadas?.cnt ?? 0,
+    total: total?.cnt ?? 0,
+  };
 }

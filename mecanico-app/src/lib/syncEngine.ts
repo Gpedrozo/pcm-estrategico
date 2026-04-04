@@ -16,6 +16,7 @@ import {
   upsertDocumento,
   upsertParada,
   upsertRequisicao,
+  upsertSolicitacao,
   getDeviceConfig,
   saveDeviceConfig,
 } from './database';
@@ -243,6 +244,22 @@ export async function pullData(empresaId: string, forceFullRefresh = false): Pro
     for (const r of reqList) {
       await upsertRequisicao({ ...r, sync_status: 'synced' });
     }
+  }
+
+  // Pull Solicitações de Manutenção
+  const { data: solicList } = await withTimestamp(
+    supabase
+    .from('solicitacoes_manutencao')
+    .select('*')
+    .eq('empresa_id', empresaId)
+    .order('created_at', { ascending: false })
+  ).limit(500);
+
+  if (solicList) {
+    for (const s of solicList) {
+      await upsertSolicitacao({ ...s, sync_status: 'synced' });
+    }
+    console.log(`[sync] pulled ${solicList.length} solicitações${lastSync ? ' (incremental)' : ' (full)'}`);
   }
 
   // Save sync timestamp for next incremental pull

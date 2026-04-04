@@ -15,7 +15,7 @@ import {
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useAuth } from '../contexts/AuthContext';
-import { getOrdensServico, getOSStats, getProximaOS, getSyncQueueCount } from '../lib/database';
+import { getOrdensServico, getOSStats, getProximaOS, getSyncQueueCount, getSolicitacoesStats, getDB } from '../lib/database';
 import { runSyncCycle, isOnline } from '../lib/syncEngine';
 import OSCard from '../components/OSCard';
 import EmptyState from '../components/EmptyState';
@@ -24,31 +24,45 @@ import type { OrdemServico, RootStackParamList } from '../types';
 
 export default function HomeScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
-  const { empresaId, mecanicoNome } = useAuth();
+  const { empresaId, mecanicoNome, mecanicoId } = useAuth();
 
   const [stats, setStats] = useState({ abertas: 0, programadas: 0, emAndamento: 0, finalizadasHoje: 0 });
+  const [solicStats, setSolicStats] = useState({ pendentes: 0, aprovadas: 0, total: 0 });
   const [ordens, setOrdens] = useState<OrdemServico[]>([]);
   const [refreshing, setRefreshing] = useState(false);
   const [syncStatus, setSyncStatus] = useState<'online' | 'pending' | 'offline'>('online');
   const [pendingCount, setPendingCount] = useState(0);
+  const [meusOsIds, setMeusOsIds] = useState<Set<string>>(new Set());
 
   const loadData = useCallback(async () => {
     if (!empresaId) return;
     try {
-      const [s, os, pending, online] = await Promise.all([
+      const [s, os, pending, online, ss] = await Promise.all([
         getOSStats(empresaId),
         getOrdensServico(empresaId),
         getSyncQueueCount(),
         isOnline(),
+        getSolicitacoesStats(empresaId),
       ]);
       setStats(s);
       setOrdens(os);
       setPendingCount(pending);
       setSyncStatus(!online ? 'offline' : pending > 0 ? 'pending' : 'online');
+      setSolicStats(ss);
+
+      // Buscar OS atribuídas ao mecânico via execucoes_os
+      if (mecanicoId) {
+        const db = await getDB();
+        const execOsRows = await db.getAllAsync<{ os_id: string }>(
+          'SELECT DISTINCT os_id FROM execucoes_os WHERE mecanico_id = ?',
+          [mecanicoId]
+        );
+        setMeusOsIds(new Set(execOsRows.map((r) => r.os_id)));
+      }
     } catch {
       /* ignore local read errors */
     }
-  }, [empresaId]);
+  }, [empresaId, mecanicoId]);
 
   useEffect(() => { loadData(); }, [loadData]);
   useEffect(() => {
@@ -74,10 +88,15 @@ export default function HomeScreen() {
     }
   };
 
-  // OS ativas (abertas + em andamento) para a lista
+  // TODAS as OS ativas (não fechadas/canceladas), mecânico no topo
   const osAtivas = ordens.filter((o) =>
-    ['aberta', 'solicitada', 'emitida', 'em_andamento', 'em_execucao'].includes(o.status)
+    !['fechada', 'concluida', 'cancelada', 'FECHADA', 'CANCELADA'].includes(o.status)
   );
+
+  // Separar: OS do mecânico logado primeiro, depois as demais
+  const minhasOS = osAtivas.filter((o: any) => meusOsIds.has(o.id) || o.solicitante === mecanicoNome);
+  const outrasOS = osAtivas.filter((o: any) => !meusOsIds.has(o.id) && o.solicitante !== mecanicoNome);
+  const osOrdenadas = [...minhasOS, ...outrasOS];
 
   const syncColor = syncStatus === 'online' ? COLORS.success : syncStatus === 'pending' ? COLORS.warning : COLORS.critical;
   const syncLabel = syncStatus === 'online' ? '🟢 Sincronizado' : syncStatus === 'pending' ? `🟡 ${pendingCount} pendência${pendingCount !== 1 ? 's' : ''}` : '🔴 Offline';
@@ -95,11 +114,18 @@ export default function HomeScreen() {
       </View>
 
       <FlatList
-        data={osAtivas}
+        data={osOrdenadas}
         keyExtractor={(item) => item.id}
-        renderItem={({ item }) => (
-          <OSCard os={item} onPress={() => navigation.navigate('OSDetail', { osId: item.id })} />
-        )}
+        renderItem={({ item }) => {
+          const isMinha = minhasOS.some((o) => o.id === item.id);
+          return (
+            <OSCard
+              os={item}
+              onPress={() => navigation.navigate('OSDetail', { osId: item.id })}
+              highlighted={isMinha}
+            />
+          );
+        }}
         contentContainerStyle={styles.listContent}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[COLORS.primary]} />}
         ListHeaderComponent={
@@ -140,6 +166,17 @@ export default function HomeScreen() {
                   <Text style={styles.secondaryText}>SOLICITAR{'\n'}SERVIÇO</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
+                  style={[styles.secondaryButton, solicStats.pendentes > 0 && { borderColor: '#F59E0B', borderWidth: 2 }]}
+                  onPress={() => navigation.navigate('SolicitacoesList' as any)}
+                  activeOpacity={0.7}
+                >
+                  <Text style={styles.secondaryIcon}>📋</Text>
+                  <Text style={styles.secondaryText}>SOLICITAÇÕES{solicStats.pendentes > 0 ? `\n(${solicStats.pendentes} pend.)` : ''}</Text>
+                </TouchableOpacity>
+              </View>
+
+              <View style={styles.secondaryRow}>
+                <TouchableOpacity
                   style={styles.secondaryButton}
                   onPress={() => navigation.navigate('EquipamentoDetalhe', { equipamentoId: '__search__' })}
                   activeOpacity={0.7}
@@ -147,12 +184,27 @@ export default function HomeScreen() {
                   <Text style={styles.secondaryIcon}>🔍</Text>
                   <Text style={styles.secondaryText}>BUSCAR{'\n'}EQUIPAMENTO</Text>
                 </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.secondaryButton}
+                  onPress={() => navigation.navigate('QRScan' as any)}
+                  activeOpacity={0.7}
+                >
+                  <Text style={styles.secondaryIcon}>📷</Text>
+                  <Text style={styles.secondaryText}>SCANNER{'\n'}QR CODE</Text>
+                </TouchableOpacity>
               </View>
             </View>
 
-            {/* Section title */}
-            {osAtivas.length > 0 && (
-              <Text style={styles.sectionTitle}>📋 MINHAS ORDENS ({osAtivas.length})</Text>
+            {/* Section title — mostra total e quantas são do mecânico */}
+            {osOrdenadas.length > 0 && (
+              <View style={styles.sectionTitleRow}>
+                <Text style={styles.sectionTitle}>📋 ORDENS DE SERVIÇO ({osOrdenadas.length})</Text>
+                {minhasOS.length > 0 && (
+                  <View style={styles.minhaBadge}>
+                    <Text style={styles.minhaBadgeText}>🔵 {minhasOS.length} sua{minhasOS.length !== 1 ? 's' : ''}</Text>
+                  </View>
+                )}
+              </View>
             )}
           </View>
         }
@@ -271,12 +323,28 @@ const styles = StyleSheet.create({
     color: COLORS.textSecondary,
     textAlign: 'center',
   },
+  sectionTitleRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: SIZES.paddingMD,
+    paddingTop: SIZES.paddingMD,
+    paddingBottom: 8,
+  },
   sectionTitle: {
     fontSize: SIZES.fontMD,
     fontWeight: '700',
     color: COLORS.textPrimary,
-    paddingHorizontal: SIZES.paddingMD,
-    paddingTop: SIZES.paddingMD,
-    paddingBottom: 8,
+  },
+  minhaBadge: {
+    backgroundColor: '#DBEAFE',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  minhaBadgeText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#1D4ED8',
   },
 });

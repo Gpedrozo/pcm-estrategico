@@ -21,9 +21,12 @@ import { useAuth } from '../contexts/AuthContext';
 import {
   getOrdemServicoById,
   upsertExecucao,
+  upsertOrdemServico,
   addToSyncQueue,
   getExecucoesByOS,
 } from '../lib/database';
+import { supabase } from '../lib/supabase';
+import { isOnline } from '../lib/syncEngine';
 import VoiceInput from '../components/VoiceInput';
 import DateTimePickerField from '../components/DateTimePickerField';
 import PhotoPicker from '../components/PhotoPicker';
@@ -83,12 +86,55 @@ export default function ExecutionScreen() {
     setSaving(true);
     try {
       const now = new Date().toISOString();
+      const online = await isOnline();
 
       if (isAutoMode && execAberta) {
         // ── MODO AUTO: Finalizar execução existente ──
         const diff = new Date(now).getTime() - new Date(execAberta.hora_inicio!).getTime();
         const tempoMin = Math.max(1, Math.round(diff / 60000));
 
+        // Tentar fechar via RPC atômica (mesma do sistema web)
+        let rpcSuccess = false;
+        if (online && os) {
+          try {
+            const inicioDate = new Date(execAberta.hora_inicio!);
+            const fimDate = new Date(now);
+            const { data: rpcResult, error: rpcError } = await supabase.rpc('close_os_with_execution_atomic', {
+              p_os_id: osId,
+              p_mecanico_id: mecanicoId || null,
+              p_mecanico_nome: mecanicoNome || 'Mecânico',
+              p_data_inicio: inicioDate.toISOString().split('T')[0],
+              p_hora_inicio: `${inicioDate.getHours().toString().padStart(2, '0')}:${inicioDate.getMinutes().toString().padStart(2, '0')}`,
+              p_data_fim: fimDate.toISOString().split('T')[0],
+              p_hora_fim: `${fimDate.getHours().toString().padStart(2, '0')}:${fimDate.getMinutes().toString().padStart(2, '0')}`,
+              p_tempo_execucao: tempoMin,
+              p_servico_executado: servicoExecutado.trim(),
+              p_custo_mao_obra: 0,
+              p_custo_materiais: 0,
+              p_custo_terceiros: 0,
+              p_custo_total: 0,
+              p_materiais: [],
+              p_usuario_fechamento: mecanicoId || null,
+              p_modo_falha: null,
+              p_causa_raiz: causaRaiz.trim() || null,
+              p_acao_corretiva: servicoExecutado.trim(),
+              p_licoes_aprendidas: observacoes.trim() || null,
+              p_pausas: [],
+            });
+            if (!rpcError && rpcResult) {
+              rpcSuccess = true;
+              // Atualizar local para refletir fechamento
+              await upsertOrdemServico({ ...os, status: 'FECHADA', data_fechamento: now, updated_at: now });
+              console.log('[exec] OS fechada via RPC atômica:', rpcResult);
+            } else {
+              console.warn('[exec] RPC falhou, usando fallback local:', rpcError?.message);
+            }
+          } catch (rpcErr) {
+            console.warn('[exec] RPC exception, usando fallback local:', rpcErr);
+          }
+        }
+
+        // Atualizar execução local
         const updated = {
           ...execAberta,
           hora_fim: now,
@@ -97,17 +143,19 @@ export default function ExecutionScreen() {
           causa: causaRaiz.trim() || null,
           observacoes: observacoes.trim() || null,
           fotos: photos.length > 0 ? photos : null,
-          sync_status: 'pending',
+          sync_status: rpcSuccess ? 'synced' : 'pending',
         };
-
         await upsertExecucao(updated);
-        await addToSyncQueue({
-          id: uuid.v4() as string,
-          table_name: 'execucoes_os',
-          record_id: execAberta.id,
-          operation: 'UPDATE',
-          payload: updated,
-        });
+
+        if (!rpcSuccess) {
+          await addToSyncQueue({
+            id: uuid.v4() as string,
+            table_name: 'execucoes_os',
+            record_id: execAberta.id,
+            operation: 'UPDATE',
+            payload: updated,
+          });
+        }
 
         // Upload fotos
         for (const photoUri of photos) {
@@ -121,8 +169,8 @@ export default function ExecutionScreen() {
         }
 
         Alert.alert(
-          '✅ Atividade finalizada!',
-          `Tempo: ${tempoMin} minutos`,
+          rpcSuccess ? '✅ OS Fechada!' : '✅ Atividade finalizada!',
+          rpcSuccess ? `OS fechada com sucesso. Tempo: ${tempoMin} min` : `Tempo: ${tempoMin} minutos. Será sincronizado.`,
           [{ text: 'OK', onPress: () => navigation.goBack() }]
         );
       } else {
@@ -134,6 +182,42 @@ export default function ExecutionScreen() {
           if (diff > 0) tempoExecucao = Math.round(diff / 60000);
         }
 
+        // Tentar fechar via RPC atômica
+        let rpcSuccess = false;
+        if (online && os && horaInicio) {
+          try {
+            const inicioDate = new Date(horaInicio);
+            const fimDate = horaFim ? new Date(horaFim) : new Date(now);
+            const { data: rpcResult, error: rpcError } = await supabase.rpc('close_os_with_execution_atomic', {
+              p_os_id: osId,
+              p_mecanico_id: mecanicoId || null,
+              p_mecanico_nome: mecanicoNome || 'Mecânico',
+              p_data_inicio: inicioDate.toISOString().split('T')[0],
+              p_hora_inicio: `${inicioDate.getHours().toString().padStart(2, '0')}:${inicioDate.getMinutes().toString().padStart(2, '0')}`,
+              p_data_fim: fimDate.toISOString().split('T')[0],
+              p_hora_fim: `${fimDate.getHours().toString().padStart(2, '0')}:${fimDate.getMinutes().toString().padStart(2, '0')}`,
+              p_tempo_execucao: tempoExecucao || 1,
+              p_servico_executado: servicoExecutado.trim(),
+              p_custo_mao_obra: 0,
+              p_custo_materiais: 0,
+              p_custo_terceiros: 0,
+              p_custo_total: 0,
+              p_materiais: [],
+              p_usuario_fechamento: mecanicoId || null,
+              p_modo_falha: null,
+              p_causa_raiz: causaRaiz.trim() || null,
+              p_acao_corretiva: servicoExecutado.trim(),
+              p_licoes_aprendidas: observacoes.trim() || null,
+              p_pausas: [],
+            });
+            if (!rpcError && rpcResult) {
+              rpcSuccess = true;
+              await upsertOrdemServico({ ...os, status: 'FECHADA', data_fechamento: now, updated_at: now });
+              console.log('[exec] OS fechada via RPC atômica (manual):', rpcResult);
+            }
+          } catch { /* fallback to local */ }
+        }
+
         const execucao = {
           id: execId,
           empresa_id: empresaId || '',
@@ -141,7 +225,7 @@ export default function ExecutionScreen() {
           mecanico_id: mecanicoId || null,
           mecanico_nome: mecanicoNome || null,
           hora_inicio: horaInicio,
-          hora_fim: horaFim || null,
+          hora_fim: horaFim || now,
           tempo_execucao: tempoExecucao,
           servico_executado: servicoExecutado.trim(),
           causa: causaRaiz.trim() || null,
@@ -151,17 +235,20 @@ export default function ExecutionScreen() {
           custo_materiais: null,
           custo_total: null,
           created_at: now,
-          sync_status: 'pending',
+          sync_status: rpcSuccess ? 'synced' : 'pending',
         };
 
         await upsertExecucao(execucao);
-        await addToSyncQueue({
-          id: uuid.v4() as string,
-          table_name: 'execucoes_os',
-          record_id: execId,
-          operation: 'INSERT',
-          payload: execucao,
-        });
+
+        if (!rpcSuccess) {
+          await addToSyncQueue({
+            id: uuid.v4() as string,
+            table_name: 'execucoes_os',
+            record_id: execId,
+            operation: 'INSERT',
+            payload: execucao,
+          });
+        }
 
         for (const photoUri of photos) {
           await addToSyncQueue({
@@ -173,9 +260,11 @@ export default function ExecutionScreen() {
           });
         }
 
-        Alert.alert('✅ Apontamento salvo!', 'Registro criado com sucesso.', [
-          { text: 'OK', onPress: () => navigation.goBack() },
-        ]);
+        Alert.alert(
+          rpcSuccess ? '✅ OS Fechada!' : '✅ Apontamento salvo!',
+          rpcSuccess ? 'OS fechada com sucesso via sistema.' : 'Registro criado. Será sincronizado.',
+          [{ text: 'OK', onPress: () => navigation.goBack() }],
+        );
       }
     } catch (err: any) {
       Alert.alert('Erro ao salvar', err?.message || 'Tente novamente.');

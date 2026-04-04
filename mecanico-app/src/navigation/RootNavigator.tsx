@@ -16,6 +16,7 @@ import OSDetailScreen from '../screens/OSDetailScreen';
 import ExecutionScreen from '../screens/ExecutionScreen';
 import ParadaScreen from '../screens/ParadaScreen';
 import SolicitarServicoScreen from '../screens/SolicitarServicoScreen';
+import SolicitacoesListScreen from '../screens/SolicitacoesListScreen';
 import EquipamentoDetalheScreen from '../screens/EquipamentoDetalheScreen';
 import RequisicaoMaterialScreen from '../screens/RequisicaoMaterialScreen';
 import ChecklistScreen from '../screens/ChecklistScreen';
@@ -169,6 +170,11 @@ export default function RootNavigator() {
         name="SolicitarServico"
         component={SolicitarServicoScreen}
         options={{ title: 'Solicitar Serviço' }}
+      />
+      <Stack.Screen
+        name="SolicitacoesList"
+        component={SolicitacoesListScreen}
+        options={{ title: 'Solicitações' }}
       />
       <Stack.Screen
         name="EquipamentoDetalhe"

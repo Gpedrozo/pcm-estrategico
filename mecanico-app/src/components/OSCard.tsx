@@ -24,6 +24,11 @@ const STATUS_LABELS: Record<string, string> = {
   cancelada: 'CANCELADA',
   pausada: 'PAUSADA',
   aguardando_materiais: 'AGUARD. MATERIAL',
+  ABERTA: 'ABERTA',
+  EM_ANDAMENTO: 'EM ANDAMENTO',
+  AGUARDANDO_MATERIAL: 'AGUARD. MATERIAL',
+  AGUARDANDO_APROVACAO: 'AGUARD. APROVAÇÃO',
+  FECHADA: 'FECHADA',
 };
 
 const STATUS_COLORS: Record<string, string> = {
@@ -37,6 +42,11 @@ const STATUS_COLORS: Record<string, string> = {
   cancelada: '#757575',
   pausada: '#F57C00',
   aguardando_materiais: '#F57C00',
+  ABERTA: '#D32F2F',
+  EM_ANDAMENTO: '#1565C0',
+  AGUARDANDO_MATERIAL: '#F57C00',
+  AGUARDANDO_APROVACAO: '#F57C00',
+  FECHADA: '#2E7D32',
 };
 
 interface OSCardProps {
@@ -51,18 +61,28 @@ interface OSCardProps {
     data_solicitacao?: string;
   };
   onPress: () => void;
+  highlighted?: boolean;
 }
 
-export default function OSCard({ os, onPress }: OSCardProps) {
+export default function OSCard({ os, onPress, highlighted }: OSCardProps) {
   const prioColor = PRIORIDADE_COLORS[os.prioridade] || COLORS.textSecondary;
   const stColor = STATUS_COLORS[os.status] || COLORS.textSecondary;
 
   return (
     <TouchableOpacity
-      style={[styles.card, { borderLeftColor: prioColor }]}
+      style={[
+        styles.card,
+        { borderLeftColor: prioColor },
+        highlighted && styles.cardHighlighted,
+      ]}
       onPress={onPress}
       activeOpacity={0.7}
     >
+      {highlighted && (
+        <View style={styles.highlightBanner}>
+          <Text style={styles.highlightText}>🟢 ATRIBUÍDA A VOCÊ</Text>
+        </View>
+      )}
       <View style={styles.header}>
         <View style={styles.headerLeft}>
           <Text style={styles.osNumber}>OS #{os.numero_os}</Text>
@@ -121,6 +141,25 @@ const styles = StyleSheet.create({
     marginVertical: 6,
     borderLeftWidth: 5,
     ...SHADOWS.small,
+  },
+  cardHighlighted: {
+    backgroundColor: '#EFF6FF',
+    borderWidth: 1.5,
+    borderColor: '#3B82F6',
+    borderLeftWidth: 5,
+  },
+  highlightBanner: {
+    backgroundColor: '#DBEAFE',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 4,
+    alignSelf: 'flex-start',
+    marginBottom: 8,
+  },
+  highlightText: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: '#1D4ED8',
   },
   header: {
     flexDirection: 'row',

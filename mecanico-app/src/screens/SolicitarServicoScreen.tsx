@@ -1,5 +1,6 @@
 // ============================================================
-// SolicitarServicoScreen — Mecânico cria OS de campo
+// SolicitarServicoScreen — Mecânico cria Solicitação de Manutenção
+// Usa tabela solicitacoes_manutencao (mesma do sistema web)
 // ============================================================
 
 import React, { useState } from 'react';
@@ -15,19 +16,23 @@ import { useRoute, useNavigation } from '@react-navigation/native';
 import { NativeStackScreenProps, NativeStackNavigationProp } from '@react-navigation/native-stack';
 import uuid from 'react-native-uuid';
 import { useAuth } from '../contexts/AuthContext';
-import { upsertOrdemServico, addToSyncQueue, searchEquipamentos } from '../lib/database';
+import { upsertSolicitacao, addToSyncQueue, searchEquipamentos } from '../lib/database';
 import VoiceInput from '../components/VoiceInput';
-import PhotoPicker from '../components/PhotoPicker';
 import { COLORS, SIZES } from '../theme';
-import type { RootStackParamList, OSPrioridade, Equipamento } from '../types';
+import type { RootStackParamList, Equipamento } from '../types';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'SolicitarServico'>;
 
-const PRIORIDADES: { key: OSPrioridade; label: string; color: string }[] = [
-  { key: 'baixa', label: 'Normal', color: COLORS.success },
-  { key: 'media', label: 'Média', color: COLORS.warning },
-  { key: 'alta', label: 'Urgente', color: COLORS.critical },
-  { key: 'emergencial', label: 'Emergência', color: COLORS.prioridadeEmergencial },
+const IMPACTOS: { key: string; label: string; color: string }[] = [
+  { key: 'BAIXO', label: 'Baixo', color: COLORS.success },
+  { key: 'MEDIO', label: 'Médio', color: COLORS.warning },
+  { key: 'ALTO', label: 'Alto', color: COLORS.critical },
+];
+
+const CLASSIFICACOES: { key: string; label: string; color: string; descricao: string }[] = [
+  { key: 'PROGRAMAVEL', label: 'Programável', color: COLORS.success, descricao: 'Pode esperar' },
+  { key: 'URGENTE', label: 'Urgente', color: COLORS.warning, descricao: 'Resolver em breve' },
+  { key: 'EMERGENCIAL', label: 'Emergência', color: COLORS.critical, descricao: 'Parou produção' },
 ];
 
 export default function SolicitarServicoScreen() {
@@ -38,15 +43,17 @@ export default function SolicitarServicoScreen() {
 
   const [equipamentoNome, setEquipamentoNome] = useState(initialEqNome || '');
   const [equipamentoId, setEquipamentoId] = useState(initialEqId || '');
+  const [tag, setTag] = useState('');
   const [searchResults, setSearchResults] = useState<Equipamento[]>([]);
-  const [prioridade, setPrioridade] = useState<OSPrioridade>('baixa');
-  const [descricao, setDescricao] = useState('');
-  const [photos, setPhotos] = useState<string[]>([]);
+  const [impacto, setImpacto] = useState('MEDIO');
+  const [classificacao, setClassificacao] = useState('PROGRAMAVEL');
+  const [descricaoFalha, setDescricaoFalha] = useState('');
   const [saving, setSaving] = useState(false);
 
   const handleSearchEquipamento = async (text: string) => {
     setEquipamentoNome(text);
     setEquipamentoId('');
+    setTag('');
     if (text.length >= 2 && empresaId) {
       const results = await searchEquipamentos(empresaId, text);
       setSearchResults(results);
@@ -58,58 +65,60 @@ export default function SolicitarServicoScreen() {
   const selectEquipamento = (eq: Equipamento) => {
     setEquipamentoId(eq.id);
     setEquipamentoNome(eq.nome);
+    setTag(eq.qr_code || eq.nome);
     setSearchResults([]);
   };
 
   const handleSave = async () => {
-    if (!descricao.trim()) {
-      Alert.alert('Campo obrigatório', 'Descreva o problema encontrado.');
+    if (!descricaoFalha.trim()) {
+      Alert.alert('Campo obrigatório', 'Descreva o problema / falha encontrada.');
+      return;
+    }
+    if (!tag && !equipamentoNome.trim()) {
+      Alert.alert('Campo obrigatório', 'Informe o equipamento ou TAG.');
       return;
     }
 
     setSaving(true);
     try {
       const now = new Date().toISOString();
-      const osId = uuid.v4() as string;
+      const solicId = uuid.v4() as string;
+      const tagFinal = tag || equipamentoNome.trim();
 
-      const os = {
-        id: osId,
+      const solicitacao = {
+        id: solicId,
         empresa_id: empresaId || '',
-        numero_os: Date.now(), // Número temporário, servidor gera o definitivo
-        tipo: 'Corretiva' as const,
-        prioridade,
-        status: 'solicitada' as const,
-        equipamento: equipamentoNome.trim() || null,
+        numero_solicitacao: null, // Servidor gera o número definitivo
         equipamento_id: equipamentoId || null,
-        problema: descricao.trim(),
-        solicitante: mecanicoNome || 'Mecânico (campo)',
-        data_solicitacao: now,
+        tag: tagFinal,
+        solicitante_nome: mecanicoNome || 'Mecânico (campo)',
+        solicitante_setor: null,
+        descricao_falha: descricaoFalha.trim(),
+        impacto,
+        classificacao,
+        status: 'PENDENTE',
+        os_id: null,
+        observacoes: null,
+        usuario_aprovacao: null,
+        data_aprovacao: null,
+        data_limite: null,
         created_at: now,
         updated_at: now,
+        sync_status: 'pending',
       };
 
-      await upsertOrdemServico(os);
+      await upsertSolicitacao(solicitacao);
       await addToSyncQueue({
         id: uuid.v4() as string,
-        table_name: 'ordens_servico',
-        record_id: osId,
+        table_name: 'solicitacoes_manutencao',
+        record_id: solicId,
         operation: 'INSERT',
-        payload: os,
+        payload: solicitacao,
       });
-
-      for (const photoUri of photos) {
-        await addToSyncQueue({
-          id: uuid.v4() as string,
-          table_name: 'os_photos',
-          record_id: osId,
-          operation: 'UPLOAD',
-          payload: { os_id: osId, uri: photoUri },
-        });
-      }
 
       Alert.alert(
         '✅ Solicitação criada!',
-        'A OS foi criada e será sincronizada.',
+        'A solicitação foi registrada e será sincronizada.\nEla aparecerá como PENDENTE no sistema.',
         [{ text: 'OK', onPress: () => navigation.goBack() }]
       );
     } catch (err: any) {
@@ -123,13 +132,13 @@ export default function SolicitarServicoScreen() {
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>📝 SOLICITAR SERVIÇO</Text>
-        <Text style={styles.headerSub}>Gerar nova OS a partir do campo</Text>
+        <Text style={styles.headerTitle}>📝 SOLICITAR MANUTENÇÃO</Text>
+        <Text style={styles.headerSub}>Registrar problema para avaliação</Text>
       </View>
 
-      {/* Equipamento */}
+      {/* Equipamento / TAG */}
       <VoiceInput
-        label="Equipamento"
+        label="Equipamento / TAG *"
         value={equipamentoNome}
         onChangeText={handleSearchEquipamento}
         placeholder="Digite ou fale o nome / TAG..."
@@ -144,51 +153,72 @@ export default function SolicitarServicoScreen() {
             >
               <Text style={styles.searchItemText}>{eq.nome}</Text>
               {eq.localizacao && (
-                <Text style={styles.searchItemSub}>{eq.localizacao}</Text>
+                <Text style={styles.searchItemSub}>📍 {eq.localizacao}</Text>
               )}
             </TouchableOpacity>
           ))}
         </View>
       )}
 
-      {/* Prioridade */}
-      <Text style={styles.sectionLabel}>Prioridade</Text>
-      <View style={styles.prioridadeRow}>
-        {PRIORIDADES.map((p) => (
+      {/* Impacto */}
+      <Text style={styles.sectionLabel}>Impacto na Produção</Text>
+      <View style={styles.optionsRow}>
+        {IMPACTOS.map((i) => (
           <TouchableOpacity
-            key={p.key}
+            key={i.key}
             style={[
-              styles.prioridadeBtn,
-              { borderColor: p.color },
-              prioridade === p.key && { backgroundColor: p.color },
+              styles.optionBtn,
+              { borderColor: i.color },
+              impacto === i.key && { backgroundColor: i.color },
             ]}
-            onPress={() => setPrioridade(p.key)}
+            onPress={() => setImpacto(i.key)}
             activeOpacity={0.7}
           >
-            <Text
-              style={[
-                styles.prioridadeBtnText,
-                { color: prioridade === p.key ? '#FFF' : p.color },
-              ]}
-            >
-              {p.label}
+            <Text style={[styles.optionBtnText, { color: impacto === i.key ? '#FFF' : i.color }]}>
+              {i.label}
             </Text>
           </TouchableOpacity>
         ))}
       </View>
 
-      {/* Descrição do problema */}
+      {/* Classificação */}
+      <Text style={styles.sectionLabel}>Classificação / Urgência</Text>
+      <View style={styles.classificacaoList}>
+        {CLASSIFICACOES.map((c) => (
+          <TouchableOpacity
+            key={c.key}
+            style={[
+              styles.classificacaoBtn,
+              { borderColor: c.color },
+              classificacao === c.key && { backgroundColor: c.color + '15', borderWidth: 2 },
+            ]}
+            onPress={() => setClassificacao(c.key)}
+            activeOpacity={0.7}
+          >
+            <View style={styles.classificacaoContent}>
+              <View style={[styles.radioOuter, { borderColor: c.color }]}>
+                {classificacao === c.key && <View style={[styles.radioInner, { backgroundColor: c.color }]} />}
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.classificacaoLabel, classificacao === c.key && { color: c.color, fontWeight: '800' }]}>
+                  {c.label}
+                </Text>
+                <Text style={styles.classificacaoDesc}>{c.descricao}</Text>
+              </View>
+            </View>
+          </TouchableOpacity>
+        ))}
+      </View>
+
+      {/* Descrição da falha */}
       <VoiceInput
-        label="Problema encontrado *"
-        value={descricao}
-        onChangeText={setDescricao}
-        placeholder="Descreva o problema observado..."
+        label="Descrição do problema / falha *"
+        value={descricaoFalha}
+        onChangeText={setDescricaoFalha}
+        placeholder="Descreva o que está acontecendo com o equipamento..."
         multiline
         numberOfLines={5}
       />
-
-      {/* Photos */}
-      <PhotoPicker photos={photos} onPhotosChange={setPhotos} maxPhotos={3} />
 
       {/* Botão salvar */}
       <TouchableOpacity
@@ -240,12 +270,12 @@ const styles = StyleSheet.create({
   },
   searchItemText: { fontSize: SIZES.fontMD, fontWeight: '600', color: COLORS.textPrimary },
   searchItemSub: { fontSize: SIZES.fontSM, color: COLORS.textSecondary, marginTop: 2 },
-  prioridadeRow: {
+  optionsRow: {
     flexDirection: 'row',
     gap: 8,
     marginBottom: 20,
   },
-  prioridadeBtn: {
+  optionBtn: {
     flex: 1,
     height: 48,
     borderRadius: SIZES.radiusSM,
@@ -253,7 +283,37 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  prioridadeBtnText: { fontSize: SIZES.fontSM, fontWeight: '700' },
+  optionBtnText: { fontSize: SIZES.fontSM, fontWeight: '700' },
+  classificacaoList: {
+    gap: 8,
+    marginBottom: 20,
+  },
+  classificacaoBtn: {
+    borderWidth: 1.5,
+    borderRadius: SIZES.radiusMD,
+    padding: 14,
+    backgroundColor: COLORS.surface,
+  },
+  classificacaoContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  radioOuter: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    borderWidth: 2,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  radioInner: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+  },
+  classificacaoLabel: { fontSize: SIZES.fontMD, fontWeight: '600', color: COLORS.textPrimary },
+  classificacaoDesc: { fontSize: SIZES.fontSM, color: COLORS.textSecondary, marginTop: 2 },
   saveButton: {
     height: SIZES.buttonHeightLG,
     borderRadius: SIZES.radiusMD,
