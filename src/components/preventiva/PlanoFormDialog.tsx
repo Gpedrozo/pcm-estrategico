@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useCreatePlanoPreventivo } from '@/hooks/usePlanosPreventivos';
 import { useMecanicos } from '@/hooks/useMecanicos';
 import type { EquipamentoRow } from '@/hooks/useEquipamentos';
+import { useFormDraft } from '@/hooks/useFormDraft';
 
 interface Props {
   open: boolean;
@@ -26,25 +27,37 @@ export default function PlanoFormDialog({ open, onOpenChange, equipamentos }: Pr
     tag: '',
     tipo_gatilho: 'TEMPO' as 'TEMPO' | 'CICLO' | 'CONDICAO',
     frequencia_dias: 30,
+    frequencia_ciclos: 0,
+    condicao_disparo: '',
     tolerancia_antes_dias: 0,
     tolerancia_depois_dias: 0,
     tempo_estimado_min: 60,
     especialidade: '',
     instrucoes: '',
+    checklist: '',
+    materiais_previstos: '',
   });
+  const { clearDraft: clearPlanoPrevDraft } = useFormDraft('draft:plano-preventivo', form, setForm);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     const equipamentoSelecionado = equipamentos.find((e) => e.id === form.equipamento_id);
+    const checklistArr = form.checklist.trim() ? form.checklist.split('\n').map(s => s.trim()).filter(Boolean) : null;
+    const materiaisArr = form.materiais_previstos.trim() ? form.materiais_previstos.split('\n').map(s => s.trim()).filter(Boolean) : null;
     await createMutation.mutateAsync({
       ...form,
       equipamento_id: equipamentoSelecionado?.id || null,
       tag: equipamentoSelecionado?.tag || form.tag || null,
+      frequencia_ciclos: form.tipo_gatilho === 'CICLO' ? form.frequencia_ciclos : null,
+      condicao_disparo: form.tipo_gatilho === 'CONDICAO' ? form.condicao_disparo : null,
+      checklist: checklistArr,
+      materiais_previstos: materiaisArr,
     });
 
     onOpenChange(false);
-    setForm({ codigo: '', nome: '', descricao: '', equipamento_id: '', tag: '', tipo_gatilho: 'TEMPO', frequencia_dias: 30, tolerancia_antes_dias: 0, tolerancia_depois_dias: 0, tempo_estimado_min: 60, especialidade: '', instrucoes: '' });
+    clearPlanoPrevDraft();
+    setForm({ codigo: '', nome: '', descricao: '', equipamento_id: '', tag: '', tipo_gatilho: 'TEMPO', frequencia_dias: 30, frequencia_ciclos: 0, condicao_disparo: '', tolerancia_antes_dias: 0, tolerancia_depois_dias: 0, tempo_estimado_min: 60, especialidade: '', instrucoes: '', checklist: '', materiais_previstos: '' });
   };
 
   const set = (k: string, v: any) => setForm(prev => ({ ...prev, [k]: v }));
@@ -107,10 +120,24 @@ export default function PlanoFormDialog({ open, onOpenChange, equipamentos }: Pr
                 </SelectContent>
               </Select>
             </div>
-            <div className="space-y-2">
-              <Label>Frequência (dias)</Label>
-              <Input type="number" value={form.frequencia_dias} onChange={e => set('frequencia_dias', parseInt(e.target.value) || 0)} />
-            </div>
+            {form.tipo_gatilho === 'TEMPO' && (
+              <div className="space-y-2">
+                <Label>Frequência (dias)</Label>
+                <Input type="number" value={form.frequencia_dias} onChange={e => set('frequencia_dias', parseInt(e.target.value) || 0)} />
+              </div>
+            )}
+            {form.tipo_gatilho === 'CICLO' && (
+              <div className="space-y-2">
+                <Label>Frequência (ciclos)</Label>
+                <Input type="number" value={form.frequencia_ciclos} onChange={e => set('frequencia_ciclos', parseInt(e.target.value) || 0)} />
+              </div>
+            )}
+            {form.tipo_gatilho === 'CONDICAO' && (
+              <div className="space-y-2">
+                <Label>Condição de disparo</Label>
+                <Input value={form.condicao_disparo} onChange={e => set('condicao_disparo', e.target.value)} placeholder="Ex: Vibração > 10mm/s" />
+              </div>
+            )}
             <div className="space-y-2">
               <Label>Tempo Est. (min)</Label>
               <Input type="number" value={form.tempo_estimado_min} onChange={e => set('tempo_estimado_min', parseInt(e.target.value) || 0)} />
@@ -130,6 +157,14 @@ export default function PlanoFormDialog({ open, onOpenChange, equipamentos }: Pr
           <div className="space-y-2">
             <Label>Instruções</Label>
             <Textarea value={form.instrucoes} onChange={e => set('instrucoes', e.target.value)} rows={3} placeholder="Instruções detalhadas para execução..." />
+          </div>
+          <div className="space-y-2">
+            <Label>Checklist (um item por linha)</Label>
+            <Textarea value={form.checklist} onChange={e => set('checklist', e.target.value)} rows={3} placeholder="Verificar nível de óleo&#10;Inspecionar correias&#10;Testar alarmes" />
+          </div>
+          <div className="space-y-2">
+            <Label>Materiais previstos (um por linha)</Label>
+            <Textarea value={form.materiais_previstos} onChange={e => set('materiais_previstos', e.target.value)} rows={2} placeholder="Óleo SAE 40 – 2L&#10;Filtro modelo XYZ" />
           </div>
           <div className="flex gap-3 pt-2">
             <Button type="submit" className="flex-1" disabled={createMutation.isPending}>

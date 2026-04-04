@@ -10,6 +10,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Plus, Search } from 'lucide-react';
 import { useFMEA, useCreateFMEA } from '@/hooks/useFMEA';
 import { useEquipamentos } from '@/hooks/useEquipamentos';
+import { useFormDraft } from '@/hooks/useFormDraft';
 
 export default function FMEA() {
   const [search, setSearch] = useState('');
@@ -27,6 +28,7 @@ export default function FMEA() {
     acao_recomendada: '',
     responsavel: '',
   });
+  const { clearDraft: clearFmeaDraft } = useFormDraft('draft:fmea', formData, setFormData);
 
   const { data: fmeas, isLoading } = useFMEA();
   const { data: equipamentos } = useEquipamentos();
@@ -44,6 +46,7 @@ export default function FMEA() {
     e.preventDefault();
     await createMutation.mutateAsync(formData);
     setIsModalOpen(false);
+    clearFmeaDraft();
     setFormData({
       tag: '', funcao: '', falha_funcional: '', modo_falha: '', efeito_falha: '', 
       causa_falha: '', severidade: 5, ocorrencia: 5, deteccao: 5, acao_recomendada: '', responsavel: ''

@@ -102,6 +102,7 @@ export default function NovaOS() {
   const [equipamentoManual, setEquipamentoManual] = useState('');
   const [tagComboOpen, setTagComboOpen] = useState(false);
   const [tagSearch, setTagSearch] = useState('');
+  const [showCadastrarAtivoDialog, setShowCadastrarAtivoDialog] = useState(false);
   const problemaMinLength = 5;
   const problemaValido = formData.problema.trim().length >= problemaMinLength;
 
@@ -359,7 +360,23 @@ export default function NovaOS() {
                           onValueChange={setTagSearch}
                         />
                         <CommandList>
-                          <CommandEmpty>Nenhum equipamento encontrado.</CommandEmpty>
+                          <CommandEmpty>
+                            <div className="py-3 text-center space-y-2">
+                              <p className="text-sm text-muted-foreground">Nenhum equipamento encontrado.</p>
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                className="gap-1.5"
+                                onClick={() => {
+                                  setTagComboOpen(false);
+                                  setShowCadastrarAtivoDialog(true);
+                                }}
+                              >
+                                Não encontrou? Cadastrar ou continuar sem TAG
+                              </Button>
+                            </div>
+                          </CommandEmpty>
                           <CommandGroup>
                             {equipamentosAtivos
                               .filter((eq) =>
@@ -668,6 +685,47 @@ export default function NovaOS() {
               Abrir Solicitações
             </Button>
             <Button onClick={handleContinuarSemSS}>Continuar emissão</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog: Equipamento não encontrado */}
+      <Dialog open={showCadastrarAtivoDialog} onOpenChange={setShowCadastrarAtivoDialog}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-amber-500" />
+              Equipamento não encontrado
+            </DialogTitle>
+            <DialogDescription>
+              O equipamento que você procura não está cadastrado no sistema. Deseja cadastrá-lo agora?
+            </DialogDescription>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            Se for um equipamento locado, emprestado ou temporário, você pode continuar sem cadastro.
+          </p>
+          <div className="flex flex-col gap-2 pt-2">
+            <Button
+              className="gap-2"
+              onClick={() => {
+                setShowCadastrarAtivoDialog(false);
+                navigate('/equipamentos');
+              }}
+            >
+              Sim, cadastrar ativo
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setShowCadastrarAtivoDialog(false);
+                setSemTag(true);
+                setFormData((prev) => ({ ...prev, tag: '' }));
+                setEquipamentoManual(tagSearch);
+                setTagSearch('');
+              }}
+            >
+              Não, continuar sem cadastro
+            </Button>
           </div>
         </DialogContent>
       </Dialog>

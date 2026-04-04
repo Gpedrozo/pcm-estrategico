@@ -80,10 +80,10 @@ export function useOwner2Companies(enabled = true) {
   })
 }
 
-export function useOwner2Users(empresaId?: string, enabled = true) {
+export function useOwner2Users(empresaId?: string, enabled = true, includeDeleted = false) {
   return useQuery({
-    queryKey: [...owner2Keys.users, empresaId ?? null],
-    queryFn: async () => ({ users: await listGlobalUsers(empresaId) }),
+    queryKey: [...owner2Keys.users, empresaId ?? null, includeDeleted],
+    queryFn: async () => ({ users: await listGlobalUsers(empresaId, includeDeleted) }),
     enabled,
     retry: 0,
   })

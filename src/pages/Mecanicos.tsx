@@ -38,6 +38,7 @@ import {
 import { useExecucoesOS } from '@/hooks/useExecucoesOS';
 import { useOrdensServico } from '@/hooks/useOrdensServico';
 import { useAuth } from '@/contexts/AuthContext';
+import { useFormDraft } from '@/hooks/useFormDraft';
 
 type TipoMecanico = 'PROPRIO' | 'TERCEIRIZADO';
 
@@ -80,6 +81,7 @@ export default function Mecanicos() {
   const [editingMec, setEditingMec] = useState<MecanicoRow | null>(null);
   const [deletingMec, setDeletingMec] = useState<MecanicoRow | null>(null);
   const [formData, setFormData] = useState<FormData>(initialFormData);
+  const { clearDraft: clearMecanicoDraft } = useFormDraft('draft:mecanico', formData, setFormData);
 
   const { data: mecanicos, isLoading, error } = useMecanicos();
   const { data: execucoes } = useExecucoesOS();
@@ -153,6 +155,7 @@ export default function Mecanicos() {
     }
     
     setIsModalOpen(false);
+    clearMecanicoDraft();
     setFormData(initialFormData);
     setEditingMec(null);
   };

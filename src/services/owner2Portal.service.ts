@@ -41,6 +41,7 @@ export type Owner2Action =
   | 'list_database_tables'
   | 'cleanup_company_data'
   | 'purge_table_data'
+  | 'delete_user'
   | 'delete_company'
   | 'asaas_link_subscription'
   | 'asaas_sync_subscription'

@@ -49,6 +49,7 @@ import {
   TabsTrigger,
 } from '@/components/ui/tabs';
 import { useAuth } from '@/contexts/AuthContext';
+import { useFormDraft } from '@/hooks/useFormDraft';
 import {
   useMateriais,
   useCreateMaterial,
@@ -79,6 +80,7 @@ export default function Materiais() {
   
   // Form states
   const [formData, setFormData] = useState<Partial<MaterialInsert>>({});
+  const { clearDraft: clearMaterialDraft } = useFormDraft('draft:material', formData, setFormData);
   const [movFormData, setMovFormData] = useState<Partial<MovimentacaoInsert>>({});
   
   // Queries
@@ -157,6 +159,7 @@ export default function Materiais() {
         await createMaterial.mutateAsync(formData as MaterialInsert);
       }
       setIsModalOpen(false);
+      clearMaterialDraft();
     } catch (error) {
       // Error handled by mutation
     }

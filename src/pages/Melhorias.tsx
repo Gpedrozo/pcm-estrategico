@@ -11,6 +11,7 @@ import { Plus, Search, Lightbulb, TrendingUp, DollarSign } from 'lucide-react';
 import { useMelhorias, useCreateMelhoria, useUpdateMelhoria, type MelhoriaRow } from '@/hooks/useMelhorias';
 import { useEquipamentos } from '@/hooks/useEquipamentos';
 import { useAuth } from '@/contexts/AuthContext';
+import { useFormDraft } from '@/hooks/useFormDraft';
 
 export default function Melhorias() {
   const { user } = useAuth();
@@ -33,6 +34,7 @@ export default function Melhorias() {
     custo_implementacao: 0,
     economia_anual: 0,
   });
+  const { clearDraft: clearMelhoriaDraft } = useFormDraft('draft:melhoria', formData, setFormData);
 
   const { data: melhorias, isLoading } = useMelhorias();
   const { data: equipamentos } = useEquipamentos();
@@ -64,6 +66,7 @@ export default function Melhorias() {
       proponente_nome: user?.nome || '',
     });
     setIsModalOpen(false);
+    clearMelhoriaDraft();
     setFormData({
       titulo: '', descricao: '', tag: '', tipo: 'KAIZEN', area: '',
       situacao_antes: '', situacao_depois: '', beneficios: '', impacto: 'MEDIO', urgencia: 'MEDIA', origem: 'OPERADOR', custo_implementacao: 0, economia_anual: 0

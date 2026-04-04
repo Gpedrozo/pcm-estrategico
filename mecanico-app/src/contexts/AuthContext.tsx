@@ -13,6 +13,8 @@ import {
 import { startSyncTimer, stopSyncTimer, runSyncCycle } from '../lib/syncEngine';
 
 const INACTIVITY_TIMEOUT_MS = 60 * 60 * 1000; // 1 hour
+const AUTO_AUTH_MAX_ATTEMPTS = 2;
+const AUTO_AUTH_COOLDOWN_MS = 10_000; // 10s between auto-auth attempts
 
 interface AuthState {
   isLoading: boolean;
@@ -55,6 +57,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const lastActivityRef = useRef(Date.now());
   const retryCountRef = useRef(0);
   const autoAuthAttemptRef = useRef(0);
+  const lastAutoAuthTimestampRef = useRef(0);
+  const isAuthenticatingRef = useRef(false);
 
   // Track user activity for inactivity timeout
   const updateActivity = useCallback(() => {
@@ -176,6 +180,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   // ── Authenticate device (calls edge function mecanico-device-auth) ──
   const authenticateDevice = useCallback(async () => {
+    if (isAuthenticatingRef.current) return; // Prevent concurrent calls
+    isAuthenticatingRef.current = true;
     setState((s: AuthState) => ({ ...s, isLoading: true, error: null }));
     try {
       const deviceToken = await getDeviceConfig('device_token');
@@ -263,6 +269,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         isLoading: false,
         error: 'Erro de conexão. Verifique sua internet.',
       }));
+    } finally {
+      isAuthenticatingRef.current = false;
     }
   }, []);
 
@@ -286,6 +294,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const retry = useCallback(() => {
     retryCountRef.current++;
     autoAuthAttemptRef.current = 0; // reset auto-auth attempts on manual retry
+    lastAutoAuthTimestampRef.current = 0; // reset cooldown
+    isAuthenticatingRef.current = false; // unlock
     setState((s: AuthState) => ({ ...s, error: null }));
     checkDeviceBinding();
   }, [checkDeviceBinding]);
@@ -297,16 +307,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   // ── Auto-authenticate when device is bound but not authenticated ──
   useEffect(() => {
-    if (state.isDeviceBound && !state.isAuthenticated && !state.isLoading && !state.error) {
-      if (autoAuthAttemptRef.current < 2) {
+    if (
+      state.isDeviceBound &&
+      !state.isAuthenticated &&
+      !state.isLoading &&
+      !state.error &&
+      !isAuthenticatingRef.current
+    ) {
+      const now = Date.now();
+      const elapsed = now - lastAutoAuthTimestampRef.current;
+      if (autoAuthAttemptRef.current < AUTO_AUTH_MAX_ATTEMPTS && elapsed >= AUTO_AUTH_COOLDOWN_MS) {
         autoAuthAttemptRef.current++;
+        lastAutoAuthTimestampRef.current = now;
         authenticateDevice();
       }
     }
-    // Reset counter on successful auth
-    if (state.isAuthenticated) {
-      autoAuthAttemptRef.current = 0;
-    }
+    // NOTE: counter is only reset via retry() — never automatically
   }, [state.isDeviceBound, state.isAuthenticated, state.isLoading, state.error, authenticateDevice]);
 
   // ── Inactivity timeout ──
@@ -314,8 +330,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const handleAppState = (nextState: AppStateStatus) => {
       if (nextState === 'active') {
         const elapsed = Date.now() - lastActivityRef.current;
-        if (elapsed > INACTIVITY_TIMEOUT_MS && state.isAuthenticated) {
-          // Session expired — re-authenticate silently
+        if (elapsed > INACTIVITY_TIMEOUT_MS && state.isAuthenticated && !isAuthenticatingRef.current) {
+          // Session expired — re-authenticate silently (single attempt)
           authenticateDevice();
         } else {
           updateActivity();

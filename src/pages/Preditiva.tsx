@@ -33,6 +33,7 @@ import { getSupabaseErrorMessage, insertWithColumnFallback, updateWithColumnFall
 import { useCreateOrdemServico } from '@/hooks/useOrdensServico';
 import { useHistoricoAlteracoesMedicao } from '@/hooks/useMedicoesPreditivas';
 import { writeAuditLog } from '@/lib/audit';
+import { useFormDraft } from '@/hooks/useFormDraft';
 import { useLocation } from 'react-router-dom';
 import {
   CartesianGrid,
@@ -197,6 +198,7 @@ export default function Preditiva() {
     limite_critico: '' as number | '',
     observacoes: '',
   });
+  const { clearDraft: clearPreditivaDraft } = useFormDraft('draft:preditiva', formData, setFormData);
 
   const { data: equipamentos } = useEquipamentos();
   const { data: empresa } = useDadosEmpresa();
@@ -339,7 +341,7 @@ export default function Preditiva() {
       status = 'ALERTA';
     }
 
-    await createMutation.mutateAsync({
+    const createdMedicao = await createMutation.mutateAsync({
       empresa_id: tenantId,
       ...formData,
       status,
@@ -349,6 +351,25 @@ export default function Preditiva() {
       responsavel_nome: user?.nome,
       equipamento_id: equipamento?.id ?? null,
     });
+
+    try {
+      await writeAuditLog({
+        action: 'CREATE_MEDICAO_PREDITIVA',
+        table: 'medicoes_preditivas',
+        recordId: createdMedicao?.id ?? null,
+        empresaId: tenantId,
+        severity: status === 'CRITICO' ? 'warning' : 'info',
+        source: 'app',
+        metadata: {
+          tag: formData.tag,
+          tipo_medicao: formData.tipo_medicao,
+          valor: formData.valor,
+          unidade: formData.unidade,
+          status,
+          usuario_nome: user?.nome || null,
+        },
+      });
+    } catch { /* audit best-effort */ }
 
     if (status === 'ALERTA' || status === 'CRITICO') {
       setOsSuggestion({
@@ -364,6 +385,7 @@ export default function Preditiva() {
     }
 
     setIsModalOpen(false);
+    clearPreditivaDraft();
     setFormData({
       tag: '', tipo_medicao: 'VIBRACAO', valor: 0, unidade: 'mm/s',
       limite_alerta: '', limite_critico: '', observacoes: ''

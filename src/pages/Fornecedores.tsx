@@ -9,6 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Plus, Search, Building2, Star, Phone, Mail } from 'lucide-react';
 import { useFornecedores, useCreateFornecedor, type FornecedorRow } from '@/hooks/useFornecedores';
+import { useFormDraft } from '@/hooks/useFormDraft';
 
 export default function Fornecedores() {
   const [search, setSearch] = useState('');
@@ -26,6 +27,7 @@ export default function Fornecedores() {
     endereco: '',
     observacoes: '',
   });
+  const { clearDraft: clearFornecedorDraft } = useFormDraft('draft:fornecedor', formData, setFormData);
 
   const { data: fornecedores, isLoading } = useFornecedores();
   const createMutation = useCreateFornecedor();
@@ -43,6 +45,7 @@ export default function Fornecedores() {
     e.preventDefault();
     await createMutation.mutateAsync(formData);
     setIsModalOpen(false);
+    clearFornecedorDraft();
     setFormData({
       codigo: '', razao_social: '', nome_fantasia: '', cnpj: '', tipo: 'PRESTADOR',
       especialidade: '', telefone: '', email: '', contato_nome: '', endereco: '', observacoes: ''

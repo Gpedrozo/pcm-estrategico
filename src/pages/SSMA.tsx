@@ -12,6 +12,7 @@ import { Plus, Search, ShieldAlert, AlertTriangle, FileWarning, Calendar } from 
 import { useIncidentesSSMA, useCreateIncidenteSSMA, usePermissoesTrabalho, useCreatePermissaoTrabalho } from '@/hooks/useSSMA';
 import { useEquipamentos } from '@/hooks/useEquipamentos';
 import { useAuth } from '@/contexts/AuthContext';
+import { useFormDraft } from '@/hooks/useFormDraft';
 
 export default function SSMA() {
   const { user } = useAuth();
@@ -30,6 +31,7 @@ export default function SSMA() {
     acoes_imediatas: '',
     dias_afastamento: 0,
   });
+  const { clearDraft: clearIncidenteDraft } = useFormDraft('draft:ssma-incidente', incidenteForm, setIncidenteForm);
 
   const [ptForm, setPTForm] = useState({
     tipo: 'TRABALHO_QUENTE' as 'GERAL' | 'TRABALHO_ALTURA' | 'ESPACO_CONFINADO' | 'TRABALHO_QUENTE' | 'ELETRICA' | 'ESCAVACAO',
@@ -43,6 +45,7 @@ export default function SSMA() {
     medidas_controle: '',
     epis_requeridos: '',
   });
+  const { clearDraft: clearPTDraft } = useFormDraft('draft:ssma-pt', ptForm, setPTForm);
 
   const { data: incidentes, isLoading: loadingIncidentes } = useIncidentesSSMA();
   const { data: permissoes, isLoading: loadingPT } = usePermissoesTrabalho();
@@ -65,6 +68,7 @@ export default function SSMA() {
       responsavel_nome: user?.nome || null,
     });
     setIsIncidenteModalOpen(false);
+    clearIncidenteDraft();
     setIncidenteForm({
       tipo: 'QUASE_ACIDENTE', descricao: '', local_ocorrencia: '',
       data_ocorrencia: new Date().toISOString().split('T')[0], severidade: 'MODERADO',
@@ -78,6 +82,7 @@ export default function SSMA() {
       ...ptForm,
     });
     setIsPTModalOpen(false);
+    clearPTDraft();
     setPTForm({
       tipo: 'TRABALHO_QUENTE', descricao_servico: '', tag: '',
       data_inicio: new Date().toISOString().split('T')[0],

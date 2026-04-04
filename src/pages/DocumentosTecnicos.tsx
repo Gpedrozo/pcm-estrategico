@@ -30,6 +30,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import { uploadToStorage } from '@/services/storage';
+import { useFormDraft } from '@/hooks/useFormDraft';
 
 interface DocumentoTecnico {
   id: string;
@@ -108,6 +109,7 @@ export default function DocumentosTecnicos() {
     descricao: '',
     versao: '1.0',
   });
+  const { clearDraft: clearDocDraft } = useFormDraft('draft:documento-tecnico', formData, setFormData);
 
   const { data: documentos, isLoading } = useDocumentos();
   const { data: equipamentos } = useEquipamentos();
@@ -144,6 +146,7 @@ export default function DocumentosTecnicos() {
     });
     setIsModalOpen(false);
     setArquivo(null);
+    clearDocDraft();
     setFormData({
       codigo: '', titulo: '', tipo: 'POP', tag: '', descricao: '', versao: '1.0'
     });

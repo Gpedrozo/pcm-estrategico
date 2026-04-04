@@ -5,10 +5,45 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import type { PlanoLubrificacao, PlanoLubrificacaoInsert } from '@/types/lubrificacao';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
+import type { PlanoLubrificacao, PlanoLubrificacaoInsert, RotaPontoInsert } from '@/types/lubrificacao';
 import type { EquipamentoRow } from '@/hooks/useEquipamentos';
+import { usePontosPlano, useSavePontosPlano } from '@/hooks/usePontosPlano';
 import { useNextDocumentNumber } from '@/hooks/useDocumentEngine';
-import { Hash, Loader2 } from 'lucide-react';
+import { Hash, Loader2, Plus, Trash2, ArrowUp, ArrowDown, GripVertical, Check } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
+import { useFormDraft } from '@/hooks/useFormDraft';
+
+interface PontoForm {
+  key: string;
+  codigo_ponto: string;
+  descricao: string;
+  equipamento_tag: string;
+  localizacao: string;
+  lubrificante: string;
+  quantidade: string;
+  ferramenta: string;
+  tempo_estimado_min: number;
+  instrucoes: string;
+  referencia_manual: string;
+  tagComboOpen?: boolean;
+  tagSearch?: string;
+}
+
+const emptyPonto = (): PontoForm => ({
+  key: `${Date.now()}-${Math.random()}`,
+  codigo_ponto: '',
+  descricao: '',
+  equipamento_tag: '',
+  localizacao: '',
+  lubrificante: '',
+  quantidade: '',
+  ferramenta: '',
+  tempo_estimado_min: 0,
+  instrucoes: '',
+  referencia_manual: '',
+});
 
 interface LubrificacaoFormProps {
   open: boolean;
@@ -29,7 +64,12 @@ const addPeriod = (baseIso: string, tipo: 'dias' | 'semanas' | 'meses' | 'horas'
 };
 
 export function LubrificacaoForm({ open, onOpenChange, equipamentos, initialData, onSubmit, dataProgramada }: LubrificacaoFormProps) {
+  const { toast } = useToast();
   const nextNumber = useNextDocumentNumber();
+  const savePontos = useSavePontosPlano();
+  const { data: pontosDB } = usePontosPlano(initialData?.id);
+  const [pontos, setPontos] = useState<PontoForm[]>([]);
+  const equipamentosAtivos = equipamentos.filter((eq) => eq.ativo);
   const [form, setForm] = useState<PlanoLubrificacaoInsert>({
     codigo: '',
     nome: '',
@@ -50,6 +90,7 @@ export function LubrificacaoForm({ open, onOpenChange, equipamentos, initialData
     status: 'programado',
     ativo: true,
   });
+  const { clearDraft: clearLubDraft } = useFormDraft('draft:lubrificacao', form, setForm);
 
   useEffect(() => {
     if (!open) return;
@@ -103,6 +144,28 @@ export function LubrificacaoForm({ open, onOpenChange, equipamentos, initialData
     });
   }, [open, initialData]);
 
+  // Load existing pontos when editing
+  useEffect(() => {
+    if (!open) return;
+    if (initialData && pontosDB && pontosDB.length > 0) {
+      setPontos(pontosDB.map((p) => ({
+        key: p.id,
+        codigo_ponto: p.codigo_ponto,
+        descricao: p.descricao,
+        equipamento_tag: p.equipamento_tag || '',
+        localizacao: p.localizacao || '',
+        lubrificante: p.lubrificante || '',
+        quantidade: p.quantidade || '',
+        ferramenta: p.ferramenta || '',
+        tempo_estimado_min: p.tempo_estimado_min,
+        instrucoes: p.instrucoes || '',
+        referencia_manual: p.referencia_manual || '',
+      })));
+    } else if (!initialData) {
+      setPontos([]);
+    }
+  }, [open, initialData, pontosDB]);
+
   useEffect(() => {
     if (!open || initialData) return;
     nextNumber.mutate('LUBRIFICACAO', {
@@ -127,10 +190,22 @@ export function LubrificacaoForm({ open, onOpenChange, equipamentos, initialData
     setForm((prev) => ({ ...prev, [key]: value }));
   };
 
+  const updatePonto = (index: number, field: keyof PontoForm, value: string | number) => {
+    setPontos((prev) => prev.map((p, i) => i === index ? { ...p, [field]: value } : p));
+  };
+
+  const movePonto = (index: number, dir: -1 | 1) => {
+    const ni = index + dir;
+    if (ni < 0 || ni >= pontos.length) return;
+    const arr = [...pontos];
+    [arr[index], arr[ni]] = [arr[ni], arr[index]];
+    setPontos(arr);
+  };
+
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
 
-    await onSubmit({
+    const result = await onSubmit({
       ...form,
       tag: form.tag || null,
       localizacao: form.localizacao || null,
@@ -142,11 +217,37 @@ export function LubrificacaoForm({ open, onOpenChange, equipamentos, initialData
       tipo_lubrificante: form.lubrificante,
       proxima_execucao: form.proxima_execucao,
     });
+
+    // Save pontos if plano has id (edit mode)
+    const planoId = initialData?.id || (result as any)?.id;
+    if (planoId && pontos.length > 0) {
+      const pontosPayload: RotaPontoInsert[] = pontos
+        .filter((p) => p.codigo_ponto && p.descricao)
+        .map((p, i) => ({
+          plano_id: planoId,
+          rota_id: null,
+          ordem: i,
+          codigo_ponto: p.codigo_ponto,
+          descricao: p.descricao,
+          equipamento_tag: p.equipamento_tag || null,
+          localizacao: p.localizacao || null,
+          lubrificante: p.lubrificante || null,
+          quantidade: p.quantidade || null,
+          ferramenta: p.ferramenta || null,
+          tempo_estimado_min: p.tempo_estimado_min || 0,
+          instrucoes: p.instrucoes || null,
+          referencia_manual: p.referencia_manual || null,
+        }));
+      await savePontos.mutateAsync({ planoId, pontos: pontosPayload });
+    } else if (planoId && pontos.length === 0) {
+      await savePontos.mutateAsync({ planoId, pontos: [] });
+    }
+    clearLubDraft();
   };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-3xl">
+      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{initialData ? 'Editar Plano de Lubrificação' : 'Novo Plano de Lubrificação'}</DialogTitle>
         </DialogHeader>
@@ -304,9 +405,101 @@ export function LubrificacaoForm({ open, onOpenChange, equipamentos, initialData
             <Textarea value={form.descricao || ''} onChange={(e) => setField('descricao', e.target.value)} rows={3} />
           </div>
 
+          {/* ═══ PONTOS DA ROTA ═══ */}
+          <div className="border-t pt-4 space-y-3">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="font-semibold text-sm">Pontos da Rota de Lubrificação</h3>
+                <p className="text-xs text-muted-foreground">Checklist que será impresso na ficha de execução</p>
+              </div>
+              <Button type="button" size="sm" variant="outline" className="gap-1" onClick={() => setPontos((prev) => [...prev, emptyPonto()])}>
+                <Plus className="h-3.5 w-3.5" /> Adicionar Ponto
+              </Button>
+            </div>
+
+            {pontos.length === 0 && (
+              <div className="text-center py-6 text-muted-foreground text-sm border border-dashed rounded-lg">
+                Nenhum ponto cadastrado. Clique em "Adicionar Ponto" para criar o checklist da rota.
+              </div>
+            )}
+
+            {pontos.map((ponto, index) => (
+              <div key={ponto.key} className="border border-border rounded-lg p-3 space-y-2 bg-muted/20">
+                <div className="flex items-center gap-2 mb-1">
+                  <GripVertical className="h-4 w-4 text-muted-foreground" />
+                  <span className="font-mono font-bold text-primary text-sm">{index + 1}</span>
+                  <div className="flex gap-1 ml-auto">
+                    <Button type="button" size="icon" variant="ghost" className="h-6 w-6" onClick={() => movePonto(index, -1)} disabled={index === 0}>
+                      <ArrowUp className="h-3 w-3" />
+                    </Button>
+                    <Button type="button" size="icon" variant="ghost" className="h-6 w-6" onClick={() => movePonto(index, 1)} disabled={index === pontos.length - 1}>
+                      <ArrowDown className="h-3 w-3" />
+                    </Button>
+                    <Button type="button" size="icon" variant="ghost" className="h-6 w-6 text-destructive" onClick={() => setPontos((prev) => prev.filter((_, i) => i !== index))}>
+                      <Trash2 className="h-3 w-3" />
+                    </Button>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                  <Input placeholder="Código (ex: 8.1.1)" value={ponto.codigo_ponto} onChange={(e) => updatePonto(index, 'codigo_ponto', e.target.value)} />
+                  {/* TAG with combobox */}
+                  <Popover open={ponto.tagComboOpen} onOpenChange={(o) => updatePonto(index, 'tagComboOpen' as any, o as any)}>
+                    <PopoverTrigger asChild>
+                      <Button type="button" variant="outline" className="w-full justify-between font-normal text-xs h-9 px-2">
+                        {ponto.equipamento_tag || 'TAG do ativo...'}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-[260px] p-0" align="start">
+                      <Command shouldFilter={false}>
+                        <CommandInput placeholder="Buscar TAG..." value={ponto.tagSearch || ''} onValueChange={(v) => updatePonto(index, 'tagSearch' as any, v as any)} />
+                        <CommandList>
+                          <CommandEmpty>Nenhum equipamento.</CommandEmpty>
+                          <CommandGroup>
+                            {equipamentosAtivos
+                              .filter((eq) => !ponto.tagSearch || eq.tag.toLowerCase().includes((ponto.tagSearch || '').toLowerCase()) || eq.nome.toLowerCase().includes((ponto.tagSearch || '').toLowerCase()))
+                              .slice(0, 30)
+                              .map((eq) => (
+                                <CommandItem key={eq.id} value={eq.tag} onSelect={() => {
+                                  updatePonto(index, 'equipamento_tag', eq.tag);
+                                  updatePonto(index, 'localizacao', eq.localizacao || '');
+                                  updatePonto(index, 'tagComboOpen' as any, false as any);
+                                  updatePonto(index, 'tagSearch' as any, '' as any);
+                                }}>
+                                  <Check className={`mr-2 h-3 w-3 ${ponto.equipamento_tag === eq.tag ? 'opacity-100' : 'opacity-0'}`} />
+                                  <span className="font-mono text-xs">{eq.tag}</span>
+                                  <span className="ml-1 text-muted-foreground text-xs truncate">{eq.nome}</span>
+                                </CommandItem>
+                              ))}
+                          </CommandGroup>
+                        </CommandList>
+                      </Command>
+                    </PopoverContent>
+                  </Popover>
+                  <Input placeholder="Localização" value={ponto.localizacao} onChange={(e) => updatePonto(index, 'localizacao', e.target.value)} />
+                  <Input placeholder="Tempo (min)" type="number" value={ponto.tempo_estimado_min || ''} onChange={(e) => updatePonto(index, 'tempo_estimado_min', Number(e.target.value))} />
+                </div>
+
+                <Input placeholder="Descrição do ponto *" value={ponto.descricao} onChange={(e) => updatePonto(index, 'descricao', e.target.value)} />
+
+                <div className="grid grid-cols-3 gap-2">
+                  <Input placeholder="Lubrificante" value={ponto.lubrificante} onChange={(e) => updatePonto(index, 'lubrificante', e.target.value)} />
+                  <Input placeholder="Quantidade" value={ponto.quantidade} onChange={(e) => updatePonto(index, 'quantidade', e.target.value)} />
+                  <Input placeholder="Ferramenta" value={ponto.ferramenta} onChange={(e) => updatePonto(index, 'ferramenta', e.target.value)} />
+                </div>
+
+                <Input placeholder="Instruções / Recomendações" value={ponto.instrucoes} onChange={(e) => updatePonto(index, 'instrucoes', e.target.value)} />
+              </div>
+            ))}
+
+            {pontos.length > 0 && (
+              <p className="text-xs text-muted-foreground">Tempo total estimado: <strong>{pontos.reduce((a, p) => a + (p.tempo_estimado_min || 0), 0)} min</strong></p>
+            )}
+          </div>
+
           <div className="flex justify-end gap-2">
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
-            <Button type="submit">{initialData ? 'Salvar Alterações' : 'Criar Plano'}</Button>
+            <Button type="submit" disabled={savePontos.isPending}>{initialData ? 'Salvar Alterações' : 'Criar Plano'}</Button>
           </div>
         </form>
       </DialogContent>

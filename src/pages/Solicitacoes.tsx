@@ -14,6 +14,7 @@ import { useEquipamentos } from '@/hooks/useEquipamentos';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { resolveSlaHorasByClassificacao, useTenantPadronizacoes } from '@/hooks/useTenantPadronizacoes';
+import { useFormDraft } from '@/hooks/useFormDraft';
 
 export default function Solicitacoes() {
   const navigate = useNavigate();
@@ -32,6 +33,7 @@ export default function Solicitacoes() {
     impacto: 'MEDIO' as 'ALTO' | 'MEDIO' | 'BAIXO',
     classificacao: 'PROGRAMAVEL' as string,
   });
+  const { clearDraft: clearSolicitacaoDraft } = useFormDraft('draft:solicitacao', formData, setFormData);
 
   const { data: solicitacoes, isLoading } = useSolicitacoes();
   const { data: equipamentos } = useEquipamentos();
@@ -106,6 +108,7 @@ export default function Solicitacoes() {
     e.preventDefault();
     await createMutation.mutateAsync(formData);
     setIsModalOpen(false);
+    clearSolicitacaoDraft();
     setFormData({
       tag: '',
       solicitante_nome: '',

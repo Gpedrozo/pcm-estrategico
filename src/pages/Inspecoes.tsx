@@ -26,6 +26,7 @@ import { useDadosEmpresa } from '@/hooks/useDadosEmpresa';
 import { InspecaoPrintTemplate } from '@/components/inspecao/InspecaoPrintTemplate';
 import { PrintPreviewDialog } from '@/components/print/PrintPreviewDialog';
 import { useLocation } from 'react-router-dom';
+import { useFormDraft } from '@/hooks/useFormDraft';
 
 interface ChecklistItem {
   item: string;
@@ -82,6 +83,7 @@ export default function Inspecoes() {
     turno: 'A',
     inspetor_nome: user?.nome || '',
   });
+  const { clearDraft: clearInspecaoDraft } = useFormDraft('draft:inspecao', formData, setFormData);
 
   const { data: inspecoes, isLoading } = useInspecoes();
   const { data: empresa } = useDadosEmpresa();
@@ -133,6 +135,7 @@ export default function Inspecoes() {
       hora_inicio: new Date().toTimeString().split(' ')[0].substring(0, 5),
     });
     setIsModalOpen(false);
+    clearInspecaoDraft();
     setFormData({
       rota_nome: '',
       descricao: '',

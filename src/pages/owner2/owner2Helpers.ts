@@ -39,6 +39,9 @@ export function asNumber(value: unknown, fallback = 0): number {
 
 export function statusColor(status: string): string {
   const normalized = status.toLowerCase()
+  if (normalized === 'excluido') {
+    return 'bg-slate-200 text-slate-500 border-slate-300'
+  }
   if (normalized.includes('ativo') || normalized.includes('active') || normalized.includes('resolvido')) {
     return 'bg-emerald-100 text-emerald-700 border-emerald-200'
   }

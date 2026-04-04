@@ -42,6 +42,7 @@ export type OwnerAction =
   | 'cleanup_company_data'
   | 'purge_table_data'
   | 'delete_company'
+  | 'delete_user'
   | 'delete_support_ticket'
   | 'asaas_link_subscription'
   | 'asaas_sync_subscription'
@@ -60,7 +61,12 @@ export interface OwnerUser {
   nome?: string | null
   email?: string | null
   empresa_id?: string | null
-  status?: 'ativo' | 'inativo' | string
+  empresa_nome?: string | null
+  role?: string | null
+  status?: 'ativo' | 'inativo' | 'excluido' | string
+  deleted_at?: string | null
+  deleted_by?: string | null
+  user_roles?: Array<{ role: string; empresa_id: string }>
 }
 
 export interface OwnerPlan {
@@ -560,9 +566,13 @@ export async function setCompanyStatus(empresaId: string, status: string, reason
   return callOwnerAdmin({ action: 'set_company_status', empresa_id: empresaId, status, reason })
 }
 
-export async function listGlobalUsers(empresaId?: string): Promise<OwnerUser[]> {
-  const data = await callOwnerAdmin<{ users: OwnerUser[] }>({ action: 'list_users', empresa_id: empresaId ?? null })
+export async function listGlobalUsers(empresaId?: string, includeDeleted = false): Promise<OwnerUser[]> {
+  const data = await callOwnerAdmin<{ users: OwnerUser[] }>({ action: 'list_users', empresa_id: empresaId ?? null, include_deleted: includeDeleted })
   return Array.isArray(data?.users) ? data.users : []
+}
+
+export async function deleteUser(userId: string) {
+  return callOwnerAdmin({ action: 'delete_user', user_id: userId })
 }
 
 export async function createUser(user: Record<string, unknown>) {

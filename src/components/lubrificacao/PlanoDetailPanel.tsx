@@ -5,6 +5,7 @@ import { Trash2, Edit, Camera, Printer } from 'lucide-react';
 import type { PlanoLubrificacao } from '@/types/lubrificacao';
 import { useCreateExecucaoLubrificacao, useExecucoesByPlanoLubrificacao } from '@/hooks/useLubrificacao';
 import { useDadosEmpresa } from '@/hooks/useDadosEmpresa';
+import { usePontosPlano } from '@/hooks/usePontosPlano';
 import ExecucaoFormDialog from '@/components/lubrificacao/ExecucaoFormDialog';
 import AtividadesList from '@/components/lubrificacao/AtividadesList';
 import { LubrificacaoPrintTemplate } from './LubrificacaoPrintTemplate';
@@ -13,6 +14,7 @@ import { PrintPreviewDialog } from '@/components/print/PrintPreviewDialog';
 export default function PlanoDetailPanel({ plano }: { plano: PlanoLubrificacao }) {
   const { data: execucoes } = useExecucoesByPlanoLubrificacao(plano.id);
   const { data: empresa } = useDadosEmpresa();
+  const { data: pontosPlano } = usePontosPlano(plano.id);
   const createExec = useCreateExecucaoLubrificacao();
   const [openExec, setOpenExec] = React.useState(false);
 
@@ -63,7 +65,7 @@ export default function PlanoDetailPanel({ plano }: { plano: PlanoLubrificacao }
                   </Button>
                 }
               >
-                {(ref) => <LubrificacaoPrintTemplate ref={ref} plano={plano} empresa={empresa} />}
+                {(ref) => <LubrificacaoPrintTemplate ref={ref} plano={plano} pontos={pontosPlano || []} empresa={empresa} />}
               </PrintPreviewDialog>
               <Button variant="outline"><Camera className="h-4 w-4" /> Fotos</Button>
               <Button variant="outline" onClick={handleGenerate}>Gerar Tarefa</Button>

@@ -53,6 +53,7 @@ import { ComponentesPanel } from '@/components/equipamentos/ComponentesPanel';
 import { EquipamentoQRCodeDialog } from '@/components/equipamentos/EquipamentoQRCode';
 import { generateEquipmentTemplate, generateEquipmentTechnicalTemplate, parseEquipmentFile } from '@/lib/reportGenerator';
 import { useToast } from '@/hooks/use-toast';
+import { useFormDraft } from '@/hooks/useFormDraft';
 import { useCreateComponente } from '@/hooks/useComponentesEquipamento';
 import { useOrdensServico } from '@/hooks/useOrdensServico';
 import { useExecucoesOS } from '@/hooks/useExecucoesOS';
@@ -91,6 +92,7 @@ export default function Equipamentos() {
   const [deletingEquip, setDeletingEquip] = useState<EquipamentoRow | null>(null);
   const [selectedEquip, setSelectedEquip] = useState<EquipamentoRow | null>(null);
   const [formData, setFormData] = useState<FormData>(initialFormData);
+  const { clearDraft: clearEquipDraft } = useFormDraft('draft:equipamento', formData, setFormData);
   const [importing, setImporting] = useState(false);
   const [qrEquip, setQrEquip] = useState<EquipamentoRow | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -144,6 +146,7 @@ export default function Equipamentos() {
     }
     
     setIsModalOpen(false);
+    clearEquipDraft();
     setFormData(initialFormData);
     setEditingEquip(null);
   };

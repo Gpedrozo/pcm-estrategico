@@ -2,7 +2,7 @@ import { forwardRef } from 'react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import type { DadosEmpresa } from '@/hooks/useDadosEmpresa';
-import type { PlanoLubrificacao } from '@/types/lubrificacao';
+import type { PlanoLubrificacao, RotaPonto } from '@/types/lubrificacao';
 import {
   DocumentPrintBase,
   PrintInfoGrid,
@@ -15,6 +15,7 @@ import {
 
 interface LubrificacaoPrintTemplateProps {
   plano: PlanoLubrificacao;
+  pontos?: RotaPonto[];
   empresa?: DadosEmpresa | null;
 }
 
@@ -25,7 +26,7 @@ const formatMin = (min: number) => {
 };
 
 export const LubrificacaoPrintTemplate = forwardRef<HTMLDivElement, LubrificacaoPrintTemplateProps>(
-  ({ plano, empresa }, ref) => {
+  ({ plano, pontos = [], empresa }, ref) => {
     const docNum = `LUB-${plano.codigo}`;
     const periodicidade = plano.periodicidade_valor
       ? `${plano.periodicidade_valor} ${plano.periodicidade_tipo || 'DIAS'}`
@@ -103,31 +104,79 @@ export const LubrificacaoPrintTemplate = forwardRef<HTMLDivElement, Lubrificacao
         {/* ═══ CHECKLIST TABLE ═══ */}
         <div className="border-b-2 border-black">
           <div className="bg-gray-100 p-2 font-bold text-[9px] border-b border-black tracking-wider flex justify-between">
-            <span>SERVIÇOS DE LUBRIFICAÇÃO</span>
+            <span>CHECKLIST DE LUBRIFICAÇÃO</span>
+            {pontos.length > 0 && <span className="font-normal text-gray-500">{pontos.length} pontos</span>}
           </div>
 
-          <div className="flex border-b border-black text-[8px] font-bold text-gray-500">
-            <div className="w-[8mm] border-r border-black p-1 text-center">#</div>
-            <div className="flex-1 p-1 pl-3">ATIVIDADE / PONTO</div>
-            <div className="w-[22mm] border-l border-black p-1 text-center">LUBRIFICANTE</div>
-            <div className="w-[16mm] border-l border-black p-1 text-center">QTD.</div>
-            <div className="w-[18mm] border-l border-black p-1 text-center">TEMPO</div>
-            <div className="w-[14mm] border-l border-black p-1 text-center">OK</div>
+          <div className="flex border-b border-black text-[7px] font-bold text-gray-500 uppercase">
+            <div className="w-[7mm] border-r border-black p-1 text-center">#</div>
+            <div className="w-[14mm] border-r border-black p-1">CÓD</div>
+            <div className="w-[14mm] border-r border-black p-1">TAG</div>
+            <div className="flex-1 p-1 pl-2">DESCRIÇÃO / PONTO</div>
+            <div className="w-[20mm] border-l border-black p-1">LUBRIFICANTE</div>
+            <div className="w-[12mm] border-l border-black p-1 text-center">QTD</div>
+            <div className="w-[14mm] border-l border-black p-1 text-center">FERRAM.</div>
+            <div className="w-[10mm] border-l border-black p-1 text-center">MIN</div>
+            <div className="w-[8mm] border-l border-black p-1 text-center">OK</div>
+            <div className="w-[8mm] border-l border-black p-1 text-center">NOK</div>
+            <div className="w-[20mm] border-l border-black p-1">OBS</div>
           </div>
 
-          {Array.from({ length: 8 }).map((_, i) => (
-            <div key={i} className="flex border-b border-black text-[9px]">
-              <div className="w-[8mm] border-r border-black p-1 text-center text-gray-400 text-[8px]">{i + 1}</div>
-              <div className="flex-1 p-1 pl-3 min-h-[6mm]"></div>
-              <div className="w-[22mm] border-l border-black p-1"></div>
-              <div className="w-[16mm] border-l border-black p-1"></div>
-              <div className="w-[18mm] border-l border-black p-1"></div>
-              <div className="w-[14mm] border-l border-black p-1 flex items-center justify-center">
-                <span className="inline-block w-3.5 h-3.5 border border-black"></span>
+          {pontos.length > 0 ? (
+            pontos.map((p, i) => (
+              <div key={p.id} className="flex border-b border-black text-[8px]">
+                <div className="w-[7mm] border-r border-black p-1 text-center font-bold">{i + 1}</div>
+                <div className="w-[14mm] border-r border-black p-1 font-mono font-semibold">{p.codigo_ponto}</div>
+                <div className="w-[14mm] border-r border-black p-1 font-mono text-[7px]">{p.equipamento_tag || '—'}</div>
+                <div className="flex-1 p-1 pl-2 min-h-[5mm]">{p.descricao}</div>
+                <div className="w-[20mm] border-l border-black p-1 text-[7px]">{p.lubrificante || '—'}</div>
+                <div className="w-[12mm] border-l border-black p-1 text-center">{p.quantidade || '—'}</div>
+                <div className="w-[14mm] border-l border-black p-1 text-center text-[7px]">{p.ferramenta || '—'}</div>
+                <div className="w-[10mm] border-l border-black p-1 text-center">{p.tempo_estimado_min}</div>
+                <div className="w-[8mm] border-l border-black p-1 flex items-center justify-center">
+                  <span className="inline-block w-3 h-3 border border-black"></span>
+                </div>
+                <div className="w-[8mm] border-l border-black p-1 flex items-center justify-center">
+                  <span className="inline-block w-3 h-3 border border-black"></span>
+                </div>
+                <div className="w-[20mm] border-l border-black p-1"></div>
               </div>
-            </div>
-          ))}
+            ))
+          ) : (
+            /* Fallback: 8 blank lines for manual filling */
+            Array.from({ length: 8 }).map((_, i) => (
+              <div key={i} className="flex border-b border-black text-[9px]">
+                <div className="w-[7mm] border-r border-black p-1 text-center text-gray-400">{i + 1}</div>
+                <div className="w-[14mm] border-r border-black p-1"></div>
+                <div className="w-[14mm] border-r border-black p-1"></div>
+                <div className="flex-1 p-1 pl-2 min-h-[6mm]"></div>
+                <div className="w-[20mm] border-l border-black p-1"></div>
+                <div className="w-[12mm] border-l border-black p-1"></div>
+                <div className="w-[14mm] border-l border-black p-1"></div>
+                <div className="w-[10mm] border-l border-black p-1"></div>
+                <div className="w-[8mm] border-l border-black p-1 flex items-center justify-center">
+                  <span className="inline-block w-3 h-3 border border-black"></span>
+                </div>
+                <div className="w-[8mm] border-l border-black p-1 flex items-center justify-center">
+                  <span className="inline-block w-3 h-3 border border-black"></span>
+                </div>
+                <div className="w-[20mm] border-l border-black p-1"></div>
+              </div>
+            ))
+          )}
         </div>
+
+        {/* ═══ INSTRUCTIONS FROM PONTOS ═══ */}
+        {pontos.some((p) => p.instrucoes) && (
+          <div className="border-b-2 border-black">
+            <PrintSectionHeader label="INSTRUÇÕES POR PONTO" />
+            <div className="p-2 text-[8px] space-y-0.5">
+              {pontos.filter((p) => p.instrucoes).map((p) => (
+                <p key={p.id}><strong>{p.codigo_ponto}:</strong> {p.instrucoes}</p>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* ═══ EXECUTOR ═══ */}
         <PrintExecutorBlock count={2} label="EXECUTOR" />

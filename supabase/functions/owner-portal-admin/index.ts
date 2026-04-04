@@ -52,11 +52,13 @@ type Payload = {
     | "delete_company"
     | "purge_table_data"
     | "delete_support_ticket"
+    | "delete_user"
     | "asaas_link_subscription"
     | "asaas_sync_subscription"
     | "list_subscription_payments"
     | "enforce_subscription_expiry";
   empresa_id?: string;
+  include_deleted?: boolean;
   company?: {
     nome: string;
     slug?: string;
@@ -283,6 +285,7 @@ const SUPPORTED_OWNER_ACTIONS: Payload["action"][] = [
   "cleanup_company_data",
   "delete_company",
   "purge_table_data",
+  "delete_user",
   "asaas_link_subscription",
   "asaas_sync_subscription",
   "list_subscription_payments",
@@ -347,6 +350,7 @@ function shouldEnforceRateLimit(action: Payload["action"]) {
     "set_company_status",
     "create_user",
     "set_user_status",
+    "delete_user",
     "move_user_company",
     "set_user_password",
     "create_plan",
@@ -1681,6 +1685,7 @@ Deno.serve(async (req) => {
     "list_database_tables",
     "cleanup_company_data",
     "delete_company",
+    "delete_user",
     "purge_table_data",
     "delete_support_ticket",
     "asaas_link_subscription",
@@ -1722,7 +1727,7 @@ Deno.serve(async (req) => {
 
     const [{ count: totalCompanies }, { count: totalUsers }, { count: activeSubscriptions }, { count: overdueSubscriptions }, { count: newCompaniesMonth }, { count: openTickets }, { data: revenue }, { data: plans }, { data: canceledSubscriptions }] = await Promise.all([
       admin.from("empresas").select("id", { count: "exact", head: true }),
-      admin.from("profiles").select("id", { count: "exact", head: true }),
+      admin.from("profiles").select("id", { count: "exact", head: true }).eq("status", "ativo"),
       admin.from("subscriptions").select("id", { count: "exact", head: true }).eq("status", "ativa"),
       admin.from("subscriptions").select("id", { count: "exact", head: true }).eq("status", "atrasada"),
       admin.from("empresas").select("id", { count: "exact", head: true }).gte("created_at", monthStart),
@@ -2647,11 +2652,16 @@ Deno.serve(async (req) => {
   if (body.action === "list_users") {
     let query = admin
       .from("profiles")
-      .select("id,nome,email,empresa_id,created_at")
+      .select("id,nome,email,empresa_id,status,deleted_at,deleted_by,created_at")
       .order("created_at", { ascending: false })
       .limit(1000);
 
     if (body.empresa_id) query = query.eq("empresa_id", body.empresa_id);
+
+    // Se include_deleted não for true, ocultar usuários excluídos
+    if (!body.include_deleted) {
+      query = query.neq("status", "excluido");
+    }
 
     const { data, error } = await query;
     if (error) return fail(error.message, 400, null, req);
@@ -2680,13 +2690,31 @@ Deno.serve(async (req) => {
       rolesByUser.set(row.user_id, bucket);
     }
 
-    const authStatusByUser = await getAuthStatusByUserId(admin, userIds);
+    // Buscar nomes das empresas para exibição
+    const empresaIds = [...new Set(users.map((u: any) => u.empresa_id).filter(Boolean))];
+    const empresaNameMap = new Map<string, string>();
+    if (empresaIds.length > 0) {
+      const { data: empresasData } = await admin
+        .from("empresas")
+        .select("id,nome")
+        .in("id", empresaIds);
+      for (const e of (empresasData ?? [])) {
+        empresaNameMap.set(e.id, e.nome);
+      }
+    }
 
-    const merged = users.map((user: any) => ({
-      ...user,
-      status: authStatusByUser.get(user.id) ?? "ativo",
-      user_roles: rolesByUser.get(user.id) ?? [],
-    }));
+    // Usar status do profiles (já sincronizado) em vez de iterar auth.users
+    const merged = users.map((user: any) => {
+      const roles = rolesByUser.get(user.id) ?? [];
+      const primaryRole = roles.length > 0 ? roles[0].role : null;
+      return {
+        ...user,
+        status: user.status ?? "ativo",
+        role: primaryRole,
+        empresa_nome: empresaNameMap.get(user.empresa_id) ?? null,
+        user_roles: roles,
+      };
+    });
 
     return ok({ users: merged }, 200, req);
   }
@@ -3074,6 +3102,13 @@ Deno.serve(async (req) => {
 
     if (error) return fail(error.message, 400, null, req);
 
+    // Sincronizar status no profiles
+    const newStatus = enabled ? "ativo" : "inativo";
+    await admin
+      .from("profiles")
+      .update({ status: newStatus })
+      .eq("id", body.user_id);
+
     const { data: profileData } = await admin
       .from("profiles")
       .select("empresa_id")
@@ -3088,6 +3123,63 @@ Deno.serve(async (req) => {
       details: {
         user_id: body.user_id,
         status: body.status,
+      },
+    });
+
+    return ok({ success: true }, 200, req);
+  }
+
+  // ── delete_user (soft delete — owner_master only) ──
+  if (body.action === "delete_user") {
+    if (!body.user_id) return fail("user_id is required", 400, null, req);
+
+    if (body.user_id === auth.user.id) {
+      return fail("Não é permitido excluir o próprio usuário.", 400, null, req);
+    }
+
+    const { data: targetRoles } = await admin
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", body.user_id);
+    const targetRoleNames = (targetRoles ?? []).map((r: any) => r.role);
+    if (targetRoleNames.includes("SYSTEM_OWNER") || targetRoleNames.includes("SYSTEM_ADMIN")) {
+      return fail("Não é permitido excluir usuários SYSTEM_OWNER ou SYSTEM_ADMIN.", 400, null, req);
+    }
+
+    // Banir no auth
+    const { error: banError } = await admin.auth.admin.updateUserById(body.user_id, {
+      ban_duration: "876000h",
+    });
+    if (banError) return fail(banError.message, 400, null, req);
+
+    // Soft delete no profiles
+    const { error: updateError } = await admin
+      .from("profiles")
+      .update({
+        status: "excluido",
+        deleted_at: new Date().toISOString(),
+        deleted_by: auth.user.id,
+      })
+      .eq("id", body.user_id);
+
+    if (updateError) return fail(updateError.message, 400, null, req);
+
+    const { data: profileData } = await admin
+      .from("profiles")
+      .select("empresa_id,nome,email")
+      .eq("id", body.user_id)
+      .maybeSingle();
+
+    await logPlatformAudit(admin, {
+      actorId: auth.user.id,
+      actorEmail: auth.user.email,
+      empresaId: profileData?.empresa_id ?? null,
+      actionType: "OWNER_DELETE_USER",
+      details: {
+        user_id: body.user_id,
+        user_nome: profileData?.nome ?? null,
+        user_email: profileData?.email ?? null,
+        soft_delete: true,
       },
     });
 

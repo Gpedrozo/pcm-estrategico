@@ -11,6 +11,7 @@ import { Plus, Search, GitBranch, CheckCircle2, XCircle } from 'lucide-react';
 import { useRCAs, useCreateRCA } from '@/hooks/useRCA';
 import { useEquipamentos } from '@/hooks/useEquipamentos';
 import { useAuth } from '@/contexts/AuthContext';
+import { useFormDraft } from '@/hooks/useFormDraft';
 
 export default function RCA() {
   const { user } = useAuth();
@@ -28,6 +29,7 @@ export default function RCA() {
     porque_5: '',
     causa_raiz_identificada: '',
   });
+  const { clearDraft: clearRcaDraft } = useFormDraft('draft:rca', formData, setFormData);
 
   const { data: rcas, isLoading } = useRCAs();
   const { data: equipamentos } = useEquipamentos();
@@ -49,6 +51,7 @@ export default function RCA() {
       responsavel_nome: user?.nome,
     });
     setIsModalOpen(false);
+    clearRcaDraft();
     setFormData({
       titulo: '', descricao_problema: '', tag: '', metodo_analise: '5_PORQUES',
       porque_1: '', porque_2: '', porque_3: '', porque_4: '', porque_5: '', causa_raiz_identificada: ''

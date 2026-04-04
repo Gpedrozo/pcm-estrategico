@@ -423,7 +423,21 @@ export default function PlanoDetailPanel({ plano, equipamentos }: Props) {
               <p className="font-medium text-sm">Informações</p>
               <div className="grid grid-cols-2 gap-2 text-xs">
                 <span className="text-muted-foreground">Tipo Gatilho</span><span>{plano.tipo_gatilho}</span>
-                <span className="text-muted-foreground">Frequência</span><span>{plano.frequencia_dias} dias</span>
+                {plano.tipo_gatilho === 'TEMPO' && (
+                  <><span className="text-muted-foreground">Frequência</span><span>{plano.frequencia_dias} dias</span></>
+                )}
+                {plano.tipo_gatilho === 'CICLO' && (
+                  <><span className="text-muted-foreground">Frequência (ciclos)</span><span>{plano.frequencia_ciclos ?? 'N/A'}</span></>
+                )}
+                {plano.tipo_gatilho === 'CONDICAO' && (
+                  <><span className="text-muted-foreground">Condição disparo</span><span>{plano.condicao_disparo || 'N/A'}</span></>
+                )}
+                {(plano.tolerancia_antes_dias || plano.tolerancia_depois_dias) ? (
+                  <><span className="text-muted-foreground">Tolerância</span><span>{plano.tolerancia_antes_dias ?? 0}d antes / {plano.tolerancia_depois_dias ?? 0}d depois</span></>
+                ) : null}
+                {plano.ultima_execucao && (
+                  <><span className="text-muted-foreground">Última execução</span><span>{new Date(plano.ultima_execucao).toLocaleDateString('pt-BR')}</span></>
+                )}
                 <span className="text-muted-foreground">Especialidade</span><span>{plano.especialidade || 'N/A'}</span>
                 <span className="text-muted-foreground">Criado em</span><span>{new Date(plano.created_at).toLocaleDateString('pt-BR')}</span>
                 <span className="text-muted-foreground">Atualizado</span><span>{new Date(plano.updated_at).toLocaleDateString('pt-BR')}</span>
@@ -433,6 +447,22 @@ export default function PlanoDetailPanel({ plano, equipamentos }: Props) {
               <div className="p-3 border border-border rounded-lg">
                 <p className="font-medium text-sm mb-1">Instruções</p>
                 <p className="text-xs text-muted-foreground whitespace-pre-wrap">{plano.instrucoes}</p>
+              </div>
+            )}
+            {Array.isArray(plano.checklist) && plano.checklist.length > 0 && (
+              <div className="p-3 border border-border rounded-lg">
+                <p className="font-medium text-sm mb-1">Checklist</p>
+                <ul className="list-disc ml-4 text-xs text-muted-foreground space-y-0.5">
+                  {plano.checklist.map((item: string, i: number) => <li key={i}>{item}</li>)}
+                </ul>
+              </div>
+            )}
+            {Array.isArray(plano.materiais_previstos) && plano.materiais_previstos.length > 0 && (
+              <div className="p-3 border border-border rounded-lg">
+                <p className="font-medium text-sm mb-1">Materiais Previstos</p>
+                <ul className="list-disc ml-4 text-xs text-muted-foreground space-y-0.5">
+                  {plano.materiais_previstos.map((item: string, i: number) => <li key={i}>{item}</li>)}
+                </ul>
               </div>
             )}
             <Separator />

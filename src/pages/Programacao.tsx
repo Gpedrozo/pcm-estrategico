@@ -25,6 +25,7 @@ import {
 import { useNavigate } from 'react-router-dom';
 import { useEquipamentos } from '@/hooks/useEquipamentos';
 import { useMaintenanceSchedule, useUpdateMaintenanceStatus } from '@/hooks/useMaintenanceSchedule';
+import { usePontosPlano } from '@/hooks/usePontosPlano';
 import { useCreateOrdemServico } from '@/hooks/useOrdensServico';
 import { useDadosEmpresa } from '@/hooks/useDadosEmpresa';
 import { format, addDays, startOfWeek, isSameDay, parseISO } from 'date-fns';
@@ -69,6 +70,9 @@ export default function Programacao() {
     () => (eventos || []).find((item) => item.id === selectedEventId) || null,
     [eventos, selectedEventId],
   );
+
+  const lubrificacaoPlanoId = selectedEvent?.tipo === 'lubrificacao' ? selectedEvent.origem_id : undefined;
+  const { data: pontosLubrificacao } = usePontosPlano(lubrificacaoPlanoId);
 
   const eventTone = (status: string, dataProgramada: string): EventTone => {
     const lower = (status || '').toLowerCase();
@@ -699,6 +703,22 @@ export default function Programacao() {
                 <p><span className="text-muted-foreground">Responsável:</span> {selectedEvent.responsavel || '—'}</p>
                 <p><span className="text-muted-foreground">Status:</span> {selectedEvent.status}</p>
               </div>
+
+              {selectedEvent.tipo === 'lubrificacao' && pontosLubrificacao && pontosLubrificacao.length > 0 && (
+                <div className="border rounded-md p-3 space-y-2 bg-muted/30">
+                  <p className="text-sm font-medium">Pontos de Lubrificação ({pontosLubrificacao.length})</p>
+                  <div className="max-h-40 overflow-y-auto space-y-1">
+                    {pontosLubrificacao.map((ponto, idx) => (
+                      <div key={ponto.id} className="text-xs flex items-center gap-2 py-1 border-b last:border-b-0">
+                        <Badge variant="outline" className="text-[10px] px-1">{idx + 1}</Badge>
+                        <span className="font-medium">{ponto.tag || '—'}</span>
+                        <span className="text-muted-foreground truncate">{ponto.descricao || ponto.localizacao || ''}</span>
+                        {ponto.lubrificante && <span className="ml-auto text-muted-foreground">{ponto.lubrificante} {ponto.quantidade ? `(${ponto.quantidade})` : ''}</span>}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               <div className="space-y-2">
                 <Label>Reagendar data</Label>

@@ -19,6 +19,7 @@ import {
 import { useFornecedores } from '@/hooks/useFornecedores';
 import { useAuth } from '@/contexts/AuthContext';
 import { format, differenceInDays, parseISO } from 'date-fns';
+import { useFormDraft } from '@/hooks/useFormDraft';
 import { ptBR } from 'date-fns/locale';
 
 export default function Contratos() {
@@ -45,6 +46,7 @@ export default function Contratos() {
     responsavel_nome: '',
     penalidade_descricao: '',
   });
+  const { clearDraft: clearContratoDraft } = useFormDraft('draft:contrato', formData, setFormData);
 
   const { data: contratos, isLoading } = useContratos();
   const { data: fornecedores } = useFornecedores();
@@ -107,6 +109,7 @@ export default function Contratos() {
   };
 
   const resetForm = () => {
+    clearContratoDraft();
     setFormData({
       numero_contrato: '',
       titulo: '',

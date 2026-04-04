@@ -42,6 +42,7 @@ export function useUsuarios() {
         .from('profiles')
         .select('*')
         .eq('empresa_id', tenantId)
+        .neq('status', 'excluido')
         .order('nome', { ascending: true });
 
       if (profilesError) throw profilesError;

@@ -16,6 +16,7 @@ import {
   useUpdateComponente,
 } from '@/hooks/useComponentesEquipamento';
 import { Loader2, Plus, X } from 'lucide-react';
+import { useFormDraft } from '@/hooks/useFormDraft';
 
 interface ComponenteFormDialogProps {
   open: boolean;
@@ -93,6 +94,7 @@ export function ComponenteFormDialog({
   parentOptions = [],
 }: ComponenteFormDialogProps) {
   const [formData, setFormData] = useState<FormData>(initialFormData);
+  const { clearDraft: clearComponenteDraft } = useFormDraft('draft:componente', formData, setFormData);
   const createMutation = useCreateComponente();
   const updateMutation = useUpdateComponente();
 
@@ -190,6 +192,7 @@ export function ComponenteFormDialog({
     }
 
     onOpenChange(false);
+    clearComponenteDraft();
   };
 
   const addSpec = () => {
