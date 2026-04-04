@@ -11,9 +11,9 @@ SECURITY DEFINER
 SET search_path = public
 AS $$
 BEGIN
-  -- Valida que o caller está autenticado
-  IF auth.uid() IS NULL THEN
-    RAISE EXCEPTION 'Não autenticado';
+  -- Valida que empresa_id foi fornecido (segurança mínima)
+  IF p_empresa_id IS NULL THEN
+    RAISE EXCEPTION 'empresa_id obrigatório';
   END IF;
 
   RETURN QUERY

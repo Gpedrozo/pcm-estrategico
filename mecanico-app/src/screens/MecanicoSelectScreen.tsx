@@ -151,7 +151,7 @@ export default function MecanicoSelectScreen() {
     }
     init();
     return () => { mounted = false; };
-  }, [empresaId, loadMecanicos]);
+  }, [empresaId, loadMecanicos, fetchFromSupabase]);
 
   const handleRefresh = useCallback(async () => {
     setRefreshing(true);
