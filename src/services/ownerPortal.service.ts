@@ -118,7 +118,7 @@ export interface OwnerSupportTicket {
   unread_client_messages?: number | null
   notification_email_pending?: boolean | null
   notification_whatsapp_pending?: boolean | null
-  messages?: Json[] | null
+  messages?: unknown[] | null
   created_at?: string | null
   updated_at?: string | null
 }
