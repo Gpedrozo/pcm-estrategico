@@ -2,16 +2,115 @@
 <html lang="pt-BR">
 <head>
 <meta charset="utf-8"/>
-<title>Download - PCM Mecânico</title>
-<meta http-equiv="refresh" content="0;url=https://github.com/Gpedrozo/pcm-estrategico/releases/latest/download/pcm-mecanico.apk"/>
-<style>body{font-family:sans-serif;display:flex;justify-content:center;align-items:center;height:100vh;margin:0;background:#f0f4f8}
-.box{text-align:center;padding:2rem}a{color:#2563eb}</style>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Download — PCM Mecânico</title>
+<link rel="icon" href="/favicon.ico"/>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#0f172a;color:#e2e8f0;display:flex;justify-content:center;align-items:center;min-height:100vh}
+.card{background:#1e293b;border-radius:16px;padding:2.5rem 2rem;max-width:440px;width:90%;text-align:center;box-shadow:0 25px 50px rgba(0,0,0,.4)}
+.logo{width:64px;height:64px;margin:0 auto 1.2rem;background:linear-gradient(135deg,#3b82f6,#1d4ed8);border-radius:16px;display:flex;align-items:center;justify-content:center}
+.logo svg{width:36px;height:36px;color:#fff}
+h1{font-size:1.25rem;font-weight:700;margin-bottom:.3rem;color:#f1f5f9}
+.sub{font-size:.85rem;color:#94a3b8;margin-bottom:1.8rem}
+.progress-wrap{background:#334155;border-radius:999px;height:12px;overflow:hidden;margin-bottom:.8rem}
+.progress-bar{height:100%;width:0%;background:linear-gradient(90deg,#3b82f6,#60a5fa);border-radius:999px;transition:width .3s ease}
+.status{font-size:.8rem;color:#94a3b8;min-height:1.2rem}
+.done-icon{display:none;margin:1rem auto 0;width:48px;height:48px;background:#22c55e;border-radius:50%;align-items:center;justify-content:center}
+.done-icon svg{width:28px;height:28px;color:#fff}
+.done-icon.show{display:flex}
+.retry{display:none;margin-top:1.2rem}
+.retry.show{display:block}
+.retry a{display:inline-block;padding:.6rem 1.5rem;background:#3b82f6;color:#fff;border-radius:8px;text-decoration:none;font-size:.85rem;font-weight:600;transition:background .2s}
+.retry a:hover{background:#2563eb}
+.info{margin-top:1.5rem;padding-top:1rem;border-top:1px solid #334155;font-size:.75rem;color:#64748b}
+.info span{color:#94a3b8}
+</style>
 </head>
 <body>
-<div class="box">
-<p>Iniciando download do APK...</p>
-<p>Se o download não iniciar, <a href="https://github.com/Gpedrozo/pcm-estrategico/releases/latest/download/pcm-mecanico.apk">clique aqui</a>.</p>
+<div class="card">
+  <div class="logo">
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+      <path stroke-linecap="round" stroke-linejoin="round" d="M10.5 1.5H8.25A2.25 2.25 0 006 3.75v16.5a2.25 2.25 0 002.25 2.25h7.5A2.25 2.25 0 0018 20.25V3.75a2.25 2.25 0 00-2.25-2.25H13.5m-3 0V3h3V1.5m-3 0h3m-3 18.75h3"/>
+    </svg>
+  </div>
+  <h1>PCM Mecânico</h1>
+  <p class="sub">Aplicativo para Ordens de Serviço — Android</p>
+
+  <div class="progress-wrap">
+    <div class="progress-bar" id="bar"></div>
+  </div>
+  <p class="status" id="status">Preparando download...</p>
+
+  <div class="done-icon" id="doneIcon">
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor">
+      <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/>
+    </svg>
+  </div>
+
+  <div class="retry" id="retryBlock">
+    <a id="retryLink" href="#">Baixar novamente</a>
+  </div>
+
+  <div class="info">
+    Tamanho aproximado: <span>~90 MB</span><br/>
+    Compatível com Android 6.0+
+  </div>
 </div>
-<script>window.location.href="https://github.com/Gpedrozo/pcm-estrategico/releases/latest/download/pcm-mecanico.apk";</script>
+
+<iframe id="dlFrame" style="display:none" title="download"></iframe>
+
+<script>
+(function(){
+  var APK='https://github.com/Gpedrozo/pcm-estrategico/releases/latest/download/pcm-mecanico.apk';
+  var bar=document.getElementById('bar');
+  var status=document.getElementById('status');
+  var doneIcon=document.getElementById('doneIcon');
+  var retryBlock=document.getElementById('retryBlock');
+  var retryLink=document.getElementById('retryLink');
+  var frame=document.getElementById('dlFrame');
+
+  function startDownload(){
+    bar.style.width='0%';
+    status.textContent='Preparando download...';
+    doneIcon.className='done-icon';
+    retryBlock.className='retry';
+
+    // Simulate progress while download starts
+    var pct=0;
+    var iv=setInterval(function(){
+      if(pct<30) pct+=Math.random()*8;
+      else if(pct<70) pct+=Math.random()*4;
+      else if(pct<90) pct+=Math.random()*1.5;
+      if(pct>90) pct=90;
+      bar.style.width=Math.round(pct)+'%';
+      if(pct>=15&&pct<50) status.textContent='Conectando ao servidor...';
+      if(pct>=50&&pct<80) status.textContent='Baixando PCM Mecânico...';
+      if(pct>=80) status.textContent='Quase lá...';
+    },300);
+
+    // Trigger actual download via hidden iframe (hides GitHub URL)
+    setTimeout(function(){
+      frame.src=APK;
+    },800);
+
+    // Complete animation after enough time for browser to catch the download
+    setTimeout(function(){
+      clearInterval(iv);
+      bar.style.width='100%';
+      status.textContent='Download iniciado com sucesso!';
+      doneIcon.className='done-icon show';
+      retryBlock.className='retry show';
+    },5000);
+  }
+
+  retryLink.addEventListener('click',function(e){
+    e.preventDefault();
+    startDownload();
+  });
+
+  startDownload();
+})();
+</script>
 </body>
 </html>
