@@ -78,6 +78,7 @@ export function LubrificacaoList({
                 <th>Código</th>
                 <th>Descrição</th>
                 <th>Equipamento</th>
+                <th>Prioridade</th>
                 <th>Status</th>
                 <th>Próxima Execução</th>
                 <th>Ações</th>
@@ -86,7 +87,7 @@ export function LubrificacaoList({
             <tbody>
               {planos.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="text-center py-10 text-muted-foreground">Nenhum plano encontrado com os filtros aplicados.</td>
+                  <td colSpan={7} className="text-center py-10 text-muted-foreground">Nenhum plano encontrado com os filtros aplicados.</td>
                 </tr>
               ) : (
                 planos.map((plano) => (
@@ -99,14 +100,19 @@ export function LubrificacaoList({
                       </div>
                     </td>
                     <td>
+                      <Badge variant={plano.prioridade === 'critica' ? 'destructive' : plano.prioridade === 'alta' ? 'destructive' : 'secondary'}>
+                        {plano.prioridade || 'media'}
+                      </Badge>
+                    </td>
+                    <td>
                       <Badge variant="outline">{plano.status || 'programado'}</Badge>
                     </td>
                     <td>{plano.proxima_execucao ? new Date(plano.proxima_execucao).toLocaleDateString('pt-BR') : '—'}</td>
                     <td>
                       <div className="flex gap-1">
-                        <Button size="icon" variant="ghost" onClick={() => onSelect(plano)}><Eye className="h-4 w-4" /></Button>
-                        <Button size="icon" variant="ghost" onClick={() => onEdit(plano)}><Edit className="h-4 w-4" /></Button>
-                        <Button size="icon" variant="ghost" className="text-destructive" onClick={() => onDelete(plano)}><Trash2 className="h-4 w-4" /></Button>
+                        <Button size="icon" variant="ghost" onClick={(e) => { e.stopPropagation(); onSelect(plano); }}><Eye className="h-4 w-4" /></Button>
+                        <Button size="icon" variant="ghost" onClick={(e) => { e.stopPropagation(); onEdit(plano); }}><Edit className="h-4 w-4" /></Button>
+                        <Button size="icon" variant="ghost" className="text-destructive" onClick={(e) => { e.stopPropagation(); onDelete(plano); }}><Trash2 className="h-4 w-4" /></Button>
                       </div>
                     </td>
                   </tr>

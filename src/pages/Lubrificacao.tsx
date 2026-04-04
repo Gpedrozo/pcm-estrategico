@@ -175,7 +175,10 @@ export default function Lubrificacao() {
 
       <LubrificacaoForm
         open={formOpen}
-        onOpenChange={setFormOpen}
+        onOpenChange={(open) => {
+          setFormOpen(open);
+          if (!open) setEditingPlano(null);
+        }}
         equipamentos={equipamentos || []}
         initialData={editingPlano}
         onSubmit={handleSubmit}

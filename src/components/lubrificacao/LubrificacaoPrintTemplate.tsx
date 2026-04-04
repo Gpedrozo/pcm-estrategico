@@ -17,6 +17,7 @@ interface LubrificacaoPrintTemplateProps {
   plano: PlanoLubrificacao;
   pontos?: RotaPonto[];
   empresa?: DadosEmpresa | null;
+  equipamentoNome?: string;
 }
 
 const formatMin = (min: number) => {
@@ -26,7 +27,7 @@ const formatMin = (min: number) => {
 };
 
 export const LubrificacaoPrintTemplate = forwardRef<HTMLDivElement, LubrificacaoPrintTemplateProps>(
-  ({ plano, pontos = [], empresa }, ref) => {
+  ({ plano, pontos = [], empresa, equipamentoNome }, ref) => {
     const docNum = `LUB-${plano.codigo}`;
     const periodicidade = plano.periodicidade
       ? `${plano.periodicidade} ${plano.tipo_periodicidade || 'dias'}`
@@ -49,7 +50,7 @@ export const LubrificacaoPrintTemplate = forwardRef<HTMLDivElement, Lubrificacao
       >
         {/* ═══ PLAN INFO ═══ */}
         <PrintInfoGrid items={[
-          { label: 'EQUIPAMENTO', value: plano.equipamento_id ? `ID: ${plano.equipamento_id}` : 'N/A' },
+          { label: 'EQUIPAMENTO', value: equipamentoNome || 'N/A' },
           { label: 'PERIODICIDADE', value: periodicidade },
           { label: 'TEMPO ESTIMADO', value: formatMin(plano.tempo_estimado || 0) },
           { label: 'ÚLTIMA EXECUÇÃO', value: proximaExec },
@@ -75,14 +76,10 @@ export const LubrificacaoPrintTemplate = forwardRef<HTMLDivElement, Lubrificacao
           { label: 'LUBRIFICANTE', value: plano.lubrificante || '—' },
         ]} />
 
-        <PrintInfoGrid items={[
-          { label: 'DESCRIÇÃO', value: plano.descricao || '—' },
-        ]} />
-
         {/* ═══ DESCRIPTION ═══ */}
         {plano.descricao && (
           <div className="border-b-2 border-black">
-            <PrintSectionHeader label="DESCRIÇÃO DETALHADA" />
+            <PrintSectionHeader label="DESCRIÇÃO" />
             <div className="p-2 min-h-[10mm] text-[9px]">{plano.descricao}</div>
           </div>
         )}

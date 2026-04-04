@@ -177,6 +177,15 @@ export function LubrificacaoForm({ open, onOpenChange, equipamentos, initialData
     setForm((prev) => ({ ...prev, proxima_execucao: nextExecution }));
   }, [nextExecution]);
 
+  // Auto-calculate tempo_estimado from pontos when pontos exist
+  useEffect(() => {
+    if (pontos.length === 0) return;
+    const total = pontos.reduce((sum, p) => sum + (p.tempo_estimado_min || 0), 0);
+    if (total > 0) {
+      setForm((prev) => ({ ...prev, tempo_estimado: total }));
+    }
+  }, [pontos]);
+
   const setField = <K extends keyof PlanoLubrificacaoInsert>(key: K, value: PlanoLubrificacaoInsert[K]) => {
     setForm((prev) => ({ ...prev, [key]: value }));
   };
@@ -460,6 +469,7 @@ export function LubrificacaoForm({ open, onOpenChange, equipamentos, initialData
                 </div>
 
                 <Input placeholder="Instruções / Recomendações" value={ponto.instrucoes} onChange={(e) => updatePonto(index, 'instrucoes', e.target.value)} />
+                <Input placeholder="Ref. manual (ex: MAN-001 pg.42)" value={ponto.referencia_manual} onChange={(e) => updatePonto(index, 'referencia_manual', e.target.value)} />
               </div>
             ))}
 

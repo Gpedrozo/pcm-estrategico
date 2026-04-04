@@ -6,6 +6,7 @@ import type { PlanoLubrificacao } from '@/types/lubrificacao';
 import { useCreateExecucaoLubrificacao, useExecucoesByPlanoLubrificacao } from '@/hooks/useLubrificacao';
 import { useDadosEmpresa } from '@/hooks/useDadosEmpresa';
 import { usePontosPlano } from '@/hooks/usePontosPlano';
+import { useEquipamentos } from '@/hooks/useEquipamentos';
 import ExecucaoFormDialog from '@/components/lubrificacao/ExecucaoFormDialog';
 import AtividadesList from '@/components/lubrificacao/AtividadesList';
 import { LubrificacaoPrintTemplate } from './LubrificacaoPrintTemplate';
@@ -15,8 +16,12 @@ export default function PlanoDetailPanel({ plano }: { plano: PlanoLubrificacao }
   const { data: execucoes } = useExecucoesByPlanoLubrificacao(plano.id);
   const { data: empresa } = useDadosEmpresa();
   const { data: pontosPlano } = usePontosPlano(plano.id);
+  const { data: equipamentos } = useEquipamentos();
   const createExec = useCreateExecucaoLubrificacao();
   const [openExec, setOpenExec] = React.useState(false);
+
+  const equipamento = equipamentos?.find((e) => e.id === plano.equipamento_id);
+  const equipamentoLabel = equipamento ? `${equipamento.tag} - ${equipamento.nome}` : '—';
 
   const handleGenerate = () => {
     createExec.mutate({ plano_id: plano.id });
@@ -36,7 +41,7 @@ export default function PlanoDetailPanel({ plano }: { plano: PlanoLubrificacao }
         </div>
 
         <div className="mt-4 space-y-2">
-          <p><strong>Equipamento:</strong> {plano.equipamento_id || '—'}</p>
+          <p><strong>Equipamento:</strong> {equipamentoLabel}</p>
           <p><strong>Ponto:</strong> {plano.ponto_lubrificacao || '—'}</p>
           <p><strong>Lubrificante:</strong> {plano.lubrificante || '—'}</p>
           <p><strong>Periodicidade:</strong> {plano.periodicidade || '—'} {plano.tipo_periodicidade || ''}</p>
@@ -62,7 +67,7 @@ export default function PlanoDetailPanel({ plano }: { plano: PlanoLubrificacao }
                   </Button>
                 }
               >
-                {(ref) => <LubrificacaoPrintTemplate ref={ref} plano={plano} pontos={pontosPlano || []} empresa={empresa} />}
+                {(ref) => <LubrificacaoPrintTemplate ref={ref} plano={plano} pontos={pontosPlano || []} empresa={empresa} equipamentoNome={equipamentoLabel !== '—' ? equipamentoLabel : undefined} />}
               </PrintPreviewDialog>
               <Button variant="outline"><Camera className="h-4 w-4" /> Fotos</Button>
               <Button variant="outline" onClick={handleGenerate}>Gerar Tarefa</Button>

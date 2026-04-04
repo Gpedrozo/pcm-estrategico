@@ -97,7 +97,7 @@ export function LubrificacaoDetalhe({ plano, equipamentos, onEdit }: Lubrificaca
 
       {/* Hidden print template */}
       <div className="hidden">
-        <LubrificacaoPrintTemplate ref={printRef} plano={plano} pontos={pontosPlano || []} empresa={empresa} />
+        <LubrificacaoPrintTemplate ref={printRef} plano={plano} pontos={pontosPlano || []} empresa={empresa} equipamentoNome={equipamento ? `${equipamento.tag} - ${equipamento.nome}` : undefined} />
       </div>
     </Card>
   );
