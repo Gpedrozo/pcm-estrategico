@@ -80,7 +80,7 @@ export default function OSCard({ os, onPress, highlighted }: OSCardProps) {
     >
       {highlighted && (
         <View style={styles.highlightBanner}>
-          <Text style={styles.highlightText}>🟢 ATRIBUÍDA A VOCÊ</Text>
+          <Text style={styles.highlightText}>� ATRIBUÍDA A VOCÊ</Text>
         </View>
       )}
       <View style={styles.header}>
