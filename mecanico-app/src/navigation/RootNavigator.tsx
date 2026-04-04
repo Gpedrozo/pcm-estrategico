@@ -5,7 +5,7 @@
 import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { Text } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 
 import { useAuth } from '../contexts/AuthContext';
 
@@ -78,10 +78,42 @@ function MainTabNavigator() {
 
 // ─── Root Stack Navigator ───
 export default function RootNavigator() {
-  const { isLoading, isDeviceBound } = useAuth();
+  const { isLoading, isDeviceBound, isAuthenticated, error, retry, logout } = useAuth();
 
+  // Still loading initial check
   if (isLoading) {
     return <LoadingScreen message="Iniciando..." />;
+  }
+
+  // Not bound — show binding flow
+  if (!isDeviceBound) {
+    return (
+      <Stack.Navigator screenOptions={{ headerShown: false }}>
+        <Stack.Screen name="DeviceBinding" component={DeviceBindingScreen} />
+      </Stack.Navigator>
+    );
+  }
+
+  // Bound but auth failed — show error with retry
+  if (!isAuthenticated && error) {
+    return (
+      <View style={errStyles.container}>
+        <Text style={errStyles.icon}>⚠️</Text>
+        <Text style={errStyles.title}>Erro de autenticação</Text>
+        <Text style={errStyles.message}>{error}</Text>
+        <TouchableOpacity style={errStyles.retryBtn} onPress={retry} activeOpacity={0.7}>
+          <Text style={errStyles.retryText}>Tentar novamente</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={errStyles.unbindBtn} onPress={logout} activeOpacity={0.7}>
+          <Text style={errStyles.unbindText}>Desvincular dispositivo</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
+
+  // Bound, no error, but not yet authenticated (authenticateDevice running)
+  if (!isAuthenticated) {
+    return <LoadingScreen message="Autenticando..." />;
   }
 
   return (
@@ -94,33 +126,51 @@ export default function RootNavigator() {
         contentStyle: { backgroundColor: COLORS.background },
       }}
     >
-      {!isDeviceBound ? (
-        // Not bound — show binding screen
-        <Stack.Screen
-          name="DeviceBinding"
-          component={DeviceBindingScreen}
-          options={{ headerShown: false }}
-        />
-      ) : (
-        // Bound & authenticated — show main app
-        <>
-          <Stack.Screen
-            name="Main"
-            component={MainTabNavigator}
-            options={{ headerShown: false }}
-          />
-          <Stack.Screen
-            name="OSDetail"
-            component={OSDetailScreen}
-            options={{ title: 'Detalhes da OS' }}
-          />
-          <Stack.Screen
-            name="Execution"
-            component={ExecutionScreen}
-            options={{ title: 'Registrar Execução' }}
-          />
-        </>
-      )}
+      <Stack.Screen
+        name="Main"
+        component={MainTabNavigator}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
+        name="OSDetail"
+        component={OSDetailScreen}
+        options={{ title: 'Detalhes da OS' }}
+      />
+      <Stack.Screen
+        name="Execution"
+        component={ExecutionScreen}
+        options={{ title: 'Registrar Execução' }}
+      />
     </Stack.Navigator>
   );
 }
+
+const errStyles = StyleSheet.create({
+  container: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: COLORS.background,
+    padding: 32,
+  },
+  icon: { fontSize: 56, marginBottom: 16 },
+  title: { fontSize: SIZES.fontXL, fontWeight: '700', color: COLORS.textPrimary, marginBottom: 8 },
+  message: { fontSize: SIZES.fontSM, color: COLORS.textSecondary, textAlign: 'center', lineHeight: 22, marginBottom: 32 },
+  retryBtn: {
+    width: '100%',
+    height: 52,
+    borderRadius: 12,
+    backgroundColor: COLORS.primary,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  retryText: { fontSize: SIZES.fontLG, fontWeight: '700', color: '#FFF' },
+  unbindBtn: {
+    width: '100%',
+    height: 44,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  unbindText: { fontSize: SIZES.fontSM, fontWeight: '600', color: COLORS.error || '#D32F2F' },
+});

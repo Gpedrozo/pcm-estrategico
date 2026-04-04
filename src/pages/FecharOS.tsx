@@ -20,6 +20,8 @@ import { useMecanicosAtivos } from '@/hooks/useMecanicos';
 import { useMateriaisAtivos, useAddMaterialOS, type MaterialRow } from '@/hooks/useMateriais';
 import { useCreateExecucaoOS, useCloseOSAtomic } from '@/hooks/useExecucoesOS';
 import { useLogAuditoria } from '@/hooks/useAuditoria';
+import { useTenantAdminConfig } from '@/hooks/useTenantAdminConfig';
+import { useFormDraft } from '@/hooks/useFormDraft';
 import { useAuth } from '@/contexts/AuthContext';
 import { logger } from '@/lib/logger';
 import { updateWithColumnFallback } from '@/lib/supabaseCompat';
@@ -66,6 +68,7 @@ export default function FecharOS() {
   const { data: pendingOS, isLoading: loadingOS } = usePendingOrdensServico();
   const { data: mecanicos, isLoading: loadingMecanicos } = useMecanicosAtivos();
   const { data: materiaisDisponiveis } = useMateriaisAtivos();
+  const { data: processoConfig } = useTenantAdminConfig<{ bloquear_fechamento_futuro?: boolean }>('tenant.admin.processo', { bloquear_fechamento_futuro: true });
   const updateOSMutation = useUpdateOrdemServico();
   const createExecucaoMutation = useCreateExecucaoOS();
   const closeOSAtomicMutation = useCloseOSAtomic();
@@ -94,6 +97,14 @@ export default function FecharOS() {
   const [teveIntervalos, setTeveIntervalos] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const servicoMinLength = 20;
+
+  const { clearDraft: clearFecharOSDraft } = useFormDraft(
+    'draft:fechar-os',
+    { formData, selectedOSId: selectedOS?.id || null },
+    (saved) => {
+      if (saved.formData) setFormData(saved.formData);
+    },
+  );
 
   const selectedMecanico = mecanicos?.find(m => m.id === formData.mecanicoId);
 
@@ -236,19 +247,31 @@ export default function FecharOS() {
   const servicoValido = formData.servicoExecutado.trim().length >= servicoMinLength;
   const janelaExecucaoPreenchida = Boolean(formData.dataInicio && formData.horaInicio && formData.dataFim && formData.horaFim);
   const janelaExecucaoValida = !janelaExecucaoPreenchida || Boolean(duracaoBruta);
+
+  // Validação data/hora futura
+  const dataFimFutura = (() => {
+    if (!janelaExecucaoPreenchida) return false;
+    const fim = parseDateTime(formData.dataFim, formData.horaFim);
+    return fim ? fim > new Date() : false;
+  })();
+  const bloquearFuturo = processoConfig?.bloquear_fechamento_futuro !== false;
+  const dataFimBloqueada = bloquearFuturo && dataFimFutura;
+
   const canSubmit = Boolean(
     selectedOS &&
-      formData.mecanicoId &&
       janelaExecucaoPreenchida &&
       janelaExecucaoValida &&
+      !dataFimBloqueada &&
       servicoValido,
   );
   const checklist = [
-    { label: 'Mecânico selecionado', ok: Boolean(formData.mecanicoId) },
+    { label: 'Mecânico selecionado', ok: Boolean(formData.mecanicoId), optional: true },
     { label: 'Horário de execução válido', ok: janelaExecucaoPreenchida && janelaExecucaoValida },
+    ...(bloquearFuturo ? [{ label: 'Data/hora de fim não é futura', ok: !dataFimFutura }] : []),
     { label: `Serviço com mínimo de ${servicoMinLength} caracteres`, ok: servicoValido },
   ];
-  const progressoChecklist = Math.round((checklist.filter((item) => item.ok).length / checklist.length) * 100);
+  const requiredChecklist = checklist.filter((item) => !(item as any).optional);
+  const progressoChecklist = requiredChecklist.length > 0 ? Math.round((requiredChecklist.filter((item) => item.ok).length / requiredChecklist.length) * 100) : 0;
 
   const handleAddMaterial = () => {
     if (!materialSelecionado || !quantidadeMaterial) return;
@@ -279,15 +302,16 @@ export default function FecharOS() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedOS || !selectedMecanico) return;
+    if (!selectedOS) return;
     
     setIsSubmitting(true);
 
     try {
+      const mecanicoNome = selectedMecanico?.nome || 'Não informado';
       const tempoExecucaoBruto = calculateDuration() || 0;
       const tempoPausas = calculatePauseMinutes();
       const tempoExecucao = Math.max(0, tempoExecucaoBruto - tempoPausas);
-      const custoMaoObra = selectedMecanico.custo_hora 
+      const custoMaoObra = selectedMecanico?.custo_hora 
         ? (tempoExecucao / 60) * Number(selectedMecanico.custo_hora) 
         : 0;
       const custoTerceiros = formData.custoTerceiros ? parseFloat(formData.custoTerceiros) : 0;
@@ -305,7 +329,7 @@ export default function FecharOS() {
         await closeOSAtomicMutation.mutateAsync({
           os_id: selectedOS.id,
           mecanico_id: formData.mecanicoId || null,
-          mecanico_nome: selectedMecanico.nome,
+          mecanico_nome: mecanicoNome,
           data_inicio: formData.dataInicio,
           hora_inicio: formData.horaInicio,
           data_fim: formData.dataFim,
@@ -337,8 +361,8 @@ export default function FecharOS() {
         // Backward compatibility fallback when migration is not applied yet.
         await createExecucaoMutation.mutateAsync({
           os_id: selectedOS.id,
-          mecanico_id: formData.mecanicoId,
-          mecanico_nome: selectedMecanico.nome,
+          mecanico_id: formData.mecanicoId || null,
+          mecanico_nome: mecanicoNome,
           data_inicio: formData.dataInicio,
           hora_inicio: formData.horaInicio,
           data_fim: formData.dataFim,
@@ -393,6 +417,7 @@ export default function FecharOS() {
         description: `Ordem de Serviço nº ${selectedOS.numero_os} foi encerrada.`,
       });
 
+      clearFecharOSDraft();
       navigate('/os/historico');
     } catch (error: any) {
       const errorMsg =
@@ -552,7 +577,7 @@ export default function FecharOS() {
                 <TabsContent value="execucao" className="space-y-6 mt-6">
                   <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
                     <div className="space-y-2">
-                      <Label htmlFor="mecanico">Mecânico *</Label>
+                      <Label htmlFor="mecanico">Mecânico (opcional)</Label>
                       <Select
                         value={formData.mecanicoId}
                         onValueChange={(value) => setFormData({ ...formData, mecanicoId: value })}
@@ -612,6 +637,12 @@ export default function FecharOS() {
                         onChange={(e) => setFormData({ ...formData, horaFim: e.target.value })}
                         required
                       />
+                      {dataFimBloqueada && (
+                        <p className="text-xs text-destructive flex items-center gap-1">
+                          <AlertTriangle className="h-3 w-3" />
+                          Data/hora de fim não pode ser futura
+                        </p>
+                      )}
                     </div>
                   </div>
 
@@ -833,8 +864,8 @@ export default function FecharOS() {
                 </div>
                 {checklist.map((item) => (
                   <div key={item.label} className="flex items-center gap-2 text-sm">
-                    {item.ok ? <Check className="h-4 w-4 text-success" /> : <AlertTriangle className="h-4 w-4 text-warning" />}
-                    <span>{item.label}</span>
+                    {item.ok ? <Check className="h-4 w-4 text-success" /> : (item as any).optional ? <span className="h-4 w-4 text-muted-foreground text-xs text-center">—</span> : <AlertTriangle className="h-4 w-4 text-warning" />}
+                    <span>{item.label}{(item as any).optional ? ' (opcional)' : ''}</span>
                   </div>
                 ))}
                 <Button

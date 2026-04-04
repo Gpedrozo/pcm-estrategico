@@ -19,7 +19,7 @@ import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Plus, Search, Activity, Thermometer, Gauge, TrendingUp, AlertTriangle, CheckCircle, Printer } from 'lucide-react';
+import { Plus, Search, Activity, Thermometer, Gauge, TrendingUp, AlertTriangle, CheckCircle, Printer, Pencil, History } from 'lucide-react';
 import { useEquipamentos } from '@/hooks/useEquipamentos';
 import { useAuth } from '@/contexts/AuthContext';
 import { useDadosEmpresa } from '@/hooks/useDadosEmpresa';
@@ -29,8 +29,10 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import { upsertMaintenanceSchedule } from '@/services/maintenanceSchedule';
-import { getSupabaseErrorMessage, insertWithColumnFallback } from '@/lib/supabaseCompat';
+import { getSupabaseErrorMessage, insertWithColumnFallback, updateWithColumnFallback } from '@/lib/supabaseCompat';
 import { useCreateOrdemServico } from '@/hooks/useOrdensServico';
+import { useHistoricoAlteracoesMedicao } from '@/hooks/useMedicoesPreditivas';
+import { writeAuditLog } from '@/lib/audit';
 import { useLocation } from 'react-router-dom';
 import {
   CartesianGrid,
@@ -175,6 +177,7 @@ const useCreateMedicao = () => {
 export default function Preditiva() {
   const { user, tenantId } = useAuth();
   const location = useLocation();
+  const queryClient = useQueryClient();
   const [search, setSearch] = useState('');
   const [activeTab, setActiveTab] = useState('medicoes');
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -203,6 +206,25 @@ export default function Preditiva() {
   const createMutation = useCreateMedicao();
   const createOSMutation = useCreateOrdemServico();
   const [osSuggestion, setOsSuggestion] = useState<OSSuggestionPayload | null>(null);
+
+  // Edit state
+  const [editingMedicao, setEditingMedicao] = useState<MedicaoPreditiva | null>(null);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [editFormData, setEditFormData] = useState({
+    tag: '',
+    tipo_medicao: 'VIBRACAO',
+    valor: 0,
+    unidade: 'mm/s',
+    limite_alerta: '' as number | '',
+    limite_critico: '' as number | '',
+    observacoes: '',
+  });
+  const [isEditSubmitting, setIsEditSubmitting] = useState(false);
+
+  // History state
+  const [historyMedicaoId, setHistoryMedicaoId] = useState<string | null>(null);
+  const [isHistoryOpen, setIsHistoryOpen] = useState(false);
+  const { data: historicoAlteracoes, isLoading: loadingHistorico } = useHistoricoAlteracoesMedicao(historyMedicaoId);
 
   useEffect(() => {
     if ((location.state as any)?.dataProgramada) {
@@ -376,6 +398,116 @@ export default function Preditiva() {
       tempo_estimado: null,
       usuario_abertura: user?.id ?? null,
     });
+  };
+
+  const handleOpenEdit = (med: MedicaoPreditiva) => {
+    setEditingMedicao(med);
+    setEditFormData({
+      tag: med.tag,
+      tipo_medicao: med.tipo_medicao,
+      valor: med.valor,
+      unidade: med.unidade || 'mm/s',
+      limite_alerta: med.limite_alerta ?? '',
+      limite_critico: med.limite_critico ?? '',
+      observacoes: med.observacoes || '',
+    });
+    setIsEditModalOpen(true);
+  };
+
+  const handleEditSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingMedicao || !tenantId) return;
+
+    setIsEditSubmitting(true);
+
+    try {
+      const limiteAlerta = editFormData.limite_alerta === '' ? null : Number(editFormData.limite_alerta);
+      const limiteCritico = editFormData.limite_critico === '' ? null : Number(editFormData.limite_critico);
+
+      let status = 'NORMAL';
+      if (limiteCritico !== null && editFormData.valor >= limiteCritico) {
+        status = 'CRITICO';
+      } else if (limiteAlerta !== null && editFormData.valor >= limiteAlerta) {
+        status = 'ALERTA';
+      }
+
+      const previousValues: Record<string, unknown> = {
+        valor: editingMedicao.valor,
+        unidade: editingMedicao.unidade,
+        limite_alerta: editingMedicao.limite_alerta,
+        limite_critico: editingMedicao.limite_critico,
+        status: editingMedicao.status,
+        observacoes: editingMedicao.observacoes,
+        tipo_medicao: editingMedicao.tipo_medicao,
+      };
+
+      const updates = {
+        valor: editFormData.valor,
+        unidade: editFormData.unidade,
+        limite_alerta: limiteAlerta,
+        limite_critico: limiteCritico,
+        status,
+        observacoes: editFormData.observacoes || null,
+        tipo_medicao: editFormData.tipo_medicao,
+      };
+
+      // Build diff for audit
+      const changedFields: Record<string, { antes: unknown; depois: unknown }> = {};
+      for (const key of Object.keys(updates)) {
+        const prev = previousValues[key];
+        const next = (updates as Record<string, unknown>)[key];
+        if (prev !== next) {
+          changedFields[key] = { antes: prev, depois: next };
+        }
+      }
+
+      await updateWithColumnFallback(
+        async (payload) =>
+          supabase
+            .from('medicoes_preditivas')
+            .update(payload)
+            .eq('id', editingMedicao.id)
+            .select()
+            .single(),
+        updates as Record<string, unknown>,
+      );
+
+      // Write audit log
+      try {
+        await writeAuditLog({
+          action: 'UPDATE_MEDICAO_PREDITIVA',
+          table: 'medicoes_preditivas',
+          recordId: editingMedicao.id,
+          empresaId: tenantId,
+          severity: 'info',
+          source: 'app',
+          metadata: {
+            campos_alterados: changedFields,
+            tag: editingMedicao.tag,
+            tipo_medicao: editFormData.tipo_medicao,
+            usuario_nome: user?.nome || null,
+          },
+        });
+      } catch { /* audit best-effort */ }
+
+      queryClient.invalidateQueries({ queryKey: ['medicoes_preditivas', tenantId] });
+      toast({ title: 'Medição atualizada com sucesso' });
+      setIsEditModalOpen(false);
+      setEditingMedicao(null);
+    } catch (error: any) {
+      toast({
+        title: 'Erro ao atualizar medição',
+        description: getSupabaseErrorMessage(error) || 'Falha ao atualizar medição.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsEditSubmitting(false);
+    }
+  };
+
+  const handleOpenHistory = (medId: string) => {
+    setHistoryMedicaoId(medId);
+    setIsHistoryOpen(true);
   };
 
   const getTipoIcon = (tipo: string) => {
@@ -557,11 +689,12 @@ export default function Preditiva() {
                   <th>Status</th>
                   <th>Responsável</th>
                   <th>Data</th>
+                  <th>Ações</th>
                 </tr>
               </thead>
               <tbody>
                 {filteredMedicoes.length === 0 ? (
-                  <tr><td colSpan={8} className="text-center py-8 text-muted-foreground">Nenhuma medição encontrada</td></tr>
+                  <tr><td colSpan={9} className="text-center py-8 text-muted-foreground">Nenhuma medição encontrada</td></tr>
                 ) : (
                   filteredMedicoes.map((med) => (
                     <tr key={med.id}>
@@ -578,6 +711,28 @@ export default function Preditiva() {
                       <td><Badge className={getStatusBadge(med.status)}>{med.status}</Badge></td>
                       <td>{med.responsavel_nome || '-'}</td>
                       <td>{new Date(med.created_at).toLocaleDateString('pt-BR')}</td>
+                      <td>
+                        <div className="flex gap-1">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8"
+                            title="Editar medição"
+                            onClick={() => handleOpenEdit(med)}
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8"
+                            title="Histórico de alterações"
+                            onClick={() => handleOpenHistory(med.id)}
+                          >
+                            <History className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </td>
                     </tr>
                   ))
                 )}
@@ -839,6 +994,147 @@ export default function Preditiva() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Edit Measurement Modal */}
+      <Dialog open={isEditModalOpen} onOpenChange={setIsEditModalOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader><DialogTitle>Editar Medição Preditiva</DialogTitle></DialogHeader>
+          <form onSubmit={handleEditSubmit} className="space-y-4">
+            <div className="rounded-md border border-border bg-muted/40 p-3 text-sm">
+              <p className="text-muted-foreground">TAG: <strong className="text-foreground font-mono">{editingMedicao?.tag}</strong></p>
+              <p className="text-xs text-muted-foreground mt-1">Alterações serão registradas no histórico de auditoria.</p>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Tipo de Medição *</Label>
+                <Select value={editFormData.tipo_medicao} onValueChange={(v) => setEditFormData({...editFormData, tipo_medicao: v})}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="VIBRACAO">Vibração</SelectItem>
+                    <SelectItem value="TEMPERATURA">Temperatura</SelectItem>
+                    <SelectItem value="PRESSAO">Pressão</SelectItem>
+                    <SelectItem value="CORRENTE">Corrente Elétrica</SelectItem>
+                    <SelectItem value="ULTRASSOM">Ultrassom</SelectItem>
+                    <SelectItem value="TERMOGRAFIA">Termografia</SelectItem>
+                    <SelectItem value="ANALISE_OLEO">Análise de Óleo</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Unidade</Label>
+                <Select value={editFormData.unidade} onValueChange={(v) => setEditFormData({...editFormData, unidade: v})}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="mm/s">mm/s (Vibração)</SelectItem>
+                    <SelectItem value="°C">°C (Temperatura)</SelectItem>
+                    <SelectItem value="bar">bar (Pressão)</SelectItem>
+                    <SelectItem value="A">A (Corrente)</SelectItem>
+                    <SelectItem value="dB">dB (Ultrassom)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Valor Medido *</Label>
+                <Input
+                  type="number"
+                  step="0.01"
+                  value={editFormData.valor}
+                  onChange={(e) => setEditFormData({...editFormData, valor: parseFloat(e.target.value) || 0})}
+                  required
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Limite de Alerta</Label>
+                <Input
+                  type="number"
+                  step="0.01"
+                  value={editFormData.limite_alerta}
+                  onChange={(e) => setEditFormData({...editFormData, limite_alerta: e.target.value === '' ? '' : (parseFloat(e.target.value) || 0)})}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Limite Crítico</Label>
+                <Input
+                  type="number"
+                  step="0.01"
+                  value={editFormData.limite_critico}
+                  onChange={(e) => setEditFormData({...editFormData, limite_critico: e.target.value === '' ? '' : (parseFloat(e.target.value) || 0)})}
+                />
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Observações</Label>
+              <Textarea
+                value={editFormData.observacoes}
+                onChange={(e) => setEditFormData({...editFormData, observacoes: e.target.value})}
+                rows={2}
+              />
+            </div>
+
+            <div className="flex gap-3 pt-4">
+              <Button type="submit" className="flex-1" disabled={isEditSubmitting}>
+                {isEditSubmitting ? 'Salvando...' : 'Salvar Alterações'}
+              </Button>
+              <Button type="button" variant="outline" onClick={() => setIsEditModalOpen(false)}>
+                Cancelar
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* History Dialog */}
+      <Dialog open={isHistoryOpen} onOpenChange={(open) => { setIsHistoryOpen(open); if (!open) setHistoryMedicaoId(null); }}>
+        <DialogContent className="max-w-lg max-h-[80vh] overflow-y-auto">
+          <DialogHeader><DialogTitle>Histórico de Alterações</DialogTitle></DialogHeader>
+          {loadingHistorico ? (
+            <div className="space-y-2">
+              <Skeleton className="h-12 w-full" />
+              <Skeleton className="h-12 w-full" />
+            </div>
+          ) : !historicoAlteracoes || historicoAlteracoes.length === 0 ? (
+            <div className="text-center py-8 text-muted-foreground">
+              <History className="h-10 w-10 mx-auto mb-3 opacity-40" />
+              <p>Nenhuma alteração registrada para esta medição.</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {historicoAlteracoes.map((log) => {
+                const campos = (log.metadata as any)?.campos_alterados as Record<string, { antes: unknown; depois: unknown }> | undefined;
+                return (
+                  <div key={log.id} className="rounded-lg border border-border p-3 space-y-1">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-medium">{log.action === 'UPDATE_MEDICAO_PREDITIVA' ? 'Edição de Medição' : log.action}</span>
+                      <span className="text-xs text-muted-foreground">{new Date(log.created_at).toLocaleString('pt-BR')}</span>
+                    </div>
+                    <p className="text-xs text-muted-foreground">Usuário: {(log.metadata as any)?.usuario_nome || log.actor_email || 'sistema'}</p>
+                    {campos && Object.keys(campos).length > 0 && (
+                      <div className="mt-2 space-y-1">
+                        {Object.entries(campos).map(([campo, diff]) => (
+                          <div key={campo} className="text-xs rounded bg-muted p-2">
+                            <span className="font-semibold">{campo}:</span>{' '}
+                            <span className="text-destructive line-through">{String(diff.antes ?? '-')}</span>
+                            {' → '}
+                            <span className="text-success font-medium">{String(diff.depois ?? '-')}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

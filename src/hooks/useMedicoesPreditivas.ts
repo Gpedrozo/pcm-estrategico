@@ -4,6 +4,7 @@ import { useToast } from '@/hooks/use-toast';
 import { deleteMaintenanceSchedule, upsertMaintenanceSchedule } from '@/services/maintenanceSchedule';
 import { insertWithColumnFallback, updateWithColumnFallback } from '@/lib/supabaseCompat';
 import { useAuth } from '@/contexts/AuthContext';
+import { writeAuditLog } from '@/lib/audit';
 
 export interface MedicaoPreditivaRow {
   id: string;
@@ -166,7 +167,7 @@ export function useUpdateMedicaoPreditiva() {
   const { tenantId } = useAuth();
 
   return useMutation({
-    mutationFn: async ({ id, ...updates }: MedicaoPreditivaUpdate & { id: string }) => {
+    mutationFn: async ({ id, previousValues, ...updates }: MedicaoPreditivaUpdate & { id: string; previousValues?: Record<string, unknown> }) => {
       const data = await updateWithColumnFallback(
         async (payload) =>
           supabase
@@ -177,6 +178,34 @@ export function useUpdateMedicaoPreditiva() {
             .single(),
         updates as Record<string, unknown>,
       );
+
+      // Audit log with before/after diff
+      const changedFields: Record<string, { antes: unknown; depois: unknown }> = {};
+      if (previousValues) {
+        for (const key of Object.keys(updates) as (keyof typeof updates)[]) {
+          const prev = previousValues[key];
+          const next = (updates as Record<string, unknown>)[key];
+          if (prev !== next) {
+            changedFields[key] = { antes: prev, depois: next };
+          }
+        }
+      }
+
+      try {
+        await writeAuditLog({
+          action: 'UPDATE_MEDICAO_PREDITIVA',
+          table: 'medicoes_preditivas',
+          recordId: id,
+          empresaId: tenantId || null,
+          severity: 'info',
+          source: 'app',
+          metadata: {
+            campos_alterados: changedFields,
+            tag: data.tag,
+            tipo_medicao: data.tipo_medicao,
+          },
+        });
+      } catch { /* audit best-effort */ }
 
       try {
         await upsertMaintenanceSchedule({
@@ -240,5 +269,31 @@ export function useDeleteMedicaoPreditiva() {
         variant: 'destructive',
       });
     },
+  });
+}
+
+export function useHistoricoAlteracoesMedicao(recordId: string | null) {
+  return useQuery({
+    queryKey: ['audit_logs', 'medicoes_preditivas', recordId],
+    queryFn: async () => {
+      if (!recordId) return [];
+
+      const { data, error } = await supabase
+        .from('audit_logs')
+        .select('*')
+        .eq('table_name', 'medicoes_preditivas')
+        .eq('record_id', recordId)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      return (data || []) as Array<{
+        id: string;
+        actor_email: string | null;
+        action: string;
+        metadata: Record<string, unknown> | null;
+        created_at: string;
+      }>;
+    },
+    enabled: !!recordId,
   });
 }

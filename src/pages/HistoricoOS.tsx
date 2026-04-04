@@ -683,8 +683,10 @@ export default function HistoricoOS() {
             {filteredOS.length} registro{filteredOS.length !== 1 ? 's' : ''} encontrado{filteredOS.length !== 1 ? 's' : ''}
           </div>
 
+          {/* Table + Detail Panel */}
+          <div className="flex gap-4 items-start">
           {/* Table */}
-          <div className="bg-card border border-border rounded-lg overflow-hidden">
+          <div className={`bg-card border border-border rounded-lg overflow-hidden ${hoveredOS ? 'flex-1 min-w-0' : 'w-full'} transition-all`}>
             <div className="overflow-x-auto">
               <table className="table-industrial">
                 <thead>
@@ -769,6 +771,110 @@ export default function HistoricoOS() {
               onPageChange={setPageIndex}
               onPageSizeChange={setPageSize}
             />
+          </div>
+
+          {/* Sticky Detail Panel */}
+          {hoveredOS && (
+            <div className="w-[360px] shrink-0 sticky top-4 self-start">
+              <div className="rounded-lg border border-border bg-card p-4 shadow-lg">
+                <div className="mb-1 flex items-center justify-between gap-2">
+                  <span className="font-mono text-sm font-semibold">O.S {hoveredOS.numero_os}</span>
+                  <button
+                    className="rounded p-0.5 text-muted-foreground hover:text-foreground"
+                    onClick={() => { setHoveredOS(null); setHoverPoint(null); }}
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+                <div className="mb-3"><OSStatusBadge status={normalizeOSStatus(hoveredOS.status)} /></div>
+
+                <div className="space-y-2 text-sm">
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <p className="text-[11px] uppercase tracking-wide text-muted-foreground">TAG</p>
+                      <p className="font-mono font-medium text-primary">{hoveredOS.tag}</p>
+                    </div>
+                    <div>
+                      <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Tipo</p>
+                      <p>{hoveredOS.tipo}</p>
+                    </div>
+                  </div>
+
+                  <div>
+                    <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Equipamento</p>
+                    <p className="truncate">{hoveredOS.equipamento}</p>
+                  </div>
+
+                  {hoveredOS.status === 'FECHADA' && execucaoByOsId.get(hoveredOS.id) ? (
+                    <div className="rounded-md border border-emerald-500/30 bg-emerald-500/5 p-3">
+                      <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-emerald-700 dark:text-emerald-300">Resumo da execução</p>
+                      <div className="grid grid-cols-2 gap-2 text-xs">
+                        <div>
+                          <p className="text-muted-foreground">Mecânico</p>
+                          <p className="font-medium">{execucaoByOsId.get(hoveredOS.id)?.mecanico_nome || '-'}</p>
+                        </div>
+                        <div>
+                          <p className="text-muted-foreground">Duração</p>
+                          <p className="font-medium">{formatDurationMinutes(execucaoByOsId.get(hoveredOS.id)?.tempo_execucao)}</p>
+                        </div>
+                        <div>
+                          <p className="text-muted-foreground">Início</p>
+                          <p className="font-medium">{formatDateTime(execucaoByOsId.get(hoveredOS.id)?.data_inicio, execucaoByOsId.get(hoveredOS.id)?.hora_inicio)}</p>
+                        </div>
+                        <div>
+                          <p className="text-muted-foreground">Fim</p>
+                          <p className="font-medium">{formatDateTime(execucaoByOsId.get(hoveredOS.id)?.data_fim, execucaoByOsId.get(hoveredOS.id)?.hora_fim)}</p>
+                        </div>
+                      </div>
+                    </div>
+                  ) : hoveredOS.status === 'CANCELADA' ? (
+                    <div className="rounded-md border border-rose-500/30 bg-rose-500/5 p-3 text-xs">
+                      <p className="font-semibold uppercase tracking-wide text-rose-700 dark:text-rose-300">O.S cancelada</p>
+                      {(hoveredOS as any).motivo_cancelamento ? (
+                        <p className="mt-1 text-muted-foreground">Motivo: {(hoveredOS as any).motivo_cancelamento}</p>
+                      ) : (
+                        <p className="mt-1 text-muted-foreground">Sem motivo registrado.</p>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="rounded-md border border-amber-500/30 bg-amber-500/5 p-3 text-xs">
+                      <p className="font-semibold uppercase tracking-wide text-amber-700 dark:text-amber-300">O.S em aberto</p>
+                      <p className="mt-1 text-muted-foreground">Visualize detalhes completos para acompanhar execução.</p>
+                    </div>
+                  )}
+
+                  <div className="rounded-md border border-border/70 bg-muted/30 p-3 text-xs">
+                    <p className="mb-2 font-semibold uppercase tracking-wide text-muted-foreground">Estatísticas do equipamento</p>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <p className="text-muted-foreground">Total O.S</p>
+                        <p className="font-semibold">{equipamentoStatsByTag.get(hoveredOS.tag)?.total ?? 0}</p>
+                      </div>
+                      <div>
+                        <p className="text-muted-foreground">Abertas</p>
+                        <p className="font-semibold text-amber-700 dark:text-amber-300">{equipamentoStatsByTag.get(hoveredOS.tag)?.abertas ?? 0}</p>
+                      </div>
+                      <div>
+                        <p className="text-muted-foreground">Fechadas</p>
+                        <p className="font-semibold text-emerald-700 dark:text-emerald-300">{equipamentoStatsByTag.get(hoveredOS.tag)?.fechadas ?? 0}</p>
+                      </div>
+                      <div>
+                        <p className="text-muted-foreground">Tempo médio</p>
+                        <p className="font-semibold">{formatDurationMinutes(equipamentoStatsByTag.get(hoveredOS.tag)?.tempoMedioMin)}</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex gap-2 pt-2">
+                    <Button size="sm" variant="outline" className="flex-1 gap-1" onClick={() => handleViewOS(hoveredOS)}>
+                      <Eye className="h-3.5 w-3.5" />
+                      Ver detalhes
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
           </div>
         </TabsContent>
 
@@ -902,104 +1008,6 @@ export default function HistoricoOS() {
           )}
         </TabsContent>
 
-        {hoveredOS && hoverPoint && (
-          <div
-            className="fixed z-50 w-[360px] max-w-[calc(100vw-2rem)] rounded-lg border border-border bg-background/95 p-4 shadow-2xl backdrop-blur"
-            style={{
-              left: Math.min(hoverPoint.x + 14, window.innerWidth - 380),
-              top: Math.max(12, hoverPoint.y + 14),
-            }}
-          >
-            <div className="mb-1 flex items-center justify-between gap-2">
-              <span className="font-mono text-sm font-semibold">O.S {hoveredOS.numero_os}</span>
-              <button
-                className="rounded p-0.5 text-muted-foreground hover:text-foreground"
-                onClick={() => { setHoveredOS(null); setHoverPoint(null); }}
-              >
-                <X className="h-4 w-4" />
-              </button>
-            </div>
-            <div className="mb-3"><OSStatusBadge status={normalizeOSStatus(hoveredOS.status)} /></div>
-
-            <div className="space-y-2 text-sm">
-              <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <p className="text-[11px] uppercase tracking-wide text-muted-foreground">TAG</p>
-                  <p className="font-mono font-medium text-primary">{hoveredOS.tag}</p>
-                </div>
-                <div>
-                  <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Tipo</p>
-                  <p>{hoveredOS.tipo}</p>
-                </div>
-              </div>
-
-              <div>
-                <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Equipamento</p>
-                <p className="truncate">{hoveredOS.equipamento}</p>
-              </div>
-
-              {hoveredOS.status === 'FECHADA' && execucaoByOsId.get(hoveredOS.id) ? (
-                <div className="rounded-md border border-emerald-500/30 bg-emerald-500/5 p-3">
-                  <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-emerald-700 dark:text-emerald-300">Resumo da execução</p>
-                  <div className="grid grid-cols-2 gap-2 text-xs">
-                    <div>
-                      <p className="text-muted-foreground">Mecânico</p>
-                      <p className="font-medium">{execucaoByOsId.get(hoveredOS.id)?.mecanico_nome || '-'}</p>
-                    </div>
-                    <div>
-                      <p className="text-muted-foreground">Duração</p>
-                      <p className="font-medium">{formatDurationMinutes(execucaoByOsId.get(hoveredOS.id)?.tempo_execucao)}</p>
-                    </div>
-                    <div>
-                      <p className="text-muted-foreground">Início</p>
-                      <p className="font-medium">{formatDateTime(execucaoByOsId.get(hoveredOS.id)?.data_inicio, execucaoByOsId.get(hoveredOS.id)?.hora_inicio)}</p>
-                    </div>
-                    <div>
-                      <p className="text-muted-foreground">Fim</p>
-                      <p className="font-medium">{formatDateTime(execucaoByOsId.get(hoveredOS.id)?.data_fim, execucaoByOsId.get(hoveredOS.id)?.hora_fim)}</p>
-                    </div>
-                  </div>
-                </div>
-              ) : hoveredOS.status === 'CANCELADA' ? (
-                <div className="rounded-md border border-rose-500/30 bg-rose-500/5 p-3 text-xs">
-                  <p className="font-semibold uppercase tracking-wide text-rose-700 dark:text-rose-300">O.S cancelada</p>
-                  {(hoveredOS as any).motivo_cancelamento ? (
-                    <p className="mt-1 text-muted-foreground">Motivo: {(hoveredOS as any).motivo_cancelamento}</p>
-                  ) : (
-                    <p className="mt-1 text-muted-foreground">Sem motivo registrado.</p>
-                  )}
-                </div>
-              ) : (
-                <div className="rounded-md border border-amber-500/30 bg-amber-500/5 p-3 text-xs">
-                  <p className="font-semibold uppercase tracking-wide text-amber-700 dark:text-amber-300">O.S em aberto</p>
-                  <p className="mt-1 text-muted-foreground">Visualize detalhes completos para acompanhar execução e fechamento.</p>
-                </div>
-              )}
-
-              <div className="rounded-md border border-border/70 bg-muted/30 p-3 text-xs">
-                <p className="mb-2 font-semibold uppercase tracking-wide text-muted-foreground">Estatísticas do equipamento</p>
-                <div className="grid grid-cols-2 gap-2">
-                  <div>
-                    <p className="text-muted-foreground">Total O.S</p>
-                    <p className="font-semibold">{equipamentoStatsByTag.get(hoveredOS.tag)?.total ?? 0}</p>
-                  </div>
-                  <div>
-                    <p className="text-muted-foreground">Abertas</p>
-                    <p className="font-semibold text-amber-700 dark:text-amber-300">{equipamentoStatsByTag.get(hoveredOS.tag)?.abertas ?? 0}</p>
-                  </div>
-                  <div>
-                    <p className="text-muted-foreground">Fechadas</p>
-                    <p className="font-semibold text-emerald-700 dark:text-emerald-300">{equipamentoStatsByTag.get(hoveredOS.tag)?.fechadas ?? 0}</p>
-                  </div>
-                  <div>
-                    <p className="text-muted-foreground">Tempo médio</p>
-                    <p className="font-semibold">{formatDurationMinutes(equipamentoStatsByTag.get(hoveredOS.tag)?.tempoMedioMin)}</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
       </Tabs>
 
       {/* View OS Modal */}

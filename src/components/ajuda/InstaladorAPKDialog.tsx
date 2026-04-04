@@ -7,16 +7,15 @@ import {
   DialogDescription,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Download, Smartphone, QrCode, Shield, CheckCircle2, ArrowRight, ExternalLink, AlertTriangle } from 'lucide-react';
+import { Download, Smartphone, QrCode, Shield, CheckCircle2, ArrowRight, AlertTriangle } from 'lucide-react';
 
 interface InstaladorAPKDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
 
-// URL direta do APK no GitHub Releases — atualizar após upload do build
-const APK_DOWNLOAD_URL = 'https://github.com/Gpedrozo/pcm-estrategico/releases/latest/download/pcm-mecanico.apk';
-const RELEASES_PAGE_URL = 'https://github.com/Gpedrozo/pcm-estrategico/releases';
+// URL do APK via proxy do próprio domínio (esconde o GitHub)
+const APK_DOWNLOAD_URL = '/download/app';
 
 export function InstaladorAPKDialog({ open, onOpenChange }: InstaladorAPKDialogProps) {
   const [downloaded, setDownloaded] = useState(false);
@@ -24,10 +23,6 @@ export function InstaladorAPKDialog({ open, onOpenChange }: InstaladorAPKDialogP
   const handleDownload = () => {
     window.open(APK_DOWNLOAD_URL, '_blank');
     setDownloaded(true);
-  };
-
-  const handleOpenReleases = () => {
-    window.open(RELEASES_PAGE_URL, '_blank');
   };
 
   return (
@@ -54,12 +49,6 @@ export function InstaladorAPKDialog({ open, onOpenChange }: InstaladorAPKDialogP
               <Button onClick={handleDownload} className="gap-2" variant={downloaded ? "outline" : "default"}>
                 {downloaded ? <CheckCircle2 className="h-4 w-4 text-green-600" /> : <Download className="h-4 w-4" />}
                 {downloaded ? 'Baixando...' : 'Baixar APK'}
-              </Button>
-            </div>
-            <div className="mt-2 flex items-center gap-2">
-              <Button onClick={handleOpenReleases} variant="ghost" size="sm" className="gap-1 text-xs text-blue-600 h-auto p-1">
-                <ExternalLink className="h-3 w-3" />
-                Ver todas as versões
               </Button>
             </div>
           </div>

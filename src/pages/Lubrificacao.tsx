@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Plus, Droplet } from 'lucide-react';
+import { Plus, Droplet, Route } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useEquipamentos } from '@/hooks/useEquipamentos';
 import {
   useCreatePlanoLubrificacao,
@@ -13,11 +14,13 @@ import type { PlanoLubrificacao, PlanoLubrificacaoInsert } from '@/types/lubrifi
 import { LubrificacaoForm } from './lubrificacao/LubrificacaoForm';
 import { LubrificacaoList } from './lubrificacao/LubrificacaoList';
 import { LubrificacaoDetalhe } from './lubrificacao/LubrificacaoDetalhe';
+import RotasLubrificacao from './lubrificacao/RotasLubrificacao';
 import { getSupabaseErrorMessage } from '@/lib/supabaseCompat';
 import { useLocation } from 'react-router-dom';
 
 export default function Lubrificacao() {
   const location = useLocation();
+  const [activeTab, setActiveTab] = useState('planos');
   const [search, setSearch] = useState('');
   const [equipamentoFilter, setEquipamentoFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
@@ -125,59 +128,79 @@ export default function Lubrificacao() {
         <div>
           <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
             <Droplet className="h-6 w-6 text-primary" />
-            Plano de Lubrificação
+            Lubrificação
           </h1>
           <p className="text-muted-foreground text-sm">
-            {planos?.length || 0} planos • {filteredPlanos.length} filtrados
+            Planos e Rotas de Lubrificação
           </p>
         </div>
-        <Button
-          onClick={() => {
-            setEditingPlano(null);
-            setFormOpen(true);
-          }}
-          className="gap-2"
-        >
-          <Plus className="h-4 w-4" /> Novo Plano
-        </Button>
       </div>
 
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
-        <div className="xl:col-span-2">
-          <LubrificacaoList
-            planos={filteredPlanos}
+      <Tabs value={activeTab} onValueChange={setActiveTab}>
+        <TabsList>
+          <TabsTrigger value="planos" className="gap-1.5">
+            <Droplet className="h-4 w-4" /> Planos
+          </TabsTrigger>
+          <TabsTrigger value="rotas" className="gap-1.5">
+            <Route className="h-4 w-4" /> Rotas
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="planos" className="space-y-4 mt-4">
+          <div className="flex justify-end">
+            <Button
+              onClick={() => {
+                setEditingPlano(null);
+                setFormOpen(true);
+              }}
+              className="gap-2"
+            >
+              <Plus className="h-4 w-4" /> Novo Plano
+            </Button>
+          </div>
+
+          <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
+            <div className="xl:col-span-2">
+              <LubrificacaoList
+                planos={filteredPlanos}
+                equipamentos={equipamentos || []}
+                search={search}
+                equipamentoFilter={equipamentoFilter}
+                statusFilter={statusFilter}
+                onSearchChange={setSearch}
+                onEquipamentoFilterChange={setEquipamentoFilter}
+                onStatusFilterChange={setStatusFilter}
+                onSelect={setSelectedPlano}
+                onEdit={(plano) => {
+                  setEditingPlano(plano);
+                  setFormOpen(true);
+                }}
+                onDelete={handleDelete}
+              />
+            </div>
+
+            <div>
+              <LubrificacaoDetalhe plano={selectedPlano} equipamentos={equipamentos || []} onEdit={(plano) => {
+                setEditingPlano(plano);
+                setFormOpen(true);
+              }} />
+            </div>
+          </div>
+
+          <LubrificacaoForm
+            open={formOpen}
+            onOpenChange={setFormOpen}
             equipamentos={equipamentos || []}
-            search={search}
-            equipamentoFilter={equipamentoFilter}
-            statusFilter={statusFilter}
-            onSearchChange={setSearch}
-            onEquipamentoFilterChange={setEquipamentoFilter}
-            onStatusFilterChange={setStatusFilter}
-            onSelect={setSelectedPlano}
-            onEdit={(plano) => {
-              setEditingPlano(plano);
-              setFormOpen(true);
-            }}
-            onDelete={handleDelete}
+            initialData={editingPlano}
+            onSubmit={handleSubmit}
+            dataProgramada={dataProgramadaFromCalendar}
           />
-        </div>
+        </TabsContent>
 
-        <div>
-          <LubrificacaoDetalhe plano={selectedPlano} equipamentos={equipamentos || []} onEdit={(plano) => {
-            setEditingPlano(plano);
-            setFormOpen(true);
-          }} />
-        </div>
-      </div>
-
-      <LubrificacaoForm
-        open={formOpen}
-        onOpenChange={setFormOpen}
-        equipamentos={equipamentos || []}
-        initialData={editingPlano}
-        onSubmit={handleSubmit}
-        dataProgramada={dataProgramadaFromCalendar}
-      />
+        <TabsContent value="rotas" className="mt-4">
+          <RotasLubrificacao />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }

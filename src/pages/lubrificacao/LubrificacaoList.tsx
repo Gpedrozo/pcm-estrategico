@@ -90,7 +90,7 @@ export function LubrificacaoList({
                 </tr>
               ) : (
                 planos.map((plano) => (
-                  <tr key={plano.id}>
+                  <tr key={plano.id} className="cursor-pointer hover:bg-muted/50" onClick={() => onSelect(plano)}>
                     <td className="font-mono font-semibold text-primary">{plano.codigo}</td>
                     <td>{plano.nome}</td>
                     <td>

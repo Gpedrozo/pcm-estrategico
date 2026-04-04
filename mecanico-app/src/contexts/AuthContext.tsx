@@ -54,6 +54,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const lastActivityRef = useRef(Date.now());
   const retryCountRef = useRef(0);
+  const autoAuthAttemptRef = useRef(0);
 
   // Track user activity for inactivity timeout
   const updateActivity = useCallback(() => {
@@ -284,6 +285,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const retry = useCallback(() => {
     retryCountRef.current++;
+    autoAuthAttemptRef.current = 0; // reset auto-auth attempts on manual retry
+    setState((s: AuthState) => ({ ...s, error: null }));
     checkDeviceBinding();
   }, [checkDeviceBinding]);
 
@@ -294,10 +297,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   // ── Auto-authenticate when device is bound but not authenticated ──
   useEffect(() => {
-    if (state.isDeviceBound && !state.isAuthenticated && !state.isLoading) {
-      authenticateDevice();
+    if (state.isDeviceBound && !state.isAuthenticated && !state.isLoading && !state.error) {
+      if (autoAuthAttemptRef.current < 2) {
+        autoAuthAttemptRef.current++;
+        authenticateDevice();
+      }
     }
-  }, [state.isDeviceBound, state.isAuthenticated, state.isLoading, authenticateDevice]);
+    // Reset counter on successful auth
+    if (state.isAuthenticated) {
+      autoAuthAttemptRef.current = 0;
+    }
+  }, [state.isDeviceBound, state.isAuthenticated, state.isLoading, state.error, authenticateDevice]);
 
   // ── Inactivity timeout ──
   useEffect(() => {

@@ -51,6 +51,7 @@ interface ProcessoConfig {
   quem_pode_fechar_os: 'TECNICO' | 'SUPERVISOR' | 'ADMIN';
   exige_aprovacao_supervisor: boolean;
   workflow_etapas: boolean;
+  bloquear_fechamento_futuro: boolean;
   sla_horas_atendimento: number;
   sla_horas_resolucao: number;
 }
@@ -84,6 +85,7 @@ const processoDefault: ProcessoConfig = {
   quem_pode_fechar_os: 'TECNICO',
   exige_aprovacao_supervisor: false,
   workflow_etapas: false,
+  bloquear_fechamento_futuro: true,
   sla_horas_atendimento: 8,
   sla_horas_resolucao: 72,
 };
@@ -497,6 +499,14 @@ export default function Administracao() {
                   <p className="text-xs text-muted-foreground">Ativa fluxo com estados intermediarios no processo de O.S.</p>
                 </div>
                 <Switch checked={processoForm.workflow_etapas} onCheckedChange={(checked) => setProcessoForm((s) => ({ ...s, workflow_etapas: checked }))} />
+              </div>
+
+              <div className="flex items-center justify-between rounded-lg border border-border p-3">
+                <div>
+                  <p className="text-sm font-medium">Bloquear fechamento com data/hora futura</p>
+                  <p className="text-xs text-muted-foreground">Impede fechar O.S com data e hora posterior ao momento atual.</p>
+                </div>
+                <Switch checked={processoForm.bloquear_fechamento_futuro} onCheckedChange={(checked) => setProcessoForm((s) => ({ ...s, bloquear_fechamento_futuro: checked }))} />
               </div>
 
               <div className="flex justify-end">

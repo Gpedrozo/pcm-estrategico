@@ -14,12 +14,26 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from '@/components/ui/command';
+import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
   DialogDescription,
 } from '@/components/ui/dialog';
+import { Checkbox } from '@/components/ui/checkbox';
 import { useEquipamentos } from '@/hooks/useEquipamentos';
 import { useCreateOrdemServico } from '@/hooks/useOrdensServico';
 import { useMecanicosAtivos } from '@/hooks/useMecanicos';
@@ -28,6 +42,7 @@ import { useSolicitacoesPendentes, useUpdateSolicitacao, type SolicitacaoRow } f
 import { resolvePrioridadeFromClassificacao, useTenantPadronizacoes } from '@/hooks/useTenantPadronizacoes';
 import { useDadosEmpresa } from '@/hooks/useDadosEmpresa';
 import { useAuth } from '@/contexts/AuthContext';
+import { useFormDraft } from '@/hooks/useFormDraft';
 import { ArrowLeft, Check, Loader2, Printer, CheckCircle, AlertTriangle, FileText } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { OSPrintTemplate } from '@/components/os/OSPrintTemplate';
@@ -83,8 +98,22 @@ export default function NovaOS() {
   const [nomeEmpresa, setNomeEmpresa] = useState('MANUTENÇÃO INDUSTRIAL');
   const [showSolicitacoesModal, setShowSolicitacoesModal] = useState(false);
   const [dismissedTagWarnings, setDismissedTagWarnings] = useState<Record<string, boolean>>({});
+  const [semTag, setSemTag] = useState(false);
+  const [equipamentoManual, setEquipamentoManual] = useState('');
+  const [tagComboOpen, setTagComboOpen] = useState(false);
+  const [tagSearch, setTagSearch] = useState('');
   const problemaMinLength = 5;
   const problemaValido = formData.problema.trim().length >= problemaMinLength;
+
+  const { clearDraft: clearNovaOSDraft } = useFormDraft(
+    'draft:nova-os',
+    { formData, semTag, equipamentoManual },
+    (saved) => {
+      if (saved.formData) setFormData(saved.formData);
+      if (saved.semTag !== undefined) setSemTag(saved.semTag);
+      if (saved.equipamentoManual) setEquipamentoManual(saved.equipamentoManual);
+    },
+  );
 
   const solicitacoesAbertasDaTag = useMemo(() => {
     if (!formData.tag) return [];
@@ -171,13 +200,16 @@ export default function NovaOS() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!formData.tag || !formData.tipo || !formData.solicitante || !problemaValido) {
+    const tagValue = semTag ? `SEM-TAG-${Date.now()}` : formData.tag;
+    const equipamentoNome = semTag ? equipamentoManual : (selectedEquipamento?.nome || '');
+    
+    if ((!semTag && !formData.tag) || (semTag && !equipamentoManual.trim()) || !formData.tipo || !formData.solicitante || !problemaValido) {
       return;
     }
 
     const result = await createOSMutation.mutateAsync({
-      tag: formData.tag,
-      equipamento: selectedEquipamento?.nome || '',
+      tag: tagValue,
+      equipamento: equipamentoNome,
       tipo: formData.tipo,
       prioridade: formData.prioridade,
       solicitante: formData.solicitante,
@@ -210,6 +242,7 @@ export default function NovaOS() {
       prioridade: formData.prioridade,
       tempo_estimado: formData.tempoEstimado ? parseInt(formData.tempoEstimado) : null,
     });
+    clearNovaOSDraft();
     setShowSuccessModal(true);
   };
 
@@ -279,31 +312,93 @@ export default function NovaOS() {
             {/* TAG and Equipment */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <div className="space-y-1.5">
-                <Label htmlFor="tag">TAG do Equipamento *</Label>
-                <Select 
-                  value={formData.tag} 
-                  onValueChange={handleTagChange}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecione a TAG" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {equipamentosAtivos.map((eq) => (
-                      <SelectItem key={eq.id} value={eq.tag}>
-                        {eq.tag} - {eq.nome}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="tag">{semTag ? 'Descrição do Equipamento *' : 'TAG do Equipamento *'}</Label>
+                  <div className="flex items-center gap-1.5">
+                    <Checkbox
+                      id="sem-tag"
+                      checked={semTag}
+                      onCheckedChange={(checked) => {
+                        setSemTag(!!checked);
+                        if (checked) {
+                          setFormData((prev) => ({ ...prev, tag: '' }));
+                        } else {
+                          setEquipamentoManual('');
+                        }
+                      }}
+                    />
+                    <Label htmlFor="sem-tag" className="text-xs text-muted-foreground cursor-pointer">Sem TAG</Label>
+                  </div>
+                </div>
+                {semTag ? (
+                  <Input
+                    placeholder="Ex: Elevador de caneca setor B"
+                    value={equipamentoManual}
+                    onChange={(e) => setEquipamentoManual(e.target.value)}
+                  />
+                ) : (
+                  <Popover open={tagComboOpen} onOpenChange={setTagComboOpen}>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        role="combobox"
+                        aria-expanded={tagComboOpen}
+                        className="w-full justify-between font-normal"
+                      >
+                        {formData.tag
+                          ? `${formData.tag} - ${selectedEquipamento?.nome || ''}`
+                          : 'Digite ou selecione a TAG...'}
+                        <ArrowLeft className="ml-2 h-4 w-4 shrink-0 opacity-50 rotate-[-90deg]" />
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+                      <Command shouldFilter={false}>
+                        <CommandInput
+                          placeholder="Digite a TAG... (ex: EL-)"
+                          value={tagSearch}
+                          onValueChange={setTagSearch}
+                        />
+                        <CommandList>
+                          <CommandEmpty>Nenhum equipamento encontrado.</CommandEmpty>
+                          <CommandGroup>
+                            {equipamentosAtivos
+                              .filter((eq) =>
+                                !tagSearch ||
+                                eq.tag.toLowerCase().includes(tagSearch.toLowerCase()) ||
+                                eq.nome.toLowerCase().includes(tagSearch.toLowerCase())
+                              )
+                              .slice(0, 50)
+                              .map((eq) => (
+                                <CommandItem
+                                  key={eq.id}
+                                  value={eq.tag}
+                                  onSelect={() => {
+                                    handleTagChange(eq.tag);
+                                    setTagSearch('');
+                                    setTagComboOpen(false);
+                                  }}
+                                >
+                                  <Check className={`mr-2 h-4 w-4 ${formData.tag === eq.tag ? 'opacity-100' : 'opacity-0'}`} />
+                                  <span className="font-mono font-medium">{eq.tag}</span>
+                                  <span className="ml-2 text-muted-foreground">{eq.nome}</span>
+                                </CommandItem>
+                              ))}
+                          </CommandGroup>
+                        </CommandList>
+                      </Command>
+                    </PopoverContent>
+                  </Popover>
+                )}
               </div>
 
               <div className="space-y-1.5">
                 <Label>Equipamento</Label>
                 <Input
-                  value={selectedEquipamento?.nome || ''}
-                  disabled
-                  className="bg-muted"
-                  placeholder="Selecione uma TAG"
+                  value={semTag ? equipamentoManual : (selectedEquipamento?.nome || '')}
+                  disabled={!semTag}
+                  className={semTag ? '' : 'bg-muted'}
+                  placeholder={semTag ? 'Descrição do equipamento' : 'Selecione uma TAG'}
+                  onChange={semTag ? (e) => setEquipamentoManual(e.target.value) : undefined}
                 />
               </div>
             </div>

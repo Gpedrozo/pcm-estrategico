@@ -1,8 +1,13 @@
+import { useRef } from 'react';
+import { useReactToPrint } from 'react-to-print';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Printer } from 'lucide-react';
 import type { EquipamentoRow } from '@/hooks/useEquipamentos';
 import type { PlanoLubrificacao } from '@/types/lubrificacao';
+import { LubrificacaoPrintTemplate } from '@/components/lubrificacao/LubrificacaoPrintTemplate';
+import { useDadosEmpresa } from '@/hooks/useDadosEmpresa';
 
 interface LubrificacaoDetalheProps {
   plano: PlanoLubrificacao | null;
@@ -11,6 +16,15 @@ interface LubrificacaoDetalheProps {
 }
 
 export function LubrificacaoDetalhe({ plano, equipamentos, onEdit }: LubrificacaoDetalheProps) {
+  const printRef = useRef<HTMLDivElement>(null);
+  const { data: empresa } = useDadosEmpresa();
+
+  const handlePrint = useReactToPrint({
+    contentRef: printRef,
+    documentTitle: plano ? `Lubrificacao-${plano.codigo}` : 'Lubrificacao',
+    pageStyle: `@page { size: A4; margin: 10mm; } @media print { body { -webkit-print-color-adjust: exact; } }`,
+  });
+
   if (!plano) {
     return (
       <Card>
@@ -32,6 +46,10 @@ export function LubrificacaoDetalhe({ plano, equipamentos, onEdit }: Lubrificaca
         </div>
         <div className="flex gap-2">
           <Badge>{plano.status || 'programado'}</Badge>
+          <Button size="sm" variant="outline" className="gap-1" onClick={() => handlePrint()}>
+            <Printer className="h-3.5 w-3.5" />
+            Imprimir
+          </Button>
           <Button size="sm" variant="outline" onClick={() => onEdit(plano)}>Editar plano</Button>
         </div>
       </CardHeader>
@@ -56,6 +74,11 @@ export function LubrificacaoDetalhe({ plano, equipamentos, onEdit }: Lubrificaca
           <p className="text-sm mt-1">{plano.descricao || plano.observacoes || 'Sem descrição.'}</p>
         </div>
       </CardContent>
+
+      {/* Hidden print template */}
+      <div className="hidden">
+        <LubrificacaoPrintTemplate ref={printRef} plano={plano} empresa={empresa} />
+      </div>
     </Card>
   );
 }
