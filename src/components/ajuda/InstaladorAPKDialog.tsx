@@ -14,14 +14,21 @@ interface InstaladorAPKDialogProps {
   onOpenChange: (open: boolean) => void;
 }
 
-// URL do APK via proxy do próprio domínio (esconde o GitHub)
-const APK_DOWNLOAD_URL = '/download/app';
+// URL do APK — arquivo estático em public/download/app/index.html redireciona ao GitHub Releases
+const APK_DOWNLOAD_URL = '/download/app/';
 
 export function InstaladorAPKDialog({ open, onOpenChange }: InstaladorAPKDialogProps) {
   const [downloaded, setDownloaded] = useState(false);
 
   const handleDownload = () => {
-    window.open(APK_DOWNLOAD_URL, '_blank');
+    // Abre em nova aba — o index.html estático faz redirect imediato para o APK
+    const link = document.createElement('a');
+    link.href = APK_DOWNLOAD_URL;
+    link.target = '_blank';
+    link.rel = 'noopener noreferrer';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
     setDownloaded(true);
   };
 
