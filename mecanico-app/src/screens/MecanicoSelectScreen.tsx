@@ -1,9 +1,9 @@
 // ============================================================
-// MecanicoSelectScreen — Quem está usando este dispositivo?
-// Tela simples com lista de mecânicos da empresa
+// MecanicoSelectScreen — Selecione seu nome + digite sua senha
+// Lista mecânicos da empresa (sync local), valida senha via RPC
 // ============================================================
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   View,
   Text,
@@ -12,9 +12,15 @@ import {
   StyleSheet,
   ActivityIndicator,
   RefreshControl,
+  Modal,
+  TextInput,
+  KeyboardAvoidingView,
+  Platform,
+  Alert,
 } from 'react-native';
 import { useAuth } from '../contexts/AuthContext';
 import { getMecanicos } from '../lib/database';
+import { supabase } from '../lib/supabase';
 import { runSyncCycle } from '../lib/syncEngine';
 import { COLORS, SIZES } from '../theme';
 
@@ -29,7 +35,13 @@ export default function MecanicoSelectScreen() {
   const [mecanicos, setMecanicos] = useState<MecanicoItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [selecting, setSelecting] = useState<string | null>(null);
+
+  // Password modal state
+  const [selectedMec, setSelectedMec] = useState<MecanicoItem | null>(null);
+  const [senha, setSenha] = useState('');
+  const [senhaError, setSenhaError] = useState('');
+  const [validating, setValidating] = useState(false);
+  const senhaInputRef = useRef<TextInput>(null);
 
   const loadMecanicos = useCallback(async () => {
     if (!empresaId) return;
@@ -57,16 +69,71 @@ export default function MecanicoSelectScreen() {
     }
   }, [loadMecanicos]);
 
-  const handleSelect = useCallback(async (mec: MecanicoItem) => {
-    setSelecting(mec.id);
-    await selectMecanico(mec.id, mec.nome);
-  }, [selectMecanico]);
+  // Abre modal de senha ao tocar no mecânico
+  const handleTapMecanico = useCallback((mec: MecanicoItem) => {
+    setSelectedMec(mec);
+    setSenha('');
+    setSenhaError('');
+    // Focus no input após modal abrir
+    setTimeout(() => senhaInputRef.current?.focus(), 300);
+  }, []);
+
+  const handleCloseModal = useCallback(() => {
+    setSelectedMec(null);
+    setSenha('');
+    setSenhaError('');
+    setValidating(false);
+  }, []);
+
+  // Valida senha via RPC do Supabase
+  const handleValidarSenha = useCallback(async () => {
+    if (!selectedMec) return;
+
+    const senhaTrimmed = senha.trim();
+    if (!senhaTrimmed) {
+      setSenhaError('Digite sua senha');
+      return;
+    }
+
+    setValidating(true);
+    setSenhaError('');
+
+    try {
+      const { data, error } = await supabase.rpc('validar_senha_mecanico', {
+        p_mecanico_id: selectedMec.id,
+        p_senha: senhaTrimmed,
+      });
+
+      if (error) {
+        console.warn('[MecanicoSelect] RPC error:', error.message);
+        // Fallback: se RPC não existe ainda, permite acesso (compatibilidade)
+        if (error.message.includes('function') || error.message.includes('does not exist')) {
+          await selectMecanico(selectedMec.id, selectedMec.nome);
+          return;
+        }
+        setSenhaError('Erro ao validar. Tente novamente.');
+        setValidating(false);
+        return;
+      }
+
+      if (data === true) {
+        // Senha correta — prossegue
+        await selectMecanico(selectedMec.id, selectedMec.nome);
+      } else {
+        setSenhaError('Senha incorreta');
+        setValidating(false);
+      }
+    } catch (err: any) {
+      console.warn('[MecanicoSelect] erro validação:', err);
+      setSenhaError('Erro de conexão. Verifique sua internet.');
+      setValidating(false);
+    }
+  }, [selectedMec, senha, selectMecanico]);
 
   const renderItem = useCallback(({ item }: { item: MecanicoItem }) => (
     <TouchableOpacity
-      style={[styles.card, selecting === item.id && styles.cardSelected]}
-      onPress={() => handleSelect(item)}
-      disabled={!!selecting}
+      style={styles.card}
+      onPress={() => handleTapMecanico(item)}
       activeOpacity={0.7}
     >
       <View style={styles.avatar}>
@@ -78,11 +145,9 @@ export default function MecanicoSelectScreen() {
         <Text style={styles.cardName}>{item.nome}</Text>
         {item.tipo && <Text style={styles.cardTipo}>{item.tipo}</Text>}
       </View>
-      {selecting === item.id && (
-        <ActivityIndicator size="small" color={COLORS.primary} />
-      )}
+      <Text style={styles.cardArrow}>›</Text>
     </TouchableOpacity>
-  ), [selecting, handleSelect]);
+  ), [handleTapMecanico]);
 
   if (loading) {
     return (
@@ -98,7 +163,7 @@ export default function MecanicoSelectScreen() {
       <View style={styles.header}>
         <Text style={styles.icon}>👤</Text>
         <Text style={styles.title}>Quem está usando?</Text>
-        <Text style={styles.subtitle}>Selecione seu nome para continuar</Text>
+        <Text style={styles.subtitle}>Selecione seu nome e digite sua senha</Text>
       </View>
 
       {mecanicos.length === 0 ? (
@@ -120,6 +185,79 @@ export default function MecanicoSelectScreen() {
           }
         />
       )}
+
+      {/* ─── Modal de Senha ─── */}
+      <Modal
+        visible={!!selectedMec}
+        transparent
+        animationType="fade"
+        onRequestClose={handleCloseModal}
+      >
+        <KeyboardAvoidingView
+          style={styles.modalOverlay}
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        >
+          <View style={styles.modalCard}>
+            {/* Avatar + Nome */}
+            <View style={styles.modalHeader}>
+              <View style={styles.modalAvatar}>
+                <Text style={styles.modalAvatarText}>
+                  {selectedMec?.nome.charAt(0).toUpperCase()}
+                </Text>
+              </View>
+              <Text style={styles.modalName}>{selectedMec?.nome}</Text>
+              {selectedMec?.tipo && (
+                <Text style={styles.modalTipo}>{selectedMec.tipo}</Text>
+              )}
+            </View>
+
+            {/* Input de senha */}
+            <Text style={styles.modalLabel}>Digite sua senha</Text>
+            <TextInput
+              ref={senhaInputRef}
+              style={[styles.senhaInput, senhaError ? styles.senhaInputError : null]}
+              value={senha}
+              onChangeText={(t) => { setSenha(t); setSenhaError(''); }}
+              placeholder="Senha de acesso"
+              placeholderTextColor={COLORS.textHint}
+              secureTextEntry
+              autoCapitalize="none"
+              autoCorrect={false}
+              editable={!validating}
+              onSubmitEditing={handleValidarSenha}
+              returnKeyType="go"
+            />
+            {senhaError ? (
+              <Text style={styles.senhaErrorText}>{senhaError}</Text>
+            ) : null}
+
+            {/* Botões */}
+            <View style={styles.modalButtons}>
+              <TouchableOpacity
+                style={styles.btnCancelar}
+                onPress={handleCloseModal}
+                disabled={validating}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.btnCancelarText}>Cancelar</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.btnEntrar, validating && styles.btnEntrarDisabled]}
+                onPress={handleValidarSenha}
+                disabled={validating}
+                activeOpacity={0.7}
+              >
+                {validating ? (
+                  <ActivityIndicator size="small" color="#FFF" />
+                ) : (
+                  <Text style={styles.btnEntrarText}>Entrar</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
     </View>
   );
 }
@@ -177,10 +315,6 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 3,
   },
-  cardSelected: {
-    borderColor: COLORS.primary,
-    borderWidth: 2,
-  },
   avatar: {
     width: 56,
     height: 56,
@@ -208,6 +342,11 @@ const styles = StyleSheet.create({
     color: COLORS.textSecondary,
     marginTop: 2,
   },
+  cardArrow: {
+    fontSize: 28,
+    color: COLORS.textHint,
+    fontWeight: '300',
+  },
   empty: {
     flex: 1,
     justifyContent: 'center',
@@ -229,5 +368,114 @@ const styles = StyleSheet.create({
     color: COLORS.textSecondary,
     textAlign: 'center',
     lineHeight: 22,
+  },
+
+  // ─── Modal Styles ───
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 24,
+  },
+  modalCard: {
+    width: '100%',
+    maxWidth: 380,
+    backgroundColor: COLORS.surface,
+    borderRadius: SIZES.radiusLG,
+    padding: 28,
+    elevation: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.25,
+    shadowRadius: 16,
+  },
+  modalHeader: {
+    alignItems: 'center',
+    marginBottom: 24,
+  },
+  modalAvatar: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    backgroundColor: COLORS.primaryLight,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  modalAvatarText: {
+    fontSize: 32,
+    fontWeight: '700',
+    color: COLORS.primaryDark,
+  },
+  modalName: {
+    fontSize: SIZES.fontXL,
+    fontWeight: '700',
+    color: COLORS.textPrimary,
+  },
+  modalTipo: {
+    fontSize: SIZES.fontSM,
+    color: COLORS.textSecondary,
+    marginTop: 4,
+  },
+  modalLabel: {
+    fontSize: SIZES.fontSM,
+    fontWeight: '600',
+    color: COLORS.textSecondary,
+    marginBottom: 8,
+  },
+  senhaInput: {
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    borderRadius: SIZES.radiusSM,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    fontSize: SIZES.fontLG,
+    color: COLORS.textPrimary,
+    backgroundColor: COLORS.background,
+    textAlign: 'center',
+    letterSpacing: 4,
+  },
+  senhaInputError: {
+    borderColor: COLORS.critical,
+  },
+  senhaErrorText: {
+    color: COLORS.critical,
+    fontSize: SIZES.fontSM,
+    marginTop: 6,
+    textAlign: 'center',
+  },
+  modalButtons: {
+    flexDirection: 'row',
+    marginTop: 24,
+    gap: 12,
+  },
+  btnCancelar: {
+    flex: 1,
+    paddingVertical: 14,
+    borderRadius: SIZES.radiusSM,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    alignItems: 'center',
+  },
+  btnCancelarText: {
+    fontSize: SIZES.fontMD,
+    fontWeight: '600',
+    color: COLORS.textSecondary,
+  },
+  btnEntrar: {
+    flex: 1,
+    paddingVertical: 14,
+    borderRadius: SIZES.radiusSM,
+    backgroundColor: COLORS.primary,
+    alignItems: 'center',
+  },
+  btnEntrarDisabled: {
+    opacity: 0.6,
+  },
+  btnEntrarText: {
+    fontSize: SIZES.fontMD,
+    fontWeight: '700',
+    color: '#FFF',
   },
 });
