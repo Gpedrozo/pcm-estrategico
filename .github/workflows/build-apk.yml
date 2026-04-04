@@ -76,11 +76,11 @@ jobs:
           retention-days: 90
 
       - name: Create GitHub Release
-        if: github.event_name == 'workflow_dispatch'
         uses: softprops/action-gh-release@v2
         with:
           tag_name: v1.0.0-build.${{ github.run_number }}
           name: PCM Mecanico v1.0.0 (Build ${{ github.run_number }})
+          make_latest: true
           body: |
             ## App Mecanico Industrial - PCM
 
@@ -95,3 +95,4 @@ jobs:
             **Build automatico #${{ github.run_number }}**
           files: mecanico-app/output/pcm-mecanico.apk
           draft: false
+          prerelease: false
