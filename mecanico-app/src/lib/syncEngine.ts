@@ -23,7 +23,7 @@ import {
 
 const MAX_RETRIES = 5;
 let syncTimer: ReturnType<typeof setTimeout> | null = null;
-let isSyncing = false;
+let syncPromise: Promise<{ pushed: number; pulled: boolean }> | null = null;
 
 export async function isOnline(): Promise<boolean> {
   try {
@@ -327,28 +327,39 @@ export async function pullData(empresaId: string, forceFullRefresh = false): Pro
 // ============================================================
 
 export async function runSyncCycle(forceFullRefresh = false): Promise<{ pushed: number; pulled: boolean }> {
-  if (isSyncing) return { pushed: 0, pulled: false };
-  isSyncing = true;
+  // If a sync is already running, wait for it to finish
+  if (syncPromise) {
+    const result = await syncPromise;
+    // If caller needs forced full refresh and previous was not forced, run again
+    if (!forceFullRefresh) return result;
+  }
 
-  try {
-    const online = await isOnline();
-    if (!online) return { pushed: 0, pulled: false };
+  const doSync = async (): Promise<{ pushed: number; pulled: boolean }> => {
+    try {
+      const online = await isOnline();
+      if (!online) return { pushed: 0, pulled: false };
 
-    // Push first
-    const pushed = await pushPendingChanges();
+      // Push first
+      const pushed = await pushPendingChanges();
 
-    // Then pull
-    const empresaId = await getDeviceConfig('empresa_id');
-    if (empresaId) {
-      await pullData(empresaId, forceFullRefresh);
+      // Then pull
+      const empresaId = await getDeviceConfig('empresa_id');
+      if (empresaId) {
+        await pullData(empresaId, forceFullRefresh);
+      }
+
+      return { pushed, pulled: !!empresaId };
+    } catch (err) {
+      console.error('[sync] cycle error:', err);
+      return { pushed: 0, pulled: false };
     }
+  };
 
-    return { pushed, pulled: !!empresaId };
-  } catch (err) {
-    console.error('[sync] cycle error:', err);
-    return { pushed: 0, pulled: false };
+  syncPromise = doSync();
+  try {
+    return await syncPromise;
   } finally {
-    isSyncing = false;
+    syncPromise = null;
   }
 }
 
