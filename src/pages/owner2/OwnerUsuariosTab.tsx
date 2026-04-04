@@ -418,7 +418,7 @@ export default function OwnerUsuariosTab({
                       <td className="px-3 py-2 text-slate-600">{String(u.email ?? '-')}</td>
                       <td className="px-3 py-2">
                         <span className="inline-flex items-center rounded border px-1.5 py-0.5 text-[10px] font-semibold bg-slate-100 text-slate-700 border-slate-200">
-                          {ROLE_LABELS[role] ?? role || '-'}
+                          {(ROLE_LABELS[role] ?? role) || '-'}
                         </span>
                       </td>
                       <td className="px-3 py-2">
