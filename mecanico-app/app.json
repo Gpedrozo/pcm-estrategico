@@ -39,7 +39,7 @@
         { "photosPermission": "Necessário para anexar fotos às execuções." }
       ],
       [
-        "@react-native-voice/voice",
+        "expo-speech-recognition",
         {
           "microphonePermission": "Necessário para transcrever voz em texto nos campos.",
           "speechRecognitionPermission": "Necessário para reconhecimento de voz."

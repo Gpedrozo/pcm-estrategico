@@ -1,11 +1,14 @@
 // ============================================================
-// VoiceInput — Speech-to-Text real com @react-native-voice/voice
+// VoiceInput — Speech-to-Text com expo-speech-recognition
 // ONLY transcribes, never records/stores audio
 // ============================================================
 
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useCallback, useRef } from 'react';
 import { View, TouchableOpacity, TextInput, Text, StyleSheet, Platform, Alert } from 'react-native';
-import Voice, { SpeechResultsEvent, SpeechErrorEvent } from '@react-native-voice/voice';
+import {
+  ExpoSpeechRecognitionModule,
+  useSpeechRecognitionEvent,
+} from 'expo-speech-recognition';
 import { COLORS, SIZES } from '../theme';
 
 interface VoiceInputProps {
@@ -29,44 +32,34 @@ export default function VoiceInput({
   const [partialResult, setPartialResult] = useState('');
   const baseValueRef = useRef(value);
 
-  useEffect(() => {
-    const onSpeechResults = (e: SpeechResultsEvent) => {
-      const transcript = e.value?.[0] || '';
-      if (transcript) {
-        const base = baseValueRef.current;
-        const separator = base && !base.endsWith(' ') ? ' ' : '';
-        onChangeText(base + separator + transcript);
-      }
+  useSpeechRecognitionEvent('start', () => setIsListening(true));
+
+  useSpeechRecognitionEvent('end', () => {
+    setIsListening(false);
+    setPartialResult('');
+  });
+
+  useSpeechRecognitionEvent('result', (event) => {
+    const transcript = event.results[0]?.transcript || '';
+    if (transcript) {
+      const base = baseValueRef.current;
+      const separator = base && !base.endsWith(' ') ? ' ' : '';
+      onChangeText(base + separator + transcript);
+    }
+    if (event.isFinal) {
       setPartialResult('');
-    };
+    } else {
+      setPartialResult(transcript);
+    }
+  });
 
-    const onSpeechPartialResults = (e: SpeechResultsEvent) => {
-      setPartialResult(e.value?.[0] || '');
-    };
-
-    const onSpeechEnd = () => {
-      setIsListening(false);
-      setPartialResult('');
-    };
-
-    const onSpeechError = (e: SpeechErrorEvent) => {
-      setIsListening(false);
-      setPartialResult('');
-      // code 5 = CLIENT_ERROR (no match / silence) — não mostrar alert
-      if (e.error?.code !== '5' && e.error?.code !== '7') {
-        console.warn('Voice error:', e.error);
-      }
-    };
-
-    Voice.onSpeechResults = onSpeechResults;
-    Voice.onSpeechPartialResults = onSpeechPartialResults;
-    Voice.onSpeechEnd = onSpeechEnd;
-    Voice.onSpeechError = onSpeechError;
-
-    return () => {
-      Voice.destroy().then(Voice.removeAllListeners).catch(() => {});
-    };
-  }, [onChangeText]);
+  useSpeechRecognitionEvent('error', (event) => {
+    setIsListening(false);
+    setPartialResult('');
+    if (event.error !== 'no-speech' && event.error !== 'aborted') {
+      console.warn('Voice error:', event.error, event.message);
+    }
+  });
 
   const startListening = useCallback(async () => {
     if (Platform.OS === 'web') {
@@ -75,14 +68,20 @@ export default function VoiceInput({
     }
 
     try {
-      // Guarda valor atual para append
+      const result = await ExpoSpeechRecognitionModule.requestPermissionsAsync();
+      if (!result.granted) {
+        Alert.alert('Permissão negada', 'Permita o uso do microfone nas configurações.');
+        return;
+      }
       baseValueRef.current = value;
-      setIsListening(true);
-      await Voice.start('pt-BR');
+      ExpoSpeechRecognitionModule.start({
+        lang: 'pt-BR',
+        interimResults: true,
+        continuous: false,
+      });
     } catch (err: any) {
       setIsListening(false);
-      // Fallback se o dispositivo não suportar Voice
-      if (err?.code === 'not_available' || err?.message?.includes('not available')) {
+      if (err?.message?.includes('not available') || err?.message?.includes('unavailable')) {
         Alert.alert(
           'Indisponível',
           'Reconhecimento de voz não suportado neste dispositivo.',
@@ -93,12 +92,8 @@ export default function VoiceInput({
     }
   }, [value]);
 
-  const stopListening = useCallback(async () => {
-    try {
-      await Voice.stop();
-    } catch {
-      // ignore
-    }
+  const stopListening = useCallback(() => {
+    ExpoSpeechRecognitionModule.stop();
     setIsListening(false);
     setPartialResult('');
   }, []);
