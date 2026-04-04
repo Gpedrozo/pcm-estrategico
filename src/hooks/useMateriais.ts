@@ -75,7 +75,6 @@ export interface MaterialOSRow {
   material_id: string;
   quantidade: number;
   custo_unitario: number;
-  custo_total: number;
   created_at: string;
   material?: MaterialRow;
 }
@@ -85,7 +84,6 @@ export interface MaterialOSInsert {
   material_id: string;
   quantidade: number;
   custo_unitario: number;
-  custo_total: number;
 }
 
 // ==================== MATERIAIS ====================

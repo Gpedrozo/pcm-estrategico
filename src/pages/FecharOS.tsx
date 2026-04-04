@@ -360,7 +360,6 @@ export default function FecharOS() {
             material_id: item.material.id,
             quantidade: item.quantidade,
             custo_unitario: item.material.custo_unitario,
-            custo_total: item.quantidade * item.material.custo_unitario,
           });
         }
 
