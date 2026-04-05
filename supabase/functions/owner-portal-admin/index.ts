@@ -2303,8 +2303,10 @@ Deno.serve(async (req) => {
             `Plano inicial não pôde ser resolvido neste ambiente legado. Empresa seguirá sem assinatura inicial automática. (${fallbackPlanError.message})`,
           );
         } else {
-          const reason = await rollbackCreateCompany(fallbackPlanError.message ?? "fallback_plan_lookup_failed");
-          return fail("Falha ao localizar plano padrão para assinatura inicial.", 400, { reason }, req);
+          onboardingWarning = mergeWarnings(
+            onboardingWarning,
+            `Plano inicial não pôde ser resolvido. Empresa seguirá sem assinatura. (${fallbackPlanError.message})`,
+          );
         }
       }
 
@@ -2346,16 +2348,13 @@ Deno.serve(async (req) => {
 
       if (subscriptionError || !createdSubscription?.id) {
         const reasonText = subscriptionError?.message ?? "subscription_create_failed";
-        const isSchemaLike = isSchemaOrMissingObjectError(reasonText);
+
         const isConstraintLike = /violates|constraint|duplicate|foreign/i.test(reasonText);
         if (isSchemaLike || isConstraintLike) {
           onboardingWarning = mergeWarnings(
             onboardingWarning,
             `Assinatura inicial não foi criada automaticamente neste ambiente. (${reasonText})`,
           );
-        } else {
-          const reason = await rollbackCreateCompany(reasonText);
-          return fail("Falha ao criar assinatura inicial da empresa.", 400, { reason }, req);
         }
       } else {
         subscription = createdSubscription;
@@ -2396,8 +2395,10 @@ Deno.serve(async (req) => {
               `Contrato inicial não pôde ser gerado automaticamente neste ambiente legado. (${reasonText})`,
             );
           } else {
-            const reason = await rollbackCreateCompany(reasonText);
-            return fail("Falha ao gerar contrato inicial da empresa.", 400, { reason }, req);
+            onboardingWarning = mergeWarnings(
+              onboardingWarning,
+              `Contrato inicial não pôde ser gerado automaticamente. (${reasonText})`,
+            );
           }
         }
       }
