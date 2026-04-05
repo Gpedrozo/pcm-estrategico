@@ -119,45 +119,29 @@ async function uploadPhoto(db: SupabaseClient, execucaoId: string, localUri: str
 // Module-level cached access token for authenticated queries
 let cachedAccessToken: string | null = null;
 
-/**
- * Get an access token from:
- * 1. Existing supabase session
- * 2. Module-level cached token
- * 3. Persisted token in SQLite device_config
- * 4. Edge function re-auth using device_token
- */
-export async function getAccessToken(): Promise<string | null> {
-  // 1. Check existing supabase session
+/** Decode JWT payload and check expiration (with 60s buffer) */
+function isTokenExpired(token: string): boolean {
   try {
-    const { data: { session } } = await supabase.auth.getSession();
-    if (session?.access_token) {
-      cachedAccessToken = session.access_token;
-      return session.access_token;
-    }
-  } catch { /* ignore */ }
-
-  // 2. Use module-level cached token if available
-  if (cachedAccessToken) {
-    console.log('[sync] using cached access_token');
-    return cachedAccessToken;
+    const parts = token.split('.');
+    if (parts.length !== 3) return true;
+    const payload = JSON.parse(atob(parts[1].replace(/-/g, '+').replace(/_/g, '/')));
+    const exp = payload.exp;
+    if (!exp) return true;
+    return Date.now() >= (exp - 60) * 1000; // 60s safety buffer
+  } catch {
+    return true;
   }
+}
 
-  // 3. Check persisted token in SQLite
-  const persistedToken = await getDeviceConfig('access_token');
-  if (persistedToken) {
-    console.log('[sync] using persisted access_token from device_config');
-    cachedAccessToken = persistedToken;
-    return persistedToken;
-  }
-
-  // 4. Re-auth via edge function
+/** Force re-authentication via edge function using device_token */
+async function reauthViaEdgeFunction(): Promise<string | null> {
   const deviceToken = await getDeviceConfig('device_token');
   if (!deviceToken) {
     console.warn('[sync] no device_token — cannot authenticate');
     return null;
   }
 
-  console.log('[sync] no session, re-authenticating via edge function...');
+  console.log('[sync] re-authenticating via edge function...');
   try {
     const response = await fetch(`${SUPABASE_URL}/functions/v1/mecanico-device-auth`, {
       method: 'POST',
@@ -171,10 +155,10 @@ export async function getAccessToken(): Promise<string | null> {
       return null;
     }
 
-    console.log('[sync] got access_token from edge function');
+    console.log('[sync] got fresh access_token from edge function');
     cachedAccessToken = data.access_token;
 
-    // Persist token in SQLite for next sync cycle
+    // Persist token in SQLite
     await saveDeviceConfig('access_token', data.access_token);
     if (data.refresh_token) {
       await saveDeviceConfig('refresh_token', data.refresh_token);
@@ -196,7 +180,66 @@ export async function getAccessToken(): Promise<string | null> {
   }
 }
 
-export async function pullData(empresaId: string, forceFullRefresh = false, db?: SupabaseClient): Promise<void> {
+/**
+ * Get a VALID (non-expired) access token from:
+ * 1. Existing supabase session (auto-refreshed)
+ * 2. Module-level cached token (if not expired)
+ * 3. Persisted token in SQLite (if not expired)
+ * 4. Edge function re-auth using device_token
+ */
+export async function getAccessToken(): Promise<string | null> {
+  // 1. Check existing supabase session (supabase-js auto-refreshes)
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (session?.access_token && !isTokenExpired(session.access_token)) {
+      cachedAccessToken = session.access_token;
+      return session.access_token;
+    }
+  } catch { /* ignore */ }
+
+  // 2. Use module-level cached token if not expired
+  if (cachedAccessToken && !isTokenExpired(cachedAccessToken)) {
+    console.log('[sync] using cached access_token');
+    return cachedAccessToken;
+  }
+
+  // 3. Check persisted token in SQLite (if not expired)
+  const persistedToken = await getDeviceConfig('access_token');
+  if (persistedToken && !isTokenExpired(persistedToken)) {
+    console.log('[sync] using persisted access_token from device_config');
+    cachedAccessToken = persistedToken;
+    return persistedToken;
+  }
+
+  // 4. Try refresh_token first
+  const refreshToken = await getDeviceConfig('refresh_token');
+  if (refreshToken) {
+    try {
+      const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession({
+        refresh_token: refreshToken,
+      });
+      if (!refreshError && refreshData?.session?.access_token) {
+        console.log('[sync] token refreshed successfully');
+        cachedAccessToken = refreshData.session.access_token;
+        await saveDeviceConfig('access_token', refreshData.session.access_token);
+        if (refreshData.session.refresh_token) {
+          await saveDeviceConfig('refresh_token', refreshData.session.refresh_token);
+        }
+        return refreshData.session.access_token;
+      }
+    } catch { /* fallback to re-auth */ }
+  }
+
+  // 5. Last resort: re-auth via edge function
+  return reauthViaEdgeFunction();
+}
+
+/** Clear cached token (called when server returns auth error) */
+export function clearCachedToken() {
+  cachedAccessToken = null;
+}
+
+export async function pullData(empresaId: string, forceFullRefresh = false, db?: SupabaseClient, _isRetry = false): Promise<void> {
   if (!empresaId) return;
 
   // If no authenticated client provided, create one
@@ -209,6 +252,14 @@ export async function pullData(empresaId: string, forceFullRefresh = false, db?:
     db = createAuthenticatedClient(accessToken);
   }
   console.log('[sync] pullData starting with authenticated client...');
+
+  // Helper: detect auth errors (401, JWT expired, etc.)
+  function isAuthError(error: any): boolean {
+    if (!error) return false;
+    const msg = (error.message || '').toLowerCase();
+    const code = error.code || '';
+    return code === '401' || code === 'PGRST301' || msg.includes('jwt') || msg.includes('expired') || msg.includes('invalid claim') || msg.includes('not authorized');
+  }
 
   // Incremental sync: use last_sync_timestamp to only fetch changed records
   // forceFullRefresh = true when user manually pulls to refresh
@@ -234,6 +285,20 @@ export async function pullData(empresaId: string, forceFullRefresh = false, db?:
 
   if (osError) {
     console.error('[sync] ordens_servico error:', osError.message, osError.code, osError.details);
+
+    // If auth error on first query, re-authenticate and retry entire pull
+    if (isAuthError(osError) && !_isRetry) {
+      console.warn('[sync] auth error detected — clearing token and retrying...');
+      clearCachedToken();
+      await saveDeviceConfig('access_token', '');
+      const freshToken = await getAccessToken();
+      if (freshToken) {
+        const freshDb = createAuthenticatedClient(freshToken);
+        return pullData(empresaId, forceFullRefresh, freshDb, true);
+      }
+      console.error('[sync] re-auth failed — aborting pull');
+      return;
+    }
   }
 
   if (osList) {

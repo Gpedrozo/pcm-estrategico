@@ -304,7 +304,7 @@ async function authenticateWithDevice(
           user_id: userId,
           role: "TECHNICIAN",
           empresa_id: empresa.id,
-        }, { onConflict: "user_id,empresa_id,role" });
+        }, { onConflict: "user_id,empresa_id" });
         if (roleErr) {
           console.error("[device-auth] user_roles upsert FAILED:", roleErr.message);
           // Fallback: try plain insert (ignore if already exists)
@@ -356,7 +356,7 @@ async function authenticateWithDevice(
           user_id: userId,
           role: "TECHNICIAN",
           empresa_id: empresa.id,
-        }, { onConflict: "user_id,empresa_id,role" });
+        }, { onConflict: "user_id,empresa_id" });
         if (roleErr2) {
           console.error("[device-auth] user_roles upsert FAILED:", roleErr2.message);
           const { error: insertErr2 } = await admin.from("user_roles").insert({

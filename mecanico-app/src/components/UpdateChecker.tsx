@@ -17,7 +17,7 @@ import { supabase } from '../lib/supabase';
 import { COLORS, SIZES } from '../theme';
 
 // ⚠️ MANTER SINCRONIZADO com app.json → expo.version
-const APP_VERSION = '1.0.1';
+const APP_VERSION = '1.0.2';
 
 interface VersionInfo {
   versao_atual: string;

@@ -1,8 +1,8 @@
 {
   "expo": {
-    "name": "Mecânico Industrial v1.0.1",
+    "name": "Mecânico Industrial v1.0.2",
     "slug": "mecanico-industrial",
-    "version": "1.0.1",
+    "version": "1.0.2",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
