@@ -103,17 +103,18 @@ export function AnalysisResultCard({
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <ul className="space-y-2">
-            {possibleCauses.length === 0 && (
-              <li className="text-sm text-muted-foreground">Nenhuma causa identificada</li>
-            )}
-            {possibleCauses.map((cause, i) => (
-              <li key={i} className="flex items-start gap-2 text-sm">
-                <span className="font-bold text-primary mt-0.5">{i + 1}.</span>
-                <span>{cause}</span>
-              </li>
-            ))}
-          </ul>
+          {possibleCauses.length > 0 ? (
+            <ul className="space-y-2">
+              {possibleCauses.map((cause, i) => (
+                <li key={i} className="flex items-start gap-2 text-sm">
+                  <span className="font-bold text-primary mt-0.5">{i + 1}.</span>
+                  <span>{cause}</span>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="text-sm text-muted-foreground">Nenhuma causa identificada.</p>
+          )}
         </CardContent>
       </Card>
 
@@ -125,17 +126,18 @@ export function AnalysisResultCard({
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <ul className="space-y-2">
-            {preventiveActions.length === 0 && (
-              <li className="text-sm text-muted-foreground">Nenhuma ação preventiva sugerida</li>
-            )}
-            {preventiveActions.map((action, i) => (
-              <li key={i} className="flex items-start gap-2 text-sm">
-                <CheckCircle className="h-4 w-4 text-green-500 mt-0.5 shrink-0" />
-                <span>{action}</span>
-              </li>
-            ))}
-          </ul>
+          {preventiveActions.length > 0 ? (
+            <ul className="space-y-2">
+              {preventiveActions.map((action, i) => (
+                <li key={i} className="flex items-start gap-2 text-sm">
+                  <CheckCircle className="h-4 w-4 text-green-500 mt-0.5 shrink-0" />
+                  <span>{action}</span>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="text-sm text-muted-foreground">Nenhuma ação preventiva sugerida.</p>
+          )}
         </CardContent>
       </Card>
     </div>
