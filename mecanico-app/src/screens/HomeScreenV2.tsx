@@ -1,9 +1,8 @@
 // ============================================================
-// HomeScreen v2.1 — Lista de OS abertas (tela principal)
-// OS designadas para o mecânico logado sempre no topo + visual chamativo
+// HomeScreen v2.0 — Lista de OS abertas (tela principal)
 // ============================================================
 
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View, Text, StyleSheet, FlatList, TouchableOpacity, RefreshControl,
   TextInput, Alert,
@@ -13,7 +12,6 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { COLORS, SIZES, SHADOWS } from '../theme';
-import { useRealtimeRefresh } from '../hooks/useRealtimeRefresh';
 import type { OrdemServico, RootStackParamList } from '../types';
 
 type Nav = NativeStackNavigationProp<RootStackParamList>;
@@ -31,10 +29,6 @@ const STATUS_COLORS: Record<string, string> = {
   EM_ANDAMENTO: COLORS.primary,
   AGUARDANDO_MATERIAL: COLORS.warning,
 };
-
-type ListItem =
-  | { type: 'header'; key: string; title: string; count: number }
-  | { type: 'os'; key: string; os: OrdemServico; mine: boolean };
 
 export default function HomeScreen() {
   const nav = useNavigation<Nav>();
@@ -55,6 +49,7 @@ export default function HomeScreen() {
       .limit(200);
 
     if (!error && data) {
+      // Sort: prioridade asc, then date desc
       const sorted = [...data].sort((a, b) => {
         const pa = PRIORIDADE_ORDER[a.prioridade] ?? 9;
         const pb = PRIORIDADE_ORDER[b.prioridade] ?? 9;
@@ -67,19 +62,15 @@ export default function HomeScreen() {
 
   useEffect(() => { fetchOrders().finally(() => setLoading(false)); }, [fetchOrders]);
 
-  // Auto-refresh on realtime changes
-  useRealtimeRefresh('HomeScreen', fetchOrders);
-
   const onRefresh = async () => {
     setRefreshing(true);
     await fetchOrders();
     setRefreshing(false);
   };
 
-  const isMyOS = useCallback((os: OrdemServico) =>
+  const isMyOS = (os: OrdemServico) =>
     (mecanicoId && os.mecanico_responsavel_id === mecanicoId) ||
-    (mecanicoCodigo && os.mecanico_responsavel_codigo === mecanicoCodigo),
-  [mecanicoId, mecanicoCodigo]);
+    (mecanicoCodigo && os.mecanico_responsavel_codigo === mecanicoCodigo);
 
   const filtered = orders.filter((os) => {
     if (!search.trim()) return true;
@@ -92,25 +83,6 @@ export default function HomeScreen() {
     );
   });
 
-  // Split into mine (top) and others, with section headers
-  const listData = useMemo<ListItem[]>(() => {
-    const mine = filtered.filter((os) => isMyOS(os));
-    const others = filtered.filter((os) => !isMyOS(os));
-    const items: ListItem[] = [];
-    if (mine.length > 0) {
-      items.push({ type: 'header', key: 'h-mine', title: '🔧  SUAS ORDENS DE SERVIÇO', count: mine.length });
-      mine.forEach((os) => items.push({ type: 'os', key: os.id, os, mine: true }));
-    }
-    if (others.length > 0) {
-      items.push({ type: 'header', key: 'h-others', title: 'OUTRAS O.S. ABERTAS', count: others.length });
-      others.forEach((os) => items.push({ type: 'os', key: os.id, os, mine: false }));
-    }
-    return items;
-  }, [filtered, isMyOS]);
-
-  const mineCount = filtered.filter((os) => isMyOS(os)).length;
-  const othersCount = filtered.length - mineCount;
-
   const formatDate = (d: string) => {
     try {
       const dt = new Date(d);
@@ -118,57 +90,40 @@ export default function HomeScreen() {
     } catch { return d; }
   };
 
-  const renderItem = ({ item }: { item: ListItem }) => {
-    if (item.type === 'header') {
-      return (
-        <View style={styles.sectionHeader}>
-          <Text style={[styles.sectionTitle, item.key === 'h-mine' && styles.sectionTitleMine]}>
-            {item.title}
-          </Text>
-          <View style={[styles.sectionCount, item.key === 'h-mine' && styles.sectionCountMine]}>
-            <Text style={[styles.sectionCountText, item.key === 'h-mine' && styles.sectionCountTextMine]}>
-              {item.count}
-            </Text>
-          </View>
-        </View>
-      );
-    }
-
-    const { os, mine } = item;
+  const renderOS = ({ item }: { item: OrdemServico }) => {
+    const mine = isMyOS(item);
     return (
       <TouchableOpacity
         style={[styles.card, mine && styles.cardMine]}
-        onPress={() => nav.navigate('OSDetail', { osId: os.id })}
+        onPress={() => nav.navigate('OSDetail', { osId: item.id })}
         activeOpacity={0.7}
       >
         {mine && (
-          <View style={styles.mineBanner}>
-            <Text style={styles.mineBannerText}>🔧  DESIGNADA PARA VOCÊ</Text>
+          <View style={styles.mineBadge}>
+            <Text style={styles.mineBadgeText}>★ Designada para você</Text>
           </View>
         )}
         <View style={styles.cardHeader}>
-          <Text style={[styles.osNumber, mine && styles.osNumberMine]}>
-            O.S. {String(os.numero_os).padStart(4, '0')}
-          </Text>
-          <View style={[styles.statusBadge, { backgroundColor: STATUS_COLORS[os.status] || '#999' }]}>
-            <Text style={styles.statusText}>{os.status.replace(/_/g, ' ')}</Text>
+          <Text style={styles.osNumber}>O.S. {String(item.numero_os).padStart(4, '0')}</Text>
+          <View style={[styles.statusBadge, { backgroundColor: STATUS_COLORS[item.status] || '#999' }]}>
+            <Text style={styles.statusText}>{item.status.replace(/_/g, ' ')}</Text>
           </View>
         </View>
 
         <View style={styles.cardRow}>
-          <View style={[styles.prioBadge, { backgroundColor: PRIORIDADE_COLORS[os.prioridade] || '#999' }]}>
-            <Text style={styles.prioText}>{os.prioridade}</Text>
+          <View style={[styles.prioBadge, { backgroundColor: PRIORIDADE_COLORS[item.prioridade] || '#999' }]}>
+            <Text style={styles.prioText}>{item.prioridade}</Text>
           </View>
-          <Text style={styles.tipo}>{os.tipo}</Text>
+          <Text style={styles.tipo}>{item.tipo}</Text>
         </View>
 
-        <Text style={styles.tag}>{os.tag || 'Sem TAG'}</Text>
-        <Text style={styles.equip} numberOfLines={1}>{os.equipamento}</Text>
-        <Text style={styles.problema} numberOfLines={2}>{os.problema}</Text>
+        <Text style={styles.tag}>{item.tag || 'Sem TAG'}</Text>
+        <Text style={styles.equip} numberOfLines={1}>{item.equipamento}</Text>
+        <Text style={styles.problema} numberOfLines={2}>{item.problema}</Text>
 
         <View style={styles.cardFooter}>
-          <Text style={styles.footerText}>Solicitante: {os.solicitante}</Text>
-          <Text style={styles.footerText}>{formatDate(os.data_solicitacao)}</Text>
+          <Text style={styles.footerText}>Solicitante: {item.solicitante}</Text>
+          <Text style={styles.footerText}>{formatDate(item.data_solicitacao)}</Text>
         </View>
       </TouchableOpacity>
     );
@@ -207,15 +162,15 @@ export default function HomeScreen() {
       {/* Counter */}
       <View style={styles.counterRow}>
         <Text style={styles.counterText}>
-          {mineCount > 0 ? `${mineCount} sua(s)` : ''}{mineCount > 0 && othersCount > 0 ? '  •  ' : ''}{othersCount > 0 ? `${othersCount} outra(s)` : ''}{filtered.length === 0 ? '0 ordens' : ''}
+          {filtered.length} ordem(ns) aberta(s)
         </Text>
       </View>
 
       {/* List */}
       <FlatList
-        data={listData}
-        keyExtractor={(item) => item.key}
-        renderItem={renderItem}
+        data={filtered}
+        keyExtractor={(item) => item.id}
+        renderItem={renderOS}
         contentContainerStyle={styles.list}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[COLORS.primary]} />}
         ListEmptyComponent={
@@ -252,41 +207,19 @@ const styles = StyleSheet.create({
   counterRow: { paddingHorizontal: 16, paddingVertical: 8 },
   counterText: { fontSize: SIZES.fontSM, color: COLORS.textSecondary, fontWeight: '600' },
   list: { paddingBottom: 100 },
-
-  // Section headers
-  sectionHeader: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingHorizontal: 16, paddingTop: 14, paddingBottom: 6,
-  },
-  sectionTitle: { fontSize: 13, fontWeight: '800', color: COLORS.textSecondary, letterSpacing: 0.5 },
-  sectionTitleMine: { color: COLORS.primaryDark },
-  sectionCount: {
-    backgroundColor: COLORS.border, borderRadius: 12,
-    paddingHorizontal: 10, paddingVertical: 2,
-  },
-  sectionCountMine: { backgroundColor: COLORS.primary },
-  sectionCountText: { fontSize: 12, fontWeight: '800', color: COLORS.textSecondary },
-  sectionCountTextMine: { color: '#FFF' },
-
-  // Cards
   card: {
     backgroundColor: COLORS.surface, borderRadius: SIZES.radiusMD,
     padding: SIZES.paddingMD, marginHorizontal: 16, marginVertical: 6,
     ...SHADOWS.small,
   },
-  cardMine: {
-    borderLeftWidth: 6, borderLeftColor: COLORS.primary,
-    backgroundColor: '#EBF2FF',
-    ...SHADOWS.medium,
+  cardMine: { borderLeftWidth: 4, borderLeftColor: COLORS.primary },
+  mineBadge: {
+    backgroundColor: COLORS.infoBg, borderRadius: 4,
+    paddingHorizontal: 8, paddingVertical: 3, alignSelf: 'flex-start', marginBottom: 8,
   },
-  mineBanner: {
-    backgroundColor: COLORS.primaryDark, borderRadius: 6,
-    paddingHorizontal: 12, paddingVertical: 5, alignSelf: 'flex-start', marginBottom: 10,
-  },
-  mineBannerText: { color: '#FFF', fontSize: 12, fontWeight: '800', letterSpacing: 0.3 },
+  mineBadgeText: { color: COLORS.info, fontSize: 12, fontWeight: '700' },
   cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
   osNumber: { fontSize: SIZES.fontMD, fontWeight: '700', color: COLORS.textPrimary },
-  osNumberMine: { color: COLORS.primaryDark },
   statusBadge: { borderRadius: 4, paddingHorizontal: 8, paddingVertical: 3 },
   statusText: { color: '#FFF', fontSize: 11, fontWeight: '700' },
   cardRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 8, gap: 8 },

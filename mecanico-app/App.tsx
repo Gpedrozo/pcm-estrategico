@@ -1,6 +1,6 @@
 // ============================================================
-// App.tsx v2.1 — Entry point for PCM Mecânico
-// With UpdateChecker, RealtimeProvider
+// App.tsx v2.0 — Entry point for PCM Mecânico
+// Simplified: no SQLite, no UpdateChecker, no edge functions
 // ============================================================
 
 import React, { useCallback } from 'react';
@@ -10,9 +10,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import * as SplashScreen from 'expo-splash-screen';
 
 import { AuthProvider } from './src/contexts/AuthContext';
-import { RealtimeProvider } from './src/contexts/RealtimeProvider';
 import RootNavigator from './src/navigation/RootNavigator';
-import UpdateChecker from './src/components/UpdateChecker';
 import { COLORS } from './src/theme';
 
 // Keep splash screen visible while we initialize
@@ -32,13 +30,9 @@ export default function App() {
     <SafeAreaProvider onLayout={onLayoutReady}>
       <StatusBar barStyle="light-content" backgroundColor={COLORS.headerBg} />
       <AuthProvider>
-        <RealtimeProvider>
-          <UpdateChecker>
-            <NavigationContainer>
-              <RootNavigator />
-            </NavigationContainer>
-          </UpdateChecker>
-        </RealtimeProvider>
+        <NavigationContainer>
+          <RootNavigator />
+        </NavigationContainer>
       </AuthProvider>
     </SafeAreaProvider>
   );

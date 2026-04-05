@@ -12,7 +12,6 @@ import { useFocusEffect } from '@react-navigation/native';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { COLORS, SIZES, SHADOWS } from '../theme';
-import { useRealtimeRefresh } from '../hooks/useRealtimeRefresh';
 import type { OrdemServico, ExecucaoOS } from '../types';
 
 const STATUS_OPTIONS = ['TODAS', 'ABERTA', 'EM_ANDAMENTO', 'AGUARDANDO_MATERIAL', 'FECHADA', 'CANCELADA'] as const;
@@ -67,9 +66,6 @@ export default function HistoricoScreenV2() {
   }, [empresaId, statusFilter, tipoFilter]);
 
   useFocusEffect(useCallback(() => { load(); }, [load]));
-
-  // Auto-refresh on realtime changes
-  useRealtimeRefresh('HistoricoScreen', load);
 
   const filtered = items.filter((os) => {
     if (!search.trim()) return true;
@@ -138,15 +134,15 @@ export default function HistoricoScreenV2() {
       </View>
 
       {/* Status filter */}
-      <ScrollView
+      <FlatList
         horizontal
-        showsHorizontalScrollIndicator={false}
+        data={STATUS_OPTIONS}
         style={styles.filterRow}
-        contentContainerStyle={{ paddingHorizontal: 16, alignItems: 'center' }}
-      >
-        {STATUS_OPTIONS.map((s) => (
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={{ paddingHorizontal: 16 }}
+        keyExtractor={(i) => i}
+        renderItem={({ item: s }) => (
           <TouchableOpacity
-            key={s}
             style={[styles.filterChip, statusFilter === s && styles.filterChipActive]}
             onPress={() => { setStatusFilter(s); setLoading(true); }}
           >
@@ -154,19 +150,19 @@ export default function HistoricoScreenV2() {
               {s === 'TODAS' ? 'Todas' : s.replace('_', ' ')}
             </Text>
           </TouchableOpacity>
-        ))}
-      </ScrollView>
+        )}
+      />
 
       {/* Tipo filter */}
-      <ScrollView
+      <FlatList
         horizontal
-        showsHorizontalScrollIndicator={false}
+        data={TIPO_OPTIONS}
         style={[styles.filterRow, { marginBottom: 4 }]}
-        contentContainerStyle={{ paddingHorizontal: 16, alignItems: 'center' }}
-      >
-        {TIPO_OPTIONS.map((t) => (
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={{ paddingHorizontal: 16 }}
+        keyExtractor={(i) => i}
+        renderItem={({ item: t }) => (
           <TouchableOpacity
-            key={t}
             style={[styles.filterChip, tipoFilter === t && styles.filterChipActive]}
             onPress={() => { setTipoFilter(t); setLoading(true); }}
           >
@@ -174,8 +170,8 @@ export default function HistoricoScreenV2() {
               {t === 'TODOS' ? 'Todos' : t}
             </Text>
           </TouchableOpacity>
-        ))}
-      </ScrollView>
+        )}
+      />
 
       {/* Count */}
       <Text style={styles.countText}>{filtered.length} registro(s)</Text>
@@ -283,8 +279,8 @@ const styles = StyleSheet.create({
   centered: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   searchBox: { paddingHorizontal: 16, paddingTop: 12, paddingBottom: 4 },
   searchInput: { height: 46, borderWidth: 1.5, borderColor: COLORS.border, borderRadius: SIZES.radiusSM, paddingHorizontal: 14, fontSize: SIZES.fontSM, backgroundColor: COLORS.surface },
-  filterRow: { height: 44, flexGrow: 0, flexShrink: 0, marginTop: 4 },
-  filterChip: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 16, borderWidth: 1.5, borderColor: COLORS.border, marginRight: 8, backgroundColor: COLORS.surface, minHeight: 36, justifyContent: 'center' },
+  filterRow: { maxHeight: 48, marginTop: 4 },
+  filterChip: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 16, borderWidth: 1.5, borderColor: COLORS.border, marginRight: 8, backgroundColor: COLORS.surface },
   filterChipActive: { backgroundColor: COLORS.primary, borderColor: COLORS.primary },
   filterChipText: { fontSize: 12, color: COLORS.textSecondary, fontWeight: '600' },
   filterChipTextActive: { color: '#FFF', fontWeight: '700' },
