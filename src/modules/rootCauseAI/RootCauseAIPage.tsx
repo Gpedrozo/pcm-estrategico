@@ -6,10 +6,11 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { Brain, Loader2, History, Sparkles, RefreshCw, CalendarDays, Trash2 } from 'lucide-react';
+import { Brain, Loader2, History, Sparkles, RefreshCw, CalendarDays, Trash2, Printer } from 'lucide-react';
 import { useEquipamentos } from '@/hooks/useEquipamentos';
 import { useAIAnalysisHistory, useGenerateAnalysis, useDeleteAnalysis } from './useRootCauseAI';
 import { AnalysisResultCard } from './components/AnalysisResultCard';
+import { PrintableReport } from './components/PrintableReport';
 import type { AnalysisResponse } from './types';
 
 export default function RootCauseAIPage() {
@@ -46,7 +47,7 @@ export default function RootCauseAIPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div>
+      <div className="screen-only">
         <h1 className="text-3xl font-bold tracking-tight flex items-center gap-3">
           <Brain className="h-8 w-8 text-primary" />
           Inteligência de Causa Raiz (IA)
@@ -57,7 +58,7 @@ export default function RootCauseAIPage() {
       </div>
 
       {/* Controls */}
-      <Card>
+      <Card className="screen-only">
         <CardHeader>
           <CardTitle className="text-lg">Selecionar Equipamento</CardTitle>
           <CardDescription>
@@ -136,13 +137,35 @@ export default function RootCauseAIPage() {
       {/* Current result */}
       {currentResult && (
         <div className="space-y-4">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between screen-only">
             <h2 className="text-xl font-semibold">Resultado da Análise</h2>
-            <Button variant="outline" size="sm" onClick={handleGenerate} disabled={generateMutation.isPending} className="gap-2">
-              <RefreshCw className="h-3 w-3" /> Regenerar
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button variant="outline" size="sm" onClick={() => window.print()} className="gap-2">
+                <Printer className="h-3 w-3" /> Imprimir Relatório
+              </Button>
+              <Button variant="outline" size="sm" onClick={handleGenerate} disabled={generateMutation.isPending} className="gap-2">
+                <RefreshCw className="h-3 w-3" /> Regenerar
+              </Button>
+            </div>
           </div>
-          <AnalysisResultCard
+          <div className="screen-only">
+            <AnalysisResultCard
+              summary={currentResult.analysis.summary}
+              possibleCauses={currentResult.analysis.possible_causes}
+              mainHypothesis={currentResult.analysis.main_hypothesis}
+              preventiveActions={currentResult.analysis.preventive_actions}
+              criticality={currentResult.analysis.criticality}
+              confidenceScore={currentResult.analysis.confidence_score}
+              osCount={currentResult.os_count}
+              mtbfDays={currentResult.mtbf_days}
+              generatedAt={currentResult.analysis.generated_at}
+            />
+          </div>
+
+          {/* Hidden print-only report */}
+          <PrintableReport
+            tag={selectedTag}
+            equipamentoNome={equipamentos?.find(e => e.tag === selectedTag)?.nome}
             summary={currentResult.analysis.summary}
             possibleCauses={currentResult.analysis.possible_causes}
             mainHypothesis={currentResult.analysis.main_hypothesis}
@@ -152,13 +175,15 @@ export default function RootCauseAIPage() {
             osCount={currentResult.os_count}
             mtbfDays={currentResult.mtbf_days}
             generatedAt={currentResult.analysis.generated_at}
+            dateFrom={dateFrom || undefined}
+            dateTo={dateTo || undefined}
           />
         </div>
       )}
 
       {/* History */}
       {selectedTag && (
-        <>
+        <div className="screen-only">
           <Separator />
           <div>
             <h2 className="text-xl font-semibold flex items-center gap-2 mb-4">
@@ -217,7 +242,7 @@ export default function RootCauseAIPage() {
               </p>
             )}
           </div>
-        </>
+        </div>
       )}
     </div>
   );
