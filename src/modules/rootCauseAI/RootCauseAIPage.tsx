@@ -1,26 +1,45 @@
 import { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { Brain, Loader2, History, Sparkles, RefreshCw } from 'lucide-react';
+import { Brain, Loader2, History, Sparkles, RefreshCw, CalendarDays, Trash2 } from 'lucide-react';
 import { useEquipamentos } from '@/hooks/useEquipamentos';
-import { useAIAnalysisHistory, useGenerateAnalysis } from './useRootCauseAI';
+import { useAIAnalysisHistory, useGenerateAnalysis, useDeleteAnalysis } from './useRootCauseAI';
 import { AnalysisResultCard } from './components/AnalysisResultCard';
 import type { AnalysisResponse } from './types';
 
 export default function RootCauseAIPage() {
   const [selectedTag, setSelectedTag] = useState<string>('');
   const [currentResult, setCurrentResult] = useState<AnalysisResponse | null>(null);
+  const [dateFrom, setDateFrom] = useState<string>('');
+  const [dateTo, setDateTo] = useState<string>('');
 
   const { data: equipamentos } = useEquipamentos();
   const { data: history, isLoading: historyLoading } = useAIAnalysisHistory(selectedTag || undefined);
   const generateMutation = useGenerateAnalysis();
+  const deleteMutation = useDeleteAnalysis();
+
+  const handleDelete = (e: React.MouseEvent, id: string) => {
+    e.stopPropagation();
+    if (!confirm('Tem certeza que deseja excluir esta análise?')) return;
+    deleteMutation.mutate(id, {
+      onSuccess: () => {
+        if (currentResult?.analysis.id === id) setCurrentResult(null);
+      },
+    });
+  };
 
   const handleGenerate = async () => {
     if (!selectedTag) return;
-    const result = await generateMutation.mutateAsync(selectedTag);
+    const result = await generateMutation.mutateAsync({
+      tag: selectedTag,
+      date_from: dateFrom || undefined,
+      date_to: dateTo || undefined,
+    });
     setCurrentResult(result);
   };
 
@@ -42,12 +61,13 @@ export default function RootCauseAIPage() {
         <CardHeader>
           <CardTitle className="text-lg">Selecionar Equipamento</CardTitle>
           <CardDescription>
-            Escolha uma TAG para analisar o histórico de manutenção com IA
+            Escolha uma TAG e o período para analisar o histórico de manutenção com IA
           </CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-4">
           <div className="flex flex-col sm:flex-row gap-4">
             <div className="flex-1">
+              <Label className="text-xs text-muted-foreground mb-1 block">Equipamento (TAG)</Label>
               <Select value={selectedTag} onValueChange={(val) => { setSelectedTag(val); setCurrentResult(null); }}>
                 <SelectTrigger>
                   <SelectValue placeholder="Selecione uma TAG" />
@@ -61,6 +81,33 @@ export default function RootCauseAIPage() {
                   ))}
                 </SelectContent>
               </Select>
+            </div>
+          </div>
+
+          <div className="flex flex-col sm:flex-row items-end gap-4">
+            <div className="flex items-center gap-2 text-muted-foreground">
+              <CalendarDays className="h-4 w-4" />
+              <span className="text-xs font-medium">Período da análise:</span>
+            </div>
+            <div className="flex-1">
+              <Label htmlFor="date-from" className="text-xs text-muted-foreground mb-1 block">Data Início</Label>
+              <Input
+                id="date-from"
+                type="date"
+                value={dateFrom}
+                onChange={(e) => setDateFrom(e.target.value)}
+                className="w-full"
+              />
+            </div>
+            <div className="flex-1">
+              <Label htmlFor="date-to" className="text-xs text-muted-foreground mb-1 block">Data Fim</Label>
+              <Input
+                id="date-to"
+                type="date"
+                value={dateTo}
+                onChange={(e) => setDateTo(e.target.value)}
+                className="w-full"
+              />
             </div>
             <Button
               onClick={handleGenerate}
@@ -80,6 +127,9 @@ export default function RootCauseAIPage() {
               )}
             </Button>
           </div>
+          {!dateFrom && !dateTo && (
+            <p className="text-xs text-muted-foreground italic">Sem período definido: a IA analisará todo o histórico do equipamento.</p>
+          )}
         </CardContent>
       </Card>
 
@@ -147,6 +197,15 @@ export default function RootCauseAIPage() {
                       <div className="flex items-center gap-2">
                         <Badge variant="outline">{item.criticality || '—'}</Badge>
                         <span className="text-sm font-bold text-primary">{item.confidence_score || 0}%</span>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7 text-muted-foreground hover:text-destructive"
+                          onClick={(e) => handleDelete(e, item.id)}
+                          disabled={deleteMutation.isPending}
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
                       </div>
                     </CardContent>
                   </Card>
