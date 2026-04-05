@@ -533,12 +533,20 @@ export default function Login() {
               />
             </div>
 
-            {loginError && (
+            {loginError && loginError.includes('ACESSO BLOQUEADO') ? (
+              <div className="rounded-lg border-2 border-red-400 bg-red-50 p-4 text-sm text-red-900 space-y-2">
+                {loginError.split('\n').filter(Boolean).map((line, i) => (
+                  <p key={i} className={i === 0 ? 'font-bold text-base' : ''}>
+                    {line}
+                  </p>
+                ))}
+              </div>
+            ) : loginError ? (
               <div className="flex items-center gap-2 rounded-md border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
                 <AlertCircle className="h-4 w-4 flex-shrink-0" />
                 <span>{loginError}</span>
               </div>
-            )}
+            ) : null}
 
             {logoutNotice && (
               <div className="rounded-md border border-warning/40 bg-warning/10 p-3 text-sm text-warning">

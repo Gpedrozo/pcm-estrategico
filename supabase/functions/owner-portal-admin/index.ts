@@ -3818,6 +3818,78 @@ Deno.serve(async (req) => {
     return ok({ success: true }, 200, req);
   }
 
+  // ── Platform contact config (global) ─────────────────────────────────────
+  if (body.action === "get_platform_contact") {
+    const { data, error } = await admin
+      .from("configuracoes_sistema")
+      .select("chave,valor")
+      .is("empresa_id", null)
+      .in("chave", [
+        "platform.contact_email",
+        "platform.contact_whatsapp",
+        "platform.contact_name",
+        "platform.expiry_custom_message",
+        "platform.grace_period_days",
+        "platform.alert_days_before",
+      ]);
+    if (error) return fail(error.message, 400, null, req);
+    const config: Record<string, unknown> = {};
+    for (const row of (data ?? [])) {
+      const key = String((row as any).chave ?? "").replace("platform.", "");
+      let val: unknown = (row as any).valor;
+      if (typeof val === "string") {
+        try { val = JSON.parse(val); } catch { /* keep as string */ }
+      }
+      config[key] = val;
+    }
+    return ok({ config }, 200, req);
+  }
+
+  if (body.action === "update_platform_contact") {
+    if (!body.config) return fail("config object is required", 400, null, req);
+
+    const allowedKeys = [
+      "contact_email",
+      "contact_whatsapp",
+      "contact_name",
+      "expiry_custom_message",
+      "grace_period_days",
+      "alert_days_before",
+    ];
+
+    const rows: { empresa_id: null; chave: string; valor: unknown; tipo: string; categoria: string; descricao: string }[] = [];
+    for (const [key, value] of Object.entries(body.config as Record<string, unknown>)) {
+      if (!allowedKeys.includes(key)) continue;
+      rows.push({
+        empresa_id: null,
+        chave: `platform.${key}`,
+        valor: JSON.stringify(value),
+        tipo: typeof value === "number" ? "NUMBER" : "STRING",
+        categoria: "platform",
+        descricao: `Platform config: ${key}`,
+      });
+    }
+
+    if (rows.length === 0) return fail("No valid config keys provided", 400, null, req);
+
+    for (const row of rows) {
+      const { error } = await admin
+        .from("configuracoes_sistema")
+        .upsert(row, { onConflict: "empresa_id,chave", ignoreDuplicates: false });
+      if (error) {
+        // Try insert if upsert fails (NULL empresa_id edge case)
+        const { error: insertErr } = await admin
+          .from("configuracoes_sistema")
+          .update({ valor: row.valor })
+          .is("empresa_id", null)
+          .eq("chave", row.chave);
+        if (insertErr) return fail(`Failed to save ${row.chave}: ${insertErr.message}`, 400, null, req);
+      }
+    }
+
+    return ok({ success: true }, 200, req);
+  }
+
   if (body.action === "set_user_inactivity_timeout") {
     if (!body.user_id) return fail("user_id is required", 400, null, req);
 

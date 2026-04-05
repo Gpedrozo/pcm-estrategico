@@ -153,6 +153,15 @@ export default function Owner() {
   const [featureApi, setFeatureApi] = useState(false)
   const [featureSso, setFeatureSso] = useState(false)
 
+  // Platform contact config state
+  const [platformContactEmail, setPlatformContactEmail] = useState('')
+  const [platformContactWhatsapp, setPlatformContactWhatsapp] = useState('')
+  const [platformContactName, setPlatformContactName] = useState('')
+  const [platformExpiryMessage, setPlatformExpiryMessage] = useState('')
+  const [platformGraceDays, setPlatformGraceDays] = useState('15')
+  const [platformAlertDays, setPlatformAlertDays] = useState('7')
+  const [platformContactLoaded, setPlatformContactLoaded] = useState(false)
+
   const [ownerName, setOwnerName] = useState('')
   const [ownerEmail, setOwnerEmail] = useState('')
   const [ownerPassword, setOwnerPassword] = useState('')
@@ -212,6 +221,14 @@ export default function Owner() {
   )
   const settingsQuery = useOwner2Settings(companyId || undefined, activeTab === 'configuracoes' || activeTab === 'feature-flags')
   const { execute } = useOwner2Actions()
+
+  // Load platform contact config when configuracoes tab is active
+  useEffect(() => {
+    if (activeTab === 'configuracoes' && !platformContactLoaded) {
+      loadPlatformContact()
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab, platformContactLoaded])
 
   const healthStatus = useMemo(() => {
     if (healthQuery.isError) {
@@ -514,6 +531,21 @@ export default function Owner() {
     } catch (err: any) {
       setError(String(err?.message ?? err ?? 'Falha na operação do Owner.'))
     }
+  }
+
+  async function loadPlatformContact() {
+    if (platformContactLoaded) return
+    try {
+      const res: any = await execute.mutateAsync({ action: 'get_platform_contact', payload: {} })
+      const cfg = res?.config ?? res ?? {}
+      setPlatformContactEmail(cfg.contact_email ?? '')
+      setPlatformContactWhatsapp(cfg.contact_whatsapp ?? '')
+      setPlatformContactName(cfg.contact_name ?? '')
+      setPlatformExpiryMessage(cfg.expiry_custom_message ?? '')
+      setPlatformGraceDays(String(cfg.grace_period_days ?? '15'))
+      setPlatformAlertDays(String(cfg.alert_days_before ?? '7'))
+      setPlatformContactLoaded(true)
+    } catch { /* ignore load error */ }
   }
 
   async function handleCreateCompany() {
@@ -1881,6 +1913,51 @@ export default function Owner() {
                     Excluir empresa definitiva
                   </button>
                 </div>
+              </SurfaceCard>
+
+              <SurfaceCard title="Contato comercial (plataforma)" subtitle="Dados exibidos nos alertas de vencimento e tela de bloqueio.">
+                <div className="space-y-3">
+                  <div>
+                    <label className="text-xs font-medium text-slate-600">Nome do contato</label>
+                    <input className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" value={platformContactName} onChange={(e) => setPlatformContactName(e.target.value)} placeholder="Ex: Suporte PCM" />
+                  </div>
+                  <div>
+                    <label className="text-xs font-medium text-slate-600">E-mail comercial</label>
+                    <input className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" type="email" value={platformContactEmail} onChange={(e) => setPlatformContactEmail(e.target.value)} placeholder="comercial@empresa.com" />
+                  </div>
+                  <div>
+                    <label className="text-xs font-medium text-slate-600">WhatsApp</label>
+                    <input className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" value={platformContactWhatsapp} onChange={(e) => setPlatformContactWhatsapp(e.target.value)} placeholder="+55 11 99999-9999" />
+                  </div>
+                  <div>
+                    <label className="text-xs font-medium text-slate-600">Mensagem personalizada (vencimento)</label>
+                    <textarea className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" rows={2} value={platformExpiryMessage} onChange={(e) => setPlatformExpiryMessage(e.target.value)} placeholder="Exibida no banner de carência" />
+                  </div>
+                  <div className="grid gap-2 sm:grid-cols-2">
+                    <div>
+                      <label className="text-xs font-medium text-slate-600">Dias de alerta antes do vencimento</label>
+                      <input className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" type="number" min="1" max="30" value={platformAlertDays} onChange={(e) => setPlatformAlertDays(e.target.value)} />
+                    </div>
+                    <div>
+                      <label className="text-xs font-medium text-slate-600">Dias de carência após vencimento</label>
+                      <input className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" type="number" min="0" max="90" value={platformGraceDays} onChange={(e) => setPlatformGraceDays(e.target.value)} />
+                    </div>
+                  </div>
+                </div>
+                <button
+                  className="mt-4 rounded-lg bg-sky-700 px-3 py-2 text-sm font-semibold text-white"
+                  disabled={busy}
+                  onClick={() => runAction('update_platform_contact', {
+                    contact_email: platformContactEmail,
+                    contact_whatsapp: platformContactWhatsapp,
+                    contact_name: platformContactName,
+                    expiry_custom_message: platformExpiryMessage,
+                    grace_period_days: Number(platformGraceDays) || 15,
+                    alert_days_before: Number(platformAlertDays) || 7,
+                  }, 'Contato comercial salvo com sucesso.')}
+                >
+                  Salvar contato comercial
+                </button>
               </SurfaceCard>
             </div>
           )}

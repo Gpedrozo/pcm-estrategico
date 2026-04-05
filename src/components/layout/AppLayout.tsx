@@ -35,20 +35,59 @@ export function AppLayout() {
   const { data: subscriptionAlert } = useSubscriptionAlert();
   const [subscriptionAlertDismissed, setSubscriptionAlertDismissed] = useState(false);
 
-  const subscriptionAlertMessage = useMemo(() => {
-    if (!subscriptionAlert || subscriptionAlertDismissed) return null;
-    const { status, renewal_at, plan_name } = subscriptionAlert;
+  const subscriptionAlertInfo = useMemo((): { message: string; severity: 'warning' | 'danger'; dismissable: boolean } | null => {
+    if (!subscriptionAlert) return null;
+    const { status, renewal_at, ends_at, plan_name, contact_email, contact_whatsapp, contact_name, custom_message, grace_period_days, alert_days_before } = subscriptionAlert;
+
+    const contactParts: string[] = [];
+    if (contact_name) contactParts.push(contact_name);
+    if (contact_email) contactParts.push(contact_email);
+    if (contact_whatsapp) contactParts.push(`WhatsApp ${contact_whatsapp}`);
+    const contactLabel = contactParts.length ? ` Contato: ${contactParts.join(' • ')}` : '';
+
+    // --- Expiry countdown (highest priority) ---
+    if (ends_at && (status === 'active' || status === 'ativo' || status === 'past_due')) {
+      const endsAtDate = new Date(ends_at);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      endsAtDate.setHours(0, 0, 0, 0);
+      const diffMs = endsAtDate.getTime() - today.getTime();
+      const daysUntil = Math.ceil(diffMs / 86_400_000);
+
+      if (daysUntil <= 0) {
+        // Expired — grace period
+        const daysPast = Math.abs(daysUntil);
+        const remaining = grace_period_days - daysPast;
+        if (remaining > 0) {
+          const msg = custom_message
+            ? `${custom_message} (${remaining} dias restantes de carência).${contactLabel}`
+            : `Seu plano${plan_name ? ` ${plan_name}` : ''} venceu há ${daysPast} dia(s). Restam ${remaining} dia(s) de carência antes do bloqueio.${contactLabel}`;
+          return { message: msg, severity: 'danger', dismissable: false };
+        }
+        // Past grace — empresa should be blocked by cron, but show anyway
+        return { message: `Seu plano está vencido e a carência expirou. Acesso será bloqueado em breve.${contactLabel}`, severity: 'danger', dismissable: false };
+      }
+
+      if (daysUntil <= alert_days_before) {
+        const msg = `Seu plano${plan_name ? ` ${plan_name}` : ''} vence em ${daysUntil} dia(s) (${endsAtDate.toLocaleDateString('pt-BR')}). Renove para evitar interrupção.${contactLabel}`;
+        return { message: msg, severity: 'warning', dismissable: true };
+      }
+    }
+
+    // --- Existing status-based alerts ---
+    if (subscriptionAlertDismissed) return null;
+
     if (status === 'cancelled' || status === 'suspended') {
-      return `Sua assinatura ${plan_name ? `(${plan_name}) ` : ''}está ${status === 'cancelled' ? 'cancelada' : 'suspensa'}. Entre em contato com o suporte para reativar.`;
+      return { message: `Sua assinatura ${plan_name ? `(${plan_name}) ` : ''}está ${status === 'cancelled' ? 'cancelada' : 'suspensa'}. Entre em contato com o suporte para reativar.${contactLabel}`, severity: 'danger', dismissable: true };
     }
     if (status === 'past_due') {
-      return `Sua assinatura ${plan_name ? `(${plan_name}) ` : ''}está com pagamento atrasado. Regularize para evitar bloqueio.`;
+      return { message: `Sua assinatura ${plan_name ? `(${plan_name}) ` : ''}está com pagamento atrasado. Regularize para evitar bloqueio.${contactLabel}`, severity: 'warning', dismissable: true };
     }
     if (status === 'trial' || status === 'teste') {
       const expiresLabel = renewal_at
         ? ` até ${new Date(renewal_at).toLocaleDateString('pt-BR')}`
         : '';
-      return `Você está no período de teste${plan_name ? ` do plano ${plan_name}` : ''}${expiresLabel}. Contrate um plano para garantir a continuidade.`;
+      return { message: `Você está no período de teste${plan_name ? ` do plano ${plan_name}` : ''}${expiresLabel}. Contrate um plano para garantir a continuidade.`, severity: 'warning', dismissable: true };
     }
     return null;
   }, [subscriptionAlert, subscriptionAlertDismissed]);
@@ -408,19 +447,21 @@ export function AppLayout() {
               </div>
             </div>
           )}
-          {subscriptionAlertMessage && (
-            <div className="border-b border-red-300/40 bg-red-50 px-4 py-2 text-red-900">
+          {subscriptionAlertInfo && (
+            <div className={`border-b px-4 py-2 ${subscriptionAlertInfo.severity === 'danger' ? 'border-red-300/40 bg-red-50 text-red-900' : 'border-amber-300/40 bg-amber-50 text-amber-900'}`}>
               <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
                 <p className="flex items-center gap-1.5 font-medium">
                   <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
-                  {subscriptionAlertMessage}
+                  {subscriptionAlertInfo.message}
                 </p>
-                <button
-                  onClick={() => setSubscriptionAlertDismissed(true)}
-                  className="rounded border border-red-400 px-2 py-1 hover:bg-red-100"
-                >
-                  Fechar
-                </button>
+                {subscriptionAlertInfo.dismissable && (
+                  <button
+                    onClick={() => setSubscriptionAlertDismissed(true)}
+                    className={`rounded border px-2 py-1 ${subscriptionAlertInfo.severity === 'danger' ? 'border-red-400 hover:bg-red-100' : 'border-amber-400 hover:bg-amber-100'}`}
+                  >
+                    Fechar
+                  </button>
+                )}
               </div>
             </div>
           )}

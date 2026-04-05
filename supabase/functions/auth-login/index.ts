@@ -401,6 +401,70 @@ Deno.serve(async (req) => {
       }
     }
 
+    // ── Check empresa status — block if company is blocked ─────────────
+    if (admin && tenant?.id) {
+      try {
+        const { data: empresa } = await admin
+          .from("empresas")
+          .select("status")
+          .eq("id", tenant.id)
+          .maybeSingle();
+
+        const empresaStatus = String(empresa?.status ?? "active").toLowerCase();
+
+        if (empresaStatus === "blocked") {
+          // Fetch platform contact config for the error response
+          let contactEmail = "";
+          let contactWhatsapp = "";
+          let contactName = "";
+          let customMessage = "";
+
+          const { data: configRows } = await admin
+            .from("configuracoes_sistema")
+            .select("chave,valor")
+            .is("empresa_id", null)
+            .in("chave", [
+              "platform.contact_email",
+              "platform.contact_whatsapp",
+              "platform.contact_name",
+              "platform.expiry_custom_message",
+            ]);
+
+          for (const row of (configRows ?? [])) {
+            const r = row as Record<string, unknown>;
+            const chave = String(r.chave ?? "");
+            let val = r.valor;
+            if (typeof val === "string") {
+              try { val = JSON.parse(val); } catch { /* keep */ }
+            }
+            const sVal = String(val ?? "").trim();
+            if (chave === "platform.contact_email") contactEmail = sVal;
+            if (chave === "platform.contact_whatsapp") contactWhatsapp = sVal;
+            if (chave === "platform.contact_name") contactName = sVal;
+            if (chave === "platform.expiry_custom_message") customMessage = sVal;
+          }
+
+          console.warn("[auth-login] empresa blocked, denying login", {
+            empresa_id: tenant.id,
+            empresa_status: empresaStatus,
+            user_email: email,
+          });
+
+          return fail("subscription_expired", 403, {
+            code: "subscription_expired",
+            contact_email: contactEmail || null,
+            contact_whatsapp: contactWhatsapp || null,
+            contact_name: contactName || null,
+            custom_message: customMessage || null,
+          }, req);
+        }
+      } catch (checkErr: any) {
+        console.error("[auth-login] empresa status check degraded (allowing login)", {
+          reason: checkErr?.message ?? String(checkErr),
+        });
+      }
+    }
+
     if (admin) {
       const { error: clearAttemptsError } = await admin
         .from("login_attempts")

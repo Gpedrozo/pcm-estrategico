@@ -1014,10 +1014,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     let refreshToken: string | null = null;
     let providerStatus: number | null = null;
     let providerErrorMessage = '';
+    let providerPayload: any = null;
 
     if (ownerDomain) {
       const ownerSignIn = await signInThroughOwnerEdge(email, password);
       providerStatus = ownerSignIn.status;
+      providerPayload = ownerSignIn.payload;
 
       if (!ownerSignIn.ok) {
         providerErrorMessage = ownerSignIn.message || 'Owner login failed';
@@ -1059,6 +1061,29 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       let message = 'Falha ao autenticar. Tente novamente.';
       const normalizedError = String(providerErrorMessage ?? '').trim().toLowerCase();
+
+      // ── Subscription expired — special handling ──────────────────────
+      if (normalizedError.includes('subscription_expired') || providerStatus === 403) {
+        const details = providerPayload?.details ?? providerPayload?.context ?? {};
+        const contactEmail = String(details?.contact_email ?? '').trim();
+        const contactWhatsapp = String(details?.contact_whatsapp ?? '').trim();
+        const contactName = String(details?.contact_name ?? '').trim();
+        const customMessage = String(details?.custom_message ?? '').trim();
+
+        const contactParts: string[] = [];
+        if (contactEmail) contactParts.push(`Email: ${contactEmail}`);
+        if (contactWhatsapp) contactParts.push(`WhatsApp: ${contactWhatsapp}`);
+
+        message = customMessage
+          || `Seu plano venceu e o acesso foi bloqueado.${contactName ? ` Entre em contato com ${contactName}` : ' Entre em contato com o representante'} para renovar sua assinatura.${contactParts.length ? '\n' + contactParts.join(' | ') : ''}`;
+
+        transitionAuthStatus('unauthenticated', 'login_blocked_subscription_expired', {
+          contact_email: contactEmail || null,
+          contact_whatsapp: contactWhatsapp || null,
+        });
+
+        return { error: message };
+      }
 
       if (normalizedError.includes('invalid login credentials') || normalizedError.includes('invalid credentials')) {
         message = 'Email ou senha inválidos';
