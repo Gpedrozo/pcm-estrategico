@@ -38,37 +38,33 @@ export default function DeviceBindingScreen() {
     }
     setLoading(true);
     try {
-      // QR expected format: JSON {"empresa_id":"uuid","empresa_nome":"Nome"}
-      // or URL with params ?empresa_id=...&empresa_nome=...
-      let empresaId = '';
-      let empresaNome = '';
+      // QR format: URL like https://app.pcmestrategico.com.br/app/vincular?token=UUID
+      // or raw UUID token
+      let qrToken = trimmed;
 
+      // Try to extract token from URL
       try {
-        const parsed = JSON.parse(trimmed);
-        empresaId = parsed.empresa_id || parsed.empresaId || '';
-        empresaNome = parsed.empresa_nome || parsed.empresaNome || parsed.nome || '';
+        const url = new URL(trimmed);
+        const tokenParam = url.searchParams.get('token') || url.searchParams.get('t');
+        if (tokenParam) qrToken = tokenParam;
       } catch {
-        // Try URL format
-        try {
-          const url = new URL(trimmed);
-          empresaId = url.searchParams.get('empresa_id') || url.searchParams.get('empresaId') || '';
-          empresaNome = url.searchParams.get('empresa_nome') || url.searchParams.get('empresaNome') || '';
-        } catch {
-          // Last resort: treat as raw empresa_id
-          empresaId = trimmed;
-          empresaNome = 'Empresa';
-        }
+        // Not a URL — might be raw token UUID, use as-is
       }
 
-      if (!empresaId) {
-        Alert.alert('Erro', 'Código QR não contém empresa_id válido.');
+      if (!qrToken) {
+        Alert.alert('Erro', 'QR Code inválido. Gere um novo código em Central Admin → Dispositivos.');
         setLoading(false);
         setScanned(false);
         return;
       }
 
-      await bindDevice(empresaId, empresaNome || 'Empresa');
-      // AuthContext sets isDeviceBound=true → navigator switches to Login
+      const result = await bindDevice(qrToken);
+      if (!result.ok) {
+        Alert.alert('Erro ao vincular', result.error || 'Falha na vinculação. Verifique se o QR Code é válido e não expirou.');
+        setLoading(false);
+        setScanned(false);
+      }
+      // If ok, AuthContext sets isDeviceBound=true → navigator switches to Login
     } catch (err: any) {
       Alert.alert('Erro ao vincular', err?.message || 'Tente novamente.');
       setLoading(false);

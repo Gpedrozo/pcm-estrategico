@@ -4,12 +4,15 @@
 
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Platform } from 'react-native';
 import { supabase } from '../lib/supabase';
 import type { Mecanico } from '../types';
 
 const STORAGE_KEYS = {
   EMPRESA_ID: '@pcm:empresa_id',
   EMPRESA_NOME: '@pcm:empresa_nome',
+  DEVICE_TOKEN: '@pcm:device_token',
+  DEVICE_ID: '@pcm:device_id',
   MECANICO_ID: '@pcm:mecanico_id',
   MECANICO_NOME: '@pcm:mecanico_nome',
   MECANICO_CODIGO: '@pcm:mecanico_codigo',
@@ -27,7 +30,7 @@ interface AuthState {
 }
 
 interface AuthContextValue extends AuthState {
-  bindDevice: (empresaId: string, empresaNome: string) => Promise<void>;
+  bindDevice: (qrToken: string) => Promise<{ ok: boolean; error?: string }>;
   unbindDevice: () => Promise<void>;
   login: (codigo: string, senha: string) => Promise<{ ok: boolean; error?: string }>;
   logout: () => Promise<void>;
@@ -82,16 +85,47 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     })();
   }, []);
 
-  // ── Bind device to an empresa (via QR code data) ──
-  const bindDevice = useCallback(async (empresaId: string, empresaNome: string) => {
-    await AsyncStorage.setItem(STORAGE_KEYS.EMPRESA_ID, empresaId);
-    await AsyncStorage.setItem(STORAGE_KEYS.EMPRESA_NOME, empresaNome);
-    setState((s) => ({
-      ...s,
-      isDeviceBound: true,
-      empresaId,
-      empresaNome,
-    }));
+  // ── Bind device via QR token → RPC vincular_dispositivo ──
+  const bindDevice = useCallback(async (qrToken: string): Promise<{ ok: boolean; error?: string }> => {
+    try {
+      // Generate a stable device_id per installation
+      let deviceId = await AsyncStorage.getItem(STORAGE_KEYS.DEVICE_ID);
+      if (!deviceId) {
+        deviceId = 'rn-' + Math.random().toString(36).slice(2) + '-' + Date.now().toString(36);
+        await AsyncStorage.setItem(STORAGE_KEYS.DEVICE_ID, deviceId);
+      }
+
+      const { data, error } = await supabase.rpc('vincular_dispositivo', {
+        p_qr_token: qrToken,
+        p_device_id: deviceId,
+        p_device_nome: Platform.OS === 'ios' ? 'iPhone' : 'Android',
+        p_device_os: `${Platform.OS} ${Platform.Version}`,
+      });
+
+      if (error) return { ok: false, error: error.message };
+
+      const result = typeof data === 'string' ? JSON.parse(data) : data;
+      if (!result?.ok) return { ok: false, error: result?.error || 'Falha na vinculação' };
+
+      const empresaId = result.empresa_id;
+      const empresaNome = result.empresa_nome || 'Empresa';
+      const deviceToken = result.device_token;
+
+      await AsyncStorage.setItem(STORAGE_KEYS.EMPRESA_ID, empresaId);
+      await AsyncStorage.setItem(STORAGE_KEYS.EMPRESA_NOME, empresaNome);
+      if (deviceToken) await AsyncStorage.setItem(STORAGE_KEYS.DEVICE_TOKEN, deviceToken);
+
+      setState((s) => ({
+        ...s,
+        isDeviceBound: true,
+        empresaId,
+        empresaNome,
+      }));
+
+      return { ok: true };
+    } catch (err: any) {
+      return { ok: false, error: err?.message || 'Erro ao vincular dispositivo' };
+    }
   }, []);
 
   // ── Unbind device (clear everything) ──
