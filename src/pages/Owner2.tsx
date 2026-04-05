@@ -1081,30 +1081,98 @@ export default function Owner() {
                 )}
               </SurfaceCard>
 
-              {plans.length > 0 && (
-                <SurfaceCard title="Planos disponíveis" subtitle="Referência rápida">
-                  <div className="max-h-[360px] overflow-auto rounded-xl border border-slate-200">
+              <div className="space-y-4">
+                {plans.length > 0 && (
+                  <SurfaceCard title="Planos disponíveis" subtitle="Referência rápida">
+                    <div className="max-h-[360px] overflow-auto rounded-xl border border-slate-200">
+                      <table className="w-full text-xs">
+                        <thead className="bg-slate-100">
+                          <tr>
+                            <th className="px-2 py-2 text-left">Plano</th>
+                            <th className="px-2 py-2 text-left">Preço/mês</th>
+                            <th className="px-2 py-2 text-left">Status</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {plans.map((p) => (
+                            <tr key={String(p.id)} className="border-t border-slate-200">
+                              <td className="px-2 py-2 font-medium">{String(p.name ?? p.code ?? '-')}</td>
+                              <td className="px-2 py-2">R$ {Number(p.price_month ?? 0).toFixed(2)}</td>
+                              <td className="px-2 py-2">{String(p.status ?? '-')}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </SurfaceCard>
+                )}
+
+                <SurfaceCard title="Ações rápidas da empresa selecionada">
+                  <div className="grid gap-2 sm:grid-cols-2">
+                    <button className="rounded-lg border border-slate-300 px-3 py-2 text-sm" disabled={busy || !companyId} onClick={() => runAction('set_company_status', { empresa_id: companyId, status: 'active' }, 'Empresa ativada.')}>Ativar</button>
+                    <button className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-700" disabled={busy || !companyId} onClick={() => runAction('set_company_status', { empresa_id: companyId, status: 'blocked' }, 'Empresa bloqueada.')}>Bloquear</button>
+                    <button
+                      className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-700"
+                      disabled={busy || !companyId}
+                      onClick={() => openCriticalAction({
+                        title: 'Limpeza completa de dados',
+                        description: 'Remove dados operacionais da empresa. Mantenha apenas se tiver backup validado.',
+                        confirmText: 'LIMPAR',
+                        action: 'cleanup_company_data',
+                        payload: { empresa_id: companyId, keep_company_core: false, keep_billing_data: false, include_auth_users: true },
+                        successMessage: 'Limpeza completa executada.',
+                      })}
+                    >
+                      Limpeza completa
+                    </button>
+                    <button
+                      className="rounded-lg border border-rose-300 bg-rose-50 px-3 py-2 text-sm text-rose-700"
+                      disabled={busy || !companyId || !isOwnerMaster}
+                      onClick={() => openCriticalAction({
+                        title: 'Exclusão definitiva da empresa',
+                        description: 'Esta ação é irreversível e remove dados da empresa selecionada.',
+                        confirmText: 'EXCLUIR',
+                        action: 'delete_company',
+                        payload: { empresa_id: companyId, include_auth_users: true },
+                        successMessage: 'Empresa excluída definitivamente.',
+                        masterOnly: true,
+                      })}
+                    >
+                      Excluir empresa
+                    </button>
+                  </div>
+                </SurfaceCard>
+              </div>
+
+              <div className="xl:col-span-2">
+                <SurfaceCard title="Empresas cadastradas">
+                  <div className="max-h-[420px] overflow-auto rounded-xl border border-slate-200">
                     <table className="w-full text-xs">
                       <thead className="bg-slate-100">
                         <tr>
-                          <th className="px-2 py-2 text-left">Plano</th>
-                          <th className="px-2 py-2 text-left">Preço/mês</th>
+                          <th className="px-2 py-2 text-left">ID</th>
+                          <th className="px-2 py-2 text-left">Nome</th>
+                          <th className="px-2 py-2 text-left">Slug</th>
                           <th className="px-2 py-2 text-left">Status</th>
                         </tr>
                       </thead>
                       <tbody>
-                        {plans.map((p) => (
-                          <tr key={String(p.id)} className="border-t border-slate-200">
-                            <td className="px-2 py-2 font-medium">{String(p.name ?? p.code ?? '-')}</td>
-                            <td className="px-2 py-2">R$ {Number(p.price_month ?? 0).toFixed(2)}</td>
-                            <td className="px-2 py-2">{String(p.status ?? '-')}</td>
-                          </tr>
-                        ))}
+                        {companies.map((c) => {
+                          const st = String(c.status ?? '-')
+                          return (
+                            <tr key={String(c.id)} className="border-t border-slate-200 cursor-pointer hover:bg-slate-50" onClick={() => setCompanyId(String(c.id ?? ''))}>
+                              <td className="px-2 py-2">{String(c.id ?? '-')}</td>
+                              <td className="px-2 py-2">{String(c.nome ?? '-')}</td>
+                              <td className="px-2 py-2">{String(c.slug ?? '-')}</td>
+                              <td className="px-2 py-2"><span className={`rounded border px-2 py-0.5 ${statusColor(st)}`}>{st}</span></td>
+                            </tr>
+                          )
+                        })}
                       </tbody>
                     </table>
                   </div>
                 </SurfaceCard>
-              )}
+              </div>
             </div>
           )}
 
