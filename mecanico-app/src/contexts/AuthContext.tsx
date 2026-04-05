@@ -151,51 +151,32 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     });
   }, []);
 
-  // ── Login mecânico with código + senha ──
+  // ── Login mecânico via RPC (anon-safe, SECURITY DEFINER) ──
   const login = useCallback(
     async (codigo: string, senha: string): Promise<{ ok: boolean; error?: string }> => {
       if (!state.empresaId) return { ok: false, error: 'Dispositivo não vinculado' };
 
       try {
-        // 1. Find mecanico by codigo_acesso
-        const { data: mecanico, error: findError } = await supabase
-          .from('mecanicos')
-          .select('id, nome, codigo_acesso, senha_acesso, ativo, ferias_inicio, ferias_fim')
-          .eq('empresa_id', state.empresaId)
-          .eq('codigo_acesso', codigo.toUpperCase())
-          .is('deleted_at', null)
-          .eq('ativo', true)
-          .maybeSingle();
+        const { data: result, error: rpcError } = await supabase.rpc('login_mecanico', {
+          p_empresa_id: state.empresaId,
+          p_codigo: codigo,
+          p_senha: senha,
+        });
 
-        if (findError) return { ok: false, error: 'Erro ao buscar mecânico' };
-        if (!mecanico) return { ok: false, error: 'Código de acesso não encontrado' };
+        if (rpcError) return { ok: false, error: rpcError.message || 'Erro ao autenticar' };
+        if (!result || !result.ok) return { ok: false, error: result?.error || 'Código de acesso não encontrado' };
 
-        // 2. Validate password via RPC (or direct compare as fallback)
-        let passwordValid = false;
-        try {
-          const { data: rpcResult } = await supabase.rpc('validar_senha_mecanico', {
-            p_mecanico_id: mecanico.id,
-            p_senha: senha,
-          });
-          passwordValid = rpcResult === true;
-        } catch {
-          // Fallback: direct compare (if RPC not available)
-          passwordValid = !mecanico.senha_acesso || mecanico.senha_acesso === senha;
-        }
-
-        if (!passwordValid) return { ok: false, error: 'Senha incorreta' };
-
-        // 3. Persist login
-        await AsyncStorage.setItem(STORAGE_KEYS.MECANICO_ID, mecanico.id);
-        await AsyncStorage.setItem(STORAGE_KEYS.MECANICO_NOME, mecanico.nome);
-        await AsyncStorage.setItem(STORAGE_KEYS.MECANICO_CODIGO, codigo.toUpperCase());
+        // Persist login
+        await AsyncStorage.setItem(STORAGE_KEYS.MECANICO_ID, result.mecanico_id);
+        await AsyncStorage.setItem(STORAGE_KEYS.MECANICO_NOME, result.mecanico_nome);
+        await AsyncStorage.setItem(STORAGE_KEYS.MECANICO_CODIGO, result.codigo_acesso);
 
         setState((s) => ({
           ...s,
           isLoggedIn: true,
-          mecanicoId: mecanico.id,
-          mecanicoNome: mecanico.nome,
-          mecanicoCodigo: codigo.toUpperCase(),
+          mecanicoId: result.mecanico_id,
+          mecanicoNome: result.mecanico_nome,
+          mecanicoCodigo: result.codigo_acesso,
         }));
 
         return { ok: true };
