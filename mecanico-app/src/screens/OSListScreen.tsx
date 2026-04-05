@@ -17,7 +17,7 @@ import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useAuth } from '../contexts/AuthContext';
 import { getOrdensServico, getOSStats } from '../lib/database';
-import { runSyncCycle } from '../lib/syncEngine';
+import { runSyncCycle, onSyncComplete } from '../lib/syncEngine';
 import OSCard from '../components/OSCard';
 import EmptyState from '../components/EmptyState';
 import { COLORS, SIZES } from '../theme';
@@ -60,6 +60,12 @@ export default function OSListScreen() {
     return unsub;
   }, [navigation, loadData]);
 
+  // Reload when background sync completes
+  useEffect(() => {
+    const unsub = onSyncComplete(() => { loadData(); });
+    return unsub;
+  }, [loadData]);
+
   const onRefresh = async () => {
     setRefreshing(true);
     try {
@@ -70,7 +76,6 @@ export default function OSListScreen() {
     }
   };
 
-  // Filtrar por busca textual (equipamento/problema/número)
   const filtradas = busca.trim()
     ? ordens.filter((o) => {
         const term = busca.toLowerCase();
@@ -85,7 +90,6 @@ export default function OSListScreen() {
 
   return (
     <View style={styles.container}>
-      {/* Header */}
       <View style={styles.header}>
         <Text style={styles.headerTitle}>📋 ORDENS DE SERVIÇO</Text>
         <Text style={styles.headerSub}>
@@ -93,7 +97,6 @@ export default function OSListScreen() {
         </Text>
       </View>
 
-      {/* Busca */}
       <View style={styles.searchRow}>
         <TextInput
           style={styles.searchInput}
@@ -105,7 +108,6 @@ export default function OSListScreen() {
         />
       </View>
 
-      {/* Filtros */}
       <FlatList
         horizontal
         data={FILTROS_STATUS}
@@ -124,7 +126,6 @@ export default function OSListScreen() {
         contentContainerStyle={styles.filtrosRow}
       />
 
-      {/* Botão Abrir OS */}
       <TouchableOpacity
         style={styles.criarBtn}
         onPress={() => navigation.navigate('CriarOS')}
@@ -133,7 +134,6 @@ export default function OSListScreen() {
         <Text style={styles.criarBtnText}>➕  ABRIR NOVA O.S.</Text>
       </TouchableOpacity>
 
-      {/* Lista */}
       <FlatList
         data={filtradas}
         keyExtractor={(item) => item.id}
@@ -158,80 +158,27 @@ export default function OSListScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: COLORS.background,
-  },
-  header: {
-    backgroundColor: COLORS.headerBg,
-    paddingTop: 50,
-    paddingBottom: 12,
-    paddingHorizontal: SIZES.paddingLG,
-  },
-  headerTitle: {
-    fontSize: SIZES.fontLG,
-    fontWeight: '800',
-    color: '#FFF',
-  },
-  headerSub: {
-    fontSize: SIZES.fontSM,
-    color: 'rgba(255,255,255,0.7)',
-    marginTop: 4,
-  },
-  searchRow: {
-    paddingHorizontal: SIZES.paddingMD,
-    paddingTop: SIZES.paddingMD,
-  },
+  container: { flex: 1, backgroundColor: COLORS.background },
+  header: { backgroundColor: COLORS.headerBg, paddingTop: 50, paddingBottom: 12, paddingHorizontal: SIZES.paddingLG },
+  headerTitle: { fontSize: SIZES.fontLG, fontWeight: '800', color: '#FFF' },
+  headerSub: { fontSize: SIZES.fontSM, color: 'rgba(255,255,255,0.7)', marginTop: 4 },
+  searchRow: { paddingHorizontal: SIZES.paddingMD, paddingTop: SIZES.paddingMD },
   searchInput: {
-    height: SIZES.inputHeight,
-    backgroundColor: COLORS.surface,
-    borderRadius: SIZES.radiusSM,
-    paddingHorizontal: 16,
-    fontSize: SIZES.fontMD,
-    color: COLORS.textPrimary,
-    borderWidth: 1,
-    borderColor: COLORS.border,
+    height: SIZES.inputHeight, backgroundColor: COLORS.surface, borderRadius: SIZES.radiusSM,
+    paddingHorizontal: 16, fontSize: SIZES.fontMD, color: COLORS.textPrimary, borderWidth: 1, borderColor: COLORS.border,
   },
-  filtrosRow: {
-    paddingHorizontal: SIZES.paddingMD,
-    paddingVertical: 12,
-    gap: 8,
-  },
+  filtrosRow: { paddingHorizontal: SIZES.paddingMD, paddingVertical: 12, gap: 8 },
   filtroBtn: {
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 20,
-    backgroundColor: COLORS.surface,
-    borderWidth: 1,
-    borderColor: COLORS.border,
+    paddingHorizontal: 16, paddingVertical: 10, borderRadius: 20,
+    backgroundColor: COLORS.surface, borderWidth: 1, borderColor: COLORS.border,
   },
-  filtroBtnActive: {
-    backgroundColor: COLORS.primary,
-    borderColor: COLORS.primary,
-  },
-  filtroText: {
-    fontSize: SIZES.fontSM,
-    fontWeight: '600',
-    color: COLORS.textSecondary,
-  },
-  filtroTextActive: {
-    color: '#FFF',
-  },
+  filtroBtnActive: { backgroundColor: COLORS.primary, borderColor: COLORS.primary },
+  filtroText: { fontSize: SIZES.fontSM, fontWeight: '600', color: COLORS.textSecondary },
+  filtroTextActive: { color: '#FFF' },
   criarBtn: {
-    marginHorizontal: SIZES.paddingMD,
-    marginBottom: 12,
-    height: 52,
-    borderRadius: SIZES.radiusMD,
-    backgroundColor: COLORS.success,
-    justifyContent: 'center',
-    alignItems: 'center',
+    marginHorizontal: SIZES.paddingMD, marginBottom: 12, height: 52,
+    borderRadius: SIZES.radiusMD, backgroundColor: COLORS.success, justifyContent: 'center', alignItems: 'center',
   },
-  criarBtnText: {
-    fontSize: SIZES.fontMD,
-    fontWeight: '800',
-    color: '#FFF',
-  },
-  listContent: {
-    paddingBottom: 100,
-  },
+  criarBtnText: { fontSize: SIZES.fontMD, fontWeight: '800', color: '#FFF' },
+  listContent: { paddingBottom: 100 },
 });

@@ -455,9 +455,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (elapsed > INACTIVITY_TIMEOUT_MS && state.isAuthenticated && !isAuthenticatingRef.current) {
           // Session expired — re-authenticate silently (single attempt)
           authenticateDevice();
-        } else {
-          updateActivity();
+        } else if (state.isAuthenticated) {
+          // Always trigger a sync when returning to foreground
+          runSyncCycle();
         }
+        updateActivity();
       }
     };
 

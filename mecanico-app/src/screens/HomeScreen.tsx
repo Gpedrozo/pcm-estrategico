@@ -16,7 +16,7 @@ import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useAuth } from '../contexts/AuthContext';
 import { getOrdensServico, getOSStats, getProximaOS, getSyncQueueCount, getSolicitacoesStats, getDB } from '../lib/database';
-import { runSyncCycle, isOnline } from '../lib/syncEngine';
+import { runSyncCycle, isOnline, onSyncComplete } from '../lib/syncEngine';
 import OSCard from '../components/OSCard';
 import EmptyState from '../components/EmptyState';
 import { COLORS, SIZES } from '../theme';
@@ -30,10 +30,11 @@ export default function HomeScreen() {
   const [solicStats, setSolicStats] = useState({ pendentes: 0, aprovadas: 0, total: 0 });
   const [ordens, setOrdens] = useState<OrdemServico[]>([]);
   const [refreshing, setRefreshing] = useState(false);
-  const [syncStatus, setSyncStatus] = useState<'online' | 'pending' | 'offline'>('online');
+  const [syncStatus, setSyncStatus] = useState<'syncing' | 'online' | 'pending' | 'offline'>('syncing');
   const [pendingCount, setPendingCount] = useState(0);
   const [meusOsIds, setMeusOsIds] = useState<Set<string>>(new Set());
   const [initialSyncDone, setInitialSyncDone] = useState(false);
+  const [dataLoaded, setDataLoaded] = useState(false);
 
   const loadData = useCallback(async () => {
     if (!empresaId) return;
@@ -48,10 +49,11 @@ export default function HomeScreen() {
       setStats(s);
       setOrdens(os);
       setPendingCount(pending);
-      setSyncStatus(!online ? 'offline' : pending > 0 ? 'pending' : 'online');
       setSolicStats(ss);
 
       if (os.length === 0 && online && !initialSyncDone) {
+        // First load with empty local DB — force immediate full sync
+        setSyncStatus('syncing');
         setInitialSyncDone(true);
         await runSyncCycle(true);
         const [s2, os2, ss2] = await Promise.all([
@@ -62,7 +64,11 @@ export default function HomeScreen() {
         setStats(s2);
         setOrdens(os2);
         setSolicStats(ss2);
+        setSyncStatus('online');
+      } else {
+        setSyncStatus(!online ? 'offline' : pending > 0 ? 'pending' : 'online');
       }
+      setDataLoaded(true);
 
       if (mecanicoId) {
         const db = await getDB();
@@ -82,6 +88,12 @@ export default function HomeScreen() {
     const unsub = navigation.addListener('focus', loadData);
     return unsub;
   }, [navigation, loadData]);
+
+  // Reload data whenever a background sync cycle completes
+  useEffect(() => {
+    const unsub = onSyncComplete(() => { loadData(); });
+    return unsub;
+  }, [loadData]);
 
   const onRefresh = async () => {
     setRefreshing(true);
@@ -109,8 +121,8 @@ export default function HomeScreen() {
   const outrasOS = osAtivas.filter((o) => !meusOsIds.has(o.id) && o.solicitante !== mecanicoNome);
   const osOrdenadas = [...minhasOS, ...outrasOS];
 
-  const syncColor = syncStatus === 'online' ? COLORS.success : syncStatus === 'pending' ? COLORS.warning : COLORS.critical;
-  const syncLabel = syncStatus === 'online' ? '🟢 Sincronizado' : syncStatus === 'pending' ? `🟡 ${pendingCount} pendência${pendingCount !== 1 ? 's' : ''}` : '🔴 Offline';
+  const syncColor = syncStatus === 'syncing' ? COLORS.primary : syncStatus === 'online' ? COLORS.success : syncStatus === 'pending' ? COLORS.warning : COLORS.critical;
+  const syncLabel = syncStatus === 'syncing' ? '🔄 Sincronizando...' : syncStatus === 'online' ? '🟢 Sincronizado' : syncStatus === 'pending' ? `🟡 ${pendingCount} pendência${pendingCount !== 1 ? 's' : ''}` : '🔴 Offline';
 
   return (
     <View style={styles.container}>
@@ -217,9 +229,9 @@ export default function HomeScreen() {
         }
         ListEmptyComponent={
           <EmptyState
-            icon="✅"
-            title="Tudo em dia!"
-            subtitle="Nenhuma OS pendente. Puxe para baixo para atualizar."
+            icon={!dataLoaded ? '🔄' : '✅'}
+            title={!dataLoaded ? 'Carregando dados...' : 'Tudo em dia!'}
+            subtitle={!dataLoaded ? 'Sincronizando com o servidor...' : 'Nenhuma OS pendente. Puxe para baixo para atualizar.'}
           />
         }
       />

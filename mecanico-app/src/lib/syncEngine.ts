@@ -26,6 +26,23 @@ const MAX_RETRIES = 5;
 let syncTimer: ReturnType<typeof setTimeout> | null = null;
 let syncPromise: Promise<{ pushed: number; pulled: boolean }> | null = null;
 
+// ============================================================
+// Sync event listeners — notify consumers when sync completes
+// ============================================================
+
+type SyncListener = () => void;
+const syncListeners: Set<SyncListener> = new Set();
+
+/** Register a callback invoked after every successful sync cycle. Returns unsubscribe fn. */
+export function onSyncComplete(fn: SyncListener): () => void {
+  syncListeners.add(fn);
+  return () => { syncListeners.delete(fn); };
+}
+
+function notifySyncListeners() {
+  syncListeners.forEach((fn) => { try { fn(); } catch {} });
+}
+
 export async function isOnline(): Promise<boolean> {
   try {
     const state = await Network.getNetworkStateAsync();
@@ -419,6 +436,9 @@ export async function runSyncCycle(forceFullRefresh = false): Promise<{ pushed: 
         await pullData(empresaId, forceFullRefresh, db);
       }
 
+      // Notify listeners (HomeScreen, etc.) that fresh data is available
+      notifySyncListeners();
+
       return { pushed, pulled: !!empresaId };
     } catch (err) {
       console.error('[sync] cycle error:', err);
@@ -457,7 +477,7 @@ export function startSyncTimer() {
     syncTimer = setTimeout(tick, backoffMs);
   }
 
-  syncTimer = setTimeout(tick, 5000); // First sync after 5s
+  syncTimer = setTimeout(tick, 500); // First sync nearly immediate
 }
 
 export function stopSyncTimer() {
