@@ -25,8 +25,8 @@ import {
   addToSyncQueue,
   getExecucoesByOS,
 } from '../lib/database';
-import { supabase } from '../lib/supabase';
-import { isOnline } from '../lib/syncEngine';
+import { createAuthenticatedClient } from '../lib/supabase';
+import { isOnline, getAccessToken } from '../lib/syncEngine';
 import VoiceInput from '../components/VoiceInput';
 import DateTimePickerField from '../components/DateTimePickerField';
 import PhotoPicker from '../components/PhotoPicker';
@@ -97,9 +97,12 @@ export default function ExecutionScreen() {
         let rpcSuccess = false;
         if (online && os) {
           try {
+            const token = await getAccessToken();
+            if (!token) throw new Error('no access token');
+            const db = createAuthenticatedClient(token);
             const inicioDate = new Date(execAberta.hora_inicio!);
             const fimDate = new Date(now);
-            const { data: rpcResult, error: rpcError } = await supabase.rpc('close_os_with_execution_atomic', {
+            const { data: rpcResult, error: rpcError } = await db.rpc('close_os_with_execution_atomic', {
               p_os_id: osId,
               p_mecanico_id: mecanicoId || null,
               p_mecanico_nome: mecanicoNome || 'Mecânico',
@@ -186,9 +189,12 @@ export default function ExecutionScreen() {
         let rpcSuccess = false;
         if (online && os && horaInicio) {
           try {
+            const token = await getAccessToken();
+            if (!token) throw new Error('no access token');
+            const db = createAuthenticatedClient(token);
             const inicioDate = new Date(horaInicio);
             const fimDate = horaFim ? new Date(horaFim) : new Date(now);
-            const { data: rpcResult, error: rpcError } = await supabase.rpc('close_os_with_execution_atomic', {
+            const { data: rpcResult, error: rpcError } = await db.rpc('close_os_with_execution_atomic', {
               p_os_id: osId,
               p_mecanico_id: mecanicoId || null,
               p_mecanico_nome: mecanicoNome || 'Mecânico',

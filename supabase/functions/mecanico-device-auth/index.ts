@@ -299,11 +299,23 @@ async function authenticateWithDevice(
           empresa_id: empresa.id,
         }, { onConflict: "id" });
 
-        await admin.from("user_roles").upsert({
+        const { error: roleErr } = await admin.from("user_roles").upsert({
           user_id: userId,
           role: "TECHNICIAN",
           empresa_id: empresa.id,
-        }, { onConflict: "user_id,role" });
+        }, { onConflict: "user_id,empresa_id,role" });
+        if (roleErr) {
+          console.error("[device-auth] user_roles upsert FAILED:", roleErr.message);
+          // Fallback: try plain insert (ignore if already exists)
+          const { error: insertErr } = await admin.from("user_roles").insert({
+            user_id: userId,
+            role: "TECHNICIAN",
+            empresa_id: empresa.id,
+          });
+          if (insertErr && !insertErr.message.includes("duplicate")) {
+            console.error("[device-auth] user_roles insert also FAILED:", insertErr.message);
+          }
+        }
       }
 
       // Sign-in com senha atualizada
@@ -338,11 +350,22 @@ async function authenticateWithDevice(
           empresa_id: empresa.id,
         }, { onConflict: "id" });
 
-        await admin.from("user_roles").upsert({
+        const { error: roleErr2 } = await admin.from("user_roles").upsert({
           user_id: userId,
           role: "TECHNICIAN",
           empresa_id: empresa.id,
-        }, { onConflict: "user_id,role" });
+        }, { onConflict: "user_id,empresa_id,role" });
+        if (roleErr2) {
+          console.error("[device-auth] user_roles upsert FAILED:", roleErr2.message);
+          const { error: insertErr2 } = await admin.from("user_roles").insert({
+            user_id: userId,
+            role: "TECHNICIAN",
+            empresa_id: empresa.id,
+          });
+          if (insertErr2 && !insertErr2.message.includes("duplicate")) {
+            console.error("[device-auth] user_roles insert also FAILED:", insertErr2.message);
+          }
+        }
       }
     }
 

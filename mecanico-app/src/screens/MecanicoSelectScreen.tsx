@@ -20,8 +20,8 @@ import {
 } from 'react-native';
 import { useAuth } from '../contexts/AuthContext';
 import { getMecanicos, upsertMecanico } from '../lib/database';
-import { supabase, SUPABASE_URL, SUPABASE_ANON_KEY } from '../lib/supabase';
-import { runSyncCycle } from '../lib/syncEngine';
+import { createAuthenticatedClient, SUPABASE_URL, SUPABASE_ANON_KEY } from '../lib/supabase';
+import { runSyncCycle, getAccessToken } from '../lib/syncEngine';
 import { COLORS, SIZES } from '../theme';
 
 interface MecanicoItem {
@@ -46,6 +46,13 @@ export default function MecanicoSelectScreen() {
   // Busca mecânicos via RPC SECURITY DEFINER (ignora RLS) → fallback query direta
   const fetchFromSupabase = useCallback(async (): Promise<MecanicoItem[]> => {
     if (!empresaId) return [];
+
+    const token = await getAccessToken();
+    if (!token) {
+      console.warn('[MecanicoSelect] no access token — cannot fetch from Supabase');
+      return [];
+    }
+    const supabase = createAuthenticatedClient(token);
 
     // Tentativa 1: RPC (SECURITY DEFINER — nunca bloqueado por RLS)
     try {

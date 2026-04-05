@@ -4,6 +4,7 @@
 
 import React, { createContext, useContext, useState, useEffect, useRef, useCallback } from 'react';
 import { AppState, AppStateStatus } from 'react-native';
+import * as SecureStore from 'expo-secure-store';
 import { supabase, SUPABASE_URL, SUPABASE_ANON_KEY } from '../lib/supabase';
 import {
   getDeviceConfig,
@@ -188,6 +189,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         await saveDeviceConfig('empresa_nome', data.empresa_nome);
         await saveDeviceConfig('tenant_slug', data.tenant_slug);
 
+        // Persist auth tokens for syncEngine to use directly
+        if (data.access_token) await saveDeviceConfig('access_token', data.access_token);
+        if (data.refresh_token) await saveDeviceConfig('refresh_token', data.refresh_token);
+
         // Persist mecanicos from edge function response into SQLite
         if (Array.isArray(data.mecanicos) && data.mecanicos.length > 0) {
           for (const mec of data.mecanicos) {
@@ -197,7 +202,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
 
         // Try to set Supabase session (bind+auth in one step)
-        // If setSession fails (e.g. "Invalid API key" on some RN environments),
         // we still consider the bind+auth successful since we have valid tokens
         try {
           const { error: sessionError } = await supabase.auth.setSession({
@@ -307,6 +311,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (data.empresa_id) await saveDeviceConfig('empresa_id', data.empresa_id);
       if (data.empresa_nome) await saveDeviceConfig('empresa_nome', data.empresa_nome);
       if (data.dispositivo_id) await saveDeviceConfig('dispositivo_id', data.dispositivo_id);
+
+      // Persist auth tokens for syncEngine to use directly
+      if (data.access_token) await saveDeviceConfig('access_token', data.access_token);
+      if (data.refresh_token) await saveDeviceConfig('refresh_token', data.refresh_token);
 
       // Persist mecanicos from edge function response into SQLite
       if (Array.isArray(data.mecanicos) && data.mecanicos.length > 0) {
@@ -478,11 +486,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 // ============================================================
 
 async function getOrCreateDeviceId(): Promise<string> {
-  let id = await getDeviceConfig('pcm_device_id');
-  if (!id) {
-    id = generateUUID();
-    await saveDeviceConfig('pcm_device_id', id);
+  // 1. Tenta SecureStore (sobrevive a reinstalações)
+  try {
+    const stored = await SecureStore.getItemAsync('pcm_device_id');
+    if (stored) return stored;
+  } catch { /* ignore */ }
+
+  // 2. Tenta SQLite (fallback)
+  const fromDb = await getDeviceConfig('pcm_device_id');
+  if (fromDb) {
+    // Salva no SecureStore pra próxima vez
+    try { await SecureStore.setItemAsync('pcm_device_id', fromDb); } catch { /* ignore */ }
+    return fromDb;
   }
+
+  // 3. Gera novo UUID e salva em ambos
+  const id = generateUUID();
+  await saveDeviceConfig('pcm_device_id', id);
+  try { await SecureStore.setItemAsync('pcm_device_id', id); } catch { /* ignore */ }
   return id;
 }
 

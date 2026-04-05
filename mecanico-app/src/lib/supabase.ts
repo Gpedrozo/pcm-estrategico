@@ -1,4 +1,4 @@
-// ============================================================
+﻿// ============================================================
 // Supabase Client — React Native (with SecureStore for tokens)
 // ============================================================
 
@@ -43,12 +43,20 @@ export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
 
 /**
  * Create a Supabase client with an explicit access token in the Authorization header.
- * Bypasses setSession() which can fail silently on some React Native environments.
+ * Uses a custom fetch wrapper to FORCE the Bearer token on every request,
+ * bypassing supabase-js auth module which otherwise overrides the header with the anon key.
  */
 export function createAuthenticatedClient(accessToken: string) {
+  const customFetch = (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
+    const headers = new Headers(init?.headers);
+    headers.set('Authorization', `Bearer ${accessToken}`);
+    headers.set('apikey', SUPABASE_ANON_KEY);
+    return fetch(input, { ...init, headers });
+  };
+
   return createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     global: {
-      headers: { Authorization: `Bearer ${accessToken}` },
+      fetch: customFetch,
     },
     auth: {
       persistSession: false,
