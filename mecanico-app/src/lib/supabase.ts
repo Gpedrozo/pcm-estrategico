@@ -41,4 +41,20 @@ export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
   },
 });
 
+/**
+ * Create a Supabase client with an explicit access token in the Authorization header.
+ * Bypasses setSession() which can fail silently on some React Native environments.
+ */
+export function createAuthenticatedClient(accessToken: string) {
+  return createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+    global: {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    },
+    auth: {
+      persistSession: false,
+      autoRefreshToken: false,
+    },
+  });
+}
+
 export { SUPABASE_URL, SUPABASE_ANON_KEY };

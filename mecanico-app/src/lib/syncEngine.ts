@@ -3,7 +3,8 @@
 // ============================================================
 
 import * as Network from 'expo-network';
-import { supabase, SUPABASE_URL, SUPABASE_ANON_KEY } from './supabase';
+import type { SupabaseClient } from '@supabase/supabase-js';
+import { supabase, SUPABASE_URL, SUPABASE_ANON_KEY, createAuthenticatedClient } from './supabase';
 import {
   getPendingSyncItems,
   markSyncItemDone,
@@ -38,7 +39,7 @@ export async function isOnline(): Promise<boolean> {
 // Push — Send pending local changes to server
 // ============================================================
 
-async function pushPendingChanges(): Promise<number> {
+async function pushPendingChanges(db: SupabaseClient): Promise<number> {
   const items = await getPendingSyncItems();
   let synced = 0;
 
@@ -53,21 +54,21 @@ async function pushPendingChanges(): Promise<number> {
         // Remove local-only fields before sending
         const { sync_status, local_updated_at, fotos, ...serverPayload } = payload;
 
-        const { error } = await supabase.from(table).upsert(serverPayload);
+        const { error } = await db.from(table).upsert(serverPayload);
         if (error) throw error;
 
         // If execucao with fotos, upload them
         if (table === 'execucoes_os' && fotos && Array.isArray(fotos)) {
           for (const fotoUri of fotos) {
             try {
-              await uploadPhoto(payload.id, fotoUri, payload.empresa_id);
+              await uploadPhoto(db, payload.id, fotoUri, payload.empresa_id);
             } catch (photoErr) {
               console.warn('[sync] photo upload failed:', photoErr);
             }
           }
         }
       } else if (item.operation === 'DELETE') {
-        const { error } = await supabase.from(table).delete().eq('id', item.record_id);
+        const { error } = await db.from(table).delete().eq('id', item.record_id);
         if (error) throw error;
       }
 
@@ -81,13 +82,13 @@ async function pushPendingChanges(): Promise<number> {
   return synced;
 }
 
-async function uploadPhoto(execucaoId: string, localUri: string, empresaId: string): Promise<void> {
+async function uploadPhoto(db: SupabaseClient, execucaoId: string, localUri: string, empresaId: string): Promise<void> {
   const response = await fetch(localUri);
   const blob = await response.blob();
   const ext = localUri.split('.').pop() || 'jpg';
   const path = `${empresaId}/execucoes/${execucaoId}/${Date.now()}.${ext}`;
 
-  const { error } = await supabase.storage
+  const { error } = await db.storage
     .from('execucoes-fotos')
     .upload(path, blob, { contentType: `image/${ext}` });
 
@@ -98,21 +99,34 @@ async function uploadPhoto(execucaoId: string, localUri: string, empresaId: stri
 // Pull — Fetch latest data from server into local DB
 // ============================================================
 
-// Ensure supabase client has a valid authenticated session.
-// If no session exists, try re-auth via edge function using stored device_token.
-async function ensureSession(): Promise<boolean> {
+// Module-level cached access token for authenticated queries
+let cachedAccessToken: string | null = null;
+
+/**
+ * Get an access token from:
+ * 1. Existing supabase session
+ * 2. Cached token from previous ensureSession call
+ * 3. Edge function re-auth using device_token
+ */
+async function getAccessToken(): Promise<string | null> {
+  // 1. Check existing supabase session
   try {
     const { data: { session } } = await supabase.auth.getSession();
-    if (session?.access_token) return true;
-
-    // No session — try to restore via edge function
-    const deviceToken = await getDeviceConfig('device_token');
-    if (!deviceToken) {
-      console.warn('[sync] no session and no device_token — cannot authenticate');
-      return false;
+    if (session?.access_token) {
+      cachedAccessToken = session.access_token;
+      return session.access_token;
     }
+  } catch { /* ignore */ }
 
-    console.log('[sync] no active session, re-authenticating via edge function...');
+  // 2. Re-auth via edge function
+  const deviceToken = await getDeviceConfig('device_token');
+  if (!deviceToken) {
+    console.warn('[sync] no device_token — cannot authenticate');
+    return null;
+  }
+
+  console.log('[sync] no session, re-authenticating via edge function...');
+  try {
     const response = await fetch(`${SUPABASE_URL}/functions/v1/mecanico-device-auth`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'apikey': SUPABASE_ANON_KEY },
@@ -122,36 +136,41 @@ async function ensureSession(): Promise<boolean> {
     const data = await response.json();
     if (!data?.ok || !data?.access_token) {
       console.warn('[sync] edge function re-auth failed:', data?.error || 'unknown');
-      return false;
+      return null;
     }
 
-    const { error } = await supabase.auth.setSession({
+    console.log('[sync] got access_token from edge function');
+    cachedAccessToken = data.access_token;
+
+    // Also try setSession (best-effort, non-blocking)
+    supabase.auth.setSession({
       access_token: data.access_token,
       refresh_token: data.refresh_token,
-    });
+    }).then(({ error }) => {
+      if (error) console.warn('[sync] setSession failed (non-fatal):', error.message);
+      else console.log('[sync] setSession succeeded');
+    }).catch(() => {});
 
-    if (error) {
-      console.warn('[sync] setSession failed:', error.message);
-      return false;
-    }
-
-    console.log('[sync] session restored successfully');
-    return true;
+    return data.access_token;
   } catch (err) {
-    console.warn('[sync] ensureSession error:', err);
-    return false;
+    console.warn('[sync] re-auth fetch error:', err);
+    return null;
   }
 }
 
-export async function pullData(empresaId: string, forceFullRefresh = false): Promise<void> {
+export async function pullData(empresaId: string, forceFullRefresh = false, db?: SupabaseClient): Promise<void> {
   if (!empresaId) return;
 
-  // Ensure we have a valid authenticated session before querying PostgREST
-  const hasSession = await ensureSession();
-  if (!hasSession) {
-    console.warn('[sync] pullData aborted — no valid session');
-    return;
+  // If no authenticated client provided, create one
+  if (!db) {
+    const accessToken = await getAccessToken();
+    if (!accessToken) {
+      console.warn('[sync] pullData aborted — no access token');
+      return;
+    }
+    db = createAuthenticatedClient(accessToken);
   }
+  console.log('[sync] pullData starting with authenticated client...');
 
   // Incremental sync: use last_sync_timestamp to only fetch changed records
   // forceFullRefresh = true when user manually pulls to refresh
@@ -168,7 +187,7 @@ export async function pullData(empresaId: string, forceFullRefresh = false): Pro
 
   // Pull Ordens de Servico
   const { data: osList, error: osError } = await withTimestamp(
-    supabase
+    db
     .from('ordens_servico')
     .select('*')
     .eq('empresa_id', empresaId)
@@ -176,7 +195,7 @@ export async function pullData(empresaId: string, forceFullRefresh = false): Pro
   ).limit(1000);
 
   if (osError) {
-    console.error('[sync] ordens_servico query error:', osError.message, osError.code);
+    console.error('[sync] ordens_servico error:', osError.message, osError.code, osError.details);
   }
 
   if (osList) {
@@ -184,11 +203,13 @@ export async function pullData(empresaId: string, forceFullRefresh = false): Pro
       await upsertOrdemServico(os);
     }
     console.log(`[sync] pulled ${osList.length} OS${lastSync ? ' (incremental)' : ' (full)'}`);
+  } else {
+    console.warn('[sync] ordens_servico returned null/empty');
   }
 
   // Pull Execucoes
   const { data: execList } = await withTimestamp(
-    supabase
+    db
     .from('execucoes_os')
     .select('*')
     .eq('empresa_id', empresaId)
@@ -203,7 +224,7 @@ export async function pullData(empresaId: string, forceFullRefresh = false): Pro
 
   // Pull Equipamentos
   const { data: eqList } = await withTimestamp(
-    supabase
+    db
     .from('equipamentos')
     .select('*')
     .eq('empresa_id', empresaId)
@@ -217,7 +238,7 @@ export async function pullData(empresaId: string, forceFullRefresh = false): Pro
 
   // Pull Mecanicos — tenta query direta, fallback para RPC SECURITY DEFINER
   let mecList: any[] | null = null;
-  const { data: mecDirect, error: mecErr } = await supabase
+  const { data: mecDirect, error: mecErr } = await db
     .from('mecanicos')
     .select('*')
     .eq('empresa_id', empresaId)
@@ -229,7 +250,7 @@ export async function pullData(empresaId: string, forceFullRefresh = false): Pro
   } else {
     // Fallback: RPC que bypassa RLS
     try {
-      const { data: mecRpc } = await supabase.rpc('listar_mecanicos_empresa', {
+      const { data: mecRpc } = await db.rpc('listar_mecanicos_empresa', {
         p_empresa_id: empresaId,
       });
       if (mecRpc && mecRpc.length > 0) {
@@ -246,7 +267,7 @@ export async function pullData(empresaId: string, forceFullRefresh = false): Pro
 
   // Pull Materiais (catálogo)
   const { data: matList } = await withTimestamp(
-    supabase
+    db
     .from('materiais')
     .select('id, empresa_id, codigo, nome, unidade, estoque_atual')
     .eq('empresa_id', empresaId)
@@ -260,7 +281,7 @@ export async function pullData(empresaId: string, forceFullRefresh = false): Pro
 
   // Pull Documentos Técnicos
   const { data: docList } = await withTimestamp(
-    supabase
+    db
     .from('documentos_tecnicos')
     .select('id, empresa_id, equipamento_id, tipo, titulo, arquivo_url, created_at')
     .eq('empresa_id', empresaId)
@@ -274,7 +295,7 @@ export async function pullData(empresaId: string, forceFullRefresh = false): Pro
 
   // Pull Paradas
   const { data: paradaList } = await withTimestamp(
-    supabase
+    db
     .from('paradas_equipamento')
     .select('*')
     .eq('empresa_id', empresaId)
@@ -289,7 +310,7 @@ export async function pullData(empresaId: string, forceFullRefresh = false): Pro
 
   // Pull Requisicoes
   const { data: reqList } = await withTimestamp(
-    supabase
+    db
     .from('requisicoes_material')
     .select('*')
     .eq('empresa_id', empresaId)
@@ -304,7 +325,7 @@ export async function pullData(empresaId: string, forceFullRefresh = false): Pro
 
   // Pull Solicitações de Manutenção
   const { data: solicList } = await withTimestamp(
-    supabase
+    db
     .from('solicitacoes_manutencao')
     .select('*')
     .eq('empresa_id', empresaId)
@@ -339,13 +360,21 @@ export async function runSyncCycle(forceFullRefresh = false): Promise<{ pushed: 
       const online = await isOnline();
       if (!online) return { pushed: 0, pulled: false };
 
-      // Push first
-      const pushed = await pushPendingChanges();
+      // Get access token once for the entire sync cycle
+      const accessToken = await getAccessToken();
+      if (!accessToken) {
+        console.warn('[sync] cycle aborted — no access token');
+        return { pushed: 0, pulled: false };
+      }
+      const db = createAuthenticatedClient(accessToken);
 
-      // Then pull
+      // Push first (using authenticated client)
+      const pushed = await pushPendingChanges(db);
+
+      // Then pull (using same authenticated client)
       const empresaId = await getDeviceConfig('empresa_id');
       if (empresaId) {
-        await pullData(empresaId, forceFullRefresh);
+        await pullData(empresaId, forceFullRefresh, db);
       }
 
       return { pushed, pulled: !!empresaId };
