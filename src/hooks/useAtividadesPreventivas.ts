@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { insertWithColumnFallback, updateWithColumnFallback } from '@/lib/supabaseCompat';
+import { useAuth } from '@/contexts/AuthContext';
 
 export interface AtividadePreventiva {
   id: string;
@@ -56,9 +57,11 @@ export function useAtividadesByPlano(planoId: string | null) {
 export function useCreateAtividade() {
   const qc = useQueryClient();
   const { toast } = useToast();
+  const { tenantId } = useAuth();
 
   return useMutation({
     mutationFn: async (input: { plano_id: string; nome: string; responsavel?: string; ordem?: number }) => {
+      if (!tenantId) throw new Error('Tenant não resolvido.');
       return insertWithColumnFallback(
         async (payload) =>
           supabase
@@ -66,7 +69,7 @@ export function useCreateAtividade() {
             .insert(payload)
             .select()
             .single(),
-        input as Record<string, unknown>,
+        { empresa_id: tenantId, ...input } as Record<string, unknown>,
       );
     },
     onSuccess: (d) => {
@@ -119,8 +122,10 @@ export function useDeleteAtividade() {
 
 export function useCreateServico() {
   const qc = useQueryClient();
+  const { tenantId } = useAuth();
   return useMutation({
     mutationFn: async (input: { atividade_id: string; descricao: string; tempo_estimado_min: number; ordem?: number; _plano_id: string }) => {
+      if (!tenantId) throw new Error('Tenant não resolvido.');
       const { _plano_id, ...rest } = input;
       await insertWithColumnFallback(
         async (payload) =>
@@ -129,7 +134,7 @@ export function useCreateServico() {
             .insert(payload)
             .select()
             .single(),
-        rest as Record<string, unknown>,
+        { empresa_id: tenantId, ...rest } as Record<string, unknown>,
       );
       // Recalc atividade tempo
       await recalcAtividadeTempo(input.atividade_id);
