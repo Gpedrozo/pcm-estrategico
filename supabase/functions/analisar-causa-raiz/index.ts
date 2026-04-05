@@ -4,13 +4,7 @@ import { fail, ok, preflight, rejectIfOriginNotAllowed } from "../_shared/respon
 
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
-    return preflight(req, "GET, POST, OPTIONS");
-  }
-
-  // Health-check (GET) — no auth required
-  if (req.method === "GET") {
-    const hasKey = Boolean(Deno.env.get("AI_GATEWAY_API_KEY"));
-    return ok({ status: "ok", ai_key_configured: hasKey }, 200, req);
+    return preflight(req, "POST, OPTIONS");
   }
 
   const originDenied = rejectIfOriginNotAllowed(req);
