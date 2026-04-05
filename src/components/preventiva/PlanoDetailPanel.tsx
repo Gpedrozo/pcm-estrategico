@@ -46,11 +46,11 @@ export default function PlanoDetailPanel({ plano, equipamentos }: Props) {
   const [tab, setTab] = useState('estrutura');
   const [isEditingPlano, setIsEditingPlano] = useState(false);
   const [addAtividadeOpen, setAddAtividadeOpen] = useState(false);
-  const [addServicoFor, setAddServicoFor] = useState<string | null>(null);
+  const [addSubAtividadeFor, setAddSubAtividadeFor] = useState<string | null>(null);
   const [expandedAtividades, setExpandedAtividades] = useState<Set<string>>(new Set());
   const [editingPlanoData, setEditingPlanoData] = useState<any>({});
   const [newAtividade, setNewAtividade] = useState({ nome: '', responsavel: '' });
-  const [newServico, setNewServico] = useState({ descricao: '', tempo_estimado_min: 10 });
+  const [newSubAtividade, setNewSubAtividade] = useState({ descricao: '', tempo_estimado_min: 10 });
   const [execFormOpen, setExecFormOpen] = useState(false);
   const [execNome, setExecNome] = useState('');
   const [execObs, setExecObs] = useState('');
@@ -101,19 +101,19 @@ export default function PlanoDetailPanel({ plano, equipamentos }: Props) {
     setAddAtividadeOpen(false);
   };
 
-  const handleAddServico = async () => {
-    if (!addServicoFor || !newServico.descricao.trim()) return;
-    const atv = atividades?.find(a => a.id === addServicoFor);
+  const handleAddSubAtividade = async () => {
+    if (!addSubAtividadeFor || !newSubAtividade.descricao.trim()) return;
+    const atv = atividades?.find(a => a.id === addSubAtividadeFor);
     const maxOrdem = Math.max(0, ...(atv?.servicos || []).map(s => s.ordem));
     await createServico.mutateAsync({
-      atividade_id: addServicoFor,
-      descricao: newServico.descricao,
-      tempo_estimado_min: newServico.tempo_estimado_min,
+      atividade_id: addSubAtividadeFor,
+      descricao: newSubAtividade.descricao,
+      tempo_estimado_min: newSubAtividade.tempo_estimado_min,
       ordem: maxOrdem + 1,
       _plano_id: plano.id,
     });
-    setNewServico({ descricao: '', tempo_estimado_min: 10 });
-    setAddServicoFor(null);
+    setNewSubAtividade({ descricao: '', tempo_estimado_min: 10 });
+    setAddSubAtividadeFor(null);
   };
 
   const handleMoveAtividade = async (atv: AtividadePreventiva, direction: 'up' | 'down') => {
@@ -130,7 +130,14 @@ export default function PlanoDetailPanel({ plano, equipamentos }: Props) {
   };
 
   const handleSavePlanoEdit = async () => {
-    await updatePlano.mutateAsync({ id: plano.id, ...editingPlanoData });
+    const eqId = editingPlanoData.equipamento_id || null;
+    const eq = equipamentos.find(e => e.id === eqId);
+    await updatePlano.mutateAsync({
+      id: plano.id,
+      ...editingPlanoData,
+      equipamento_id: eqId,
+      tag: eq?.tag || null,
+    });
     setIsEditingPlano(false);
   };
 
@@ -188,7 +195,7 @@ export default function PlanoDetailPanel({ plano, equipamentos }: Props) {
             {plano.tag && <p className="text-sm text-muted-foreground">TAG: {plano.tag}</p>}
           </div>
           <div className="flex items-center gap-2">
-            <Button size="sm" variant="outline" onClick={() => { setEditingPlanoData({ nome: plano.nome, descricao: plano.descricao, frequencia_dias: plano.frequencia_dias, instrucoes: plano.instrucoes, ativo: plano.ativo }); setIsEditingPlano(true); }}>
+            <Button size="sm" variant="outline" onClick={() => { setEditingPlanoData({ nome: plano.nome, descricao: plano.descricao, equipamento_id: plano.equipamento_id || '', tipo_gatilho: plano.tipo_gatilho, frequencia_dias: plano.frequencia_dias, frequencia_ciclos: plano.frequencia_ciclos, condicao_disparo: plano.condicao_disparo || '', tolerancia_antes_dias: plano.tolerancia_antes_dias ?? 0, tolerancia_depois_dias: plano.tolerancia_depois_dias ?? 0, tempo_estimado_min: plano.tempo_estimado_min, instrucoes: plano.instrucoes, ativo: plano.ativo }); setIsEditingPlano(true); }}>
               <Edit className="h-4 w-4 mr-1" /> Editar
             </Button>
             <Button size="sm" variant="outline" onClick={() => setPrintDialogOpen(true)}>
@@ -237,7 +244,7 @@ export default function PlanoDetailPanel({ plano, equipamentos }: Props) {
         {/* Estrutura Tab */}
         <TabsContent value="estrutura" className="flex-1 overflow-y-auto px-4 pb-4 mt-0">
           <div className="flex items-center justify-between py-3">
-            <h3 className="font-semibold text-sm text-muted-foreground uppercase tracking-wider">Atividades & Serviços</h3>
+            <h3 className="font-semibold text-sm text-muted-foreground uppercase tracking-wider">Atividades & Sub-atividades</h3>
             <div className="flex gap-2">
               <Button size="sm" variant="outline" onClick={() => setSaveTemplateOpen(true)}>
                 <Copy className="h-3.5 w-3.5 mr-1" /> Salvar Template
@@ -281,7 +288,7 @@ export default function PlanoDetailPanel({ plano, equipamentos }: Props) {
                       <Badge variant="outline" className="gap-1 flex-shrink-0">
                         <Clock className="h-3 w-3" /> {formatMin(atv.tempo_total_min)}
                       </Badge>
-                      <span className="text-xs text-muted-foreground flex-shrink-0">{atv.servicos?.length || 0} serviços</span>
+                      <span className="text-xs text-muted-foreground flex-shrink-0">{atv.servicos?.length || 0} sub-atividades</span>
                       <div className="flex gap-1 flex-shrink-0" onClick={e => e.stopPropagation()}>
                         <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => handleMoveAtividade(atv, 'up')} disabled={aIdx === 0}>
                           <ArrowUp className="h-3.5 w-3.5" />
@@ -289,7 +296,7 @@ export default function PlanoDetailPanel({ plano, equipamentos }: Props) {
                         <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => handleMoveAtividade(atv, 'down')} disabled={aIdx === (atividades?.length || 0) - 1}>
                           <ArrowDown className="h-3.5 w-3.5" />
                         </Button>
-                        <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive" onClick={() => confirm({ title: 'Excluir atividade', description: `Excluir a atividade "${atv.nome}" e todos os seus serviços?`, onConfirm: () => deleteAtividade.mutateAsync({ id: atv.id, plano_id: plano.id }) })}>
+                        <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive" onClick={() => confirm({ title: 'Excluir atividade', description: `Excluir a atividade "${atv.nome}" e todas as suas sub-atividades?`, onConfirm: () => deleteAtividade.mutateAsync({ id: atv.id, plano_id: plano.id }) })}>
                           <Trash2 className="h-3.5 w-3.5" />
                         </Button>
                       </div>
@@ -301,7 +308,7 @@ export default function PlanoDetailPanel({ plano, equipamentos }: Props) {
                         {/* Spreadsheet header */}
                         <div className="grid grid-cols-[40px_1fr_100px_80px_60px] gap-2 px-3 py-2 bg-muted/20 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                           <span>#</span>
-                          <span>Serviço</span>
+                          <span>Sub-atividade</span>
                           <span>Tempo</span>
                           <span>Status</span>
                           <span></span>
@@ -315,7 +322,7 @@ export default function PlanoDetailPanel({ plano, equipamentos }: Props) {
                             <Badge variant={srv.concluido ? 'default' : 'outline'} className="text-[10px] h-5 w-fit">
                               {srv.concluido ? 'OK' : 'Pendente'}
                             </Badge>
-                            <Button size="icon" variant="ghost" className="h-6 w-6 text-destructive" onClick={() => confirm({ title: 'Excluir serviço', description: `Excluir o serviço "${srv.descricao}"?`, onConfirm: () => deleteServico.mutateAsync({ id: srv.id, _plano_id: plano.id, _atividade_id: atv.id }) })}>
+                            <Button size="icon" variant="ghost" className="h-6 w-6 text-destructive" onClick={() => confirm({ title: 'Excluir sub-atividade', description: `Excluir a sub-atividade "${srv.descricao}"?`, onConfirm: () => deleteServico.mutateAsync({ id: srv.id, _plano_id: plano.id, _atividade_id: atv.id }) })}>
                               <Trash2 className="h-3 w-3" />
                             </Button>
                           </div>
@@ -323,8 +330,8 @@ export default function PlanoDetailPanel({ plano, equipamentos }: Props) {
 
                         {/* Add service button */}
                         <div className="px-3 py-2 border-t border-border/50">
-                          <Button size="sm" variant="ghost" className="h-7 text-xs gap-1" onClick={() => { setAddServicoFor(atv.id); setNewServico({ descricao: '', tempo_estimado_min: 10 }); }}>
-                            <Plus className="h-3 w-3" /> Adicionar Serviço
+                          <Button size="sm" variant="ghost" className="h-7 text-xs gap-1" onClick={() => { setAddSubAtividadeFor(atv.id); setNewSubAtividade({ descricao: '', tempo_estimado_min: 10 }); }}>
+                            <Plus className="h-3 w-3" /> Adicionar Sub-atividade
                           </Button>
                         </div>
                       </div>
@@ -451,24 +458,8 @@ export default function PlanoDetailPanel({ plano, equipamentos }: Props) {
                 <p className="text-xs text-muted-foreground whitespace-pre-wrap">{plano.instrucoes}</p>
               </div>
             )}
-            {Array.isArray(plano.checklist) && plano.checklist.length > 0 && (
-              <div className="p-3 border border-border rounded-lg">
-                <p className="font-medium text-sm mb-1">Checklist</p>
-                <ul className="list-disc ml-4 text-xs text-muted-foreground space-y-0.5">
-                  {plano.checklist.map((item: string, i: number) => <li key={i}>{item}</li>)}
-                </ul>
-              </div>
-            )}
-            {Array.isArray(plano.materiais_previstos) && plano.materiais_previstos.length > 0 && (
-              <div className="p-3 border border-border rounded-lg">
-                <p className="font-medium text-sm mb-1">Materiais Previstos</p>
-                <ul className="list-disc ml-4 text-xs text-muted-foreground space-y-0.5">
-                  {plano.materiais_previstos.map((item: string, i: number) => <li key={i}>{item}</li>)}
-                </ul>
-              </div>
-            )}
             <Separator />
-            <Button variant="destructive" size="sm" onClick={() => confirm({ title: 'Excluir plano', description: 'Tem certeza que deseja excluir este plano preventivo? Todas as atividades e serviços serão removidos.', onConfirm: () => deletePlano.mutateAsync(plano.id) })}>
+            <Button variant="destructive" size="sm" onClick={() => confirm({ title: 'Excluir plano', description: 'Tem certeza que deseja excluir este plano preventivo? Todas as atividades e sub-atividades serão removidas.', onConfirm: () => deletePlano.mutateAsync(plano.id) })}>
               <Trash2 className="h-4 w-4 mr-1" /> Excluir Plano
             </Button>
           </div>
@@ -497,46 +488,106 @@ export default function PlanoDetailPanel({ plano, equipamentos }: Props) {
         </DialogContent>
       </Dialog>
 
-      {/* Add Servico */}
-      <Dialog open={!!addServicoFor} onOpenChange={() => setAddServicoFor(null)}>
+      {/* Add Sub-atividade */}
+      <Dialog open={!!addSubAtividadeFor} onOpenChange={() => setAddSubAtividadeFor(null)}>
         <DialogContent className="max-w-sm">
-          <DialogHeader><DialogTitle>Novo Serviço</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>Nova Sub-atividade</DialogTitle></DialogHeader>
           <div className="space-y-3">
             <div className="space-y-1">
               <Label className="text-xs">Descrição *</Label>
-              <Input value={newServico.descricao} onChange={e => setNewServico(p => ({ ...p, descricao: e.target.value }))} placeholder="Ex: Limpar eixo principal" />
+              <Input value={newSubAtividade.descricao} onChange={e => setNewSubAtividade(p => ({ ...p, descricao: e.target.value }))} placeholder="Ex: Limpar eixo principal" />
             </div>
             <div className="space-y-1">
               <Label className="text-xs">Tempo Estimado (min)</Label>
-              <Input type="number" value={newServico.tempo_estimado_min} onChange={e => setNewServico(p => ({ ...p, tempo_estimado_min: parseInt(e.target.value) || 0 }))} />
+              <Input type="number" value={newSubAtividade.tempo_estimado_min} onChange={e => setNewSubAtividade(p => ({ ...p, tempo_estimado_min: parseInt(e.target.value) || 0 }))} />
             </div>
           </div>
           <DialogFooter>
-            <Button onClick={handleAddServico} disabled={createServico.isPending}>Adicionar</Button>
+            <Button onClick={handleAddSubAtividade} disabled={createServico.isPending}>Adicionar</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      {/* Edit Plano */}
+      {/* Edit Plano — Completo */}
       <Dialog open={isEditingPlano} onOpenChange={setIsEditingPlano}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader><DialogTitle>Editar Plano</DialogTitle></DialogHeader>
-          <div className="space-y-3">
+          <div className="space-y-4">
             <div className="space-y-1">
-              <Label className="text-xs">Nome</Label>
+              <Label className="text-xs">Equipamento (opcional)</Label>
+              <Select
+                value={editingPlanoData.equipamento_id || 'none'}
+                onValueChange={value => setEditingPlanoData((p: any) => ({ ...p, equipamento_id: value === 'none' ? '' : value }))}
+              >
+                <SelectTrigger><SelectValue placeholder="Selecionar" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Não vincular</SelectItem>
+                  {equipamentos.filter(e => e.ativo).map(e => (
+                    <SelectItem key={e.id} value={e.id}>{e.tag} — {e.nome}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs">Nome *</Label>
               <Input value={editingPlanoData.nome || ''} onChange={e => setEditingPlanoData((p: any) => ({ ...p, nome: e.target.value }))} />
             </div>
             <div className="space-y-1">
               <Label className="text-xs">Descrição</Label>
               <Textarea value={editingPlanoData.descricao || ''} onChange={e => setEditingPlanoData((p: any) => ({ ...p, descricao: e.target.value }))} rows={2} />
             </div>
-            <div className="space-y-1">
-              <Label className="text-xs">Frequência (dias)</Label>
-              <Input type="number" value={editingPlanoData.frequencia_dias || 0} onChange={e => setEditingPlanoData((p: any) => ({ ...p, frequencia_dias: parseInt(e.target.value) || 0 }))} />
+            <div className="grid grid-cols-3 gap-3">
+              <div className="space-y-1">
+                <Label className="text-xs">Tipo Gatilho</Label>
+                <Select value={editingPlanoData.tipo_gatilho || 'TEMPO'} onValueChange={v => setEditingPlanoData((p: any) => ({ ...p, tipo_gatilho: v }))}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="TEMPO">Tempo</SelectItem>
+                    <SelectItem value="CICLO">Ciclo</SelectItem>
+                    <SelectItem value="CONDICAO">Condição</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              {editingPlanoData.tipo_gatilho === 'TEMPO' && (
+                <div className="space-y-1">
+                  <Label className="text-xs">Frequência (dias)</Label>
+                  <Input type="number" value={editingPlanoData.frequencia_dias || 0} onChange={e => setEditingPlanoData((p: any) => ({ ...p, frequencia_dias: parseInt(e.target.value) || 0 }))} />
+                </div>
+              )}
+              {editingPlanoData.tipo_gatilho === 'CICLO' && (
+                <div className="space-y-1">
+                  <Label className="text-xs">Frequência (ciclos)</Label>
+                  <Input type="number" value={editingPlanoData.frequencia_ciclos || 0} onChange={e => setEditingPlanoData((p: any) => ({ ...p, frequencia_ciclos: parseInt(e.target.value) || 0 }))} />
+                </div>
+              )}
+              {editingPlanoData.tipo_gatilho === 'CONDICAO' && (
+                <div className="space-y-1">
+                  <Label className="text-xs">Condição de disparo</Label>
+                  <Input value={editingPlanoData.condicao_disparo || ''} onChange={e => setEditingPlanoData((p: any) => ({ ...p, condicao_disparo: e.target.value }))} />
+                </div>
+              )}
+              <div className="space-y-1">
+                <Label className="text-xs">Tempo Est. (min)</Label>
+                <Input type="number" value={editingPlanoData.tempo_estimado_min || 0} onChange={e => setEditingPlanoData((p: any) => ({ ...p, tempo_estimado_min: parseInt(e.target.value) || 0 }))} />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <Label className="text-xs">Tolerância antes (dias)</Label>
+                <Input type="number" value={editingPlanoData.tolerancia_antes_dias || 0} onChange={e => setEditingPlanoData((p: any) => ({ ...p, tolerancia_antes_dias: parseInt(e.target.value) || 0 }))} />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs">Tolerância depois (dias)</Label>
+                <Input type="number" value={editingPlanoData.tolerancia_depois_dias || 0} onChange={e => setEditingPlanoData((p: any) => ({ ...p, tolerancia_depois_dias: parseInt(e.target.value) || 0 }))} />
+              </div>
             </div>
             <div className="space-y-1">
               <Label className="text-xs">Instruções</Label>
               <Textarea value={editingPlanoData.instrucoes || ''} onChange={e => setEditingPlanoData((p: any) => ({ ...p, instrucoes: e.target.value }))} rows={3} />
+            </div>
+            <div className="flex items-center justify-between p-2 border border-border rounded-lg">
+              <Label className="text-xs">Plano Ativo</Label>
+              <Switch checked={editingPlanoData.ativo ?? true} onCheckedChange={v => setEditingPlanoData((p: any) => ({ ...p, ativo: v }))} />
             </div>
           </div>
           <DialogFooter>
@@ -560,7 +611,7 @@ export default function PlanoDetailPanel({ plano, equipamentos }: Props) {
               <Textarea value={execObs} onChange={e => setExecObs(e.target.value)} rows={2} />
             </div>
             <p className="text-xs text-muted-foreground">
-              Um checklist com {atividades?.reduce((s, a) => s + (a.servicos?.length || 0), 0) || 0} serviços será gerado automaticamente.
+              Um checklist com {atividades?.reduce((s, a) => s + (a.servicos?.length || 0), 0) || 0} sub-atividades será gerado automaticamente.
             </p>
           </div>
           <DialogFooter>
@@ -579,7 +630,7 @@ export default function PlanoDetailPanel({ plano, equipamentos }: Props) {
               <Input value={templateNome} onChange={e => setTemplateNome(e.target.value)} placeholder="Ex: Preventiva CNC mensal" />
             </div>
             <p className="text-xs text-muted-foreground">
-              Será salvo com {atividades?.length || 0} atividades e seus serviços.
+              Será salvo com {atividades?.length || 0} atividades e suas sub-atividades.
             </p>
           </div>
           <DialogFooter>
