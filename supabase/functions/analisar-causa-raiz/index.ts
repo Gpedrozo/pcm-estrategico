@@ -248,26 +248,45 @@ Identifique:
     if (!Array.isArray(analysis.possible_causes)) analysis.possible_causes = [];
     if (!Array.isArray(analysis.preventive_actions)) analysis.preventive_actions = [];
 
-    // Save to database
-    const { data: saved, error: saveError } = await supabase
+    // Save to database — try with new columns, fallback without if migration not applied yet
+    const baseRow = {
+      tag,
+      equipamento_id: equipamento?.id || null,
+      empresa_id: scope.empresaId,
+      summary: analysis.summary,
+      possible_causes: analysis.possible_causes,
+      main_hypothesis: analysis.main_hypothesis,
+      preventive_actions: analysis.preventive_actions,
+      criticality: analysis.criticality,
+      confidence_score: analysis.confidence_score,
+      raw_response: aiData,
+    };
+
+    let saved: any;
+    let saveError: any;
+
+    // Attempt with extended columns (os_count, mtbf_days, requested_by)
+    const extRow = {
+      ...baseRow,
+      os_count: totalOS,
+      mtbf_days: Math.round(intervaloMedio * 100) / 100,
+      requested_by: auth.user.id,
+    };
+    ({ data: saved, error: saveError } = await supabase
       .from("ai_root_cause_analysis")
-      .insert({
-        tag,
-        equipamento_id: equipamento?.id || null,
-        empresa_id: scope.empresaId,
-        summary: analysis.summary,
-        possible_causes: analysis.possible_causes,
-        main_hypothesis: analysis.main_hypothesis,
-        preventive_actions: analysis.preventive_actions,
-        criticality: analysis.criticality,
-        confidence_score: analysis.confidence_score,
-        raw_response: aiData,
-        os_count: totalOS,
-        mtbf_days: Math.round(intervaloMedio * 100) / 100,
-        requested_by: auth.user.id,
-      })
+      .insert(extRow)
       .select()
-      .single();
+      .single());
+
+    // If it fails (e.g. columns don't exist yet), retry with base columns only
+    if (saveError) {
+      console.warn("Insert with extended columns failed, retrying base:", saveError.message);
+      ({ data: saved, error: saveError } = await supabase
+        .from("ai_root_cause_analysis")
+        .insert(baseRow)
+        .select()
+        .single());
+    }
 
     if (saveError) {
       console.error("Save error:", saveError);
