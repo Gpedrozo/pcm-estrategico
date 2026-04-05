@@ -2398,73 +2398,64 @@ Deno.serve(async (req) => {
       }
     }
 
-    await logPlatformAudit(admin, {
-      actorId: auth.user.id,
-      actorEmail: auth.user.email,
-      empresaId: company.id,
-      actionType: "OWNER_CREATE_COMPANY",
-      details: {
-        company_id: company.id,
-        master_email: body.user.email,
-        subscription_created: Boolean(subscription?.id),
-        contract_created: Boolean(contract?.id),
-        warning: onboardingWarning,
-      },
-    }).catch((error) => {
-      onboardingWarning = mergeWarnings(
-        onboardingWarning,
-        `Falha ao registrar auditoria de plataforma: ${String((error as any)?.message ?? error ?? 'unknown')}`,
-      );
-    });
+    // --- Audit & Response (never abort after company+user created) ---
+    try {
+      await logPlatformAudit(admin, {
+        actorId: auth.user.id,
+        actorEmail: auth.user.email,
+        empresaId: company.id,
+        actionType: "OWNER_CREATE_COMPANY",
+        details: {
+          company_id: company.id,
+          master_email: body.user.email,
+          subscription_created: Boolean(subscription?.id),
+          contract_created: Boolean(contract?.id),
+          warning: onboardingWarning,
+        },
+      }).catch(() => null);
 
-    await logAuditEvent(admin, {
-      action: "OWNER_CREATE_COMPANY",
-      entityType: "company",
-      entityId: company.id,
-      empresaId: company.id,
-      userId: auth.user.id,
-      payload: {
-        company_slug: company.slug,
-        master_email: body.user.email,
-        subscription_created: Boolean(subscription?.id),
-        contract_created: Boolean(contract?.id),
-        warning: onboardingWarning,
-      },
-      severity: "info",
-      source: "owner-portal-admin",
-      endpoint: trace.endpoint,
-      executionMs: traceDurationMs(trace),
-      req,
-    }).catch((error) => {
-      onboardingWarning = mergeWarnings(
-        onboardingWarning,
-        `Falha ao registrar auditoria operacional: ${String((error as any)?.message ?? error ?? 'unknown')}`,
-      );
-    });
+      await logAuditEvent(admin, {
+        action: "OWNER_CREATE_COMPANY",
+        entityType: "company",
+        entityId: company.id,
+        empresaId: company.id,
+        userId: auth.user.id,
+        payload: {
+          company_slug: company.slug,
+          master_email: body.user.email,
+          subscription_created: Boolean(subscription?.id),
+          contract_created: Boolean(contract?.id),
+          warning: onboardingWarning,
+        },
+        severity: "info",
+        source: "owner-portal-admin",
+        endpoint: trace.endpoint,
+        executionMs: traceDurationMs(trace),
+        req,
+      }).catch(() => null);
 
-    await writeOperationalLog(admin, {
-      scope: trace.scope,
-      action: body.action,
-      endpoint: trace.endpoint,
-      statusCode: 200,
-      durationMs: traceDurationMs(trace),
-      empresaId: company.id,
-      userId: auth.user.id,
-      metadata: {
-        company_id: company.id,
-      },
-    }).catch((error) => {
-      onboardingWarning = mergeWarnings(
-        onboardingWarning,
-        `Falha ao gravar log técnico de operação: ${String((error as any)?.message ?? error ?? 'unknown')}`,
-      );
-    });
+      await writeOperationalLog(admin, {
+        scope: trace.scope,
+        action: body.action,
+        endpoint: trace.endpoint,
+        statusCode: 200,
+        durationMs: traceDurationMs(trace),
+        empresaId: company.id,
+        userId: auth.user.id,
+        metadata: {
+          company_id: company.id,
+        },
+      }).catch(() => null);
+    } catch {
+      // Logging failures must never prevent company creation response
+    }
 
     return ok({
       company,
       master_user: {
         id: authMasterUserId,
         email: normalizedMasterEmail,
+        initial_password: password,
       },
       subscription: subscription
         ? {
@@ -2475,9 +2466,9 @@ Deno.serve(async (req) => {
         : null,
       contract: contract
         ? {
-          id: contract.id,
-          status: contract.status,
-          version: contract.version,
+          id: contract?.id ?? null,
+          status: contract?.status ?? null,
+          version: contract?.version ?? null,
         }
         : null,
       warning: onboardingWarning,

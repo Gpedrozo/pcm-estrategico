@@ -1,6 +1,7 @@
 export const OWNER_TABS = [
   'dashboard',
   'monitoramento',
+  'cadastro',
   'empresas',
   'usuarios',
   'comercial',
@@ -21,6 +22,7 @@ export type OwnerTab = (typeof OWNER_TABS)[number]
 export const OWNER_TAB_LABELS: Record<OwnerTab, string> = {
   dashboard: 'Dashboard',
   monitoramento: 'Monitoramento',
+  cadastro: 'Cadastro',
   empresas: 'Empresas',
   usuarios: 'Usuarios',
   comercial: 'Planos',

@@ -79,6 +79,12 @@ export default function Owner() {
   const [newAdminName, setNewAdminName] = useState('')
   const [newAdminEmail, setNewAdminEmail] = useState('')
 
+  // Cadastro unificado - campos de plano/cobrança
+  const [cadastroPlanId, setCadastroPlanId] = useState('')
+  const [cadastroPeriod, setCadastroPeriod] = useState<'monthly' | 'quarterly' | 'yearly'>('monthly')
+  const [cadastroStartsAt, setCadastroStartsAt] = useState(() => new Date().toISOString().slice(0, 10))
+  const [cadastroEndsAt, setCadastroEndsAt] = useState('')
+
   const [newUserName, setNewUserName] = useState('')
   const [newUserEmail, setNewUserEmail] = useState('')
   const [newUserRole, setNewUserRole] = useState('ADMIN')
@@ -182,8 +188,8 @@ export default function Owner() {
     activeTab === 'usuarios' || activeTab === 'configuracoes' || activeTab === 'empresas' || activeTab === 'dashboard',
     isOwnerMaster,
   )
-  const plansQuery = useOwner2Plans(activeTab === 'comercial' || activeTab === 'dashboard')
-  const subscriptionsQuery = useOwner2Subscriptions(activeTab === 'comercial' || activeTab === 'dashboard')
+  const plansQuery = useOwner2Plans(activeTab === 'comercial' || activeTab === 'dashboard' || activeTab === 'cadastro')
+  const subscriptionsQuery = useOwner2Subscriptions(activeTab === 'comercial' || activeTab === 'dashboard' || activeTab === 'cadastro')
   const contractsQuery = useOwner2Contracts(activeTab === 'contratos' || activeTab === 'dashboard')
   const ticketsQuery = useOwner2Tickets(true)
   const auditFilters = useMemo(
@@ -628,6 +634,124 @@ export default function Owner() {
     }
   }
 
+  async function handleCreateCompanyFromCadastro() {
+    setError(null)
+    setFeedback(null)
+    setCompanyCredentialNote(null)
+
+    if (!newCompanyName || !newCompanyDocument || !newAdminName || !newAdminEmail) {
+      setError('Preencha os campos obrigatórios: Nome empresa, CPF/CNPJ, Nome admin, Email admin.')
+      return
+    }
+    if (!cadastroPlanId) {
+      setError('Selecione um plano para a empresa.')
+      return
+    }
+
+    const selectedPlan = plans.find((p) => String(p.id) === cadastroPlanId)
+    const planPrice = Number(selectedPlan?.price_month ?? 0)
+
+    const resetForm = () => {
+      setNewCompanyName('')
+      setNewCompanySlug('')
+      setNewCompanyPersonType('PJ')
+      setNewCompanyDocument('')
+      setNewCompanyRazaoSocial('')
+      setNewCompanyNomeFantasia('')
+      setNewCompanyAddress('')
+      setNewCompanyPhone('')
+      setNewCompanyEmail('')
+      setNewCompanyResponsible('')
+      setNewCompanySegment('')
+      setNewAdminName('')
+      setNewAdminEmail('')
+      setCadastroPlanId('')
+      setCadastroPeriod('monthly')
+      setCadastroStartsAt(new Date().toISOString().slice(0, 10))
+      setCadastroEndsAt('')
+    }
+
+    try {
+      const response: any = await execute.mutateAsync({
+        action: 'create_company',
+        payload: {
+          company: {
+            nome: newCompanyName,
+            slug: newCompanySlug || undefined,
+            tipo_pessoa: newCompanyPersonType,
+            cpf_cnpj: newCompanyDocument || undefined,
+            razao_social: newCompanyRazaoSocial || newCompanyName,
+            nome_fantasia: newCompanyNomeFantasia || newCompanyName,
+            endereco: newCompanyAddress || undefined,
+            telefone: newCompanyPhone || undefined,
+            email: newCompanyEmail || undefined,
+            responsavel: newCompanyResponsible || undefined,
+            segmento: newCompanySegment || undefined,
+          },
+          user: { nome: newAdminName, email: newAdminEmail, role: 'MASTER_TI' },
+          subscription: {
+            plan_id: cadastroPlanId,
+            amount: planPrice,
+            period: cadastroPeriod,
+            starts_at: cadastroStartsAt || undefined,
+            ends_at: cadastroEndsAt || undefined,
+            status: 'teste',
+          },
+        },
+      })
+
+      const createdCompany = response?.company ?? {}
+      const masterUser = response?.master_user ?? {}
+      const initialPassword = String(masterUser?.initial_password ?? '').trim()
+      const companySlug = String(createdCompany?.slug ?? newCompanySlug ?? '').trim()
+      const companyName = String(createdCompany?.nome ?? newCompanyName).trim()
+      const masterEmail = String(masterUser?.email ?? newAdminEmail).trim().toLowerCase()
+      const subscriptionWarning = response?.warning ? `\nObs: ${response.warning}` : ''
+
+      const resolvedHost = await resolveOrRepairTenantHost({
+        tenantId: String(createdCompany?.id ?? ''),
+        tenantBaseDomain: TENANT_BASE_DOMAIN,
+        slugHint: companySlug || undefined,
+      })
+
+      const loginHost = resolvedHost || (companySlug ? `${companySlug}.${TENANT_BASE_DOMAIN}` : '')
+      const loginUrl = loginHost ? `https://${loginHost}/login` : `https://${TENANT_BASE_DOMAIN}/login`
+
+      const planName = String(selectedPlan?.name ?? selectedPlan?.code ?? 'N/A')
+      const periodLabel = cadastroPeriod === 'monthly' ? 'Mensal' : cadastroPeriod === 'quarterly' ? 'Trimestral' : 'Anual'
+
+      if (initialPassword) {
+        const noteText = [
+          'CREDENCIAIS INICIAIS DO CLIENTE',
+          `Empresa: ${companyName}`,
+          `Slug: ${companySlug || 'N/A'}`,
+          `Plano: ${planName} (${periodLabel})`,
+          `Login: ${masterEmail}`,
+          `Senha temporaria: ${initialPassword}`,
+          `URL de acesso: ${loginUrl}`,
+          'Acao obrigatoria: alterar a senha no primeiro acesso.',
+          subscriptionWarning,
+        ].filter(Boolean).join('\n')
+
+        setCompanyCredentialNote({
+          companyName,
+          companySlug,
+          masterEmail,
+          initialPassword,
+          loginUrl,
+          noteText,
+        })
+      }
+
+      setFeedback(initialPassword
+        ? 'Empresa cadastrada com sucesso! Credenciais disponíveis abaixo.'
+        : 'Empresa cadastrada com sucesso.')
+      resetForm()
+    } catch (err: any) {
+      setError(String(err?.message ?? err ?? 'Falha ao cadastrar empresa.'))
+    }
+  }
+
   async function copyCompanyCredentialNote() {
     if (!companyCredentialNote) return
     if (!navigator?.clipboard?.writeText) {
@@ -883,6 +1007,104 @@ export default function Owner() {
                   </table>
                 </div>
               </SurfaceCard>
+            </div>
+          )}
+
+          {activeTab === 'cadastro' && (
+            <div className="grid gap-4 xl:grid-cols-2">
+              <SurfaceCard title="Cadastro de nova empresa" subtitle="Preencha dados, selecione plano e crie em um clique">
+                <div className="grid gap-2">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Dados da empresa</p>
+                  <select className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" value={newCompanyPersonType} onChange={(e) => setNewCompanyPersonType(e.target.value as 'PF' | 'PJ')}>
+                    <option value="PJ">Pessoa jurídica (PJ)</option>
+                    <option value="PF">Pessoa física (PF)</option>
+                  </select>
+                  <input className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" value={newCompanyName} onChange={(e) => setNewCompanyName(e.target.value)} placeholder="Nome da empresa *" />
+                  <input className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" value={newCompanySlug} onChange={(e) => setNewCompanySlug(e.target.value)} placeholder="Slug (opcional)" />
+                  <input className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" value={newCompanyDocument} onChange={(e) => setNewCompanyDocument(e.target.value)} placeholder={newCompanyPersonType === 'PF' ? 'CPF *' : 'CNPJ *'} />
+                  <input className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" value={newCompanyRazaoSocial} onChange={(e) => setNewCompanyRazaoSocial(e.target.value)} placeholder={newCompanyPersonType === 'PF' ? 'Nome completo' : 'Razão social'} />
+                  <input className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" value={newCompanyNomeFantasia} onChange={(e) => setNewCompanyNomeFantasia(e.target.value)} placeholder={newCompanyPersonType === 'PF' ? 'Nome de exibição' : 'Nome fantasia'} />
+                  <input className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" value={newCompanyAddress} onChange={(e) => setNewCompanyAddress(e.target.value)} placeholder="Endereço" />
+                  <input className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" value={newCompanyPhone} onChange={(e) => setNewCompanyPhone(e.target.value)} placeholder="Telefone" />
+                  <input className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" value={newCompanyEmail} onChange={(e) => setNewCompanyEmail(e.target.value)} placeholder="Email comercial" />
+                  <input className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" value={newCompanyResponsible} onChange={(e) => setNewCompanyResponsible(e.target.value)} placeholder="Responsável" />
+                  <input className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" value={newCompanySegment} onChange={(e) => setNewCompanySegment(e.target.value)} placeholder="Segmento" />
+
+                  <p className="mt-2 text-xs font-semibold uppercase tracking-wide text-slate-500">Administrador master</p>
+                  <input className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" value={newAdminName} onChange={(e) => setNewAdminName(e.target.value)} placeholder="Nome do administrador *" />
+                  <input className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" value={newAdminEmail} onChange={(e) => setNewAdminEmail(e.target.value)} placeholder="Email do administrador *" />
+
+                  <p className="mt-2 text-xs font-semibold uppercase tracking-wide text-slate-500">Plano e cobrança</p>
+                  <select className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" value={cadastroPlanId} onChange={(e) => setCadastroPlanId(e.target.value)}>
+                    <option value="">Selecione o plano *</option>
+                    {plans.map((p) => (
+                      <option key={String(p.id)} value={String(p.id)}>
+                        {String(p.name ?? p.code ?? 'Plano')} — R$ {Number(p.price_month ?? 0).toFixed(2)}/mês
+                      </option>
+                    ))}
+                  </select>
+                  <select className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" value={cadastroPeriod} onChange={(e) => setCadastroPeriod(e.target.value)}>
+                    <option value="monthly">Mensal</option>
+                    <option value="quarterly">Trimestral</option>
+                    <option value="yearly">Anual</option>
+                  </select>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="block text-xs text-slate-500 mb-1">Início</label>
+                      <input type="date" className="w-full rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" value={cadastroStartsAt} onChange={(e) => setCadastroStartsAt(e.target.value)} />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-slate-500 mb-1">Término (opcional)</label>
+                      <input type="date" className="w-full rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" value={cadastroEndsAt} onChange={(e) => setCadastroEndsAt(e.target.value)} />
+                    </div>
+                  </div>
+
+                  <button
+                    className="mt-2 rounded-lg bg-sky-700 px-3 py-2.5 text-sm font-semibold text-white hover:bg-sky-800 disabled:opacity-50"
+                    disabled={busy || !newCompanyName || !newCompanyDocument || !newAdminName || !newAdminEmail || !cadastroPlanId}
+                    onClick={handleCreateCompanyFromCadastro}
+                  >
+                    Cadastrar empresa
+                  </button>
+                </div>
+
+                {companyCredentialNote && (
+                  <div className="mt-4 rounded-xl border border-sky-200 bg-sky-50 p-4">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-sky-800">Credenciais iniciais do cliente</p>
+                    <p className="mt-1 text-xs text-sky-700">Informação exibida somente agora. Compartilhe com segurança.</p>
+                    <pre className="mt-3 whitespace-pre-wrap rounded-lg border border-sky-200 bg-white p-3 text-xs leading-relaxed text-slate-800">{companyCredentialNote.noteText}</pre>
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      <button className="rounded-lg border border-sky-300 bg-white px-3 py-2 text-xs font-semibold text-sky-700 hover:bg-sky-100" onClick={copyCompanyCredentialNote}>Copiar nota</button>
+                      <a className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-100" href={companyCredentialNote.loginUrl} target="_blank" rel="noopener noreferrer">Abrir login do cliente</a>
+                    </div>
+                  </div>
+                )}
+              </SurfaceCard>
+
+              {plans.length > 0 && (
+                <SurfaceCard title="Planos disponíveis" subtitle="Referência rápida">
+                  <div className="max-h-[360px] overflow-auto rounded-xl border border-slate-200">
+                    <table className="w-full text-xs">
+                      <thead className="bg-slate-100">
+                        <tr>
+                          <th className="px-2 py-2 text-left">Plano</th>
+                          <th className="px-2 py-2 text-left">Preço/mês</th>
+                          <th className="px-2 py-2 text-left">Status</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {plans.map((p) => (
+                          <tr key={String(p.id)} className="border-t border-slate-200">
+                            <td className="px-2 py-2 font-medium">{String(p.name ?? p.code ?? '-')}</td>
+                            <td className="px-2 py-2">R$ {Number(p.price_month ?? 0).toFixed(2)}</td>
+                            <td className="px-2 py-2">{String(p.status ?? '-')}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </SurfaceCard>
+              )}
             </div>
           )}
 
