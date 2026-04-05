@@ -1,11 +1,14 @@
 // ============================================================
-// Auth Context v2.0 — QR Binding + Mecânico Login (simples)
+// Auth Context v2.1 — QR Binding + JWT session + Mecânico Login
+// After device binding we call the mecanico-device-auth edge
+// function to obtain a real Supabase JWT so all subsequent
+// queries run as `authenticated` (matching existing RLS).
 // ============================================================
 
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform } from 'react-native';
-import { supabase } from '../lib/supabase';
+import { supabase, setGlobalAuth, clearGlobalAuth } from '../lib/supabase';
 import type { Mecanico } from '../types';
 
 const STORAGE_KEYS = {
@@ -16,6 +19,8 @@ const STORAGE_KEYS = {
   MECANICO_ID: '@pcm:mecanico_id',
   MECANICO_NOME: '@pcm:mecanico_nome',
   MECANICO_CODIGO: '@pcm:mecanico_codigo',
+  ACCESS_TOKEN: '@pcm:access_token',
+  REFRESH_TOKEN: '@pcm:refresh_token',
 };
 
 interface AuthState {
@@ -56,18 +61,46 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     mecanicoCodigo: null,
   });
 
+  // ── Helper: obtain JWT via mecanico-device-auth edge function ──
+  const obtainJwt = useCallback(async (deviceToken: string): Promise<boolean> => {
+    try {
+      console.log('[auth] Obtaining JWT via mecanico-device-auth...');
+      const { data, error } = await supabase.functions.invoke('mecanico-device-auth', {
+        body: { device_token: deviceToken },
+      });
+      if (error || !data?.ok || !data?.access_token) {
+        console.warn('[auth] JWT fetch failed:', error?.message || data?.error);
+        return false;
+      }
+      await setGlobalAuth(data.access_token, data.refresh_token || data.access_token);
+      await AsyncStorage.setItem(STORAGE_KEYS.ACCESS_TOKEN, data.access_token);
+      if (data.refresh_token) await AsyncStorage.setItem(STORAGE_KEYS.REFRESH_TOKEN, data.refresh_token);
+      console.log('[auth] JWT set OK, role=authenticated');
+      return true;
+    } catch (e: any) {
+      console.warn('[auth] obtainJwt exception:', e?.message);
+      return false;
+    }
+  }, []);
+
   // ── Restore persisted state on mount ──
   useEffect(() => {
     (async () => {
       try {
-        const [empresaId, empresaNome, mecanicoId, mecanicoNome, mecanicoCodigo] =
+        const [empresaId, empresaNome, deviceToken, mecanicoId, mecanicoNome, mecanicoCodigo] =
           await Promise.all([
             AsyncStorage.getItem(STORAGE_KEYS.EMPRESA_ID),
             AsyncStorage.getItem(STORAGE_KEYS.EMPRESA_NOME),
+            AsyncStorage.getItem(STORAGE_KEYS.DEVICE_TOKEN),
             AsyncStorage.getItem(STORAGE_KEYS.MECANICO_ID),
             AsyncStorage.getItem(STORAGE_KEYS.MECANICO_NOME),
             AsyncStorage.getItem(STORAGE_KEYS.MECANICO_CODIGO),
           ]);
+
+        // Re-authenticate device to get fresh JWT (tokens expire)
+        if (deviceToken) {
+          await obtainJwt(deviceToken);
+        }
 
         setState({
           isLoading: false,
@@ -83,13 +116,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setState((s) => ({ ...s, isLoading: false }));
       }
     })();
-  }, []);
+  }, [obtainJwt]);
 
   // ── Bind device via QR token → RPC vincular_dispositivo ──
   const bindDevice = useCallback(async (qrToken: string): Promise<{ ok: boolean; error?: string }> => {
     try {
       // Clear any stale Supabase auth session from previous app version
-      await supabase.auth.signOut().catch(() => {});
+      await clearGlobalAuth();
 
       // Generate a stable device_id per installation
       let deviceId = await AsyncStorage.getItem(STORAGE_KEYS.DEVICE_ID);
@@ -123,6 +156,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       await AsyncStorage.setItem(STORAGE_KEYS.EMPRESA_NOME, empresaNome);
       if (deviceToken) await AsyncStorage.setItem(STORAGE_KEYS.DEVICE_TOKEN, deviceToken);
 
+      // Obtain JWT so all subsequent queries use authenticated role
+      if (deviceToken) {
+        await obtainJwt(deviceToken);
+      }
+
       setState((s) => ({
         ...s,
         isDeviceBound: true,
@@ -134,10 +172,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } catch (err: any) {
       return { ok: false, error: err?.message || 'Erro ao vincular dispositivo' };
     }
-  }, []);
+  }, [obtainJwt]);
 
-  // ── Unbind device (clear everything) ──
+  // ── Unbind device (clear everything + drop JWT) ──
   const unbindDevice = useCallback(async () => {
+    await clearGlobalAuth();
     await AsyncStorage.multiRemove(Object.values(STORAGE_KEYS));
     setState({
       isLoading: false,
