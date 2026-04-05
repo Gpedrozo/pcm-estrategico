@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query';
+﻿import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -16,7 +16,7 @@ interface ServiceStatus {
 const STATUS_CONFIG = {
   operational: { label: 'Operacional', color: 'bg-green-500', badge: 'default' as const, icon: CheckCircle },
   degraded: { label: 'Degradado', color: 'bg-yellow-500', badge: 'secondary' as const, icon: AlertTriangle },
-  down: { label: 'Indisponível', color: 'bg-red-500', badge: 'destructive' as const, icon: XCircle },
+  down: { label: 'IndisponÃ­vel', color: 'bg-red-500', badge: 'destructive' as const, icon: XCircle },
 };
 
 export default function SystemStatusPage() {
@@ -48,13 +48,13 @@ export default function SystemStatusPage() {
         const { error } = await supabase.auth.getSession();
         const authLatency = Math.round(performance.now() - authStart);
         checks.push({
-          name: 'Autenticação',
+          name: 'AutenticaÃ§Ã£o',
           status: error ? 'degraded' : authLatency > 3000 ? 'degraded' : 'operational',
           latency: authLatency,
           icon: Shield,
         });
       } catch {
-        checks.push({ name: 'Autenticação', status: 'down', latency: 0, icon: Shield });
+        checks.push({ name: 'AutenticaÃ§Ã£o', status: 'down', latency: 0, icon: Shield });
       }
 
       // 3. Storage service (check bucket list)
@@ -114,7 +114,7 @@ export default function SystemStatusPage() {
         <div>
           <h1 className="text-2xl font-bold">Status do Sistema</h1>
           <p className="text-muted-foreground text-sm">
-            Monitoramento em tempo real dos serviços
+            Monitoramento em tempo real dos serviÃ§os
           </p>
         </div>
         <Badge variant={cfg.badge} className="text-sm px-3 py-1">
@@ -133,13 +133,13 @@ export default function SystemStatusPage() {
                 {overall === 'operational'
                   ? 'Todos os sistemas operacionais'
                   : overall === 'degraded'
-                    ? 'Alguns serviços apresentam lentidão'
-                    : 'Serviços com indisponibilidade detectada'}
+                    ? 'Alguns serviÃ§os apresentam lentidÃ£o'
+                    : 'ServiÃ§os com indisponibilidade detectada'}
               </p>
               <p className="text-sm text-muted-foreground">
-                Latência média: {healthData?.avgLatency ?? 0}ms
+                LatÃªncia mÃ©dia: {healthData?.avgLatency ?? 0}ms
                 {healthData?.checkedAt && (
-                  <> — Verificado em {new Date(healthData.checkedAt).toLocaleTimeString('pt-BR')}</>
+                  <> â€” Verificado em {new Date(healthData.checkedAt).toLocaleTimeString('pt-BR')}</>
                 )}
               </p>
             </div>
@@ -199,7 +199,7 @@ export default function SystemStatusPage() {
         <CardHeader>
           <CardTitle className="text-base flex items-center gap-2">
             <Activity className="w-5 h-5" />
-            Informações do Sistema
+            InformaÃ§Ãµes do Sistema
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -210,14 +210,14 @@ export default function SystemStatusPage() {
             </div>
             <div>
               <p className="text-muted-foreground">Frontend</p>
-              <p className="font-medium">Vercel Edge</p>
+              <p className="font-medium">Cloudflare Pages</p>
             </div>
             <div>
-              <p className="text-muted-foreground">Região</p>
+              <p className="text-muted-foreground">RegiÃ£o</p>
               <p className="font-medium">South America (GRU)</p>
             </div>
             <div>
-              <p className="text-muted-foreground">Versão</p>
+              <p className="text-muted-foreground">VersÃ£o</p>
               <p className="font-medium">v2.0 Enterprise</p>
             </div>
           </div>

@@ -1,15 +1,14 @@
 import { useEffect } from 'react';
-import { SpeedInsights } from '@vercel/speed-insights/react';
 
-type TelemetryProviderType = 'cloudflare' | 'vercel' | 'none';
+type TelemetryProviderType = 'cloudflare' | 'none';
 
-const rawTelemetryProvider = String(import.meta.env.VITE_ANALYTICS_PROVIDER ?? 'vercel').trim().toLowerCase();
+const rawTelemetryProvider = String(import.meta.env.VITE_ANALYTICS_PROVIDER ?? 'cloudflare').trim().toLowerCase();
 
 function resolveTelemetryProvider(value: string): TelemetryProviderType {
-  if (value === 'cloudflare' || value === 'none' || value === 'vercel') {
+  if (value === 'cloudflare' || value === 'none') {
     return value;
   }
-  return 'vercel';
+  return 'cloudflare';
 }
 
 const telemetryProvider = resolveTelemetryProvider(rawTelemetryProvider);
@@ -37,11 +36,5 @@ export function TelemetryProvider() {
   const cloudflareEnabled = telemetryProvider === 'cloudflare' && Boolean(cloudflareToken);
   useCloudflareBeacon(cloudflareEnabled, cloudflareToken);
 
-  // Mantemos o caminho legado Vercel para testes controlados e rollback seguro.
-  if (telemetryProvider === 'vercel') {
-    return <SpeedInsights />;
-  }
-
-  // Em Cloudflare ou none, nao renderizamos o componente da Vercel.
   return null;
 }
