@@ -152,7 +152,7 @@ export default function OwnerDispositivosTab({ selectedEmpresaId, empresas, runA
                   title: 'Desativar todos dispositivos',
                   description: 'ATENÇÃO: Isso vai desativar TODOS os dispositivos desta empresa. Continuar?',
                   confirmLabel: 'Desativar Todos',
-                  onConfirm: () => desativarTodos.mutateAsync(selectedEmpresaId),
+                  onConfirm: () => desativarTodos.mutateAsync(selectedEmpresaId!),
                 });
               }}
               disabled={desativarTodos.isPending}
