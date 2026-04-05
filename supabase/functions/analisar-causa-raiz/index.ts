@@ -3,40 +3,76 @@ import { adminClient, requireTenantContext, requireUser } from "../_shared/auth.
 import { fail, ok, preflight, rejectIfOriginNotAllowed } from "../_shared/response.ts";
 
 Deno.serve(async (req: Request) => {
+  console.log("[IA] >>>", req.method, req.url);
+
   if (req.method === "OPTIONS") {
     return preflight(req, "POST, OPTIONS");
   }
 
+  // Health-check (GET) for diagnostics
+  if (req.method === "GET") {
+    const hasKey = Boolean(Deno.env.get("AI_GATEWAY_API_KEY"));
+    const aiUrl = Deno.env.get("AI_GATEWAY_URL") || "https://api.groq.com/openai/v1/chat/completions";
+    const aiModel = Deno.env.get("AI_MODEL") || "llama-3.3-70b-versatile";
+    return ok({ status: "ok", ai_key_configured: hasKey, ai_url: aiUrl, ai_model: aiModel }, 200, req);
+  }
+
   const originDenied = rejectIfOriginNotAllowed(req);
-  if (originDenied) return originDenied;
+  if (originDenied) {
+    console.error("[IA] Origin denied:", req.headers.get("origin"));
+    return originDenied;
+  }
 
   if (req.method !== "POST") return fail("Method not allowed", 405, null, req);
 
   try {
     // ── 1. Auth ──────────────────────────────────────────────
+    console.log("[IA] Step 1: requireUser");
     const auth = await requireUser(req);
-    if ("error" in auth) return fail(auth.error ?? "Unauthorized", auth.status ?? 401, null, req);
+    if ("error" in auth) {
+      console.error("[IA] Auth failed:", auth.error, auth.status);
+      return fail(auth.error ?? "Unauthorized", auth.status ?? 401, null, req);
+    }
+    console.log("[IA] Auth OK:", auth.user.email);
 
     // ── 2. Body ──────────────────────────────────────────────
-    const body = (await req.json().catch(() => null)) as {
-      tag?: string;
-      empresa_id?: string;
-    } | null;
+    console.log("[IA] Step 2: parse body");
+    let body: { tag?: string; empresa_id?: string } | null = null;
+    try {
+      body = await req.json();
+    } catch (e) {
+      console.error("[IA] Body parse error:", e);
+      body = null;
+    }
     const tag = body?.tag;
-    if (!tag) return fail("TAG é obrigatória", 400, null, req);
+    if (!tag) {
+      console.error("[IA] No tag in body:", JSON.stringify(body));
+      return fail("TAG é obrigatória", 400, null, req);
+    }
+    console.log("[IA] tag:", tag, "empresa_id:", body?.empresa_id);
 
     // ── 3. Tenant ────────────────────────────────────────────
+    console.log("[IA] Step 3: requireTenantContext");
     const supabase = adminClient();
     const scope = await requireTenantContext(supabase, req, auth.user.id, body?.empresa_id ?? null);
-    if ("error" in scope) return fail(scope.error, scope.status, null, req);
+    if ("error" in scope) {
+      console.error("[IA] Tenant failed:", scope.error, scope.status, "reason" in scope ? scope.reason : "");
+      return fail(scope.error, scope.status, null, req);
+    }
+    console.log("[IA] Tenant OK, empresaId:", scope.empresaId);
 
     // ── 4. AI secrets ────────────────────────────────────────
     const AI_KEY = Deno.env.get("AI_GATEWAY_API_KEY");
     const AI_URL = Deno.env.get("AI_GATEWAY_URL") || "https://api.groq.com/openai/v1/chat/completions";
     const AI_MODEL = Deno.env.get("AI_MODEL") || "llama-3.3-70b-versatile";
-    if (!AI_KEY) throw new Error("AI_GATEWAY_API_KEY is not configured");
+    if (!AI_KEY) {
+      console.error("[IA] AI_GATEWAY_API_KEY not configured!");
+      return fail("AI_GATEWAY_API_KEY is not configured", 500, null, req);
+    }
+    console.log("[IA] AI config: model=", AI_MODEL, "url=", AI_URL);
 
     // ── 5. Fetch OS data ─────────────────────────────────────
+    console.log("[IA] Step 5: fetch ordens_servico for tag:", tag, "empresa:", scope.empresaId);
     const { data: ordensServico, error: osError } = await supabase
       .from("ordens_servico")
       .select("*")
@@ -44,10 +80,15 @@ Deno.serve(async (req: Request) => {
       .eq("tag", tag)
       .order("data_solicitacao", { ascending: false });
 
-    if (osError) throw osError;
+    if (osError) {
+      console.error("[IA] OS query error:", osError);
+      throw osError;
+    }
     if (!ordensServico || ordensServico.length === 0) {
+      console.log("[IA] No OS found for tag:", tag);
       return fail("Nenhuma O.S. encontrada para esta TAG", 404, null, req);
     }
+    console.log("[IA] Found", ordensServico.length, "OS records");
 
     const { data: equipamento } = await supabase
       .from("equipamentos")
@@ -55,6 +96,8 @@ Deno.serve(async (req: Request) => {
       .eq("empresa_id", scope.empresaId)
       .eq("tag", tag)
       .single();
+
+    console.log("[IA] Equipamento:", equipamento?.nome || "not found");
 
     // ── 6. Aggregate ─────────────────────────────────────────
     const totalOS = ordensServico.length;
@@ -114,6 +157,7 @@ Deno.serve(async (req: Request) => {
     ].join("\n");
 
     // ── 8. Call AI ───────────────────────────────────────────
+    console.log("[IA] Step 8: calling Groq API...");
     const aiResp = await fetch(AI_URL, {
       method: "POST",
       signal: AbortSignal.timeout(30_000),
@@ -154,14 +198,16 @@ Deno.serve(async (req: Request) => {
 
     if (!aiResp.ok) {
       const errBody = await aiResp.text().catch(() => "");
-      console.error("[IA] AI error:", aiResp.status, errBody);
+      console.error("[IA] AI API error:", aiResp.status, errBody);
       if (aiResp.status === 429) return fail("Limite de requisições excedido. Tente em alguns minutos.", 429, null, req);
       if (aiResp.status === 402) return fail("Créditos insuficientes na API de IA.", 402, null, req);
-      throw new Error(`AI gateway error: ${aiResp.status}`);
+      return fail(`Erro na API de IA: ${aiResp.status} - ${errBody.slice(0, 200)}`, 502, null, req);
     }
+    console.log("[IA] AI API response OK");
 
     // ── 9. Parse AI response ─────────────────────────────────
     const aiData = await aiResp.json();
+    console.log("[IA] Step 9: parsing AI response, choices:", aiData.choices?.length ?? 0);
     const toolCall = aiData.choices?.[0]?.message?.tool_calls?.[0];
 
     let analysis: any = null;
@@ -171,13 +217,16 @@ Deno.serve(async (req: Request) => {
         analysis = typeof toolCall.function.arguments === "string"
           ? JSON.parse(toolCall.function.arguments)
           : toolCall.function.arguments;
-      } catch {
+        console.log("[IA] Parsed tool_call arguments OK");
+      } catch (e) {
+        console.error("[IA] Failed to parse tool_call arguments:", e);
         analysis = null;
       }
     }
 
     if (!analysis) {
       const content = aiData.choices?.[0]?.message?.content || "";
+      console.log("[IA] No tool_call, trying content parse. Content length:", content.length);
       try { analysis = JSON.parse(content); } catch {
         analysis = {
           summary: content || "Não foi possível gerar análise",
@@ -196,8 +245,10 @@ Deno.serve(async (req: Request) => {
     analysis.confidence_score = Math.min(100, Math.max(0, Number(analysis.confidence_score) || 50));
     if (!Array.isArray(analysis.possible_causes)) analysis.possible_causes = [];
     if (!Array.isArray(analysis.preventive_actions)) analysis.preventive_actions = [];
+    console.log("[IA] Step 10: validated. criticality:", analysis.criticality, "score:", analysis.confidence_score);
 
     // ── 11. Persist ──────────────────────────────────────────
+    console.log("[IA] Step 11: persisting to DB");
     const row: Record<string, unknown> = {
       tag,
       equipamento_id: equipamento?.id || null,
@@ -225,6 +276,7 @@ Deno.serve(async (req: Request) => {
 
     // Fallback if new columns don't exist yet
     if (saveErr && /os_count|mtbf_days|requested_by/.test(saveErr.message ?? "")) {
+      console.log("[IA] Retrying insert without new columns...");
       delete row.os_count;
       delete row.mtbf_days;
       delete row.requested_by;
@@ -236,11 +288,13 @@ Deno.serve(async (req: Request) => {
     }
 
     if (saveErr) {
-      console.error("[IA] Save error:", saveErr);
-      return fail("Análise gerada mas falhou ao salvar.", 500, null, req);
+      console.error("[IA] Save error:", JSON.stringify(saveErr));
+      return fail("Análise gerada mas falhou ao salvar: " + (saveErr.message ?? "unknown"), 500, null, req);
     }
+    console.log("[IA] Saved! id:", saved.id);
 
     // ── 12. Return ───────────────────────────────────────────
+    console.log("[IA] <<< SUCCESS");
     return ok(
       {
         analysis: { ...analysis, id: saved.id, generated_at: saved.generated_at },
@@ -251,7 +305,7 @@ Deno.serve(async (req: Request) => {
       req,
     );
   } catch (error) {
-    console.error("[IA] Unhandled:", error);
+    console.error("[IA] UNHANDLED ERROR:", error);
     const msg = error instanceof Error ? error.message : "Erro desconhecido";
     return fail(msg, 500, null, req);
   }
