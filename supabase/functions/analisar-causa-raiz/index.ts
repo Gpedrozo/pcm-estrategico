@@ -37,7 +37,7 @@ Deno.serve(async (req: Request) => {
 
     // ── 2. Body ──────────────────────────────────────────────
     console.log("[IA] Step 2: parse body");
-    let body: { tag?: string; empresa_id?: string } | null = null;
+    let body: { tag?: string; empresa_id?: string; date_from?: string; date_to?: string } | null = null;
     try {
       body = await req.json();
     } catch (e) {
@@ -49,7 +49,9 @@ Deno.serve(async (req: Request) => {
       console.error("[IA] No tag in body:", JSON.stringify(body));
       return fail("TAG é obrigatória", 400, null, req);
     }
-    console.log("[IA] tag:", tag, "empresa_id:", body?.empresa_id);
+    const dateFrom = body?.date_from || null;
+    const dateTo = body?.date_to || null;
+    console.log("[IA] tag:", tag, "empresa_id:", body?.empresa_id, "period:", dateFrom, "->", dateTo);
 
     // ── 3. Tenant ────────────────────────────────────────────
     console.log("[IA] Step 3: requireTenantContext");
@@ -73,12 +75,23 @@ Deno.serve(async (req: Request) => {
 
     // ── 5. Fetch OS data ─────────────────────────────────────
     console.log("[IA] Step 5: fetch ordens_servico for tag:", tag, "empresa:", scope.empresaId);
-    const { data: ordensServico, error: osError } = await supabase
+    let osQuery = supabase
       .from("ordens_servico")
       .select("*")
       .eq("empresa_id", scope.empresaId)
       .eq("tag", tag)
       .order("data_solicitacao", { ascending: false });
+
+    if (dateFrom) {
+      osQuery = osQuery.gte("data_solicitacao", `${dateFrom}T00:00:00`);
+      console.log("[IA] Filtering from:", dateFrom);
+    }
+    if (dateTo) {
+      osQuery = osQuery.lte("data_solicitacao", `${dateTo}T23:59:59`);
+      console.log("[IA] Filtering to:", dateTo);
+    }
+
+    const { data: ordensServico, error: osError } = await osQuery;
 
     if (osError) {
       console.error("[IA] OS query error:", osError);
@@ -135,6 +148,10 @@ Deno.serve(async (req: Request) => {
       .join("\n");
 
     // ── 7. Prompt ────────────────────────────────────────────
+    const periodLabel = dateFrom || dateTo
+      ? `Período analisado: ${dateFrom || "início"} até ${dateTo || "hoje"}`
+      : "Período: todo o histórico disponível";
+
     const prompt = [
       "Você é um engenheiro especialista em confiabilidade industrial e manutenção preditiva.",
       "",
@@ -142,6 +159,7 @@ Deno.serve(async (req: Request) => {
       `Nome: ${equipamento?.nome || "N/A"}`,
       `Fabricante: ${equipamento?.fabricante || "N/A"}`,
       `Criticidade: ${equipamento?.criticidade || "N/A"}`,
+      periodLabel,
       "",
       `Total de O.S.: ${totalOS}`,
       `Tipos: ${JSON.stringify(tipoContagem)}`,
