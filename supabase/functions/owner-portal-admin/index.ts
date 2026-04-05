@@ -2288,38 +2288,36 @@ Deno.serve(async (req) => {
     let selectedPlanId = body.subscription?.plan_id ?? null;
 
     if (!selectedPlanId) {
-      const { data: fallbackPlan, error: fallbackPlanError } = await admin
-        .from("plans")
-        .select("id,code")
-        .eq("active", true)
-        .order("price_month", { ascending: true })
-        .limit(1)
-        .maybeSingle();
+      try {
+        const { data: fallbackPlan, error: fallbackPlanError } = await admin
+          .from("plans")
+          .select("id,code")
+          .eq("active", true)
+          .order("price_month", { ascending: true })
+          .limit(1)
+          .maybeSingle();
 
-      if (fallbackPlanError) {
-        if (isSchemaOrMissingObjectError(fallbackPlanError.message)) {
+        if (fallbackPlanError) {
           onboardingWarning = mergeWarnings(
             onboardingWarning,
-            `Plano inicial não pôde ser resolvido neste ambiente legado. Empresa seguirá sem assinatura inicial automática. (${fallbackPlanError.message})`,
+            `Plano inicial não pôde ser resolvido. Empresa seguirá sem assinatura inicial automática. (${fallbackPlanError.message})`,
+          );
+        } else if (fallbackPlan?.id) {
+          selectedPlanId = fallbackPlan.id;
+          onboardingWarning = mergeWarnings(
+            onboardingWarning,
+            `Plano inicial não informado. Assinatura criada automaticamente com plano ${fallbackPlan.code ?? fallbackPlan.id}.`,
           );
         } else {
           onboardingWarning = mergeWarnings(
             onboardingWarning,
-            `Plano inicial não pôde ser resolvido. Empresa seguirá sem assinatura. (${fallbackPlanError.message})`,
+            "Empresa criada sem assinatura inicial: nenhum plano ativo encontrado para fallback automático.",
           );
         }
-      }
-
-      if (fallbackPlan?.id) {
-        selectedPlanId = fallbackPlan.id;
+      } catch (planLookupErr: any) {
         onboardingWarning = mergeWarnings(
           onboardingWarning,
-          `Plano inicial não informado. Assinatura criada automaticamente com plano ${fallbackPlan.code ?? fallbackPlan.id}.`,
-        );
-      } else {
-        onboardingWarning = mergeWarnings(
-          onboardingWarning,
-          "Empresa criada sem assinatura inicial: nenhum plano ativo encontrado para fallback automático.",
+          `Erro inesperado ao buscar plano inicial. Empresa seguirá sem assinatura. (${planLookupErr?.message ?? "unknown"})`,
         );
       }
     }
@@ -2328,35 +2326,32 @@ Deno.serve(async (req) => {
     let contract: any = null;
 
     if (selectedPlanId) {
-      const startsAt = body.subscription?.starts_at ?? new Date().toISOString().slice(0, 10);
-      const { data: createdSubscription, error: subscriptionError } = await admin
-        .from("subscriptions")
-        .upsert({
-          empresa_id: company.id,
-          plan_id: selectedPlanId,
-          amount: body.subscription?.amount ?? 0,
-          payment_method: body.subscription?.payment_method ?? null,
-          period: body.subscription?.period ?? "monthly",
-          starts_at: startsAt,
-          ends_at: body.subscription?.ends_at ?? null,
-          renewal_at: body.subscription?.renewal_at ?? body.subscription?.ends_at ?? null,
-          status: body.subscription?.status ?? "teste",
-          payment_status: body.subscription?.payment_status ?? null,
-        }, { onConflict: "empresa_id" })
-        .select("*")
-        .single();
+      try {
+        const startsAt = body.subscription?.starts_at ?? new Date().toISOString().slice(0, 10);
+        const { data: createdSubscription, error: subscriptionError } = await admin
+          .from("subscriptions")
+          .upsert({
+            empresa_id: company.id,
+            plan_id: selectedPlanId,
+            amount: body.subscription?.amount ?? 0,
+            payment_method: body.subscription?.payment_method ?? null,
+            period: body.subscription?.period ?? "monthly",
+            starts_at: startsAt,
+            ends_at: body.subscription?.ends_at ?? null,
+            renewal_at: body.subscription?.renewal_at ?? body.subscription?.ends_at ?? null,
+            status: body.subscription?.status ?? "teste",
+            payment_status: body.subscription?.payment_status ?? null,
+          }, { onConflict: "empresa_id" })
+          .select("*")
+          .single();
 
-      if (subscriptionError || !createdSubscription?.id) {
-        const reasonText = subscriptionError?.message ?? "subscription_create_failed";
-
-        const isConstraintLike = /violates|constraint|duplicate|foreign/i.test(reasonText);
-        if (isSchemaLike || isConstraintLike) {
+        if (subscriptionError || !createdSubscription?.id) {
+          const reasonText = subscriptionError?.message ?? "subscription_create_failed";
           onboardingWarning = mergeWarnings(
             onboardingWarning,
-            `Assinatura inicial não foi criada automaticamente neste ambiente. (${reasonText})`,
+            `Assinatura inicial não foi criada automaticamente. (${reasonText})`,
           );
-        }
-      } else {
+        } else {
         subscription = createdSubscription;
 
         // Sync company_subscriptions table (used by check_company_plan_limit RPC)
@@ -2389,18 +2384,17 @@ Deno.serve(async (req) => {
           }
         } catch (error: any) {
           const reasonText = error?.message ?? "contract_create_failed";
-          if (isSchemaOrMissingObjectError(reasonText)) {
-            onboardingWarning = mergeWarnings(
-              onboardingWarning,
-              `Contrato inicial não pôde ser gerado automaticamente neste ambiente legado. (${reasonText})`,
-            );
-          } else {
-            onboardingWarning = mergeWarnings(
-              onboardingWarning,
-              `Contrato inicial não pôde ser gerado automaticamente. (${reasonText})`,
-            );
-          }
+          onboardingWarning = mergeWarnings(
+            onboardingWarning,
+            `Contrato inicial não pôde ser gerado automaticamente. (${reasonText})`,
+          );
         }
+      }
+      } catch (subscriptionBlockErr: any) {
+        onboardingWarning = mergeWarnings(
+          onboardingWarning,
+          `Erro inesperado ao criar assinatura/contrato inicial. (${subscriptionBlockErr?.message ?? "unknown"})`,
+        );
       }
     }
 
