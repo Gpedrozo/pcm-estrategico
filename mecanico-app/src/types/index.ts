@@ -180,6 +180,7 @@ export type RootStackParamList = {
   MecanicoSelect: undefined;
   Main: undefined;
   OSDetail: { osId: string };
+  CriarOS: undefined;
   Execution: { osId: string; execucaoId?: string; mode?: 'auto' | 'manual' };
   Parada: { osId: string; equipamentoId?: string; equipamentoNome?: string };
   SolicitarServico: { equipamentoId?: string; equipamentoNome?: string };
@@ -192,18 +193,7 @@ export type RootStackParamList = {
 
 export type MainTabParamList = {
   HomeTab: undefined;
-  QRTab: undefined;
+  OrdensTab: undefined;
+  SolicitacoesTab: undefined;
   MaisTab: undefined;
 };
-
-// Auth
-export interface AuthSession {
-  access_token: string;
-  refresh_token: string;
-  user_id: string;
-  empresa_id: string;
-  mecanico_id: string;
-  mecanico_nome: string;
-  expires_at: number;
-  last_activity: number;
-}

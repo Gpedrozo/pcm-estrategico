@@ -69,7 +69,6 @@ export default function SolicitacoesListScreen() {
       setSolicitacoes(list);
       setStats(st);
 
-      // Se SQLite está vazio e temos conexão, aguardar sync e recarregar
       if (list.length === 0 && !initialSyncDone) {
         const online = await isOnline();
         if (online) {
@@ -186,7 +185,6 @@ export default function SolicitacoesListScreen() {
 
     return (
       <View style={[styles.card, { borderLeftColor: st.color }]}>
-        {/* Header */}
         <View style={styles.cardHeader}>
           <View style={{ flex: 1 }}>
             <Text style={styles.cardNumber}>
@@ -201,27 +199,21 @@ export default function SolicitacoesListScreen() {
           </View>
         </View>
 
-        {/* Tag / Equipamento */}
         <Text style={styles.cardTag}>🔧 {item.tag || 'Sem tag'}</Text>
-
-        {/* Descrição */}
         <Text style={styles.cardDesc} numberOfLines={3}>{item.descricao_falha}</Text>
 
-        {/* Classificação + Solicitante + Data */}
         <View style={styles.cardMeta}>
           <Text style={[styles.classifLabel, { color: cls.color }]}>{cls.label}</Text>
           <Text style={styles.metaText}>👤 {item.solicitante_nome}</Text>
           <Text style={styles.metaDate}>{formatDate(item.created_at)}</Text>
         </View>
 
-        {/* Observações de rejeição */}
         {item.status === 'REJEITADA' && item.observacoes && (
           <View style={styles.rejectReason}>
             <Text style={styles.rejectReasonText}>Motivo: {item.observacoes}</Text>
           </View>
         )}
 
-        {/* OS vinculada */}
         {item.status === 'CONVERTIDA' && item.os_id && (
           <TouchableOpacity
             style={styles.osLink}
@@ -231,27 +223,17 @@ export default function SolicitacoesListScreen() {
           </TouchableOpacity>
         )}
 
-        {/* Ações (só para PENDENTE) */}
         {isPendente && !isRejecting && (
           <View style={styles.actionsRow}>
-            <TouchableOpacity
-              style={[styles.actionBtn, styles.approveBtn]}
-              onPress={() => handleAceitar(item)}
-              activeOpacity={0.7}
-            >
+            <TouchableOpacity style={[styles.actionBtn, styles.approveBtn]} onPress={() => handleAceitar(item)} activeOpacity={0.7}>
               <Text style={styles.approveBtnText}>✅ ACEITAR</Text>
             </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.actionBtn, styles.rejectBtn]}
-              onPress={() => handleRejeitar(item)}
-              activeOpacity={0.7}
-            >
+            <TouchableOpacity style={[styles.actionBtn, styles.rejectBtn]} onPress={() => handleRejeitar(item)} activeOpacity={0.7}>
               <Text style={styles.rejectBtnText}>❌ RECUSAR</Text>
             </TouchableOpacity>
           </View>
         )}
 
-        {/* Formulário de rejeição inline */}
         {isRejecting && (
           <View style={styles.rejectForm}>
             <TextInput
@@ -264,16 +246,10 @@ export default function SolicitacoesListScreen() {
               placeholderTextColor={COLORS.textHint}
             />
             <View style={styles.rejectFormBtns}>
-              <TouchableOpacity
-                style={styles.rejectConfirmBtn}
-                onPress={() => confirmRejeitar(item)}
-              >
+              <TouchableOpacity style={styles.rejectConfirmBtn} onPress={() => confirmRejeitar(item)}>
                 <Text style={styles.rejectConfirmText}>Confirmar Rejeição</Text>
               </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.rejectCancelBtn}
-                onPress={() => setRejectingId(null)}
-              >
+              <TouchableOpacity style={styles.rejectCancelBtn} onPress={() => setRejectingId(null)}>
                 <Text style={styles.rejectCancelText}>Cancelar</Text>
               </TouchableOpacity>
             </View>
@@ -285,7 +261,13 @@ export default function SolicitacoesListScreen() {
 
   return (
     <View style={styles.container}>
-      {/* Stats */}
+      <View style={styles.headerBar}>
+        <Text style={styles.headerTitle}>⚠️ SOLICITAÇÕES</Text>
+        <Text style={styles.headerSub}>
+          {stats.pendentes} pendentes · {stats.aprovadas} aprovadas · {stats.total} total
+        </Text>
+      </View>
+
       <View style={styles.statsRow}>
         <View style={[styles.statCard, { borderLeftColor: '#F59E0B' }]}>
           <Text style={[styles.statNumber, { color: '#F59E0B' }]}>{stats.pendentes}</Text>
@@ -301,7 +283,6 @@ export default function SolicitacoesListScreen() {
         </View>
       </View>
 
-      {/* Filtros */}
       <View style={styles.filtroRow}>
         {FILTROS.map((f) => (
           <TouchableOpacity
@@ -316,7 +297,6 @@ export default function SolicitacoesListScreen() {
         ))}
       </View>
 
-      {/* Botão Nova Solicitação */}
       <TouchableOpacity
         style={styles.newBtn}
         onPress={() => navigation.navigate('SolicitarServico', {})}
@@ -325,7 +305,6 @@ export default function SolicitacoesListScreen() {
         <Text style={styles.newBtnText}>➕ NOVA SOLICITAÇÃO</Text>
       </TouchableOpacity>
 
-      {/* Lista */}
       <FlatList
         data={solicitacoes}
         keyExtractor={(item) => item.id}
@@ -346,181 +325,70 @@ export default function SolicitacoesListScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.background },
-  statsRow: {
-    flexDirection: 'row',
-    paddingHorizontal: SIZES.paddingMD,
-    paddingTop: SIZES.paddingMD,
-    gap: 8,
-  },
+  headerBar: { backgroundColor: COLORS.headerBg, paddingTop: 50, paddingBottom: 12, paddingHorizontal: SIZES.paddingLG },
+  headerTitle: { fontSize: SIZES.fontLG, fontWeight: '800', color: '#FFF' },
+  headerSub: { fontSize: SIZES.fontSM, color: 'rgba(255,255,255,0.7)', marginTop: 4 },
+  statsRow: { flexDirection: 'row', paddingHorizontal: SIZES.paddingMD, paddingTop: SIZES.paddingMD, gap: 8 },
   statCard: {
-    flex: 1,
-    backgroundColor: COLORS.surface,
-    borderRadius: SIZES.radiusMD,
-    paddingVertical: 12,
-    paddingHorizontal: 8,
-    alignItems: 'center',
-    borderLeftWidth: 4,
-    elevation: 1,
+    flex: 1, backgroundColor: COLORS.surface, borderRadius: SIZES.radiusMD,
+    paddingVertical: 12, paddingHorizontal: 8, alignItems: 'center', borderLeftWidth: 4, elevation: 1,
   },
   statNumber: { fontSize: 24, fontWeight: '800' },
   statLabel: { fontSize: 10, fontWeight: '700', color: COLORS.textSecondary, marginTop: 2 },
-  filtroRow: {
-    flexDirection: 'row',
-    paddingHorizontal: SIZES.paddingMD,
-    paddingTop: 12,
-    gap: 6,
-    flexWrap: 'wrap',
-  },
+  filtroRow: { flexDirection: 'row', paddingHorizontal: SIZES.paddingMD, paddingTop: 12, gap: 6, flexWrap: 'wrap' },
   filtroBtn: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 20,
-    backgroundColor: COLORS.surface,
-    borderWidth: 1,
-    borderColor: COLORS.border,
+    paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20,
+    backgroundColor: COLORS.surface, borderWidth: 1, borderColor: COLORS.border,
   },
-  filtroBtnActive: {
-    backgroundColor: COLORS.primary,
-    borderColor: COLORS.primary,
-  },
+  filtroBtnActive: { backgroundColor: COLORS.primary, borderColor: COLORS.primary },
   filtroText: { fontSize: 12, fontWeight: '600', color: COLORS.textSecondary },
   filtroTextActive: { color: '#FFF' },
   newBtn: {
-    marginHorizontal: SIZES.paddingMD,
-    marginTop: 12,
-    height: 48,
-    backgroundColor: COLORS.primary,
-    borderRadius: SIZES.radiusMD,
-    justifyContent: 'center',
-    alignItems: 'center',
+    marginHorizontal: SIZES.paddingMD, marginTop: 12, height: 48,
+    backgroundColor: COLORS.primary, borderRadius: SIZES.radiusMD, justifyContent: 'center', alignItems: 'center',
   },
   newBtnText: { fontSize: SIZES.fontMD, fontWeight: '800', color: '#FFF' },
   listContent: { paddingBottom: 100, paddingTop: 12 },
   card: {
-    backgroundColor: COLORS.surface,
-    borderRadius: SIZES.radiusMD,
-    padding: SIZES.cardPadding,
-    marginHorizontal: SIZES.paddingMD,
-    marginBottom: 12,
-    borderLeftWidth: 4,
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.08,
-    shadowRadius: 3,
+    backgroundColor: COLORS.surface, borderRadius: SIZES.radiusMD, padding: SIZES.cardPadding,
+    marginHorizontal: SIZES.paddingMD, marginBottom: 12, borderLeftWidth: 4, elevation: 2,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.08, shadowRadius: 3,
   },
-  cardHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: 8,
-  },
+  cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 },
   cardNumber: { fontSize: SIZES.fontLG, fontWeight: '800', color: COLORS.textPrimary },
-  statusBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 4,
-    alignSelf: 'flex-start',
-    marginTop: 4,
-  },
+  statusBadge: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 4, alignSelf: 'flex-start', marginTop: 4 },
   statusText: { fontSize: 11, fontWeight: '700' },
-  impactBadge: {
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 12,
-  },
+  impactBadge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12 },
   impactText: { fontSize: 11, fontWeight: '700' },
-  cardTag: {
-    fontSize: SIZES.fontMD,
-    fontWeight: '600',
-    color: COLORS.textPrimary,
-    marginBottom: 6,
-  },
-  cardDesc: {
-    fontSize: SIZES.fontSM,
-    color: COLORS.textSecondary,
-    lineHeight: 20,
-    marginBottom: 8,
-  },
-  cardMeta: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-    alignItems: 'center',
-    marginBottom: 8,
-  },
+  cardTag: { fontSize: SIZES.fontMD, fontWeight: '600', color: COLORS.textPrimary, marginBottom: 6 },
+  cardDesc: { fontSize: SIZES.fontSM, color: COLORS.textSecondary, lineHeight: 20, marginBottom: 8 },
+  cardMeta: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, alignItems: 'center', marginBottom: 8 },
   classifLabel: { fontSize: 11, fontWeight: '700' },
   metaText: { fontSize: 12, color: COLORS.textSecondary },
   metaDate: { fontSize: 12, color: COLORS.textHint },
-  rejectReason: {
-    backgroundColor: '#FEE2E2',
-    borderRadius: SIZES.radiusSM,
-    padding: 10,
-    marginBottom: 8,
-  },
+  rejectReason: { backgroundColor: '#FEE2E2', borderRadius: SIZES.radiusSM, padding: 10, marginBottom: 8 },
   rejectReasonText: { fontSize: 13, color: '#991B1B' },
-  osLink: {
-    backgroundColor: '#D1FAE5',
-    borderRadius: SIZES.radiusSM,
-    padding: 10,
-    marginBottom: 8,
-  },
+  osLink: { backgroundColor: '#D1FAE5', borderRadius: SIZES.radiusSM, padding: 10, marginBottom: 8 },
   osLinkText: { fontSize: 13, fontWeight: '700', color: '#065F46' },
-  actionsRow: {
-    flexDirection: 'row',
-    gap: 10,
-    marginTop: 4,
-  },
-  actionBtn: {
-    flex: 1,
-    height: 44,
-    borderRadius: SIZES.radiusSM,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
+  actionsRow: { flexDirection: 'row', gap: 10, marginTop: 4 },
+  actionBtn: { flex: 1, height: 44, borderRadius: SIZES.radiusSM, justifyContent: 'center', alignItems: 'center' },
   approveBtn: { backgroundColor: '#10B981' },
   approveBtnText: { fontSize: 14, fontWeight: '800', color: '#FFF' },
   rejectBtn: { backgroundColor: '#FEE2E2', borderWidth: 1, borderColor: '#EF4444' },
   rejectBtnText: { fontSize: 14, fontWeight: '700', color: '#EF4444' },
-  rejectForm: {
-    marginTop: 8,
-    borderTopWidth: 1,
-    borderTopColor: COLORS.divider,
-    paddingTop: 10,
-  },
+  rejectForm: { marginTop: 8, borderTopWidth: 1, borderTopColor: COLORS.divider, paddingTop: 10 },
   rejectInput: {
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    borderRadius: SIZES.radiusSM,
-    padding: 10,
-    fontSize: 14,
-    color: COLORS.textPrimary,
-    minHeight: 60,
-    textAlignVertical: 'top',
+    borderWidth: 1, borderColor: COLORS.border, borderRadius: SIZES.radiusSM,
+    padding: 10, fontSize: 14, color: COLORS.textPrimary, minHeight: 60, textAlignVertical: 'top',
   },
-  rejectFormBtns: {
-    flexDirection: 'row',
-    gap: 10,
-    marginTop: 10,
-  },
+  rejectFormBtns: { flexDirection: 'row', gap: 10, marginTop: 10 },
   rejectConfirmBtn: {
-    flex: 1,
-    height: 40,
-    backgroundColor: '#EF4444',
-    borderRadius: SIZES.radiusSM,
-    justifyContent: 'center',
-    alignItems: 'center',
+    flex: 1, height: 40, backgroundColor: '#EF4444', borderRadius: SIZES.radiusSM, justifyContent: 'center', alignItems: 'center',
   },
   rejectConfirmText: { fontSize: 13, fontWeight: '700', color: '#FFF' },
   rejectCancelBtn: {
-    flex: 1,
-    height: 40,
-    backgroundColor: COLORS.surface,
-    borderRadius: SIZES.radiusSM,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: COLORS.border,
+    flex: 1, height: 40, backgroundColor: COLORS.surface, borderRadius: SIZES.radiusSM,
+    justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: COLORS.border,
   },
   rejectCancelText: { fontSize: 13, fontWeight: '600', color: COLORS.textSecondary },
 });

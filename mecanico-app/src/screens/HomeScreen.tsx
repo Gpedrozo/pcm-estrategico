@@ -51,11 +51,9 @@ export default function HomeScreen() {
       setSyncStatus(!online ? 'offline' : pending > 0 ? 'pending' : 'online');
       setSolicStats(ss);
 
-      // Se SQLite está vazio e temos conexão, aguardar sync e recarregar
       if (os.length === 0 && online && !initialSyncDone) {
         setInitialSyncDone(true);
         await runSyncCycle(true);
-        // Re-read after sync
         const [s2, os2, ss2] = await Promise.all([
           getOSStats(empresaId),
           getOrdensServico(empresaId),
@@ -66,7 +64,6 @@ export default function HomeScreen() {
         setSolicStats(ss2);
       }
 
-      // Buscar OS atribuídas ao mecânico via execucoes_os
       if (mecanicoId) {
         const db = await getDB();
         const execOsRows = await db.getAllAsync<{ os_id: string }>(
@@ -104,12 +101,10 @@ export default function HomeScreen() {
     }
   };
 
-  // TODAS as OS ativas (não fechadas/canceladas), mecânico no topo
   const osAtivas = ordens.filter((o) =>
     !['fechada', 'concluida', 'cancelada', 'FECHADA', 'CANCELADA'].includes(o.status)
   );
 
-  // Separar: OS do mecânico logado primeiro, depois as demais
   const minhasOS = osAtivas.filter((o) => meusOsIds.has(o.id) || o.solicitante === mecanicoNome);
   const outrasOS = osAtivas.filter((o) => !meusOsIds.has(o.id) && o.solicitante !== mecanicoNome);
   const osOrdenadas = [...minhasOS, ...outrasOS];
@@ -119,7 +114,6 @@ export default function HomeScreen() {
 
   return (
     <View style={styles.container}>
-      {/* Header */}
       <View style={styles.header}>
         <View style={styles.headerTop}>
           <View style={{ flex: 1 }}>
@@ -146,33 +140,39 @@ export default function HomeScreen() {
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[COLORS.primary]} />}
         ListHeaderComponent={
           <View>
-            {/* Stats Cards */}
             <View style={styles.statsRow}>
-              <View style={[styles.statCard, { borderLeftColor: COLORS.critical }]}>  
+              <View style={[styles.statCard, { borderLeftColor: COLORS.critical }]}>
                 <Text style={[styles.statNumber, { color: COLORS.critical }]}>{stats.abertas}</Text>
                 <Text style={styles.statLabel}>ABERTAS</Text>
               </View>
-              <View style={[styles.statCard, { borderLeftColor: COLORS.warning }]}>  
+              <View style={[styles.statCard, { borderLeftColor: COLORS.warning }]}>
                 <Text style={[styles.statNumber, { color: COLORS.warning }]}>{stats.programadas}</Text>
                 <Text style={styles.statLabel}>PROGRAMADAS</Text>
               </View>
-              <View style={[styles.statCard, { borderLeftColor: COLORS.primary }]}>  
+              <View style={[styles.statCard, { borderLeftColor: COLORS.primary }]}>
                 <Text style={[styles.statNumber, { color: COLORS.primary }]}>{stats.emAndamento}</Text>
                 <Text style={styles.statLabel}>EXECUTANDO</Text>
               </View>
+              <View style={[styles.statCard, { borderLeftColor: COLORS.success }]}>
+                <Text style={[styles.statNumber, { color: COLORS.success }]}>{stats.finalizadasHoje}</Text>
+                <Text style={styles.statLabel}>HOJE</Text>
+              </View>
             </View>
 
-            {/* Main Action Buttons */}
             <View style={styles.actionsSection}>
-              <TouchableOpacity
-                style={styles.mainButton}
-                onPress={atenderProxima}
-                activeOpacity={0.7}
-              >
+              <TouchableOpacity style={styles.mainButton} onPress={atenderProxima} activeOpacity={0.7}>
                 <Text style={styles.mainButtonText}>▶️  ATENDER PRÓXIMA O.S</Text>
               </TouchableOpacity>
 
               <View style={styles.secondaryRow}>
+                <TouchableOpacity
+                  style={[styles.secondaryButton, { borderColor: COLORS.success, borderWidth: 2 }]}
+                  onPress={() => navigation.navigate('CriarOS')}
+                  activeOpacity={0.7}
+                >
+                  <Text style={styles.secondaryIcon}>📋</Text>
+                  <Text style={styles.secondaryText}>ABRIR{'\n'}O.S.</Text>
+                </TouchableOpacity>
                 <TouchableOpacity
                   style={styles.secondaryButton}
                   onPress={() => navigation.navigate('SolicitarServico', {})}
@@ -180,14 +180,6 @@ export default function HomeScreen() {
                 >
                   <Text style={styles.secondaryIcon}>➕</Text>
                   <Text style={styles.secondaryText}>SOLICITAR{'\n'}SERVIÇO</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[styles.secondaryButton, solicStats.pendentes > 0 && { borderColor: '#F59E0B', borderWidth: 2 }]}
-                  onPress={() => navigation.navigate('SolicitacoesList' as any)}
-                  activeOpacity={0.7}
-                >
-                  <Text style={styles.secondaryIcon}>📋</Text>
-                  <Text style={styles.secondaryText}>SOLICITAÇÕES{solicStats.pendentes > 0 ? `\n(${solicStats.pendentes} pend.)` : ''}</Text>
                 </TouchableOpacity>
               </View>
 
@@ -211,7 +203,6 @@ export default function HomeScreen() {
               </View>
             </View>
 
-            {/* Section title — mostra total e quantas são do mecânico */}
             {osOrdenadas.length > 0 && (
               <View style={styles.sectionTitleRow}>
                 <Text style={styles.sectionTitle}>📋 ORDENS DE SERVIÇO ({osOrdenadas.length})</Text>
@@ -237,130 +228,39 @@ export default function HomeScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: COLORS.background,
-  },
-  header: {
-    backgroundColor: COLORS.headerBg,
-    paddingTop: 50,
-    paddingBottom: 16,
-    paddingHorizontal: SIZES.paddingLG,
-  },
-  headerTop: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  greeting: {
-    fontSize: SIZES.fontLG,
-    fontWeight: '700',
-    color: '#FFF',
-  },
-  syncLabel: {
-    fontSize: SIZES.fontSM,
-    color: 'rgba(255,255,255,0.7)',
-    marginTop: 4,
-  },
-  listContent: {
-    paddingBottom: 100,
-  },
-  statsRow: {
-    flexDirection: 'row',
-    paddingHorizontal: SIZES.paddingMD,
-    paddingTop: SIZES.paddingMD,
-    gap: 8,
-  },
+  container: { flex: 1, backgroundColor: COLORS.background },
+  header: { backgroundColor: COLORS.headerBg, paddingTop: 50, paddingBottom: 16, paddingHorizontal: SIZES.paddingLG },
+  headerTop: { flexDirection: 'row', alignItems: 'center' },
+  greeting: { fontSize: SIZES.fontLG, fontWeight: '700', color: '#FFF' },
+  syncLabel: { fontSize: SIZES.fontSM, color: 'rgba(255,255,255,0.7)', marginTop: 4 },
+  listContent: { paddingBottom: 100 },
+  statsRow: { flexDirection: 'row', paddingHorizontal: SIZES.paddingMD, paddingTop: SIZES.paddingMD, gap: 8 },
   statCard: {
-    flex: 1,
-    backgroundColor: COLORS.surface,
-    borderRadius: SIZES.radiusMD,
-    paddingVertical: 14,
-    paddingHorizontal: 10,
-    alignItems: 'center',
-    borderLeftWidth: 4,
-    elevation: 1,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
+    flex: 1, backgroundColor: COLORS.surface, borderRadius: SIZES.radiusMD,
+    paddingVertical: 14, paddingHorizontal: 10, alignItems: 'center', borderLeftWidth: 4,
+    elevation: 1, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 2,
   },
-  statNumber: {
-    fontSize: SIZES.fontXXL,
-    fontWeight: '800',
-  },
-  statLabel: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: COLORS.textSecondary,
-    marginTop: 2,
-  },
-  actionsSection: {
-    padding: SIZES.paddingMD,
-  },
+  statNumber: { fontSize: SIZES.fontXXL, fontWeight: '800' },
+  statLabel: { fontSize: 11, fontWeight: '700', color: COLORS.textSecondary, marginTop: 2 },
+  actionsSection: { padding: SIZES.paddingMD },
   mainButton: {
-    height: SIZES.buttonHeightLG,
-    backgroundColor: COLORS.success,
-    borderRadius: SIZES.radiusLG,
-    justifyContent: 'center',
-    alignItems: 'center',
-    elevation: 3,
-    shadowColor: COLORS.success,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
+    height: SIZES.buttonHeightLG, backgroundColor: COLORS.success, borderRadius: SIZES.radiusLG,
+    justifyContent: 'center', alignItems: 'center', elevation: 3,
+    shadowColor: COLORS.success, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8,
   },
-  mainButtonText: {
-    fontSize: SIZES.fontLG,
-    fontWeight: '800',
-    color: '#FFF',
-  },
-  secondaryRow: {
-    flexDirection: 'row',
-    gap: 12,
-    marginTop: 12,
-  },
+  mainButtonText: { fontSize: SIZES.fontLG, fontWeight: '800', color: '#FFF' },
+  secondaryRow: { flexDirection: 'row', gap: 12, marginTop: 12 },
   secondaryButton: {
-    flex: 1,
-    height: 80,
-    backgroundColor: COLORS.surface,
-    borderRadius: SIZES.radiusMD,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 1.5,
-    borderColor: COLORS.border,
+    flex: 1, height: 80, backgroundColor: COLORS.surface, borderRadius: SIZES.radiusMD,
+    justifyContent: 'center', alignItems: 'center', borderWidth: 1.5, borderColor: COLORS.border,
   },
-  secondaryIcon: {
-    fontSize: 28,
-    marginBottom: 4,
-  },
-  secondaryText: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: COLORS.textSecondary,
-    textAlign: 'center',
-  },
+  secondaryIcon: { fontSize: 28, marginBottom: 4 },
+  secondaryText: { fontSize: 12, fontWeight: '700', color: COLORS.textSecondary, textAlign: 'center' },
   sectionTitleRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: SIZES.paddingMD,
-    paddingTop: SIZES.paddingMD,
-    paddingBottom: 8,
+    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+    paddingHorizontal: SIZES.paddingMD, paddingTop: SIZES.paddingMD, paddingBottom: 8,
   },
-  sectionTitle: {
-    fontSize: SIZES.fontMD,
-    fontWeight: '700',
-    color: COLORS.textPrimary,
-  },
-  minhaBadge: {
-    backgroundColor: '#DBEAFE',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 12,
-  },
-  minhaBadgeText: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#1D4ED8',
-  },
+  sectionTitle: { fontSize: SIZES.fontMD, fontWeight: '700', color: COLORS.textPrimary },
+  minhaBadge: { backgroundColor: '#DBEAFE', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12 },
+  minhaBadgeText: { fontSize: 12, fontWeight: '700', color: '#1D4ED8' },
 });

@@ -16,7 +16,8 @@ import { useRoute, useNavigation } from '@react-navigation/native';
 import { NativeStackScreenProps, NativeStackNavigationProp } from '@react-navigation/native-stack';
 import uuid from 'react-native-uuid';
 import { useAuth } from '../contexts/AuthContext';
-import { upsertSolicitacao, addToSyncQueue, searchEquipamentos } from '../lib/database';
+import { upsertSolicitacao, addToSyncQueue } from '../lib/database';
+import EquipmentPicker from '../components/EquipmentPicker';
 import VoiceInput from '../components/VoiceInput';
 import { COLORS, SIZES } from '../theme';
 import type { RootStackParamList, Equipamento } from '../types';
@@ -44,29 +45,21 @@ export default function SolicitarServicoScreen() {
   const [equipamentoNome, setEquipamentoNome] = useState(initialEqNome || '');
   const [equipamentoId, setEquipamentoId] = useState(initialEqId || '');
   const [tag, setTag] = useState('');
-  const [searchResults, setSearchResults] = useState<Equipamento[]>([]);
   const [impacto, setImpacto] = useState('MEDIO');
   const [classificacao, setClassificacao] = useState('PROGRAMAVEL');
   const [descricaoFalha, setDescricaoFalha] = useState('');
   const [saving, setSaving] = useState(false);
 
-  const handleSearchEquipamento = async (text: string) => {
-    setEquipamentoNome(text);
-    setEquipamentoId('');
-    setTag('');
-    if (text.length >= 2 && empresaId) {
-      const results = await searchEquipamentos(empresaId, text);
-      setSearchResults(results);
+  const handleEquipSelect = (eq: Equipamento | null, displayName: string) => {
+    if (eq) {
+      setEquipamentoId(eq.id);
+      setEquipamentoNome(eq.nome);
+      setTag(eq.qr_code || eq.nome);
     } else {
-      setSearchResults([]);
+      setEquipamentoId('');
+      setEquipamentoNome(displayName);
+      setTag(displayName);
     }
-  };
-
-  const selectEquipamento = (eq: Equipamento) => {
-    setEquipamentoId(eq.id);
-    setEquipamentoNome(eq.nome);
-    setTag(eq.qr_code || eq.nome);
-    setSearchResults([]);
   };
 
   const handleSave = async () => {
@@ -88,7 +81,7 @@ export default function SolicitarServicoScreen() {
       const solicitacao = {
         id: solicId,
         empresa_id: empresaId || '',
-        numero_solicitacao: null, // Servidor gera o número definitivo
+        numero_solicitacao: null,
         equipamento_id: equipamentoId || null,
         tag: tagFinal,
         solicitante_nome: mecanicoNome || 'Mecânico (campo)',
@@ -130,37 +123,19 @@ export default function SolicitarServicoScreen() {
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      {/* Header */}
       <View style={styles.header}>
         <Text style={styles.headerTitle}>📝 SOLICITAR MANUTENÇÃO</Text>
         <Text style={styles.headerSub}>Registrar problema para avaliação</Text>
       </View>
 
-      {/* Equipamento / TAG */}
-      <VoiceInput
-        label="Equipamento / TAG *"
+      <EquipmentPicker
+        empresaId={empresaId || ''}
         value={equipamentoNome}
-        onChangeText={handleSearchEquipamento}
-        placeholder="Digite ou fale o nome / TAG..."
+        equipamentoId={equipamentoId}
+        onSelect={handleEquipSelect}
+        label="Equipamento / TAG *"
       />
-      {searchResults.length > 0 && (
-        <View style={styles.searchResults}>
-          {searchResults.slice(0, 5).map((eq) => (
-            <TouchableOpacity
-              key={eq.id}
-              style={styles.searchItem}
-              onPress={() => selectEquipamento(eq)}
-            >
-              <Text style={styles.searchItemText}>{eq.nome}</Text>
-              {eq.localizacao && (
-                <Text style={styles.searchItemSub}>📍 {eq.localizacao}</Text>
-              )}
-            </TouchableOpacity>
-          ))}
-        </View>
-      )}
 
-      {/* Impacto */}
       <Text style={styles.sectionLabel}>Impacto na Produção</Text>
       <View style={styles.optionsRow}>
         {IMPACTOS.map((i) => (
@@ -181,7 +156,6 @@ export default function SolicitarServicoScreen() {
         ))}
       </View>
 
-      {/* Classificação */}
       <Text style={styles.sectionLabel}>Classificação / Urgência</Text>
       <View style={styles.classificacaoList}>
         {CLASSIFICACOES.map((c) => (
@@ -210,7 +184,6 @@ export default function SolicitarServicoScreen() {
         ))}
       </View>
 
-      {/* Descrição da falha */}
       <VoiceInput
         label="Descrição do problema / falha *"
         value={descricaoFalha}
@@ -220,7 +193,6 @@ export default function SolicitarServicoScreen() {
         numberOfLines={5}
       />
 
-      {/* Botão salvar */}
       <TouchableOpacity
         style={[styles.saveButton, saving && styles.buttonDisabled]}
         onPress={handleSave}
@@ -239,88 +211,32 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.background },
   content: { padding: SIZES.paddingMD, paddingBottom: 40 },
   header: {
-    backgroundColor: COLORS.infoBg,
-    borderRadius: SIZES.radiusMD,
-    padding: 16,
-    marginBottom: 20,
-    borderLeftWidth: 4,
-    borderLeftColor: COLORS.info,
+    backgroundColor: COLORS.infoBg, borderRadius: SIZES.radiusMD, padding: 16,
+    marginBottom: 20, borderLeftWidth: 4, borderLeftColor: COLORS.info,
   },
   headerTitle: { fontSize: SIZES.fontLG, fontWeight: '800', color: COLORS.info },
   headerSub: { fontSize: SIZES.fontSM, color: COLORS.textSecondary, marginTop: 4 },
-  sectionLabel: {
-    fontSize: SIZES.fontMD,
-    fontWeight: '700',
-    color: COLORS.textPrimary,
-    marginBottom: 12,
-    marginTop: 8,
-  },
+  sectionLabel: { fontSize: SIZES.fontMD, fontWeight: '700', color: COLORS.textPrimary, marginBottom: 12, marginTop: 8 },
   searchResults: {
-    backgroundColor: COLORS.surface,
-    borderRadius: SIZES.radiusSM,
-    marginTop: -12,
-    marginBottom: 16,
-    borderWidth: 1,
-    borderColor: COLORS.border,
+    backgroundColor: COLORS.surface, borderRadius: SIZES.radiusSM, marginTop: -12,
+    marginBottom: 16, borderWidth: 1, borderColor: COLORS.border,
   },
-  searchItem: {
-    padding: 14,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.divider,
-  },
+  searchItem: { padding: 14, borderBottomWidth: 1, borderBottomColor: COLORS.divider },
   searchItemText: { fontSize: SIZES.fontMD, fontWeight: '600', color: COLORS.textPrimary },
   searchItemSub: { fontSize: SIZES.fontSM, color: COLORS.textSecondary, marginTop: 2 },
-  optionsRow: {
-    flexDirection: 'row',
-    gap: 8,
-    marginBottom: 20,
-  },
-  optionBtn: {
-    flex: 1,
-    height: 48,
-    borderRadius: SIZES.radiusSM,
-    borderWidth: 2,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
+  optionsRow: { flexDirection: 'row', gap: 8, marginBottom: 20 },
+  optionBtn: { flex: 1, height: 48, borderRadius: SIZES.radiusSM, borderWidth: 2, justifyContent: 'center', alignItems: 'center' },
   optionBtnText: { fontSize: SIZES.fontSM, fontWeight: '700' },
-  classificacaoList: {
-    gap: 8,
-    marginBottom: 20,
-  },
-  classificacaoBtn: {
-    borderWidth: 1.5,
-    borderRadius: SIZES.radiusMD,
-    padding: 14,
-    backgroundColor: COLORS.surface,
-  },
-  classificacaoContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  radioOuter: {
-    width: 22,
-    height: 22,
-    borderRadius: 11,
-    borderWidth: 2,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  radioInner: {
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-  },
+  classificacaoList: { gap: 8, marginBottom: 20 },
+  classificacaoBtn: { borderWidth: 1.5, borderRadius: SIZES.radiusMD, padding: 14, backgroundColor: COLORS.surface },
+  classificacaoContent: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  radioOuter: { width: 22, height: 22, borderRadius: 11, borderWidth: 2, justifyContent: 'center', alignItems: 'center' },
+  radioInner: { width: 12, height: 12, borderRadius: 6 },
   classificacaoLabel: { fontSize: SIZES.fontMD, fontWeight: '600', color: COLORS.textPrimary },
   classificacaoDesc: { fontSize: SIZES.fontSM, color: COLORS.textSecondary, marginTop: 2 },
   saveButton: {
-    height: SIZES.buttonHeightLG,
-    borderRadius: SIZES.radiusMD,
-    backgroundColor: COLORS.primary,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginTop: 12,
+    height: SIZES.buttonHeightLG, borderRadius: SIZES.radiusMD, backgroundColor: COLORS.primary,
+    justifyContent: 'center', alignItems: 'center', marginTop: 12,
   },
   saveButtonText: { fontSize: SIZES.fontLG, fontWeight: '800', color: '#FFF' },
   buttonDisabled: { opacity: 0.6 },
