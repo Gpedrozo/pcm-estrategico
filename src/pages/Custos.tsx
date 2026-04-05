@@ -39,6 +39,7 @@ export default function Custos() {
     const startDate = startOfMonth(subMonths(new Date(), months - 1));
     
     const filteredExec = execucoes.filter(exec => {
+      if (!exec.data_execucao) return false;
       const execDate = parseISO(exec.data_execucao);
       return execDate >= startDate;
     });
@@ -63,6 +64,7 @@ export default function Custos() {
     const startPrev = startOfMonth(subMonths(new Date(), (months * 2) - 1));
 
     const filteredExec = execucoes.filter((exec) => {
+      if (!exec.data_execucao) return false;
       const execDate = parseISO(exec.data_execucao);
       return execDate >= startPrev && execDate < endPrev;
     });
@@ -113,6 +115,7 @@ export default function Custos() {
     }
     
     execucoes.forEach(exec => {
+      if (!exec.data_execucao) return;
       const month = format(parseISO(exec.data_execucao), 'yyyy-MM');
       if (months[month]) {
         months[month].maoObra += exec.custo_mao_obra || 0;
@@ -139,6 +142,7 @@ export default function Custos() {
       : 0;
 
     const execFiltered = (execucoes || []).filter((exec) => {
+      if (!exec.data_execucao) return false;
       const months = parseInt(selectedPeriod, 10);
       const startDate = startOfMonth(subMonths(new Date(), months - 1));
       return parseISO(exec.data_execucao) >= startDate;
