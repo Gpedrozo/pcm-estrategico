@@ -80,7 +80,7 @@ export default function CriarOSScreen() {
       const os = {
         id: osId,
         empresa_id: empresaId || '',
-        numero_os: null,
+        numero_os: null, // servidor gera o número
         tipo,
         prioridade,
         status: 'aberta',
@@ -118,11 +118,13 @@ export default function CriarOSScreen() {
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+      {/* Header */}
       <View style={styles.header}>
         <Text style={styles.headerTitle}>➕ ABRIR ORDEM DE SERVIÇO</Text>
         <Text style={styles.headerSub}>Criar nova OS para manutenção</Text>
       </View>
 
+      {/* Equipamento com EquipmentPicker */}
       <EquipmentPicker
         empresaId={empresaId || ''}
         value={equipamentoNome}
@@ -131,6 +133,7 @@ export default function CriarOSScreen() {
         label="Equipamento / TAG *"
       />
 
+      {/* Tipo de manutenção */}
       <Text style={styles.sectionLabel}>Tipo de Manutenção</Text>
       <View style={styles.tiposGrid}>
         {TIPOS.map((t) => (
@@ -147,6 +150,7 @@ export default function CriarOSScreen() {
         ))}
       </View>
 
+      {/* Prioridade */}
       <Text style={styles.sectionLabel}>Prioridade</Text>
       <View style={styles.prioridadeRow}>
         {PRIORIDADES.map((p) => (
@@ -171,6 +175,7 @@ export default function CriarOSScreen() {
         ))}
       </View>
 
+      {/* Descrição do problema */}
       <VoiceInput
         label="Descrição do problema *"
         value={problema}
@@ -180,6 +185,7 @@ export default function CriarOSScreen() {
         numberOfLines={5}
       />
 
+      {/* Botão Salvar */}
       <TouchableOpacity
         style={[styles.saveButton, saving && styles.buttonDisabled]}
         onPress={handleSave}
@@ -198,28 +204,81 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.background },
   content: { padding: SIZES.paddingMD, paddingBottom: 40 },
   header: {
-    backgroundColor: COLORS.successBg, borderRadius: SIZES.radiusMD, padding: 16,
-    marginBottom: 20, borderLeftWidth: 4, borderLeftColor: COLORS.success,
+    backgroundColor: COLORS.successBg,
+    borderRadius: SIZES.radiusMD,
+    padding: 16,
+    marginBottom: 20,
+    borderLeftWidth: 4,
+    borderLeftColor: COLORS.success,
   },
   headerTitle: { fontSize: SIZES.fontLG, fontWeight: '800', color: COLORS.success },
   headerSub: { fontSize: SIZES.fontSM, color: COLORS.textSecondary, marginTop: 4 },
-  sectionLabel: { fontSize: SIZES.fontMD, fontWeight: '700', color: COLORS.textPrimary, marginBottom: 12, marginTop: 8 },
-  tiposGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 20 },
+  sectionLabel: {
+    fontSize: SIZES.fontMD,
+    fontWeight: '700',
+    color: COLORS.textPrimary,
+    marginBottom: 12,
+    marginTop: 8,
+  },
+  tiposGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginBottom: 20,
+  },
   tipoBtn: {
-    paddingHorizontal: 16, paddingVertical: 12, borderRadius: SIZES.radiusSM,
-    backgroundColor: COLORS.surface, borderWidth: 1.5, borderColor: COLORS.border,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: SIZES.radiusSM,
+    backgroundColor: COLORS.surface,
+    borderWidth: 1.5,
+    borderColor: COLORS.border,
   },
-  tipoBtnActive: { backgroundColor: COLORS.primaryLight, borderColor: COLORS.primary },
-  tipoBtnText: { fontSize: SIZES.fontSM, fontWeight: '600', color: COLORS.textSecondary },
-  tipoBtnTextActive: { color: COLORS.primaryDark, fontWeight: '800' },
-  prioridadeRow: { flexDirection: 'row', gap: 8, marginBottom: 20 },
-  prioridadeBtn: { flex: 1, paddingVertical: 14, borderRadius: SIZES.radiusSM, borderWidth: 2, alignItems: 'center' },
-  prioridadeIcon: { fontSize: 20, marginBottom: 4 },
-  prioridadeText: { fontSize: 12, fontWeight: '700' },
+  tipoBtnActive: {
+    backgroundColor: COLORS.primaryLight,
+    borderColor: COLORS.primary,
+  },
+  tipoBtnText: {
+    fontSize: SIZES.fontSM,
+    fontWeight: '600',
+    color: COLORS.textSecondary,
+  },
+  tipoBtnTextActive: {
+    color: COLORS.primaryDark,
+    fontWeight: '800',
+  },
+  prioridadeRow: {
+    flexDirection: 'row',
+    gap: 8,
+    marginBottom: 20,
+  },
+  prioridadeBtn: {
+    flex: 1,
+    paddingVertical: 14,
+    borderRadius: SIZES.radiusSM,
+    borderWidth: 2,
+    alignItems: 'center',
+  },
+  prioridadeIcon: {
+    fontSize: 20,
+    marginBottom: 4,
+  },
+  prioridadeText: {
+    fontSize: 12,
+    fontWeight: '700',
+  },
   saveButton: {
-    height: SIZES.buttonHeightLG, borderRadius: SIZES.radiusMD, backgroundColor: COLORS.success,
-    justifyContent: 'center', alignItems: 'center', marginTop: 12,
+    height: SIZES.buttonHeightLG,
+    borderRadius: SIZES.radiusMD,
+    backgroundColor: COLORS.success,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: 12,
   },
-  saveButtonText: { fontSize: SIZES.fontLG, fontWeight: '800', color: '#FFF' },
+  saveButtonText: {
+    fontSize: SIZES.fontLG,
+    fontWeight: '800',
+    color: '#FFF',
+  },
   buttonDisabled: { opacity: 0.6 },
 });

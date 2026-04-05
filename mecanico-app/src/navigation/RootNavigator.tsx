@@ -35,10 +35,10 @@ const Tab = createBottomTabNavigator<MainTabParamList>();
 
 function TabIcon({ name, focused }: { name: string; focused: boolean }) {
   const icons: Record<string, string> = {
-    HomeTab: '\uD83C\uDFE0',
-    OrdensTab: '\uD83D\uDCCB',
-    SolicitacoesTab: '\u26A0\uFE0F',
-    MaisTab: '\u2699\uFE0F',
+    HomeTab: '🏠',
+    OrdensTab: '📋',
+    SolicitacoesTab: '⚠️',
+    MaisTab: '⚙️',
   };
   return (
     <Text style={{ fontSize: focused ? 28 : 24, opacity: focused ? 1 : 0.5 }}>
@@ -66,10 +66,26 @@ function MainTabNavigator() {
         headerShown: false,
       })}
     >
-      <Tab.Screen name="HomeTab" component={HomeScreen} options={{ tabBarLabel: 'In\u00EDcio' }} />
-      <Tab.Screen name="OrdensTab" component={OSListScreen} options={{ tabBarLabel: 'Ordens' }} />
-      <Tab.Screen name="SolicitacoesTab" component={SolicitacoesListScreen} options={{ tabBarLabel: 'Solicita\u00E7\u00F5es' }} />
-      <Tab.Screen name="MaisTab" component={HistoryScreen} options={{ tabBarLabel: 'Hist\u00F3rico' }} />
+      <Tab.Screen
+        name="HomeTab"
+        component={HomeScreen}
+        options={{ tabBarLabel: 'Início' }}
+      />
+      <Tab.Screen
+        name="OrdensTab"
+        component={OSListScreen}
+        options={{ tabBarLabel: 'Ordens' }}
+      />
+      <Tab.Screen
+        name="SolicitacoesTab"
+        component={SolicitacoesListScreen}
+        options={{ tabBarLabel: 'Solicitações' }}
+      />
+      <Tab.Screen
+        name="MaisTab"
+        component={HistoryScreen}
+        options={{ tabBarLabel: 'Histórico' }}
+      />
     </Tab.Navigator>
   );
 }
@@ -127,17 +143,63 @@ export default function RootNavigator() {
         contentStyle: { backgroundColor: COLORS.background },
       }}
     >
-      <Stack.Screen name="Main" component={MainTabNavigator} options={{ headerShown: false }} />
-      <Stack.Screen name="OSDetail" component={OSDetailScreen} options={{ title: 'Detalhes da OS' }} />
-      <Stack.Screen name="CriarOS" component={CriarOSScreen} options={{ title: 'Abrir OS' }} />
-      <Stack.Screen name="Execution" component={ExecutionScreen} options={({ route }) => ({ title: (route.params as any)?.mode === 'auto' ? 'Finalizar Atividade' : 'Apontamento Manual' })} />
-      <Stack.Screen name="Parada" component={ParadaScreen} options={{ title: 'Registrar Parada' }} />
-      <Stack.Screen name="SolicitarServico" component={SolicitarServicoScreen} options={{ title: 'Solicitar Servi\u00E7o' }} />
-      <Stack.Screen name="SolicitacoesList" component={SolicitacoesListScreen} options={{ title: 'Solicita\u00E7\u00F5es' }} />
-      <Stack.Screen name="EquipamentoDetalhe" component={EquipamentoDetalheScreen} options={{ title: 'Equipamento' }} />
-      <Stack.Screen name="RequisicaoMaterial" component={RequisicaoMaterialScreen} options={{ title: 'Solicitar Material' }} />
-      <Stack.Screen name="Checklist" component={ChecklistScreen} options={{ title: 'Checklist' }} />
-      <Stack.Screen name="Catalogo" component={CatalogoScreen} options={{ title: 'Cat\u00E1logos T\u00E9cnicos' }} />
+      <Stack.Screen
+        name="Main"
+        component={MainTabNavigator}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
+        name="OSDetail"
+        component={OSDetailScreen}
+        options={{ title: 'Detalhes da OS' }}
+      />
+      <Stack.Screen
+        name="CriarOS"
+        component={CriarOSScreen}
+        options={{ title: 'Abrir OS' }}
+      />
+      <Stack.Screen
+        name="Execution"
+        component={ExecutionScreen}
+        options={({ route }) => ({
+          title: (route.params as any)?.mode === 'auto' ? 'Finalizar Atividade' : 'Apontamento Manual',
+        })}
+      />
+      <Stack.Screen
+        name="Parada"
+        component={ParadaScreen}
+        options={{ title: 'Registrar Parada' }}
+      />
+      <Stack.Screen
+        name="SolicitarServico"
+        component={SolicitarServicoScreen}
+        options={{ title: 'Solicitar Serviço' }}
+      />
+      <Stack.Screen
+        name="SolicitacoesList"
+        component={SolicitacoesListScreen}
+        options={{ title: 'Solicitações' }}
+      />
+      <Stack.Screen
+        name="EquipamentoDetalhe"
+        component={EquipamentoDetalheScreen}
+        options={{ title: 'Equipamento' }}
+      />
+      <Stack.Screen
+        name="RequisicaoMaterial"
+        component={RequisicaoMaterialScreen}
+        options={{ title: 'Solicitar Material' }}
+      />
+      <Stack.Screen
+        name="Checklist"
+        component={ChecklistScreen}
+        options={{ title: 'Checklist' }}
+      />
+      <Stack.Screen
+        name="Catalogo"
+        component={CatalogoScreen}
+        options={{ title: 'Catálogos Técnicos' }}
+      />
     </Stack.Navigator>
   );
 }

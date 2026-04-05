@@ -261,6 +261,7 @@ export default function SolicitacoesListScreen() {
 
   return (
     <View style={styles.container}>
+      {/* Header */}
       <View style={styles.headerBar}>
         <Text style={styles.headerTitle}>⚠️ SOLICITAÇÕES</Text>
         <Text style={styles.headerSub}>
@@ -268,6 +269,7 @@ export default function SolicitacoesListScreen() {
         </Text>
       </View>
 
+      {/* Stats */}
       <View style={styles.statsRow}>
         <View style={[styles.statCard, { borderLeftColor: '#F59E0B' }]}>
           <Text style={[styles.statNumber, { color: '#F59E0B' }]}>{stats.pendentes}</Text>
@@ -325,10 +327,28 @@ export default function SolicitacoesListScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.background },
-  headerBar: { backgroundColor: COLORS.headerBg, paddingTop: 50, paddingBottom: 12, paddingHorizontal: SIZES.paddingLG },
-  headerTitle: { fontSize: SIZES.fontLG, fontWeight: '800', color: '#FFF' },
-  headerSub: { fontSize: SIZES.fontSM, color: 'rgba(255,255,255,0.7)', marginTop: 4 },
-  statsRow: { flexDirection: 'row', paddingHorizontal: SIZES.paddingMD, paddingTop: SIZES.paddingMD, gap: 8 },
+  headerBar: {
+    backgroundColor: COLORS.headerBg,
+    paddingTop: 50,
+    paddingBottom: 12,
+    paddingHorizontal: SIZES.paddingLG,
+  },
+  headerTitle: {
+    fontSize: SIZES.fontLG,
+    fontWeight: '800',
+    color: '#FFF',
+  },
+  headerSub: {
+    fontSize: SIZES.fontSM,
+    color: 'rgba(255,255,255,0.7)',
+    marginTop: 4,
+  },
+  statsRow: {
+    flexDirection: 'row',
+    paddingHorizontal: SIZES.paddingMD,
+    paddingTop: SIZES.paddingMD,
+    gap: 8,
+  },
   statCard: {
     flex: 1, backgroundColor: COLORS.surface, borderRadius: SIZES.radiusMD,
     paddingVertical: 12, paddingHorizontal: 8, alignItems: 'center', borderLeftWidth: 4, elevation: 1,

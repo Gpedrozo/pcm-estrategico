@@ -128,6 +128,7 @@ export default function SolicitarServicoScreen() {
         <Text style={styles.headerSub}>Registrar problema para avaliação</Text>
       </View>
 
+      {/* Equipamento / TAG */}
       <EquipmentPicker
         empresaId={empresaId || ''}
         value={equipamentoNome}

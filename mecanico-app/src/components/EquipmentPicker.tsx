@@ -53,6 +53,7 @@ export default function EquipmentPicker({
       setResults(list);
       setShowDropdown(list.length > 0);
     } else if (query.length === 0 && empresaId) {
+      // Mostrar todos quando campo limpo e focado
       const all = await getAllEquipamentos(empresaId);
       setResults(all.slice(0, 20));
       setShowDropdown(all.length > 0);
@@ -144,30 +145,88 @@ export default function EquipmentPicker({
 }
 
 const styles = StyleSheet.create({
-  container: { marginBottom: 16, zIndex: 100 },
-  label: { fontSize: SIZES.fontMD, fontWeight: '700', color: COLORS.textPrimary, marginBottom: 8 },
-  inputWrapper: { flexDirection: 'row', alignItems: 'center' },
+  container: {
+    marginBottom: 16,
+    zIndex: 100,
+  },
+  label: {
+    fontSize: SIZES.fontMD,
+    fontWeight: '700',
+    color: COLORS.textPrimary,
+    marginBottom: 8,
+  },
+  inputWrapper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
   input: {
-    flex: 1, height: SIZES.inputHeight, backgroundColor: COLORS.surface,
-    borderRadius: SIZES.radiusSM, paddingHorizontal: 16, fontSize: SIZES.fontMD,
-    color: COLORS.textPrimary, borderWidth: 1.5, borderColor: COLORS.border,
+    flex: 1,
+    height: SIZES.inputHeight,
+    backgroundColor: COLORS.surface,
+    borderRadius: SIZES.radiusSM,
+    paddingHorizontal: 16,
+    fontSize: SIZES.fontMD,
+    color: COLORS.textPrimary,
+    borderWidth: 1.5,
+    borderColor: COLORS.border,
   },
-  inputSelected: { borderColor: COLORS.success, backgroundColor: COLORS.successBg },
+  inputSelected: {
+    borderColor: COLORS.success,
+    backgroundColor: COLORS.successBg,
+  },
   clearBtn: {
-    position: 'absolute', right: 12, width: 32, height: 32, borderRadius: 16,
-    backgroundColor: COLORS.border, justifyContent: 'center', alignItems: 'center',
+    position: 'absolute',
+    right: 12,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: COLORS.border,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
-  clearText: { fontSize: 16, color: COLORS.textSecondary, fontWeight: '700' },
+  clearText: {
+    fontSize: 16,
+    color: COLORS.textSecondary,
+    fontWeight: '700',
+  },
   dropdown: {
-    backgroundColor: COLORS.surface, borderRadius: SIZES.radiusSM,
-    borderWidth: 1, borderColor: COLORS.border, marginTop: 4, maxHeight: 250,
-    elevation: 8, shadowColor: '#000', shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15, shadowRadius: 8,
+    backgroundColor: COLORS.surface,
+    borderRadius: SIZES.radiusSM,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    marginTop: 4,
+    maxHeight: 250,
+    elevation: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
   },
-  dropdownList: { maxHeight: 250 },
-  dropdownItem: { padding: 14, borderBottomWidth: 1, borderBottomColor: COLORS.divider },
-  dropdownName: { fontSize: SIZES.fontMD, fontWeight: '600', color: COLORS.textPrimary },
-  dropdownMeta: { flexDirection: 'row', gap: 12, marginTop: 4 },
-  dropdownTag: { fontSize: SIZES.fontSM, color: COLORS.primary, fontWeight: '600' },
-  dropdownLoc: { fontSize: SIZES.fontSM, color: COLORS.textSecondary },
+  dropdownList: {
+    maxHeight: 250,
+  },
+  dropdownItem: {
+    padding: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.divider,
+  },
+  dropdownName: {
+    fontSize: SIZES.fontMD,
+    fontWeight: '600',
+    color: COLORS.textPrimary,
+  },
+  dropdownMeta: {
+    flexDirection: 'row',
+    gap: 12,
+    marginTop: 4,
+  },
+  dropdownTag: {
+    fontSize: SIZES.fontSM,
+    color: COLORS.primary,
+    fontWeight: '600',
+  },
+  dropdownLoc: {
+    fontSize: SIZES.fontSM,
+    color: COLORS.textSecondary,
+  },
 });
