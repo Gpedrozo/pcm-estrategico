@@ -27,6 +27,12 @@ export const COLORS = {
   prioridadeBaixa: '#2E7D32',
   prioridadeEmergencial: '#B71C1C',
 
+  // Status de O.S.
+  statusAberta: '#1A73E8',
+  statusEmAndamento: '#F57C00',
+  statusFechada: '#2E7D32',
+  statusCancelada: '#9E9E9E',
+
   // Neutrals
   background: '#F5F5F5',
   surface: '#FFFFFF',
@@ -45,8 +51,47 @@ export const COLORS = {
   headerText: '#FFFFFF',
 };
 
+// ============================================================
+// SPACING — Tokens padronizados de espaçamento
+// Usar SEMPRE estes tokens em vez de números hardcoded.
+// ============================================================
+export const SPACING = {
+  xs: 4,
+  sm: 8,
+  md: 12,
+  lg: 16,
+  xl: 20,
+  xxl: 24,
+  xxxl: 32,
+} as const;
+
+// ============================================================
+// RADIUS — Tokens padronizados de border-radius
+// ============================================================
+export const RADIUS = {
+  sm: 6,
+  md: 8,
+  lg: 12,
+  xl: 16,
+  full: 999,
+} as const;
+
+// ============================================================
+// FONT — Tokens padronizados de tipografia
+// ============================================================
+export const FONT = {
+  xs: 11,
+  sm: 13,
+  md: 15,
+  lg: 17,
+  xl: 20,
+  xxl: 24,
+  title: 28,
+  hero: 34,
+} as const;
+
 export const SIZES = {
-  // Fontes grandes para campo
+  // Fontes grandes para campo (legado — usar FONT para novos componentes)
   fontXS: 12,
   fontSM: 14,
   fontMD: 18,
@@ -54,7 +99,7 @@ export const SIZES = {
   fontXL: 28,
   fontXXL: 34,
 
-  // Espaçamentos
+  // Espaçamentos (legado — usar SPACING para novos componentes)
   paddingSM: 8,
   paddingMD: 16,
   paddingLG: 24,
@@ -68,7 +113,7 @@ export const SIZES = {
 
   buttonLG: 72,
 
-  // Border radius
+  // Border radius (legado — usar RADIUS para novos componentes)
   radiusSM: 8,
   radiusMD: 12,
   radiusLG: 16,
