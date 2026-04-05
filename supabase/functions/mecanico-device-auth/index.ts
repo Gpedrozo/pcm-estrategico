@@ -291,13 +291,14 @@ async function authenticateWithDevice(
 
       // Upsert profile e role
       if (userId) {
-        await admin.from("profiles").upsert({
+        const { error: profileErr } = await admin.from("profiles").upsert({
           id: userId,
           nome: displayName,
           email,
           tipo: "TECHNICIAN",
           empresa_id: empresa.id,
         }, { onConflict: "id" });
+        if (profileErr) console.warn("[device-auth] profiles upsert error:", profileErr.message);
 
         const { error: roleErr } = await admin.from("user_roles").upsert({
           user_id: userId,
@@ -342,13 +343,14 @@ async function authenticateWithDevice(
           },
         });
 
-        await admin.from("profiles").upsert({
+        const { error: profileErr2 } = await admin.from("profiles").upsert({
           id: userId,
           nome: `Dispositivo ${device.device_nome || device.device_id.slice(0, 8)}`,
           email,
           tipo: "TECHNICIAN",
           empresa_id: empresa.id,
         }, { onConflict: "id" });
+        if (profileErr2) console.warn("[device-auth] profiles upsert error:", profileErr2.message);
 
         const { error: roleErr2 } = await admin.from("user_roles").upsert({
           user_id: userId,

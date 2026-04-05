@@ -105,8 +105,9 @@ let cachedAccessToken: string | null = null;
 /**
  * Get an access token from:
  * 1. Existing supabase session
- * 2. Cached token from previous ensureSession call
- * 3. Edge function re-auth using device_token
+ * 2. Module-level cached token
+ * 3. Persisted token in SQLite device_config
+ * 4. Edge function re-auth using device_token
  */
 export async function getAccessToken(): Promise<string | null> {
   // 1. Check existing supabase session
@@ -118,7 +119,21 @@ export async function getAccessToken(): Promise<string | null> {
     }
   } catch { /* ignore */ }
 
-  // 2. Re-auth via edge function
+  // 2. Use module-level cached token if available
+  if (cachedAccessToken) {
+    console.log('[sync] using cached access_token');
+    return cachedAccessToken;
+  }
+
+  // 3. Check persisted token in SQLite
+  const persistedToken = await getDeviceConfig('access_token');
+  if (persistedToken) {
+    console.log('[sync] using persisted access_token from device_config');
+    cachedAccessToken = persistedToken;
+    return persistedToken;
+  }
+
+  // 4. Re-auth via edge function
   const deviceToken = await getDeviceConfig('device_token');
   if (!deviceToken) {
     console.warn('[sync] no device_token — cannot authenticate');
@@ -141,6 +156,12 @@ export async function getAccessToken(): Promise<string | null> {
 
     console.log('[sync] got access_token from edge function');
     cachedAccessToken = data.access_token;
+
+    // Persist token in SQLite for next sync cycle
+    await saveDeviceConfig('access_token', data.access_token);
+    if (data.refresh_token) {
+      await saveDeviceConfig('refresh_token', data.refresh_token);
+    }
 
     // Also try setSession (best-effort, non-blocking)
     supabase.auth.setSession({
@@ -223,17 +244,22 @@ export async function pullData(empresaId: string, forceFullRefresh = false, db?:
   }
 
   // Pull Equipamentos
-  const { data: eqList } = await withTimestamp(
+  const { data: eqList, error: eqError } = await withTimestamp(
     db
     .from('equipamentos')
     .select('*')
     .eq('empresa_id', empresaId)
   ).limit(1000);
 
+  if (eqError) {
+    console.error('[sync] equipamentos error:', eqError.message, eqError.code);
+  }
   if (eqList) {
     for (const eq of eqList) {
-      await upsertEquipamento(eq);
+      // Map Supabase 'tag' column to SQLite 'qr_code'
+      await upsertEquipamento({ ...eq, qr_code: eq.qr_code || eq.tag });
     }
+    console.log(`[sync] pulled ${eqList.length} equipamentos`);
   }
 
   // Pull Mecanicos — tenta query direta, fallback para RPC SECURITY DEFINER
@@ -245,18 +271,25 @@ export async function pullData(empresaId: string, forceFullRefresh = false, db?:
     .eq('ativo', true)
     .limit(500);
 
+  if (mecErr) {
+    console.warn('[sync] mecanicos direct error:', mecErr.message, mecErr.code);
+  }
+
   if (!mecErr && mecDirect && mecDirect.length > 0) {
     mecList = mecDirect;
   } else {
     // Fallback: RPC que bypassa RLS
     try {
-      const { data: mecRpc } = await db.rpc('listar_mecanicos_empresa', {
+      const { data: mecRpc, error: rpcErr } = await db.rpc('listar_mecanicos_empresa', {
         p_empresa_id: empresaId,
       });
+      if (rpcErr) console.warn('[sync] mecanicos RPC error:', rpcErr.message);
       if (mecRpc && mecRpc.length > 0) {
         mecList = mecRpc;
       }
-    } catch { /* ignore rpc error */ }
+    } catch (e) {
+      console.warn('[sync] mecanicos RPC exception:', e);
+    }
   }
 
   if (mecList) {
@@ -266,35 +299,39 @@ export async function pullData(empresaId: string, forceFullRefresh = false, db?:
   }
 
   // Pull Materiais (catálogo)
-  const { data: matList } = await withTimestamp(
+  const { data: matList, error: matError } = await withTimestamp(
     db
     .from('materiais')
     .select('id, empresa_id, codigo, nome, unidade, estoque_atual')
     .eq('empresa_id', empresaId)
   ).limit(1000);
 
+  if (matError) console.error('[sync] materiais error:', matError.message, matError.code);
   if (matList) {
     for (const mat of matList) {
       await upsertMaterial({ ...mat, descricao: mat.nome });
     }
+    console.log(`[sync] pulled ${matList.length} materiais`);
   }
 
   // Pull Documentos Técnicos
-  const { data: docList } = await withTimestamp(
+  const { data: docList, error: docError } = await withTimestamp(
     db
     .from('documentos_tecnicos')
     .select('id, empresa_id, equipamento_id, tipo, titulo, arquivo_url, created_at')
     .eq('empresa_id', empresaId)
   ).limit(500);
 
+  if (docError) console.error('[sync] documentos error:', docError.message, docError.code);
   if (docList) {
     for (const doc of docList) {
       await upsertDocumento({ ...doc, nome: doc.titulo });
     }
+    console.log(`[sync] pulled ${docList.length} documentos`);
   }
 
   // Pull Paradas
-  const { data: paradaList } = await withTimestamp(
+  const { data: paradaList, error: paradaError } = await withTimestamp(
     db
     .from('paradas_equipamento')
     .select('*')
@@ -302,14 +339,16 @@ export async function pullData(empresaId: string, forceFullRefresh = false, db?:
     .order('inicio', { ascending: false })
   ).limit(500);
 
+  if (paradaError) console.error('[sync] paradas error:', paradaError.message, paradaError.code);
   if (paradaList) {
     for (const p of paradaList) {
       await upsertParada({ ...p, sync_status: 'synced' });
     }
+    console.log(`[sync] pulled ${paradaList.length} paradas`);
   }
 
   // Pull Requisicoes
-  const { data: reqList } = await withTimestamp(
+  const { data: reqList, error: reqError } = await withTimestamp(
     db
     .from('requisicoes_material')
     .select('*')
@@ -317,14 +356,16 @@ export async function pullData(empresaId: string, forceFullRefresh = false, db?:
     .order('created_at', { ascending: false })
   ).limit(500);
 
+  if (reqError) console.error('[sync] requisicoes error:', reqError.message, reqError.code);
   if (reqList) {
     for (const r of reqList) {
       await upsertRequisicao({ ...r, sync_status: 'synced' });
     }
+    console.log(`[sync] pulled ${reqList.length} requisições`);
   }
 
   // Pull Solicitações de Manutenção
-  const { data: solicList } = await withTimestamp(
+  const { data: solicList, error: solicError } = await withTimestamp(
     db
     .from('solicitacoes_manutencao')
     .select('*')
@@ -332,6 +373,7 @@ export async function pullData(empresaId: string, forceFullRefresh = false, db?:
     .order('created_at', { ascending: false })
   ).limit(500);
 
+  if (solicError) console.error('[sync] solicitacoes error:', solicError.message, solicError.code);
   if (solicList) {
     for (const s of solicList) {
       await upsertSolicitacao({ ...s, sync_status: 'synced' });
