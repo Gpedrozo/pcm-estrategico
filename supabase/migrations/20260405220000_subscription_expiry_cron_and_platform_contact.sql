@@ -6,23 +6,27 @@
 --   2. Creates pg_cron job to auto-block companies 15 days after subscription ends
 -- ============================================================================
 
--- ── 1. Platform contact config (global, empresa_id IS NULL) ─────────────────
+-- ── 1. Allow NULL empresa_id for platform-level config ──────────────────────
 
-INSERT INTO public.configuracoes_sistema (id, empresa_id, chave, valor, descricao, tipo, categoria)
+ALTER TABLE public.configuracoes_sistema ALTER COLUMN empresa_id DROP NOT NULL;
+
+-- ── 2. Platform contact config (global, empresa_id IS NULL) ─────────────────
+
+INSERT INTO public.configuracoes_sistema (empresa_id, chave, valor)
 VALUES
-  (gen_random_uuid(), NULL, 'platform.contact_email', '"comercial@pcmestrategico.com.br"', 'Email do representante comercial da plataforma', 'STRING', 'platform'),
-  (gen_random_uuid(), NULL, 'platform.contact_whatsapp', '"+55 51 99999-9999"', 'WhatsApp do representante comercial da plataforma', 'STRING', 'platform'),
-  (gen_random_uuid(), NULL, 'platform.contact_name', '"Representante Comercial"', 'Nome do representante comercial da plataforma', 'STRING', 'platform'),
-  (gen_random_uuid(), NULL, 'platform.expiry_custom_message', '""', 'Mensagem personalizada de vencimento (opcional)', 'STRING', 'platform'),
-  (gen_random_uuid(), NULL, 'platform.grace_period_days', '15', 'Dias de carência após vencimento antes de bloquear', 'NUMBER', 'platform'),
-  (gen_random_uuid(), NULL, 'platform.alert_days_before', '7', 'Dias de antecedência para alertar sobre vencimento', 'NUMBER', 'platform')
-ON CONFLICT (empresa_id, chave) DO NOTHING;
+  (NULL, 'platform.contact_email', '"comercial@pcmestrategico.com.br"'),
+  (NULL, 'platform.contact_whatsapp', '"+55 51 99999-9999"'),
+  (NULL, 'platform.contact_name', '"Representante Comercial"'),
+  (NULL, 'platform.expiry_custom_message', '""'),
+  (NULL, 'platform.grace_period_days', '15'),
+  (NULL, 'platform.alert_days_before', '7')
+ON CONFLICT DO NOTHING;
 
--- ── 2. Enable pg_cron extension (available on Supabase by default) ──────────
+-- ── 3. Enable pg_cron extension (available on Supabase by default) ──────────
 
 CREATE EXTENSION IF NOT EXISTS pg_cron WITH SCHEMA extensions;
 
--- ── 3. Cron function: enforce subscription expiry with 15-day grace period ──
+-- ── 4. Cron function: enforce subscription expiry with 15-day grace period ──
 
 CREATE OR REPLACE FUNCTION public.cron_enforce_subscription_expiry()
 RETURNS void
@@ -75,7 +79,7 @@ BEGIN
 END;
 $$;
 
--- ── 4. Schedule: run daily at 03:00 UTC ─────────────────────────────────────
+-- ── 5. Schedule: run daily at 03:00 UTC ─────────────────────────────────────
 
 SELECT cron.schedule(
   'enforce-subscription-expiry',
@@ -83,9 +87,8 @@ SELECT cron.schedule(
   $$SELECT public.cron_enforce_subscription_expiry()$$
 );
 
--- ── 5. Allow NULL empresa_id in configuracoes_sistema unique constraint ──────
+-- ── 6. Partial unique index for platform-level configs (empresa_id IS NULL) ──
 -- The existing UNIQUE(empresa_id, chave) does not match NULLs.
--- We need a partial unique index for platform-level configs.
 
 CREATE UNIQUE INDEX IF NOT EXISTS idx_configuracoes_sistema_platform_chave
   ON public.configuracoes_sistema (chave)
