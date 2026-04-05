@@ -106,6 +106,14 @@ export default function OwnerUsuariosTab({
       if (!isOwnerMaster && status === 'excluido') return false
 
       return matchesText && matchesStatus
+    }).sort((a, b) => {
+      const statusOrder = (s: string) => {
+        const st = String(s).toLowerCase()
+        if (st === 'ativo') return 0
+        if (st === 'inativo') return 1
+        return 2 // excluido ou outros
+      }
+      return statusOrder(String(a.status ?? '')) - statusOrder(String(b.status ?? ''))
     })
   }, [userSearch, userStatusFilter, users, isOwnerMaster])
 
