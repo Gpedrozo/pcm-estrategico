@@ -78,11 +78,18 @@ export default function OwnerUsuariosTab({
     setCurrentPage(1)
   }, [userSearch, userStatusFilter])
 
+  // ── Helpers ──
+  const isDeviceUser = (u: Record<string, unknown>) =>
+    String(u.nome ?? '').startsWith('device-') || String(u.email ?? '').endsWith('@dispositivo.local')
+
   // ── Filtros e resumo ──
   const usersFiltered = useMemo(() => {
     const query = userSearch.trim().toLowerCase()
 
     return users.filter((u) => {
+      // Ocultar usuários de dispositivo (QR Code) da listagem
+      if (isDeviceUser(u)) return false
+
       const name = String(u.nome ?? '').toLowerCase()
       const email = String(u.email ?? '').toLowerCase()
       const status = String(u.status ?? '').toLowerCase()
@@ -103,10 +110,11 @@ export default function OwnerUsuariosTab({
   }, [userSearch, userStatusFilter, users, isOwnerMaster])
 
   const userSummary = useMemo(() => {
-    const activeUsers = users.filter((u) => String(u.status ?? '').toLowerCase() === 'ativo')
-    const inactive = users.filter((u) => String(u.status ?? '').toLowerCase() === 'inativo').length
-    const deleted = users.filter((u) => String(u.status ?? '').toLowerCase() === 'excluido').length
-    const admins = users.filter((u) => {
+    const humanUsers = users.filter((u) => !isDeviceUser(u))
+    const activeUsers = humanUsers.filter((u) => String(u.status ?? '').toLowerCase() === 'ativo')
+    const inactive = humanUsers.filter((u) => String(u.status ?? '').toLowerCase() === 'inativo').length
+    const deleted = humanUsers.filter((u) => String(u.status ?? '').toLowerCase() === 'excluido').length
+    const admins = humanUsers.filter((u) => {
       const role = String(u.role ?? '').toUpperCase()
       return role === 'ADMIN' || role === 'MASTER_TI'
     }).length
@@ -462,7 +470,7 @@ export default function OwnerUsuariosTab({
             >
               <option value="">Selecione um usuário</option>
               {users
-                .filter((u) => String(u.status ?? '') !== 'excluido')
+                .filter((u) => String(u.status ?? '') !== 'excluido' && !isDeviceUser(u))
                 .map((u) => (
                   <option key={String(u.id)} value={String(u.id)}>
                     {String(u.nome ?? u.email ?? u.id)}
