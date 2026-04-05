@@ -88,12 +88,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // ── Bind device via QR token → RPC vincular_dispositivo ──
   const bindDevice = useCallback(async (qrToken: string): Promise<{ ok: boolean; error?: string }> => {
     try {
+      // Clear any stale Supabase auth session from previous app version
+      await supabase.auth.signOut().catch(() => {});
+
       // Generate a stable device_id per installation
       let deviceId = await AsyncStorage.getItem(STORAGE_KEYS.DEVICE_ID);
       if (!deviceId) {
         deviceId = 'rn-' + Math.random().toString(36).slice(2) + '-' + Date.now().toString(36);
         await AsyncStorage.setItem(STORAGE_KEYS.DEVICE_ID, deviceId);
       }
+
+      console.log('[bindDevice] Calling vincular_dispositivo with token:', qrToken.slice(0, 8) + '...');
 
       const { data, error } = await supabase.rpc('vincular_dispositivo', {
         p_qr_token: qrToken,
@@ -102,7 +107,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         p_device_os: `${Platform.OS} ${Platform.Version}`,
       });
 
-      if (error) return { ok: false, error: error.message };
+      if (error) {
+        console.error('[bindDevice] RPC error:', error.code, error.message, error.hint);
+        return { ok: false, error: error.message };
+      }
 
       const result = typeof data === 'string' ? JSON.parse(data) : data;
       if (!result?.ok) return { ok: false, error: result?.error || 'Falha na vinculação' };
