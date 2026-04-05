@@ -217,6 +217,12 @@ export default function Owner() {
 
   const companies = useMemo(() => safeArray<Record<string, unknown>>((companiesQuery.data as any)?.companies), [companiesQuery.data])
   const users = useMemo(() => safeArray<Record<string, unknown>>((usersQuery.data as any)?.users), [usersQuery.data])
+  const activeHumanUsers = useMemo(() => users.filter((u) => {
+    const nome = String(u.nome ?? '').toLowerCase()
+    const email = String(u.email ?? '').toLowerCase()
+    const isDevice = nome.startsWith('device-') || email.endsWith('@dispositivo.local')
+    return !isDevice && String(u.status ?? '').toLowerCase() === 'ativo'
+  }), [users])
   const plans = useMemo(() => safeArray<Record<string, unknown>>((plansQuery.data as any)?.plans), [plansQuery.data])
   const subscriptions = useMemo(() => safeArray<Record<string, unknown>>((subscriptionsQuery.data as any)?.subscriptions), [subscriptionsQuery.data])
   const contracts = useMemo(() => safeArray<Record<string, unknown>>((contractsQuery.data as any)?.contracts), [contractsQuery.data])
@@ -753,7 +759,7 @@ export default function Owner() {
 
               <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
                 <MetricTile label="Empresas" value={companies.length} icon={Building2} tone="sky" />
-                <MetricTile label="Usuários" value={users.length} icon={Users} tone="emerald" />
+                <MetricTile label="Usuários" value={activeHumanUsers.length} icon={Users} tone="emerald" />
                 <MetricTile label="Assinaturas" value={subscriptions.length} icon={CreditCard} tone="amber" />
                 <MetricTile label="Contratos" value={contracts.length} icon={FileText} tone="rose" />
                 <MetricTile label="MRR" value={`R$ ${financeSummary.totalMrr.toLocaleString('pt-BR')}`} icon={CreditCard} tone="emerald" />

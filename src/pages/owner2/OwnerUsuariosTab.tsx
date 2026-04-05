@@ -63,7 +63,7 @@ export default function OwnerUsuariosTab({
 
   // ── Filtros e Paginação ──
   const [userSearch, setUserSearch] = useState('')
-  const [userStatusFilter, setUserStatusFilter] = useState<'todos' | 'ativo' | 'inativo' | 'excluido'>('todos')
+  const [userStatusFilter, setUserStatusFilter] = useState<'todos' | 'ativo' | 'inativo' | 'excluido'>('ativo')
   const [currentPage, setCurrentPage] = useState(1)
 
   // ── Dialog de Confirmação ──
