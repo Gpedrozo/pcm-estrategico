@@ -1,8 +1,9 @@
-import { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
+import { useReactToPrint } from 'react-to-print';
 import { useDadosEmpresa } from '@/hooks/useDadosEmpresa';
 import { supabase } from '@/integrations/supabase/client';
 import { OSPrintTemplate } from './OSPrintTemplate';
-import { PrintPreviewDialog } from '@/components/print/PrintPreviewDialog';
+import { PRINT_PAGE_STYLE } from '@/components/print/DocumentPrintBase';
 
 interface OSPrintDialogProps {
   os: {
@@ -27,6 +28,13 @@ export function OSPrintDialog({ os, trigger, solicitacaoNumero: solicitacaoNumer
   const [resolvedSolNum, setResolvedSolNum] = useState<number | null>(null);
   const [servicoExecutado, setServicoExecutado] = useState<string | null>(null);
   const docNum = `OS-${String(os.numero_os).padStart(6, '0')}`;
+  const printRef = useRef<HTMLDivElement>(null);
+
+  const handlePrint = useReactToPrint({
+    contentRef: printRef,
+    documentTitle: docNum,
+    pageStyle: PRINT_PAGE_STYLE,
+  });
 
   useEffect(() => {
     if (solicitacaoNumeroProp != null) { setResolvedSolNum(solicitacaoNumeroProp); return; }
@@ -44,13 +52,11 @@ export function OSPrintDialog({ os, trigger, solicitacaoNumero: solicitacaoNumer
   }, [os.id]);
 
   return (
-    <PrintPreviewDialog
-      title={`Imprimir Ordem de Serviço — ${docNum}`}
-      subtitle="Visualize e imprima a OS para entregar ao técnico"
-      documentTitle={docNum}
-      trigger={trigger}
-    >
-      {(ref) => <OSPrintTemplate ref={ref} os={os} empresa={empresa} solicitacaoNumero={resolvedSolNum} servicoExecutado={servicoExecutado} />}
-    </PrintPreviewDialog>
+    <>
+      {trigger ? React.cloneElement(trigger as React.ReactElement, { onClick: () => handlePrint() }) : null}
+      <div style={{ display: 'none' }}>
+        <OSPrintTemplate ref={printRef} os={os} empresa={empresa} solicitacaoNumero={resolvedSolNum} servicoExecutado={servicoExecutado} />
+      </div>
+    </>
   );
 }

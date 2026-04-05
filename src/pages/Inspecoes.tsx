@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -24,7 +24,8 @@ import { useCreateOrdemServico } from '@/hooks/useOrdensServico';
 import { useEquipamentos } from '@/hooks/useEquipamentos';
 import { useDadosEmpresa } from '@/hooks/useDadosEmpresa';
 import { InspecaoPrintTemplate } from '@/components/inspecao/InspecaoPrintTemplate';
-import { PrintPreviewDialog } from '@/components/print/PrintPreviewDialog';
+import { useReactToPrint } from 'react-to-print';
+import { PRINT_PAGE_STYLE } from '@/components/print/DocumentPrintBase';
 import { useLocation } from 'react-router-dom';
 import { useFormDraft } from '@/hooks/useFormDraft';
 
@@ -61,6 +62,25 @@ const INSPECTION_MODELS: Record<string, ChecklistItem[]> = {
     { item: 'Integridade de sensores de segurança', resposta: 'OK', criticidade: 'ALTA' },
   ],
 };
+
+function InspecaoPrintButton({ insp, empresa }: { insp: any; empresa: any }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const handlePrint = useReactToPrint({
+    contentRef: ref,
+    documentTitle: `Inspecao-${insp.rota_nome}`,
+    pageStyle: PRINT_PAGE_STYLE,
+  });
+  return (
+    <>
+      <Button size="sm" variant="outline" onClick={() => handlePrint()}>
+        <Printer className="h-3 w-3 mr-1" />Imprimir
+      </Button>
+      <div style={{ display: 'none' }}>
+        <InspecaoPrintTemplate ref={ref} inspecao={insp} empresa={empresa} />
+      </div>
+    </>
+  );
+}
 
 export default function Inspecoes() {
   const { user } = useAuth();
@@ -294,18 +314,7 @@ export default function Inspecoes() {
                   <td>{new Date(insp.data_inspecao).toLocaleDateString('pt-BR')}</td>
                   <td>
                     <div className="flex gap-1">
-                      <PrintPreviewDialog
-                        title="Ficha de Inspeção"
-                        subtitle={insp.rota_nome}
-                        documentTitle={`Inspecao-${insp.rota_nome}`}
-                        trigger={
-                          <Button size="sm" variant="outline">
-                            <Printer className="h-3 w-3 mr-1" />Imprimir
-                          </Button>
-                        }
-                      >
-                        {(ref) => <InspecaoPrintTemplate ref={ref} inspecao={insp} empresa={empresa} />}
-                      </PrintPreviewDialog>
+                      <InspecaoPrintButton insp={insp} empresa={empresa} />
                       {insp.status === 'EM_ANDAMENTO' && (
                         <Button size="sm" variant="outline" onClick={() => { setSelectedInspecao(insp); handleConcluir(insp); }}>
                           <ClipboardCheck className="h-3 w-3 mr-1" />Concluir

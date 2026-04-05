@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -24,7 +24,8 @@ import { useEquipamentos } from '@/hooks/useEquipamentos';
 import { useAuth } from '@/contexts/AuthContext';
 import { useDadosEmpresa } from '@/hooks/useDadosEmpresa';
 import { PreditivaPrintTemplate } from '@/components/preditiva/PreditivaPrintTemplate';
-import { PrintPreviewDialog } from '@/components/print/PrintPreviewDialog';
+import { useReactToPrint } from 'react-to-print';
+import { PRINT_PAGE_STYLE } from '@/components/print/DocumentPrintBase';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
@@ -180,6 +181,7 @@ export default function Preditiva() {
   const location = useLocation();
   const queryClient = useQueryClient();
   const [search, setSearch] = useState('');
+  const preditivaPrintRef = useRef<HTMLDivElement>(null);
   const [activeTab, setActiveTab] = useState('medicoes');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [tipoFilter, setTipoFilter] = useState('all');
@@ -306,6 +308,12 @@ export default function Preditiva() {
   const alertasAtivos = useMemo(() => {
     return filteredMedicoes.filter((item) => item.status === 'ALERTA' || item.status === 'CRITICO');
   }, [filteredMedicoes]);
+
+  const handlePrintPreditiva = useReactToPrint({
+    contentRef: preditivaPrintRef,
+    documentTitle: 'Relatorio-Preditiva',
+    pageStyle: PRINT_PAGE_STYLE,
+  });
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -575,26 +583,18 @@ export default function Preditiva() {
           <p className="text-muted-foreground">Monitoramento de condição e análise de tendências</p>
         </div>
         <div className="flex gap-2">
-          <PrintPreviewDialog
-            title="Relatório Preditivo"
-            subtitle={`${filteredMedicoes.length} medições`}
-            documentTitle="Relatorio-Preditiva"
-            trigger={
-              <Button variant="outline" className="gap-2" disabled={filteredMedicoes.length === 0}>
+          <Button variant="outline" className="gap-2" disabled={filteredMedicoes.length === 0} onClick={() => handlePrintPreditiva()}>
                 <Printer className="h-4 w-4" />
                 Imprimir Relatório
               </Button>
-            }
-          >
-            {(ref) => (
-              <PreditivaPrintTemplate
-                ref={ref}
-                medicoes={filteredMedicoes as any}
-                tag={filteredMedicoes.length > 0 ? filteredMedicoes[0].tag : '—'}
-                empresa={empresa}
-              />
-            )}
-          </PrintPreviewDialog>
+              <div style={{ display: 'none' }}>
+                <PreditivaPrintTemplate
+                  ref={preditivaPrintRef}
+                  medicoes={filteredMedicoes as any}
+                  tag={filteredMedicoes.length > 0 ? filteredMedicoes[0].tag : '—'}
+                  empresa={empresa}
+                />
+              </div>
           <Button onClick={() => setIsModalOpen(true)} className="gap-2">
             <Plus className="h-4 w-4" />
             Nova Medição

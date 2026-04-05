@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -29,7 +29,8 @@ import { useTemplatesPreventivos, useCreateTemplate } from '@/hooks/useTemplates
 import type { EquipamentoRow } from '@/hooks/useEquipamentos';
 import { useDadosEmpresa } from '@/hooks/useDadosEmpresa';
 import { PreventivaPrintTemplate } from './PreventivaPrintTemplate';
-import { PrintPreviewDialog } from '@/components/print/PrintPreviewDialog';
+import { useReactToPrint } from 'react-to-print';
+import { PRINT_PAGE_STYLE } from '@/components/print/DocumentPrintBase';
 
 interface Props {
   plano: PlanoPreventivo;
@@ -56,7 +57,12 @@ export default function PlanoDetailPanel({ plano, equipamentos }: Props) {
   const [execObs, setExecObs] = useState('');
   const [saveTemplateOpen, setSaveTemplateOpen] = useState(false);
   const [templateNome, setTemplateNome] = useState('');
-  const [printDialogOpen, setPrintDialogOpen] = useState(false);
+  const printRef = useRef<HTMLDivElement>(null);
+  const handlePrintPlano = useReactToPrint({
+    contentRef: printRef,
+    documentTitle: `Preventiva_${plano.codigo}`,
+    pageStyle: PRINT_PAGE_STYLE,
+  });
 
   const { data: empresa } = useDadosEmpresa();
   const { data: atividades, isLoading: loadAtiv } = useAtividadesByPlano(plano.id);
@@ -141,8 +147,6 @@ export default function PlanoDetailPanel({ plano, equipamentos }: Props) {
     setIsEditingPlano(false);
   };
 
-  // Print is now handled by PrintPreviewDialog
-
   const handleSaveTemplate = async () => {
     if (!templateNome.trim() || !atividades) return;
     const estrutura = atividades.map(a => ({
@@ -198,7 +202,7 @@ export default function PlanoDetailPanel({ plano, equipamentos }: Props) {
             <Button size="sm" variant="outline" onClick={() => { setEditingPlanoData({ nome: plano.nome, descricao: plano.descricao, equipamento_id: plano.equipamento_id || '', tipo_gatilho: plano.tipo_gatilho, frequencia_dias: plano.frequencia_dias, frequencia_ciclos: plano.frequencia_ciclos, condicao_disparo: plano.condicao_disparo || '', tolerancia_antes_dias: plano.tolerancia_antes_dias ?? 0, tolerancia_depois_dias: plano.tolerancia_depois_dias ?? 0, tempo_estimado_min: plano.tempo_estimado_min, instrucoes: plano.instrucoes, ativo: plano.ativo }); setIsEditingPlano(true); }}>
               <Edit className="h-4 w-4 mr-1" /> Editar
             </Button>
-            <Button size="sm" variant="outline" onClick={() => setPrintDialogOpen(true)}>
+            <Button size="sm" variant="outline" onClick={() => handlePrintPlano()}>
               <Printer className="h-4 w-4 mr-1" /> Imprimir
             </Button>
             <Button size="sm" onClick={() => setExecFormOpen(true)}>
@@ -639,26 +643,18 @@ export default function PlanoDetailPanel({ plano, equipamentos }: Props) {
         </DialogContent>
       </Dialog>
 
-      {/* Print Dialog */}
-      <PrintPreviewDialog
-        title={`Imprimir Plano Preventivo — ${plano.codigo}`}
-        subtitle="Visualize e imprima o plano para entregar ao técnico"
-        documentTitle={`Preventiva_${plano.codigo}`}
-        open={printDialogOpen}
-        onOpenChange={setPrintDialogOpen}
-      >
-        {(ref) => (
-          <PreventivaPrintTemplate
-            ref={ref}
-            data={{
-              plano,
-              atividades: atividades || [],
-              tempoTotal: tempoTotalPlano,
-            }}
-            empresa={empresa}
-          />
-        )}
-      </PrintPreviewDialog>
+      {/* Hidden print target */}
+      <div style={{ display: 'none' }}>
+        <PreventivaPrintTemplate
+          ref={printRef}
+          data={{
+            plano,
+            atividades: atividades || [],
+            tempoTotal: tempoTotalPlano,
+          }}
+          empresa={empresa}
+        />
+      </div>
       {ConfirmDialogElement}
     </div>
   );

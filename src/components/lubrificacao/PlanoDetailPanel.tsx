@@ -10,7 +10,8 @@ import { useEquipamentos } from '@/hooks/useEquipamentos';
 import ExecucaoFormDialog from '@/components/lubrificacao/ExecucaoFormDialog';
 import AtividadesList from '@/components/lubrificacao/AtividadesList';
 import { LubrificacaoPrintTemplate } from './LubrificacaoPrintTemplate';
-import { PrintPreviewDialog } from '@/components/print/PrintPreviewDialog';
+import { useReactToPrint } from 'react-to-print';
+import { PRINT_PAGE_STYLE } from '@/components/print/DocumentPrintBase';
 
 export default function PlanoDetailPanel({ plano }: { plano: PlanoLubrificacao }) {
   const { data: execucoes } = useExecucoesByPlanoLubrificacao(plano.id);
@@ -19,6 +20,12 @@ export default function PlanoDetailPanel({ plano }: { plano: PlanoLubrificacao }
   const { data: equipamentos } = useEquipamentos();
   const createExec = useCreateExecucaoLubrificacao();
   const [openExec, setOpenExec] = React.useState(false);
+  const printRef = React.useRef<HTMLDivElement>(null);
+  const handlePrint = useReactToPrint({
+    contentRef: printRef,
+    documentTitle: `Lubrificacao-${plano.codigo}`,
+    pageStyle: PRINT_PAGE_STYLE,
+  });
 
   const equipamento = equipamentos?.find((e) => e.id === plano.equipamento_id);
   const equipamentoLabel = equipamento ? `${equipamento.tag} - ${equipamento.nome}` : '—';
@@ -57,18 +64,12 @@ export default function PlanoDetailPanel({ plano }: { plano: PlanoLubrificacao }
           <div className="flex items-center justify-between">
             <div className="text-sm text-muted-foreground">Execuções: <span className="font-semibold">{execucoes?.length || 0}</span></div>
             <div className="flex gap-2 flex-wrap">
-              <PrintPreviewDialog
-                title="Ficha de Lubrificação"
-                subtitle={plano.nome}
-                documentTitle={`Lubrificacao-${plano.codigo}`}
-                trigger={
-                  <Button variant="outline" className="gap-1">
+              <Button variant="outline" className="gap-1" onClick={() => handlePrint()}>
                     <Printer className="h-4 w-4" /> Imprimir
-                  </Button>
-                }
-              >
-                {(ref) => <LubrificacaoPrintTemplate ref={ref} plano={plano} pontos={pontosPlano || []} empresa={empresa} equipamentoNome={equipamentoLabel !== '—' ? equipamentoLabel : undefined} />}
-              </PrintPreviewDialog>
+              </Button>
+              <div style={{ display: 'none' }}>
+                <LubrificacaoPrintTemplate ref={printRef} plano={plano} pontos={pontosPlano || []} empresa={empresa} equipamentoNome={equipamentoLabel !== '—' ? equipamentoLabel : undefined} />
+              </div>
               <Button variant="outline"><Camera className="h-4 w-4" /> Fotos</Button>
               <Button variant="outline" onClick={handleGenerate}>Gerar Tarefa</Button>
               <Button onClick={() => setOpenExec(true)}>Registrar Execução</Button>
