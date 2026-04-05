@@ -12,6 +12,7 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { COLORS, SIZES, SHADOWS } from '../theme';
+import { useRealtimeRefresh } from '../hooks/useRealtimeRefresh';
 import type { SolicitacaoManutencao, RootStackParamList } from '../types';
 
 type Nav = NativeStackNavigationProp<RootStackParamList>;
@@ -62,6 +63,9 @@ export default function SolicitacoesListScreenV2() {
   }, [empresaId, statusFilter]);
 
   useFocusEffect(useCallback(() => { load(); }, [load]));
+
+  // Auto-refresh on realtime changes
+  useRealtimeRefresh('SolicitacoesScreen', load);
 
   const filtered = items.filter((s) => {
     if (!search.trim()) return true;

@@ -1,8 +1,9 @@
 // ============================================================
-// HomeScreen v2.0 — Lista de OS abertas (tela principal)
+// HomeScreen v2.1 — Lista de OS abertas (tela principal)
+// OS designadas para o mecânico logado sempre no topo + visual chamativo
 // ============================================================
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   View, Text, StyleSheet, FlatList, TouchableOpacity, RefreshControl,
   TextInput, Alert,
@@ -12,7 +13,295 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { COLORS, SIZES, SHADOWS } from '../theme';
+import { useRealtimeRefresh } from '../hooks/useRealtimeRefresh';
 import type { OrdemServico, RootStackParamList } from '../types';
+
+type Nav = NativeStackNavigationProp<RootStackParamList>;
+
+const STATUS_OPEN = ['ABERTA', 'EM_ANDAMENTO', 'AGUARDANDO_MATERIAL'];
+const PRIORIDADE_ORDER: Record<string, number> = { URGENTE: 0, ALTA: 1, MEDIA: 2, BAIXA: 3 };
+const PRIORIDADE_COLORS: Record<string, string> = {
+  URGENTE: COLORS.prioridadeEmergencial,
+  ALTA: COLORS.prioridadeAlta,
+  MEDIA: COLORS.prioridadeMedia,
+  BAIXA: COLORS.prioridadeBaixa,
+};
+const STATUS_COLORS: Record<string, string> = {
+  ABERTA: COLORS.success,
+  EM_ANDAMENTO: COLORS.primary,
+  AGUARDANDO_MATERIAL: COLORS.warning,
+};
+
+type ListItem =
+  | { type: 'header'; key: string; title: string; count: number }
+  | { type: 'os'; key: string; os: OrdemServico; mine: boolean };
+
+export default function HomeScreen() {
+  const nav = useNavigation<Nav>();
+  const { empresaId, mecanicoId, mecanicoCodigo, mecanicoNome, logout } = useAuth();
+  const [orders, setOrders] = useState<OrdemServico[]>([]);
+  const [search, setSearch] = useState('');
+  const [refreshing, setRefreshing] = useState(false);
+  const [loading, setLoading] = useState(true);
+
+  const fetchOrders = useCallback(async () => {
+    if (!empresaId) return;
+    const { data, error } = await supabase
+      .from('ordens_servico')
+      .select('*')
+      .eq('empresa_id', empresaId)
+      .in('status', STATUS_OPEN)
+      .order('data_solicitacao', { ascending: false })
+      .limit(200);
+
+    if (!error && data) {
+      const sorted = [...data].sort((a, b) => {
+        const pa = PRIORIDADE_ORDER[a.prioridade] ?? 9;
+        const pb = PRIORIDADE_ORDER[b.prioridade] ?? 9;
+        if (pa !== pb) return pa - pb;
+        return new Date(b.data_solicitacao).getTime() - new Date(a.data_solicitacao).getTime();
+      });
+      setOrders(sorted);
+    }
+  }, [empresaId]);
+
+  useEffect(() => { fetchOrders().finally(() => setLoading(false)); }, [fetchOrders]);
+
+  // Auto-refresh on realtime changes
+  useRealtimeRefresh('HomeScreen', fetchOrders);
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await fetchOrders();
+    setRefreshing(false);
+  };
+
+  const isMyOS = useCallback((os: OrdemServico) =>
+    (mecanicoId && os.mecanico_responsavel_id === mecanicoId) ||
+    (mecanicoCodigo && os.mecanico_responsavel_codigo === mecanicoCodigo),
+  [mecanicoId, mecanicoCodigo]);
+
+  const filtered = orders.filter((os) => {
+    if (!search.trim()) return true;
+    const q = search.toLowerCase();
+    return (
+      String(os.numero_os).includes(q) ||
+      (os.tag || '').toLowerCase().includes(q) ||
+      (os.equipamento || '').toLowerCase().includes(q) ||
+      (os.problema || '').toLowerCase().includes(q)
+    );
+  });
+
+  // Split into mine (top) and others, with section headers
+  const listData = useMemo<ListItem[]>(() => {
+    const mine = filtered.filter((os) => isMyOS(os));
+    const others = filtered.filter((os) => !isMyOS(os));
+    const items: ListItem[] = [];
+    if (mine.length > 0) {
+      items.push({ type: 'header', key: 'h-mine', title: '🔧  SUAS ORDENS DE SERVIÇO', count: mine.length });
+      mine.forEach((os) => items.push({ type: 'os', key: os.id, os, mine: true }));
+    }
+    if (others.length > 0) {
+      items.push({ type: 'header', key: 'h-others', title: 'OUTRAS O.S. ABERTAS', count: others.length });
+      others.forEach((os) => items.push({ type: 'os', key: os.id, os, mine: false }));
+    }
+    return items;
+  }, [filtered, isMyOS]);
+
+  const mineCount = filtered.filter((os) => isMyOS(os)).length;
+  const othersCount = filtered.length - mineCount;
+
+  const formatDate = (d: string) => {
+    try {
+      const dt = new Date(d);
+      return `${dt.getDate().toString().padStart(2, '0')}/${(dt.getMonth() + 1).toString().padStart(2, '0')}/${dt.getFullYear()}`;
+    } catch { return d; }
+  };
+
+  const renderItem = ({ item }: { item: ListItem }) => {
+    if (item.type === 'header') {
+      return (
+        <View style={styles.sectionHeader}>
+          <Text style={[styles.sectionTitle, item.key === 'h-mine' && styles.sectionTitleMine]}>
+            {item.title}
+          </Text>
+          <View style={[styles.sectionCount, item.key === 'h-mine' && styles.sectionCountMine]}>
+            <Text style={[styles.sectionCountText, item.key === 'h-mine' && styles.sectionCountTextMine]}>
+              {item.count}
+            </Text>
+          </View>
+        </View>
+      );
+    }
+
+    const { os, mine } = item;
+    return (
+      <TouchableOpacity
+        style={[styles.card, mine && styles.cardMine]}
+        onPress={() => nav.navigate('OSDetail', { osId: os.id })}
+        activeOpacity={0.7}
+      >
+        {mine && (
+          <View style={styles.mineBanner}>
+            <Text style={styles.mineBannerText}>🔧  DESIGNADA PARA VOCÊ</Text>
+          </View>
+        )}
+        <View style={styles.cardHeader}>
+          <Text style={[styles.osNumber, mine && styles.osNumberMine]}>
+            O.S. {String(os.numero_os).padStart(4, '0')}
+          </Text>
+          <View style={[styles.statusBadge, { backgroundColor: STATUS_COLORS[os.status] || '#999' }]}>
+            <Text style={styles.statusText}>{os.status.replace(/_/g, ' ')}</Text>
+          </View>
+        </View>
+
+        <View style={styles.cardRow}>
+          <View style={[styles.prioBadge, { backgroundColor: PRIORIDADE_COLORS[os.prioridade] || '#999' }]}>
+            <Text style={styles.prioText}>{os.prioridade}</Text>
+          </View>
+          <Text style={styles.tipo}>{os.tipo}</Text>
+        </View>
+
+        <Text style={styles.tag}>{os.tag || 'Sem TAG'}</Text>
+        <Text style={styles.equip} numberOfLines={1}>{os.equipamento}</Text>
+        <Text style={styles.problema} numberOfLines={2}>{os.problema}</Text>
+
+        <View style={styles.cardFooter}>
+          <Text style={styles.footerText}>Solicitante: {os.solicitante}</Text>
+          <Text style={styles.footerText}>{formatDate(os.data_solicitacao)}</Text>
+        </View>
+      </TouchableOpacity>
+    );
+  };
+
+  return (
+    <View style={styles.container}>
+      {/* Header */}
+      <View style={styles.header}>
+        <View style={{ flex: 1 }}>
+          <Text style={styles.headerTitle}>PCM Mecânico</Text>
+          <Text style={styles.headerUser}>{mecanicoNome || 'Mecânico'}</Text>
+        </View>
+        <TouchableOpacity
+          onPress={() => Alert.alert('Logout', 'Deseja sair?', [
+            { text: 'Cancelar', style: 'cancel' },
+            { text: 'Sair', onPress: logout },
+          ])}
+          style={styles.logoutBtn}
+        >
+          <Text style={styles.logoutText}>Sair</Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* Search */}
+      <View style={styles.searchContainer}>
+        <TextInput
+          style={styles.searchInput}
+          placeholder="Buscar OS, TAG, equipamento..."
+          value={search}
+          onChangeText={setSearch}
+          autoCorrect={false}
+        />
+      </View>
+
+      {/* Counter */}
+      <View style={styles.counterRow}>
+        <Text style={styles.counterText}>
+          {mineCount > 0 ? `${mineCount} sua(s)` : ''}{mineCount > 0 && othersCount > 0 ? '  •  ' : ''}{othersCount > 0 ? `${othersCount} outra(s)` : ''}{filtered.length === 0 ? '0 ordens' : ''}
+        </Text>
+      </View>
+
+      {/* List */}
+      <FlatList
+        data={listData}
+        keyExtractor={(item) => item.key}
+        renderItem={renderItem}
+        contentContainerStyle={styles.list}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[COLORS.primary]} />}
+        ListEmptyComponent={
+          <View style={styles.empty}>
+            <Text style={styles.emptyIcon}>📋</Text>
+            <Text style={styles.emptyTitle}>
+              {loading ? 'Carregando...' : 'Nenhuma O.S. aberta'}
+            </Text>
+          </View>
+        }
+      />
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: { flex: 1, backgroundColor: COLORS.background },
+  header: {
+    backgroundColor: COLORS.headerBg, paddingTop: 50, paddingBottom: 16,
+    paddingHorizontal: 20, flexDirection: 'row', alignItems: 'center',
+  },
+  headerTitle: { fontSize: SIZES.fontLG, fontWeight: '800', color: '#FFF' },
+  headerUser: { fontSize: SIZES.fontSM, color: COLORS.primaryLight, marginTop: 2 },
+  logoutBtn: {
+    backgroundColor: 'rgba(255,255,255,0.15)', paddingHorizontal: 16,
+    paddingVertical: 8, borderRadius: SIZES.radiusSM,
+  },
+  logoutText: { color: '#FFF', fontWeight: '600', fontSize: SIZES.fontSM },
+  searchContainer: { paddingHorizontal: 16, paddingVertical: 8, backgroundColor: COLORS.surface },
+  searchInput: {
+    height: 48, backgroundColor: COLORS.background, borderRadius: SIZES.radiusMD,
+    paddingHorizontal: 16, fontSize: SIZES.fontSM, borderWidth: 1, borderColor: COLORS.border,
+  },
+  counterRow: { paddingHorizontal: 16, paddingVertical: 8 },
+  counterText: { fontSize: SIZES.fontSM, color: COLORS.textSecondary, fontWeight: '600' },
+  list: { paddingBottom: 100 },
+
+  // Section headers
+  sectionHeader: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    paddingHorizontal: 16, paddingTop: 14, paddingBottom: 6,
+  },
+  sectionTitle: { fontSize: 13, fontWeight: '800', color: COLORS.textSecondary, letterSpacing: 0.5 },
+  sectionTitleMine: { color: COLORS.primaryDark },
+  sectionCount: {
+    backgroundColor: COLORS.border, borderRadius: 12,
+    paddingHorizontal: 10, paddingVertical: 2,
+  },
+  sectionCountMine: { backgroundColor: COLORS.primary },
+  sectionCountText: { fontSize: 12, fontWeight: '800', color: COLORS.textSecondary },
+  sectionCountTextMine: { color: '#FFF' },
+
+  // Cards
+  card: {
+    backgroundColor: COLORS.surface, borderRadius: SIZES.radiusMD,
+    padding: SIZES.paddingMD, marginHorizontal: 16, marginVertical: 6,
+    ...SHADOWS.small,
+  },
+  cardMine: {
+    borderLeftWidth: 6, borderLeftColor: COLORS.primary,
+    backgroundColor: '#EBF2FF',
+    ...SHADOWS.medium,
+  },
+  mineBanner: {
+    backgroundColor: COLORS.primaryDark, borderRadius: 6,
+    paddingHorizontal: 12, paddingVertical: 5, alignSelf: 'flex-start', marginBottom: 10,
+  },
+  mineBannerText: { color: '#FFF', fontSize: 12, fontWeight: '800', letterSpacing: 0.3 },
+  cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
+  osNumber: { fontSize: SIZES.fontMD, fontWeight: '700', color: COLORS.textPrimary },
+  osNumberMine: { color: COLORS.primaryDark },
+  statusBadge: { borderRadius: 4, paddingHorizontal: 8, paddingVertical: 3 },
+  statusText: { color: '#FFF', fontSize: 11, fontWeight: '700' },
+  cardRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 8, gap: 8 },
+  prioBadge: { borderRadius: 4, paddingHorizontal: 8, paddingVertical: 3 },
+  prioText: { color: '#FFF', fontSize: 11, fontWeight: '700' },
+  tipo: { fontSize: SIZES.fontSM, color: COLORS.textSecondary, fontWeight: '600' },
+  tag: { fontSize: SIZES.fontSM, fontWeight: '700', color: COLORS.primary, marginBottom: 2 },
+  equip: { fontSize: SIZES.fontSM, color: COLORS.textPrimary, marginBottom: 4 },
+  problema: { fontSize: SIZES.fontSM, color: COLORS.textSecondary, marginBottom: 8 },
+  cardFooter: { flexDirection: 'row', justifyContent: 'space-between' },
+  footerText: { fontSize: 12, color: COLORS.textHint },
+  empty: { alignItems: 'center', marginTop: 80 },
+  emptyIcon: { fontSize: 48 },
+  emptyTitle: { fontSize: SIZES.fontMD, color: COLORS.textSecondary, marginTop: 12 },
+});
 
 type Nav = NativeStackNavigationProp<RootStackParamList>;
 

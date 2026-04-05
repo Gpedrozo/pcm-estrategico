@@ -3,7 +3,7 @@
 // Consulta tabela app_versao no Supabase e mostra alerta
 // ============================================================
 
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import {
   View,
   Text,
@@ -12,12 +12,13 @@ import {
   Linking,
   Modal,
   Animated,
+  AppState,
 } from 'react-native';
 import { supabase } from '../lib/supabase';
 import { COLORS, SIZES } from '../theme';
 
 // ⚠️ MANTER SINCRONIZADO com app.json → expo.version
-const APP_VERSION = '1.0.2';
+const APP_VERSION = '2.0.0';
 
 interface VersionInfo {
   versao_atual: string;
@@ -74,12 +75,23 @@ export default function UpdateChecker({ children }: { children: React.ReactNode 
     }
   }, []);
 
+  // Re-check when app returns from background (e.g. after downloading APK)
+  const appStateRef = useRef(AppState.currentState);
   useEffect(() => {
     // Checa ao abrir o app
     checkVersion();
     // Recheca a cada 30 minutos
     const interval = setInterval(checkVersion, 30 * 60 * 1000);
-    return () => clearInterval(interval);
+
+    const sub = AppState.addEventListener('change', (nextState) => {
+      if (appStateRef.current.match(/inactive|background/) && nextState === 'active') {
+        setDismissed(false); // re-show if still outdated
+        checkVersion();
+      }
+      appStateRef.current = nextState;
+    });
+
+    return () => { clearInterval(interval); sub.remove(); };
   }, [checkVersion]);
 
   // Anima entrada do modal
@@ -95,6 +107,7 @@ export default function UpdateChecker({ children }: { children: React.ReactNode 
 
   const handleUpdate = useCallback(() => {
     if (versionInfo?.url_download) {
+      setDismissed(true); // close modal so user sees app when returning
       Linking.openURL(versionInfo.url_download).catch(() => {});
     }
   }, [versionInfo]);
