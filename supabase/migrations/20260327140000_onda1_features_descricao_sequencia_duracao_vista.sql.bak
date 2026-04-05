@@ -41,7 +41,7 @@ ADD CONSTRAINT fk_ordens_servico_empresa_id
   FOREIGN KEY (empresa_id) REFERENCES public.empresas(id) ON DELETE CASCADE;
 
 CREATE OR REPLACE FUNCTION public.assign_numero_os_sequencial()
-RETURNS TRIGGER AS \$\$
+RETURNS TRIGGER AS $$
 DECLARE
  v_proximo_numero integer;
 BEGIN
@@ -62,7 +62,7 @@ BEGIN
   
   RETURN NEW;
 END;
-\$\$ LANGUAGE plpgsql SECURITY DEFINER;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
 
 DROP TRIGGER IF EXISTS trigger_assign_numero_os_sequencial ON public.ordens_servico;
 
@@ -75,7 +75,7 @@ ALTER TABLE public.ordens_servico
 ADD COLUMN IF NOT EXISTS tempo_total_minutos integer;
 
 CREATE OR REPLACE FUNCTION public.format_duracao(minutos integer)
-RETURNS text AS \$\$
+RETURNS text AS $$
 DECLARE
   v_horas integer;
   v_mins integer;
@@ -97,10 +97,10 @@ BEGIN
     RETURN '''0min''';
   END IF;
 END;
-\$\$ LANGUAGE plpgsql IMMUTABLE;
+$$ LANGUAGE plpgsql IMMUTABLE;
 
 CREATE OR REPLACE FUNCTION public.calculate_tempo_total_on_close()
-RETURNS TRIGGER AS \$\$
+RETURNS TRIGGER AS $$
 BEGIN
   IF NEW.status = '''FECHADA''' AND OLD.status != '''FECHADA''' THEN
     NEW.tempo_total_minutos := 
@@ -109,7 +109,7 @@ BEGIN
   
   RETURN NEW;
 END;
-\$\$ LANGUAGE plpgsql;
+$$ LANGUAGE plpgsql;
 
 DROP TRIGGER IF EXISTS trigger_calculate_tempo_total ON public.ordens_servico;
 
@@ -135,7 +135,7 @@ ADD CONSTRAINT fk_ordens_servico_vista_por
   FOREIGN KEY (vista_por) REFERENCES public.profiles(id) ON DELETE SET NULL;
 
 CREATE OR REPLACE FUNCTION public.marcar_os_como_vista(p_os_id uuid, p_usuario_id uuid)
-RETURNS jsonb AS \$\$
+RETURNS jsonb AS $$
 DECLARE
   v_result jsonb;
 BEGIN
@@ -157,15 +157,15 @@ BEGIN
   
   RETURN COALESCE(v_result, jsonb_build_object('''success''', false, '''message''', '''OS não encontrada'''));
 END;
-\$\$ LANGUAGE plpgsql SECURITY DEFINER;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
 
-ALTER TABLE public.historico
-ADD COLUMN IF NOT EXISTS descricao_execucao text;
+-- ALTER TABLE public.historico
+-- ADD COLUMN IF NOT EXISTS descricao_execucao text;
 
-ALTER TABLE public.historico
-ADD COLUMN IF NOT EXISTS tempo_total_minutos integer;
+-- ALTER TABLE public.historico
+-- ADD COLUMN IF NOT EXISTS tempo_total_minutos integer;
 
-DO \$\$
+DO $$
 DECLARE
   v_count_seq integer;
   v_count_col_desc integer;
@@ -195,6 +195,6 @@ BEGIN
   
   RAISE NOTICE '''VALIDATION: sequencia_os table: %, descricao_execucao col: %, tempo_total_minutos col: %, vista cols: %, OSs migradas: %''',
     v_count_seq, v_count_col_desc, v_count_col_tempo, v_count_col_vista, v_count_os_with_desc;
-END \$\$;
+END $$;
 
 COMMIT;
