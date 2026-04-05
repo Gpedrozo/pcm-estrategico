@@ -38,20 +38,20 @@ export function AnalysisResultCard({
       {/* Header stats */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         {osCount != null && (
-        <Card>
-          <CardContent className="p-4 text-center">
-            <p className="text-2xl font-bold text-primary">{osCount}</p>
-            <p className="text-xs text-muted-foreground">O.S. Analisadas</p>
-          </CardContent>
-        </Card>
+          <Card>
+            <CardContent className="p-4 text-center">
+              <p className="text-2xl font-bold text-primary">{osCount}</p>
+              <p className="text-xs text-muted-foreground">O.S. Analisadas</p>
+            </CardContent>
+          </Card>
         )}
         {mtbfDays != null && (
-        <Card>
-          <CardContent className="p-4 text-center">
-            <p className="text-2xl font-bold text-primary">{mtbfDays.toFixed(0)}d</p>
-            <p className="text-xs text-muted-foreground">MTBF Estimado</p>
-          </CardContent>
-        </Card>
+          <Card>
+            <CardContent className="p-4 text-center">
+              <p className="text-2xl font-bold text-primary">{mtbfDays.toFixed(0)}d</p>
+              <p className="text-xs text-muted-foreground">MTBF Estimado</p>
+            </CardContent>
+          </Card>
         )}
         <Card>
           <CardContent className="p-4 text-center">

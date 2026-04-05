@@ -24,8 +24,6 @@ export default function RootCauseAIPage() {
     setCurrentResult(result);
   };
 
-  const osCountForTag = equipamentos?.find(e => e.tag === selectedTag) ? '—' : '—';
-
   return (
     <div className="space-y-6">
       {/* Header */}
