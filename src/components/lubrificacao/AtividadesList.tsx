@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useAtividadesByPlano, useCreateAtividade, useUpdateAtividade, useDeleteAtividade } from '@/hooks/useAtividadesLubrificacao';
+import { useConfirmDialog } from '@/components/ui/confirm-dialog';
 import type { AtividadeLubrificacao } from '@/types/lubrificacao';
 
 export default function AtividadesList({ planoId }: { planoId: string }) {
@@ -10,6 +11,7 @@ export default function AtividadesList({ planoId }: { planoId: string }) {
   const create = useCreateAtividade();
   const update = useUpdateAtividade();
   const del = useDeleteAtividade();
+  const { confirm, ConfirmDialogElement } = useConfirmDialog();
 
   const [editing, setEditing] = useState<AtividadeLubrificacao | null>(null);
   const [novoDesc, setNovoDesc] = useState('');
@@ -39,7 +41,7 @@ export default function AtividadesList({ planoId }: { planoId: string }) {
               </div>
               <div className="flex gap-2">
                 <Button variant="ghost" onClick={() => setEditing(a)}>Editar</Button>
-                <Button variant="destructive" onClick={() => del.mutate({ id: a.id, plano_id: planoId })}>Excluir</Button>
+                <Button variant="destructive" onClick={() => confirm({ title: 'Excluir atividade', description: `Excluir a atividade "${a.descricao}"?`, onConfirm: () => del.mutateAsync({ id: a.id, plano_id: planoId }) })}>Excluir</Button>
               </div>
             </div>
           ))
@@ -69,6 +71,7 @@ export default function AtividadesList({ planoId }: { planoId: string }) {
           </div>
         </div>
       )}
+      {ConfirmDialogElement}
     </div>
   );
 }

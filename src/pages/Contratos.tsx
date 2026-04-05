@@ -9,6 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Card, CardContent } from '@/components/ui/card';
 import { Plus, Search, FileText, DollarSign, Clock, Building2, AlertCircle, CheckCircle2, Pencil, Trash2 } from 'lucide-react';
+import { useConfirmDialog } from '@/components/ui/confirm-dialog';
 import { 
   useContratos, 
   useCreateContrato, 
@@ -53,6 +54,7 @@ export default function Contratos() {
   const createContrato = useCreateContrato();
   const updateContrato = useUpdateContrato();
   const deleteContrato = useDeleteContrato();
+  const { confirm, ConfirmDialogElement } = useConfirmDialog();
 
   const filteredContratos = contratos?.filter(contrato => {
     if (filterStatus !== 'all' && contrato.status !== filterStatus) return false;
@@ -129,9 +131,11 @@ export default function Contratos() {
   };
 
   const handleDelete = async (id: string) => {
-    if (confirm('Tem certeza que deseja excluir este contrato?')) {
-      await deleteContrato.mutateAsync(id);
-    }
+    confirm({
+      title: 'Excluir contrato',
+      description: 'Tem certeza que deseja excluir este contrato? Esta ação não pode ser desfeita.',
+      onConfirm: () => deleteContrato.mutateAsync(id),
+    });
   };
 
   if (isLoading) {
@@ -267,6 +271,7 @@ export default function Contratos() {
           </form>
         </DialogContent>
       </Dialog>
+      {ConfirmDialogElement}
     </div>
   );
 }

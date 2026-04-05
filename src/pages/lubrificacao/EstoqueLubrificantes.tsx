@@ -27,6 +27,7 @@ import type {
   MovimentacaoLubrificanteInsert,
 } from '@/types/lubrificacao';
 import { useToast } from '@/hooks/use-toast';
+import { useConfirmDialog } from '@/components/ui/confirm-dialog';
 
 const TIPO_OPTIONS: { value: TipoLubrificante; label: string }[] = [
   { value: 'graxa', label: 'Graxa' },
@@ -48,6 +49,7 @@ export default function EstoqueLubrificantes() {
   const createLub = useCreateLubrificante();
   const updateLub = useUpdateLubrificante();
   const deleteLub = useDeleteLubrificante();
+  const { confirm, ConfirmDialogElement } = useConfirmDialog();
   const createMov = useCreateMovimentacao();
 
   const [search, setSearch] = useState('');
@@ -104,10 +106,15 @@ export default function EstoqueLubrificantes() {
     setFormOpen(false);
   };
 
-  const handleDelete = async (lub: Lubrificante) => {
-    if (!confirm(`Excluir ${lub.codigo} - ${lub.nome}?`)) return;
-    await deleteLub.mutateAsync(lub.id);
-    if (selectedLub?.id === lub.id) setSelectedLub(null);
+  const handleDelete = (lub: Lubrificante) => {
+    confirm({
+      title: 'Excluir lubrificante',
+      description: `Excluir ${lub.codigo} - ${lub.nome}? Esta ação não pode ser desfeita.`,
+      onConfirm: async () => {
+        await deleteLub.mutateAsync(lub.id);
+        if (selectedLub?.id === lub.id) setSelectedLub(null);
+      },
+    });
   };
 
   const handleMov = async () => {
@@ -349,6 +356,7 @@ export default function EstoqueLubrificantes() {
           </div>
         </DialogContent>
       </Dialog>
+      {ConfirmDialogElement}
     </div>
   );
 }

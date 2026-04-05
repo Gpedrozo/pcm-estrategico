@@ -50,6 +50,7 @@ import type {
 } from '@/types/lubrificacao';
 import { RotaPrintTemplate } from '@/components/lubrificacao/RotaPrintTemplate';
 import { useToast } from '@/hooks/use-toast';
+import { useConfirmDialog } from '@/components/ui/confirm-dialog';
 
 const FREQ_OPTIONS: { value: FrequenciaRota; label: string }[] = [
   { value: 'DIARIA', label: 'Diária (DI)' },
@@ -102,6 +103,7 @@ export default function RotasLubrificacao() {
   const createRota = useCreateRotaLubrificacao();
   const updateRota = useUpdateRotaLubrificacao();
   const deleteRota = useDeleteRotaLubrificacao();
+  const { confirm, ConfirmDialogElement } = useConfirmDialog();
   const savePontos = useSavePontosRota();
 
   const [selectedRota, setSelectedRota] = useState<RotaLubrificacao | null>(null);
@@ -223,10 +225,15 @@ export default function RotasLubrificacao() {
     setFormOpen(false);
   };
 
-  const handleDelete = async (rota: RotaLubrificacao) => {
-    if (!confirm(`Excluir rota ${rota.codigo}?`)) return;
-    await deleteRota.mutateAsync(rota.id);
-    if (selectedRota?.id === rota.id) setSelectedRota(null);
+  const handleDelete = (rota: RotaLubrificacao) => {
+    confirm({
+      title: 'Excluir rota',
+      description: `Excluir rota ${rota.codigo}? Esta ação não pode ser desfeita.`,
+      onConfirm: async () => {
+        await deleteRota.mutateAsync(rota.id);
+        if (selectedRota?.id === rota.id) setSelectedRota(null);
+      },
+    });
   };
 
   const movePonto = (index: number, direction: -1 | 1) => {
@@ -516,6 +523,7 @@ export default function RotasLubrificacao() {
           <RotaPrintTemplate ref={printRef} rota={selectedRota} pontos={pontosDB || []} empresa={empresa} />
         </div>
       )}
+      {ConfirmDialogElement}
     </div>
   );
 }

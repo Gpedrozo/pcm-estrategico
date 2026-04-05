@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Plus, Droplet } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useConfirmDialog } from '@/components/ui/confirm-dialog';
 import { useEquipamentos } from '@/hooks/useEquipamentos';
 import {
   useCreatePlanoLubrificacao,
@@ -39,6 +40,7 @@ export default function Lubrificacao() {
   const createPlano = useCreatePlanoLubrificacao();
   const updatePlano = useUpdatePlanoLubrificacao();
   const deletePlano = useDeletePlanoLubrificacao();
+  const { confirm, ConfirmDialogElement } = useConfirmDialog();
 
   const filteredPlanos = useMemo(() => {
     if (!planos) return [];
@@ -113,10 +115,15 @@ export default function Lubrificacao() {
     return result;
   };
 
-  const handleDelete = async (plano: PlanoLubrificacao) => {
-    if (!confirm(`Deseja excluir o plano ${plano.codigo}?`)) return;
-    await deletePlano.mutateAsync(plano.id);
-    if (selectedPlano?.id === plano.id) setSelectedPlano(null);
+  const handleDelete = (plano: PlanoLubrificacao) => {
+    confirm({
+      title: 'Excluir plano',
+      description: `Deseja excluir o plano ${plano.codigo}? Esta ação não pode ser desfeita.`,
+      onConfirm: async () => {
+        await deletePlano.mutateAsync(plano.id);
+        if (selectedPlano?.id === plano.id) setSelectedPlano(null);
+      },
+    });
   };
 
   return (
@@ -184,6 +191,7 @@ export default function Lubrificacao() {
         onSubmit={handleSubmit}
         dataProgramada={dataProgramadaFromCalendar}
       />
+      {ConfirmDialogElement}
     </div>
   );
 }

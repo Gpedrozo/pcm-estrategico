@@ -11,6 +11,7 @@ import { Switch } from '@/components/ui/switch';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useConfirmDialog } from '@/components/ui/confirm-dialog';
 import {
   Plus, Trash2, Edit, Play, Clock, Calendar, ChevronDown, ChevronRight,
   GripVertical, Copy, History, CheckSquare, Download, Timer, Save, X,
@@ -72,6 +73,7 @@ export default function PlanoDetailPanel({ plano, equipamentos }: Props) {
   const deleteServico = useDeleteServico();
   const createExecucao = useCreateExecucao();
   const createTemplate = useCreateTemplate();
+  const { confirm, ConfirmDialogElement } = useConfirmDialog();
 
   const tempoTotalPlano = useMemo(() => {
     if (!atividades) return 0;
@@ -287,7 +289,7 @@ export default function PlanoDetailPanel({ plano, equipamentos }: Props) {
                         <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => handleMoveAtividade(atv, 'down')} disabled={aIdx === (atividades?.length || 0) - 1}>
                           <ArrowDown className="h-3.5 w-3.5" />
                         </Button>
-                        <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive" onClick={() => deleteAtividade.mutate({ id: atv.id, plano_id: plano.id })}>
+                        <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive" onClick={() => confirm({ title: 'Excluir atividade', description: `Excluir a atividade "${atv.nome}" e todos os seus serviços?`, onConfirm: () => deleteAtividade.mutateAsync({ id: atv.id, plano_id: plano.id }) })}>
                           <Trash2 className="h-3.5 w-3.5" />
                         </Button>
                       </div>
@@ -313,7 +315,7 @@ export default function PlanoDetailPanel({ plano, equipamentos }: Props) {
                             <Badge variant={srv.concluido ? 'default' : 'outline'} className="text-[10px] h-5 w-fit">
                               {srv.concluido ? 'OK' : 'Pendente'}
                             </Badge>
-                            <Button size="icon" variant="ghost" className="h-6 w-6 text-destructive" onClick={() => deleteServico.mutate({ id: srv.id, _plano_id: plano.id, _atividade_id: atv.id })}>
+                            <Button size="icon" variant="ghost" className="h-6 w-6 text-destructive" onClick={() => confirm({ title: 'Excluir serviço', description: `Excluir o serviço "${srv.descricao}"?`, onConfirm: () => deleteServico.mutateAsync({ id: srv.id, _plano_id: plano.id, _atividade_id: atv.id }) })}>
                               <Trash2 className="h-3 w-3" />
                             </Button>
                           </div>
@@ -466,7 +468,7 @@ export default function PlanoDetailPanel({ plano, equipamentos }: Props) {
               </div>
             )}
             <Separator />
-            <Button variant="destructive" size="sm" onClick={() => { if (confirm('Tem certeza que deseja excluir este plano?')) deletePlano.mutate(plano.id); }}>
+            <Button variant="destructive" size="sm" onClick={() => confirm({ title: 'Excluir plano', description: 'Tem certeza que deseja excluir este plano preventivo? Todas as atividades e serviços serão removidos.', onConfirm: () => deletePlano.mutateAsync(plano.id) })}>
               <Trash2 className="h-4 w-4 mr-1" /> Excluir Plano
             </Button>
           </div>
@@ -606,6 +608,7 @@ export default function PlanoDetailPanel({ plano, equipamentos }: Props) {
           />
         )}
       </PrintPreviewDialog>
+      {ConfirmDialogElement}
     </div>
   );
 }

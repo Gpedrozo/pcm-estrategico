@@ -14,6 +14,7 @@ import {
 } from '@/hooks/useDispositivosMoveis';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { useConfirmDialog } from '@/components/ui/confirm-dialog';
 import {
   Smartphone,
   Shield,
@@ -41,6 +42,7 @@ export default function OwnerDispositivosTab({ selectedEmpresaId, empresas, runA
   const toggleDevice = useToggleDispositivo();
   const removeDevice = useRemoveDispositivo();
   const desativarTodos = useDesativarTodosDispositivos();
+  const { confirm, ConfirmDialogElement } = useConfirmDialog();
 
   const [maxDispositivos, setMaxDispositivos] = useState('10');
 
@@ -146,9 +148,12 @@ export default function OwnerDispositivosTab({ selectedEmpresaId, empresas, runA
               size="sm"
               className="w-full"
               onClick={() => {
-                if (confirm('ATENÇÃO: Isso vai desativar TODOS os dispositivos desta empresa. Continuar?')) {
-                  desativarTodos.mutate(selectedEmpresaId);
-                }
+                confirm({
+                  title: 'Desativar todos dispositivos',
+                  description: 'ATENÇÃO: Isso vai desativar TODOS os dispositivos desta empresa. Continuar?',
+                  confirmLabel: 'Desativar Todos',
+                  onConfirm: () => desativarTodos.mutateAsync(selectedEmpresaId),
+                });
               }}
               disabled={desativarTodos.isPending}
             >
@@ -227,7 +232,12 @@ export default function OwnerDispositivosTab({ selectedEmpresaId, empresas, runA
                       <button
                         className="rounded px-2 py-1 text-xs border border-slate-200 text-slate-500 hover:bg-slate-50"
                         onClick={() => {
-                          if (confirm('Remover permanentemente este dispositivo?')) removeDevice.mutate(d.id);
+                          confirm({
+                            title: 'Remover dispositivo',
+                            description: 'Remover permanentemente este dispositivo? Esta ação não pode ser desfeita.',
+                            confirmLabel: 'Remover',
+                            onConfirm: () => removeDevice.mutateAsync(d.id),
+                          });
                         }}
                         disabled={removeDevice.isPending}
                       >
@@ -241,6 +251,7 @@ export default function OwnerDispositivosTab({ selectedEmpresaId, empresas, runA
           </div>
         )}
       </div>
+      {ConfirmDialogElement}
     </div>
   );
 }

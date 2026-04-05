@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Separator } from '@/components/ui/separator';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
+import { useConfirmDialog } from '@/components/ui/confirm-dialog';
 import {
   useDispositivosMoveis,
   useToggleDispositivo,
@@ -45,6 +46,7 @@ export default function DispositivosMoveis() {
   const desativarTodos = useDesativarTodosDispositivos();
   const createQR = useCreateQRCode();
   const revogarQR = useRevogarQRCode();
+  const { confirm, ConfirmDialogElement } = useConfirmDialog();
 
   const [novoQRTipo, setNovoQRTipo] = useState<'UNICO' | 'MULTIPLO'>('MULTIPLO');
   const [novoQRExpiraDias, setNovoQRExpiraDias] = useState('30');
@@ -101,7 +103,7 @@ export default function DispositivosMoveis() {
           <Button
             variant="destructive"
             size="sm"
-            onClick={() => { if (tenantId && confirm('Desativar TODOS os dispositivos?')) desativarTodos.mutate(tenantId); }}
+            onClick={() => { if (tenantId) confirm({ title: 'Desativar todos', description: 'Desativar TODOS os dispositivos? Esta ação não pode ser desfeita.', confirmLabel: 'Desativar Todos', onConfirm: () => desativarTodos.mutateAsync(tenantId) }); }}
             disabled={desativarTodos.isPending}
           >
             <Ban className="h-4 w-4 mr-1" />
@@ -187,7 +189,7 @@ export default function DispositivosMoveis() {
                       <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleCopyLink(qr.token)}>
                         <Copy className="h-4 w-4" />
                       </Button>
-                      <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => { if (confirm('Revogar este QR Code?')) revogarQR.mutate(qr.id); }}>
+                      <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => confirm({ title: 'Revogar QR Code', description: 'Revogar este QR Code? Dispositivos que ainda não usaram não poderão mais vincular.', confirmLabel: 'Revogar', onConfirm: () => revogarQR.mutateAsync(qr.id) })}>
                         <Ban className="h-4 w-4" />
                       </Button>
                     </div>
@@ -283,7 +285,7 @@ export default function DispositivosMoveis() {
                         variant="ghost"
                         size="icon"
                         className="h-8 w-8 text-destructive"
-                        onClick={() => { if (confirm('Remover permanentemente este dispositivo?')) removeDevice.mutate(d.id); }}
+                        onClick={() => confirm({ title: 'Remover dispositivo', description: 'Remover permanentemente este dispositivo? Esta ação não pode ser desfeita.', confirmLabel: 'Remover', onConfirm: () => removeDevice.mutateAsync(d.id) })}
                         disabled={removeDevice.isPending}
                       >
                         <Trash2 className="h-3.5 w-3.5" />
@@ -296,6 +298,7 @@ export default function DispositivosMoveis() {
           )}
         </CardContent>
       </Card>
+      {ConfirmDialogElement}
     </div>
   );
 }
