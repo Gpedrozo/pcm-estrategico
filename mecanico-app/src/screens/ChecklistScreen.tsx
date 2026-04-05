@@ -18,6 +18,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { addToSyncQueue } from '../lib/database';
 import VoiceInput from '../components/VoiceInput';
 import { COLORS, SIZES } from '../theme';
+import { showSuccess, showError, showWarning } from '../lib/feedback';
 import type { RootStackParamList } from '../types';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Checklist'>;
@@ -74,8 +75,7 @@ export default function ChecklistScreen() {
 
   const handleSave = async () => {
     if (criticosPendentes.length > 0) {
-      Alert.alert(
-        '⚠️ Itens críticos pendentes',
+      showWarning(
         `${criticosPendentes.length} item(ns) crítico(s) ainda não foram verificados. Complete todos antes de finalizar.`
       );
       return;
@@ -109,11 +109,9 @@ export default function ChecklistScreen() {
         payload,
       });
 
-      Alert.alert('✅ Checklist concluído!', `${totalChecked}/${items.length} itens verificados.`, [
-        { text: 'OK', onPress: () => navigation.goBack() },
-      ]);
+      showSuccess(`Checklist concluído! ${totalChecked}/${items.length} itens verificados.`, () => navigation.goBack());
     } catch (err: any) {
-      Alert.alert('Erro', err?.message || 'Tente novamente.');
+      showError(err);
     } finally {
       setSaving(false);
     }

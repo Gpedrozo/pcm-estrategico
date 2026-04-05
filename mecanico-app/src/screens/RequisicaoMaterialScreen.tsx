@@ -20,6 +20,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { getMateriais, upsertRequisicao, addToSyncQueue } from '../lib/database';
 import VoiceInput from '../components/VoiceInput';
 import { COLORS, SIZES } from '../theme';
+import { showSuccess, showError, showWarning } from '../lib/feedback';
 import type { RootStackParamList, Material } from '../types';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'RequisicaoMaterial'>;
@@ -56,12 +57,12 @@ export default function RequisicaoMaterialScreen() {
 
   const handleSave = async () => {
     if (!selectedMaterial && !descricaoLivre.trim()) {
-      Alert.alert('Selecione um material', 'Busque no catálogo ou descreva o item.');
+      showWarning('Busque no catálogo ou descreva o item.');
       return;
     }
     const qty = parseInt(quantidade, 10);
     if (!qty || qty < 1) {
-      Alert.alert('Quantidade inválida', 'Informe a quantidade necessária.');
+      showWarning('Informe a quantidade necessária.');
       return;
     }
 
@@ -96,11 +97,17 @@ export default function RequisicaoMaterialScreen() {
         payload: requisicao,
       });
 
-      Alert.alert('✅ Material solicitado!', `${qty}x ${selectedMaterial?.descricao || descricaoLivre}`, [
-        { text: 'OK', onPress: () => navigation.goBack() },
-      ]);
+      // Reset form
+      setSearch('');
+      setSelectedMaterial(null);
+      setQuantidade('1');
+      setDescricaoLivre('');
+      setObservacao('');
+      setModoLivre(false);
+
+      showSuccess(`Material solicitado: ${qty}x ${selectedMaterial?.descricao || descricaoLivre}`, () => navigation.goBack());
     } catch (err: any) {
-      Alert.alert('Erro', err?.message || 'Tente novamente.');
+      showError(err);
     } finally {
       setSaving(false);
     }

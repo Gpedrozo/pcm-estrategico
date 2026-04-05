@@ -12,6 +12,7 @@ import { useNavigation } from '@react-navigation/native';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { COLORS, SIZES, SHADOWS } from '../theme';
+import { showSuccess, showError, showWarning } from '../lib/feedback';
 import type { Equipamento, SolicitacaoImpacto, SolicitacaoClassificacao } from '../types';
 
 const IMPACTOS: { value: SolicitacaoImpacto; label: string; color: string }[] = [
@@ -75,10 +76,20 @@ export default function CriarSolicitacaoScreen() {
     ).slice(0, 8);
   }, [tagSearch, equipamentos]);
 
+  const resetForm = () => {
+    setTagSearch('');
+    setSelectedEquip(null);
+    setSolicitante(mecanicoNome || '');
+    setSetor('');
+    setImpacto('MEDIO');
+    setClassificacao('PROGRAMAVEL');
+    setDescricaoFalha('');
+  };
+
   const handleSubmit = async () => {
-    if (!selectedEquip) { Alert.alert('Atenção', 'Selecione um equipamento (TAG)'); return; }
-    if (!solicitante.trim()) { Alert.alert('Atenção', 'Informe o solicitante'); return; }
-    if (descricaoFalha.length < 10) { Alert.alert('Atenção', 'Descreva a falha (mín. 10 caracteres)'); return; }
+    if (!selectedEquip) { showWarning('Selecione um equipamento (TAG)'); return; }
+    if (!solicitante.trim()) { showWarning('Informe o solicitante'); return; }
+    if (descricaoFalha.length < 10) { showWarning('Descreva a falha (mín. 10 caracteres)'); return; }
 
     setSaving(true);
     try {
@@ -114,13 +125,13 @@ export default function CriarSolicitacaoScreen() {
 
       if (error) throw error;
 
-      Alert.alert(
-        'Sucesso',
+      resetForm();
+      showSuccess(
         `Solicitação #${String(nextNum).padStart(4, '0')} criada!\nSLA: ${slaHoras}h — Prazo: ${dataLimite.toLocaleString('pt-BR')}`,
-        [{ text: 'OK', onPress: () => nav.goBack() }],
+        () => nav.goBack(),
       );
     } catch (err: any) {
-      Alert.alert('Erro', err?.message || 'Falha ao criar solicitação');
+      showError(err);
     } finally {
       setSaving(false);
     }
@@ -143,6 +154,7 @@ export default function CriarSolicitacaoScreen() {
             placeholder="Buscar por TAG ou nome"
             value={tagSearch}
             onChangeText={(v) => { setTagSearch(v); setSelectedEquip(null); }}
+            editable={!saving}
           />
           {!selectedEquip && filteredEquip.map((e) => (
             <TouchableOpacity
@@ -168,13 +180,13 @@ export default function CriarSolicitacaoScreen() {
         {/* Solicitante */}
         <View style={styles.card}>
           <Text style={styles.sectionTitle}>Solicitante *</Text>
-          <TextInput style={styles.input} value={solicitante} onChangeText={setSolicitante} placeholder="Nome" />
+          <TextInput style={styles.input} value={solicitante} onChangeText={setSolicitante} placeholder="Nome" editable={!saving} />
         </View>
 
         {/* Setor */}
         <View style={styles.card}>
           <Text style={styles.sectionTitle}>Setor</Text>
-          <TextInput style={styles.input} value={setor} onChangeText={setSetor} placeholder="Setor onde está o equipamento" />
+          <TextInput style={styles.input} value={setor} onChangeText={setSetor} placeholder="Setor onde está o equipamento" editable={!saving} />
         </View>
 
         {/* Impacto */}
@@ -222,6 +234,7 @@ export default function CriarSolicitacaoScreen() {
             onChangeText={setDescricaoFalha}
             placeholder="Descreva a falha observada de forma detalhada (mín. 10 caracteres)"
             textAlignVertical="top"
+            editable={!saving}
           />
           <Text style={styles.charCount}>{descricaoFalha.length}/10 caracteres mínimos</Text>
         </View>
@@ -233,7 +246,12 @@ export default function CriarSolicitacaoScreen() {
           disabled={saving}
           activeOpacity={0.7}
         >
-          {saving ? <ActivityIndicator color="#FFF" /> : <Text style={styles.btnText}>CRIAR SOLICITAÇÃO</Text>}
+          {saving ? (
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+              <ActivityIndicator color="#FFF" />
+              <Text style={styles.btnText}>Salvando...</Text>
+            </View>
+          ) : <Text style={styles.btnText}>CRIAR SOLICITAÇÃO</Text>}
         </TouchableOpacity>
 
         <View style={{ height: 40 }} />

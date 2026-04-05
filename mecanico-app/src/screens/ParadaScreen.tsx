@@ -18,6 +18,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { upsertParada, addToSyncQueue } from '../lib/database';
 import VoiceInput from '../components/VoiceInput';
 import { COLORS, SIZES } from '../theme';
+import { showSuccess, showError, showWarning } from '../lib/feedback';
 import type { RootStackParamList, TipoParada } from '../types';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Parada'>;
@@ -41,7 +42,7 @@ export default function ParadaScreen() {
 
   const handleSave = async () => {
     if (!tipo) {
-      Alert.alert('Selecione o tipo', 'Escolha o tipo de parada.');
+      showWarning('Escolha o tipo de parada.');
       return;
     }
 
@@ -74,11 +75,13 @@ export default function ParadaScreen() {
         payload: parada,
       });
 
-      Alert.alert('✅ Parada registrada!', 'Início marcado agora.', [
-        { text: 'OK', onPress: () => navigation.goBack() },
-      ]);
+      // Reset form
+      setTipo(null);
+      setObservacao('');
+
+      showSuccess('Parada registrada com sucesso! Início marcado agora.', () => navigation.goBack());
     } catch (err: any) {
-      Alert.alert('Erro', err?.message || 'Tente novamente.');
+      showError(err);
     } finally {
       setSaving(false);
     }

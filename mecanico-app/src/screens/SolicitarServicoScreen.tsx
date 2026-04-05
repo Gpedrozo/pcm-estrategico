@@ -20,6 +20,7 @@ import { upsertSolicitacao, addToSyncQueue } from '../lib/database';
 import EquipmentPicker from '../components/EquipmentPicker';
 import VoiceInput from '../components/VoiceInput';
 import { COLORS, SIZES } from '../theme';
+import { showSuccess, showError, showWarning } from '../lib/feedback';
 import type { RootStackParamList, Equipamento } from '../types';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'SolicitarServico'>;
@@ -64,11 +65,11 @@ export default function SolicitarServicoScreen() {
 
   const handleSave = async () => {
     if (!descricaoFalha.trim()) {
-      Alert.alert('Campo obrigatório', 'Descreva o problema / falha encontrada.');
+      showWarning('Descreva o problema / falha encontrada.');
       return;
     }
     if (!tag && !equipamentoNome.trim()) {
-      Alert.alert('Campo obrigatório', 'Informe o equipamento ou TAG.');
+      showWarning('Informe o equipamento ou TAG.');
       return;
     }
 
@@ -109,13 +110,20 @@ export default function SolicitarServicoScreen() {
         payload: solicitacao,
       });
 
-      Alert.alert(
-        '✅ Solicitação criada!',
-        'A solicitação foi registrada e será sincronizada.\nEla aparecerá como PENDENTE no sistema.',
-        [{ text: 'OK', onPress: () => navigation.goBack() }]
+      // Reset form
+      setEquipamentoNome('');
+      setEquipamentoId('');
+      setTag('');
+      setImpacto('MEDIO');
+      setClassificacao('PROGRAMAVEL');
+      setDescricaoFalha('');
+
+      showSuccess(
+        'Solicitação registrada com sucesso!\nEla aparecerá como PENDENTE no sistema.',
+        () => navigation.goBack(),
       );
     } catch (err: any) {
-      Alert.alert('Erro', err?.message || 'Tente novamente.');
+      showError(err);
     } finally {
       setSaving(false);
     }

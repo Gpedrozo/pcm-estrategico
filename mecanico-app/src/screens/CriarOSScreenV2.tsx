@@ -13,6 +13,7 @@ import type { RouteProp } from '@react-navigation/native';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { COLORS, SIZES, SHADOWS } from '../theme';
+import { showSuccess, showError, showWarning } from '../lib/feedback';
 import type {
   Equipamento, Mecanico, SolicitacaoManutencao, RootStackParamList,
   OSTipo, OSPrioridade,
@@ -96,10 +97,20 @@ export default function CriarOSScreen() {
     ).slice(0, 8);
   }, [tagSearch, equipamentos]);
 
+  const resetForm = () => {
+    setTagSearch('');
+    setSelectedEquip(null);
+    setTipo('CORRETIVA');
+    setPrioridade('MEDIA');
+    setSolicitante(mecanicoNome || '');
+    setProblema('');
+    setMecanicoResp(mecanicoId || '');
+  };
+
   const handleSubmit = async () => {
-    if (!selectedEquip) { Alert.alert('Atenção', 'Selecione um equipamento (TAG)'); return; }
-    if (problema.length < 5) { Alert.alert('Atenção', 'Descreva o problema (mín. 5 caracteres)'); return; }
-    if (!solicitante.trim()) { Alert.alert('Atenção', 'Informe o solicitante'); return; }
+    if (!selectedEquip) { showWarning('Selecione um equipamento (TAG)'); return; }
+    if (problema.length < 5) { showWarning('Descreva o problema (mín. 5 caracteres)'); return; }
+    if (!solicitante.trim()) { showWarning('Informe o solicitante'); return; }
 
     setSaving(true);
     try {
@@ -141,11 +152,10 @@ export default function CriarOSScreen() {
         }).eq('id', solicitacao.id);
       }
 
-      Alert.alert('Sucesso', `O.S. #${String(nextNum).padStart(4, '0')} criada com sucesso!`, [
-        { text: 'OK', onPress: () => nav.goBack() },
-      ]);
+      resetForm();
+      showSuccess(`O.S. #${String(nextNum).padStart(4, '0')} criada com sucesso!`, () => nav.goBack());
     } catch (err: any) {
-      Alert.alert('Erro', err?.message || 'Falha ao criar O.S.');
+      showError(err);
     } finally {
       setSaving(false);
     }
@@ -178,6 +188,7 @@ export default function CriarOSScreen() {
             placeholder="Buscar por TAG ou nome do equipamento"
             value={tagSearch}
             onChangeText={(v) => { setTagSearch(v); setSelectedEquip(null); }}
+            editable={!saving}
           />
           {!selectedEquip && filteredEquip.map((e) => (
             <TouchableOpacity
@@ -241,6 +252,7 @@ export default function CriarOSScreen() {
             value={solicitante}
             onChangeText={setSolicitante}
             placeholder="Nome do solicitante"
+            editable={!saving}
           />
         </View>
 
@@ -255,6 +267,7 @@ export default function CriarOSScreen() {
             onChangeText={setProblema}
             placeholder="Descreva o problema identificado (mín. 5 caracteres)"
             textAlignVertical="top"
+            editable={!saving}
           />
         </View>
 
@@ -287,7 +300,12 @@ export default function CriarOSScreen() {
           disabled={saving}
           activeOpacity={0.7}
         >
-          {saving ? <ActivityIndicator color="#FFF" /> : (
+          {saving ? (
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+              <ActivityIndicator color="#FFF" />
+              <Text style={styles.btnText}>Salvando...</Text>
+            </View>
+          ) : (
             <Text style={styles.btnText}>
               {solicitacao ? 'CONVERTER E CRIAR O.S.' : 'CRIAR O.S.'}
             </Text>

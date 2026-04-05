@@ -13,7 +13,6 @@ import {
   useSupportTickets,
 } from '@/hooks/useSupportTickets'
 import { uploadToStorage } from '@/services/storage'
-import { useFormDraft } from '@/hooks/useFormDraft'
 
 // ---------------------------------------------------------------------------
 // Constants & helpers

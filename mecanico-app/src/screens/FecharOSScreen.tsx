@@ -12,6 +12,7 @@ import type { RouteProp } from '@react-navigation/native';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { COLORS, SIZES, SHADOWS } from '../theme';
+import { showSuccess, showError, showWarning } from '../lib/feedback';
 import type { OrdemServico, Material, Mecanico, PausaExecucao, MaterialOS, RootStackParamList } from '../types';
 
 type Route = RouteProp<RootStackParamList, 'FecharOS'>;
@@ -88,7 +89,7 @@ export default function FecharOSScreen() {
   const addPausa = () => {
     const { data_inicio, hora_inicio, data_fim, hora_fim, motivo } = pausaForm;
     if (!data_inicio || !hora_inicio || !data_fim || !hora_fim) {
-      Alert.alert('Atenção', 'Preencha todos os campos da pausa');
+      showWarning('Preencha todos os campos da pausa');
       return;
     }
     setPausas([...pausas, { data_inicio, hora_inicio, data_fim, hora_fim, motivo: motivo || 'Intervalo' }]);
@@ -105,13 +106,13 @@ export default function FecharOSScreen() {
 
   const handleClose = async () => {
     // Validations
-    if (!dataInicio || !horaInicio) { Alert.alert('Atenção', 'Informe data/hora de início'); return; }
-    if (!dataFim || !horaFim) { Alert.alert('Atenção', 'Informe data/hora de fim'); return; }
-    if (servicoExecutado.length < 20) { Alert.alert('Atenção', 'Descreva o serviço executado (mín. 20 caracteres)'); return; }
+    if (!dataInicio || !horaInicio) { showWarning('Informe data/hora de início'); return; }
+    if (!dataFim || !horaFim) { showWarning('Informe data/hora de fim'); return; }
+    if (servicoExecutado.length < 20) { showWarning('Descreva o serviço executado (mín. 20 caracteres)'); return; }
 
     const inicio = new Date(`${dataInicio}T${horaInicio}`);
     const fim = new Date(`${dataFim}T${horaFim}`);
-    if (fim <= inicio) { Alert.alert('Atenção', 'Data/hora fim deve ser posterior ao início'); return; }
+    if (fim <= inicio) { showWarning('Data/hora fim deve ser posterior ao início'); return; }
 
     setSaving(true);
 
@@ -187,11 +188,16 @@ export default function FecharOSScreen() {
         }).eq('id', osId);
       }
 
-      Alert.alert('Sucesso', `O.S. #${String(os?.numero_os).padStart(4, '0')} fechada com sucesso!`, [
-        { text: 'OK', onPress: () => nav.goBack() },
-      ]);
+      // Reset form state
+      setServicoExecutado('');
+      setCustoTerceiros('');
+      setTevePausas(false);
+      setPausas([]);
+      setMateriaisUsados([]);
+
+      showSuccess(`O.S. #${String(os?.numero_os).padStart(4, '0')} fechada com sucesso!`, () => nav.goBack());
     } catch (err: any) {
-      Alert.alert('Erro', err?.message || 'Falha ao fechar O.S.');
+      showError(err);
     } finally {
       setSaving(false);
     }
@@ -342,7 +348,12 @@ export default function FecharOSScreen() {
           disabled={saving}
           activeOpacity={0.7}
         >
-          {saving ? <ActivityIndicator color="#FFF" /> : <Text style={styles.btnText}>FECHAR O.S.</Text>}
+          {saving ? (
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+              <ActivityIndicator color="#FFF" />
+              <Text style={styles.btnText}>Fechando...</Text>
+            </View>
+          ) : <Text style={styles.btnText}>FECHAR O.S.</Text>}
         </TouchableOpacity>
 
         <View style={{ height: 40 }} />
@@ -390,9 +401,9 @@ function MaterialAdder({ materiais, onAdd }: { materiais: Material[]; onAdd: (m:
 
   const handleAdd = () => {
     const mat = materiais.find((m) => m.id === selectedId);
-    if (!mat) { Alert.alert('Atenção', 'Selecione um material'); return; }
+    if (!mat) { showWarning('Selecione um material'); return; }
     const q = parseFloat(qty) || 0;
-    if (q <= 0) { Alert.alert('Atenção', 'Quantidade inválida'); return; }
+    if (q <= 0) { showWarning('Quantidade inválida'); return; }
     onAdd(mat, q);
     setSearch('');
     setQty('1');

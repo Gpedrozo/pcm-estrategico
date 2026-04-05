@@ -32,6 +32,7 @@ import DateTimePickerField from '../components/DateTimePickerField';
 import PhotoPicker from '../components/PhotoPicker';
 import LoadingScreen from '../components/LoadingScreen';
 import { COLORS, SIZES } from '../theme';
+import { showSuccess, showError, showWarning } from '../lib/feedback';
 import type { RootStackParamList, OrdemServico, ExecucaoOS } from '../types';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Execution'>;
@@ -75,11 +76,11 @@ export default function ExecutionScreen() {
 
   const handleSave = async () => {
     if (!servicoExecutado.trim()) {
-      Alert.alert('Campo obrigatório', 'Descreva o que foi feito.');
+      showWarning('Descreva o que foi feito.');
       return;
     }
     if (!isAutoMode && !horaInicio) {
-      Alert.alert('Campo obrigatório', 'Informe a hora de início.');
+      showWarning('Informe a hora de início.');
       return;
     }
 
@@ -174,7 +175,11 @@ export default function ExecutionScreen() {
         Alert.alert(
           rpcSuccess ? '✅ OS Fechada!' : '✅ Atividade finalizada!',
           rpcSuccess ? `OS fechada com sucesso. Tempo: ${tempoMin} min` : `Tempo: ${tempoMin} minutos. Será sincronizado.`,
-          [{ text: 'OK', onPress: () => navigation.goBack() }]
+          [{ text: 'OK', onPress: () => {
+            // Reset form
+            setServicoExecutado(''); setCausaRaiz(''); setObservacoes(''); setPhotos([]);
+            navigation.goBack();
+          }}]
         );
       } else {
         // ── MODO MANUAL: Criar novo apontamento ──
@@ -269,11 +274,16 @@ export default function ExecutionScreen() {
         Alert.alert(
           rpcSuccess ? '✅ OS Fechada!' : '✅ Apontamento salvo!',
           rpcSuccess ? 'OS fechada com sucesso via sistema.' : 'Registro criado. Será sincronizado.',
-          [{ text: 'OK', onPress: () => navigation.goBack() }],
+          [{ text: 'OK', onPress: () => {
+            // Reset form
+            setServicoExecutado(''); setCausaRaiz(''); setObservacoes(''); setPhotos([]);
+            setHoraInicio(''); setHoraFim('');
+            navigation.goBack();
+          }}],
         );
       }
     } catch (err: any) {
-      Alert.alert('Erro ao salvar', err?.message || 'Tente novamente.');
+      showError(err);
     } finally {
       setSaving(false);
     }
