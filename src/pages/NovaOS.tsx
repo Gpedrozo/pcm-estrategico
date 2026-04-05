@@ -244,6 +244,20 @@ export default function NovaOS() {
       tempo_estimado: formData.tempoEstimado ? parseInt(formData.tempoEstimado) : null,
     });
     clearNovaOSDraft();
+    setFormData({
+      tag: '',
+      solicitante: '',
+      problema: '',
+      tipo: '' as TipoOS | '',
+      prioridade: 'MEDIA',
+      tempoEstimado: '',
+      mecanicoResponsavelId: '',
+    });
+    setSemTag(false);
+    setEquipamentoManual('');
+    setTagSearch('');
+    setSolicitacaoVinculada(null);
+    setDismissedTagWarnings({});
     setShowSuccessModal(true);
   };
 
