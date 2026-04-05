@@ -108,7 +108,7 @@ let cachedAccessToken: string | null = null;
  * 2. Cached token from previous ensureSession call
  * 3. Edge function re-auth using device_token
  */
-async function getAccessToken(): Promise<string | null> {
+export async function getAccessToken(): Promise<string | null> {
   // 1. Check existing supabase session
   try {
     const { data: { session } } = await supabase.auth.getSession();
