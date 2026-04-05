@@ -1,31 +1,25 @@
 // ============================================================
-// Navigation — Root stack + Main tab navigator
+// Navigation v2.0 — Root stack + 5-tab Main navigator
 // ============================================================
 
 import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, ActivityIndicator, StyleSheet } from 'react-native';
 
 import { useAuth } from '../contexts/AuthContext';
 
 import DeviceBindingScreen from '../screens/DeviceBindingScreen';
-import MecanicoSelectScreen from '../screens/MecanicoSelectScreen';
-import HomeScreen from '../screens/HomeScreen';
-import OSListScreen from '../screens/OSListScreen';
-import OSDetailScreen from '../screens/OSDetailScreen';
-import CriarOSScreen from '../screens/CriarOSScreen';
-import ExecutionScreen from '../screens/ExecutionScreen';
-import ParadaScreen from '../screens/ParadaScreen';
-import SolicitarServicoScreen from '../screens/SolicitarServicoScreen';
-import SolicitacoesListScreen from '../screens/SolicitacoesListScreen';
-import EquipamentoDetalheScreen from '../screens/EquipamentoDetalheScreen';
-import RequisicaoMaterialScreen from '../screens/RequisicaoMaterialScreen';
-import ChecklistScreen from '../screens/ChecklistScreen';
-import CatalogoScreen from '../screens/CatalogoScreen';
-import QRScanScreen from '../screens/QRScanScreen';
-import HistoryScreen from '../screens/HistoryScreen';
-import LoadingScreen from '../components/LoadingScreen';
+import LoginScreen from '../screens/LoginScreen';
+import HomeScreenV2 from '../screens/HomeScreenV2';
+import OSDetailScreenV2 from '../screens/OSDetailScreenV2';
+import FecharOSScreen from '../screens/FecharOSScreen';
+import CriarOSScreenV2 from '../screens/CriarOSScreenV2';
+import CriarSolicitacaoScreen from '../screens/CriarSolicitacaoScreen';
+import SolicitacoesListScreenV2 from '../screens/SolicitacoesListScreenV2';
+import SolicitacaoDetalheScreen from '../screens/SolicitacaoDetalheScreen';
+import HistoricoScreenV2 from '../screens/HistoricoScreenV2';
+import AgendaScreen from '../screens/AgendaScreen';
 
 import { COLORS, SIZES } from '../theme';
 import type { RootStackParamList, MainTabParamList } from '../types';
@@ -36,13 +30,14 @@ const Tab = createBottomTabNavigator<MainTabParamList>();
 function TabIcon({ name, focused }: { name: string; focused: boolean }) {
   const icons: Record<string, string> = {
     HomeTab: '🏠',
-    OrdensTab: '📋',
-    SolicitacoesTab: '⚠️',
-    MaisTab: '⚙️',
+    SolicitacaoTab: '⚠️',
+    NovaOSTab: '📋',
+    HistoricoTab: '📊',
+    AgendaTab: '📅',
   };
   return (
-    <Text style={{ fontSize: focused ? 28 : 24, opacity: focused ? 1 : 0.5 }}>
-      {icons[name] || '\u2022'}
+    <Text style={{ fontSize: focused ? 26 : 22, opacity: focused ? 1 : 0.5 }}>
+      {icons[name] || '•'}
     </Text>
   );
 }
@@ -54,7 +49,7 @@ function MainTabNavigator() {
         tabBarIcon: ({ focused }) => <TabIcon name={route.name} focused={focused} />,
         tabBarActiveTintColor: COLORS.primary,
         tabBarInactiveTintColor: COLORS.textHint,
-        tabBarLabelStyle: { fontSize: 13, fontWeight: '600' },
+        tabBarLabelStyle: { fontSize: 12, fontWeight: '600' },
         tabBarStyle: {
           height: 70,
           paddingBottom: 10,
@@ -66,35 +61,25 @@ function MainTabNavigator() {
         headerShown: false,
       })}
     >
-      <Tab.Screen
-        name="HomeTab"
-        component={HomeScreen}
-        options={{ tabBarLabel: 'Início' }}
-      />
-      <Tab.Screen
-        name="OrdensTab"
-        component={OSListScreen}
-        options={{ tabBarLabel: 'Ordens' }}
-      />
-      <Tab.Screen
-        name="SolicitacoesTab"
-        component={SolicitacoesListScreen}
-        options={{ tabBarLabel: 'Solicitações' }}
-      />
-      <Tab.Screen
-        name="MaisTab"
-        component={HistoryScreen}
-        options={{ tabBarLabel: 'Histórico' }}
-      />
+      <Tab.Screen name="HomeTab" component={HomeScreenV2} options={{ tabBarLabel: 'Início' }} />
+      <Tab.Screen name="SolicitacaoTab" component={SolicitacoesListScreenV2} options={{ tabBarLabel: 'Solicitações' }} />
+      <Tab.Screen name="NovaOSTab" component={CriarOSScreenV2} options={{ tabBarLabel: 'Nova OS' }} />
+      <Tab.Screen name="HistoricoTab" component={HistoricoScreenV2} options={{ tabBarLabel: 'Histórico' }} />
+      <Tab.Screen name="AgendaTab" component={AgendaScreen} options={{ tabBarLabel: 'Agenda' }} />
     </Tab.Navigator>
   );
 }
 
 export default function RootNavigator() {
-  const { isLoading, isDeviceBound, isAuthenticated, mecanicoSelected, error, authExhausted, retry, logout } = useAuth();
+  const { isLoading, isDeviceBound, isLoggedIn } = useAuth();
 
   if (isLoading) {
-    return <LoadingScreen message="Iniciando..." />;
+    return (
+      <View style={loadStyles.container}>
+        <ActivityIndicator size="large" color={COLORS.primary} />
+        <Text style={loadStyles.text}>Iniciando...</Text>
+      </View>
+    );
   }
 
   if (!isDeviceBound) {
@@ -105,30 +90,10 @@ export default function RootNavigator() {
     );
   }
 
-  if (!isAuthenticated && (error || authExhausted)) {
-    return (
-      <View style={errStyles.container}>
-        <Text style={errStyles.icon}>{'\u26A0\uFE0F'}</Text>
-        <Text style={errStyles.title}>Erro de autentica\u00E7\u00E3o</Text>
-        <Text style={errStyles.message}>{error || 'N\u00E3o foi poss\u00EDvel autenticar. Verifique sua conex\u00E3o.'}</Text>
-        <TouchableOpacity style={errStyles.retryBtn} onPress={retry} activeOpacity={0.7}>
-          <Text style={errStyles.retryText}>Tentar novamente</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={errStyles.unbindBtn} onPress={logout} activeOpacity={0.7}>
-          <Text style={errStyles.unbindText}>Desvincular dispositivo</Text>
-        </TouchableOpacity>
-      </View>
-    );
-  }
-
-  if (!isAuthenticated) {
-    return <LoadingScreen message="Autenticando..." />;
-  }
-
-  if (!mecanicoSelected) {
+  if (!isLoggedIn) {
     return (
       <Stack.Navigator screenOptions={{ headerShown: false }}>
-        <Stack.Screen name="MecanicoSelect" component={MecanicoSelectScreen} />
+        <Stack.Screen name="Login" component={LoginScreen} />
       </Stack.Navigator>
     );
   }
@@ -143,74 +108,17 @@ export default function RootNavigator() {
         contentStyle: { backgroundColor: COLORS.background },
       }}
     >
-      <Stack.Screen
-        name="Main"
-        component={MainTabNavigator}
-        options={{ headerShown: false }}
-      />
-      <Stack.Screen
-        name="OSDetail"
-        component={OSDetailScreen}
-        options={{ title: 'Detalhes da OS' }}
-      />
-      <Stack.Screen
-        name="CriarOS"
-        component={CriarOSScreen}
-        options={{ title: 'Abrir OS' }}
-      />
-      <Stack.Screen
-        name="Execution"
-        component={ExecutionScreen}
-        options={({ route }) => ({
-          title: (route.params as any)?.mode === 'auto' ? 'Finalizar Atividade' : 'Apontamento Manual',
-        })}
-      />
-      <Stack.Screen
-        name="Parada"
-        component={ParadaScreen}
-        options={{ title: 'Registrar Parada' }}
-      />
-      <Stack.Screen
-        name="SolicitarServico"
-        component={SolicitarServicoScreen}
-        options={{ title: 'Solicitar Serviço' }}
-      />
-      <Stack.Screen
-        name="SolicitacoesList"
-        component={SolicitacoesListScreen}
-        options={{ title: 'Solicitações' }}
-      />
-      <Stack.Screen
-        name="EquipamentoDetalhe"
-        component={EquipamentoDetalheScreen}
-        options={{ title: 'Equipamento' }}
-      />
-      <Stack.Screen
-        name="RequisicaoMaterial"
-        component={RequisicaoMaterialScreen}
-        options={{ title: 'Solicitar Material' }}
-      />
-      <Stack.Screen
-        name="Checklist"
-        component={ChecklistScreen}
-        options={{ title: 'Checklist' }}
-      />
-      <Stack.Screen
-        name="Catalogo"
-        component={CatalogoScreen}
-        options={{ title: 'Catálogos Técnicos' }}
-      />
+      <Stack.Screen name="Main" component={MainTabNavigator} options={{ headerShown: false }} />
+      <Stack.Screen name="OSDetail" component={OSDetailScreenV2} options={{ title: 'Detalhes da O.S.' }} />
+      <Stack.Screen name="FecharOS" component={FecharOSScreen} options={{ title: 'Fechar O.S.' }} />
+      <Stack.Screen name="CriarOS" component={CriarOSScreenV2} options={{ title: 'Emitir O.S.' }} />
+      <Stack.Screen name="CriarSolicitacao" component={CriarSolicitacaoScreen} options={{ title: 'Nova Solicitação' }} />
+      <Stack.Screen name="SolicitacaoDetalhe" component={SolicitacaoDetalheScreen} options={{ title: 'Solicitação' }} />
     </Stack.Navigator>
   );
 }
 
-const errStyles = StyleSheet.create({
-  container: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: COLORS.background, padding: 32 },
-  icon: { fontSize: 56, marginBottom: 16 },
-  title: { fontSize: SIZES.fontXL, fontWeight: '700', color: COLORS.textPrimary, marginBottom: 8 },
-  message: { fontSize: SIZES.fontSM, color: COLORS.textSecondary, textAlign: 'center', lineHeight: 22, marginBottom: 32 },
-  retryBtn: { width: '100%', height: 52, borderRadius: 12, backgroundColor: COLORS.primary, justifyContent: 'center', alignItems: 'center', marginBottom: 16 },
-  retryText: { fontSize: SIZES.fontLG, fontWeight: '700', color: '#FFF' },
-  unbindBtn: { width: '100%', height: 44, justifyContent: 'center', alignItems: 'center' },
-  unbindText: { fontSize: SIZES.fontSM, fontWeight: '600', color: COLORS.error || '#D32F2F' },
+const loadStyles = StyleSheet.create({
+  container: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: COLORS.background },
+  text: { marginTop: 12, fontSize: SIZES.fontMD, color: COLORS.textSecondary },
 });

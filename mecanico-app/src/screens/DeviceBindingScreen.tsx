@@ -30,21 +30,45 @@ export default function DeviceBindingScreen() {
   const [loading, setLoading] = useState(false);
   const [scanned, setScanned] = useState(false);
 
-  const handleBind = async (token: string) => {
-    const trimmed = token.trim();
+  const handleBind = async (rawData: string) => {
+    const trimmed = rawData.trim();
     if (!trimmed) {
-      Alert.alert('Token inválido', 'O código QR não contém um token válido.');
+      Alert.alert('Dados inválidos', 'O código QR não contém dados válidos.');
       return;
     }
     setLoading(true);
     try {
-      const result = await bindDevice(trimmed);
-      if (!result.ok) {
-        Alert.alert('Erro ao vincular', result.error || 'Falha na vinculação. Tente novamente.');
+      // QR expected format: JSON {"empresa_id":"uuid","empresa_nome":"Nome"}
+      // or URL with params ?empresa_id=...&empresa_nome=...
+      let empresaId = '';
+      let empresaNome = '';
+
+      try {
+        const parsed = JSON.parse(trimmed);
+        empresaId = parsed.empresa_id || parsed.empresaId || '';
+        empresaNome = parsed.empresa_nome || parsed.empresaNome || parsed.nome || '';
+      } catch {
+        // Try URL format
+        try {
+          const url = new URL(trimmed);
+          empresaId = url.searchParams.get('empresa_id') || url.searchParams.get('empresaId') || '';
+          empresaNome = url.searchParams.get('empresa_nome') || url.searchParams.get('empresaNome') || '';
+        } catch {
+          // Last resort: treat as raw empresa_id
+          empresaId = trimmed;
+          empresaNome = 'Empresa';
+        }
+      }
+
+      if (!empresaId) {
+        Alert.alert('Erro', 'Código QR não contém empresa_id válido.');
         setLoading(false);
         setScanned(false);
+        return;
       }
-      // If ok, AuthContext sets isDeviceBound=true → navigator switches to Main
+
+      await bindDevice(empresaId, empresaNome || 'Empresa');
+      // AuthContext sets isDeviceBound=true → navigator switches to Login
     } catch (err: any) {
       Alert.alert('Erro ao vincular', err?.message || 'Tente novamente.');
       setLoading(false);
@@ -55,15 +79,7 @@ export default function DeviceBindingScreen() {
   const handleBarCodeScanned = ({ data }: { data: string }) => {
     if (scanned || loading) return;
     setScanned(true);
-    // QR may contain just the token or a URL with token param
-    let token = data;
-    try {
-      const url = new URL(data);
-      token = url.searchParams.get('token') || url.searchParams.get('t') || data;
-    } catch {
-      // Not a URL, use raw data as token
-    }
-    handleBind(token);
+    handleBind(data);
   };
 
   const openCamera = async () => {

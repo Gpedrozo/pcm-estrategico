@@ -1,10 +1,11 @@
 // ============================================================
-// Types — Mecânico Industrial App
+// Types — Mecânico Industrial App v2.0
 // ============================================================
 
-export type OSStatus = 'aberta' | 'em_andamento' | 'concluida' | 'cancelada' | 'solicitada' | 'emitida' | 'em_execucao' | 'pausada' | 'aguardando_materiais' | 'ABERTA' | 'EM_ANDAMENTO' | 'AGUARDANDO_MATERIAL' | 'AGUARDANDO_APROVACAO' | 'FECHADA';
-export type OSPrioridade = 'alta' | 'media' | 'baixa' | 'emergencial';
-export type OSTipo = 'Corretiva' | 'Preventiva' | 'Preditiva' | 'Lubrificacao' | 'Inspecao';
+// ── O.S. ──
+export type OSStatus = 'ABERTA' | 'EM_ANDAMENTO' | 'AGUARDANDO_MATERIAL' | 'FECHADA' | 'CANCELADA';
+export type OSPrioridade = 'URGENTE' | 'ALTA' | 'MEDIA' | 'BAIXA';
+export type OSTipo = 'CORRETIVA' | 'PREVENTIVA' | 'PREDITIVA' | 'INSPECAO' | 'MELHORIA';
 
 export interface OrdemServico {
   id: string;
@@ -13,138 +14,100 @@ export interface OrdemServico {
   tipo: OSTipo;
   prioridade: OSPrioridade;
   status: OSStatus;
-  tag?: string;
-  equipamento?: string;
-  problema?: string;
-  solicitante?: string;
+  tag: string;
+  equipamento: string;
+  problema: string;
+  solicitante: string;
   data_solicitacao: string;
   data_fechamento?: string;
   tempo_estimado?: number;
+  usuario_abertura?: string;
+  usuario_fechamento?: string;
+  mecanico_responsavel_id?: string;
+  mecanico_responsavel_codigo?: string;
   created_at: string;
   updated_at: string;
 }
 
+// ── Execução ──
 export interface ExecucaoOS {
   id: string;
   empresa_id: string;
   os_id: string;
   mecanico_id?: string;
   mecanico_nome?: string;
+  data_inicio?: string;
+  data_fim?: string;
   hora_inicio?: string;
   hora_fim?: string;
   tempo_execucao?: number;
+  tempo_execucao_bruto?: number;
+  tempo_pausas?: number;
+  tempo_execucao_liquido?: number;
   servico_executado?: string;
   causa?: string;
   observacoes?: string;
-  data_execucao?: string;
   custo_mao_obra?: number;
   custo_materiais?: number;
+  custo_terceiros?: number;
   custo_total?: number;
   created_at: string;
-  // Local fields
-  fotos?: string[];
-  sync_status?: SyncStatus;
-  local_updated_at?: string;
 }
 
-export interface Mecanico {
-  id: string;
-  empresa_id: string;
-  nome: string;
-  tipo?: string;
-  ativo: boolean;
+// ── Pausa de Execução ──
+export interface PausaExecucao {
+  data_inicio: string;
+  hora_inicio: string;
+  data_fim: string;
+  hora_fim: string;
+  motivo: string;
 }
 
-export interface Equipamento {
-  id: string;
-  empresa_id: string;
-  nome: string;
-  fabricante?: string;
-  modelo?: string;
-  numero_serie?: string;
-  localizacao?: string;
-  qr_code?: string;
-}
-
-export type SyncStatus = 'pending' | 'syncing' | 'synced' | 'error';
-
-export interface SyncQueueItem {
-  id: string;
-  table_name: string;
-  record_id: string;
-  operation: 'INSERT' | 'UPDATE' | 'DELETE' | 'UPLOAD';
-  payload: string;
-  created_at: string;
-  attempts: number;
-  last_error?: string;
-  status: 'pending' | 'syncing' | 'done' | 'error';
-}
-
-export interface AutoSaveState {
-  screen: string;
-  os_id: string;
-  data: Record<string, unknown>;
-  saved_at: string;
-}
-
-// ── Paradas de Equipamento ──
-export type TipoParada = 'mecanica' | 'eletrica' | 'operacional' | 'instrumentacao';
-
-export interface ParadaEquipamento {
-  id: string;
-  empresa_id: string;
-  equipamento_id?: string;
-  os_id?: string;
-  mecanico_id?: string;
-  mecanico_nome?: string;
-  tipo: TipoParada;
-  inicio: string;
-  fim?: string;
-  observacao?: string;
-  created_at: string;
-  updated_at?: string;
-  sync_status?: SyncStatus;
-  local_updated_at?: string;
-}
-
-// ── Requisição de Material ──
-export type StatusRequisicao = 'pendente' | 'aprovada' | 'entregue' | 'recusada';
-
-export interface RequisicaoMaterial {
-  id: string;
-  empresa_id: string;
-  os_id?: string;
-  mecanico_id?: string;
-  mecanico_nome?: string;
-  material_id?: string;
-  descricao_livre?: string;
-  quantidade: number;
-  status: StatusRequisicao;
-  observacao?: string;
-  created_at: string;
-  sync_status?: SyncStatus;
-  local_updated_at?: string;
-}
-
-// ── Material (catálogo) ──
+// ── Material ──
 export interface Material {
   id: string;
   empresa_id: string;
   codigo?: string;
   descricao: string;
   unidade?: string;
+  custo_unitario?: number;
   estoque_atual?: number;
 }
 
-// ── Documento Técnico ──
-export interface DocumentoTecnico {
+export interface MaterialOS {
+  material_id: string;
+  quantidade: number;
+  custo_unitario: number;
+  custo_total: number;
+}
+
+// ── Mecânico ──
+export interface Mecanico {
   id: string;
   empresa_id: string;
-  equipamento_id?: string;
-  tipo?: string;
   nome: string;
-  arquivo_url?: string;
-  created_at?: string;
+  tipo?: string;
+  especialidade?: string;
+  custo_hora?: number;
+  codigo_acesso?: string;
+  senha_acesso?: string;
+  escala_trabalho?: string;
+  ferias_inicio?: string;
+  ferias_fim?: string;
+  ativo: boolean;
+}
+
+// ── Equipamento ──
+export interface Equipamento {
+  id: string;
+  empresa_id: string;
+  nome: string;
+  tag?: string;
+  fabricante?: string;
+  modelo?: string;
+  numero_serie?: string;
+  localizacao?: string;
+  ativo?: boolean;
 }
 
 // ── Solicitação de Manutenção ──
@@ -164,36 +127,50 @@ export interface SolicitacaoManutencao {
   impacto: SolicitacaoImpacto;
   classificacao: SolicitacaoClassificacao;
   status: SolicitacaoStatus;
+  sla_horas?: number;
+  data_limite?: string;
   os_id?: string;
   observacoes?: string;
-  usuario_aprovacao?: string;
-  data_aprovacao?: string;
-  data_limite?: string;
   created_at: string;
   updated_at: string;
-  sync_status?: SyncStatus;
 }
 
-// Navigation
+// ── Maintenance Schedule (Calendário) ──
+export interface MaintenanceEvent {
+  id: string;
+  empresa_id: string;
+  tipo: 'preventiva' | 'lubrificacao' | 'inspecao' | 'preditiva';
+  titulo: string;
+  descricao?: string;
+  data_programada: string;
+  status: string;
+  responsavel?: string;
+  equipamento_id?: string;
+}
+
+// ── Dados Empresa ──
+export interface DadosEmpresa {
+  id: string;
+  empresa_id: string;
+  nome_empresa?: string;
+}
+
+// ── Navigation ──
 export type RootStackParamList = {
   DeviceBinding: undefined;
-  MecanicoSelect: undefined;
+  Login: undefined;
   Main: undefined;
   OSDetail: { osId: string };
-  CriarOS: undefined;
-  Execution: { osId: string; execucaoId?: string; mode?: 'auto' | 'manual' };
-  Parada: { osId: string; equipamentoId?: string; equipamentoNome?: string };
-  SolicitarServico: { equipamentoId?: string; equipamentoNome?: string };
-  SolicitacoesList: undefined;
-  EquipamentoDetalhe: { equipamentoId: string };
-  RequisicaoMaterial: { osId: string };
-  Checklist: { osId: string; execucaoId: string; checklistData?: string };
-  Catalogo: { equipamentoId?: string };
+  FecharOS: { osId: string };
+  CriarOS: { solicitacao?: SolicitacaoManutencao };
+  CriarSolicitacao: undefined;
+  SolicitacaoDetalhe: { solicitacao: SolicitacaoManutencao };
 };
 
 export type MainTabParamList = {
   HomeTab: undefined;
-  OrdensTab: undefined;
-  SolicitacoesTab: undefined;
-  MaisTab: undefined;
+  SolicitacaoTab: undefined;
+  NovaOSTab: undefined;
+  HistoricoTab: undefined;
+  AgendaTab: undefined;
 };

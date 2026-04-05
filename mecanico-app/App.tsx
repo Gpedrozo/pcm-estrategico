@@ -1,8 +1,9 @@
 // ============================================================
-// App.tsx — Entry point for PCM Mecânico
+// App.tsx v2.0 — Entry point for PCM Mecânico
+// Simplified: no SQLite, no UpdateChecker, no edge functions
 // ============================================================
 
-import React, { useEffect, useCallback } from 'react';
+import React, { useCallback } from 'react';
 import { StatusBar, LogBox } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -10,8 +11,6 @@ import * as SplashScreen from 'expo-splash-screen';
 
 import { AuthProvider } from './src/contexts/AuthContext';
 import RootNavigator from './src/navigation/RootNavigator';
-import UpdateChecker from './src/components/UpdateChecker';
-import { initDatabase } from './src/lib/database';
 import { COLORS } from './src/theme';
 
 // Keep splash screen visible while we initialize
@@ -23,38 +22,18 @@ LogBox.ignoreLogs([
 ]);
 
 export default function App() {
-  const [ready, setReady] = React.useState(false);
-
-  useEffect(() => {
-    (async () => {
-      try {
-        await initDatabase();
-      } catch (e) {
-        console.error('DB init failed:', e);
-      } finally {
-        setReady(true);
-      }
-    })();
-  }, []);
-
   const onLayoutReady = useCallback(async () => {
-    if (ready) {
-      await SplashScreen.hideAsync();
-    }
-  }, [ready]);
-
-  if (!ready) return null;
+    await SplashScreen.hideAsync();
+  }, []);
 
   return (
     <SafeAreaProvider onLayout={onLayoutReady}>
       <StatusBar barStyle="light-content" backgroundColor={COLORS.headerBg} />
-      <UpdateChecker>
-        <AuthProvider>
-          <NavigationContainer>
-            <RootNavigator />
-          </NavigationContainer>
-        </AuthProvider>
-      </UpdateChecker>
+      <AuthProvider>
+        <NavigationContainer>
+          <RootNavigator />
+        </NavigationContainer>
+      </AuthProvider>
     </SafeAreaProvider>
   );
 }
