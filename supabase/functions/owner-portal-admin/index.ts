@@ -2346,10 +2346,12 @@ Deno.serve(async (req) => {
 
       if (subscriptionError || !createdSubscription?.id) {
         const reasonText = subscriptionError?.message ?? "subscription_create_failed";
-        if (isSchemaOrMissingObjectError(reasonText)) {
+        const isSchemaLike = isSchemaOrMissingObjectError(reasonText);
+        const isConstraintLike = /violates|constraint|duplicate|foreign/i.test(reasonText);
+        if (isSchemaLike || isConstraintLike) {
           onboardingWarning = mergeWarnings(
             onboardingWarning,
-            `Assinatura inicial não foi criada automaticamente neste ambiente legado. (${reasonText})`,
+            `Assinatura inicial não foi criada automaticamente neste ambiente. (${reasonText})`,
           );
         } else {
           const reason = await rollbackCreateCompany(reasonText);
