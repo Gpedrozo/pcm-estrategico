@@ -135,8 +135,8 @@ export default function RootCauseAIPage() {
                         criticality: item.criticality || 'Médio',
                         confidence_score: item.confidence_score || 0,
                       },
-                      os_count: 0,
-                      mtbf_days: 0,
+                      os_count: item.os_count ?? null,
+                      mtbf_days: item.mtbf_days ?? null,
                     })}
                   >
                     <CardContent className="p-4 flex items-center justify-between">

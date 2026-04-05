@@ -11,6 +11,9 @@ export interface AIRootCauseAnalysis {
   confidence_score: number | null;
   raw_response: any;
   created_at: string;
+  os_count: number | null;
+  mtbf_days: number | null;
+  requested_by: string | null;
 }
 
 export interface AnalysisResponse {
@@ -24,6 +27,6 @@ export interface AnalysisResponse {
     criticality: string;
     confidence_score: number;
   };
-  os_count: number;
-  mtbf_days: number;
+  os_count: number | null;
+  mtbf_days: number | null;
 }

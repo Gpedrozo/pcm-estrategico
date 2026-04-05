@@ -10,8 +10,8 @@ interface AnalysisResultCardProps {
   preventiveActions: string[];
   criticality: string;
   confidenceScore: number;
-  osCount: number;
-  mtbfDays: number;
+  osCount: number | null;
+  mtbfDays: number | null;
   generatedAt: string;
 }
 
@@ -37,18 +37,22 @@ export function AnalysisResultCard({
     <div className="space-y-4">
       {/* Header stats */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        {osCount != null && (
         <Card>
           <CardContent className="p-4 text-center">
             <p className="text-2xl font-bold text-primary">{osCount}</p>
             <p className="text-xs text-muted-foreground">O.S. Analisadas</p>
           </CardContent>
         </Card>
+        )}
+        {mtbfDays != null && (
         <Card>
           <CardContent className="p-4 text-center">
             <p className="text-2xl font-bold text-primary">{mtbfDays.toFixed(0)}d</p>
             <p className="text-xs text-muted-foreground">MTBF Estimado</p>
           </CardContent>
         </Card>
+        )}
         <Card>
           <CardContent className="p-4 text-center">
             <Badge className={criticalityColor[criticality] || 'bg-muted'}>
@@ -100,6 +104,9 @@ export function AnalysisResultCard({
         </CardHeader>
         <CardContent>
           <ul className="space-y-2">
+            {possibleCauses.length === 0 && (
+              <li className="text-sm text-muted-foreground">Nenhuma causa identificada</li>
+            )}
             {possibleCauses.map((cause, i) => (
               <li key={i} className="flex items-start gap-2 text-sm">
                 <span className="font-bold text-primary mt-0.5">{i + 1}.</span>
@@ -119,6 +126,9 @@ export function AnalysisResultCard({
         </CardHeader>
         <CardContent>
           <ul className="space-y-2">
+            {preventiveActions.length === 0 && (
+              <li className="text-sm text-muted-foreground">Nenhuma ação preventiva sugerida</li>
+            )}
             {preventiveActions.map((action, i) => (
               <li key={i} className="flex items-start gap-2 text-sm">
                 <CheckCircle className="h-4 w-4 text-green-500 mt-0.5 shrink-0" />

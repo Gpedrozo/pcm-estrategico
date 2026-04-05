@@ -409,7 +409,14 @@ function TenantRoutes() {
                     </MasterTIGuard>
                   }
                 />
-                <Route path="/inteligencia-causa-raiz" element={<RootCauseAIPage />} />
+                <Route
+                  path="/inteligencia-causa-raiz"
+                  element={
+                    <AdminOnlyRoute>
+                      <RootCauseAIPage />
+                    </AdminOnlyRoute>
+                  }
+                />
                 <Route path="/status" element={<SystemStatus />} />
 
                 {/* Manual de Operação — 22 capítulos (dentro do AppLayout) */}

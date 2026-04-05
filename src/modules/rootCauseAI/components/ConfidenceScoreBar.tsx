@@ -4,7 +4,9 @@ interface ConfidenceScoreBarProps {
   score: number;
 }
 
-export function ConfidenceScoreBar({ score }: ConfidenceScoreBarProps) {
+export function ConfidenceScoreBar({ score: rawScore }: ConfidenceScoreBarProps) {
+  const score = Math.min(100, Math.max(0, rawScore ?? 0));
+
   const getColor = () => {
     if (score >= 80) return 'text-green-600';
     if (score >= 60) return 'text-yellow-600';

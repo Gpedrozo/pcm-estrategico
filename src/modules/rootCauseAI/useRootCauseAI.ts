@@ -8,6 +8,7 @@ export function useAIAnalysisHistory(tag?: string) {
   const { tenantId } = useAuth();
   return useQuery({
     queryKey: ['ai-root-cause', tag, tenantId],
+    enabled: Boolean(tenantId),
     queryFn: async () => {
       const query = supabase
         .from('ai_root_cause_analysis')
