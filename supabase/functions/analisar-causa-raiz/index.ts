@@ -30,7 +30,8 @@ serve(async (req) => {
     if ("error" in scope) return fail(scope.error, scope.status, null, req);
 
     const AI_GATEWAY_API_KEY = Deno.env.get("AI_GATEWAY_API_KEY");
-    const AI_GATEWAY_URL = Deno.env.get("AI_GATEWAY_URL") || "https://openrouter.ai/api/v1/chat/completions";
+    const AI_GATEWAY_URL = Deno.env.get("AI_GATEWAY_URL") || "https://api.groq.com/openai/v1/chat/completions";
+    const AI_MODEL = Deno.env.get("AI_MODEL") || "llama-3.3-70b-versatile";
     if (!AI_GATEWAY_API_KEY) {
       throw new Error("AI_GATEWAY_API_KEY is not configured");
     }
@@ -126,7 +127,7 @@ Identifique:
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          model: "google/gemini-2.5-flash",
+          model: AI_MODEL,
           messages: [
             {
               role: "system",
