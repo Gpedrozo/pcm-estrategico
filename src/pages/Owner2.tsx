@@ -86,6 +86,7 @@ export default function Owner() {
   // Cadastro unificado - campos de plano/cobrança
   const [cadastroPlanId, setCadastroPlanId] = useState('')
   const [cadastroPeriod, setCadastroPeriod] = useState<'monthly' | 'quarterly' | 'yearly'>('monthly')
+  const [cadastroPaymentMethod, setCadastroPaymentMethod] = useState('')
   const [cadastroStartsAt, setCadastroStartsAt] = useState(() => new Date().toISOString().slice(0, 10))
   const [cadastroEndsAt, setCadastroEndsAt] = useState('')
 
@@ -744,6 +745,7 @@ export default function Owner() {
       setNewAdminEmail('')
       setCadastroPlanId('')
       setCadastroPeriod('monthly')
+      setCadastroPaymentMethod('')
       setCadastroStartsAt(new Date().toISOString().slice(0, 10))
       setCadastroEndsAt('')
     }
@@ -769,6 +771,7 @@ export default function Owner() {
           subscription: {
             plan_id: cadastroPlanId,
             amount: planPrice,
+            payment_method: cadastroPaymentMethod || undefined,
             period: cadastroPeriod,
             starts_at: cadastroStartsAt || undefined,
             ends_at: cadastroEndsAt || undefined,
@@ -1124,6 +1127,12 @@ export default function Owner() {
                     <option value="monthly">Mensal</option>
                     <option value="quarterly">Trimestral</option>
                     <option value="yearly">Anual</option>
+                  </select>
+                  <select className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" value={cadastroPaymentMethod} onChange={(e) => setCadastroPaymentMethod(e.target.value)}>
+                    <option value="">Forma de pagamento (ASAAS)</option>
+                    <option value="PIX">PIX</option>
+                    <option value="BOLETO">Boleto</option>
+                    <option value="CREDIT_CARD">Cartão de crédito</option>
                   </select>
                   <div className="grid grid-cols-2 gap-2">
                     <div>

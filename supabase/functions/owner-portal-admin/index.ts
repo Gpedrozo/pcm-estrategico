@@ -2439,6 +2439,7 @@ Deno.serve(async (req) => {
 
     let subscription: any = null;
     let contract: any = null;
+    let asaasOnboardingResult: Record<string, unknown> | null = null;
 
     if (selectedPlanId) {
       try {
@@ -2504,6 +2505,30 @@ Deno.serve(async (req) => {
             `Contrato inicial não pôde ser gerado automaticamente. (${reasonText})`,
           );
         }
+
+        // --- ASAAS auto-sync: create customer + subscription in ASAAS if configured ---
+        try {
+          const asaasReady = await isAsaasConfiguredAsync(admin);
+          if (asaasReady && createdSubscription?.id) {
+            asaasOnboardingResult = await createOrSyncAsaasSubscription(admin, createdSubscription);
+          }
+        } catch (asaasError: any) {
+          const asaasMsg = String(asaasError?.message ?? asaasError ?? "Falha ao sincronizar com Asaas");
+          onboardingWarning = mergeWarnings(
+            onboardingWarning,
+            `Cliente/assinatura ASAAS não foi criada automaticamente. (${asaasMsg})`,
+          );
+          await logPlatformAudit(admin, {
+            actorId: auth.user.id,
+            actorEmail: auth.user.email,
+            empresaId: company.id,
+            actionType: "OWNER_ASAAS_CREATE_ON_ONBOARDING_FAILED",
+            details: {
+              subscription_id: createdSubscription.id,
+              reason: asaasMsg,
+            },
+          }).catch(() => null);
+        }
       }
       } catch (subscriptionBlockErr: any) {
         onboardingWarning = mergeWarnings(
@@ -2525,6 +2550,7 @@ Deno.serve(async (req) => {
           master_email: body.user.email,
           subscription_created: Boolean(subscription?.id),
           contract_created: Boolean(contract?.id),
+          asaas_synced: Boolean(asaasOnboardingResult),
           warning: onboardingWarning,
         },
       }).catch(() => null);
@@ -2586,6 +2612,7 @@ Deno.serve(async (req) => {
           version: contract?.version ?? null,
         }
         : null,
+      asaas: asaasOnboardingResult,
       warning: onboardingWarning,
     }, 200, req);
   }
