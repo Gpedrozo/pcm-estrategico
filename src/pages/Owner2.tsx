@@ -347,6 +347,17 @@ export default function Owner() {
   }, [contracts, selectedContractId])
 
   useEffect(() => {
+    const c = contracts.find((ct) => String(ct.id) === selectedContractId)
+    if (c) {
+      setContractContent(String(c.content ?? ''))
+      setContractSummary(String(c.change_summary ?? c.summary ?? ''))
+    } else {
+      setContractContent('')
+      setContractSummary('')
+    }
+  }, [selectedContractId, contracts])
+
+  useEffect(() => {
     if (!selectedTicketId && tickets.length > 0) setSelectedTicketId(String(tickets[0]?.id ?? ''))
   }, [selectedTicketId, tickets])
 
@@ -1154,17 +1165,6 @@ export default function Owner() {
                   </button>
                 </div>
 
-                {companyCredentialNote && (
-                  <div className="mt-4 rounded-xl border border-sky-200 bg-sky-50 p-4">
-                    <p className="text-xs font-semibold uppercase tracking-wide text-sky-800">Credenciais iniciais do cliente</p>
-                    <p className="mt-1 text-xs text-sky-700">Informação exibida somente agora. Compartilhe com segurança.</p>
-                    <pre className="mt-3 whitespace-pre-wrap rounded-lg border border-sky-200 bg-white p-3 text-xs leading-relaxed text-slate-800">{companyCredentialNote.noteText}</pre>
-                    <div className="mt-3 flex flex-wrap gap-2">
-                      <button className="rounded-lg border border-sky-300 bg-white px-3 py-2 text-xs font-semibold text-sky-700 hover:bg-sky-100" onClick={copyCompanyCredentialNote}>Copiar nota</button>
-                      <a className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-100" href={companyCredentialNote.loginUrl} target="_blank" rel="noopener noreferrer">Abrir login do cliente</a>
-                    </div>
-                  </div>
-                )}
               </SurfaceCard>
 
               <div className="space-y-4">
@@ -1228,6 +1228,17 @@ export default function Owner() {
                     </button>
                   </div>
                 </SurfaceCard>
+
+                {companyCredentialNote && (
+                  <SurfaceCard title="Credenciais iniciais do cliente">
+                    <p className="text-xs text-sky-700">Informação exibida somente agora. Compartilhe com segurança.</p>
+                    <pre className="mt-3 whitespace-pre-wrap rounded-lg border border-sky-200 bg-sky-50 p-3 text-xs leading-relaxed text-slate-800">{companyCredentialNote.noteText}</pre>
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      <button className="rounded-lg border border-sky-300 bg-white px-3 py-2 text-xs font-semibold text-sky-700 hover:bg-sky-100" onClick={copyCompanyCredentialNote}>Copiar nota</button>
+                      <a className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-100" href={companyCredentialNote.loginUrl} target="_blank" rel="noopener noreferrer">Abrir login do cliente</a>
+                    </div>
+                  </SurfaceCard>
+                )}
               </div>
 
               <div className="xl:col-span-2">
@@ -1291,17 +1302,6 @@ export default function Owner() {
                   </button>
                 </div>
 
-                {companyCredentialNote && (
-                  <div className="mt-4 rounded-xl border border-sky-200 bg-sky-50 p-4">
-                    <p className="text-xs font-semibold uppercase tracking-wide text-sky-800">Credenciais iniciais do cliente</p>
-                    <p className="mt-1 text-xs text-sky-700">Informação exibida somente agora. Compartilhe com segurança.</p>
-                    <pre className="mt-3 whitespace-pre-wrap rounded-lg border border-sky-200 bg-white p-3 text-xs leading-relaxed text-slate-800">{companyCredentialNote.noteText}</pre>
-                    <div className="mt-3 flex flex-wrap gap-2">
-                      <button className="rounded-lg border border-sky-300 bg-white px-3 py-2 text-xs font-semibold text-sky-700 hover:bg-sky-100" onClick={copyCompanyCredentialNote}>Copiar nota</button>
-                      <a className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-100" href={companyCredentialNote.loginUrl} target="_blank" rel="noopener noreferrer">Abrir login do cliente</a>
-                    </div>
-                  </div>
-                )}
               </SurfaceCard>
 
               <SurfaceCard title="Ações rápidas da empresa selecionada">
@@ -1339,6 +1339,17 @@ export default function Owner() {
                   </button>
                 </div>
               </SurfaceCard>
+
+              {companyCredentialNote && (
+                <SurfaceCard title="Credenciais iniciais do cliente">
+                  <p className="text-xs text-sky-700">Informação exibida somente agora. Compartilhe com segurança.</p>
+                  <pre className="mt-3 whitespace-pre-wrap rounded-lg border border-sky-200 bg-sky-50 p-3 text-xs leading-relaxed text-slate-800">{companyCredentialNote.noteText}</pre>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    <button className="rounded-lg border border-sky-300 bg-white px-3 py-2 text-xs font-semibold text-sky-700 hover:bg-sky-100" onClick={copyCompanyCredentialNote}>Copiar nota</button>
+                    <a className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-100" href={companyCredentialNote.loginUrl} target="_blank" rel="noopener noreferrer">Abrir login do cliente</a>
+                  </div>
+                </SurfaceCard>
+              )}
 
               <div className="xl:col-span-2">
                 <SurfaceCard title="Empresas">
@@ -1813,34 +1824,55 @@ export default function Owner() {
                 <div className="grid gap-2">
                   <select className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" value={selectedContractId} onChange={(e) => setSelectedContractId(e.target.value)}>
                     <option value="">Selecione o contrato</option>
-                    {contracts.map((c) => <option key={String(c.id)} value={String(c.id)}>{String(c.summary ?? c.id)}</option>)}
+                    {contracts.map((c) => {
+                      const empNome = String((c.empresas as any)?.nome ?? c.empresa_id ?? '-')
+                      const ver = String(c.version ?? '1')
+                      const st = String(c.status ?? '-')
+                      return <option key={String(c.id)} value={String(c.id)}>{empNome} — v{ver} ({st})</option>
+                    })}
                   </select>
-                  <textarea className="min-h-[120px] rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" value={contractContent} onChange={(e) => setContractContent(e.target.value)} placeholder="Conteúdo do contrato" />
-                  <input className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" value={contractSummary} onChange={(e) => setContractSummary(e.target.value)} placeholder="Resumo" />
-                  <button className="rounded-lg bg-sky-700 px-3 py-2 text-sm font-semibold text-white" disabled={busy || !selectedContractId} onClick={() => runAction('update_contract', { contract_id: selectedContractId, content: contractContent, summary: contractSummary }, 'Contrato atualizado.')}>Salvar alterações</button>
-                  <button className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-700" disabled={busy || !selectedContractId} onClick={() => runAction('regenerate_contract', { contract_id: selectedContractId }, 'Contrato regenerado.')}>Regenerar contrato</button>
-                  <button className="rounded-lg border border-rose-300 bg-rose-50 px-3 py-2 text-sm text-rose-700" disabled={busy || !selectedContractId} onClick={() => runAction('delete_contract', { contract_id: selectedContractId }, 'Contrato excluído.')}>Excluir contrato</button>
+                  <textarea className="min-h-[300px] rounded-lg border border-slate-300 bg-white px-3 py-3 text-xs font-mono leading-relaxed" value={contractContent} onChange={(e) => setContractContent(e.target.value)} placeholder="Conteúdo do contrato" />
+                  <input className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" value={contractSummary} onChange={(e) => setContractSummary(e.target.value)} placeholder="Resumo da alteração" />
+                  <div className="grid gap-2 sm:grid-cols-3">
+                    <button className="rounded-lg bg-sky-700 px-3 py-2 text-sm font-semibold text-white hover:bg-sky-800" disabled={busy || !selectedContractId} onClick={() => { runAction('update_contract', { contract_id: selectedContractId, content: contractContent, summary: contractSummary }, 'Contrato atualizado.'); contractsQuery.refetch() }}>Salvar alterações</button>
+                    <button className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-700" disabled={busy || !selectedContractId} onClick={() => { runAction('regenerate_contract', { contract_id: selectedContractId }, 'Contrato regenerado.'); contractsQuery.refetch() }}>Regenerar contrato</button>
+                    <button className="rounded-lg border border-rose-300 bg-rose-50 px-3 py-2 text-sm text-rose-700" disabled={busy || !selectedContractId} onClick={() => { runAction('delete_contract', { contract_id: selectedContractId }, 'Contrato excluído.'); setSelectedContractId(''); contractsQuery.refetch() }}>Excluir contrato</button>
+                  </div>
                 </div>
               </SurfaceCard>
 
-              <SurfaceCard title="Contratos">
-                <div className="max-h-[420px] overflow-auto rounded-xl border border-slate-200">
+              <SurfaceCard title="Contratos cadastrados">
+                <div className="max-h-[520px] overflow-auto rounded-xl border border-slate-200">
                   <table className="w-full text-xs">
-                    <thead className="bg-slate-100">
+                    <thead className="bg-slate-100 sticky top-0">
                       <tr>
-                        <th className="px-2 py-2 text-left">ID</th>
-                        <th className="px-2 py-2 text-left">Resumo</th>
                         <th className="px-2 py-2 text-left">Empresa</th>
+                        <th className="px-2 py-2 text-left">Versão</th>
+                        <th className="px-2 py-2 text-left">Status</th>
+                        <th className="px-2 py-2 text-left">Gerado em</th>
+                        <th className="px-2 py-2 text-left">Ações</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {contracts.map((c) => (
-                        <tr key={String(c.id)} className="border-t border-slate-200">
-                          <td className="px-2 py-2">{String(c.id ?? '-')}</td>
-                          <td className="px-2 py-2">{String(c.summary ?? '-')}</td>
-                          <td className="px-2 py-2">{String(c.empresa_id ?? '-')}</td>
-                        </tr>
-                      ))}
+                      {contracts.length === 0 && (
+                        <tr><td colSpan={5} className="px-2 py-4 text-center text-slate-400">Nenhum contrato encontrado</td></tr>
+                      )}
+                      {contracts.map((c) => {
+                        const empNome = String((c.empresas as any)?.nome ?? c.empresa_id ?? '-')
+                        const st = String(c.status ?? '-')
+                        const isSelected = String(c.id) === selectedContractId
+                        return (
+                          <tr key={String(c.id)} className={`border-t border-slate-200 cursor-pointer hover:bg-slate-50 ${isSelected ? 'bg-sky-50' : ''}`} onClick={() => setSelectedContractId(String(c.id ?? ''))}>
+                            <td className="px-2 py-2 font-medium">{empNome}</td>
+                            <td className="px-2 py-2">v{String(c.version ?? '1')}</td>
+                            <td className="px-2 py-2"><span className={`rounded border px-2 py-0.5 ${statusColor(st)}`}>{st}</span></td>
+                            <td className="px-2 py-2">{c.generated_at ? new Date(String(c.generated_at)).toLocaleDateString('pt-BR') : '-'}</td>
+                            <td className="px-2 py-2">
+                              <button className="rounded border border-sky-300 bg-sky-50 px-2 py-0.5 text-[11px] text-sky-700" onClick={(e) => { e.stopPropagation(); setSelectedContractId(String(c.id ?? '')) }}>Editar</button>
+                            </td>
+                          </tr>
+                        )
+                      })}
                     </tbody>
                   </table>
                 </div>
