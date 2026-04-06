@@ -86,6 +86,7 @@ export default function Owner() {
   // Cadastro unificado - campos de plano/cobrança
   const [cadastroPlanId, setCadastroPlanId] = useState('')
   const [cadastroPeriod, setCadastroPeriod] = useState<'monthly' | 'quarterly' | 'yearly'>('monthly')
+  const [cadastroPaymentMethod, setCadastroPaymentMethod] = useState('')
   const [cadastroStartsAt, setCadastroStartsAt] = useState(() => new Date().toISOString().slice(0, 10))
   const [cadastroEndsAt, setCadastroEndsAt] = useState('')
 
@@ -107,6 +108,7 @@ export default function Owner() {
   const [subscriptionAmount, setSubscriptionAmount] = useState('0')
   const [subscriptionPeriod, setSubscriptionPeriod] = useState<'monthly' | 'quarterly' | 'yearly' | 'custom'>('monthly')
   const [subscriptionStatus, setSubscriptionStatus] = useState<'ativa' | 'atrasada' | 'cancelada' | 'teste'>('teste')
+  const [subscriptionPaymentMethod, setSubscriptionPaymentMethod] = useState('pix')
   const [subscriptionStartsAt, setSubscriptionStartsAt] = useState('')
   const [subscriptionEndsAt, setSubscriptionEndsAt] = useState('')
   const [subscriptionRenewalAt, setSubscriptionRenewalAt] = useState('')
@@ -743,6 +745,7 @@ export default function Owner() {
       setNewAdminEmail('')
       setCadastroPlanId('')
       setCadastroPeriod('monthly')
+      setCadastroPaymentMethod('')
       setCadastroStartsAt(new Date().toISOString().slice(0, 10))
       setCadastroEndsAt('')
     }
@@ -768,6 +771,7 @@ export default function Owner() {
           subscription: {
             plan_id: cadastroPlanId,
             amount: planPrice,
+            payment_method: cadastroPaymentMethod || undefined,
             period: cadastroPeriod,
             starts_at: cadastroStartsAt || undefined,
             ends_at: cadastroEndsAt || undefined,
@@ -1124,6 +1128,12 @@ export default function Owner() {
                     <option value="quarterly">Trimestral</option>
                     <option value="yearly">Anual</option>
                   </select>
+                  <select className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" value={cadastroPaymentMethod} onChange={(e) => setCadastroPaymentMethod(e.target.value)}>
+                    <option value="">Forma de pagamento (ASAAS)</option>
+                    <option value="PIX">PIX</option>
+                    <option value="BOLETO">Boleto</option>
+                    <option value="CREDIT_CARD">Cartão de crédito</option>
+                  </select>
                   <div className="grid grid-cols-2 gap-2">
                     <div>
                       <label className="block text-xs text-slate-500 mb-1">Início</label>
@@ -1456,19 +1466,24 @@ export default function Owner() {
                       <option value="custom">Customizada</option>
                     </select>
                   </div>
-                  <div className="grid gap-2 sm:grid-cols-4">
+                  <div className="grid gap-2 sm:grid-cols-5">
                     <select className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" value={subscriptionStatus} onChange={(e) => setSubscriptionStatus(e.target.value as 'ativa' | 'atrasada' | 'cancelada' | 'teste')}>
                       <option value="teste">TESTE</option>
                       <option value="ativa">Ativa</option>
                       <option value="atrasada">Atrasada</option>
                       <option value="cancelada">Cancelada</option>
                     </select>
-                    <input className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" type="date" value={subscriptionStartsAt} onChange={(e) => setSubscriptionStartsAt(e.target.value)} title="Início" />
-                    <input className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" type="date" value={subscriptionRenewalAt} onChange={(e) => setSubscriptionRenewalAt(e.target.value)} title="Próximo vencimento" />
+                    <select className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" value={subscriptionPaymentMethod} onChange={(e) => setSubscriptionPaymentMethod(e.target.value)}>
+                      <option value="pix">PIX</option>
+                      <option value="boleto">Boleto</option>
+                      <option value="credit_card">Cartao de credito</option>
+                    </select>
+                    <input className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" type="date" value={subscriptionStartsAt} onChange={(e) => setSubscriptionStartsAt(e.target.value)} title="Inicio" />
+                    <input className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" type="date" value={subscriptionRenewalAt} onChange={(e) => setSubscriptionRenewalAt(e.target.value)} title="Proximo vencimento" />
                     <input className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" type="date" value={subscriptionEndsAt} onChange={(e) => setSubscriptionEndsAt(e.target.value)} title="Fim (opcional)" />
                   </div>
                   <div className="flex flex-wrap gap-2">
-                    <button className="rounded-lg bg-sky-700 px-3 py-2 text-sm font-semibold text-white" disabled={busy || !companyId || !subscriptionPlanId} onClick={() => runAction('create_subscription', { subscription: { empresa_id: companyId, plan_id: subscriptionPlanId, amount: Number(subscriptionAmount || 0), period: subscriptionPeriod, starts_at: subscriptionStartsAt || undefined, renewal_at: subscriptionRenewalAt || undefined, ends_at: subscriptionEndsAt || undefined, status: subscriptionStatus } }, 'Assinatura criada com sucesso.')}>Criar assinatura</button>
+                    <button className="rounded-lg bg-sky-700 px-3 py-2 text-sm font-semibold text-white" disabled={busy || !companyId || !subscriptionPlanId} onClick={() => runAction('create_subscription', { subscription: { empresa_id: companyId, plan_id: subscriptionPlanId, amount: Number(subscriptionAmount || 0), period: subscriptionPeriod, payment_method: subscriptionPaymentMethod, starts_at: subscriptionStartsAt || undefined, renewal_at: subscriptionRenewalAt || undefined, ends_at: subscriptionEndsAt || undefined, status: subscriptionStatus } }, 'Assinatura criada com sucesso.')}>Criar assinatura</button>
                     <button className="rounded-lg border border-slate-300 px-3 py-2 text-sm" disabled={busy || !companyId} onClick={() => runAction('set_subscription_status', { empresa_id: companyId, status: 'ativa' }, 'Assinatura ativada.')}>Ativar assinatura</button>
                     <button className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-700" disabled={busy || !isOwnerMaster} onClick={() => runAction('enforce_subscription_expiry', {}, 'Vencimentos processados.')}>Processar vencimentos</button>
                     <input className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" value={planCodeToChange} onChange={(e) => setPlanCodeToChange(e.target.value)} placeholder="Código novo plano" />
@@ -2180,15 +2195,15 @@ export default function Owner() {
               </SurfaceCard>
 
               {isOwnerMaster && (
-                <SurfaceCard title="Integracao ASAAS" subtitle="Configure a chave de API do gateway de pagamento">
+                <SurfaceCard title="Integracao ASAAS" subtitle="Cole sua chave API e clique salvar. Pronto.">
                   <div className="space-y-3">
                     <div className={`flex items-center gap-3 rounded-xl border p-3 ${asaasHealthOk ? 'border-emerald-200 bg-emerald-50' : asaasHealthOk === false ? 'border-amber-200 bg-amber-50' : 'border-slate-200 bg-slate-50'}`}>
                       {asaasHealthOk === null ? (
                         <><Loader2 className="h-5 w-5 animate-spin text-slate-400" /><div><p className="text-sm font-semibold text-slate-700">Verificando...</p></div></>
                       ) : asaasHealthOk ? (
-                        <><CheckCircle2 className="h-5 w-5 text-emerald-600" /><div><p className="text-sm font-semibold text-emerald-700">API Key configurada</p><p className="text-xs text-emerald-600">{asaasBaseUrl ? `Ambiente: ${asaasBaseUrl.includes('sandbox') ? 'SANDBOX (testes)' : 'PRODUCAO'}` : 'Conectado'}</p></div></>
+                        <><CheckCircle2 className="h-5 w-5 text-emerald-600" /><div><p className="text-sm font-semibold text-emerald-700">ASAAS conectado</p><p className="text-xs text-emerald-600">{asaasBaseUrl?.includes('sandbox') ? 'Ambiente: SANDBOX (testes)' : 'Ambiente: PRODUCAO'}</p></div></>
                       ) : (
-                        <><AlertTriangle className="h-5 w-5 text-amber-600" /><div><p className="text-sm font-semibold text-amber-700">API Key nao configurada</p><p className="text-xs text-amber-600">Configure abaixo para ativar cobrancas automaticas.</p></div></>
+                        <><AlertTriangle className="h-5 w-5 text-amber-600" /><div><p className="text-sm font-semibold text-amber-700">ASAAS nao configurado</p><p className="text-xs text-amber-600">Cole a chave abaixo para ativar.</p></div></>
                       )}
                     </div>
 
@@ -2201,58 +2216,31 @@ export default function Owner() {
                         onChange={(e) => { setAsaasApiKeyInput(e.target.value); setAsaasApiKeySaved(false) }}
                         placeholder="$aact_YTU5YTE0M2M2MWM2..."
                       />
-                      <p className="mt-1 text-[11px] text-slate-400">Encontre em: ASAAS &gt; Configuracoes &gt; Integracao &gt; API Key</p>
+                      <p className="mt-1 text-[11px] text-slate-400">ASAAS &gt; Minha Conta &gt; Integracao &gt; Gerar nova chave API</p>
                     </div>
-
-                    <div>
-                      <label className="text-xs font-medium text-slate-600">Ambiente</label>
-                      <div className="mt-1 flex items-center gap-4">
-                        <span className={`inline-flex items-center rounded-full border px-3 py-1 text-xs font-semibold ${asaasBaseUrl.includes('sandbox') || !asaasHealthOk ? 'bg-amber-100 text-amber-700 border-amber-200' : 'bg-emerald-100 text-emerald-700 border-emerald-200'}`}>
-                          {asaasBaseUrl.includes('sandbox') || !asaasHealthOk ? 'SANDBOX (testes)' : 'PRODUCAO'}
-                        </span>
-                        <span className="text-[11px] text-slate-400">Para trocar o ambiente, altere ASAAS_API_BASE_URL</span>
-                      </div>
-                    </div>
-
-                    {asaasApiKeyInput.trim() && (
-                      <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
-                        <p className="text-xs font-semibold text-slate-700">Comando para aplicar:</p>
-                        <div className="mt-2 flex items-center gap-2">
-                          <code className="block flex-1 overflow-x-auto rounded-lg border border-slate-300 bg-white px-3 py-2 font-mono text-xs text-slate-800">
-                            npx supabase secrets set ASAAS_API_KEY={asaasApiKeyInput.trim()}
-                          </code>
-                          <button
-                            className="shrink-0 rounded-lg border border-sky-300 bg-sky-50 px-3 py-2 text-xs font-semibold text-sky-700 hover:bg-sky-100"
-                            onClick={() => {
-                              navigator.clipboard.writeText(`npx supabase secrets set ASAAS_API_KEY=${asaasApiKeyInput.trim()}`)
-                              setAsaasApiKeySaved(true)
-                              setTimeout(() => setAsaasApiKeySaved(false), 3000)
-                            }}
-                          >
-                            {asaasApiKeySaved ? 'Copiado!' : 'Copiar'}
-                          </button>
-                        </div>
-                        <p className="mt-2 text-[11px] text-slate-400">Cole este comando no terminal do projeto (clone local) e execute. Depois clique em "Verificar" para confirmar.</p>
-                      </div>
-                    )}
 
                     <button
-                      className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
-                      disabled={busy}
-                      onClick={() => {
-                        setAsaasHealthOk(null)
-                        execute.mutateAsync({ action: 'health_check' as any, payload: {} })
-                          .then((res: any) => {
-                            const hasKey = Boolean(res?.asaas_configured)
-                            setAsaasHealthOk(hasKey)
-                            if (res?.asaas_base_url) setAsaasBaseUrl(String(res.asaas_base_url))
-                            if (hasKey) setFeedback('ASAAS configurado com sucesso!')
-                            else setError('ASAAS_API_KEY ainda nao foi detectada. Execute o comando e tente novamente.')
-                          })
-                          .catch(() => { setAsaasHealthOk(false); setError('Falha ao verificar status do ASAAS.') })
+                      className="w-full rounded-lg bg-sky-700 px-3 py-2 text-sm font-semibold text-white disabled:opacity-50"
+                      disabled={busy || !asaasApiKeyInput.trim()}
+                      onClick={async () => {
+                        setError(null)
+                        setFeedback(null)
+                        try {
+                          const res: any = await execute.mutateAsync({ action: 'set_asaas_api_key' as any, payload: { asaas_api_key: asaasApiKeyInput.trim() } })
+                          if (res?.success) {
+                            setAsaasHealthOk(true)
+                            setAsaasApiKeySaved(true)
+                            setAsaasBaseUrl(res?.environment === 'production' ? 'https://api.asaas.com/v3' : 'https://api-sandbox.asaas.com/v3')
+                            setFeedback('Chave ASAAS salva e validada com sucesso!')
+                          } else {
+                            setError(String(res?.error ?? 'Falha ao salvar chave.'))
+                          }
+                        } catch (err: any) {
+                          setError(String(err?.message ?? 'Erro ao salvar chave ASAAS.'))
+                        }
                       }}
                     >
-                      Verificar conexao ASAAS
+                      {busy ? 'Salvando...' : asaasApiKeySaved ? 'Salvo com sucesso!' : 'Salvar chave ASAAS'}
                     </button>
                   </div>
                 </SurfaceCard>

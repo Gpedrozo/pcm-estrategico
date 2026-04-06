@@ -1,6 +1,6 @@
 -- ============================================================
 -- Migration: Cria tabelas contracts e contract_versions
--- Objetivo: Gerar contrato automaticamente na criacao da empresa/assinatura
+-- Objetivo: Gerar contrato automaticamente na criação da empresa/assinatura
 -- ============================================================
 
 -- 1) Tabela principal de contratos
@@ -27,11 +27,12 @@ CREATE TABLE IF NOT EXISTS public.contracts (
 
 COMMENT ON TABLE public.contracts IS 'Contratos gerados automaticamente a partir de assinaturas';
 
+-- Índices para consultas comuns
 CREATE INDEX IF NOT EXISTS idx_contracts_empresa_id ON public.contracts(empresa_id);
 CREATE INDEX IF NOT EXISTS idx_contracts_subscription_id ON public.contracts(subscription_id);
 CREATE INDEX IF NOT EXISTS idx_contracts_status ON public.contracts(status);
 
--- 2) Tabela de versoes historicas do contrato
+-- 2) Tabela de versões históricas do contrato
 CREATE TABLE IF NOT EXISTS public.contract_versions (
   id              uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   contract_id     uuid NOT NULL REFERENCES public.contracts(id) ON DELETE CASCADE,
@@ -44,7 +45,7 @@ CREATE TABLE IF NOT EXISTS public.contract_versions (
 
 CREATE INDEX IF NOT EXISTS idx_contract_versions_contract_id ON public.contract_versions(contract_id);
 
--- 3) Trigger updated_at automatico para contracts
+-- 3) Trigger updated_at automático para contracts
 CREATE OR REPLACE FUNCTION public.contracts_set_updated_at()
 RETURNS trigger LANGUAGE plpgsql AS $$
 BEGIN
@@ -62,12 +63,14 @@ CREATE TRIGGER trg_contracts_updated_at
 ALTER TABLE public.contracts ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.contract_versions ENABLE ROW LEVEL SECURITY;
 
+-- service_role (edge functions) tem acesso total
 CREATE POLICY contracts_service_all ON public.contracts
   FOR ALL TO service_role USING (true) WITH CHECK (true);
 
 CREATE POLICY contract_versions_service_all ON public.contract_versions
   FOR ALL TO service_role USING (true) WITH CHECK (true);
 
+-- Usuários autenticados vêem contratos da própria empresa
 CREATE POLICY contracts_tenant_select ON public.contracts
   FOR SELECT TO authenticated
   USING (
