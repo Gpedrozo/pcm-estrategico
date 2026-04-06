@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import type { RotaPonto, RotaPontoInsert } from '@/types/lubrificacao';
 import { writeAuditLog } from '@/lib/audit';
-import { useAuth } from '@/hooks/useAuth';
+import { useAuth } from '@/contexts/AuthContext';
 
 /**
  * Fetch lubrication route points linked to a specific plan (plano_id).

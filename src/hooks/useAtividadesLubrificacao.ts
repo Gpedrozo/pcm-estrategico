@@ -4,7 +4,7 @@ import { useToast } from '@/hooks/use-toast';
 import type { AtividadeLubrificacao } from '@/types/lubrificacao';
 import { insertWithColumnFallback, updateWithColumnFallback } from '@/lib/supabaseCompat';
 import { writeAuditLog } from '@/lib/audit';
-import { useAuth } from '@/hooks/useAuth';
+import { useAuth } from '@/contexts/AuthContext';
 
 export function useAtividadesByPlano(planoId: string | null) {
   return useQuery({
