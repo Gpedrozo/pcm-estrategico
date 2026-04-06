@@ -703,9 +703,269 @@ function contractTemplate(input: {
     Number(input.valor ?? 0),
   );
 
-  const modulos = input.modulos ? JSON.stringify(input.modulos, null, 2) : "{}";
+  const fmtDate = (d?: string | null) => {
+    if (!d) return "N/A";
+    try { return new Date(d).toLocaleDateString("pt-BR"); } catch { return d; }
+  };
 
-  return `CONTRATO DE LICENÇA DE USO DE SOFTWARE\n\nCONTRATANTE\nEmpresa: ${input.empresaNome}\nCNPJ: ${input.cnpj ?? "N/A"}\nResponsável: ${input.responsavel ?? "N/A"}\n\nCONTRATADA\nPCM Estratégio Sistemas\n\nOBJETO\nLicença de uso do sistema PCM Estratégico.\n\nPLANO CONTRATADO\nPlano: ${input.planoNome}\n\nVALOR\n${currency}\n\nFORMA DE PAGAMENTO\n${input.formaPagamento ?? "A definir"}\n\nVIGÊNCIA\nInício: ${input.inicio ?? "N/A"}\nTérmino: ${input.fim ?? "Indeterminado"}\n\nUSUÁRIOS PERMITIDOS\n${input.limiteUsuarios ?? "N/A"}\n\nMÓDULOS INCLUSOS\n${modulos}\n`;
+  const vigenciaTipo = input.fim ? "determinada" : "indeterminada";
+  const inicioFmt = fmtDate(input.inicio);
+  const fimFmt = input.fim ? fmtDate(input.fim) : "Indeterminado";
+  const dataGeracao = new Date().toLocaleDateString("pt-BR");
+
+  const modulosList = input.modulos
+    ? Object.entries(input.modulos)
+        .filter(([, v]) => v === true || (typeof v === "string" && v !== ""))
+        .map(([k]) => `  - ${k}`)
+        .join("\n") || "  Todos os módulos do plano contratado"
+    : "  Todos os módulos do plano contratado";
+
+  return `══════════════════════════════════════════════════════════════════
+                CONTRATO DE LICENÇA DE USO DE SOFTWARE SaaS
+                         PCM ESTRATÉGICO SISTEMAS
+══════════════════════════════════════════════════════════════════
+
+Contrato nº gerado automaticamente em ${dataGeracao}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ CLÁUSULA 1 — DAS PARTES
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+CONTRATADA:
+PCM Estratégico Sistemas Ltda.
+CNPJ: [A ser informado pela CONTRATADA]
+Endereço: [A ser informado pela CONTRATADA]
+E-mail: comercial@pcmestrategico.com.br
+Doravante denominada simplesmente CONTRATADA ou LICENCIANTE.
+
+CONTRATANTE:
+Empresa: ${input.empresaNome}
+CNPJ: ${input.cnpj ?? "A ser informado"}
+Representante Legal: ${input.responsavel ?? "A ser informado"}
+Doravante denominada simplesmente CONTRATANTE ou LICENCIADA.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ CLÁUSULA 2 — DO OBJETO
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+2.1. O presente contrato tem por objeto a concessão, pela CONTRATADA à
+CONTRATANTE, de licença de uso não exclusiva e intransferível do sistema
+"PCM Estratégico" — plataforma de Planejamento e Controle de Manutenção
+fornecida na modalidade SaaS (Software as a Service), acessível via
+navegador de internet e aplicativo móvel.
+
+2.2. O sistema abrange funcionalidades de gestão de ordens de serviço,
+manutenção preventiva, preditiva, lubrificação, inspeções, controle de
+equipamentos, materiais, custos, indicadores de desempenho (KPIs), FMEA,
+RCA, SSMA, gestão de mecânicos, relatórios gerenciais e demais módulos
+disponíveis no plano contratado.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ CLÁUSULA 3 — DO PLANO CONTRATADO
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+3.1. Plano: ${input.planoNome}
+3.2. Limite de usuários simultâneos: ${input.limiteUsuarios ?? "Conforme plano"}
+3.3. Módulos inclusos:
+${modulosList}
+
+3.4. A CONTRATADA poderá, a seu critério, disponibilizar novos módulos ou
+funcionalidades, que serão incorporados ao plano contratado ou oferecidos
+como adicionais mediante aditivo contratual.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ CLÁUSULA 4 — DO VALOR E FORMA DE PAGAMENTO
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+4.1. Valor: ${currency} (${vigenciaTipo === "determinada" ? "pelo período contratado" : "mensal"}).
+
+4.2. Forma de pagamento: ${input.formaPagamento ?? "A definir em comum acordo"}.
+
+4.3. O não pagamento dentro do prazo de vencimento acarretará:
+  a) Multa de 2% (dois por cento) sobre o valor em atraso;
+  b) Juros de mora de 1% (um por cento) ao mês;
+  c) Suspensão do acesso ao sistema após 15 (quinze) dias de inadimplência,
+     mediante notificação prévia por e-mail.
+
+4.4. O reajuste anual será feito com base no índice IGPM/FGV acumulado
+dos últimos 12 meses, ou por outro índice oficial que venha a substituí-lo.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ CLÁUSULA 5 — DA VIGÊNCIA
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+5.1. Vigência: ${vigenciaTipo}.
+5.2. Início: ${inicioFmt}.
+5.3. Término: ${fimFmt}.
+
+5.4. O contrato será renovado automaticamente por períodos iguais e
+sucessivos, salvo manifestação contrária de qualquer das partes com
+antecedência mínima de 30 (trinta) dias antes do término da vigência.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ CLÁUSULA 6 — DAS OBRIGAÇÕES DA CONTRATADA
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+6.1. Disponibilizar o sistema em ambiente seguro, com disponibilidade
+mínima de 99,5% (noventa e nove vírgula cinco por cento) mensal,
+excluindo-se manutenções programadas previamente comunicadas.
+
+6.2. Realizar backups diários dos dados da CONTRATANTE.
+
+6.3. Manter sigilo absoluto sobre todos os dados e informações da
+CONTRATANTE armazenados no sistema.
+
+6.4. Prestar suporte técnico via e-mail e WhatsApp em horário comercial
+(segunda a sexta, 08h às 18h).
+
+6.5. Aplicar correções de segurança e atualizações de sistema sem custo
+adicional durante a vigência do contrato.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ CLÁUSULA 7 — DAS OBRIGAÇÕES DA CONTRATANTE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+7.1. Utilizar o sistema exclusivamente para as finalidades previstas
+neste contrato, não sendo permitida sublicença, cessão ou transferência
+a terceiros.
+
+7.2. Manter em sigilo suas credenciais de acesso, sendo responsável
+por toda atividade realizada em sua conta.
+
+7.3. Efetuar os pagamentos nas datas de vencimento pactuadas.
+
+7.4. Não realizar engenharia reversa, descompilar, copiar ou tentar
+extrair o código-fonte do sistema.
+
+7.5. Comunicar imediatamente a CONTRATADA sobre qualquer incidente
+de segurança ou uso não autorizado de suas credenciais.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ CLÁUSULA 8 — DA PROPRIEDADE INTELECTUAL
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+8.1. O sistema PCM Estratégico, incluindo código-fonte, design, marcas,
+logotipos e documentação, é de propriedade exclusiva da CONTRATADA,
+protegido pela Lei nº 9.609/98 (Software) e Lei nº 9.610/98 (Direitos
+Autorais).
+
+8.2. A presente licença não confere à CONTRATANTE qualquer direito de
+propriedade sobre o sistema, sendo concedido apenas o direito de uso
+nos termos aqui estabelecidos.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ CLÁUSULA 9 — DA PROTEÇÃO DE DADOS (LGPD)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+9.1. A CONTRATADA atuará como Operadora de dados pessoais nos termos
+da Lei Geral de Proteção de Dados (Lei nº 13.709/2018 — LGPD), tratando
+os dados pessoais inseridos pela CONTRATANTE exclusivamente para a
+prestação do serviço contratado.
+
+9.2. A CONTRATADA adota medidas técnicas e administrativas adequadas
+para proteger os dados pessoais contra acessos não autorizados,
+vazamentos, destruição ou qualquer forma de tratamento inadequado.
+
+9.3. Em caso de incidente de segurança envolvendo dados pessoais,
+a CONTRATADA comunicará a CONTRATANTE em até 48 (quarenta e oito)
+horas após tomar ciência do evento.
+
+9.4. Ao término do contrato, a CONTRATADA disponibilizará à
+CONTRATANTE a exportação completa de seus dados em formato aberto
+(CSV/JSON), procedendo à exclusão definitiva dos dados em até 90
+(noventa) dias.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ CLÁUSULA 10 — DA LIMITAÇÃO DE RESPONSABILIDADE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+10.1. A CONTRATADA não se responsabiliza por:
+  a) Dados incorretos inseridos pela CONTRATANTE;
+  b) Interrupções causadas por falhas de internet ou infraestrutura
+     de terceiros;
+  c) Danos indiretos, lucros cessantes ou perdas consequenciais;
+  d) Uso do sistema em desacordo com as orientações técnicas.
+
+10.2. A responsabilidade total da CONTRATADA, em qualquer hipótese,
+fica limitada ao valor total pago pela CONTRATANTE nos últimos 12
+(doze) meses de vigência contratual.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ CLÁUSULA 11 — DA RESCISÃO
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+11.1. O presente contrato poderá ser rescindido:
+  a) Por qualquer das partes, mediante notificação por escrito com
+     antecedência mínima de 30 (trinta) dias;
+  b) Imediatamente, em caso de descumprimento de cláusula essencial,
+     não sanado no prazo de 15 (quinze) dias após notificação;
+  c) Por inadimplência superior a 60 (sessenta) dias.
+
+11.2. Na rescisão por iniciativa da CONTRATANTE sem justa causa antes
+do término da vigência estipulada, poderá ser cobrada multa de 20%
+(vinte por cento) sobre o saldo remanescente do contrato.
+
+11.3. Após a rescisão, a CONTRATANTE terá prazo de 30 (trinta) dias
+para exportar seus dados, findos os quais serão definitivamente excluídos.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ CLÁUSULA 12 — DA CONFIDENCIALIDADE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+12.1. As partes se comprometem a manter sigilo sobre quaisquer
+informações técnicas, comerciais ou estratégicas de que tenham
+conhecimento em razão deste contrato, por prazo indeterminado, mesmo
+após o término da relação contratual.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ CLÁUSULA 13 — DAS DISPOSIÇÕES GERAIS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+13.1. O presente contrato é regido pela legislação brasileira.
+
+13.2. Qualquer alteração deste contrato somente será válida mediante
+aditivo por escrito, aceito por ambas as partes.
+
+13.3. A tolerância de qualquer das partes quanto ao descumprimento
+de qualquer cláusula não constituirá renúncia ao direito de exigir
+o seu cumprimento a qualquer tempo.
+
+13.4. As comunicações entre as partes serão realizadas preferencialmente
+por meio eletrônico (e-mail), sendo válidas para todos os efeitos legais.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ CLÁUSULA 14 — DO FORO
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+14.1. Fica eleito o foro da Comarca de Porto Alegre/RS para dirimir
+quaisquer controvérsias oriundas deste contrato, com renúncia expressa
+a qualquer outro, por mais privilegiado que seja.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ ACEITE DIGITAL
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Ao utilizar o sistema PCM Estratégico, a CONTRATANTE declara ter lido,
+compreendido e aceito integralmente os termos deste contrato.
+
+O aceite eletrônico (login no sistema ou assinatura digital) possui
+validade jurídica nos termos do art. 10, §2º, da Medida Provisória
+nº 2.200-2/2001.
+
+
+CONTRATADA: PCM Estratégico Sistemas Ltda.
+
+CONTRATANTE: ${input.empresaNome}
+CNPJ: ${input.cnpj ?? "A ser informado"}
+Representante: ${input.responsavel ?? "A ser informado"}
+
+Data de geração: ${dataGeracao}
+
+══════════════════════════════════════════════════════════════════
+        Documento gerado automaticamente pelo sistema PCM Estratégico.
+        Este contrato possui validade jurídica mediante aceite digital.
+══════════════════════════════════════════════════════════════════
+`;
 }
 
 const ASAAS_API_BASE_URL = (Deno.env.get("ASAAS_API_BASE_URL") ?? "https://api-sandbox.asaas.com/v3").trim().replace(/\/+$/, "");
@@ -993,11 +1253,30 @@ async function createContractFromSubscription(
     .eq("empresa_id", subscription.empresa_id)
     .maybeSingle();
 
-  const { data: plan } = await admin
-    .from("plans")
-    .select("id,name,user_limit,module_flags")
+  // subscription.plan_id references planos (PT-BR table), try both tables
+  let plan: any = null;
+  const { data: planoPtBr } = await admin
+    .from("planos")
+    .select("id,nome,codigo")
     .eq("id", subscription.plan_id)
-    .single();
+    .maybeSingle();
+  if (planoPtBr) {
+    // Map to plans (EN) to get user_limit and module_flags
+    const { data: planEn } = await admin
+      .from("plans")
+      .select("id,name,user_limit,module_flags")
+      .eq("code", planoPtBr.codigo)
+      .maybeSingle();
+    plan = planEn ?? { id: planoPtBr.id, name: planoPtBr.nome, user_limit: null, module_flags: null };
+  } else {
+    // Fallback: maybe plan_id directly references plans
+    const { data: planDirect } = await admin
+      .from("plans")
+      .select("id,name,user_limit,module_flags")
+      .eq("id", subscription.plan_id)
+      .maybeSingle();
+    plan = planDirect;
+  }
 
   const content = contractTemplate({
     empresaNome: companyData?.razao_social ?? companyData?.nome_fantasia ?? company?.nome ?? "Empresa",
@@ -2401,6 +2680,7 @@ Deno.serve(async (req) => {
 
     let subscription: any = null;
     let contract: any = null;
+    let asaasOnboardingResult: Record<string, unknown> | null = null;
 
     if (selectedPlanId) {
       try {
@@ -2466,6 +2746,30 @@ Deno.serve(async (req) => {
             `Contrato inicial não pôde ser gerado automaticamente. (${reasonText})`,
           );
         }
+
+        // --- ASAAS auto-sync: create customer + subscription in ASAAS if configured ---
+        try {
+          const asaasReady = await isAsaasConfiguredAsync(admin);
+          if (asaasReady && createdSubscription?.id) {
+            asaasOnboardingResult = await createOrSyncAsaasSubscription(admin, createdSubscription);
+          }
+        } catch (asaasError: any) {
+          const asaasMsg = String(asaasError?.message ?? asaasError ?? "Falha ao sincronizar com Asaas");
+          onboardingWarning = mergeWarnings(
+            onboardingWarning,
+            `Cliente/assinatura ASAAS não foi criada automaticamente. (${asaasMsg})`,
+          );
+          await logPlatformAudit(admin, {
+            actorId: auth.user.id,
+            actorEmail: auth.user.email,
+            empresaId: company.id,
+            actionType: "OWNER_ASAAS_CREATE_ON_ONBOARDING_FAILED",
+            details: {
+              subscription_id: createdSubscription.id,
+              reason: asaasMsg,
+            },
+          }).catch(() => null);
+        }
       }
       } catch (subscriptionBlockErr: any) {
         onboardingWarning = mergeWarnings(
@@ -2487,6 +2791,7 @@ Deno.serve(async (req) => {
           master_email: body.user.email,
           subscription_created: Boolean(subscription?.id),
           contract_created: Boolean(contract?.id),
+          asaas_synced: Boolean(asaasOnboardingResult),
           warning: onboardingWarning,
         },
       }).catch(() => null);
@@ -2548,6 +2853,7 @@ Deno.serve(async (req) => {
           version: contract?.version ?? null,
         }
         : null,
+      asaas: asaasOnboardingResult,
       warning: onboardingWarning,
     }, 200, req);
   }
