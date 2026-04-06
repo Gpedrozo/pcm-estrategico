@@ -2396,6 +2396,8 @@ Deno.serve(async (req) => {
     // Alias for backward compat in the rest of the block
     const selectedPlanId = planIdForSubscriptions;
     const selectedPlanIdForCompanySub = planIdForCompanySub;
+
+    let subscription: any = null;
     let contract: any = null;
 
     if (selectedPlanId) {

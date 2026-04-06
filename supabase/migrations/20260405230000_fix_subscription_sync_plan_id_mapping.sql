@@ -1,13 +1,13 @@
 -- ============================================================================
--- FIX: Subscription sync triggers - map plan_id between planos <-> plans
+-- FIX: Subscription sync triggers – map plan_id between planos ↔ plans
 -- ============================================================================
--- Problem: subscriptions.plan_id FK -> planos, company_subscriptions.plan_id FK -> plans.
+-- Problem: subscriptions.plan_id FK → planos, company_subscriptions.plan_id FK → plans.
 -- The sync triggers copied plan_id verbatim, causing FK violations because the
 -- UUID in one table doesn't exist in the other.
 -- Fix: look up the equivalent plan in the target table by matching codigo/code.
 -- ============================================================================
 
--- Forward sync: subscriptions (planos FK) -> company_subscriptions (plans FK)
+-- Forward sync: subscriptions (planos FK) → company_subscriptions (plans FK)
 CREATE OR REPLACE FUNCTION public.sync_company_subscription_from_subscription()
 RETURNS trigger
 LANGUAGE plpgsql
@@ -19,7 +19,7 @@ BEGIN
     RETURN NEW;
   END IF;
 
-  -- Map plan_id from planos -> plans via codigo/code
+  -- Map plan_id from planos → plans via codigo/code
   SELECT p.id INTO v_mapped_plan_id
   FROM public.plans p
   JOIN public.planos pl ON lower(pl.codigo) = lower(p.code)
@@ -38,7 +38,15 @@ BEGIN
   END IF;
 
   INSERT INTO public.company_subscriptions (
-    empresa_id, plan_id, status, billing_cycle, renewal_date, starts_at, ends_at, metadata, updated_at
+    empresa_id,
+    plan_id,
+    status,
+    billing_cycle,
+    renewal_date,
+    starts_at,
+    ends_at,
+    metadata,
+    updated_at
   ) VALUES (
     NEW.empresa_id,
     v_mapped_plan_id,
@@ -48,16 +56,22 @@ BEGIN
     COALESCE(NEW.starts_at, CURRENT_DATE),
     NEW.ends_at,
     COALESCE(NEW.billing_metadata, '{}'::jsonb) || jsonb_build_object(
-      'source', 'subscriptions', 'subscription_id', NEW.id,
-      'payment_status', NEW.payment_status, 'amount', NEW.amount,
+      'source', 'subscriptions',
+      'subscription_id', NEW.id,
+      'payment_status', NEW.payment_status,
+      'amount', NEW.amount,
       'billing_provider', NEW.billing_provider
     ),
     now()
   )
   ON CONFLICT (empresa_id)
   DO UPDATE SET
-    plan_id = EXCLUDED.plan_id, status = EXCLUDED.status, billing_cycle = EXCLUDED.billing_cycle,
-    renewal_date = EXCLUDED.renewal_date, starts_at = EXCLUDED.starts_at, ends_at = EXCLUDED.ends_at,
+    plan_id = EXCLUDED.plan_id,
+    status = EXCLUDED.status,
+    billing_cycle = EXCLUDED.billing_cycle,
+    renewal_date = EXCLUDED.renewal_date,
+    starts_at = EXCLUDED.starts_at,
+    ends_at = EXCLUDED.ends_at,
     metadata = COALESCE(public.company_subscriptions.metadata, '{}'::jsonb) || EXCLUDED.metadata,
     updated_at = now();
 
@@ -65,7 +79,7 @@ BEGIN
 END;
 $$;
 
--- Reverse sync: company_subscriptions (plans FK) -> subscriptions (planos FK)
+-- Reverse sync: company_subscriptions (plans FK) → subscriptions (planos FK)
 CREATE OR REPLACE FUNCTION public.sync_subscription_from_company_subscription()
 RETURNS trigger
 LANGUAGE plpgsql
@@ -77,7 +91,7 @@ BEGIN
     RETURN NEW;
   END IF;
 
-  -- Map plan_id from plans -> planos via code/codigo
+  -- Map plan_id from plans → planos via code/codigo
   SELECT pl.id INTO v_mapped_plan_id
   FROM public.planos pl
   JOIN public.plans p ON lower(p.code) = lower(pl.codigo)
@@ -96,8 +110,19 @@ BEGIN
   END IF;
 
   INSERT INTO public.subscriptions (
-    empresa_id, plan_id, amount, payment_method, period, starts_at, ends_at, renewal_at,
-    status, payment_status, billing_provider, billing_metadata, updated_at
+    empresa_id,
+    plan_id,
+    amount,
+    payment_method,
+    period,
+    starts_at,
+    ends_at,
+    renewal_at,
+    status,
+    payment_status,
+    billing_provider,
+    billing_metadata,
+    updated_at
   ) VALUES (
     NEW.empresa_id,
     v_mapped_plan_id,
@@ -119,10 +144,13 @@ BEGIN
   )
   ON CONFLICT (empresa_id)
   DO UPDATE SET
-    plan_id = EXCLUDED.plan_id, period = EXCLUDED.period,
+    plan_id = EXCLUDED.plan_id,
+    period = EXCLUDED.period,
     starts_at = COALESCE(public.subscriptions.starts_at, EXCLUDED.starts_at),
-    ends_at = EXCLUDED.ends_at, renewal_at = EXCLUDED.renewal_at,
-    status = EXCLUDED.status, payment_status = EXCLUDED.payment_status,
+    ends_at = EXCLUDED.ends_at,
+    renewal_at = EXCLUDED.renewal_at,
+    status = EXCLUDED.status,
+    payment_status = EXCLUDED.payment_status,
     billing_provider = EXCLUDED.billing_provider,
     billing_metadata = COALESCE(public.subscriptions.billing_metadata, '{}'::jsonb) || EXCLUDED.billing_metadata,
     updated_at = now();
