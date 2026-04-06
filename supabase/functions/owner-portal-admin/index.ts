@@ -2116,8 +2116,8 @@ Deno.serve(async (req) => {
     let count: number | null = null;
     let listError: any = null;
 
-    const richSelect = "id,nome,slug,created_at,updated_at,dados_empresa(razao_social,nome_fantasia),configuracoes_sistema(chave,valor)";
-    const plainSelect = "id,nome,slug,created_at,updated_at";
+    const richSelect = "id,nome,slug,status,created_at,updated_at,dados_empresa(razao_social,nome_fantasia),configuracoes_sistema(chave,valor)";
+    const plainSelect = "id,nome,slug,status,created_at,updated_at";
 
     const result = await admin
       .from("empresas")
@@ -2787,8 +2787,8 @@ Deno.serve(async (req) => {
 
         // --- ASAAS auto-sync: create customer + subscription in ASAAS if configured ---
         try {
-          const asaasReady = await isAsaasConfiguredAsync(admin);
-          if (asaasReady && createdSubscription?.id) {
+          const asaasKeyResolved = await resolveAsaasApiKey(admin);
+          if (asaasKeyResolved && createdSubscription?.id) {
             asaasOnboardingResult = await createOrSyncAsaasSubscription(admin, createdSubscription);
           }
         } catch (asaasError: any) {
