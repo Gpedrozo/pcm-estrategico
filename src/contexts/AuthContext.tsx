@@ -120,6 +120,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const lastActivityAtRef = useRef<number>(Date.now());
   const isAutoLogoutRunningRef = useRef(false);
   const isIntentionalLogoutNavigationRef = useRef(false);
+  const hydrationRetryCountRef = useRef(0);
 
   const transitionAuthStatus = useCallback((nextStatus: AuthStatus, reason: string, metadata?: Record<string, unknown>) => {
     setAuthStatus((currentStatus) => {
@@ -139,15 +140,39 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const isLoading = authStatus === 'loading' || authStatus === 'hydrating';
 
   useEffect(() => {
-    if (authStatus !== 'hydrating') return;
+    if (authStatus !== 'hydrating') {
+      // Reset retry counter on successful auth or any non-hydrating state
+      if (authStatus === 'authenticated' || authStatus === 'unauthenticated') {
+        hydrationRetryCountRef.current = 0;
+      }
+      return;
+    }
 
     const startedAt = performance.now();
     const timer = window.setTimeout(() => {
+      const hydrationMs = Math.trunc(performance.now() - startedAt);
+
+      if (hydrationRetryCountRef.current < 1) {
+        hydrationRetryCountRef.current += 1;
+        logger.info('auth_hydration_auto_retry', {
+          hydrationMs,
+          attempt: hydrationRetryCountRef.current,
+        });
+        transitionAuthStatus('loading', 'hydration_auto_retry');
+        // Trigger a new auth state change event via refreshSession
+        void supabase.auth.refreshSession().catch(() => {
+          transitionAuthStatus('error', 'hydration_auto_retry_refresh_failed', { hydrationMs });
+        });
+        return;
+      }
+
       transitionAuthStatus('error', 'hydrating_timeout_controlled', {
-        hydrationMs: Math.trunc(performance.now() - startedAt),
+        hydrationMs,
+        retryAttempts: hydrationRetryCountRef.current,
       });
       logger.warn('auth_hydrating_timeout_controlled', {
-        hydrationMs: Math.trunc(performance.now() - startedAt),
+        hydrationMs,
+        retryAttempts: hydrationRetryCountRef.current,
       });
     }, HYDRATION_TIMEOUT_MS);
 
@@ -1638,8 +1663,39 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       void logout({ reason: 'inactivity' });
     }, 15_000);
 
+    // Check inactivity immediately when tab becomes visible again
+    // (browsers throttle setInterval in background tabs)
+    const onVisibilityChange = () => {
+      if (document.visibilityState !== 'visible') return;
+      if (isAutoLogoutRunningRef.current) return;
+
+      const inactiveForMs = Date.now() - lastActivityAtRef.current;
+      if (inactiveForMs < inactivityTimeoutMs) return;
+
+      isAutoLogoutRunningRef.current = true;
+      const configuredMinutes = Math.max(1, Math.trunc(inactivityTimeoutMs / 60_000));
+      try {
+        window.localStorage.setItem(
+          INACTIVITY_NOTICE_STORAGE_KEY,
+          JSON.stringify({ minutes: configuredMinutes, at: Date.now() }),
+        );
+      } catch {
+        // noop
+      }
+      logger.info('auto_logout_by_inactivity_visibility', {
+        userId: user.id,
+        empresaId: currentTenantId,
+        inactivityTimeoutMs,
+      });
+
+      void logout({ reason: 'inactivity' });
+    };
+
+    document.addEventListener('visibilitychange', onVisibilityChange);
+
     return () => {
       window.clearInterval(timer);
+      document.removeEventListener('visibilitychange', onVisibilityChange);
       activityEvents.forEach((eventName) => {
         window.removeEventListener(eventName, markActivity);
       });

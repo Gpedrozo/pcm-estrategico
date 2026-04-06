@@ -30,6 +30,7 @@ export const HYDRATION_TIMEOUT_MS = 12_000;
 export const LOGIN_REDIRECT_LOCK_TTL_MS = 15_000;
 export const SESSION_TRANSFER_CONSUMED_MAX_AGE_MS = 2 * 60 * 1000;
 export const TENANT_REDIRECT_TIMEOUT_MS = 6_000;
+export const TENANT_RESOLVE_TOTAL_TIMEOUT_MS = 12_000;
 
 // --- Rate Limit (backend-enforced, estes são apenas para UX) ---
 export const OWNER_EDGE_LOGIN_ENDPOINT = '/functions/v1/auth-login';

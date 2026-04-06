@@ -39,24 +39,7 @@ import {
   INACTIVITY_NOTICE_STORAGE_KEY,
   TENANT_REDIRECT_TIMEOUT_MS,
 } from '@/lib/authConstants';
-
-async function withTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T> {
-  let timer: number | null = null;
-
-  const timeoutPromise = new Promise<never>((_, reject) => {
-    timer = window.setTimeout(() => {
-      reject(new Error('timeout'));
-    }, timeoutMs);
-  });
-
-  try {
-    return await Promise.race([promise, timeoutPromise]);
-  } finally {
-    if (timer !== null) {
-      window.clearTimeout(timer);
-    }
-  }
-}
+import { withTimeout } from '@/lib/authSessionHelpers';
 
 function hasActiveLoginRedirectLock() {
   try {
@@ -279,6 +262,7 @@ export default function Login() {
             tenantBaseDomain,
           }),
           TENANT_REDIRECT_TIMEOUT_MS,
+          'tenant_host_resolve_timeout',
         ).catch(() => null);
 
         if (!targetHost) {
@@ -299,6 +283,7 @@ export default function Login() {
                 slugHint: metadataSlug,
               }),
               TENANT_REDIRECT_TIMEOUT_MS,
+              'tenant_host_resolve_slug_timeout',
             ).catch(() => null);
 
             if (!targetHost) {

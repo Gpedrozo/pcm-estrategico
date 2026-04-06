@@ -11,7 +11,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { z } from 'zod';
-import { SESSION_TRANSFER_REDIRECT_STORAGE_KEY } from '@/lib/authConstants';
+import { SESSION_TRANSFER_REDIRECT_STORAGE_KEY, INACTIVITY_NOTICE_STORAGE_KEY } from '@/lib/authConstants';
 
 const loginSchema = z.object({
   email: z
@@ -59,7 +59,21 @@ export default function OwnerLogin() {
     const reason = params.get('reason');
 
     if (reason === 'inactivity') {
-      setLogoutNotice('Usuário desconectado por inatividade (10 minutos sem atividade). Faça login novamente.');
+      let configuredMinutes = 10;
+      try {
+        const rawNotice = window.localStorage.getItem(INACTIVITY_NOTICE_STORAGE_KEY);
+        if (rawNotice) {
+          const parsed = JSON.parse(rawNotice) as { minutes?: number };
+          const minutes = Number(parsed?.minutes ?? 10);
+          if (Number.isFinite(minutes) && minutes > 0) {
+            configuredMinutes = Math.trunc(minutes);
+          }
+        }
+        window.localStorage.removeItem(INACTIVITY_NOTICE_STORAGE_KEY);
+      } catch {
+        // noop
+      }
+      setLogoutNotice(`Usuário desconectado por inatividade (${configuredMinutes} minuto${configuredMinutes > 1 ? 's' : ''} sem atividade). Faça login novamente.`);
     } else if (reason === 'window_closed') {
       setLogoutNotice('Sessão encerrada ao fechar a página. Faça login novamente para continuar.');
     }

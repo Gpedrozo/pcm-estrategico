@@ -3,6 +3,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { resolveEmpresaSlug } from '@/lib/security';
 import { logger } from '@/lib/logger';
+import { TENANT_RESOLVE_TOTAL_TIMEOUT_MS } from '@/lib/authConstants';
 
 const TENANT_SLUG_REGEX = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 const TENANT_RESOLVE_MAX_RETRIES = 3;
@@ -250,7 +251,22 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
       setIsLoading(false);
     }
 
-    loadTenant();
+    const loadWithCeiling = async () => {
+      const ceilingTimer = window.setTimeout(() => {
+        if (!isMounted) return;
+        logger.warn('tenant_resolution_total_timeout', { tenantSlug });
+        setError('Timeout na resolução do tenant. Recarregue a página.');
+        setIsLoading(false);
+      }, TENANT_RESOLVE_TOTAL_TIMEOUT_MS);
+
+      try {
+        await loadTenant();
+      } finally {
+        window.clearTimeout(ceilingTimer);
+      }
+    };
+
+    loadWithCeiling();
 
     return () => {
       isMounted = false;

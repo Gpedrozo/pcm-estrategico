@@ -80,6 +80,7 @@ async function createSessionTransferCodeViaHttpFallback(
         target_host: targetHost,
         ttl_seconds: 45,
       }),
+      signal: AbortSignal.timeout(15_000),
     });
 
     const rawText = await response.text().catch(() => '');

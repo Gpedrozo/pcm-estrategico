@@ -43,6 +43,7 @@ export async function signInThroughOwnerEdge(email: string, password: string): P
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({ email, password }),
+      signal: AbortSignal.timeout(15_000),
     });
 
     const payload = await response.json().catch(() => null);
