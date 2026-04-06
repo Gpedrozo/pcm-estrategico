@@ -56,7 +56,9 @@ type Payload = {
     | "asaas_link_subscription"
     | "asaas_sync_subscription"
     | "list_subscription_payments"
-    | "enforce_subscription_expiry";
+    | "enforce_subscription_expiry"
+    | "set_asaas_api_key"
+    | "get_asaas_config";
   empresa_id?: string;
   include_deleted?: boolean;
   company?: {
@@ -290,6 +292,8 @@ const SUPPORTED_OWNER_ACTIONS: Payload["action"][] = [
   "asaas_sync_subscription",
   "list_subscription_payments",
   "enforce_subscription_expiry",
+  "set_asaas_api_key",
+  "get_asaas_config",
 ];
 
 function resolveRateLimitConfig(action: Payload["action"]) {
@@ -709,10 +713,42 @@ function contractTemplate(input: {
 }
 
 const ASAAS_API_BASE_URL = (Deno.env.get("ASAAS_API_BASE_URL") ?? "https://api-sandbox.asaas.com/v3").trim().replace(/\/+$/, "");
-const ASAAS_API_KEY = (Deno.env.get("ASAAS_API_KEY") ?? "").trim();
+const ASAAS_API_KEY_ENV = (Deno.env.get("ASAAS_API_KEY") ?? "").trim();
+
+// Dynamic ASAAS key: check DB first (platform config), fallback to env
+let _asaasApiKeyFromDb: string | null = null;
+let _asaasDbKeyChecked = false;
+
+async function resolveAsaasApiKey(admin: ReturnType<typeof adminClient>): Promise<string> {
+  // Check DB config (allows setting from UI)
+  if (!_asaasDbKeyChecked) {
+    try {
+      const { data } = await admin
+        .from("configuracoes_sistema")
+        .select("valor")
+        .is("empresa_id", null)
+        .eq("chave", "platform.asaas_api_key")
+        .maybeSingle();
+      if (data?.valor) {
+        let val = data.valor;
+        if (typeof val === "string") {
+          try { val = JSON.parse(val); } catch { /* keep as string */ }
+        }
+        _asaasApiKeyFromDb = String(val ?? "").trim();
+      }
+    } catch { /* ignore */ }
+    _asaasDbKeyChecked = true;
+  }
+  return _asaasApiKeyFromDb || ASAAS_API_KEY_ENV;
+}
 
 function isAsaasConfigured() {
-  return Boolean(ASAAS_API_KEY);
+  return Boolean(_asaasApiKeyFromDb || ASAAS_API_KEY_ENV);
+}
+
+async function isAsaasConfiguredAsync(admin: ReturnType<typeof adminClient>) {
+  const key = await resolveAsaasApiKey(admin);
+  return Boolean(key);
 }
 
 function normalizeDigits(value?: string | null) {
@@ -752,15 +788,16 @@ function mapAsaasPaymentStatus(status?: string | null) {
   return "pending";
 }
 
-async function asaasRequest(path: string, init: RequestInit = {}) {
-  if (!isAsaasConfigured()) {
+async function asaasRequest(path: string, init: RequestInit = {}, admin?: ReturnType<typeof adminClient>) {
+  const apiKey = admin ? await resolveAsaasApiKey(admin) : (_asaasApiKeyFromDb || ASAAS_API_KEY_ENV);
+  if (!apiKey) {
     throw new Error("ASAAS_API_KEY nao configurada.");
   }
 
   const response = await fetch(`${ASAAS_API_BASE_URL}${path}`, {
     ...init,
     headers: {
-      access_token: ASAAS_API_KEY,
+      access_token: apiKey,
       "Content-Type": "application/json",
       ...(init.headers ?? {}),
     },
@@ -794,7 +831,7 @@ async function ensureAsaasCustomer(admin: ReturnType<typeof adminClient>, empres
   const externalReference = `empresa:${empresaId}`;
   const existingCustomerResponse = await asaasRequest(`/customers?externalReference=${encodeURIComponent(externalReference)}&limit=1`, {
     method: "GET",
-  });
+  }, admin);
 
   const existingCustomer = Array.isArray(existingCustomerResponse?.data) ? existingCustomerResponse.data[0] : null;
   if (existingCustomer?.id) return String(existingCustomer.id);
@@ -825,7 +862,7 @@ async function ensureAsaasCustomer(admin: ReturnType<typeof adminClient>, empres
   const created = await asaasRequest("/customers", {
     method: "POST",
     body: JSON.stringify(customerPayload),
-  });
+  }, admin);
 
   if (!created?.id) {
     throw new Error("Asaas nao retornou id do cliente.");
@@ -842,11 +879,11 @@ async function syncAsaasSubscriptionSnapshot(admin: ReturnType<typeof adminClien
 
   const remoteSubscription = await asaasRequest(`/subscriptions/${encodeURIComponent(asaasSubscriptionId)}`, {
     method: "GET",
-  });
+  }, admin);
 
   const paymentList = await asaasRequest(`/payments?subscription=${encodeURIComponent(asaasSubscriptionId)}&limit=20`, {
     method: "GET",
-  });
+  }, admin);
 
   const payments = Array.isArray(paymentList?.data) ? paymentList.data : [];
   const latestPayment = payments[0] ?? null;
@@ -942,7 +979,7 @@ async function createOrSyncAsaasSubscription(admin: ReturnType<typeof adminClien
       description: `PCM assinatura ${subscriptionRow?.id}`,
       externalReference: `subscription:${subscriptionRow?.id}`,
     }),
-  });
+  }, admin);
 
   const mapped = mapAsaasSubscriptionStatus(createdRemote?.status);
 
@@ -1607,11 +1644,12 @@ Deno.serve(async (req) => {
   const body = rawBody;
 
   if (body.action === "health_check") {
+    const asaasOk = await isAsaasConfiguredAsync(admin);
     return ok({
       service: "owner-portal-admin",
       status: "ok",
       version: "2026-03-11-owner-health-v1",
-      asaas_configured: isAsaasConfigured(),
+      asaas_configured: asaasOk,
       asaas_base_url: ASAAS_API_BASE_URL,
       cloudflare_provisioning: {
         pages_auto_domain_enabled: CF_PAGES_AUTO_DOMAIN_ENABLED,
@@ -3440,7 +3478,7 @@ Deno.serve(async (req) => {
     if (!linked?.id) return fail("Subscription not found", 404, null, req);
 
     let sync: Record<string, unknown> | null = null;
-    if (isAsaasConfigured() && linked.asaas_subscription_id) {
+    if ((await isAsaasConfiguredAsync(admin)) && linked.asaas_subscription_id) {
       try {
         sync = await syncAsaasSubscriptionSnapshot(admin, linked);
       } catch (syncError: any) {
@@ -3473,7 +3511,7 @@ Deno.serve(async (req) => {
   }
 
   if (body.action === "asaas_sync_subscription") {
-    if (!isAsaasConfigured()) {
+    if (!(await isAsaasConfiguredAsync(admin))) {
       return fail("ASAAS_API_KEY nao configurada.", 400, null, req);
     }
 
@@ -3545,7 +3583,8 @@ Deno.serve(async (req) => {
     let asaas: Record<string, unknown> | null = null;
     let asaasWarning: string | null = null;
 
-    if (isAsaasConfigured() && isStrictOwnerMaster) {
+    const asaasReady = await isAsaasConfiguredAsync(admin);
+    if (asaasReady && isStrictOwnerMaster) {
       try {
         asaas = await createOrSyncAsaasSubscription(admin, data);
       } catch (asaasError: any) {
@@ -3562,7 +3601,7 @@ Deno.serve(async (req) => {
           },
         });
       }
-    } else if (isAsaasConfigured() && !isStrictOwnerMaster) {
+    } else if (asaasReady && !isStrictOwnerMaster) {
       asaasWarning = "Integracao Asaas restrita ao OWNER_MASTER configurado.";
     }
 
@@ -3963,6 +4002,77 @@ Deno.serve(async (req) => {
     }
 
     return ok({ success: true }, 200, req);
+  }
+
+  // ── ASAAS API Key management (stored in configuracoes_sistema) ───────────
+  if (body.action === "get_asaas_config") {
+    const key = await resolveAsaasApiKey(admin);
+    const masked = key ? `${key.slice(0, 12)}...${"*".repeat(8)}` : "";
+    return ok({
+      configured: Boolean(key),
+      masked_key: masked,
+      base_url: ASAAS_API_BASE_URL,
+      environment: ASAAS_API_BASE_URL.includes("sandbox") ? "sandbox" : "production",
+    }, 200, req);
+  }
+
+  if (body.action === "set_asaas_api_key") {
+    if (!isOwnerMaster) return fail("Apenas OWNER_MASTER pode configurar a chave ASAAS.", 403, null, req);
+
+    const apiKey = String(body.asaas_api_key ?? body.api_key ?? "").trim();
+    if (!apiKey) return fail("asaas_api_key is required", 400, null, req);
+
+    // Validate key format (basic check)
+    if (apiKey.length < 20) return fail("Chave API parece invalida (muito curta).", 400, null, req);
+
+    // Test the key against ASAAS API before saving
+    try {
+      const testResponse = await fetch(`${ASAAS_API_BASE_URL}/finance/getCurrentBalance`, {
+        headers: { access_token: apiKey, "Content-Type": "application/json" },
+      });
+      if (!testResponse.ok && testResponse.status === 401) {
+        return fail("Chave API rejeitada pelo ASAAS (401 Unauthorized). Verifique se a chave esta correta.", 400, null, req);
+      }
+    } catch {
+      // Network error — save anyway, user can re-test
+    }
+
+    // Save to configuracoes_sistema
+    const { error } = await admin
+      .from("configuracoes_sistema")
+      .upsert(
+        { empresa_id: null, chave: "platform.asaas_api_key", valor: JSON.stringify(apiKey) },
+        { onConflict: "empresa_id,chave", ignoreDuplicates: false },
+      );
+
+    if (error) {
+      // Fallback: try update
+      const { error: updErr } = await admin
+        .from("configuracoes_sistema")
+        .update({ valor: JSON.stringify(apiKey) })
+        .is("empresa_id", null)
+        .eq("chave", "platform.asaas_api_key");
+      if (updErr) return fail(`Falha ao salvar chave: ${updErr.message}`, 400, null, req);
+    }
+
+    // Refresh in-memory cache
+    _asaasApiKeyFromDb = apiKey;
+    _asaasDbKeyChecked = true;
+
+    await logAuditEvent(admin, {
+      empresaId: null,
+      userId: auth.user.id,
+      actionType: "OWNER_SET_ASAAS_API_KEY",
+      severity: "warn",
+      source: "owner-portal-admin",
+      details: { masked_key: `${apiKey.slice(0, 12)}...`, environment: ASAAS_API_BASE_URL.includes("sandbox") ? "sandbox" : "production" },
+    });
+
+    return ok({
+      success: true,
+      configured: true,
+      environment: ASAAS_API_BASE_URL.includes("sandbox") ? "sandbox" : "production",
+    }, 200, req);
   }
 
   if (body.action === "set_user_inactivity_timeout") {

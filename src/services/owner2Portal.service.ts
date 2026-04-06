@@ -47,6 +47,8 @@ export type Owner2Action =
   | 'asaas_sync_subscription'
   | 'list_subscription_payments'
   | 'enforce_subscription_expiry'
+  | 'set_asaas_api_key'
+  | 'get_asaas_config'
 
 export type Owner2Payload = {
   action: Owner2Action
