@@ -3846,7 +3846,8 @@ Deno.serve(async (req) => {
   }
 
   if (body.action === "update_platform_contact") {
-    if (!body.config) return fail("config object is required", 400, null, req);
+    const config = body.config ?? body.payload ?? {};
+    if (!config || typeof config !== "object" || Object.keys(config).length === 0) return fail("config object is required", 400, null, req);
 
     const allowedKeys = [
       "contact_email",
@@ -3857,16 +3858,13 @@ Deno.serve(async (req) => {
       "alert_days_before",
     ];
 
-    const rows: { empresa_id: null; chave: string; valor: unknown; tipo: string; categoria: string; descricao: string }[] = [];
-    for (const [key, value] of Object.entries(body.config as Record<string, unknown>)) {
+    const rows: { empresa_id: null; chave: string; valor: unknown }[] = [];
+    for (const [key, value] of Object.entries(config as Record<string, unknown>)) {
       if (!allowedKeys.includes(key)) continue;
       rows.push({
         empresa_id: null,
         chave: `platform.${key}`,
         valor: JSON.stringify(value),
-        tipo: typeof value === "number" ? "NUMBER" : "STRING",
-        categoria: "platform",
-        descricao: `Platform config: ${key}`,
       });
     }
 
