@@ -2407,6 +2407,31 @@ Deno.serve(async (req) => {
       }
     }
 
+    // Pre-populate tenant.operational_profile so ConfiguracoesEmpresa page starts filled
+    const tenantOperationalValue = {
+      endereco: body.company.endereco ?? null,
+      telefone: body.company.telefone ?? null,
+      email: body.company.email ?? null,
+      site: null,
+      responsavel_nome: body.company.responsavel ?? null,
+      responsavel_cargo: null,
+      observacoes: null,
+    };
+
+    const tenantOpsUpsert = await admin.from("configuracoes_sistema").upsert({
+      empresa_id: company.id,
+      chave: "tenant.operational_profile",
+      valor: tenantOperationalValue,
+    }, { onConflict: "empresa_id,chave" });
+
+    if (tenantOpsUpsert.error) {
+      // Non-critical: log warning but don't rollback
+      onboardingWarning = mergeWarnings(
+        onboardingWarning,
+        `tenant.operational_profile não pôde ser pré-populado. (${tenantOpsUpsert.error.message})`,
+      );
+    }
+
     const managedDomain = buildManagedTenantDomain(slug);
     if (managedDomain) {
       const domainPayload = {
@@ -2954,6 +2979,33 @@ Deno.serve(async (req) => {
         segmento: body.company.segmento ?? null,
       },
     }, { onConflict: "empresa_id,chave" });
+
+    // Sync tenant.operational_profile with owner cadastro data (merge, don't overwrite user edits)
+    {
+      const { data: existingOps } = await admin
+        .from("configuracoes_sistema")
+        .select("valor")
+        .eq("empresa_id", body.empresa_id)
+        .eq("chave", "tenant.operational_profile")
+        .maybeSingle();
+
+      const prev = (existingOps?.valor ?? {}) as Record<string, unknown>;
+      const synced = {
+        endereco: body.company.endereco ?? prev.endereco ?? null,
+        telefone: body.company.telefone ?? prev.telefone ?? null,
+        email: body.company.email ?? prev.email ?? null,
+        site: prev.site ?? null,
+        responsavel_nome: body.company.responsavel ?? prev.responsavel_nome ?? null,
+        responsavel_cargo: prev.responsavel_cargo ?? null,
+        observacoes: prev.observacoes ?? null,
+      };
+
+      await admin.from("configuracoes_sistema").upsert({
+        empresa_id: body.empresa_id,
+        chave: "tenant.operational_profile",
+        valor: synced,
+      }, { onConflict: "empresa_id,chave" });
+    }
 
     const inactivityMinutes =
       typeof body.company.inactivity_timeout_minutes === "number" && Number.isFinite(body.company.inactivity_timeout_minutes)

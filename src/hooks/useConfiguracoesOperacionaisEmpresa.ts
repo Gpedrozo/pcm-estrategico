@@ -31,9 +31,39 @@ export function useConfiguracoesOperacionaisEmpresa() {
 
       if (error) throw error
 
+      // If tenant.operational_profile exists, return it
+      if (data?.valor) {
+        return {
+          id: data.id ?? null,
+          valor: data.valor as ConfiguracoesOperacionaisEmpresa,
+        }
+      }
+
+      // Fallback: try to bootstrap from owner.company_profile (for companies created before this sync)
+      const { data: ownerProfile } = await supabase
+        .from('configuracoes_sistema')
+        .select('valor')
+        .eq('empresa_id', tenantId)
+        .eq('chave', 'owner.company_profile')
+        .maybeSingle()
+
+      if (ownerProfile?.valor) {
+        const op = ownerProfile.valor as Record<string, unknown>
+        const bootstrapped: ConfiguracoesOperacionaisEmpresa = {
+          endereco: (op.endereco as string) ?? undefined,
+          telefone: (op.telefone as string) ?? undefined,
+          email: (op.email as string) ?? undefined,
+          responsavel_nome: (op.responsavel as string) ?? undefined,
+        }
+        return {
+          id: data?.id ?? null,
+          valor: bootstrapped,
+        }
+      }
+
       return {
         id: data?.id ?? null,
-        valor: (data?.valor as ConfiguracoesOperacionaisEmpresa | null) ?? null,
+        valor: null,
       }
     },
     enabled: Boolean(tenantId),
