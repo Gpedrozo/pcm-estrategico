@@ -5,8 +5,9 @@ import { useTenant } from '@/contexts/TenantContext';
 import { useAuth } from '@/contexts/AuthContext';
 
 export interface DadosEmpresa {
+  /** empresa_id is the PK in production; `id` kept as alias for legacy compat */
   id: string;
-  empresa_id?: string | null;
+  empresa_id: string;
   razao_social: string;
   nome_fantasia: string | null;
   cnpj: string | null;
@@ -21,12 +22,6 @@ export interface DadosEmpresa {
   site: string | null;
   responsavel_nome: string | null;
   responsavel_cargo: string | null;
-  logo_principal_url: string | null;
-  logo_login_url: string | null;
-  logo_menu_url: string | null;
-  logo_os_url: string | null;
-  logo_pdf_url: string | null;
-  logo_relatorio_url: string | null;
   logo_url: string | null;
   logo_os_url: string | null;
   created_at: string;
@@ -54,8 +49,26 @@ export function useDadosEmpresa() {
 
       if (error) throw error;
 
+      // Fetch logo URLs stored in configuracoes_sistema (dados_empresa may not have logo columns)
+      const { data: logosConfig } = await supabase
+        .from('configuracoes_sistema')
+        .select('valor')
+        .eq('empresa_id', tenantId)
+        .eq('chave', 'tenant.logos')
+        .maybeSingle();
+
+      const logos = (logosConfig?.valor ?? {}) as Record<string, string | null>;
+
       if (data) {
-        return data as unknown as DadosEmpresa;
+        const row = data as Record<string, unknown>;
+        const empresaId = (row.empresa_id ?? row.id ?? tenantId) as string;
+        return {
+          ...row,
+          id: empresaId,
+          empresa_id: empresaId,
+          logo_url: (row.logo_url as string | null) ?? logos.logo_url ?? null,
+          logo_os_url: (row.logo_os_url as string | null) ?? logos.logo_os_url ?? null,
+        } as unknown as DadosEmpresa;
       }
 
       // Bootstrap tenant company profile from owner-side base company record when missing.
@@ -82,7 +95,20 @@ export function useDadosEmpresa() {
         .maybeSingle();
 
       if (insertError) throw insertError;
-      return (inserted as unknown as DadosEmpresa) ?? null;
+
+      if (inserted) {
+        const row = inserted as Record<string, unknown>;
+        const empresaId = (row.empresa_id ?? row.id ?? tenantId) as string;
+        return {
+          ...row,
+          id: empresaId,
+          empresa_id: empresaId,
+          logo_url: logos.logo_url ?? null,
+          logo_os_url: logos.logo_os_url ?? null,
+        } as unknown as DadosEmpresa;
+      }
+
+      return null;
     },
     enabled: Boolean(tenant?.id),
   });
@@ -99,11 +125,12 @@ export function useUpdateDadosEmpresa() {
         throw new Error('Edição de dados legais da empresa permitida somente no portal OWNER.');
       }
 
-      const { id, ...updates } = payload;
+      const { id, empresa_id, ...updates } = payload;
+      const eqId = empresa_id ?? id;
       const { data, error } = await supabase
         .from('dados_empresa')
         .update(updates)
-        .eq('id', id)
+        .eq('empresa_id', eqId)
         .select()
         .single();
 

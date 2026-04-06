@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Skeleton } from '@/components/ui/skeleton'
-import { Building2, Lock, Save, Upload, Trash2 } from 'lucide-react'
+import { Building2, Lock, Save, Upload, Trash2, Image } from 'lucide-react'
 import { useDadosEmpresa, uploadLogo } from '@/hooks/useDadosEmpresa'
 import {
   useConfiguracoesOperacionaisEmpresa,
@@ -14,7 +14,8 @@ import {
 } from '@/hooks/useConfiguracoesOperacionaisEmpresa'
 import { toast } from '@/hooks/use-toast'
 import { supabase } from '@/integrations/supabase/client'
-import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useAuth } from '@/contexts/AuthContext'
 
 const emptyForm: ConfiguracoesOperacionaisEmpresa = {
   endereco: '',
@@ -30,35 +31,65 @@ export default function ConfiguracoesEmpresa() {
   const { data: dadosEmpresa, isLoading: loadingEmpresa } = useDadosEmpresa()
   const { data: operacionais, isLoading: loadingOperacionais } = useConfiguracoesOperacionaisEmpresa()
   const salvarOperacionais = useSalvarConfiguracoesOperacionaisEmpresa()
+  const { tenantId } = useAuth()
   const queryClient = useQueryClient()
 
   const [form, setForm] = useState<ConfiguracoesOperacionaisEmpresa>(emptyForm)
 
+  // --- Logo management via configuracoes_sistema (tenant.logos) ---
+  const logosQuery = useQuery({
+    queryKey: ['tenant-logos', tenantId],
+    queryFn: async () => {
+      if (!tenantId) return { logo_url: null as string | null, logo_os_url: null as string | null }
+      const { data } = await supabase
+        .from('configuracoes_sistema')
+        .select('valor')
+        .eq('empresa_id', tenantId)
+        .eq('chave', 'tenant.logos')
+        .maybeSingle()
+      const val = (data?.valor ?? {}) as Record<string, string | null>
+      return {
+        logo_url: val.logo_url ?? null,
+        logo_os_url: val.logo_os_url ?? null,
+      }
+    },
+    enabled: Boolean(tenantId),
+  })
+
+  const logos = logosQuery.data ?? { logo_url: null, logo_os_url: null }
+
   const salvarLogoMutation = useMutation({
     mutationFn: async ({ logoKey, url }: { logoKey: 'logo_url' | 'logo_os_url'; url: string | null }) => {
-      if (!dadosEmpresa?.id) throw new Error('Dados da empresa ainda nao carregados.')
+      if (!tenantId) throw new Error('Tenant não identificado.')
+
+      // Read current logos, merge with new value
+      const { data: current } = await supabase
+        .from('configuracoes_sistema')
+        .select('valor')
+        .eq('empresa_id', tenantId)
+        .eq('chave', 'tenant.logos')
+        .maybeSingle()
+
+      const prev = (current?.valor ?? {}) as Record<string, string | null>
+      const merged = { ...prev, [logoKey]: url }
 
       const { error } = await supabase
-        .from('dados_empresa')
-        .update({ [logoKey]: url })
-        .eq('id', dadosEmpresa.id)
+        .from('configuracoes_sistema')
+        .upsert(
+          { empresa_id: tenantId, chave: 'tenant.logos', valor: merged, updated_at: new Date().toISOString() },
+          { onConflict: 'empresa_id,chave' },
+        )
 
       if (error) throw error
     },
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['tenant-logos', tenantId] })
       queryClient.invalidateQueries({ queryKey: ['dados-empresa'] })
-      toast({
-        title: 'Logo atualizada',
-        description: 'Logomarca salva com sucesso.',
-      })
+      toast({ title: 'Logo atualizada', description: 'Logomarca salva com sucesso.' })
     },
     onError: (error: unknown) => {
       const message = error instanceof Error ? error.message : 'Falha ao atualizar logomarca.'
-      toast({
-        title: 'Erro ao atualizar logo',
-        description: message,
-        variant: 'destructive',
-      })
+      toast({ title: 'Erro ao atualizar logo', description: message, variant: 'destructive' })
     },
   })
 
@@ -131,7 +162,7 @@ export default function ConfiguracoesEmpresa() {
     })
   }
 
-  const isLoading = loadingEmpresa || loadingOperacionais
+  const isLoading = loadingEmpresa || loadingOperacionais || logosQuery.isLoading
 
   if (isLoading) {
     return (
@@ -176,7 +207,7 @@ export default function ConfiguracoesEmpresa() {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-base">
-            <Building2 className="h-4 w-4" />
+            <Image className="h-4 w-4" />
             Logomarcas do Tenant (empresa cliente)
           </CardTitle>
         </CardHeader>
@@ -185,8 +216,8 @@ export default function ConfiguracoesEmpresa() {
             <div className="space-y-2 rounded-lg border border-border p-4">
               <Label>Logo Principal (menu/login)</Label>
               <div className="h-24 rounded-md border border-dashed border-border bg-muted/30 flex items-center justify-center overflow-hidden">
-                {dadosEmpresa?.logo_url ? (
-                  <img src={dadosEmpresa.logo_url} alt="Logo principal" className="max-h-full max-w-full object-contain p-2" />
+                {logos.logo_url ? (
+                  <img src={logos.logo_url} alt="Logo principal" className="max-h-full max-w-full object-contain p-2" />
                 ) : (
                   <span className="text-xs text-muted-foreground">Sem logomarca</span>
                 )}
@@ -204,7 +235,7 @@ export default function ConfiguracoesEmpresa() {
                     />
                   </label>
                 </Button>
-                {dadosEmpresa?.logo_url && (
+                {logos.logo_url && (
                   <Button
                     variant="ghost"
                     size="sm"
@@ -221,8 +252,8 @@ export default function ConfiguracoesEmpresa() {
             <div className="space-y-2 rounded-lg border border-border p-4">
               <Label>Logo para O.S / PDF</Label>
               <div className="h-24 rounded-md border border-dashed border-border bg-muted/30 flex items-center justify-center overflow-hidden">
-                {dadosEmpresa?.logo_os_url ? (
-                  <img src={dadosEmpresa.logo_os_url} alt="Logo O.S" className="max-h-full max-w-full object-contain p-2" />
+                {logos.logo_os_url ? (
+                  <img src={logos.logo_os_url} alt="Logo O.S" className="max-h-full max-w-full object-contain p-2" />
                 ) : (
                   <span className="text-xs text-muted-foreground">Sem logomarca</span>
                 )}
@@ -240,7 +271,7 @@ export default function ConfiguracoesEmpresa() {
                     />
                   </label>
                 </Button>
-                {dadosEmpresa?.logo_os_url && (
+                {logos.logo_os_url && (
                   <Button
                     variant="ghost"
                     size="sm"
