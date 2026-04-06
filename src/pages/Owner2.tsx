@@ -166,6 +166,11 @@ export default function Owner() {
   const [platformAlertDays, setPlatformAlertDays] = useState('7')
   const [platformContactLoaded, setPlatformContactLoaded] = useState(false)
 
+  // ASAAS config state
+  const [asaasApiKeyInput, setAsaasApiKeyInput] = useState('')
+  const [asaasApiKeySaved, setAsaasApiKeySaved] = useState(false)
+  const [asaasBaseUrl, setAsaasBaseUrl] = useState('')
+
   const [ownerName, setOwnerName] = useState('')
   const [ownerEmail, setOwnerEmail] = useState('')
   const [ownerPassword, setOwnerPassword] = useState('')
@@ -254,6 +259,7 @@ export default function Owner() {
         .then((res: any) => {
           const hasKey = Boolean(res?.asaas_configured ?? res?.integrations?.asaas)
           setAsaasHealthOk(hasKey)
+          if (res?.asaas_base_url) setAsaasBaseUrl(String(res.asaas_base_url))
         })
         .catch(() => setAsaasHealthOk(false))
     }
@@ -2172,6 +2178,85 @@ export default function Owner() {
                   Salvar contato comercial
                 </button>
               </SurfaceCard>
+
+              {isOwnerMaster && (
+                <SurfaceCard title="Integracao ASAAS" subtitle="Configure a chave de API do gateway de pagamento">
+                  <div className="space-y-3">
+                    <div className={`flex items-center gap-3 rounded-xl border p-3 ${asaasHealthOk ? 'border-emerald-200 bg-emerald-50' : asaasHealthOk === false ? 'border-amber-200 bg-amber-50' : 'border-slate-200 bg-slate-50'}`}>
+                      {asaasHealthOk === null ? (
+                        <><Loader2 className="h-5 w-5 animate-spin text-slate-400" /><div><p className="text-sm font-semibold text-slate-700">Verificando...</p></div></>
+                      ) : asaasHealthOk ? (
+                        <><CheckCircle2 className="h-5 w-5 text-emerald-600" /><div><p className="text-sm font-semibold text-emerald-700">API Key configurada</p><p className="text-xs text-emerald-600">{asaasBaseUrl ? `Ambiente: ${asaasBaseUrl.includes('sandbox') ? 'SANDBOX (testes)' : 'PRODUCAO'}` : 'Conectado'}</p></div></>
+                      ) : (
+                        <><AlertTriangle className="h-5 w-5 text-amber-600" /><div><p className="text-sm font-semibold text-amber-700">API Key nao configurada</p><p className="text-xs text-amber-600">Configure abaixo para ativar cobrancas automaticas.</p></div></>
+                      )}
+                    </div>
+
+                    <div>
+                      <label className="text-xs font-medium text-slate-600">Chave API do ASAAS</label>
+                      <input
+                        className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-2 py-2 font-mono text-sm"
+                        type="password"
+                        value={asaasApiKeyInput}
+                        onChange={(e) => { setAsaasApiKeyInput(e.target.value); setAsaasApiKeySaved(false) }}
+                        placeholder="$aact_YTU5YTE0M2M2MWM2..."
+                      />
+                      <p className="mt-1 text-[11px] text-slate-400">Encontre em: ASAAS &gt; Configuracoes &gt; Integracao &gt; API Key</p>
+                    </div>
+
+                    <div>
+                      <label className="text-xs font-medium text-slate-600">Ambiente</label>
+                      <div className="mt-1 flex items-center gap-4">
+                        <span className={`inline-flex items-center rounded-full border px-3 py-1 text-xs font-semibold ${asaasBaseUrl.includes('sandbox') || !asaasHealthOk ? 'bg-amber-100 text-amber-700 border-amber-200' : 'bg-emerald-100 text-emerald-700 border-emerald-200'}`}>
+                          {asaasBaseUrl.includes('sandbox') || !asaasHealthOk ? 'SANDBOX (testes)' : 'PRODUCAO'}
+                        </span>
+                        <span className="text-[11px] text-slate-400">Para trocar o ambiente, altere ASAAS_API_BASE_URL</span>
+                      </div>
+                    </div>
+
+                    {asaasApiKeyInput.trim() && (
+                      <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+                        <p className="text-xs font-semibold text-slate-700">Comando para aplicar:</p>
+                        <div className="mt-2 flex items-center gap-2">
+                          <code className="block flex-1 overflow-x-auto rounded-lg border border-slate-300 bg-white px-3 py-2 font-mono text-xs text-slate-800">
+                            npx supabase secrets set ASAAS_API_KEY={asaasApiKeyInput.trim()}
+                          </code>
+                          <button
+                            className="shrink-0 rounded-lg border border-sky-300 bg-sky-50 px-3 py-2 text-xs font-semibold text-sky-700 hover:bg-sky-100"
+                            onClick={() => {
+                              navigator.clipboard.writeText(`npx supabase secrets set ASAAS_API_KEY=${asaasApiKeyInput.trim()}`)
+                              setAsaasApiKeySaved(true)
+                              setTimeout(() => setAsaasApiKeySaved(false), 3000)
+                            }}
+                          >
+                            {asaasApiKeySaved ? 'Copiado!' : 'Copiar'}
+                          </button>
+                        </div>
+                        <p className="mt-2 text-[11px] text-slate-400">Cole este comando no terminal do projeto (clone local) e execute. Depois clique em "Verificar" para confirmar.</p>
+                      </div>
+                    )}
+
+                    <button
+                      className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+                      disabled={busy}
+                      onClick={() => {
+                        setAsaasHealthOk(null)
+                        execute.mutateAsync({ action: 'health_check' as any, payload: {} })
+                          .then((res: any) => {
+                            const hasKey = Boolean(res?.asaas_configured)
+                            setAsaasHealthOk(hasKey)
+                            if (res?.asaas_base_url) setAsaasBaseUrl(String(res.asaas_base_url))
+                            if (hasKey) setFeedback('ASAAS configurado com sucesso!')
+                            else setError('ASAAS_API_KEY ainda nao foi detectada. Execute o comando e tente novamente.')
+                          })
+                          .catch(() => { setAsaasHealthOk(false); setError('Falha ao verificar status do ASAAS.') })
+                      }}
+                    >
+                      Verificar conexao ASAAS
+                    </button>
+                  </div>
+                </SurfaceCard>
+              )}
             </div>
           )}
 

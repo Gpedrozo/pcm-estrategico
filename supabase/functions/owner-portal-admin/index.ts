@@ -1611,6 +1611,8 @@ Deno.serve(async (req) => {
       service: "owner-portal-admin",
       status: "ok",
       version: "2026-03-11-owner-health-v1",
+      asaas_configured: isAsaasConfigured(),
+      asaas_base_url: ASAAS_API_BASE_URL,
       cloudflare_provisioning: {
         pages_auto_domain_enabled: CF_PAGES_AUTO_DOMAIN_ENABLED,
         pages_provision_required: CF_PAGES_PROVISION_REQUIRED,
