@@ -4,6 +4,7 @@ import { useToast } from '@/hooks/use-toast';
 import { upsertMaintenanceSchedule } from '@/services/maintenanceSchedule';
 import { insertWithColumnFallback, updateWithColumnFallback } from '@/lib/supabaseCompat';
 import { useAuth } from '@/contexts/AuthContext';
+import { writeAuditLog } from '@/lib/audit';
 
 export interface InspecaoRow {
   id: string;
@@ -125,9 +126,10 @@ export function useCreateInspecao() {
 
       return data as InspecaoRow;
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['inspecoes', tenantId] });
       queryClient.invalidateQueries({ queryKey: ['document-sequences'] });
+      writeAuditLog({ action: 'CREATE_INSPECAO', table: 'inspecoes', recordId: data?.id, empresaId: tenantId, source: 'useInspecoes', metadata: { rota_nome: data?.rota_nome } });
       toast({
         title: 'Inspeção iniciada',
         description: 'A inspeção foi registrada com sucesso.',
@@ -179,8 +181,9 @@ export function useUpdateInspecao() {
 
       return data as InspecaoRow;
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['inspecoes', tenantId] });
+      writeAuditLog({ action: 'UPDATE_INSPECAO', table: 'inspecoes', recordId: data?.id, empresaId: tenantId, source: 'useInspecoes', metadata: { status: data?.status } });
       toast({
         title: 'Inspeção atualizada',
         description: 'A inspeção foi atualizada com sucesso.',
@@ -242,9 +245,10 @@ export function useCreateAnomalia() {
         } as Record<string, unknown>,
       ) as Promise<AnomaliaRow>;
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['anomalias'] });
       queryClient.invalidateQueries({ queryKey: ['inspecoes'] });
+      writeAuditLog({ action: 'CREATE_ANOMALIA', table: 'anomalias_inspecao', recordId: data?.id, empresaId: tenantId, source: 'useInspecoes', metadata: { severidade: data?.severidade } });
       toast({
         title: 'Anomalia registrada',
         description: 'A anomalia foi registrada com sucesso.',

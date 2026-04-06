@@ -11,6 +11,7 @@ import {
 import { useNavigation } from '@react-navigation/native';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
+import { writeAuditLog } from '../lib/audit';
 import { COLORS, SIZES, SHADOWS } from '../theme';
 import { showSuccess, showError, showWarning } from '../lib/feedback';
 import type { Equipamento, SolicitacaoImpacto, SolicitacaoClassificacao } from '../types';
@@ -126,6 +127,7 @@ export default function CriarSolicitacaoScreen() {
       if (error) throw error;
 
       resetForm();
+      writeAuditLog({ action: 'CREATE_SOLICITACAO_MOBILE', table: 'solicitacoes_manutencao', empresaId, source: 'CriarSolicitacaoScreen', metadata: { numero_solicitacao: nextNum, classificacao, impacto } });
       showSuccess(
         `Solicitação #${String(nextNum).padStart(4, '0')} criada!\nSLA: ${slaHoras}h — Prazo: ${dataLimite.toLocaleString('pt-BR')}`,
         () => nav.goBack(),

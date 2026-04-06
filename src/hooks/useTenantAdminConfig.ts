@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { writeAuditLog } from '@/lib/audit';
 
 export function useTenantAdminConfig<T>(configKey: string, fallback: T) {
   const { tenantId } = useAuth();
@@ -48,6 +49,7 @@ export function useSaveTenantAdminConfig<T>() {
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['tenant-admin-config', tenantId, variables.configKey] });
+      writeAuditLog({ action: 'UPDATE_TENANT_ADMIN_CONFIG', table: 'configuracoes_sistema', empresaId: tenantId, source: 'useTenantAdminConfig', metadata: { configKey: variables.configKey } });
     },
   });
 }

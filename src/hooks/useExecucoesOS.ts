@@ -4,6 +4,7 @@ import { useToast } from '@/hooks/use-toast';
 import { insertWithColumnFallback } from '@/lib/supabaseCompat';
 import { useAuth } from '@/contexts/AuthContext';
 import { callRpc } from '@/integrations/supabase/rpc';
+import { writeAuditLog } from '@/lib/audit';
 
 export interface ExecucaoOSRow {
   id: string;
@@ -146,9 +147,10 @@ export function useCreateExecucaoOS() {
         payloadWithTenant,
       ) as Promise<ExecucaoOSRow>;
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['execucoes-os', tenantId] });
       queryClient.invalidateQueries({ queryKey: ['indicadores', tenantId] });
+      writeAuditLog({ action: 'CREATE_EXECUCAO_OS', table: 'execucoes_os', recordId: data?.id, empresaId: tenantId, source: 'useExecucoesOS' });
     },
     onError: (error: any) => {
       toast({
@@ -199,13 +201,14 @@ export function useCloseOSAtomic() {
       if (error) throw error;
       return Array.isArray(data) ? data[0] : data;
     },
-    onSuccess: () => {
+    onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: ['ordens-servico', tenantId] });
       queryClient.invalidateQueries({ queryKey: ['ordens-servico-pending', tenantId] });
       queryClient.invalidateQueries({ queryKey: ['ordens-servico-recent', tenantId] });
       queryClient.invalidateQueries({ queryKey: ['execucoes-os', tenantId] });
       queryClient.invalidateQueries({ queryKey: ['indicadores', tenantId] });
       queryClient.invalidateQueries({ queryKey: ['materiais', tenantId] });
+      writeAuditLog({ action: 'CLOSE_OS_ATOMIC', table: 'ordens_servico', recordId: variables.os_id, empresaId: tenantId, source: 'useCloseOSAtomic', severity: 'info', metadata: { mecanico_nome: variables.mecanico_nome, custo_total: variables.custo_total } });
     },
     onError: (error: any) => {
       toast({

@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { insertWithColumnFallback, updateWithColumnFallback } from '@/lib/supabaseCompat';
+import { writeAuditLog } from '@/lib/audit';
 
 export interface DocumentoTecnicoRow {
   id: string;
@@ -120,12 +121,13 @@ export function useCreateDocumentoTecnico() {
         { ...documento, empresa_id: tenantId } as Record<string, unknown>,
       ) as Promise<DocumentoTecnicoRow>;
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['documentos_tecnicos'] });
       toast({
         title: 'Documento cadastrado',
         description: 'Documento técnico cadastrado com sucesso.',
       });
+      writeAuditLog({ action: 'CREATE_DOCUMENTO_TECNICO', table: 'documentos_tecnicos', recordId: data.id, empresaId: tenantId, source: 'useDocumentosTecnicos' });
     },
     onError: (error: Error) => {
       toast({
@@ -140,6 +142,7 @@ export function useCreateDocumentoTecnico() {
 export function useUpdateDocumentoTecnico() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const { tenantId } = useAuth();
 
   return useMutation({
     mutationFn: async ({ id, ...updates }: DocumentoTecnicoUpdate & { id: string }) => {
@@ -154,12 +157,13 @@ export function useUpdateDocumentoTecnico() {
         updates as Record<string, unknown>,
       ) as Promise<DocumentoTecnicoRow>;
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['documentos_tecnicos'] });
       toast({
         title: 'Documento atualizado',
         description: 'Documento técnico atualizado com sucesso.',
       });
+      writeAuditLog({ action: 'UPDATE_DOCUMENTO_TECNICO', table: 'documentos_tecnicos', recordId: data.id, empresaId: tenantId, source: 'useDocumentosTecnicos' });
     },
     onError: (error: Error) => {
       toast({
@@ -174,6 +178,7 @@ export function useUpdateDocumentoTecnico() {
 export function useDeleteDocumentoTecnico() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const { tenantId } = useAuth();
 
   return useMutation({
     mutationFn: async (id: string) => {
@@ -183,13 +188,15 @@ export function useDeleteDocumentoTecnico() {
         .eq('id', id);
 
       if (error) throw error;
+      return id;
     },
-    onSuccess: () => {
+    onSuccess: (deletedId) => {
       queryClient.invalidateQueries({ queryKey: ['documentos_tecnicos'] });
       toast({
         title: 'Documento excluído',
         description: 'Documento técnico excluído com sucesso.',
       });
+      writeAuditLog({ action: 'DELETE_DOCUMENTO_TECNICO', table: 'documentos_tecnicos', recordId: deletedId, empresaId: tenantId, source: 'useDocumentosTecnicos', severity: 'warning' });
     },
     onError: (error: Error) => {
       toast({

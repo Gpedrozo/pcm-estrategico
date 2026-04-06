@@ -18,6 +18,7 @@ import { useRoute, useNavigation } from '@react-navigation/native';
 import { NativeStackScreenProps, NativeStackNavigationProp } from '@react-navigation/native-stack';
 import uuid from 'react-native-uuid';
 import { useAuth } from '../contexts/AuthContext';
+import { writeAuditLog } from '../lib/audit';
 import {
   getOrdemServicoById,
   upsertExecucao,
@@ -181,6 +182,7 @@ export default function ExecutionScreen() {
             navigation.goBack();
           }}]
         );
+        writeAuditLog({ action: 'CLOSE_OS_EXECUTION_AUTO_MOBILE', table: 'execucoes_os', recordId: execAberta.id, empresaId, source: 'ExecutionScreen', metadata: { os_id: osId, tempo_min: tempoMin, rpcSuccess } });
       } else {
         // ── MODO MANUAL: Criar novo apontamento ──
         const execId = uuid.v4() as string;
@@ -281,6 +283,7 @@ export default function ExecutionScreen() {
             navigation.goBack();
           }}],
         );
+        writeAuditLog({ action: 'CLOSE_OS_EXECUTION_MANUAL_MOBILE', table: 'execucoes_os', recordId: execId, empresaId, source: 'ExecutionScreen', metadata: { os_id: osId, rpcSuccess } });
       }
     } catch (err: any) {
       showError(err);

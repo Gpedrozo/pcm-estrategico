@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useTenant } from '@/contexts/TenantContext';
 import { useAuth } from '@/contexts/AuthContext';
+import { writeAuditLog } from '@/lib/audit';
 
 export interface DadosEmpresa {
   /** empresa_id is the PK in production; `id` kept as alias for legacy compat */
@@ -117,7 +118,7 @@ export function useDadosEmpresa() {
 export function useUpdateDadosEmpresa() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
-  const { isSystemOwner } = useAuth();
+  const { isSystemOwner, tenantId } = useAuth();
 
   return useMutation({
     mutationFn: async (payload: Partial<DadosEmpresa> & { id: string }) => {
@@ -137,12 +138,13 @@ export function useUpdateDadosEmpresa() {
       if (error) throw error;
       return data;
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['dados-empresa'] });
       toast({
         title: 'Sucesso!',
         description: 'Dados da empresa atualizados.',
       });
+      writeAuditLog({ action: 'UPDATE_DADOS_EMPRESA', table: 'dados_empresa', recordId: data?.empresa_id ?? data?.id, empresaId: tenantId, source: 'useDadosEmpresa', severity: 'info' });
     },
     onError: (error: unknown) => {
       const message = error instanceof Error ? error.message : 'Falha ao atualizar dados da empresa.';

@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { writeAuditLog } from '@/lib/audit';
 import type {
   Lubrificante,
   LubrificanteInsert,
@@ -40,12 +41,16 @@ export function useCreateLubrificante() {
       if (error) throw error;
       return data as Lubrificante;
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['lubrificantes'] }),
+    onSuccess: (data) => {
+      qc.invalidateQueries({ queryKey: ['lubrificantes'] });
+      writeAuditLog({ action: 'CREATE_LUBRIFICANTE', table: 'lubrificantes', recordId: data.id, empresaId: tenantId, source: 'useEstoqueLubrificantes' });
+    },
   });
 }
 
 export function useUpdateLubrificante() {
   const qc = useQueryClient();
+  const { tenantId } = useAuth();
   return useMutation({
     mutationFn: async ({ id, ...payload }: Partial<LubrificanteInsert> & { id: string }) => {
       const { data, error } = await supabase
@@ -57,18 +62,26 @@ export function useUpdateLubrificante() {
       if (error) throw error;
       return data as Lubrificante;
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['lubrificantes'] }),
+    onSuccess: (data) => {
+      qc.invalidateQueries({ queryKey: ['lubrificantes'] });
+      writeAuditLog({ action: 'UPDATE_LUBRIFICANTE', table: 'lubrificantes', recordId: data.id, empresaId: tenantId, source: 'useEstoqueLubrificantes' });
+    },
   });
 }
 
 export function useDeleteLubrificante() {
   const qc = useQueryClient();
+  const { tenantId } = useAuth();
   return useMutation({
     mutationFn: async (id: string) => {
       const { error } = await supabase.from('lubrificantes').delete().eq('id', id);
       if (error) throw error;
+      return id;
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['lubrificantes'] }),
+    onSuccess: (deletedId) => {
+      qc.invalidateQueries({ queryKey: ['lubrificantes'] });
+      writeAuditLog({ action: 'DELETE_LUBRIFICANTE', table: 'lubrificantes', recordId: deletedId, empresaId: tenantId, source: 'useEstoqueLubrificantes', severity: 'warning' });
+    },
   });
 }
 
@@ -121,9 +134,10 @@ export function useCreateMovimentacao() {
 
       return data as MovimentacaoLubrificante;
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       qc.invalidateQueries({ queryKey: ['movimentacoes-lubrificante'] });
       qc.invalidateQueries({ queryKey: ['lubrificantes'] });
+      writeAuditLog({ action: 'CREATE_MOVIMENTACAO_LUBRIFICANTE', table: 'movimentacoes_lubrificante', recordId: data.id, empresaId: tenantId, source: 'useEstoqueLubrificantes' });
     },
   });
 }

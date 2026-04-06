@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
+import { writeAuditLog } from '@/lib/audit';
 
 export interface ComponenteEquipamento {
   id: string;
@@ -193,6 +194,7 @@ export function useCreateComponente() {
         title: 'Componente Cadastrado',
         description: `${data.nome} foi cadastrado com sucesso.`,
       });
+      writeAuditLog({ action: 'CREATE_COMPONENTE_EQUIPAMENTO', table: 'componentes_equipamento', recordId: data.id, empresaId: tenantId, source: 'useComponentesEquipamento' });
     },
     onError: (error: Error) => {
       toast({
@@ -207,6 +209,7 @@ export function useCreateComponente() {
 export function useUpdateComponente() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const { tenantId } = useAuth();
 
   return useMutation({
     mutationFn: async ({ id, ...updates }: ComponenteUpdate) => {
@@ -227,6 +230,7 @@ export function useUpdateComponente() {
         title: 'Componente Atualizado',
         description: `${data.nome} foi atualizado com sucesso.`,
       });
+      writeAuditLog({ action: 'UPDATE_COMPONENTE_EQUIPAMENTO', table: 'componentes_equipamento', recordId: data.id, empresaId: tenantId, source: 'useComponentesEquipamento' });
     },
     onError: (error: Error) => {
       toast({
@@ -241,6 +245,7 @@ export function useUpdateComponente() {
 export function useDeleteComponente() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const { tenantId } = useAuth();
 
   return useMutation({
     mutationFn: async (id: string) => {
@@ -250,14 +255,16 @@ export function useDeleteComponente() {
         .eq('id', id);
 
       if (error) throw error;
+      return id;
     },
-    onSuccess: () => {
+    onSuccess: (deletedId) => {
       queryClient.invalidateQueries({ queryKey: ['componentes-equipamento'] });
       queryClient.invalidateQueries({ queryKey: ['componentes-equipamento-flat'] });
       toast({
         title: 'Componente Excluído',
         description: 'O componente foi removido com sucesso.',
       });
+      writeAuditLog({ action: 'DELETE_COMPONENTE_EQUIPAMENTO', table: 'componentes_equipamento', recordId: deletedId, empresaId: tenantId, source: 'useComponentesEquipamento', severity: 'warning' });
     },
     onError: (error: Error) => {
       toast({
@@ -294,6 +301,7 @@ export function useDuplicateComponente() {
         title: 'Componente Duplicado',
         description: `${data.nome} foi duplicado com sucesso.`,
       });
+      writeAuditLog({ action: 'DUPLICATE_COMPONENTE_EQUIPAMENTO', table: 'componentes_equipamento', recordId: data.id, empresaId: tenantId, source: 'useComponentesEquipamento' });
     },
     onError: (error: Error) => {
       toast({

@@ -144,12 +144,13 @@ export function useCreateMedicaoPreditiva() {
 
       return data as MedicaoPreditivaRow;
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['medicoes_preditivas', tenantId] });
       toast({
         title: 'Medição registrada',
         description: 'Medição preditiva registrada com sucesso.',
       });
+      writeAuditLog({ action: 'CREATE_MEDICAO_PREDITIVA', table: 'medicoes_preditivas', recordId: data.id, empresaId: tenantId, source: 'useMedicoesPreditivas', metadata: { tag: data.tag, tipo_medicao: data.tipo_medicao } });
     },
     onError: (error: Error) => {
       toast({
@@ -243,6 +244,7 @@ export function useUpdateMedicaoPreditiva() {
 export function useDeleteMedicaoPreditiva() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const { tenantId } = useAuth();
 
   return useMutation({
     mutationFn: async (id: string) => {
@@ -254,13 +256,15 @@ export function useDeleteMedicaoPreditiva() {
         .eq('id', id);
 
       if (error) throw error;
+      return id;
     },
-    onSuccess: () => {
+    onSuccess: (deletedId) => {
       queryClient.invalidateQueries({ queryKey: ['medicoes_preditivas'] });
       toast({
         title: 'Medição excluída',
         description: 'Medição preditiva excluída com sucesso.',
       });
+      writeAuditLog({ action: 'DELETE_MEDICAO_PREDITIVA', table: 'medicoes_preditivas', recordId: deletedId, empresaId: tenantId, source: 'useMedicoesPreditivas', severity: 'warning' });
     },
     onError: (error: Error) => {
       toast({

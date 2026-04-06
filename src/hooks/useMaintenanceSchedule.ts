@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { writeAuditLog } from '@/lib/audit';
 import {
   deleteMaintenanceSchedule,
   type MaintenanceScheduleRow,
@@ -36,11 +37,13 @@ export function useMaintenanceSchedule(fromIso?: string, toIso?: string) {
 
 export function useUpsertMaintenanceSchedule() {
   const queryClient = useQueryClient();
+  const { tenantId } = useAuth();
 
   return useMutation({
     mutationFn: async (input: MaintenanceScheduleUpsertInput) => upsertMaintenanceSchedule(input),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['maintenance-schedule'] });
+      writeAuditLog({ action: 'UPSERT_MAINTENANCE_SCHEDULE', table: 'maintenance_schedule', empresaId: tenantId, source: 'useMaintenanceSchedule' });
     },
   });
 }
@@ -48,12 +51,14 @@ export function useUpsertMaintenanceSchedule() {
 export function useDeleteMaintenanceSchedule() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const { tenantId } = useAuth();
 
   return useMutation({
     mutationFn: async ({ tipo, origemId }: { tipo: 'preventiva' | 'lubrificacao' | 'inspecao' | 'preditiva'; origemId: string }) =>
       deleteMaintenanceSchedule(tipo, origemId),
-    onSuccess: () => {
+    onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: ['maintenance-schedule'] });
+      writeAuditLog({ action: 'DELETE_MAINTENANCE_SCHEDULE', table: 'maintenance_schedule', recordId: variables.origemId, empresaId: tenantId, source: 'useMaintenanceSchedule', severity: 'warning', metadata: { tipo: variables.tipo } });
     },
     onError: (error: any) => {
       toast({
@@ -68,6 +73,7 @@ export function useDeleteMaintenanceSchedule() {
 export function useUpdateMaintenanceStatus() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const { tenantId } = useAuth();
 
   return useMutation({
     mutationFn: async ({ id, status, dataProgramada }: { id: string; status?: string; dataProgramada?: string }) => {
@@ -85,8 +91,9 @@ export function useUpdateMaintenanceStatus() {
       if (error) throw error;
       return data as MaintenanceScheduleRow;
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['maintenance-schedule'] });
+      writeAuditLog({ action: 'UPDATE_MAINTENANCE_STATUS', table: 'maintenance_schedule', recordId: data.id, empresaId: tenantId, source: 'useMaintenanceSchedule', metadata: { status: data.status } });
     },
     onError: (error: any) => {
       toast({

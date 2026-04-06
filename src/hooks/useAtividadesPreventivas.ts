@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { insertWithColumnFallback, updateWithColumnFallback } from '@/lib/supabaseCompat';
 import { useAuth } from '@/contexts/AuthContext';
+import { writeAuditLog } from '@/lib/audit';
 
 export interface AtividadePreventiva {
   id: string;
@@ -74,6 +75,7 @@ export function useCreateAtividade() {
     },
     onSuccess: (d) => {
       qc.invalidateQueries({ queryKey: ['atividades-preventivas', d.plano_id] });
+      writeAuditLog({ action: 'CREATE_ATIVIDADE_PREVENTIVA', table: 'atividades_preventivas', recordId: d?.id, empresaId: tenantId, source: 'useAtividadesPreventivas' });
       toast({ title: 'Atividade criada' });
     },
     onError: (e: unknown) => toast({ title: 'Erro', description: e instanceof Error ? e.message : 'Falha ao criar atividade', variant: 'destructive' }),
@@ -82,6 +84,7 @@ export function useCreateAtividade() {
 
 export function useUpdateAtividade() {
   const qc = useQueryClient();
+  const { tenantId } = useAuth();
   return useMutation({
     mutationFn: async ({ id, plano_id, ...updates }: Partial<AtividadePreventiva> & { id: string; plano_id: string }) => {
       await updateWithColumnFallback(
@@ -96,7 +99,10 @@ export function useUpdateAtividade() {
       );
       return plano_id;
     },
-    onSuccess: (planoId) => qc.invalidateQueries({ queryKey: ['atividades-preventivas', planoId] }),
+    onSuccess: (planoId) => {
+      qc.invalidateQueries({ queryKey: ['atividades-preventivas', planoId] });
+      writeAuditLog({ action: 'UPDATE_ATIVIDADE_PREVENTIVA', table: 'atividades_preventivas', empresaId: tenantId, source: 'useAtividadesPreventivas' });
+    },
   });
 }
 
@@ -112,6 +118,7 @@ export function useDeleteAtividade() {
     },
     onSuccess: (planoId) => {
       qc.invalidateQueries({ queryKey: ['atividades-preventivas', planoId] });
+      writeAuditLog({ action: 'DELETE_ATIVIDADE_PREVENTIVA', table: 'atividades_preventivas', empresaId: tenantId, source: 'useAtividadesPreventivas', severity: 'warning' });
       toast({ title: 'Atividade excluída' });
     },
     onError: (e: unknown) => toast({ title: 'Erro', description: e instanceof Error ? e.message : 'Falha ao excluir atividade', variant: 'destructive' }),
@@ -140,12 +147,16 @@ export function useCreateServico() {
       await recalcAtividadeTempo(input.atividade_id);
       return _plano_id;
     },
-    onSuccess: (planoId) => qc.invalidateQueries({ queryKey: ['atividades-preventivas', planoId] }),
+    onSuccess: (planoId) => {
+      qc.invalidateQueries({ queryKey: ['atividades-preventivas', planoId] });
+      writeAuditLog({ action: 'CREATE_SERVICO_PREVENTIVO', table: 'servicos_preventivos', empresaId: tenantId, source: 'useAtividadesPreventivas' });
+    },
   });
 }
 
 export function useUpdateServico() {
   const qc = useQueryClient();
+  const { tenantId } = useAuth();
   return useMutation({
     mutationFn: async ({ id, _plano_id, _atividade_id, ...updates }: Partial<ServicoPreventivo> & { id: string; _plano_id: string; _atividade_id: string }) => {
       await updateWithColumnFallback(
@@ -161,12 +172,16 @@ export function useUpdateServico() {
       await recalcAtividadeTempo(_atividade_id);
       return _plano_id;
     },
-    onSuccess: (planoId) => qc.invalidateQueries({ queryKey: ['atividades-preventivas', planoId] }),
+    onSuccess: (planoId) => {
+      qc.invalidateQueries({ queryKey: ['atividades-preventivas', planoId] });
+      writeAuditLog({ action: 'UPDATE_SERVICO_PREVENTIVO', table: 'servicos_preventivos', empresaId: tenantId, source: 'useAtividadesPreventivas' });
+    },
   });
 }
 
 export function useDeleteServico() {
   const qc = useQueryClient();
+  const { tenantId } = useAuth();
   return useMutation({
     mutationFn: async ({ id, _plano_id, _atividade_id }: { id: string; _plano_id: string; _atividade_id: string }) => {
       const { error } = await supabase.from('servicos_preventivos').delete().eq('id', id);
@@ -174,7 +189,10 @@ export function useDeleteServico() {
       await recalcAtividadeTempo(_atividade_id);
       return _plano_id;
     },
-    onSuccess: (planoId) => qc.invalidateQueries({ queryKey: ['atividades-preventivas', planoId] }),
+    onSuccess: (planoId) => {
+      qc.invalidateQueries({ queryKey: ['atividades-preventivas', planoId] });
+      writeAuditLog({ action: 'DELETE_SERVICO_PREVENTIVO', table: 'servicos_preventivos', empresaId: tenantId, source: 'useAtividadesPreventivas', severity: 'warning' });
+    },
   });
 }
 

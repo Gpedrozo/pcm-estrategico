@@ -3,6 +3,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import type { AtividadeLubrificacao } from '@/types/lubrificacao';
 import { insertWithColumnFallback, updateWithColumnFallback } from '@/lib/supabaseCompat';
+import { writeAuditLog } from '@/lib/audit';
+import { useAuth } from '@/hooks/useAuth';
 
 export function useAtividadesByPlano(planoId: string | null) {
   return useQuery({
@@ -23,6 +25,7 @@ export function useAtividadesByPlano(planoId: string | null) {
 export function useCreateAtividade() {
   const qc = useQueryClient();
   const { toast } = useToast();
+  const { tenantId } = useAuth();
 
   return useMutation({
     mutationFn: async (input: Partial<AtividadeLubrificacao> & { plano_id: string }) => {
@@ -36,9 +39,10 @@ export function useCreateAtividade() {
         input as Record<string, unknown>,
       ) as Promise<AtividadeLubrificacao>;
     },
-    onSuccess: (_d, vars) => {
+    onSuccess: (data, vars) => {
       qc.invalidateQueries({ queryKey: ['atividades-lubrificacao', vars.plano_id] });
       toast({ title: 'Atividade criada' });
+      writeAuditLog({ action: 'CREATE_ATIVIDADE_LUBRIFICACAO', table: 'atividades_lubrificacao', recordId: data?.id, empresaId: tenantId, source: 'useAtividadesLubrificacao' });
     },
     onError: (e: any) => toast({ title: 'Erro', description: e.message, variant: 'destructive' }),
   });
@@ -47,6 +51,7 @@ export function useCreateAtividade() {
 export function useUpdateAtividade() {
   const qc = useQueryClient();
   const { toast } = useToast();
+  const { tenantId } = useAuth();
 
   return useMutation({
     mutationFn: async ({ id, plano_id, ...updates }: Partial<AtividadeLubrificacao> & { id: string; plano_id: string }) => {
@@ -61,9 +66,10 @@ export function useUpdateAtividade() {
         updates as Record<string, unknown>,
       ) as Promise<AtividadeLubrificacao>;
     },
-    onSuccess: (_d, vars) => {
+    onSuccess: (data, vars) => {
       qc.invalidateQueries({ queryKey: ['atividades-lubrificacao', vars.plano_id] });
       toast({ title: 'Atividade atualizada' });
+      writeAuditLog({ action: 'UPDATE_ATIVIDADE_LUBRIFICACAO', table: 'atividades_lubrificacao', recordId: data?.id, empresaId: tenantId, source: 'useAtividadesLubrificacao' });
     },
     onError: (e: any) => toast({ title: 'Erro', description: e.message, variant: 'destructive' }),
   });
@@ -72,6 +78,7 @@ export function useUpdateAtividade() {
 export function useDeleteAtividade() {
   const qc = useQueryClient();
   const { toast } = useToast();
+  const { tenantId } = useAuth();
 
   return useMutation({
     mutationFn: async ({ id, plano_id }: { id: string; plano_id: string }) => {
@@ -82,6 +89,7 @@ export function useDeleteAtividade() {
     onSuccess: (d) => {
       qc.invalidateQueries({ queryKey: ['atividades-lubrificacao', d.plano_id] });
       toast({ title: 'Atividade excluída' });
+      writeAuditLog({ action: 'DELETE_ATIVIDADE_LUBRIFICACAO', table: 'atividades_lubrificacao', recordId: d.id, empresaId: tenantId, source: 'useAtividadesLubrificacao', severity: 'warning' });
     },
     onError: (e: any) => toast({ title: 'Erro', description: e.message, variant: 'destructive' }),
   });

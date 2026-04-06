@@ -12,6 +12,7 @@ import { useRoute, useNavigation } from '@react-navigation/native';
 import type { RouteProp } from '@react-navigation/native';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
+import { writeAuditLog } from '../lib/audit';
 import { COLORS, SIZES, SHADOWS } from '../theme';
 import { showSuccess, showError, showWarning } from '../lib/feedback';
 import type {
@@ -153,6 +154,7 @@ export default function CriarOSScreen() {
       }
 
       resetForm();
+      writeAuditLog({ action: 'CREATE_OS_MOBILE', table: 'ordens_servico', empresaId, source: 'CriarOSScreenV2', metadata: { numero_os: nextNum, tipo, prioridade } });
       showSuccess(`O.S. #${String(nextNum).padStart(4, '0')} criada com sucesso!`, () => nav.goBack());
     } catch (err: any) {
       showError(err);

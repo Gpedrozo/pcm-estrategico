@@ -2,6 +2,8 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { insertWithColumnFallback, updateWithColumnFallback } from '@/lib/supabaseCompat';
+import { writeAuditLog } from '@/lib/audit';
+import { useAuth } from '@/hooks/useAuth';
 
 export interface ExecucaoPreventiva {
   id: string;
@@ -37,6 +39,7 @@ export function useExecucoesByPlano(planoId: string | null) {
 export function useCreateExecucao() {
   const qc = useQueryClient();
   const { toast } = useToast();
+  const { tenantId } = useAuth();
 
   return useMutation({
     mutationFn: async (input: { plano_id: string; executor_nome: string; checklist?: any; observacoes?: string }) => {
@@ -53,6 +56,7 @@ export function useCreateExecucao() {
     onSuccess: (d) => {
       qc.invalidateQueries({ queryKey: ['execucoes-preventivas', d.plano_id] });
       toast({ title: 'Execução registrada' });
+      writeAuditLog({ action: 'CREATE_EXECUCAO_PREVENTIVA', table: 'execucoes_preventivas', recordId: d.id, empresaId: tenantId, source: 'useExecucoesPreventivas' });
     },
     onError: (e: any) => toast({ title: 'Erro', description: e.message, variant: 'destructive' }),
   });
@@ -60,6 +64,7 @@ export function useCreateExecucao() {
 
 export function useUpdateExecucao() {
   const qc = useQueryClient();
+  const { tenantId } = useAuth();
   return useMutation({
     mutationFn: async ({ id, plano_id, ...updates }: Partial<ExecucaoPreventiva> & { id: string; plano_id: string }) => {
       await updateWithColumnFallback(
@@ -72,8 +77,11 @@ export function useUpdateExecucao() {
             .single(),
         updates as Record<string, unknown>,
       );
-      return plano_id;
+      return { plano_id, id };
     },
-    onSuccess: (planoId) => qc.invalidateQueries({ queryKey: ['execucoes-preventivas', planoId] }),
+    onSuccess: ({ plano_id, id }) => {
+      qc.invalidateQueries({ queryKey: ['execucoes-preventivas', plano_id] });
+      writeAuditLog({ action: 'UPDATE_EXECUCAO_PREVENTIVA', table: 'execucoes_preventivas', recordId: id, empresaId: tenantId, source: 'useExecucoesPreventivas' });
+    },
   });
 }

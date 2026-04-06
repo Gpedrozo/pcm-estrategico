@@ -1,6 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import type { RotaPonto, RotaPontoInsert } from '@/types/lubrificacao';
+import { writeAuditLog } from '@/lib/audit';
+import { useAuth } from '@/hooks/useAuth';
 
 /**
  * Fetch lubrication route points linked to a specific plan (plano_id).
@@ -29,6 +31,7 @@ export function usePontosPlano(planoId: string | null | undefined) {
  */
 export function useSavePontosPlano() {
   const qc = useQueryClient();
+  const { tenantId } = useAuth();
   return useMutation({
     mutationFn: async ({ planoId, pontos }: { planoId: string; pontos: RotaPontoInsert[] }) => {
       // Delete existing points linked to this plan (only plan-linked, not route-linked)
@@ -57,6 +60,7 @@ export function useSavePontosPlano() {
     },
     onSuccess: (_d, vars) => {
       qc.invalidateQueries({ queryKey: ['pontos_lubrificacao', 'plano', vars.planoId] });
+      writeAuditLog({ action: 'SAVE_PONTOS_PLANO', table: 'rotas_lubrificacao_pontos', recordId: vars.planoId, empresaId: tenantId, source: 'usePontosPlano' });
     },
   });
 }

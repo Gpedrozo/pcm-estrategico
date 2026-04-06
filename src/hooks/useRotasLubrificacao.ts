@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { writeAuditLog } from '@/lib/audit';
 import type {
   RotaLubrificacao,
   RotaLubrificacaoInsert,
@@ -42,12 +43,16 @@ export function useCreateRotaLubrificacao() {
       if (error) throw error;
       return data as RotaLubrificacao;
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['rotas-lubrificacao'] }),
+    onSuccess: (data) => {
+      qc.invalidateQueries({ queryKey: ['rotas-lubrificacao'] });
+      writeAuditLog({ action: 'CREATE_ROTA_LUBRIFICACAO', table: 'rotas_lubrificacao', recordId: data.id, empresaId: tenantId, source: 'useRotasLubrificacao' });
+    },
   });
 }
 
 export function useUpdateRotaLubrificacao() {
   const qc = useQueryClient();
+  const { tenantId } = useAuth();
 
   return useMutation({
     mutationFn: async ({ id, ...payload }: Partial<RotaLubrificacaoInsert> & { id: string }) => {
@@ -60,12 +65,16 @@ export function useUpdateRotaLubrificacao() {
       if (error) throw error;
       return data as RotaLubrificacao;
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['rotas-lubrificacao'] }),
+    onSuccess: (data) => {
+      qc.invalidateQueries({ queryKey: ['rotas-lubrificacao'] });
+      writeAuditLog({ action: 'UPDATE_ROTA_LUBRIFICACAO', table: 'rotas_lubrificacao', recordId: data.id, empresaId: tenantId, source: 'useRotasLubrificacao' });
+    },
   });
 }
 
 export function useDeleteRotaLubrificacao() {
   const qc = useQueryClient();
+  const { tenantId } = useAuth();
 
   return useMutation({
     mutationFn: async (id: string) => {
@@ -74,8 +83,12 @@ export function useDeleteRotaLubrificacao() {
         .delete()
         .eq('id', id);
       if (error) throw error;
+      return id;
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['rotas-lubrificacao'] }),
+    onSuccess: (deletedId) => {
+      qc.invalidateQueries({ queryKey: ['rotas-lubrificacao'] });
+      writeAuditLog({ action: 'DELETE_ROTA_LUBRIFICACAO', table: 'rotas_lubrificacao', recordId: deletedId, empresaId: tenantId, source: 'useRotasLubrificacao', severity: 'warning' });
+    },
   });
 }
 
@@ -98,6 +111,7 @@ export function usePontosRota(rotaId: string | null | undefined) {
 
 export function useSavePontosRota() {
   const qc = useQueryClient();
+  const { tenantId } = useAuth();
 
   return useMutation({
     mutationFn: async ({ rotaId, pontos }: { rotaId: string; pontos: RotaPontoInsert[] }) => {
@@ -120,6 +134,7 @@ export function useSavePontosRota() {
     onSuccess: (_, { rotaId }) => {
       qc.invalidateQueries({ queryKey: ['rotas-lubrificacao-pontos', rotaId] });
       qc.invalidateQueries({ queryKey: ['rotas-lubrificacao'] });
+      writeAuditLog({ action: 'SAVE_PONTOS_ROTA', table: 'rotas_lubrificacao_pontos', recordId: rotaId, empresaId: tenantId, source: 'useRotasLubrificacao' });
     },
   });
 }

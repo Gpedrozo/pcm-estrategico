@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/integrations/supabase/client'
 import { useAuth } from '@/contexts/AuthContext'
+import { writeAuditLog } from '@/lib/audit'
 
 // ---------------------------------------------------------------------------
 // Types
@@ -251,8 +252,9 @@ export function useCreateSupportTicket() {
       if (result.error) throw result.error
       return result.data
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['support-tickets'] })
+      writeAuditLog({ action: 'CREATE_SUPPORT_TICKET', table: 'support_tickets', recordId: data?.id, empresaId: tenantId, source: 'useSupportTickets' })
     },
   })
 }
@@ -343,8 +345,9 @@ export function useAddSupportTicketMessage() {
 
       if (error) throw error
     },
-    onSuccess: () => {
+    onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: ['support-tickets'] })
+      writeAuditLog({ action: 'ADD_SUPPORT_TICKET_MESSAGE', table: 'support_tickets', recordId: variables.ticketId, empresaId: tenantId, source: 'useSupportTickets' })
     },
   })
 }

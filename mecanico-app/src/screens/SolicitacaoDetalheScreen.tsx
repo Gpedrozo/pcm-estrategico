@@ -11,6 +11,7 @@ import type { RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
+import { writeAuditLog } from '../lib/audit';
 import { COLORS, SIZES, SHADOWS } from '../theme';
 import type { SolicitacaoManutencao, RootStackParamList } from '../types';
 
@@ -55,6 +56,7 @@ export default function SolicitacaoDetalheScreen() {
               Alert.alert('Erro', error.message);
             } else {
               Alert.alert('Sucesso', `Status atualizado para ${newStatus}`);
+              writeAuditLog({ action: 'UPDATE_SOLICITACAO_STATUS_MOBILE', table: 'solicitacoes_manutencao', recordId: s.id, empresaId, source: 'SolicitacaoDetalheScreen', metadata: { newStatus } });
               nav.goBack();
             }
           },

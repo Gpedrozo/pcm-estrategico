@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { insertWithColumnFallback, updateWithColumnFallback } from '@/lib/supabaseCompat';
+import { writeAuditLog } from '@/lib/audit';
 
 export interface FMEARow {
   id: string;
@@ -104,8 +105,9 @@ export function useCreateFMEA() {
         { ...fmea, empresa_id: tenantId } as Record<string, unknown>,
       ) as Promise<FMEARow>;
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['fmea', tenantId] });
+      writeAuditLog({ action: 'CREATE_FMEA', table: 'fmea', recordId: data?.id, empresaId: tenantId, source: 'useFMEA', metadata: { tag: data?.tag, rpn: data?.rpn } });
       toast({
         title: 'FMEA criado',
         description: 'A análise FMEA foi criada com sucesso.',
@@ -139,8 +141,9 @@ export function useUpdateFMEA() {
         updates as Record<string, unknown>,
       ) as Promise<FMEARow>;
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['fmea', tenantId] });
+      writeAuditLog({ action: 'UPDATE_FMEA', table: 'fmea', recordId: data?.id, empresaId: tenantId, source: 'useFMEA', metadata: { rpn: data?.rpn, status: data?.status } });
       toast({
         title: 'FMEA atualizado',
         description: 'A análise FMEA foi atualizada com sucesso.',
@@ -170,8 +173,9 @@ export function useDeleteFMEA() {
 
       if (error) throw error;
     },
-    onSuccess: () => {
+    onSuccess: (_data, deletedId) => {
       queryClient.invalidateQueries({ queryKey: ['fmea', tenantId] });
+      writeAuditLog({ action: 'DELETE_FMEA', table: 'fmea', recordId: deletedId, empresaId: tenantId, source: 'useFMEA', severity: 'warning' });
       toast({
         title: 'FMEA excluído',
         description: 'A análise FMEA foi excluída com sucesso.',

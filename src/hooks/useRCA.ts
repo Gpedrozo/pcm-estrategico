@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { insertWithColumnFallback, updateWithColumnFallback } from '@/lib/supabaseCompat';
+import { writeAuditLog } from '@/lib/audit';
 
 export interface RCARow {
   id: string;
@@ -118,8 +119,9 @@ export function useCreateRCA() {
         { ...rca, empresa_id: tenantId } as Record<string, unknown>,
       ) as Promise<RCARow>;
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['rca', tenantId] });
+      writeAuditLog({ action: 'CREATE_RCA', table: 'analise_causa_raiz', recordId: data?.id, empresaId: tenantId, source: 'useRCA', metadata: { metodo: data?.metodo_analise, titulo: data?.titulo } });
       toast({
         title: 'RCA criada',
         description: 'A análise de causa raiz foi criada com sucesso.',
@@ -153,8 +155,9 @@ export function useUpdateRCA() {
         updates as Record<string, unknown>,
       ) as Promise<RCARow>;
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['rca', tenantId] });
+      writeAuditLog({ action: 'UPDATE_RCA', table: 'analise_causa_raiz', recordId: data?.id, empresaId: tenantId, source: 'useRCA', metadata: { status: data?.status } });
       toast({
         title: 'RCA atualizada',
         description: 'A análise de causa raiz foi atualizada com sucesso.',
@@ -209,8 +212,9 @@ export function useCreateAcaoCorretiva() {
         { ...acao, empresa_id: tenantId } as Record<string, unknown>,
       ) as Promise<AcaoCorretivaRow>;
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['acoes-corretivas'] });
+      writeAuditLog({ action: 'CREATE_ACAO_CORRETIVA', table: 'acoes_corretivas', recordId: data?.id, empresaId: tenantId, source: 'useRCA' });
       toast({
         title: 'Ação criada',
         description: 'A ação corretiva foi criada com sucesso.',
@@ -244,8 +248,9 @@ export function useUpdateAcaoCorretiva() {
         updates as Record<string, unknown>,
       ) as Promise<AcaoCorretivaRow>;
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['acoes-corretivas', tenantId] });
+      writeAuditLog({ action: 'UPDATE_ACAO_CORRETIVA', table: 'acoes_corretivas', recordId: data?.id, empresaId: tenantId, source: 'useRCA', metadata: { status: data?.status } });
       toast({
         title: 'Ação atualizada',
         description: 'A ação corretiva foi atualizada com sucesso.',

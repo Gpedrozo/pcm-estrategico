@@ -11,6 +11,7 @@ import { useRoute, useNavigation } from '@react-navigation/native';
 import type { RouteProp } from '@react-navigation/native';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
+import { writeAuditLog } from '../lib/audit';
 import { COLORS, SIZES, SHADOWS } from '../theme';
 import { showSuccess, showError, showWarning } from '../lib/feedback';
 import type { OrdemServico, Material, Mecanico, PausaExecucao, MaterialOS, RootStackParamList } from '../types';
@@ -196,6 +197,7 @@ export default function FecharOSScreen() {
       setMateriaisUsados([]);
 
       showSuccess(`O.S. #${String(os?.numero_os).padStart(4, '0')} fechada com sucesso!`, () => nav.goBack());
+      writeAuditLog({ action: 'CLOSE_OS_MOBILE', table: 'ordens_servico', recordId: osId, empresaId, source: 'FecharOSScreen', severity: 'info', metadata: { numero_os: os?.numero_os, custo_total: custoTotal } });
     } catch (err: any) {
       showError(err);
     } finally {

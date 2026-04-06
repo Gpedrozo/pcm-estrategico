@@ -18,6 +18,7 @@ import { NativeStackScreenProps, NativeStackNavigationProp } from '@react-naviga
 import uuid from 'react-native-uuid';
 import { useAuth } from '../contexts/AuthContext';
 import { getMateriais, upsertRequisicao, addToSyncQueue } from '../lib/database';
+import { writeAuditLog } from '../lib/audit';
 import VoiceInput from '../components/VoiceInput';
 import { COLORS, SIZES } from '../theme';
 import { showSuccess, showError, showWarning } from '../lib/feedback';
@@ -106,6 +107,7 @@ export default function RequisicaoMaterialScreen() {
       setModoLivre(false);
 
       showSuccess(`Material solicitado: ${qty}x ${selectedMaterial?.descricao || descricaoLivre}`, () => navigation.goBack());
+      writeAuditLog({ action: 'CREATE_REQUISICAO_MATERIAL_MOBILE', table: 'requisicoes_material', recordId: reqId, empresaId, source: 'RequisicaoMaterialScreen', metadata: { os_id: osId, quantidade: qty } });
     } catch (err: any) {
       showError(err);
     } finally {

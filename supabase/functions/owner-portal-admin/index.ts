@@ -3675,6 +3675,7 @@ Deno.serve(async (req) => {
       .select("*")
       .single();
     if (error) return fail(error.message, 400, null, req);
+    await logPlatformAudit(admin, { actorId: auth.user.id, actorEmail: auth.user.email, actionType: "OWNER_CREATE_PLAN", details: { plan_id: data.id, code: data.code, name: data.name } });
     return ok({ plan: data }, 200, req);
   }
 
@@ -3706,6 +3707,7 @@ Deno.serve(async (req) => {
 
     const { error } = await query;
     if (error) return fail(error.message, 400, null, req);
+    await logPlatformAudit(admin, { actorId: auth.user.id, actorEmail: auth.user.email, actionType: "OWNER_UPDATE_PLAN", details: { plan_id: planId, plan_code: planCode, fields: Object.keys(updatePayload) } });
     return ok({ success: true }, 200, req);
   }
 
@@ -3981,6 +3983,7 @@ Deno.serve(async (req) => {
       .update({ status: body.status })
       .eq("empresa_id", body.empresa_id);
     if (error) return fail(error.message, 400, null, req);
+    await logPlatformAudit(admin, { actorId: auth.user.id, actorEmail: auth.user.email, empresaId: body.empresa_id, actionType: "OWNER_SET_SUBSCRIPTION_STATUS", details: { status: body.status } });
     return ok({ success: true }, 200, req);
   }
 
@@ -4069,6 +4072,7 @@ Deno.serve(async (req) => {
       created_by: auth.user.id,
     });
 
+    await logPlatformAudit(admin, { actorId: auth.user.id, actorEmail: auth.user.email, actionType: "OWNER_UPDATE_CONTRACT", details: { contract_id: body.contract_id, version: nextVersion } });
     return ok({ success: true }, 200, req);
   }
 
@@ -4090,6 +4094,7 @@ Deno.serve(async (req) => {
     if (!subscription) return fail("subscription not found", 404, null, req);
 
     const regenerated = await createContractFromSubscription(admin, auth.user.id, subscription);
+    await logPlatformAudit(admin, { actorId: auth.user.id, actorEmail: auth.user.email, actionType: "OWNER_REGENERATE_CONTRACT", details: { contract_id: body.contract_id, new_contract_id: regenerated.id } });
     return ok({ contract: regenerated }, 200, req);
   }
 
@@ -4097,6 +4102,7 @@ Deno.serve(async (req) => {
     if (!body.contract_id) return fail("contract_id is required", 400, null, req);
     const { error } = await admin.from("contracts").delete().eq("id", body.contract_id);
     if (error) return fail(error.message, 400, null, req);
+    await logPlatformAudit(admin, { actorId: auth.user.id, actorEmail: auth.user.email, actionType: "OWNER_DELETE_CONTRACT", details: { contract_id: body.contract_id } });
     return ok({ success: true }, 200, req);
   }
 
@@ -4216,6 +4222,7 @@ Deno.serve(async (req) => {
       })
       .eq("id", body.ticket_id);
     if (error) return fail(error.message, 400, null, req);
+    await logPlatformAudit(admin, { actorId: auth.user.id, actorEmail: auth.user.email, actionType: "OWNER_RESPOND_SUPPORT_TICKET", details: { ticket_id: body.ticket_id } });
     return ok({ success: true }, 200, req);
   }
 
@@ -4359,6 +4366,7 @@ Deno.serve(async (req) => {
       }
     }
 
+    await logPlatformAudit(admin, { actorId: auth.user.id, actorEmail: auth.user.email, actionType: "OWNER_UPDATE_PLATFORM_CONTACT", details: { keys: rows.map((r) => r.chave) } });
     return ok({ success: true }, 200, req);
   }
 
@@ -4552,6 +4560,7 @@ Deno.serve(async (req) => {
 
     if (subscriptionError) return fail(subscriptionError.message, 400, null, req);
     const contract = await createContractFromSubscription(admin, auth.user.id, subscription);
+    await logPlatformAudit(admin, { actorId: auth.user.id, actorEmail: auth.user.email, empresaId: body.empresa_id, actionType: "OWNER_CHANGE_PLAN", details: { plano_codigo: body.plano_codigo, plan_id: plano.id, subscription_id: subscription.id } });
     return ok({ success: true, contract_id: contract.id }, 200, req);
   }
 
@@ -4719,6 +4728,7 @@ Deno.serve(async (req) => {
       });
 
     if (error) return fail(error.message, 400, null, req);
+    await logPlatformAudit(admin, { actorId: auth.user.id, actorEmail: auth.user.email, empresaId: profile.empresa_id, actionType: "OWNER_CREATE_SYSTEM_ADMIN", details: { target_user_id: body.user_id } });
     return ok({ success: true }, 200, req);
   }
 

@@ -16,6 +16,7 @@ import { NativeStackScreenProps, NativeStackNavigationProp } from '@react-naviga
 import uuid from 'react-native-uuid';
 import { useAuth } from '../contexts/AuthContext';
 import { upsertParada, addToSyncQueue } from '../lib/database';
+import { writeAuditLog } from '../lib/audit';
 import VoiceInput from '../components/VoiceInput';
 import { COLORS, SIZES } from '../theme';
 import { showSuccess, showError, showWarning } from '../lib/feedback';
@@ -80,6 +81,7 @@ export default function ParadaScreen() {
       setObservacao('');
 
       showSuccess('Parada registrada com sucesso! Início marcado agora.', () => navigation.goBack());
+      writeAuditLog({ action: 'CREATE_PARADA_MOBILE', table: 'paradas_equipamento', recordId: paradaId, empresaId, source: 'ParadaScreen', metadata: { tipo, os_id: osId } });
     } catch (err: any) {
       showError(err);
     } finally {

@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
+import { writeAuditLog } from '@/lib/audit';
 
 export interface DispositivoMovel {
   id: string;
@@ -56,6 +57,7 @@ export function useDispositivosMoveis(empresaId?: string) {
 export function useToggleDispositivo() {
   const qc = useQueryClient();
   const { toast } = useToast();
+  const { tenantId } = useAuth();
 
   return useMutation({
     mutationFn: async ({ id, ativo, motivo }: { id: string; ativo: boolean; motivo?: string }) => {
@@ -71,9 +73,10 @@ export function useToggleDispositivo() {
       const { error } = await supabase.from('dispositivos_moveis').update(updates).eq('id', id);
       if (error) throw error;
     },
-    onSuccess: (_, { ativo }) => {
+    onSuccess: (_, { id, ativo }) => {
       qc.invalidateQueries({ queryKey: ['dispositivos-moveis'] });
       toast({ title: ativo ? 'Dispositivo reativado' : 'Dispositivo desativado' });
+      writeAuditLog({ action: ativo ? 'REATIVAR_DISPOSITIVO' : 'DESATIVAR_DISPOSITIVO', table: 'dispositivos_moveis', recordId: id, empresaId: tenantId, source: 'useDispositivosMoveis', severity: 'warning' });
     },
     onError: (e: Error) => toast({ title: 'Erro', description: e.message, variant: 'destructive' }),
   });
@@ -82,15 +85,18 @@ export function useToggleDispositivo() {
 export function useRemoveDispositivo() {
   const qc = useQueryClient();
   const { toast } = useToast();
+  const { tenantId } = useAuth();
 
   return useMutation({
     mutationFn: async (id: string) => {
       const { error } = await supabase.from('dispositivos_moveis').delete().eq('id', id);
       if (error) throw error;
+      return id;
     },
-    onSuccess: () => {
+    onSuccess: (deletedId) => {
       qc.invalidateQueries({ queryKey: ['dispositivos-moveis'] });
       toast({ title: 'Dispositivo removido' });
+      writeAuditLog({ action: 'REMOVE_DISPOSITIVO', table: 'dispositivos_moveis', recordId: deletedId, empresaId: tenantId, source: 'useDispositivosMoveis', severity: 'warning' });
     },
     onError: (e: Error) => toast({ title: 'Erro', description: e.message, variant: 'destructive' }),
   });
@@ -99,6 +105,7 @@ export function useRemoveDispositivo() {
 export function useDesativarTodosDispositivos() {
   const qc = useQueryClient();
   const { toast } = useToast();
+  const { tenantId } = useAuth();
 
   return useMutation({
     mutationFn: async (empresaId: string) => {
@@ -115,6 +122,7 @@ export function useDesativarTodosDispositivos() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['dispositivos-moveis'] });
       toast({ title: 'Todos os dispositivos desativados' });
+      writeAuditLog({ action: 'DESATIVAR_TODOS_DISPOSITIVOS', table: 'dispositivos_moveis', empresaId: tenantId, source: 'useDispositivosMoveis', severity: 'warning' });
     },
     onError: (e: Error) => toast({ title: 'Erro', description: e.message, variant: 'destructive' }),
   });
@@ -142,6 +150,7 @@ export function useQRCodesVinculacao(empresaId?: string) {
 export function useCreateQRCode() {
   const qc = useQueryClient();
   const { toast } = useToast();
+  const { tenantId } = useAuth();
 
   return useMutation({
     mutationFn: async (input: {
@@ -155,9 +164,10 @@ export function useCreateQRCode() {
       if (error) throw error;
       return data as QRCodeVinculacao;
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       qc.invalidateQueries({ queryKey: ['qrcodes-vinculacao'] });
       toast({ title: 'QR Code gerado!' });
+      writeAuditLog({ action: 'CREATE_QRCODE_VINCULACAO', table: 'qrcodes_vinculacao', recordId: data.id, empresaId: tenantId, source: 'useDispositivosMoveis', metadata: { tipo: data.tipo } });
     },
     onError: (e: Error) => toast({ title: 'Erro', description: e.message, variant: 'destructive' }),
   });
@@ -166,15 +176,18 @@ export function useCreateQRCode() {
 export function useRevogarQRCode() {
   const qc = useQueryClient();
   const { toast } = useToast();
+  const { tenantId } = useAuth();
 
   return useMutation({
     mutationFn: async (id: string) => {
       const { error } = await supabase.from('qrcodes_vinculacao').update({ ativo: false }).eq('id', id);
       if (error) throw error;
+      return id;
     },
-    onSuccess: () => {
+    onSuccess: (revokedId) => {
       qc.invalidateQueries({ queryKey: ['qrcodes-vinculacao'] });
       toast({ title: 'QR Code revogado' });
+      writeAuditLog({ action: 'REVOGAR_QRCODE', table: 'qrcodes_vinculacao', recordId: revokedId, empresaId: tenantId, source: 'useDispositivosMoveis', severity: 'warning' });
     },
     onError: (e: Error) => toast({ title: 'Erro', description: e.message, variant: 'destructive' }),
   });

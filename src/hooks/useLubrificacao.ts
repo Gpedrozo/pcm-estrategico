@@ -6,6 +6,7 @@ import { deleteMaintenanceSchedule, upsertMaintenanceSchedule } from '@/services
 import { useAuth } from '@/contexts/AuthContext';
 import { logger } from '@/lib/logger';
 import { getSupabaseErrorMessage, isMissingTableError } from '@/lib/supabaseCompat';
+import { writeAuditLog } from '@/lib/audit';
 
 interface ExecucaoRow {
   id: string;
@@ -117,9 +118,10 @@ export function useCreatePlanoLubrificacao() {
 
       return payload as PlanoLubrificacao;
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['planos-lubrificacao', tenantId] });
       queryClient.invalidateQueries({ queryKey: ['document-sequences'] });
+      writeAuditLog({ action: 'CREATE_PLANO_LUBRIFICACAO', table: 'planos_lubrificacao', recordId: data?.id, empresaId: tenantId, source: 'useLubrificacao' });
       toast({ title: 'Plano criado', description: 'Plano de lubrificação criado.' });
     },
     onError: (error: unknown) => {
@@ -176,9 +178,10 @@ export function useUpdatePlanoLubrificacao() {
 
       return source as PlanoLubrificacao;
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['planos-lubrificacao', tenantId] });
       queryClient.invalidateQueries({ queryKey: ['maintenance-schedule'] });
+      writeAuditLog({ action: 'UPDATE_PLANO_LUBRIFICACAO', table: 'planos_lubrificacao', recordId: data?.id, empresaId: tenantId, source: 'useLubrificacao' });
       toast({ title: 'Plano atualizado', description: 'Plano de lubrificação atualizado com sucesso.' });
     },
     onError: (error: unknown) => {
@@ -206,9 +209,10 @@ export function useDeletePlanoLubrificacao() {
 
       if (error) throw error;
     },
-    onSuccess: () => {
+    onSuccess: (_data, deletedId) => {
       queryClient.invalidateQueries({ queryKey: ['planos-lubrificacao', tenantId] });
       queryClient.invalidateQueries({ queryKey: ['maintenance-schedule'] });
+      writeAuditLog({ action: 'DELETE_PLANO_LUBRIFICACAO', table: 'planos_lubrificacao', recordId: deletedId, empresaId: tenantId, source: 'useLubrificacao', severity: 'warning' });
       toast({ title: 'Plano excluído', description: 'Plano de lubrificação excluído com sucesso.' });
     },
     onError: (error: unknown) => {
@@ -238,6 +242,7 @@ export function useExecucoesByPlanoLubrificacao(planoId: string | null) {
 export function useCreateExecucaoLubrificacao() {
   const qc = useQueryClient();
   const { toast } = useToast();
+  const { tenantId } = useAuth();
 
   return useMutation({
     mutationFn: async (input: { plano_id: string; executor_nome?: string; observacoes?: string; fotos?: unknown; quantidade_utilizada?: number }) => {
@@ -259,6 +264,7 @@ export function useCreateExecucaoLubrificacao() {
     onSuccess: (d) => {
       qc.invalidateQueries({ queryKey: ['execucoes-lubrificacao', d.plano_id] });
       qc.invalidateQueries({ queryKey: ['planos-lubrificacao'] });
+      writeAuditLog({ action: 'CREATE_EXECUCAO_LUBRIFICACAO', table: 'execucoes_lubrificacao', recordId: d?.id, empresaId: tenantId, source: 'useLubrificacao', metadata: { plano_id: d.plano_id } });
       toast({ title: 'Execução registrada' });
     },
     onError: (e: unknown) =>
@@ -269,6 +275,7 @@ export function useCreateExecucaoLubrificacao() {
 export function useGenerateExecucoesNow() {
   const qc = useQueryClient();
   const { toast } = useToast();
+  const { tenantId } = useAuth();
 
   return useMutation({
     mutationFn: async () => {
@@ -371,6 +378,8 @@ export function useGenerateExecucoesNow() {
         title: 'Geração de execuções',
         description: `${created} tarefas criadas.`,
       });
+
+      writeAuditLog({ action: 'GENERATE_EXECUCOES_LUBRIFICACAO', table: 'execucoes_lubrificacao', empresaId: tenantId, source: 'useLubrificacao', metadata: { created_count: created } });
 
       return { created };
     },

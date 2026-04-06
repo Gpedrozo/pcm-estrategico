@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { insertWithColumnFallback, updateWithColumnFallback } from '@/lib/supabaseCompat';
 import { useAuth } from '@/contexts/AuthContext';
+import { writeAuditLog } from '@/lib/audit';
 
 export interface MelhoriaRow {
   id: string;
@@ -117,8 +118,9 @@ export function useCreateMelhoria() {
         } as Record<string, unknown>,
       ) as Promise<MelhoriaRow>;
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['melhorias', tenantId] });
+      writeAuditLog({ action: 'CREATE_MELHORIA', table: 'melhorias', recordId: data?.id, empresaId: tenantId, source: 'useMelhorias', metadata: { tipo: data?.tipo, titulo: data?.titulo } });
       toast({
         title: 'Melhoria registrada',
         description: 'A proposta de melhoria foi registrada com sucesso.',
@@ -155,8 +157,9 @@ export function useUpdateMelhoria() {
         updates as Record<string, unknown>,
       ) as Promise<MelhoriaRow>;
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['melhorias', tenantId] });
+      writeAuditLog({ action: 'UPDATE_MELHORIA', table: 'melhorias', recordId: data?.id, empresaId: tenantId, source: 'useMelhorias', metadata: { status: data?.status } });
       toast({
         title: 'Melhoria atualizada',
         description: 'A melhoria foi atualizada com sucesso.',

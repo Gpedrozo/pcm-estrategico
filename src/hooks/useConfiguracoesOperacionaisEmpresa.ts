@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/integrations/supabase/client'
 import { useAuth } from '@/contexts/AuthContext'
+import { writeAuditLog } from '@/lib/audit'
 
 const CONFIG_KEY = 'tenant.operational_profile'
 
@@ -97,6 +98,7 @@ export function useSalvarConfiguracoesOperacionaisEmpresa() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['tenant-operational-settings', tenantId] })
+      writeAuditLog({ action: 'UPDATE_CONFIG_OPERACIONAL_EMPRESA', table: 'configuracoes_sistema', empresaId: tenantId, source: 'useConfiguracoesOperacionaisEmpresa' })
     },
   })
 }
