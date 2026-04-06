@@ -2285,44 +2285,117 @@ Deno.serve(async (req) => {
       );
     }
 
-    let selectedPlanId = body.subscription?.plan_id ?? null;
+    // --- Plan ID resolution ---
+    // Frontend sends plan_id from "plans" table (EN). But:
+    //   subscriptions.plan_id FK -> planos (PT-BR)
+    //   company_subscriptions.plan_id FK -> plans (EN)
+    // We need two IDs: one for each table.
+    const inputPlanId: string | null = body.subscription?.plan_id ?? null;
+    let planIdForSubscriptions: string | null = null;   // FK -> planos
+    let planIdForCompanySub: string | null = null;       // FK -> plans
 
-    if (!selectedPlanId) {
+    if (inputPlanId) {
+      // Input comes from plans table (frontend select). Map to planos via code.
       try {
-        const { data: fallbackPlan, error: fallbackPlanError } = await admin
+        const { data: sourcePlan } = await admin
           .from("plans")
           .select("id,code")
+          .eq("id", inputPlanId)
+          .maybeSingle();
+
+        if (sourcePlan?.code) {
+          planIdForCompanySub = sourcePlan.id;
+          // Find equivalent in planos by codigo
+          const { data: matchedPlano } = await admin
+            .from("planos")
+            .select("id")
+            .ilike("codigo", sourcePlan.code)
+            .eq("ativo", true)
+            .maybeSingle();
+          planIdForSubscriptions = matchedPlano?.id ?? null;
+        }
+
+        if (!planIdForSubscriptions) {
+          // Maybe inputPlanId is already a planos ID — check directly
+          const { data: directPlano } = await admin
+            .from("planos")
+            .select("id,codigo")
+            .eq("id", inputPlanId)
+            .maybeSingle();
+          if (directPlano?.id) {
+            planIdForSubscriptions = directPlano.id;
+            if (!planIdForCompanySub) {
+              const { data: mp } = await admin
+                .from("plans")
+                .select("id")
+                .ilike("code", directPlano.codigo ?? "")
+                .eq("active", true)
+                .maybeSingle();
+              planIdForCompanySub = mp?.id ?? null;
+            }
+          }
+        }
+      } catch {
+        // swallow — fallback below
+      }
+    }
+
+    // Fallback: no plan provided or mapping failed — pick cheapest active
+    if (!planIdForSubscriptions) {
+      try {
+        const { data: fallbackPlano } = await admin
+          .from("planos")
+          .select("id,codigo")
+          .eq("ativo", true)
+          .order("created_at", { ascending: true })
+          .limit(1)
+          .maybeSingle();
+        if (fallbackPlano?.id) {
+          planIdForSubscriptions = fallbackPlano.id;
+          if (!planIdForCompanySub) {
+            const { data: mp } = await admin
+              .from("plans")
+              .select("id")
+              .ilike("code", fallbackPlano.codigo ?? "")
+              .eq("active", true)
+              .maybeSingle();
+            planIdForCompanySub = mp?.id ?? null;
+          }
+          if (!inputPlanId) {
+            onboardingWarning = mergeWarnings(
+              onboardingWarning,
+              `Plano inicial não informado. Assinatura criada automaticamente com plano ${fallbackPlano.codigo ?? fallbackPlano.id}.`,
+            );
+          }
+        }
+      } catch { /* ignore */ }
+    }
+
+    if (!planIdForCompanySub) {
+      try {
+        const { data: fallbackPlan } = await admin
+          .from("plans")
+          .select("id")
           .eq("active", true)
           .order("price_month", { ascending: true })
           .limit(1)
           .maybeSingle();
-
-        if (fallbackPlanError) {
-          onboardingWarning = mergeWarnings(
-            onboardingWarning,
-            `Plano inicial não pôde ser resolvido. Empresa seguirá sem assinatura inicial automática. (${fallbackPlanError.message})`,
-          );
-        } else if (fallbackPlan?.id) {
-          selectedPlanId = fallbackPlan.id;
-          onboardingWarning = mergeWarnings(
-            onboardingWarning,
-            `Plano inicial não informado. Assinatura criada automaticamente com plano ${fallbackPlan.code ?? fallbackPlan.id}.`,
-          );
-        } else {
-          onboardingWarning = mergeWarnings(
-            onboardingWarning,
-            "Empresa criada sem assinatura inicial: nenhum plano ativo encontrado para fallback automático.",
-          );
-        }
-      } catch (planLookupErr: any) {
-        onboardingWarning = mergeWarnings(
-          onboardingWarning,
-          `Erro inesperado ao buscar plano inicial. Empresa seguirá sem assinatura. (${planLookupErr?.message ?? "unknown"})`,
-        );
+        planIdForCompanySub = fallbackPlan?.id ?? planIdForSubscriptions;
+      } catch {
+        planIdForCompanySub = planIdForSubscriptions;
       }
     }
 
-    let subscription: any = null;
+    if (!planIdForSubscriptions && !planIdForCompanySub) {
+      onboardingWarning = mergeWarnings(
+        onboardingWarning,
+        "Empresa criada sem assinatura inicial: nenhum plano ativo encontrado.",
+      );
+    }
+
+    // Alias for backward compat in the rest of the block
+    const selectedPlanId = planIdForSubscriptions;
+    const selectedPlanIdForCompanySub = planIdForCompanySub;
     let contract: any = null;
 
     if (selectedPlanId) {
@@ -2359,7 +2432,7 @@ Deno.serve(async (req) => {
         const mappedStatus = companySubStatus === "teste" ? "trial" : companySubStatus === "ativa" ? "active" : companySubStatus;
         await admin.from("company_subscriptions").upsert({
           empresa_id: company.id,
-          plan_id: selectedPlanId,
+          plan_id: selectedPlanIdForCompanySub ?? selectedPlanId,
           status: mappedStatus,
           starts_at: createdSubscription.starts_at ?? startsAt,
           ends_at: createdSubscription.ends_at ?? null,
@@ -2369,7 +2442,7 @@ Deno.serve(async (req) => {
             // Fallback insert
             return admin.from("company_subscriptions").insert({
               empresa_id: company.id,
-              plan_id: selectedPlanId,
+              plan_id: selectedPlanIdForCompanySub ?? selectedPlanId,
               status: mappedStatus,
               starts_at: createdSubscription.starts_at ?? startsAt,
               ends_at: createdSubscription.ends_at ?? null,
