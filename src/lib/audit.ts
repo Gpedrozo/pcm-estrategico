@@ -12,31 +12,35 @@ interface AuditInput {
 }
 
 export async function writeAuditLog(input: AuditInput) {
-  const {
-    action,
-    table,
-    recordId = null,
-    empresaId = null,
-    severity = 'info',
-    source = 'app',
-    metadata = {},
-  } = input
-
-  const { error } = await callRpc<null>('app_write_audit_log', {
-    p_action: action,
-    p_table: table,
-    p_record_id: recordId,
-    p_empresa_id: empresaId,
-    p_severity: severity,
-    p_source: source,
-    p_metadata: metadata,
-  })
-
-  if (error) {
-    logger.error('audit_log_rpc_failed', {
+  try {
+    const {
       action,
       table,
-      error: error.message,
+      recordId = null,
+      empresaId = null,
+      severity = 'info',
+      source = 'app',
+      metadata = {},
+    } = input
+
+    const { error } = await callRpc<null>('app_write_audit_log', {
+      p_action: action,
+      p_table: table,
+      p_record_id: recordId,
+      p_empresa_id: empresaId,
+      p_severity: severity,
+      p_source: source,
+      p_metadata: metadata,
     })
+
+    if (error) {
+      logger.error('audit_log_rpc_failed', {
+        action,
+        table,
+        error: error.message,
+      })
+    }
+  } catch {
+    // fire-and-forget: never let audit break the caller
   }
 }
