@@ -64,7 +64,7 @@ export default function Relatorios() {
         empresaTelefone: empresa?.telefone || '',
         empresaEmail: empresa?.email || '',
         empresaEndereco: empresa?.endereco || '',
-        logoUrl: empresa?.logo_relatorio_url || empresa?.logo_pdf_url || empresa?.logo_os_url || empresa?.logo_url || '',
+        logoUrl: empresa?.logo_os_url || empresa?.logo_url || '',
         layoutVersion: '1.0',
       };
 

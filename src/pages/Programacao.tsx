@@ -210,7 +210,7 @@ export default function Programacao() {
       preventiva: 'PRV', lubrificacao: 'LUB', inspecao: 'INS', preditiva: 'PRD',
     };
     const docNum = `${tipoPrefix[selectedEvent.tipo] || 'MNT'}-${(selectedEvent.origem_id || '').substring(0, 8).toUpperCase()}`;
-    const logoUrl = empresa?.logo_os_url || empresa?.logo_pdf_url || empresa?.logo_url || '';
+    const logoUrl = empresa?.logo_os_url || empresa?.logo_url || '';
     const nomeEmpresa = empresa?.nome_fantasia || empresa?.razao_social || 'MANUTENÇÃO INDUSTRIAL';
     const dataFormatada = format(new Date(selectedEvent.data_programada), 'dd/MM/yyyy', { locale: ptBR });
     const dataEmissao = format(new Date(), 'dd/MM/yyyy', { locale: ptBR });

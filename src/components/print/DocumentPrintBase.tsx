@@ -28,7 +28,7 @@ export const DocumentPrintBase = forwardRef<HTMLDivElement, DocumentPrintBasePro
   ({ title, documentNumber, empresa, layoutVersion = '1.0', emissionDate, page = '1 / 1', children, footer, hideHeaderFooter = false }, ref) => {
     const dataEmissao = emissionDate || format(new Date(), 'dd/MM/yyyy', { locale: ptBR });
     const displayName = empresa?.nome_fantasia || empresa?.razao_social || 'MANUTENÇÃO INDUSTRIAL';
-    const logoUrl = empresa?.logo_os_url || empresa?.logo_pdf_url || empresa?.logo_principal_url || '';
+    const logoUrl = empresa?.logo_os_url || empresa?.logo_url || '';
 
     return (
       <div

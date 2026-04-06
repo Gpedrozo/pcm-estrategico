@@ -40,9 +40,10 @@ export function BrandingProvider({ children }: { children: React.ReactNode }) {
       setIsLoading(true);
       setError(null);
 
+      // Fetch company basic data
       const { data, error: fetchError } = await supabase
         .from('dados_empresa')
-        .select('razao_social, nome_fantasia, logo_url, logo_os_url')
+        .select('razao_social, nome_fantasia')
         .eq('empresa_id', tenant.id)
         .limit(1)
         .maybeSingle();
@@ -53,15 +54,33 @@ export function BrandingProvider({ children }: { children: React.ReactNode }) {
         setError(fetchError.message);
         setBranding(null);
       } else {
-        if (!data) {
+        // Fetch logos from configuracoes_sistema (source of truth)
+        let logoPrincipal: string | null = null;
+        let logoOS: string | null = null;
+
+        const { data: configData } = await supabase
+          .from('configuracoes_sistema')
+          .select('valor')
+          .eq('empresa_id', tenant.id)
+          .eq('chave', 'tenant.logos')
+          .maybeSingle();
+
+        if (!isMounted) return;
+
+        if (configData?.valor) {
+          const logos = typeof configData.valor === 'string'
+            ? JSON.parse(configData.valor)
+            : configData.valor;
+          logoPrincipal = logos.logo_url ?? null;
+          logoOS = logos.logo_os_url ?? logoPrincipal;
+        }
+
+        if (!data && !logoPrincipal) {
           setBranding(null);
         } else {
-          const logoPrincipal = data.logo_url ?? null;
-          const logoOS = data.logo_os_url ?? logoPrincipal;
-
           setBranding({
-            razao_social: data.razao_social ?? '',
-            nome_fantasia: data.nome_fantasia ?? null,
+            razao_social: data?.razao_social ?? '',
+            nome_fantasia: data?.nome_fantasia ?? null,
             logo_principal_url: logoPrincipal,
             logo_login_url: logoPrincipal,
             logo_menu_url: logoPrincipal,

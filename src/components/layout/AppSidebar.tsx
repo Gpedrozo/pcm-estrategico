@@ -210,7 +210,7 @@ export function AppSidebar() {
             <img
               src={branding.logo_menu_url}
               alt={branding.nome_fantasia || branding.razao_social || 'Logo'}
-              className="w-10 h-10 rounded-md object-contain bg-sidebar-primary p-1"
+              className="w-10 h-10 rounded-md object-contain"
             />
           ) : (
             <div className="w-10 h-10 rounded-md bg-sidebar-primary flex items-center justify-center">
