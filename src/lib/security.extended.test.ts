@@ -95,16 +95,16 @@ describe('security – extended coverage', () => {
       expect(getEffectiveRole({ roles: ['ADMIN', 'MASTER_TI'] })).toBe('MASTER_TI');
     });
 
-    it('returns OWNER over MANAGER', () => {
-      expect(getEffectiveRole({ roles: ['MANAGER', 'OWNER'] })).toBe('OWNER');
+    it('maps OWNER to ADMIN (higher than MANAGER)', () => {
+      expect(getEffectiveRole({ roles: ['MANAGER', 'OWNER'] })).toBe('ADMIN');
     });
 
-    it('returns MANAGER over PLANNER', () => {
-      expect(getEffectiveRole({ roles: ['PLANNER', 'MANAGER'] })).toBe('MANAGER');
+    it('maps MANAGER to ADMIN (higher than PLANNER)', () => {
+      expect(getEffectiveRole({ roles: ['PLANNER', 'MANAGER'] })).toBe('ADMIN');
     });
 
-    it('returns PLANNER over TECHNICIAN', () => {
-      expect(getEffectiveRole({ roles: ['TECHNICIAN', 'PLANNER'] })).toBe('PLANNER');
+    it('maps PLANNER to USUARIO (higher priority than TECHNICIAN)', () => {
+      expect(getEffectiveRole({ roles: ['TECHNICIAN', 'PLANNER'] })).toBe('USUARIO');
     });
 
     it('returns TECHNICIAN over SOLICITANTE', () => {
@@ -119,8 +119,8 @@ describe('security – extended coverage', () => {
       expect(getEffectiveRole({ roles: ['ADMIN'] })).toBe('ADMIN');
     });
 
-    it('returns VIEWER over nothing else', () => {
-      expect(getEffectiveRole({ roles: ['VIEWER'] })).toBe('VIEWER');
+    it('maps VIEWER to USUARIO', () => {
+      expect(getEffectiveRole({ roles: ['VIEWER'] })).toBe('USUARIO');
     });
   });
 });
