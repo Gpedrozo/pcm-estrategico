@@ -1130,14 +1130,14 @@ export default function Preditiva() {
           ) : (
             <div className="space-y-3">
               {historicoAlteracoes.map((log) => {
-                const campos = (log.metadata as any)?.campos_alterados as Record<string, { antes: unknown; depois: unknown }> | undefined;
+                const campos = log.diferenca as Record<string, { antes: unknown; depois: unknown }> | undefined;
                 return (
                   <div key={log.id} className="rounded-lg border border-border p-3 space-y-1">
                     <div className="flex items-center justify-between">
-                      <span className="text-sm font-medium">{log.action === 'UPDATE_MEDICAO_PREDITIVA' ? 'Edição de Medição' : log.action}</span>
+                      <span className="text-sm font-medium">{log.acao === 'UPDATE' ? 'Edição de Medição' : log.acao}</span>
                       <span className="text-xs text-muted-foreground">{new Date(log.created_at).toLocaleString('pt-BR')}</span>
                     </div>
-                    <p className="text-xs text-muted-foreground">Usuário: {(log.metadata as any)?.usuario_nome || log.actor_email || 'sistema'}</p>
+                    <p className="text-xs text-muted-foreground">Usuário: {log.usuario_email || 'sistema'}</p>
                     {campos && Object.keys(campos).length > 0 && (
                       <div className="mt-2 space-y-1">
                         {Object.entries(campos).map(([campo, diff]) => (

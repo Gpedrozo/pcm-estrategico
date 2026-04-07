@@ -278,23 +278,25 @@ export function useDeleteMedicaoPreditiva() {
 
 export function useHistoricoAlteracoesMedicao(recordId: string | null) {
   return useQuery({
-    queryKey: ['audit_logs', 'medicoes_preditivas', recordId],
+    queryKey: ['enterprise_audit_logs', 'medicoes_preditivas', recordId],
     queryFn: async () => {
       if (!recordId) return [];
 
       const { data, error } = await supabase
-        .from('audit_logs')
+        .from('enterprise_audit_logs')
         .select('*')
-        .eq('table_name', 'medicoes_preditivas')
-        .eq('record_id', recordId)
+        .eq('tabela', 'medicoes_preditivas')
+        .eq('registro_id', recordId)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
       return (data || []) as Array<{
         id: string;
-        actor_email: string | null;
-        action: string;
-        metadata: Record<string, unknown> | null;
+        usuario_email: string | null;
+        acao: string;
+        dados_antes: Record<string, unknown> | null;
+        dados_depois: Record<string, unknown> | null;
+        diferenca: Record<string, unknown> | null;
         created_at: string;
       }>;
     },

@@ -26,7 +26,7 @@ const MODULE_TABLES = [
   { module: 'Componentes', table: 'componentes_equipamento' as const, icon: Settings, color: 'text-muted-foreground' },
   { module: 'Execuções OS', table: 'execucoes_os' as const, icon: Activity, color: 'text-success' },
   { module: 'Usuários', table: 'profiles' as const, icon: Users, color: 'text-primary' },
-  { module: 'Auditoria', table: 'audit_logs' as const, icon: FileText, color: 'text-warning' },
+  { module: 'Auditoria', table: 'enterprise_audit_logs' as const, icon: FileText, color: 'text-warning' },
   { module: 'Security Logs', table: 'security_logs' as const, icon: ShieldAlert, color: 'text-destructive' },
   { module: 'Notificações', table: 'notificacoes' as const, icon: ClipboardList, color: 'text-info' },
   { module: 'Permissões Granulares', table: 'permissoes_granulares' as const, icon: Settings, color: 'text-primary' },
@@ -87,7 +87,7 @@ export function MasterSystemMonitor() {
           })
         ),
         countByTenant('ordens_servico', oneDayAgo),
-        countByTenant('audit_logs', oneDayAgo),
+        countByTenant('enterprise_audit_logs', oneDayAgo),
         countByTenant('solicitacoes_manutencao', oneDayAgo),
         countByTenant('security_logs', oneDayAgo),
       ]);

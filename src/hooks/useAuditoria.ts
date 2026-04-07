@@ -36,7 +36,7 @@ export function useAuditoria(filters?: AuditoriaFilters) {
     queryKey: ['auditoria', tenantId, filters?.limit ?? null, filters?.offset ?? null, filters?.dateFrom ?? null, filters?.dateTo ?? null],
     queryFn: async () => {
       let query = supabase
-        .from('audit_logs')
+        .from('enterprise_audit_logs')
         .select('*')
         .eq('empresa_id', tenantId!)
         .order('created_at', { ascending: false });
@@ -62,12 +62,12 @@ export function useAuditoria(filters?: AuditoriaFilters) {
       if (error) throw error;
       return (data || []).map((row: any) => ({
         id: row.id,
-        usuario_id: row.actor_user_id ?? null,
-        usuario_nome: row.actor_email ?? 'SISTEMA',
-        acao: row.action,
-        descricao: row.metadata?.descricao ?? row.action,
-        tag: row.metadata?.tag ?? null,
-        data_hora: row.created_at,
+        usuario_id: row.usuario_id ?? null,
+        usuario_nome: row.usuario_email ?? 'SISTEMA',
+        acao: row.acao ?? row.action ?? 'UPDATE',
+        descricao: row.diferenca ? `Alteração em ${row.tabela ?? 'registro'}` : (row.acao ?? row.action ?? 'Ação'),
+        tag: row.tabela ?? null,
+        data_hora: row.ocorreu_em ?? row.created_at,
       })) as AuditoriaRow[];
     },
     enabled: !!tenantId,

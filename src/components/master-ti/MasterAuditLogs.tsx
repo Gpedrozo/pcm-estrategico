@@ -23,25 +23,31 @@ export function MasterAuditLogs() {
   const [activeTab, setActiveTab] = useState('auditoria');
   const [viewingLog, setViewingLog] = useState<any>(null);
 
-  // Auditoria manual logs
+  // Auditoria manual logs — now reads from enterprise_audit_logs (canonical)
   const { data: auditData, isLoading: loadingAudit } = useQuery({
     queryKey: ['master-audit-logs', page, search, actionFilter],
     queryFn: async () => {
-      let query = supabase.from('audit_logs').select('*', { count: 'exact' }).order('created_at', { ascending: false }).range(page * PAGE_SIZE, (page + 1) * PAGE_SIZE - 1);
+      let query = supabase.from('enterprise_audit_logs').select('*', { count: 'exact' }).order('created_at', { ascending: false }).range(page * PAGE_SIZE, (page + 1) * PAGE_SIZE - 1);
       if (tenantId) query = query.eq('empresa_id', tenantId);
-      if (search) query = query.or(`action.ilike.%${search}%,source.ilike.%${search}%`);
-      if (actionFilter !== 'ALL') query = query.ilike('action', `%${actionFilter}%`);
+      if (search) query = query.or(`acao.ilike.%${search}%,tabela.ilike.%${search}%,usuario_email.ilike.%${search}%`);
+      if (actionFilter !== 'ALL') query = query.ilike('acao', `%${actionFilter}%`);
       const { data, count, error } = await query;
       if (error) throw error;
       return {
         logs: (data || []).map((row: any) => ({
           id: row.id,
-          data_hora: row.created_at,
-          usuario_nome: row.actor_email || 'SISTEMA',
-          acao: row.action,
-          descricao: row.metadata?.descricao || row.action,
-          tag: row.metadata?.tag || null,
-          usuario_id: row.actor_user_id || null,
+          data_hora: row.ocorreu_em ?? row.created_at,
+          usuario_nome: row.usuario_email || 'SISTEMA',
+          acao: row.acao ?? row.action ?? 'UPDATE',
+          descricao: row.diferenca ? `Alteração em ${row.tabela ?? 'registro'}` : (row.acao ?? 'Ação'),
+          tag: row.tabela ?? null,
+          usuario_id: row.usuario_id || null,
+          resultado: row.resultado ?? 'sucesso',
+          dados_antes: row.dados_antes ?? null,
+          dados_depois: row.dados_depois ?? null,
+          diferenca: row.diferenca ?? null,
+          ip_address: row.ip_address ?? null,
+          correlacao_id: row.correlacao_id ?? null,
         })),
         total: count ?? 0,
       };
@@ -60,19 +66,23 @@ export function MasterAuditLogs() {
     queryFn: async () => {
       let query = supabase.from('enterprise_audit_logs').select('*', { count: 'exact' }).order('created_at', { ascending: false }).range(dbPage * PAGE_SIZE, (dbPage + 1) * PAGE_SIZE - 1);
       if (tenantId) query = query.eq('empresa_id', tenantId);
-      if (dbSearch) query = query.or(`table_name.ilike.%${dbSearch}%,operation.ilike.%${dbSearch}%,action_type.ilike.%${dbSearch}%`);
-      if (dbTableFilter !== 'ALL') query = query.eq('table_name', dbTableFilter);
+      if (dbSearch) query = query.or(`tabela.ilike.%${dbSearch}%,acao.ilike.%${dbSearch}%,usuario_email.ilike.%${dbSearch}%`);
+      if (dbTableFilter !== 'ALL') query = query.eq('tabela', dbTableFilter);
       const { data, count, error } = await query;
       if (error) throw error;
       return {
         logs: (data || []).map((row: any) => ({
           id: row.id,
-          tabela: row.table_name || row.details?.table || 'N/A',
-          operacao: row.operation || row.action_type || 'UNKNOWN',
-          registro_id: row.record_id || row.details?.record_id || null,
-          dados_antes: row.old_data || null,
-          dados_depois: row.new_data || row.details || null,
-          created_at: row.created_at,
+          tabela: row.tabela ?? row.table_name ?? 'N/A',
+          operacao: row.acao ?? row.operation ?? row.action_type ?? 'UNKNOWN',
+          registro_id: row.registro_id ?? row.record_id ?? null,
+          dados_antes: row.dados_antes ?? row.old_data ?? null,
+          dados_depois: row.dados_depois ?? row.new_data ?? null,
+          diferenca: row.diferenca ?? null,
+          created_at: row.ocorreu_em ?? row.created_at,
+          usuario_email: row.usuario_email ?? null,
+          resultado: row.resultado ?? 'sucesso',
+          ip_address: row.ip_address ?? null,
         })),
         total: count ?? 0,
       };
@@ -80,19 +90,17 @@ export function MasterAuditLogs() {
     enabled: activeTab === 'db_audit',
   });
 
-  // Stats
+  // Stats — both tabs now read from enterprise_audit_logs
   const { data: statsData } = useQuery({
     queryKey: ['master-audit-stats'],
     queryFn: async () => {
       const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
       const withTenant = (q: any) => tenantId ? q.eq('empresa_id', tenantId) : q;
-      const [totalAudit, todayAudit, totalDbAudit, todayDbAudit] = await Promise.all([
-        withTenant(supabase.from('audit_logs').select('*', { count: 'exact', head: true })),
-        withTenant(supabase.from('audit_logs').select('*', { count: 'exact', head: true })).gte('created_at', oneDayAgo),
+      const [totalAudit, todayAudit] = await Promise.all([
         withTenant(supabase.from('enterprise_audit_logs').select('*', { count: 'exact', head: true })),
         withTenant(supabase.from('enterprise_audit_logs').select('*', { count: 'exact', head: true })).gte('created_at', oneDayAgo),
       ]);
-      return { totalAudit: totalAudit.count ?? 0, todayAudit: todayAudit.count ?? 0, totalDbAudit: totalDbAudit.count ?? 0, todayDbAudit: todayDbAudit.count ?? 0 };
+      return { totalAudit: totalAudit.count ?? 0, todayAudit: todayAudit.count ?? 0, totalDbAudit: totalAudit.count ?? 0, todayDbAudit: todayAudit.count ?? 0 };
     },
   });
 
@@ -279,7 +287,7 @@ export function MasterAuditLogs() {
 
       {/* Audit Detail Dialog */}
       <Dialog open={!!viewingLog} onOpenChange={open => !open && setViewingLog(null)}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-auto">
           <DialogHeader><DialogTitle>Detalhes da Ação</DialogTitle></DialogHeader>
           {viewingLog && (
             <div className="space-y-3 text-sm">
@@ -287,11 +295,33 @@ export function MasterAuditLogs() {
                 <div><span className="text-muted-foreground">Data/Hora:</span><p className="font-medium">{new Date(viewingLog.data_hora).toLocaleString('pt-BR')}</p></div>
                 <div><span className="text-muted-foreground">Usuário:</span><p className="font-medium">{viewingLog.usuario_nome}</p></div>
                 <div><span className="text-muted-foreground">Ação:</span><Badge variant="outline" className={actionColor(viewingLog.acao)}>{viewingLog.acao}</Badge></div>
-                <div><span className="text-muted-foreground">TAG:</span><p className="font-mono">{viewingLog.tag || '—'}</p></div>
+                <div><span className="text-muted-foreground">Tabela:</span><p className="font-mono">{viewingLog.tag || '—'}</p></div>
+                <div><span className="text-muted-foreground">Resultado:</span><p className="font-medium">{viewingLog.resultado || 'sucesso'}</p></div>
+                <div><span className="text-muted-foreground">IP:</span><p className="font-mono text-xs">{viewingLog.ip_address || '—'}</p></div>
               </div>
               <div><span className="text-muted-foreground">Descrição:</span><p className="mt-1 p-3 bg-muted/30 rounded-lg">{viewingLog.descricao}</p></div>
-              <div><span className="text-muted-foreground">ID do Registro:</span><p className="font-mono text-xs">{viewingLog.id}</p></div>
-              <div><span className="text-muted-foreground">ID do Usuário:</span><p className="font-mono text-xs">{viewingLog.usuario_id || '—'}</p></div>
+              {viewingLog.dados_antes && (
+                <div>
+                  <p className="text-muted-foreground mb-1 font-medium">Dados Antes:</p>
+                  <pre className="bg-muted/30 p-3 rounded-lg overflow-auto text-xs max-h-40">{JSON.stringify(viewingLog.dados_antes, null, 2)}</pre>
+                </div>
+              )}
+              {viewingLog.dados_depois && (
+                <div>
+                  <p className="text-muted-foreground mb-1 font-medium">Dados Depois:</p>
+                  <pre className="bg-muted/30 p-3 rounded-lg overflow-auto text-xs max-h-40">{JSON.stringify(viewingLog.dados_depois, null, 2)}</pre>
+                </div>
+              )}
+              {viewingLog.diferenca && (
+                <div>
+                  <p className="text-muted-foreground mb-1 font-medium">Diferença:</p>
+                  <pre className="bg-amber-500/10 p-3 rounded-lg overflow-auto text-xs max-h-40">{JSON.stringify(viewingLog.diferenca, null, 2)}</pre>
+                </div>
+              )}
+              <div className="grid grid-cols-2 gap-3 pt-2 border-t">
+                <div><span className="text-muted-foreground">ID do Registro:</span><p className="font-mono text-xs">{viewingLog.id}</p></div>
+                <div><span className="text-muted-foreground">Correlação ID:</span><p className="font-mono text-xs">{viewingLog.correlacao_id || '—'}</p></div>
+              </div>
             </div>
           )}
         </DialogContent>
@@ -308,6 +338,11 @@ export function MasterAuditLogs() {
                 <div><span className="text-muted-foreground">Operação:</span><Badge variant="outline" className={actionColor(viewingDbLog.operacao)}>{viewingDbLog.operacao}</Badge></div>
                 <div><span className="text-muted-foreground">Data:</span><p>{viewingDbLog.created_at ? new Date(viewingDbLog.created_at).toLocaleString('pt-BR') : '—'}</p></div>
               </div>
+              <div className="grid grid-cols-3 gap-3">
+                <div><span className="text-muted-foreground">Usuário:</span><p className="font-medium">{viewingDbLog.usuario_email || '—'}</p></div>
+                <div><span className="text-muted-foreground">Resultado:</span><p>{viewingDbLog.resultado || 'sucesso'}</p></div>
+                <div><span className="text-muted-foreground">IP:</span><p className="font-mono text-xs">{viewingDbLog.ip_address || '—'}</p></div>
+              </div>
               {viewingDbLog.dados_antes && (
                 <div>
                   <p className="text-muted-foreground mb-1 font-medium">Dados Antes:</p>
@@ -318,6 +353,12 @@ export function MasterAuditLogs() {
                 <div>
                   <p className="text-muted-foreground mb-1 font-medium">Dados Depois:</p>
                   <pre className="bg-muted/30 p-3 rounded-lg overflow-auto text-xs max-h-48">{JSON.stringify(viewingDbLog.dados_depois, null, 2)}</pre>
+                </div>
+              )}
+              {viewingDbLog.diferenca && (
+                <div>
+                  <p className="text-muted-foreground mb-1 font-medium">Diferença:</p>
+                  <pre className="bg-amber-500/10 p-3 rounded-lg overflow-auto text-xs max-h-48">{JSON.stringify(viewingDbLog.diferenca, null, 2)}</pre>
                 </div>
               )}
             </div>
