@@ -4,7 +4,7 @@
 -- Purpose: Adds new canonical role names (OWNER_MASTER, OWNER_SYSTEM, ADMIN_TI,
 --          USER, MECANICO) to the app_role enum as aliases.
 --          This is ADDITIVE ONLY — no existing values are removed or renamed.
---          The frontend compatibility layer (roleCompat.ts) handles mapping.
+--          The frontend security layer (security.ts getEffectiveRole) handles mapping.
 -- Risk: ZERO — ADD VALUE IF NOT EXISTS is safe and non-destructive.
 -- =============================================================================
 
