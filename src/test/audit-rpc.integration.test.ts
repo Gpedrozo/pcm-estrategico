@@ -135,7 +135,7 @@ describe('app_write_audit_log integration', () => {
       { input: 'AUTH_LOGIN_FAILED', expected: 'LOGIN' },
       { input: 'AUTH_PASSWORD_CHANGED', expected: 'UPDATE' },
       { input: 'GENERATE_DOCUMENT_NUMBER', expected: 'CREATE' },
-      { input: 'OWNER2_REMOVE_USER', expected: 'UPDATE' },
+      { input: 'OWNER2_REMOVE_USER', expected: 'DELETE' },
     ];
 
     for (const { input, expected } of cases) {
