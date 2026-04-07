@@ -146,7 +146,7 @@ const AdminOnlyRoute = ({ children }: { children: React.ReactNode }) => {
 
 const OwnerOnlyRoute = ({ children }: { children: React.ReactNode }) => {
   const location = useLocation();
-  const { isAuthenticated, isLoading, isHydrating, authStatus, isSystemOwner, forcePasswordChange } = useAuth();
+  const { isAuthenticated, isLoading, isHydrating, authStatus, isSystemOwner, forcePasswordChange, session } = useAuth();
   const lastTraceRef = useRef<string>('');
 
   useEffect(() => {
@@ -183,6 +183,13 @@ const OwnerOnlyRoute = ({ children }: { children: React.ReactNode }) => {
     const nextPath = `${location.pathname}${location.search}${location.hash}`;
     const nextParam = encodeURIComponent(nextPath || '/');
     return <Navigate to={`/login?next=${nextParam}`} replace state={{ from: location }} />;
+  }
+
+  const sessionExpiredAt = session?.expires_at ? session.expires_at * 1000 : 0;
+  if (sessionExpiredAt > 0 && sessionExpiredAt <= Date.now()) {
+    const nextPath = `${location.pathname}${location.search}${location.hash}`;
+    const nextParam = encodeURIComponent(nextPath || '/');
+    return <Navigate to={`/login?next=${nextParam}`} replace />;
   }
 
   if (forcePasswordChange) {

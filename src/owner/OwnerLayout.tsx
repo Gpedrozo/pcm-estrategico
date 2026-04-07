@@ -1,3 +1,8 @@
+// [REMOVED] Orphan file — not imported by any production code. Safe to delete.
+export {}
+
+/* eslint-disable */
+/* Original code removed — nothing imports this file.
 import React from 'react';
 import { LogOut, Shield } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';

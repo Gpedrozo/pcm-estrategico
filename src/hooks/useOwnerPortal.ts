@@ -1,44 +1,9 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import {
-  callOwnerAdmin,
-  changePlan as changePlanRequest,
-  cleanupCompanyData,
-  createCompany,
-  createPlatformOwner,
-  createPlan,
-  createSubscription,
-  createSystemAdmin,
-  createUser,
-  deleteCompanyByOwner,
-  deleteContract,
-  getCompanySettings,
-  getOwnerBackendHealth,
-  getPlatformStats,
-  impersonateCompany,
-  listAuditLogs,
-  listContracts,
-  listDatabaseTables,
-  listGlobalUsers,
-  listPlans,
-  listPlatformCompanies,
-  listPlatformOwners,
-  listSubscriptions,
-  listSupportTickets,
-  purgeTableData,
-  regenerateContract,
-  respondSupportTicket,
-  setUserInactivityTimeout,
-  setCompanyStatus,
-  setSubscriptionStatus,
-  setUserStatus,
-  stopImpersonation,
-  updateCompany,
-  updateCompanySettings,
-  updateContract,
-  updatePlan,
-  updateSubscriptionBilling,
-} from '@/services/ownerPortal.service'
-import { writeAuditLog } from '@/lib/audit'
+// [REMOVED] Orphan file — not imported by any production code. Safe to delete.
+// All owner hooks are now exclusively in useOwner2Portal.ts
+export {}
+
+/* eslint-disable */
+/* Original dead code below — nothing imports this file.
 
 export const ownerQueryKeys = {
   stats: ['owner', 'stats'] as const,
@@ -383,3 +348,4 @@ export function useOwnerCompanyActions() {
     customOwnerActionMutation,
   }
 }
+*/

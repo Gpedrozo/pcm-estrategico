@@ -1,10 +1,5 @@
-import { render, screen, waitFor } from "@testing-library/react";
-import { MemoryRouter, Route, Routes } from "react-router-dom";
-import { describe, expect, it, vi, beforeEach } from "vitest";
-import { useAuth } from "@/contexts/AuthContext";
-import { supabase } from "@/integrations/supabase/client";
-import { SystemOwnerGuard } from "./SystemOwnerGuard";
-import { createAuthContextValue, createAuthUser, createSession } from "@/test/auth-context-mock";
+// [REMOVED] Orphan test file — corresponding component removed. Safe to delete.
+export {}
 
 vi.mock("@/contexts/AuthContext", () => ({
   useAuth: vi.fn(),

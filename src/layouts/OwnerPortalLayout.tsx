@@ -1,8 +1,5 @@
-import { AlertTriangle, CheckCircle2, LogOut, Shield } from 'lucide-react'
-import { useAuth } from '@/contexts/AuthContext'
-import type { ReactNode } from 'react'
-import { useState } from 'react'
-import { stopImpersonation } from '@/services/ownerPortal.service'
+// [REMOVED] Orphan file — not imported by any production code. Safe to delete.
+export {}
 
 export interface OwnerNavItem {
   key: string

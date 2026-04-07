@@ -91,15 +91,6 @@ export default function Owner() {
   const [cadastroStartsAt, setCadastroStartsAt] = useState(() => new Date().toISOString().slice(0, 10))
   const [cadastroEndsAt, setCadastroEndsAt] = useState('')
 
-  const [newUserName, setNewUserName] = useState('')
-  const [newUserEmail, setNewUserEmail] = useState('')
-  const [newUserRole, setNewUserRole] = useState('ADMIN')
-  const [newUserRequirePasswordChange, setNewUserRequirePasswordChange] = useState(true)
-  const [selectedUserId, setSelectedUserId] = useState('')
-  const [userTargetCompanyId, setUserTargetCompanyId] = useState('')
-  const [userTargetRole, setUserTargetRole] = useState('USUARIO')
-  const [userNewPassword, setUserNewPassword] = useState('')
-
   const [planCode, setPlanCode] = useState('')
   const [planName, setPlanName] = useState('')
   const [planPrice, setPlanPrice] = useState('0')
@@ -334,22 +325,6 @@ export default function Owner() {
       document.removeEventListener('visibilitychange', syncVisibility)
     }
   }, [])
-
-  useEffect(() => {
-    if (!selectedUserId && users.length > 0) setSelectedUserId(String(users[0]?.id ?? ''))
-  }, [selectedUserId, users])
-
-  useEffect(() => {
-    if (!selectedUserId) return
-    const selected = users.find((u) => String(u.id ?? '') === selectedUserId)
-    if (!selected) return
-
-    setUserTargetCompanyId(String(selected.empresa_id ?? ''))
-    const firstRole = Array.isArray(selected.user_roles)
-      ? String((selected.user_roles[0] as any)?.role ?? selected.role ?? 'USUARIO').toUpperCase()
-      : String(selected.role ?? 'USUARIO').toUpperCase()
-    setUserTargetRole(firstRole || 'USUARIO')
-  }, [selectedUserId, users])
 
   useEffect(() => {
     if (!selectedContractId && contracts.length > 0) setSelectedContractId(String(contracts[0]?.id ?? ''))
