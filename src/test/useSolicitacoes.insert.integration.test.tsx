@@ -31,6 +31,7 @@ const mocks = vi.hoisted(() => {
 vi.mock('@/integrations/supabase/client', () => ({
   supabase: {
     from: mocks.fromSpy,
+    rpc: vi.fn().mockResolvedValue({ data: null, error: null }),
   },
 }));
 

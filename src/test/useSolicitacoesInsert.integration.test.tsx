@@ -40,6 +40,7 @@ const {
 vi.mock('@/integrations/supabase/client', () => ({
   supabase: {
     from: fromSpy,
+    rpc: vi.fn().mockResolvedValue({ data: null, error: null }),
   },
 }));
 
