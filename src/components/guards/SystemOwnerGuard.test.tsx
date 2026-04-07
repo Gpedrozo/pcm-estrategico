@@ -1,2 +1,6 @@
 // [REMOVED] Orphan test file — corresponding component removed. Safe to delete.
-export {}
+import { describe, it } from 'vitest'
+
+describe('SystemOwnerGuard (removed)', () => {
+  it('placeholder — component was removed', () => {})
+})
