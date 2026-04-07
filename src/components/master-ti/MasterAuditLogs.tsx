@@ -29,7 +29,7 @@ export function MasterAuditLogs() {
     queryFn: async () => {
       let query = supabase.from('enterprise_audit_logs').select('*', { count: 'exact' }).order('created_at', { ascending: false }).range(page * PAGE_SIZE, (page + 1) * PAGE_SIZE - 1);
       if (tenantId) query = query.eq('empresa_id', tenantId);
-      if (search) query = query.or(`acao.ilike.%${search}%,tabela.ilike.%${search}%,usuario_email.ilike.%${search}%`);
+      if (search) { const s = search.replace(/[%_()\\*]/g, ''); query = query.or(`acao.ilike.%${s}%,tabela.ilike.%${s}%,usuario_email.ilike.%${s}%`); }
       if (actionFilter !== 'ALL') query = query.ilike('acao', `%${actionFilter}%`);
       const { data, count, error } = await query;
       if (error) throw error;
@@ -66,7 +66,7 @@ export function MasterAuditLogs() {
     queryFn: async () => {
       let query = supabase.from('enterprise_audit_logs').select('*', { count: 'exact' }).order('created_at', { ascending: false }).range(dbPage * PAGE_SIZE, (dbPage + 1) * PAGE_SIZE - 1);
       if (tenantId) query = query.eq('empresa_id', tenantId);
-      if (dbSearch) query = query.or(`tabela.ilike.%${dbSearch}%,acao.ilike.%${dbSearch}%,usuario_email.ilike.%${dbSearch}%`);
+      if (dbSearch) { const s = dbSearch.replace(/[%_()\\*]/g, ''); query = query.or(`tabela.ilike.%${s}%,acao.ilike.%${s}%,usuario_email.ilike.%${s}%`); }
       if (dbTableFilter !== 'ALL') query = query.eq('tabela', dbTableFilter);
       const { data, count, error } = await query;
       if (error) throw error;

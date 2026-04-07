@@ -55,12 +55,12 @@ function useUsersList(tenantId: string | null) {
   return useQuery({
     queryKey: ['admin_users_list', tenantId],
     queryFn: async () => {
-      let query = supabase.from('profiles').select('id, nome');
-      if (tenantId) query = query.eq('empresa_id', tenantId);
-      const { data, error } = await query;
+      if (!tenantId) return [];
+      const { data, error } = await supabase.from('profiles').select('id, nome').eq('empresa_id', tenantId);
       if (error) throw error;
       return data;
     },
+    enabled: !!tenantId,
   });
 }
 

@@ -80,7 +80,7 @@ export function MasterSecurity() {
     queryFn: async () => {
       let query = supabase.from('security_logs').select('*', { count: 'exact' }).order('created_at', { ascending: false }).range(logPage * PAGE_SIZE, (logPage + 1) * PAGE_SIZE - 1);
       if (tenantId) query = query.eq('empresa_id', tenantId);
-      if (logSearch) query = query.or(`action.ilike.%${logSearch}%,resource.ilike.%${logSearch}%,error_message.ilike.%${logSearch}%`);
+      if (logSearch) { const s = logSearch.replace(/[%_()\\*]/g, ''); query = query.or(`action.ilike.%${s}%,resource.ilike.%${s}%,error_message.ilike.%${s}%`); }
       const { data, count, error } = await query;
       if (error) throw error;
       return { logs: data || [], total: count ?? 0 };

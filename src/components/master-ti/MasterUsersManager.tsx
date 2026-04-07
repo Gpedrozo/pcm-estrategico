@@ -94,7 +94,7 @@ export function MasterUsersManager() {
         throw new Error('Tenant não identificado para atualizar usuário.');
       }
 
-      const { error: nErr } = await supabase.from('profiles').update({ nome }).eq('id', userId);
+      const { error: nErr } = await supabase.from('profiles').update({ nome }).eq('id', userId).eq('empresa_id', tenantId);
       if (nErr) throw nErr;
 
       const { error: clearErr } = await supabase

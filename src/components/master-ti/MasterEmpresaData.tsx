@@ -10,6 +10,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useLogAuditoria } from '@/hooks/useAuditoria';
 import { writeAuditLog } from '@/lib/audit';
+import { useAuth } from '@/contexts/AuthContext';
 
 const FIELDS_CADASTRAIS = [
   { label: 'Razão Social *', key: 'razao_social' },
@@ -46,6 +47,7 @@ type FormFieldKey = keyof EmpresaFormData;
 
 export function MasterEmpresaData() {
   const { data: empresa, isLoading } = useDadosEmpresa();
+  const { tenantId } = useAuth();
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const { log } = useLogAuditoria();
@@ -91,7 +93,8 @@ export function MasterEmpresaData() {
           metadata: { razao_social: formData.razao_social },
         });
       } else {
-        const { data, error } = await supabase.from('dados_empresa').insert([formData]).select('id').single();
+        if (!tenantId) throw new Error('empresa_id obrigatório para cadastro');
+        const { data, error } = await supabase.from('dados_empresa').insert([{ ...formData, empresa_id: tenantId }]).select('id').single();
         if (error) throw error;
         await writeAuditLog({
           action: 'CREATE_COMPANY',
