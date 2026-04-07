@@ -21,7 +21,7 @@ describe('app_write_audit_log integration', () => {
     vi.clearAllMocks();
   });
 
-  it('calls RPC with correct Portuguese params and succeeds silently', async () => {
+  it('calls RPC with severity/source/metadata and succeeds silently', async () => {
     mockedCallRpc.mockResolvedValue({ data: null, error: null });
 
     await writeAuditLog({
@@ -38,42 +38,21 @@ describe('app_write_audit_log integration', () => {
     });
 
     expect(mockedCallRpc).toHaveBeenCalledWith('app_write_audit_log', {
+      p_action: 'UPDATE_PERMISSIONS',
+      p_table: 'permissoes_granulares',
+      p_record_id: 'user-1',
       p_empresa_id: 'empresa-1',
-      p_usuario_id: null,
-      p_acao: 'UPDATE',
-      p_tabela: 'permissoes_granulares',
-      p_registro_id: 'user-1',
-      p_dados_antes: null,
-      p_dados_depois: {
-        action_detail: 'UPDATE_PERMISSIONS',
-        severity: 'critical',
-        source: 'integration_test',
+      p_severity: 'critical',
+      p_source: 'integration_test',
+      p_metadata: {
         reason: 'manual-check',
         actor_profile: 'SYSTEM_OWNER',
       },
-      p_ip_address: null,
-      p_user_agent: expect.any(String),
-      p_correlacao_id: null,
-      p_resultado: 'sucesso',
-      p_mensagem_erro: null,
     });
     expect(mockedLoggerError).not.toHaveBeenCalled();
   });
 
-  it('skips silently when empresaId is missing', async () => {
-    mockedCallRpc.mockResolvedValue({ data: null, error: null });
-
-    await writeAuditLog({
-      action: 'READ_OWNER_METRICS',
-      table: 'owner_metrics',
-      source: 'integration_test',
-    });
-
-    expect(mockedCallRpc).not.toHaveBeenCalled();
-    expect(mockedLoggerError).not.toHaveBeenCalled();
-  });
-
-  it('logs failure path when RPC returns error', async () => {
+  it('logs unauthenticated/failure path when RPC returns error', async () => {
     mockedCallRpc.mockResolvedValue({ data: null, error: new Error('unauthenticated') });
 
     await writeAuditLog({

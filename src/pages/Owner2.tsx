@@ -492,8 +492,7 @@ export default function Owner() {
   const availableLogModules = useMemo(() => {
     const modules = new Set<string>()
     logs.forEach((log) => {
-      const details = log.dados_depois as Record<string, unknown> | null
-      const moduleName = String(details?.source ?? log.tabela ?? '').trim()
+      const moduleName = String(log.source ?? '').trim()
       if (moduleName) modules.add(moduleName)
     })
     return Array.from(modules).sort((a, b) => a.localeCompare(b))
@@ -502,8 +501,7 @@ export default function Owner() {
   const availableAuditSources = useMemo(() => {
     const sources = new Set<string>()
     logs.forEach((log) => {
-      const details = log.dados_depois as Record<string, unknown> | null
-      const src = String(details?.source ?? '').trim()
+      const src = String(log.source ?? '').trim()
       if (src) sources.add(src)
     })
     return Array.from(sources).sort((a, b) => a.localeCompare(b))
@@ -512,7 +510,7 @@ export default function Owner() {
   const availableAuditTables = useMemo(() => {
     const tbls = new Set<string>()
     logs.forEach((log) => {
-      const tbl = String(log.tabela ?? '').trim()
+      const tbl = String(log.table_name ?? '').trim()
       if (tbl) tbls.add(tbl)
     })
     return Array.from(tbls).sort((a, b) => a.localeCompare(b))
@@ -521,7 +519,7 @@ export default function Owner() {
   const availableAuditActions = useMemo(() => {
     const actions = new Set<string>()
     logs.forEach((log) => {
-      const act = String(log.acao ?? '').trim()
+      const act = String(log.action_type ?? '').trim()
       if (act) actions.add(act)
     })
     return Array.from(actions).sort((a, b) => a.localeCompare(b))
@@ -533,22 +531,21 @@ export default function Owner() {
     const toDate = auditDateTo ? new Date(`${auditDateTo}T23:59:59`) : null
 
     return logs.filter((log) => {
-      const acao = String(log.acao ?? '').toLowerCase()
-      const tabela = String(log.tabela ?? '').toLowerCase()
-      const details = log.dados_depois as Record<string, unknown> | null
-      const source = String(details?.source ?? '').toLowerCase()
-      const actionDetail = String(details?.action_detail ?? '').toLowerCase()
-      const severity = String(details?.severity ?? 'info').toLowerCase()
-      const registroId = String(log.registro_id ?? '').toLowerCase()
-      const usuarioEmail = String(log.usuario_email ?? '').toLowerCase()
-      const logDateRaw = String(log.created_at ?? log.ocorreu_em ?? '')
+      const actionType = String(log.action_type ?? '').toLowerCase()
+      const source = String(log.source ?? '').toLowerCase()
+      const tableName = String(log.table_name ?? '').toLowerCase()
+      const severity = String(log.severity ?? '').toLowerCase()
+      const recordId = String(log.record_id ?? '').toLowerCase()
+      const actorId = String(log.actor_id ?? '').toLowerCase()
+      const detailsStr = JSON.stringify(log.details ?? {}).toLowerCase()
+      const logDateRaw = String(log.created_at ?? '')
       const logDate = logDateRaw ? new Date(logDateRaw) : null
 
-      const textOk = !q || acao.includes(q) || tabela.includes(q) || source.includes(q) || actionDetail.includes(q) || registroId.includes(q) || usuarioEmail.includes(q)
+      const textOk = !q || actionType.includes(q) || source.includes(q) || tableName.includes(q) || recordId.includes(q) || actorId.includes(q) || detailsStr.includes(q)
       const severityOk = auditSeverityFilter === 'todos' || severity === auditSeverityFilter
-      const sourceOk = auditSourceFilter === 'todos' || String(details?.source ?? '') === auditSourceFilter
-      const tableOk = auditTableFilter === 'todos' || String(log.tabela ?? '') === auditTableFilter
-      const actionOk = auditActionFilter === 'todos' || String(log.acao ?? '') === auditActionFilter
+      const sourceOk = auditSourceFilter === 'todos' || String(log.source ?? '') === auditSourceFilter
+      const tableOk = auditTableFilter === 'todos' || String(log.table_name ?? '') === auditTableFilter
+      const actionOk = auditActionFilter === 'todos' || String(log.action_type ?? '') === auditActionFilter
       const fromOk = !fromDate || (logDate && !Number.isNaN(logDate.getTime()) && logDate >= fromDate)
       const toOk = !toDate || (logDate && !Number.isNaN(logDate.getTime()) && logDate <= toDate)
 
@@ -557,23 +554,20 @@ export default function Owner() {
   }, [auditActionFilter, auditDateFrom, auditDateTo, auditSearch, auditSeverityFilter, auditSourceFilter, auditTableFilter, logs])
 
   function exportAuditCsv() {
-    const rows = auditFiltered.map((l) => {
-      const details = l.dados_depois as Record<string, unknown> | null
-      return [
-        String(l.id ?? ''),
-        String(l.acao ?? ''),
-        String(details?.action_detail ?? ''),
-        String(l.tabela ?? ''),
-        String(l.registro_id ?? ''),
-        String(details?.severity ?? 'info'),
-        String(details?.source ?? ''),
-        String(l.usuario_email ?? l.usuario_id ?? ''),
-        String(l.empresa_id ?? ''),
-        String(l.resultado ?? ''),
-        String(l.created_at ?? l.ocorreu_em ?? ''),
-      ]
-    })
-    downloadCsv('owner-auditoria.csv', ['id', 'acao', 'detalhe', 'tabela', 'registro_id', 'severidade', 'origem', 'usuario', 'empresa_id', 'resultado', 'data'], rows)
+    const rows = auditFiltered.map((l) => [
+      String(l.id ?? ''),
+      String(l.action_type ?? ''),
+      String(l.table_name ?? ''),
+      String(l.operation ?? ''),
+      String(l.record_id ?? ''),
+      String(l.severity ?? ''),
+      String(l.source ?? ''),
+      String(l.actor_id ?? ''),
+      String(l.empresa_id ?? ''),
+      JSON.stringify(l.details ?? {}),
+      String(l.created_at ?? ''),
+    ])
+    downloadCsv('owner-auditoria.csv', ['id', 'acao', 'tabela', 'operacao', 'record_id', 'severidade', 'origem', 'actor_id', 'empresa_id', 'detalhes', 'data'], rows)
     setFeedback('Exportação de auditoria gerada em CSV.')
   }
 
@@ -584,16 +578,14 @@ export default function Owner() {
     const toDate = logDateTo ? new Date(`${logDateTo}T23:59:59`) : null
 
     return logs.filter((log) => {
-      const details = log.dados_depois as Record<string, unknown> | null
-      const acao = String(log.acao ?? '').toLowerCase()
-      const actionDetail = String(details?.action_detail ?? '').toLowerCase()
-      const actor = String(log.usuario_email ?? '').toLowerCase()
-      const severity = String(details?.severity ?? 'info').toLowerCase()
-      const moduleName = String(details?.source ?? log.tabela ?? '')
-      const logDateRaw = String(log.created_at ?? log.ocorreu_em ?? '')
+      const action = String(log.action_type ?? '').toLowerCase()
+      const actor = String(log.actor_id ?? '').toLowerCase()
+      const severity = String(log.severity ?? '').toLowerCase()
+      const moduleName = String(log.source ?? '')
+      const logDateRaw = String(log.created_at ?? '')
       const logDate = logDateRaw ? new Date(logDateRaw) : null
 
-      const textOk = !q || acao.includes(q) || actionDetail.includes(q) || actor.includes(q)
+      const textOk = !q || action.includes(q) || actor.includes(q)
       const severityOk = logSeverityFilter === 'todos' || severity === logSeverityFilter
       const actorOk = !actorQ || actor.includes(actorQ)
       const moduleOk = logModuleFilter === 'todos' || moduleName === logModuleFilter
@@ -605,19 +597,15 @@ export default function Owner() {
   }, [logActorFilter, logDateFrom, logDateTo, logModuleFilter, logSearch, logSeverityFilter, logs])
 
   function exportLogsCsv() {
-    const rows = logsFiltered.map((l) => {
-      const details = l.dados_depois as Record<string, unknown> | null
-      return [
-        String(l.id ?? ''),
-        String(l.acao ?? ''),
-        String(details?.action_detail ?? ''),
-        String(details?.severity ?? 'info'),
-        String(details?.source ?? l.tabela ?? ''),
-        String(l.usuario_email ?? ''),
-        String(l.created_at ?? l.ocorreu_em ?? ''),
-      ]
-    })
-    downloadCsv('owner-logs.csv', ['id', 'acao', 'detalhe', 'severidade', 'modulo', 'ator', 'data'], rows)
+    const rows = logsFiltered.map((l) => [
+      String(l.id ?? ''),
+      String(l.action_type ?? ''),
+      String(l.severity ?? ''),
+      String(l.source ?? ''),
+      String(l.actor_id ?? ''),
+      String(l.created_at ?? ''),
+    ])
+    downloadCsv('owner-logs.csv', ['id', 'acao', 'severidade', 'modulo', 'ator', 'data'], rows)
     setFeedback('Exportacao de logs gerada em CSV.')
   }
 
@@ -2469,44 +2457,39 @@ export default function Owner() {
                   <thead className="bg-slate-100 sticky top-0">
                     <tr>
                       <th className="px-2 py-2 text-left">Ação</th>
-                      <th className="px-2 py-2 text-left">Detalhe</th>
                       <th className="px-2 py-2 text-left">Tabela</th>
                       <th className="px-2 py-2 text-left">Severidade</th>
                       <th className="px-2 py-2 text-left">Origem</th>
-                      <th className="px-2 py-2 text-left">Usuário</th>
+                      <th className="px-2 py-2 text-left">Record ID</th>
+                      <th className="px-2 py-2 text-left">Actor ID</th>
                       <th className="px-2 py-2 text-left">Empresa</th>
-                      <th className="px-2 py-2 text-left">Resultado</th>
                       <th className="px-2 py-2 text-left">Data</th>
                     </tr>
                   </thead>
                   <tbody>
                     {auditFiltered.map((l, idx) => {
-                      const details = l.dados_depois as Record<string, unknown> | null
-                      const sev = String(details?.severity ?? 'info').toLowerCase()
+                      const sev = String(l.severity ?? 'info').toLowerCase()
                       const sevColor = sev === 'critical' ? 'text-red-700 bg-red-50 font-bold' : sev === 'error' ? 'text-red-600 bg-red-50' : sev === 'warning' ? 'text-amber-700 bg-amber-50' : 'text-slate-600'
                       const empresaNome = companies.find((c) => String(c.id) === String(l.empresa_id))?.nome
-                      const createdAt = String(l.created_at ?? l.ocorreu_em ?? '')
+                      const createdAt = String(l.created_at ?? '')
                       const formatted = createdAt ? new Date(createdAt).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'medium' }) : '-'
-                      const resultado = String(l.resultado ?? 'sucesso')
-                      const resultColor = resultado === 'erro' ? 'text-red-600' : resultado === 'rejeitado' ? 'text-amber-700' : 'text-green-700'
 
                       return (
                         <tr key={`${String(l.id ?? 'audit')}-${idx}`} className="border-t border-slate-200 hover:bg-slate-50">
-                          <td className="px-2 py-2 font-medium">{String(l.acao ?? '-')}</td>
-                          <td className="px-2 py-2 text-[10px]">{String(details?.action_detail ?? '-')}</td>
-                          <td className="px-2 py-2">{String(l.tabela ?? '-')}</td>
+                          <td className="px-2 py-2 font-medium">{String(l.action_type ?? '-')}</td>
+                          <td className="px-2 py-2">{String(l.table_name ?? '-')}</td>
                           <td className={`px-2 py-2 rounded ${sevColor}`}>{sev}</td>
-                          <td className="px-2 py-2">{String(details?.source ?? '-')}</td>
-                          <td className="px-2 py-2">{String(l.usuario_email ?? '-')}</td>
+                          <td className="px-2 py-2">{String(l.source ?? '-')}</td>
+                          <td className="px-2 py-2 font-mono text-[10px]">{String(l.record_id ?? '-').slice(0, 8)}</td>
+                          <td className="px-2 py-2 font-mono text-[10px]">{String(l.actor_id ?? '-').slice(0, 8)}</td>
                           <td className="px-2 py-2">{empresaNome ? String(empresaNome) : String(l.empresa_id ?? '-').slice(0, 8)}</td>
-                          <td className={`px-2 py-2 ${resultColor}`}>{resultado}</td>
                           <td className="px-2 py-2 whitespace-nowrap">{formatted}</td>
                         </tr>
                       )
                     })}
                     {auditFiltered.length === 0 && (
                       <tr>
-                        <td className="px-2 py-3 text-slate-500" colSpan={9}>Nenhum registro de auditoria encontrado com os filtros atuais.</td>
+                        <td className="px-2 py-3 text-slate-500" colSpan={8}>Nenhum registro de auditoria encontrado com os filtros atuais.</td>
                       </tr>
                     )}
                   </tbody>
@@ -2558,17 +2541,14 @@ export default function Owner() {
                     </tr>
                   </thead>
                   <tbody>
-                    {logsFiltered.map((l, idx) => {
-                      const details = l.dados_depois as Record<string, unknown> | null
-                      return (
-                        <tr key={`${String(l.id ?? 'log')}-${idx}`} className="border-t border-slate-200">
-                          <td className="px-2 py-2">{String(details?.action_detail ?? l.acao ?? '-')}</td>
-                          <td className="px-2 py-2">{String(details?.severity ?? 'info')}</td>
-                          <td className="px-2 py-2">{String(l.usuario_email ?? '-')}</td>
-                          <td className="px-2 py-2">{String(l.created_at ?? l.ocorreu_em ?? '-')}</td>
-                        </tr>
-                      )
-                    })}
+                    {logsFiltered.map((l, idx) => (
+                      <tr key={`${String(l.id ?? 'log')}-${idx}`} className="border-t border-slate-200">
+                        <td className="px-2 py-2">{String(l.action_type ?? '-')}</td>
+                        <td className="px-2 py-2">{String(l.severity ?? 'info')}</td>
+                        <td className="px-2 py-2">{String(l.actor_id ?? '-')}</td>
+                        <td className="px-2 py-2">{String(l.created_at ?? '-')}</td>
+                      </tr>
+                    ))}
                     {logsFiltered.length === 0 && (
                       <tr>
                         <td className="px-2 py-3 text-slate-500" colSpan={4}>Nenhum log encontrado com os filtros atuais.</td>
