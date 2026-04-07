@@ -1,6 +1,7 @@
 // [REMOVED] Orphan test file — corresponding component removed. Safe to delete.
 export {}
 
+/*
 vi.mock("@/contexts/AuthContext", () => ({
   useAuth: vi.fn(),
 }));
@@ -118,3 +119,4 @@ describe("SystemOwnerGuard", () => {
     expect(logout).toHaveBeenCalledTimes(1);
   });
 });
+*/

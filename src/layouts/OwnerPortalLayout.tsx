@@ -1,6 +1,7 @@
 // [REMOVED] Orphan file — not imported by any production code. Safe to delete.
 export {}
 
+/*
 export interface OwnerNavItem {
   key: string
   label: string
@@ -138,3 +139,4 @@ export function OwnerPortalLayout({
     </div>
   )
 }
+*/
