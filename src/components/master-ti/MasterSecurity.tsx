@@ -82,7 +82,7 @@ export function MasterSecurity() {
       if (tenantId) query = query.eq('empresa_id', tenantId);
       if (logSearch) {
         const s = logSearch.replace(/[%_()\\*]/g, '');
-        query = query.or(`action.ilike.%${s}%,resource.ilike.%${s}%,error_message.ilike.%${s}%`);
+        query = query.or(`event_type.ilike.%${s}%,source.ilike.%${s}%,actor_email.ilike.%${s}%`);
       }
       const { data, count, error } = await query;
       if (error) throw error;

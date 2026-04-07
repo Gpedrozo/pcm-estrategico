@@ -4270,7 +4270,7 @@ Deno.serve(async (req) => {
       .limit(1000);
 
     if (filters.empresa_id) query = query.eq("empresa_id", filters.empresa_id);
-    if (filters.user_id) query = query.eq("executor_id", filters.user_id);
+    if (filters.user_id) query = query.eq("usuario_id", filters.user_id);
     if (filters.from) query = query.gte("created_at", filters.from);
     if (filters.to) query = query.lte("created_at", filters.to);
 
