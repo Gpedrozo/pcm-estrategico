@@ -142,6 +142,14 @@ export default function Owner() {
   const [logDateFrom, setLogDateFrom] = useState('')
   const [logDateTo, setLogDateTo] = useState('')
 
+  const [auditSearch, setAuditSearch] = useState('')
+  const [auditSeverityFilter, setAuditSeverityFilter] = useState<'todos' | 'info' | 'warning' | 'error' | 'critical'>('todos')
+  const [auditSourceFilter, setAuditSourceFilter] = useState('todos')
+  const [auditTableFilter, setAuditTableFilter] = useState('todos')
+  const [auditActionFilter, setAuditActionFilter] = useState('todos')
+  const [auditDateFrom, setAuditDateFrom] = useState('')
+  const [auditDateTo, setAuditDateTo] = useState('')
+
   const [criticalRequest, setCriticalRequest] = useState<CriticalActionRequest | null>(null)
   const [criticalConfirmValue, setCriticalConfirmValue] = useState('')
 
@@ -489,6 +497,79 @@ export default function Owner() {
     })
     return Array.from(modules).sort((a, b) => a.localeCompare(b))
   }, [logs])
+
+  const availableAuditSources = useMemo(() => {
+    const sources = new Set<string>()
+    logs.forEach((log) => {
+      const src = String(log.source ?? '').trim()
+      if (src) sources.add(src)
+    })
+    return Array.from(sources).sort((a, b) => a.localeCompare(b))
+  }, [logs])
+
+  const availableAuditTables = useMemo(() => {
+    const tables = new Set<string>()
+    logs.forEach((log) => {
+      const tbl = String(log.table_name ?? '').trim()
+      if (tbl) tables.add(tbl)
+    })
+    return Array.from(tables).sort((a, b) => a.localeCompare(b))
+  }, [logs])
+
+  const availableAuditActions = useMemo(() => {
+    const actions = new Set<string>()
+    logs.forEach((log) => {
+      const act = String(log.action_type ?? '').trim()
+      if (act) actions.add(act)
+    })
+    return Array.from(actions).sort((a, b) => a.localeCompare(b))
+  }, [logs])
+
+  const auditFiltered = useMemo(() => {
+    const q = auditSearch.trim().toLowerCase()
+    const fromDate = auditDateFrom ? new Date(`${auditDateFrom}T00:00:00`) : null
+    const toDate = auditDateTo ? new Date(`${auditDateTo}T23:59:59`) : null
+
+    return logs.filter((log) => {
+      const actionType = String(log.action_type ?? '').toLowerCase()
+      const source = String(log.source ?? '').toLowerCase()
+      const tableName = String(log.table_name ?? '').toLowerCase()
+      const severity = String(log.severity ?? '').toLowerCase()
+      const recordId = String(log.record_id ?? '').toLowerCase()
+      const actorId = String(log.actor_id ?? '').toLowerCase()
+      const details = JSON.stringify(log.details ?? {}).toLowerCase()
+      const logDateRaw = String(log.created_at ?? '')
+      const logDate = logDateRaw ? new Date(logDateRaw) : null
+
+      const textOk = !q || actionType.includes(q) || source.includes(q) || tableName.includes(q) || recordId.includes(q) || actorId.includes(q) || details.includes(q)
+      const severityOk = auditSeverityFilter === 'todos' || severity === auditSeverityFilter
+      const sourceOk = auditSourceFilter === 'todos' || String(log.source ?? '') === auditSourceFilter
+      const tableOk = auditTableFilter === 'todos' || String(log.table_name ?? '') === auditTableFilter
+      const actionOk = auditActionFilter === 'todos' || String(log.action_type ?? '') === auditActionFilter
+      const fromOk = !fromDate || (logDate && !Number.isNaN(logDate.getTime()) && logDate >= fromDate)
+      const toOk = !toDate || (logDate && !Number.isNaN(logDate.getTime()) && logDate <= toDate)
+
+      return textOk && severityOk && sourceOk && tableOk && actionOk && Boolean(fromOk) && Boolean(toOk)
+    })
+  }, [auditActionFilter, auditDateFrom, auditDateTo, auditSearch, auditSeverityFilter, auditSourceFilter, auditTableFilter, logs])
+
+  function exportAuditCsv() {
+    const rows = auditFiltered.map((l) => [
+      String(l.id ?? ''),
+      String(l.action_type ?? ''),
+      String(l.table_name ?? ''),
+      String(l.operation ?? ''),
+      String(l.record_id ?? ''),
+      String(l.severity ?? ''),
+      String(l.source ?? ''),
+      String(l.actor_id ?? ''),
+      String(l.empresa_id ?? ''),
+      JSON.stringify(l.details ?? {}),
+      String(l.created_at ?? ''),
+    ])
+    downloadCsv('owner-auditoria.csv', ['id', 'acao', 'tabela', 'operacao', 'record_id', 'severidade', 'origem', 'actor_id', 'empresa_id', 'detalhes', 'data'], rows)
+    setFeedback('Exportação de auditoria gerada em CSV.')
+  }
 
   const logsFiltered = useMemo(() => {
     const q = logSearch.trim().toLowerCase()
@@ -2329,24 +2410,88 @@ export default function Owner() {
           )}
 
           {activeTab === 'auditoria' && (
-            <SurfaceCard title="Auditoria">
+            <SurfaceCard title="Auditoria" subtitle={`${auditFiltered.length} registro(s) encontrado(s)`}>
+              <div className="mb-3 flex justify-end">
+                <button className="inline-flex items-center gap-1 rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-700" onClick={exportAuditCsv}>
+                  <Download className="h-3.5 w-3.5" /> Exportar CSV
+                </button>
+              </div>
+
+              <div className="mb-3 grid gap-2 sm:grid-cols-3">
+                <input className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" placeholder="Buscar ação, tabela, origem, ator..." value={auditSearch} onChange={(e) => setAuditSearch(e.target.value)} />
+                <select className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" value={auditSeverityFilter} onChange={(e) => setAuditSeverityFilter(e.target.value as any)}>
+                  <option value="todos">Severidade: Todas</option>
+                  <option value="info">info</option>
+                  <option value="warning">warning</option>
+                  <option value="error">error</option>
+                  <option value="critical">critical</option>
+                </select>
+                <select className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" value={auditActionFilter} onChange={(e) => setAuditActionFilter(e.target.value)}>
+                  <option value="todos">Ação: Todas</option>
+                  {availableAuditActions.map((a) => (
+                    <option key={a} value={a}>{a}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="mb-3 grid gap-2 sm:grid-cols-5">
+                <select className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" value={auditSourceFilter} onChange={(e) => setAuditSourceFilter(e.target.value)}>
+                  <option value="todos">Origem: Todas</option>
+                  {availableAuditSources.map((s) => (
+                    <option key={s} value={s}>{s}</option>
+                  ))}
+                </select>
+                <select className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" value={auditTableFilter} onChange={(e) => setAuditTableFilter(e.target.value)}>
+                  <option value="todos">Tabela: Todas</option>
+                  {availableAuditTables.map((t) => (
+                    <option key={t} value={t}>{t}</option>
+                  ))}
+                </select>
+                <input className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" type="date" value={auditDateFrom} onChange={(e) => setAuditDateFrom(e.target.value)} title="Data inicial" />
+                <input className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" type="date" value={auditDateTo} onChange={(e) => setAuditDateTo(e.target.value)} title="Data final" />
+                <button className="rounded-lg border border-slate-300 px-3 py-2 text-sm" onClick={() => { setAuditSearch(''); setAuditSeverityFilter('todos'); setAuditSourceFilter('todos'); setAuditTableFilter('todos'); setAuditActionFilter('todos'); setAuditDateFrom(''); setAuditDateTo('') }}>Limpar filtros</button>
+              </div>
+
               <div className="max-h-[520px] overflow-auto rounded-xl border border-slate-200">
                 <table className="w-full text-xs">
-                  <thead className="bg-slate-100">
+                  <thead className="bg-slate-100 sticky top-0">
                     <tr>
                       <th className="px-2 py-2 text-left">Ação</th>
-                      <th className="px-2 py-2 text-left">Usuário</th>
+                      <th className="px-2 py-2 text-left">Tabela</th>
+                      <th className="px-2 py-2 text-left">Severidade</th>
+                      <th className="px-2 py-2 text-left">Origem</th>
+                      <th className="px-2 py-2 text-left">Record ID</th>
+                      <th className="px-2 py-2 text-left">Actor ID</th>
+                      <th className="px-2 py-2 text-left">Empresa</th>
                       <th className="px-2 py-2 text-left">Data</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {logs.map((l, idx) => (
-                      <tr key={`${String(l.id ?? 'log')}-${idx}`} className="border-t border-slate-200">
-                        <td className="px-2 py-2">{String(l.action ?? l.event ?? '-')}</td>
-                        <td className="px-2 py-2">{String(l.actor_email ?? l.user_email ?? '-')}</td>
-                        <td className="px-2 py-2">{String(l.created_at ?? l.at ?? '-')}</td>
+                    {auditFiltered.map((l, idx) => {
+                      const sev = String(l.severity ?? 'info').toLowerCase()
+                      const sevColor = sev === 'critical' ? 'text-red-700 bg-red-50 font-bold' : sev === 'error' ? 'text-red-600 bg-red-50' : sev === 'warning' ? 'text-amber-700 bg-amber-50' : 'text-slate-600'
+                      const empresaNome = companies.find((c) => String(c.id) === String(l.empresa_id))?.nome
+                      const createdAt = String(l.created_at ?? '')
+                      const formatted = createdAt ? new Date(createdAt).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'medium' }) : '-'
+
+                      return (
+                        <tr key={`${String(l.id ?? 'audit')}-${idx}`} className="border-t border-slate-200 hover:bg-slate-50">
+                          <td className="px-2 py-2 font-medium">{String(l.action_type ?? '-')}</td>
+                          <td className="px-2 py-2">{String(l.table_name ?? '-')}</td>
+                          <td className={`px-2 py-2 rounded ${sevColor}`}>{String(l.severity ?? 'info')}</td>
+                          <td className="px-2 py-2">{String(l.source ?? '-')}</td>
+                          <td className="px-2 py-2 font-mono text-[10px]">{String(l.record_id ?? '-').slice(0, 8)}</td>
+                          <td className="px-2 py-2 font-mono text-[10px]">{String(l.actor_id ?? '-').slice(0, 8)}</td>
+                          <td className="px-2 py-2">{empresaNome ? String(empresaNome) : String(l.empresa_id ?? '-').slice(0, 8)}</td>
+                          <td className="px-2 py-2 whitespace-nowrap">{formatted}</td>
+                        </tr>
+                      )
+                    })}
+                    {auditFiltered.length === 0 && (
+                      <tr>
+                        <td className="px-2 py-3 text-slate-500" colSpan={8}>Nenhum registro de auditoria encontrado com os filtros atuais.</td>
                       </tr>
-                    ))}
+                    )}
                   </tbody>
                 </table>
               </div>
