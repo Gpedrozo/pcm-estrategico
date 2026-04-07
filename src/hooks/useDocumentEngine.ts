@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { getSupabaseErrorMessage, isMissingTableError } from '@/lib/supabaseCompat';
+import { writeAuditLog } from '@/lib/audit';
 
 export interface DocumentSequence {
   id: string;
@@ -176,6 +177,7 @@ export function useNextDocumentNumber() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['document-sequences', tenantId] });
+      writeAuditLog({ action: 'GENERATE_DOCUMENT_NUMBER', table: 'document_sequences', empresaId: tenantId, source: 'useDocumentEngine' });
     },
     onError: (error: unknown) => {
       const message = error instanceof Error ? error.message : getSupabaseErrorMessage(error) || 'Falha ao gerar número do documento.';
@@ -205,6 +207,7 @@ export function useResetSequence() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['document-sequences', tenantId] });
+      writeAuditLog({ action: 'RESET_DOCUMENT_SEQUENCE', table: 'document_sequences', empresaId: tenantId, source: 'useDocumentEngine', severity: 'warning' });
       toast({ title: 'Sequência reiniciada' });
     },
   });
@@ -272,6 +275,7 @@ export function useCreateLayout() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['document-layouts', tenantId] });
+      writeAuditLog({ action: 'CREATE_DOCUMENT_LAYOUT', table: 'document_layouts', empresaId: tenantId, source: 'useDocumentEngine' });
       toast({ title: 'Layout salvo', description: 'Nova versão do layout criada.' });
     },
   });
@@ -293,6 +297,7 @@ export function useUpdateLayout() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['document-layouts', tenantId] });
+      writeAuditLog({ action: 'UPDATE_DOCUMENT_LAYOUT', table: 'document_layouts', empresaId: tenantId, source: 'useDocumentEngine' });
       toast({ title: 'Layout atualizado' });
     },
   });

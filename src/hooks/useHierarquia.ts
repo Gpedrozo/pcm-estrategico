@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { hierarquiaService } from '@/services/hierarquia.service';
+import { writeAuditLog } from '@/lib/audit';
 
 // ==================== INTERFACES ====================
 
@@ -141,6 +142,7 @@ export function useCreatePlanta() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['plantas', tenantId] });
+      writeAuditLog({ action: 'CREATE_PLANTA', table: 'plantas', empresaId: tenantId, source: 'useHierarquia' });
       toast({
         title: 'Planta criada',
         description: 'A planta foi cadastrada com sucesso.',
@@ -168,6 +170,7 @@ export function useUpdatePlanta() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['plantas', tenantId] });
+      writeAuditLog({ action: 'UPDATE_PLANTA', table: 'plantas', empresaId: tenantId, source: 'useHierarquia' });
       toast({
         title: 'Planta atualizada',
         description: 'Os dados foram salvos com sucesso.',
@@ -196,6 +199,7 @@ export function useDeletePlanta() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['plantas', tenantId] });
       queryClient.invalidateQueries({ queryKey: ['areas', tenantId] });
+      writeAuditLog({ action: 'DELETE_PLANTA', table: 'plantas', empresaId: tenantId, source: 'useHierarquia', severity: 'warning' });
       toast({
         title: 'Planta excluída',
         description: 'A planta foi removida com sucesso.',
@@ -258,6 +262,7 @@ export function useCreateArea() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['areas', tenantId] });
+      writeAuditLog({ action: 'CREATE_AREA', table: 'areas', empresaId: tenantId, source: 'useHierarquia' });
       toast({
         title: 'Área criada',
         description: 'A área foi cadastrada com sucesso.',
@@ -285,6 +290,7 @@ export function useUpdateArea() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['areas', tenantId] });
+      writeAuditLog({ action: 'UPDATE_AREA', table: 'areas', empresaId: tenantId, source: 'useHierarquia' });
       toast({
         title: 'Área atualizada',
         description: 'Os dados foram salvos com sucesso.',
@@ -313,6 +319,7 @@ export function useDeleteArea() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['areas', tenantId] });
       queryClient.invalidateQueries({ queryKey: ['sistemas', tenantId] });
+      writeAuditLog({ action: 'DELETE_AREA', table: 'areas', empresaId: tenantId, source: 'useHierarquia', severity: 'warning' });
       toast({
         title: 'Área excluída',
         description: 'A área foi removida com sucesso.',
@@ -375,6 +382,7 @@ export function useCreateSistema() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['sistemas', tenantId] });
+      writeAuditLog({ action: 'CREATE_SISTEMA', table: 'sistemas', empresaId: tenantId, source: 'useHierarquia' });
       toast({
         title: 'Sistema criado',
         description: 'O sistema foi cadastrado com sucesso.',
@@ -402,6 +410,7 @@ export function useUpdateSistema() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['sistemas', tenantId] });
+      writeAuditLog({ action: 'UPDATE_SISTEMA', table: 'sistemas', empresaId: tenantId, source: 'useHierarquia' });
       toast({
         title: 'Sistema atualizado',
         description: 'Os dados foram salvos com sucesso.',
@@ -429,6 +438,7 @@ export function useDeleteSistema() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['sistemas', tenantId] });
+      writeAuditLog({ action: 'DELETE_SISTEMA', table: 'sistemas', empresaId: tenantId, source: 'useHierarquia', severity: 'warning' });
       toast({
         title: 'Sistema excluído',
         description: 'O sistema foi removido com sucesso.',

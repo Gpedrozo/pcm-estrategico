@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { equipamentosService } from '@/services/equipamentos.service';
+import { writeAuditLog } from '@/lib/audit';
 
 export interface EquipamentoRow {
   id: string;
@@ -87,6 +88,7 @@ export function useCreateEquipamento() {
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['equipamentos', tenantId] });
+      writeAuditLog({ action: 'CREATE_EQUIPAMENTO', table: 'equipamentos', recordId: data?.id, empresaId: tenantId, source: 'useEquipamentos' });
       toast({
         title: 'Equipamento Cadastrado',
         description: `TAG ${data.tag} foi cadastrado com sucesso.`,
@@ -114,6 +116,7 @@ export function useUpdateEquipamento() {
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['equipamentos', tenantId] });
+      writeAuditLog({ action: 'UPDATE_EQUIPAMENTO', table: 'equipamentos', recordId: data?.id, empresaId: tenantId, source: 'useEquipamentos' });
       toast({
         title: 'Equipamento Atualizado',
         description: `TAG ${data.tag} foi atualizado com sucesso.`,
@@ -140,8 +143,9 @@ export function useDeleteEquipamento() {
       await equipamentosService.excluir(id, tenantId);
       return id;
     },
-    onSuccess: () => {
+    onSuccess: (deletedId) => {
       queryClient.invalidateQueries({ queryKey: ['equipamentos', tenantId] });
+      writeAuditLog({ action: 'DELETE_EQUIPAMENTO', table: 'equipamentos', recordId: deletedId, empresaId: tenantId, source: 'useEquipamentos', severity: 'warning' });
       toast({
         title: 'Equipamento Excluído',
         description: 'O equipamento foi removido com sucesso.',

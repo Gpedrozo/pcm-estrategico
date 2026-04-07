@@ -109,6 +109,7 @@ export function useUpdateAtividade() {
 export function useDeleteAtividade() {
   const qc = useQueryClient();
   const { toast } = useToast();
+  const { tenantId } = useAuth();
 
   return useMutation({
     mutationFn: async ({ id, plano_id }: { id: string; plano_id: string }) => {

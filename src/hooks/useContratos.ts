@@ -4,6 +4,7 @@ import { contratosService } from '@/services/contratos.service';
 import { contratoSchema, type ContratoFormData } from '@/schemas/contrato.schema';
 import { ZodError } from 'zod';
 import { useAuth } from '@/contexts/AuthContext';
+import { writeAuditLog } from '@/lib/audit';
 
 export interface ContratoRow {
   id: string;
@@ -98,6 +99,7 @@ export function useCreateContrato() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['contratos', tenantId] });
+      writeAuditLog({ action: 'CREATE_CONTRATO', table: 'contratos', empresaId: tenantId, source: 'useContratos' });
       toast({
         title: 'Sucesso!',
         description: 'Contrato cadastrado com sucesso.',
@@ -127,6 +129,7 @@ export function useUpdateContrato() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['contratos', tenantId] });
+      writeAuditLog({ action: 'UPDATE_CONTRATO', table: 'contratos', empresaId: tenantId, source: 'useContratos' });
       toast({
         title: 'Sucesso!',
         description: 'Contrato atualizado com sucesso.',
@@ -153,6 +156,7 @@ export function useDeleteContrato() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['contratos', tenantId] });
+      writeAuditLog({ action: 'DELETE_CONTRATO', table: 'contratos', empresaId: tenantId, source: 'useContratos', severity: 'warning' });
       toast({
         title: 'Sucesso!',
         description: 'Contrato removido com sucesso.',

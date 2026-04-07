@@ -15,6 +15,7 @@ import {
   listSubscriptions,
   listSupportTickets,
 } from '@/services/ownerPortal.service'
+import { writeAuditLog } from '@/lib/audit'
 
 const owner2Keys = {
   health: ['owner2', 'health'] as const,
@@ -214,7 +215,10 @@ export function useOwner2Actions() {
   const execute = useMutation({
     mutationFn: ({ action, payload }: { action: Owner2Action; payload?: Record<string, unknown> }) =>
       callOwnerAdmin(normalizePayload(action, payload) as any),
-    onSuccess: () => invalidateOwner2(qc),
+    onSuccess: (_data, variables) => {
+      invalidateOwner2(qc)
+      writeAuditLog({ action: `OWNER2_${variables.action}`, table: 'owner_admin', source: 'useOwner2Portal' })
+    },
   })
 
   return { execute }

@@ -38,6 +38,7 @@ import {
   updatePlan,
   updateSubscriptionBilling,
 } from '@/services/ownerPortal.service'
+import { writeAuditLog } from '@/lib/audit'
 
 export const ownerQueryKeys = {
   stats: ['owner', 'stats'] as const,
@@ -212,140 +213,145 @@ export function useOwnerDatabaseTables(enabled = true, refetchInterval: number |
 export function useOwnerCompanyActions() {
   const qc = useQueryClient()
 
+  const auditOwner = (action: string, table: string, severity?: 'info' | 'warning' | 'critical') => () => {
+    invalidateOwnerReads(qc)
+    writeAuditLog({ action, table, source: 'useOwnerPortal', severity })
+  }
+
   const createCompanyMutation = useMutation({
     mutationFn: createCompany,
-    onSuccess: () => invalidateOwnerReads(qc),
+    onSuccess: auditOwner('CREATE_COMPANY', 'empresas'),
   })
 
   const updateCompanyMutation = useMutation({
     mutationFn: ({ empresaId, company }: { empresaId: string; company: Record<string, unknown> }) => updateCompany(empresaId, company),
-    onSuccess: () => invalidateOwnerReads(qc),
+    onSuccess: auditOwner('UPDATE_COMPANY', 'empresas'),
   })
 
   const blockCompany = useMutation({
     mutationFn: ({ empresaId, reason }: { empresaId: string; reason?: string }) => setCompanyStatus(empresaId, 'blocked', reason),
-    onSuccess: () => invalidateOwnerReads(qc),
+    onSuccess: auditOwner('BLOCK_COMPANY', 'empresas', 'warning'),
   })
 
   const setCompanyLifecycle = useMutation({
     mutationFn: ({ empresaId, status, reason }: { empresaId: string; status: string; reason?: string }) =>
       setCompanyStatus(empresaId, status, reason),
-    onSuccess: () => invalidateOwnerReads(qc),
+    onSuccess: auditOwner('SET_COMPANY_LIFECYCLE', 'empresas', 'warning'),
   })
 
   const createUserMutation = useMutation({
     mutationFn: createUser,
-    onSuccess: () => invalidateOwnerReads(qc),
+    onSuccess: auditOwner('CREATE_USER', 'profiles'),
   })
 
   const setUserStatusMutation = useMutation({
     mutationFn: ({ userId, status }: { userId: string; status: string }) => setUserStatus(userId, status),
-    onSuccess: () => invalidateOwnerReads(qc),
+    onSuccess: auditOwner('SET_USER_STATUS', 'profiles', 'warning'),
   })
 
   const createPlanMutation = useMutation({
     mutationFn: createPlan,
-    onSuccess: () => invalidateOwnerReads(qc),
+    onSuccess: auditOwner('CREATE_PLAN', 'planos'),
   })
 
   const updatePlanMutation = useMutation({
     mutationFn: updatePlan,
-    onSuccess: () => invalidateOwnerReads(qc),
+    onSuccess: auditOwner('UPDATE_PLAN', 'planos'),
   })
 
   const changePlan = useMutation({
     mutationFn: changePlanRequest,
-    onSuccess: () => invalidateOwnerReads(qc),
+    onSuccess: auditOwner('CHANGE_PLAN', 'assinaturas', 'warning'),
   })
 
   const createSubscriptionMutation = useMutation({
     mutationFn: createSubscription,
-    onSuccess: () => invalidateOwnerReads(qc),
+    onSuccess: auditOwner('CREATE_SUBSCRIPTION', 'assinaturas'),
   })
 
   const setSubscriptionStatusMutation = useMutation({
     mutationFn: ({ empresaId, status }: { empresaId: string; status: string }) => setSubscriptionStatus(empresaId, status),
-    onSuccess: () => invalidateOwnerReads(qc),
+    onSuccess: auditOwner('SET_SUBSCRIPTION_STATUS', 'assinaturas', 'warning'),
   })
 
   const updateSubscriptionBillingMutation = useMutation({
     mutationFn: updateSubscriptionBilling,
-    onSuccess: () => invalidateOwnerReads(qc),
+    onSuccess: auditOwner('UPDATE_SUBSCRIPTION_BILLING', 'assinaturas'),
   })
 
   const updateContractMutation = useMutation({
     mutationFn: ({ contractId, content, summary, status }: { contractId: string; content: string; summary?: string; status?: string }) =>
       updateContract(contractId, content, summary, status),
-    onSuccess: () => invalidateOwnerReads(qc),
+    onSuccess: auditOwner('UPDATE_CONTRACT', 'contratos_plataforma'),
   })
 
   const regenerateContractMutation = useMutation({
     mutationFn: regenerateContract,
-    onSuccess: () => invalidateOwnerReads(qc),
+    onSuccess: auditOwner('REGENERATE_CONTRACT', 'contratos_plataforma'),
   })
 
   const deleteContractMutation = useMutation({
     mutationFn: deleteContract,
-    onSuccess: () => invalidateOwnerReads(qc),
+    onSuccess: auditOwner('DELETE_CONTRACT', 'contratos_plataforma', 'warning'),
   })
 
   const respondSupportMutation = useMutation({
     mutationFn: ({ ticketId, response, status }: { ticketId: string; response: string; status?: string }) =>
       respondSupportTicket(ticketId, response, status),
-    onSuccess: () => invalidateOwnerReads(qc),
+    onSuccess: auditOwner('RESPOND_SUPPORT_TICKET', 'support_tickets'),
   })
 
   const updateCompanySettingsMutation = useMutation({
     mutationFn: ({ empresaId, settings }: { empresaId: string; settings: Record<string, unknown> }) =>
       updateCompanySettings(empresaId, settings),
-    onSuccess: () => invalidateOwnerReads(qc),
+    onSuccess: auditOwner('UPDATE_COMPANY_SETTINGS', 'configuracoes_sistema'),
   })
 
   const setUserInactivityTimeoutMutation = useMutation({
     mutationFn: ({ userId, inactivityTimeoutMinutes }: { userId: string; inactivityTimeoutMinutes: number }) =>
       setUserInactivityTimeout(userId, inactivityTimeoutMinutes),
-    onSuccess: () => invalidateOwnerReads(qc),
+    onSuccess: auditOwner('SET_USER_INACTIVITY_TIMEOUT', 'profiles'),
   })
 
   const startImpersonationMutation = useMutation({
     mutationFn: ({ empresaId }: { empresaId: string }) => impersonateCompany(empresaId),
-    onSuccess: () => invalidateOwnerReads(qc),
+    onSuccess: auditOwner('START_IMPERSONATION', 'empresas', 'critical'),
   })
 
   const stopImpersonationMutation = useMutation({
     mutationFn: ({ empresaId, empresaNome, reason }: { empresaId?: string; empresaNome?: string; reason?: string }) =>
       stopImpersonation({ empresa_id: empresaId, empresa_nome: empresaNome, reason }),
-    onSuccess: () => invalidateOwnerReads(qc),
+    onSuccess: auditOwner('STOP_IMPERSONATION', 'empresas', 'warning'),
   })
 
   const createSystemAdminMutation = useMutation({
     mutationFn: ({ userId }: { userId: string }) => createSystemAdmin(userId),
-    onSuccess: () => invalidateOwnerReads(qc),
+    onSuccess: auditOwner('CREATE_SYSTEM_ADMIN', 'profiles', 'critical'),
   })
 
   const createPlatformOwnerMutation = useMutation({
     mutationFn: createPlatformOwner,
-    onSuccess: () => invalidateOwnerReads(qc),
+    onSuccess: auditOwner('CREATE_PLATFORM_OWNER', 'profiles', 'critical'),
   })
 
   const cleanupCompanyDataMutation = useMutation({
     mutationFn: cleanupCompanyData,
-    onSuccess: () => invalidateOwnerReads(qc),
+    onSuccess: auditOwner('CLEANUP_COMPANY_DATA', 'empresas', 'critical'),
   })
 
   const purgeTableDataMutation = useMutation({
     mutationFn: purgeTableData,
-    onSuccess: () => invalidateOwnerReads(qc),
+    onSuccess: auditOwner('PURGE_TABLE_DATA', 'empresas', 'critical'),
   })
 
   const deleteCompanyByOwnerMutation = useMutation({
     mutationFn: deleteCompanyByOwner,
-    onSuccess: () => invalidateOwnerReads(qc),
+    onSuccess: auditOwner('DELETE_COMPANY', 'empresas', 'critical'),
   })
 
   const customOwnerActionMutation = useMutation({
     mutationFn: (payload: Record<string, unknown>) => callOwnerAdmin(payload),
-    onSuccess: () => invalidateOwnerReads(qc),
+    onSuccess: auditOwner('CUSTOM_OWNER_ACTION', 'owner_admin'),
   })
 
   return {

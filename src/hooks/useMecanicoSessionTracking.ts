@@ -1,6 +1,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { writeAuditLog } from '@/lib/audit';
 
 export interface MecanicoLoginSession {
   session_id: string;
@@ -54,6 +55,9 @@ export function useMecanicoLogin() {
       if (error) throw error;
       return data as MecanicoLoginSession;
     },
+    onSuccess: (_data, variables) => {
+      writeAuditLog({ action: 'MECANICO_LOGIN', table: 'mecanico_sessoes', empresaId: variables.empresa_id, source: 'useMecanicoSessionTracking' });
+    },
     onError: (e: Error) => {
       console.error('Login registration error:', e);
       toast({ title: 'Erro ao registrar login', description: e.message, variant: 'destructive' });
@@ -77,6 +81,9 @@ export function useMecanicoLogout() {
 
       if (error) throw error;
       return data;
+    },
+    onSuccess: (_data, variables) => {
+      writeAuditLog({ action: 'MECANICO_LOGOUT', table: 'mecanico_sessoes', source: 'useMecanicoSessionTracking' });
     },
     onError: (e: Error) => {
       console.error('Logout registration error:', e);
@@ -116,6 +123,9 @@ export function useMecanicoValidarCredenciais() {
 
       if (error) throw error;
       return data as MecanicoValidacaoResult;
+    },
+    onSuccess: (_data, variables) => {
+      writeAuditLog({ action: 'MECANICO_VALIDAR_CREDENCIAIS', table: 'mecanico_sessoes', empresaId: variables.empresa_id, source: 'useMecanicoSessionTracking' });
     },
     onError: (e: Error) => {
       console.error('Validation error:', e);

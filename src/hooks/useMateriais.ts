@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { materiaisService } from '@/services/materiais.service';
+import { writeAuditLog } from '@/lib/audit';
 
 // ==================== INTERFACES ====================
 
@@ -137,6 +138,7 @@ export function useCreateMaterial() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['materiais', tenantId] });
+      writeAuditLog({ action: 'CREATE_MATERIAL', table: 'materiais', empresaId: tenantId, source: 'useMateriais' });
       toast({
         title: 'Material criado',
         description: 'O material foi cadastrado com sucesso.',
@@ -164,6 +166,7 @@ export function useUpdateMaterial() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['materiais', tenantId] });
+      writeAuditLog({ action: 'UPDATE_MATERIAL', table: 'materiais', empresaId: tenantId, source: 'useMateriais' });
       toast({
         title: 'Material atualizado',
         description: 'Os dados foram salvos com sucesso.',
@@ -191,6 +194,7 @@ export function useDeleteMaterial() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['materiais', tenantId] });
+      writeAuditLog({ action: 'DELETE_MATERIAL', table: 'materiais', empresaId: tenantId, source: 'useMateriais', severity: 'warning' });
       toast({
         title: 'Material excluído',
         description: 'O material foi removido com sucesso.',
@@ -257,6 +261,7 @@ export function useCreateMovimentacao() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['movimentacoes', tenantId] });
       queryClient.invalidateQueries({ queryKey: ['materiais', tenantId] });
+      writeAuditLog({ action: 'CREATE_MOVIMENTACAO_MATERIAL', table: 'movimentacoes_materiais', empresaId: tenantId, source: 'useMateriais' });
       toast({
         title: 'Movimentação registrada',
         description: 'O estoque foi atualizado com sucesso.',
@@ -317,6 +322,7 @@ export function useAddMaterialOS() {
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['materiais-os', tenantId, variables.os_id] });
       queryClient.invalidateQueries({ queryKey: ['materiais', tenantId] });
+      writeAuditLog({ action: 'ADD_MATERIAL_OS', table: 'materiais_os', empresaId: tenantId, source: 'useMateriais', metadata: { os_id: variables.os_id } });
       toast({
         title: 'Material adicionado',
         description: 'O material foi adicionado à O.S.',
@@ -349,6 +355,7 @@ export function useRemoveMaterialOS() {
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['materiais-os', tenantId, data.osId] });
+      writeAuditLog({ action: 'REMOVE_MATERIAL_OS', table: 'materiais_os', empresaId: tenantId, source: 'useMateriais', severity: 'warning', metadata: { os_id: data.osId } });
       toast({
         title: 'Material removido',
         description: 'O material foi removido da O.S.',
