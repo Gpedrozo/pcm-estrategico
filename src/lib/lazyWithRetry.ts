@@ -15,9 +15,15 @@ function isDynamicImportFailure(error: unknown): boolean {
 
 function hasReloadedRecently() {
   try {
-    const raw = window.sessionStorage.getItem(LAZY_RELOAD_MARKER);
-    const at = Number(raw ?? 0);
-    return Number.isFinite(at) && at > 0 && Date.now() - at <= LAZY_RELOAD_COOLDOWN_MS;
+    const now = Date.now();
+    for (const key of [LAZY_RELOAD_MARKER, 'pcm-chunk-reload-at-v1', 'pcm.boundary.chunk_reload.at.v1']) {
+      const raw = window.sessionStorage.getItem(key);
+      const at = Number(raw ?? 0);
+      if (Number.isFinite(at) && at > 0 && now - at <= LAZY_RELOAD_COOLDOWN_MS) {
+        return true;
+      }
+    }
+    return false;
   } catch {
     return false;
   }
@@ -39,6 +45,26 @@ function clearReloadMarkOnSuccess() {
   }
 }
 
+async function purgeAllCachesAndServiceWorkers() {
+  try {
+    if ('serviceWorker' in navigator) {
+      const registrations = await navigator.serviceWorker.getRegistrations();
+      await Promise.all(registrations.map((r) => r.unregister()));
+    }
+  } catch {
+    // noop
+  }
+
+  try {
+    if ('caches' in window) {
+      const keys = await caches.keys();
+      await Promise.all(keys.map((k) => caches.delete(k)));
+    }
+  } catch {
+    // noop
+  }
+}
+
 export function lazyWithRetry<T extends ComponentType<any>>(
   importer: () => Promise<{ default: T }>,
 ): LazyExoticComponent<T> {
@@ -50,9 +76,11 @@ export function lazyWithRetry<T extends ComponentType<any>>(
     } catch (error) {
       if (typeof window !== 'undefined' && isDynamicImportFailure(error) && !hasReloadedRecently()) {
         markReload();
-        const current = new URL(window.location.href);
-        current.searchParams.set('recoverChunk', Date.now().toString());
-        window.location.replace(current.toString());
+        void purgeAllCachesAndServiceWorkers().finally(() => {
+          const current = new URL(window.location.href);
+          current.searchParams.set('recoverChunk', Date.now().toString());
+          window.location.replace(current.toString());
+        });
 
         // Mantem suspense pendente enquanto a navegacao ocorre.
         await new Promise(() => {

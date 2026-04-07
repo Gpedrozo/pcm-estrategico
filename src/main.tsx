@@ -94,9 +94,15 @@ function isDynamicChunkLoadError(raw: unknown) {
 
 function hasRecentChunkReload() {
 	try {
-		const raw = window.sessionStorage.getItem(CHUNK_RELOAD_MARKER);
-		const timestamp = Number(raw ?? 0);
-		return Number.isFinite(timestamp) && timestamp > 0 && Date.now() - timestamp <= CHUNK_RELOAD_COOLDOWN_MS;
+		const now = Date.now();
+		for (const key of [CHUNK_RELOAD_MARKER, 'pcm-lazy-import-reload-v1', 'pcm.boundary.chunk_reload.at.v1']) {
+			const raw = window.sessionStorage.getItem(key);
+			const timestamp = Number(raw ?? 0);
+			if (Number.isFinite(timestamp) && timestamp > 0 && now - timestamp <= CHUNK_RELOAD_COOLDOWN_MS) {
+				return true;
+			}
+		}
+		return false;
 	} catch {
 		return false;
 	}
@@ -115,11 +121,7 @@ async function clearClientCachesBeforeReload() {
 	try {
 		if ("caches" in window) {
 			const cacheKeys = await caches.keys();
-			await Promise.all(
-				cacheKeys
-					.filter((cacheName) => cacheName.includes("workbox") || cacheName.includes("vite-pwa") || cacheName.includes("supabase-cache"))
-					.map((cacheName) => caches.delete(cacheName)),
-			);
+			await Promise.all(cacheKeys.map((k) => caches.delete(k)));
 		}
 	} catch {
 		void 0;

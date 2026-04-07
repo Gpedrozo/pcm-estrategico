@@ -29,9 +29,15 @@ function isDynamicChunkLoadError(raw: unknown) {
 
 function hasRecentBoundaryChunkReload() {
   try {
-    const raw = window.sessionStorage.getItem(BOUNDARY_CHUNK_RELOAD_MARKER);
-    const timestamp = Number(raw ?? 0);
-    return Number.isFinite(timestamp) && timestamp > 0 && (Date.now() - timestamp) <= BOUNDARY_CHUNK_RELOAD_COOLDOWN_MS;
+    const now = Date.now();
+    for (const key of [BOUNDARY_CHUNK_RELOAD_MARKER, 'pcm-chunk-reload-at-v1', 'pcm-lazy-import-reload-v1']) {
+      const raw = window.sessionStorage.getItem(key);
+      const timestamp = Number(raw ?? 0);
+      if (Number.isFinite(timestamp) && timestamp > 0 && (now - timestamp) <= BOUNDARY_CHUNK_RELOAD_COOLDOWN_MS) {
+        return true;
+      }
+    }
+    return false;
   } catch {
     return false;
   }
@@ -50,14 +56,7 @@ async function clearCachesForChunkRecovery() {
   try {
     if ('caches' in window) {
       const cacheKeys = await caches.keys();
-      await Promise.all(
-        cacheKeys
-          .filter((cacheName) =>
-            cacheName.includes('workbox')
-            || cacheName.includes('vite-pwa')
-            || cacheName.includes('supabase-cache'))
-          .map((cacheName) => caches.delete(cacheName)),
-      );
+      await Promise.all(cacheKeys.map((k) => caches.delete(k)));
     }
   } catch {
     // noop
