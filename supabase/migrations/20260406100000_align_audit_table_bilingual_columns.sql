@@ -29,50 +29,47 @@ ALTER TABLE public.enterprise_audit_logs ADD COLUMN IF NOT EXISTS mensagem_erro 
 
 -- ============================================================
 -- Backfill: Copy English column data → Portuguese columns
--- Only updates rows where the Portuguese column is still NULL
+-- Only runs if the English columns actually exist in this environment
 -- ============================================================
 
--- action → acao
-UPDATE public.enterprise_audit_logs
-SET acao = action
-WHERE acao IS NULL
-  AND action IS NOT NULL;
+DO $$
+BEGIN
+  -- action → acao
+  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='enterprise_audit_logs' AND column_name='action') THEN
+    UPDATE public.enterprise_audit_logs SET acao = action WHERE acao IS NULL AND action IS NOT NULL;
+  END IF;
 
--- target_entity → tabela
-UPDATE public.enterprise_audit_logs
-SET tabela = target_entity
-WHERE tabela IS NULL
-  AND target_entity IS NOT NULL;
+  -- target_entity → tabela
+  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='enterprise_audit_logs' AND column_name='target_entity') THEN
+    UPDATE public.enterprise_audit_logs SET tabela = target_entity WHERE tabela IS NULL AND target_entity IS NOT NULL;
+  END IF;
 
--- target_id → registro_id
-UPDATE public.enterprise_audit_logs
-SET registro_id = target_id
-WHERE registro_id IS NULL
-  AND target_id IS NOT NULL;
+  -- target_id → registro_id
+  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='enterprise_audit_logs' AND column_name='target_id') THEN
+    UPDATE public.enterprise_audit_logs SET registro_id = target_id WHERE registro_id IS NULL AND target_id IS NOT NULL;
+  END IF;
 
--- executor_id → usuario_id
-UPDATE public.enterprise_audit_logs
-SET usuario_id = executor_id
-WHERE usuario_id IS NULL
-  AND executor_id IS NOT NULL;
+  -- executor_id → usuario_id
+  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='enterprise_audit_logs' AND column_name='executor_id') THEN
+    UPDATE public.enterprise_audit_logs SET usuario_id = executor_id WHERE usuario_id IS NULL AND executor_id IS NOT NULL;
+  END IF;
 
--- "before" → dados_antes (quoted because "before" is a reserved word)
-UPDATE public.enterprise_audit_logs
-SET dados_antes = "before"
-WHERE dados_antes IS NULL
-  AND "before" IS NOT NULL;
+  -- "before" → dados_antes
+  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='enterprise_audit_logs' AND column_name='before') THEN
+    EXECUTE 'UPDATE public.enterprise_audit_logs SET dados_antes = "before" WHERE dados_antes IS NULL AND "before" IS NOT NULL';
+  END IF;
 
--- "after" → dados_depois
-UPDATE public.enterprise_audit_logs
-SET dados_depois = "after"
-WHERE dados_depois IS NULL
-  AND "after" IS NOT NULL;
+  -- "after" → dados_depois
+  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='enterprise_audit_logs' AND column_name='after') THEN
+    EXECUTE 'UPDATE public.enterprise_audit_logs SET dados_depois = "after" WHERE dados_depois IS NULL AND "after" IS NOT NULL';
+  END IF;
 
--- ip → ip_address
-UPDATE public.enterprise_audit_logs
-SET ip_address = ip
-WHERE ip_address IS NULL
-  AND ip IS NOT NULL;
+  -- ip → ip_address
+  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='enterprise_audit_logs' AND column_name='ip') THEN
+    UPDATE public.enterprise_audit_logs SET ip_address = ip WHERE ip_address IS NULL AND ip IS NOT NULL;
+  END IF;
+END
+$$;
 
 -- Backfill usuario_email from auth.users where possible
 UPDATE public.enterprise_audit_logs eal

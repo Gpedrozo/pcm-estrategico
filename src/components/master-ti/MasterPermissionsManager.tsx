@@ -8,6 +8,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { usePermissoesUsuario, useSavePermissoes, MODULOS, type PermissaoGranular } from '@/hooks/usePermissoesGranulares';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery } from '@tanstack/react-query';
+import { useAuth } from '@/contexts/AuthContext';
 
 type PermissionFieldKey = keyof Pick<PermissaoGranular,
   | 'visualizar'
@@ -50,11 +51,13 @@ const PERM_FIELDS_SENSIVEIS = [
   { key: 'ver_dados_financeiros', label: 'Dados Financeiros' },
 ] as const;
 
-function useUsersList() {
+function useUsersList(tenantId: string | null) {
   return useQuery({
-    queryKey: ['admin_users_list'],
+    queryKey: ['admin_users_list', tenantId],
     queryFn: async () => {
-      const { data, error } = await supabase.from('profiles').select('id, nome');
+      let query = supabase.from('profiles').select('id, nome');
+      if (tenantId) query = query.eq('empresa_id', tenantId);
+      const { data, error } = await query;
       if (error) throw error;
       return data;
     },
@@ -62,7 +65,8 @@ function useUsersList() {
 }
 
 export function MasterPermissionsManager() {
-  const { data: users, isLoading: loadingUsers } = useUsersList();
+  const { tenantId } = useAuth();
+  const { data: users, isLoading: loadingUsers } = useUsersList(tenantId);
   const [selectedUser, setSelectedUser] = useState<string>('');
   const { data: existingPerms, isLoading: loadingPerms } = usePermissoesUsuario(selectedUser || undefined);
   const saveMutation = useSavePermissoes();

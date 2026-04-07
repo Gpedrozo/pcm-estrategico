@@ -19,15 +19,9 @@ import { useUsuarios, useUpdateUsuarioRole, useUpdateUsuarioNome, type UsuarioCo
 import { Search, Edit, Shield, User as UserIcon, AlertTriangle, Loader2, Users } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useAuth } from '@/contexts/AuthContext';
+import { ROLE_LABELS } from '@/lib/roleLabels';
 
 type UserRole = 'ADMIN' | 'USUARIO' | 'MASTER_TI' | 'SOLICITANTE';
-
-const ROLE_LABELS: Record<UserRole, string> = {
-  MASTER_TI: 'Master TI',
-  ADMIN: 'Administrador',
-  SOLICITANTE: 'Solicitante',
-  USUARIO: 'Usuário',
-};
 
 export default function Usuarios() {
   const { isAdmin } = useAuth();

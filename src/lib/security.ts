@@ -9,7 +9,12 @@ export type AppRole =
   | 'MANAGER'
   | 'PLANNER'
   | 'TECHNICIAN'
-  | 'VIEWER';
+  | 'VIEWER'
+  | 'OWNER_MASTER'
+  | 'OWNER_SYSTEM'
+  | 'ADMIN_TI'
+  | 'USER'
+  | 'MECANICO';
 
 const OWNER_DOMAIN = (import.meta.env.VITE_OWNER_DOMAIN || 'owner.gppis.com.br').toLowerCase();
 const OWNER_DOMAIN_ALIASES = new Set(
@@ -56,6 +61,11 @@ export function normalizeRole(role?: string | null): AppRole | null {
     'PLANNER',
     'TECHNICIAN',
     'VIEWER',
+    'OWNER_MASTER',
+    'OWNER_SYSTEM',
+    'ADMIN_TI',
+    'USER',
+    'MECANICO',
   ];
 
   return (allowed as string[]).includes(normalized) ? (normalized as AppRole) : null;
@@ -71,22 +81,23 @@ export function getEffectiveRole(options: {
     .map((role) => normalizeRole(role))
     .filter((role): role is AppRole => Boolean(role));
 
-  if (normalizedRoles.includes('SYSTEM_OWNER')) {
+  if (normalizedRoles.includes('SYSTEM_OWNER') || normalizedRoles.includes('OWNER_MASTER')) {
     return 'SYSTEM_OWNER';
   }
 
-  if (normalizedRoles.includes('SYSTEM_ADMIN')) {
+  if (normalizedRoles.includes('SYSTEM_ADMIN') || normalizedRoles.includes('OWNER_SYSTEM')) {
     return 'SYSTEM_ADMIN';
   }
 
-  if (normalizedRoles.includes('MASTER_TI')) return 'MASTER_TI';
-  if (normalizedRoles.includes('OWNER')) return 'OWNER';
-  if (normalizedRoles.includes('MANAGER')) return 'MANAGER';
-  if (normalizedRoles.includes('PLANNER')) return 'PLANNER';
-  if (normalizedRoles.includes('TECHNICIAN')) return 'TECHNICIAN';
-  if (normalizedRoles.includes('SOLICITANTE')) return 'SOLICITANTE';
-  if (normalizedRoles.includes('VIEWER')) return 'VIEWER';
+  if (normalizedRoles.includes('MASTER_TI') || normalizedRoles.includes('ADMIN_TI')) return 'MASTER_TI';
   if (normalizedRoles.includes('ADMIN')) return 'ADMIN';
+  if (normalizedRoles.includes('OWNER')) return 'ADMIN';
+  if (normalizedRoles.includes('MANAGER')) return 'ADMIN';
+  if (normalizedRoles.includes('PLANNER')) return 'USUARIO';
+  if (normalizedRoles.includes('TECHNICIAN') || normalizedRoles.includes('MECANICO')) return 'TECHNICIAN';
+  if (normalizedRoles.includes('SOLICITANTE')) return 'SOLICITANTE';
+  if (normalizedRoles.includes('VIEWER')) return 'USUARIO';
+  if (normalizedRoles.includes('USER')) return 'USUARIO';
   return 'USUARIO';
 }
 
@@ -108,8 +119,8 @@ export function buildSecureSignupMetadata(options: {
 
 export function getPostLoginPath(role: AppRole, hostname?: string): string {
   if (isOwnerDomain(hostname)) return '/';
-  if (role === 'MASTER_TI') return '/master-ti';
-  if (role === 'TECHNICIAN') return '/mecanico';
+  if (role === 'MASTER_TI' || role === 'ADMIN_TI') return '/master-ti';
+  if (role === 'TECHNICIAN' || role === 'MECANICO') return '/mecanico';
   if (role === 'SOLICITANTE') return '/operador';
   return '/dashboard';
 }

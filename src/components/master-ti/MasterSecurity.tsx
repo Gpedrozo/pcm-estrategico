@@ -10,6 +10,7 @@ import { Shield, AlertTriangle, CheckCircle, Lock, Key, Activity, Search, Chevro
 import { Skeleton } from '@/components/ui/skeleton';
 import { Progress } from '@/components/ui/progress';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { useAuth } from '@/contexts/AuthContext';
 
 const PAGE_SIZE = 20;
 
@@ -36,6 +37,7 @@ const SECURITY_POLICIES = [
 ];
 
 export function MasterSecurity() {
+  const { tenantId } = useAuth();
   const [secTab, setSecTab] = useState('overview');
   const [logPage, setLogPage] = useState(0);
   const [logSearch, setLogSearch] = useState('');
@@ -46,16 +48,17 @@ export function MasterSecurity() {
     queryFn: async () => {
       const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
       const oneWeekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+      const withTenant = (q: any) => tenantId ? q.eq('empresa_id', tenantId) : q;
 
       const [totalLogs, failedAttempts, rateLimits, logins24h, loginsWeek, totalUsers, masterCount, adminCount] = await Promise.all([
-        supabase.from('security_logs').select('*', { count: 'exact', head: true }),
-        supabase.from('security_logs').select('*', { count: 'exact', head: true }).eq('success', false).gte('created_at', oneDayAgo),
-        supabase.from('security_logs').select('*', { count: 'exact', head: true }).eq('action', 'RATE_LIMIT_EXCEEDED').gte('created_at', oneDayAgo),
-        supabase.from('audit_logs').select('*', { count: 'exact', head: true }).eq('action', 'LOGIN').gte('created_at', oneDayAgo),
-        supabase.from('audit_logs').select('*', { count: 'exact', head: true }).eq('action', 'LOGIN').gte('created_at', oneWeekAgo),
-        supabase.from('profiles').select('*', { count: 'exact', head: true }),
-        supabase.from('user_roles').select('*', { count: 'exact', head: true }).eq('role', 'MASTER_TI'),
-        supabase.from('user_roles').select('*', { count: 'exact', head: true }).eq('role', 'ADMIN'),
+        withTenant(supabase.from('security_logs').select('*', { count: 'exact', head: true })),
+        withTenant(supabase.from('security_logs').select('*', { count: 'exact', head: true }).eq('success', false)).gte('created_at', oneDayAgo),
+        withTenant(supabase.from('security_logs').select('*', { count: 'exact', head: true }).eq('action', 'RATE_LIMIT_EXCEEDED')).gte('created_at', oneDayAgo),
+        withTenant(supabase.from('audit_logs').select('*', { count: 'exact', head: true }).eq('action', 'LOGIN')).gte('created_at', oneDayAgo),
+        withTenant(supabase.from('audit_logs').select('*', { count: 'exact', head: true }).eq('action', 'LOGIN')).gte('created_at', oneWeekAgo),
+        withTenant(supabase.from('profiles').select('*', { count: 'exact', head: true })),
+        withTenant(supabase.from('user_roles').select('*', { count: 'exact', head: true }).eq('role', 'MASTER_TI')),
+        withTenant(supabase.from('user_roles').select('*', { count: 'exact', head: true }).eq('role', 'ADMIN')),
       ]);
 
       return {
@@ -76,6 +79,7 @@ export function MasterSecurity() {
     queryKey: ['master-security-logs', logPage, logSearch],
     queryFn: async () => {
       let query = supabase.from('security_logs').select('*', { count: 'exact' }).order('created_at', { ascending: false }).range(logPage * PAGE_SIZE, (logPage + 1) * PAGE_SIZE - 1);
+      if (tenantId) query = query.eq('empresa_id', tenantId);
       if (logSearch) query = query.or(`action.ilike.%${logSearch}%,resource.ilike.%${logSearch}%,error_message.ilike.%${logSearch}%`);
       const { data, count, error } = await query;
       if (error) throw error;

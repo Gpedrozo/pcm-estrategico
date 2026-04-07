@@ -16,17 +16,7 @@ import {
 import { SurfaceCard, MetricTile } from './owner2Components'
 import { statusColor, downloadCsv } from './owner2Helpers'
 import type { OwnerUser } from '@/services/ownerPortal.service'
-
-const ROLE_LABELS: Record<string, string> = {
-  SYSTEM_OWNER: 'System Owner',
-  SYSTEM_ADMIN: 'System Admin',
-  MASTER_TI: 'Master TI',
-  ADMIN: 'Admin',
-  GESTOR: 'Gestor',
-  TECNICO: 'Técnico',
-  USUARIO: 'Usuário',
-  SOLICITANTE: 'Solicitante',
-}
+import { ROLE_LABELS } from '@/lib/roleLabels'
 
 const PAGE_SIZE = 20
 

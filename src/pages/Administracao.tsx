@@ -23,7 +23,6 @@ import {
   Workflow,
   Bell,
   BarChart3,
-  Plug,
   FileCheck2,
   Palette,
   BadgeDollarSign,
@@ -32,6 +31,8 @@ import {
   Smartphone,
 } from 'lucide-react';
 import DispositivosMoveis from '@/components/admin/DispositivosMoveis';
+import { MasterEmpresaData } from '@/components/master-ti/MasterEmpresaData';
+import { MasterLogoManager } from '@/components/master-ti/MasterLogoManager';
 import { toast } from '@/hooks/use-toast';
 import { useTenantAdminConfig, useSaveTenantAdminConfig } from '@/hooks/useTenantAdminConfig';
 import {
@@ -45,6 +46,7 @@ import {
   type AppRole,
   type UsuarioCompleto,
 } from '@/hooks/useUsuarios';
+import { ROLE_LABELS } from '@/lib/roleLabels';
 
 interface ProcessoConfig {
   quem_pode_abrir_os: 'USUARIO' | 'SOLICITANTE' | 'TECNICO' | 'SUPERVISOR' | 'ADMIN';
@@ -114,13 +116,6 @@ const padronizacoesDefault: PadronizacoesConfig = {
   tipos_falha: ['ELETRICA', 'MECANICA', 'INSTRUMENTACAO', 'LUBRIFICACAO'],
 };
 
-const ROLE_LABELS: Record<AppRole, string> = {
-  ADMIN: 'Administrador',
-  USUARIO: 'Usuario',
-  MASTER_TI: 'Master TI',
-  SOLICITANTE: 'Solicitante',
-};
-
 const linkCards = [
   { title: 'Gestao de Usuarios', description: 'Perfis, edicao e ciclo de acesso', tab: 'usuarios', icon: Users },
   { title: 'Processo e SLA', description: 'Regras de abertura, fechamento e SLA', tab: 'processo', icon: Workflow },
@@ -128,8 +123,7 @@ const linkCards = [
   { title: 'Padronizacoes', description: 'Tipos, status e prioridades operacionais', tab: 'padronizacoes', icon: SlidersHorizontal },
   { title: 'Alertas', description: 'Canais e gatilhos por criticidade', tab: 'alertas', icon: Bell },
   { title: 'Indicadores', description: 'Parametros de calculo e pesos KPI', tab: 'indicadores', icon: BarChart3 },
-  { title: 'Integracoes', description: 'Roadmap e governanca de integracoes', tab: 'integracoes', icon: Plug },
-  { title: 'Cadastro da Empresa', description: 'Dados legais e logomarca do tenant', to: '/empresa/configuracoes', icon: Building2 },
+  { title: 'Dados da Empresa', description: 'Razao social, CNPJ, endereco', tab: 'empresa', icon: Building2 },
   { title: 'Estrutura Organizacional', description: 'Plantas, areas e sistemas', to: '/hierarquia', icon: Network },
 ];
 
@@ -165,7 +159,7 @@ export default function Administracao() {
 
   useEffect(() => {
     const tab = searchParams.get('tab');
-    const validTabs = new Set(['usuarios', 'processo', 'identidade', 'padronizacoes', 'alertas', 'indicadores', 'integracoes']);
+    const validTabs = new Set(['usuarios', 'processo', 'identidade', 'padronizacoes', 'alertas', 'indicadores', 'empresa', 'dispositivos']);
     if (tab && validTabs.has(tab)) {
       setActiveTab(tab);
     }
@@ -243,7 +237,7 @@ export default function Administracao() {
     return (
       usuario.nome.toLowerCase().includes(search)
       || (usuario.email ?? '').toLowerCase().includes(search)
-      || ROLE_LABELS[usuario.role].toLowerCase().includes(search)
+      || (ROLE_LABELS[usuario.role] ?? usuario.role).toLowerCase().includes(search)
     );
   });
 
@@ -287,7 +281,7 @@ export default function Administracao() {
           <TabsTrigger value="padronizacoes" className="gap-2"><SlidersHorizontal className="h-4 w-4" /> Padronizacoes</TabsTrigger>
           <TabsTrigger value="alertas" className="gap-2"><Bell className="h-4 w-4" /> Alertas</TabsTrigger>
           <TabsTrigger value="indicadores" className="gap-2"><BarChart3 className="h-4 w-4" /> Indicadores</TabsTrigger>
-          <TabsTrigger value="integracoes" className="gap-2"><Plug className="h-4 w-4" /> Integracoes</TabsTrigger>
+          <TabsTrigger value="empresa" className="gap-2"><Building2 className="h-4 w-4" /> Empresa</TabsTrigger>
           <TabsTrigger value="dispositivos" className="gap-2"><Smartphone className="h-4 w-4" /> Dispositivos</TabsTrigger>
         </TabsList>
 
@@ -368,6 +362,10 @@ export default function Administracao() {
               </div>
             </CardContent>
           </Card>
+
+          <div className="mt-6">
+            <MasterLogoManager />
+          </div>
         </TabsContent>
 
         <TabsContent value="usuarios">
@@ -428,7 +426,6 @@ export default function Administracao() {
                                 <SelectItem value="USUARIO">Usuario</SelectItem>
                                 <SelectItem value="SOLICITANTE">Solicitante</SelectItem>
                                 <SelectItem value="ADMIN">Administrador</SelectItem>
-                                <SelectItem value="MASTER_TI">Master TI</SelectItem>
                               </SelectContent>
                             </Select>
                           </td>
@@ -469,11 +466,27 @@ export default function Administracao() {
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                 <div className="space-y-2">
                   <Label>Quem pode abrir O.S</Label>
-                  <Input value={processoForm.quem_pode_abrir_os} onChange={(e) => setProcessoForm((s) => ({ ...s, quem_pode_abrir_os: e.target.value as ProcessoConfig['quem_pode_abrir_os'] }))} />
+                  <Select value={processoForm.quem_pode_abrir_os} onValueChange={(value) => setProcessoForm((s) => ({ ...s, quem_pode_abrir_os: value as ProcessoConfig['quem_pode_abrir_os'] }))}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="USUARIO">Usuario</SelectItem>
+                      <SelectItem value="SOLICITANTE">Solicitante</SelectItem>
+                      <SelectItem value="TECNICO">Tecnico</SelectItem>
+                      <SelectItem value="SUPERVISOR">Supervisor</SelectItem>
+                      <SelectItem value="ADMIN">Administrador</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
                 <div className="space-y-2">
                   <Label>Quem pode fechar O.S</Label>
-                  <Input value={processoForm.quem_pode_fechar_os} onChange={(e) => setProcessoForm((s) => ({ ...s, quem_pode_fechar_os: e.target.value as ProcessoConfig['quem_pode_fechar_os'] }))} />
+                  <Select value={processoForm.quem_pode_fechar_os} onValueChange={(value) => setProcessoForm((s) => ({ ...s, quem_pode_fechar_os: value as ProcessoConfig['quem_pode_fechar_os'] }))}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="TECNICO">Tecnico</SelectItem>
+                      <SelectItem value="SUPERVISOR">Supervisor</SelectItem>
+                      <SelectItem value="ADMIN">Administrador</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
                 <div className="space-y-2">
                   <Label>SLA atendimento (horas)</Label>
@@ -662,30 +675,35 @@ export default function Administracao() {
                 </div>
               </div>
 
-              <div className="flex justify-end">
-                <Button onClick={() => void salvarIndicadores()} className="gap-2">
-                  <Save className="h-4 w-4" />
-                  Salvar Indicadores
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="integracoes">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Integracoes (roadmap)</CardTitle>
-            </CardHeader>
-            <CardContent className="text-sm text-muted-foreground space-y-2">
-              <p>Estrutura preparada para cadastro de endpoints ERP, estoque externo e sensores IoT por tenant.</p>
-              <p>Proximo passo: incluir cadastro de credenciais + health check por integracao.</p>
+              {(() => {
+                const somaPesos = indicadoresForm.peso_mtbf + indicadoresForm.peso_mttr + indicadoresForm.peso_disponibilidade;
+                const pesoValido = somaPesos === 100;
+                return (
+                  <>
+                    {!pesoValido && (
+                      <div className="rounded-lg border border-destructive/50 bg-destructive/5 p-3 text-sm text-destructive">
+                        A soma dos pesos deve ser exatamente 100%. Atual: {somaPesos}%
+                      </div>
+                    )}
+                    <div className="flex justify-end">
+                      <Button onClick={() => void salvarIndicadores()} disabled={!pesoValido} className="gap-2">
+                        <Save className="h-4 w-4" />
+                        Salvar Indicadores
+                      </Button>
+                    </div>
+                  </>
+                );
+              })()}
             </CardContent>
           </Card>
         </TabsContent>
 
         <TabsContent value="dispositivos">
           <DispositivosMoveis />
+        </TabsContent>
+
+        <TabsContent value="empresa">
+          <MasterEmpresaData />
         </TabsContent>
       </Tabs>
     </div>

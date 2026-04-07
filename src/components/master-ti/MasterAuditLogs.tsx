@@ -28,6 +28,7 @@ export function MasterAuditLogs() {
     queryKey: ['master-audit-logs', page, search, actionFilter],
     queryFn: async () => {
       let query = supabase.from('audit_logs').select('*', { count: 'exact' }).order('created_at', { ascending: false }).range(page * PAGE_SIZE, (page + 1) * PAGE_SIZE - 1);
+      if (tenantId) query = query.eq('empresa_id', tenantId);
       if (search) query = query.or(`action.ilike.%${search}%,source.ilike.%${search}%`);
       if (actionFilter !== 'ALL') query = query.ilike('action', `%${actionFilter}%`);
       const { data, count, error } = await query;
@@ -58,6 +59,7 @@ export function MasterAuditLogs() {
     queryKey: ['master-db-audit-logs', dbPage, dbSearch, dbTableFilter],
     queryFn: async () => {
       let query = supabase.from('enterprise_audit_logs').select('*', { count: 'exact' }).order('created_at', { ascending: false }).range(dbPage * PAGE_SIZE, (dbPage + 1) * PAGE_SIZE - 1);
+      if (tenantId) query = query.eq('empresa_id', tenantId);
       if (dbSearch) query = query.or(`table_name.ilike.%${dbSearch}%,operation.ilike.%${dbSearch}%,action_type.ilike.%${dbSearch}%`);
       if (dbTableFilter !== 'ALL') query = query.eq('table_name', dbTableFilter);
       const { data, count, error } = await query;
@@ -83,11 +85,12 @@ export function MasterAuditLogs() {
     queryKey: ['master-audit-stats'],
     queryFn: async () => {
       const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+      const withTenant = (q: any) => tenantId ? q.eq('empresa_id', tenantId) : q;
       const [totalAudit, todayAudit, totalDbAudit, todayDbAudit] = await Promise.all([
-        supabase.from('audit_logs').select('*', { count: 'exact', head: true }),
-        supabase.from('audit_logs').select('*', { count: 'exact', head: true }).gte('created_at', oneDayAgo),
-        supabase.from('enterprise_audit_logs').select('*', { count: 'exact', head: true }),
-        supabase.from('enterprise_audit_logs').select('*', { count: 'exact', head: true }).gte('created_at', oneDayAgo),
+        withTenant(supabase.from('audit_logs').select('*', { count: 'exact', head: true })),
+        withTenant(supabase.from('audit_logs').select('*', { count: 'exact', head: true })).gte('created_at', oneDayAgo),
+        withTenant(supabase.from('enterprise_audit_logs').select('*', { count: 'exact', head: true })),
+        withTenant(supabase.from('enterprise_audit_logs').select('*', { count: 'exact', head: true })).gte('created_at', oneDayAgo),
       ]);
       return { totalAudit: totalAudit.count ?? 0, todayAudit: todayAudit.count ?? 0, totalDbAudit: totalDbAudit.count ?? 0, todayDbAudit: todayDbAudit.count ?? 0 };
     },

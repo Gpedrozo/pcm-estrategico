@@ -44,6 +44,7 @@ import { OWNER_TABS, OWNER_TAB_LABELS, type OwnerTab, type CompanyCredentialNote
 import { normalizeEmail, resolveOwnerMasterEmail, safeArray, asObject, asBool, asNumber, statusColor, downloadCsv, TENANT_BASE_DOMAIN, KNOWN_OWNER_MASTER_EMAILS } from './owner2/owner2Helpers'
 import { SurfaceCard, MetricTile } from './owner2/owner2Components'
 import OwnerDispositivosTab from '@/components/owner/OwnerDispositivosTab'
+import OwnerShadowAudit from '@/components/owner/OwnerShadowAudit'
 import OwnerUsuariosTab from './owner2/OwnerUsuariosTab'
 
 const isImageUrl = (url: unknown) => {
@@ -2667,54 +2668,7 @@ export default function Owner() {
                 </div>
               </SurfaceCard>
 
-              <SurfaceCard title="Auditoria de Owners" subtitle="Histórico de ações realizadas por owners do sistema">
-                <div className="max-h-[520px] overflow-auto rounded-xl border border-slate-200">
-                  <table className="w-full text-xs">
-                    <thead className="bg-slate-100 sticky top-0">
-                      <tr>
-                        <th className="px-2 py-2 text-left">Data</th>
-                        <th className="px-2 py-2 text-left">Ator</th>
-                        <th className="px-2 py-2 text-left">Ação</th>
-                        <th className="px-2 py-2 text-left">Detalhes</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {logs
-                        .filter((l) => {
-                          const src = String(l.source ?? '').toLowerCase();
-                          const action = String(l.action_type ?? '').toUpperCase();
-                          return src.includes('owner') || action.startsWith('OWNER');
-                        })
-                        .slice(0, 200)
-                        .map((l, idx) => (
-                          <tr key={`audit-owner-${idx}`} className="border-t border-slate-200">
-                            <td className="px-2 py-2 whitespace-nowrap">{new Date(String(l.created_at ?? '')).toLocaleString('pt-BR')}</td>
-                            <td className="px-2 py-2">{String(l.actor_email ?? l.actor_id ?? '-')}</td>
-                            <td className="px-2 py-2 font-medium">{String(l.action_type ?? '-')}</td>
-                            <td className="px-2 py-2 max-w-[300px] truncate" title={JSON.stringify(l.details ?? {})}>
-                              {(() => {
-                                const d = l.details as Record<string, unknown> | null;
-                                if (!d) return '-';
-                                const parts: string[] = [];
-                                if (d.owner_email) parts.push(String(d.owner_email));
-                                if (d.owner_role) parts.push(String(d.owner_role));
-                                if (d.reason) parts.push(String(d.reason));
-                                return parts.length > 0 ? parts.join(' · ') : JSON.stringify(d).slice(0, 80);
-                              })()}
-                            </td>
-                          </tr>
-                        ))}
-                      {logs.filter((l) => {
-                        const src = String(l.source ?? '').toLowerCase();
-                        const action = String(l.action_type ?? '').toUpperCase();
-                        return src.includes('owner') || action.startsWith('OWNER');
-                      }).length === 0 && (
-                        <tr><td colSpan={4} className="px-2 py-4 text-center text-slate-400">Nenhum registro de auditoria de owners encontrado.</td></tr>
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-              </SurfaceCard>
+              <OwnerShadowAudit logs={logs} />
             </div>
           )}
 

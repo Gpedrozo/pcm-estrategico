@@ -14,6 +14,7 @@ import {
   ShieldCheck,
   Loader2,
   FileOutput,
+  Smartphone,
 } from "lucide-react";
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -79,6 +80,10 @@ const MasterDocumentLayouts = lazy(() =>
   }))
 );
 
+const DispositivosMoveis = lazy(() =>
+  import("@/components/admin/DispositivosMoveis")
+);
+
 type TabKey =
   | "users"
   | "permissions"
@@ -89,7 +94,8 @@ type TabKey =
   | "settings"
   | "audit"
   | "security"
-  | "documents";
+  | "documents"
+  | "dispositivos";
 
 const TABS: { key: TabKey; label: string; icon: React.ElementType }[] = [
   { key: "users", label: "Usuários", icon: Users },
@@ -102,6 +108,7 @@ const TABS: { key: TabKey; label: string; icon: React.ElementType }[] = [
   { key: "audit", label: "Auditoria", icon: FileText },
   { key: "security", label: "Segurança", icon: Lock },
   { key: "documents", label: "Documentos", icon: FileOutput },
+  { key: "dispositivos", label: "Dispositivos", icon: Smartphone },
 ];
 
 function TabFallback() {
@@ -210,6 +217,10 @@ export default function MasterTI() {
 
           <TabsContent value="documents">
             <MasterDocumentLayouts />
+          </TabsContent>
+
+          <TabsContent value="dispositivos">
+            <DispositivosMoveis />
           </TabsContent>
         </Suspense>
       </Tabs>

@@ -11,6 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { useToast } from '@/hooks/use-toast';
 import { useLogAuditoria } from '@/hooks/useAuditoria';
 import { writeAuditLog } from '@/lib/audit';
+import { useAuth } from '@/contexts/AuthContext';
 
 const TABLES = [
   'ordens_servico', 'equipamentos', 'mecanicos', 'materiais', 'planos_preventivos',
@@ -27,9 +28,21 @@ const TABLES = [
 type TableName = typeof TABLES[number];
 const VIEW_PAGE_SIZE = 20;
 
+const TABLES_WITH_EMPRESA_ID = new Set<string>([
+  'ordens_servico', 'equipamentos', 'mecanicos', 'materiais', 'planos_preventivos',
+  'execucoes_os', 'materiais_os', 'movimentacoes_materiais', 'fmea', 'analise_causa_raiz',
+  'acoes_corretivas', 'inspecoes', 'anomalias_inspecao', 'medicoes_preditivas',
+  'melhorias', 'incidentes_ssma', 'permissoes_trabalho', 'fornecedores', 'contratos',
+  'avaliacoes_fornecedores', 'documentos_tecnicos',
+  'enterprise_audit_logs', 'audit_logs', 'profiles', 'user_roles', 'plantas', 'areas', 'sistemas',
+  'componentes_equipamento', 'configuracoes_sistema', 'security_logs', 'rate_limits',
+  'dados_empresa', 'permissoes_granulares',
+]);
+
 export function MasterDatabaseManager() {
   const { toast } = useToast();
   const { log } = useLogAuditoria();
+  const { tenantId } = useAuth();
   const queryClient = useQueryClient();
   const [search, setSearch] = useState('');
   const [viewingTable, setViewingTable] = useState<TableName | null>(null);
@@ -43,7 +56,11 @@ export function MasterDatabaseManager() {
       await Promise.all(
         TABLES.map(async (table) => {
           try {
-            const { count, error } = await supabase.from(table).select('*', { count: 'exact', head: true });
+            let countQuery = supabase.from(table).select('*', { count: 'exact', head: true });
+            if (tenantId && TABLES_WITH_EMPRESA_ID.has(table)) {
+              countQuery = countQuery.eq('empresa_id', tenantId);
+            }
+            const { count, error } = await countQuery;
             counts[table] = error ? -1 : (count ?? 0);
           } catch { counts[table] = -1; }
         })
@@ -57,16 +74,21 @@ export function MasterDatabaseManager() {
     queryKey: ['master-db-view', viewingTable, viewPage],
     queryFn: async () => {
       if (!viewingTable) return null;
-      const { data, count, error } = await supabase
+      const hasTenantCol = tenantId && TABLES_WITH_EMPRESA_ID.has(viewingTable);
+      let mainQuery = supabase
         .from(viewingTable)
-        .select('*', { count: 'exact' })
+        .select('*', { count: 'exact' });
+      if (hasTenantCol) mainQuery = mainQuery.eq('empresa_id', tenantId);
+      const { data, count, error } = await mainQuery
         .range(viewPage * VIEW_PAGE_SIZE, (viewPage + 1) * VIEW_PAGE_SIZE - 1)
         .order('created_at', { ascending: false });
 
       if (error) {
-        const { data: d2, count: c2, error: e2 } = await supabase
+        let fallbackQuery = supabase
           .from(viewingTable)
-          .select('*', { count: 'exact' })
+          .select('*', { count: 'exact' });
+        if (hasTenantCol) fallbackQuery = fallbackQuery.eq('empresa_id', tenantId);
+        const { data: d2, count: c2, error: e2 } = await fallbackQuery
           .range(viewPage * VIEW_PAGE_SIZE, (viewPage + 1) * VIEW_PAGE_SIZE - 1);
         if (e2) throw e2;
         return { rows: d2 || [], total: c2 ?? 0 };
@@ -78,7 +100,11 @@ export function MasterDatabaseManager() {
 
   const updateRowMutation = useMutation({
     mutationFn: async ({ table, id, updates }: { table: TableName; id: string; updates: Record<string, unknown> }) => {
-      const { error } = await supabase.from(table).update(updates).eq('id', id);
+      let updateQuery = supabase.from(table).update(updates).eq('id', id);
+      if (tenantId && TABLES_WITH_EMPRESA_ID.has(table)) {
+        updateQuery = updateQuery.eq('empresa_id', tenantId);
+      }
+      const { error } = await updateQuery;
       if (error) throw error;
 
       await writeAuditLog({

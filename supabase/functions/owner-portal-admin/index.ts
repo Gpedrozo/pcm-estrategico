@@ -1410,16 +1410,17 @@ async function logPlatformAudit(
   },
 ) {
   await admin.from("enterprise_audit_logs").insert({
-    executor_id: payload.actorId,
+    usuario_id: payload.actorId,
+    usuario_email: payload.actorEmail ?? null,
     empresa_id: payload.empresaId ?? null,
-    target_entity: "system",
-    action: payload.actionType,
-    after: {
+    acao: payload.actionType,
+    tabela: "system",
+    dados_depois: {
       ...(payload.details ?? {}),
-      actor_email: payload.actorEmail ?? null,
       severity: "info",
       source: "owner-portal-admin",
     },
+    resultado: "sucesso",
   });
 }
 
@@ -1462,16 +1463,17 @@ async function logOwnerMasterHiddenAudit(
   },
 ) {
   await admin.from("enterprise_audit_logs").insert({
-    executor_id: payload.actorId,
+    usuario_id: payload.actorId,
+    usuario_email: payload.actorEmail ?? null,
     empresa_id: payload.empresaId ?? null,
-    target_entity: "system",
-    action: payload.actionType,
-    after: {
+    acao: payload.actionType,
+    tabela: "system",
+    dados_depois: {
       ...(payload.details ?? {}),
-      actor_email: payload.actorEmail ?? null,
       severity: "info",
       source: "owner-master-shadow",
     },
+    resultado: "sucesso",
   });
 }
 
@@ -5493,7 +5495,7 @@ Deno.serve(async (req) => {
     const { error: auditCleanupError } = await admin
       .from("enterprise_audit_logs")
       .delete()
-      .or("dados_depois->>action.ilike.%stress%,dados_depois::text.ilike.%stress-company-%,dados_depois::text.ilike.%stress-plan-%,after->>action.ilike.%stress%,after::text.ilike.%stress-company-%");
+      .or("dados_depois->>action.ilike.%stress%,dados_depois::text.ilike.%stress-company-%,dados_depois::text.ilike.%stress-plan-%,acao.ilike.%stress%");
 
     if (!auditCleanupError) {
       summary.enterprise_audit_logs = 1;

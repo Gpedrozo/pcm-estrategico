@@ -12,6 +12,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useLogAuditoria } from '@/hooks/useAuditoria';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface ConfigItem {
   id: string;
@@ -30,6 +31,7 @@ export function MasterGlobalSettings() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { log } = useLogAuditoria();
+  const { tenantId } = useAuth();
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editValue, setEditValue] = useState('');
   const [showAdd, setShowAdd] = useState(false);
@@ -38,7 +40,11 @@ export function MasterGlobalSettings() {
   const { data: configs, isLoading } = useQuery({
     queryKey: ['master-configs'],
     queryFn: async () => {
-      const { data, error } = await supabase.from('configuracoes_sistema').select('*').order('categoria').order('chave');
+      const { data, error } = await (() => {
+        let q = supabase.from('configuracoes_sistema').select('*');
+        if (tenantId) q = q.eq('empresa_id', tenantId);
+        return q.order('categoria').order('chave');
+      })();
       if (error) throw error;
       return data as ConfigItem[];
     },
@@ -46,7 +52,9 @@ export function MasterGlobalSettings() {
 
   const updateMutation = useMutation({
     mutationFn: async ({ id, valor }: { id: string; valor: string }) => {
-      const { error } = await supabase.from('configuracoes_sistema').update({ valor }).eq('id', id);
+      let updateQ = supabase.from('configuracoes_sistema').update({ valor }).eq('id', id);
+      if (tenantId) updateQ = updateQ.eq('empresa_id', tenantId);
+      const { error } = await updateQ;
       if (error) throw error;
     },
     onSuccess: () => {
@@ -60,7 +68,7 @@ export function MasterGlobalSettings() {
 
   const addMutation = useMutation({
     mutationFn: async (config: typeof newConfig) => {
-      const { error } = await supabase.from('configuracoes_sistema').insert([config]);
+      const { error } = await supabase.from('configuracoes_sistema').insert([{ ...config, empresa_id: tenantId }]);
       if (error) throw error;
     },
     onSuccess: () => {
