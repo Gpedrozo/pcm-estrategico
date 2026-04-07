@@ -98,12 +98,22 @@ export interface OwnerSubscription {
 
 export interface OwnerAuditLog {
   id: string
-  action_type?: string | null
-  source?: string | null
-  severity?: string | null
   empresa_id?: string | null
+  usuario_id?: string | null
+  usuario_email?: string | null
+  acao?: string | null
+  tabela?: string | null
+  registro_id?: string | null
+  dados_antes?: Record<string, unknown> | null
+  dados_depois?: Record<string, unknown> | null
+  diferenca?: Record<string, unknown> | null
+  ip_address?: string | null
+  user_agent?: string | null
+  ocorreu_em?: string | null
   created_at?: string | null
-  details?: Record<string, unknown> | null
+  correlacao_id?: string | null
+  resultado?: string | null
+  mensagem_erro?: string | null
 }
 
 export interface OwnerSupportTicket {
