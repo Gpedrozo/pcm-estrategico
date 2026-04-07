@@ -38,11 +38,14 @@ export function useOfflineSync() {
   const executor = useCallback(async (action: { tipo: string; payload: Record<string, unknown> }) => {
     switch (action.tipo) {
       case 'UPDATE_OS': {
-        const { id, ...updates } = action.payload;
-        const { error } = await supabase.from('ordens_servico').update(updates).eq('id', id);
+        const { id, empresa_id, ...updates } = action.payload;
+        let q = supabase.from('ordens_servico').update(updates).eq('id', id as string);
+        if (empresa_id) q = q.eq('empresa_id', empresa_id as string);
+        const { error } = await q;
         return !error;
       }
       case 'CREATE_SOLICITACAO': {
+        if (!action.payload.empresa_id) return false;
         const { error } = await supabase.from('solicitacoes').insert(action.payload);
         return !error;
       }

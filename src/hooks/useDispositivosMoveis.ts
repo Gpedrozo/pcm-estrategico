@@ -44,9 +44,12 @@ export function useDispositivosMoveis(empresaId?: string) {
   return useQuery({
     queryKey: ['dispositivos-moveis', eid],
     queryFn: async () => {
-      let q = supabase.from('dispositivos_moveis').select('*').order('created_at', { ascending: false });
-      if (eid) q = q.eq('empresa_id', eid);
-      const { data, error } = await q;
+      if (!eid) throw new Error('empresa_id obrigatório');
+      const { data, error } = await supabase
+        .from('dispositivos_moveis')
+        .select('*')
+        .eq('empresa_id', eid)
+        .order('created_at', { ascending: false });
       if (error) throw error;
       return (data || []) as DispositivoMovel[];
     },
@@ -70,7 +73,8 @@ export function useToggleDispositivo() {
         updates.desativado_por = null;
         updates.motivo_desativacao = null;
       }
-      const { error } = await supabase.from('dispositivos_moveis').update(updates).eq('id', id);
+      if (!tenantId) throw new Error('empresa_id obrigatório');
+      const { error } = await supabase.from('dispositivos_moveis').update(updates).eq('id', id).eq('empresa_id', tenantId);
       if (error) throw error;
     },
     onSuccess: (_, { id, ativo }) => {
@@ -89,7 +93,8 @@ export function useRemoveDispositivo() {
 
   return useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase.from('dispositivos_moveis').delete().eq('id', id);
+      if (!tenantId) throw new Error('empresa_id obrigatório');
+      const { error } = await supabase.from('dispositivos_moveis').delete().eq('id', id).eq('empresa_id', tenantId);
       if (error) throw error;
       return id;
     },
@@ -137,9 +142,12 @@ export function useQRCodesVinculacao(empresaId?: string) {
   return useQuery({
     queryKey: ['qrcodes-vinculacao', eid],
     queryFn: async () => {
-      let q = supabase.from('qrcodes_vinculacao').select('*').order('created_at', { ascending: false });
-      if (eid) q = q.eq('empresa_id', eid);
-      const { data, error } = await q;
+      if (!eid) throw new Error('empresa_id obrigatório');
+      const { data, error } = await supabase
+        .from('qrcodes_vinculacao')
+        .select('*')
+        .eq('empresa_id', eid)
+        .order('created_at', { ascending: false });
       if (error) throw error;
       return (data || []) as QRCodeVinculacao[];
     },
@@ -180,7 +188,8 @@ export function useRevogarQRCode() {
 
   return useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase.from('qrcodes_vinculacao').update({ ativo: false }).eq('id', id);
+      if (!tenantId) throw new Error('empresa_id obrigatório');
+      const { error } = await supabase.from('qrcodes_vinculacao').update({ ativo: false }).eq('id', id).eq('empresa_id', tenantId);
       if (error) throw error;
       return id;
     },

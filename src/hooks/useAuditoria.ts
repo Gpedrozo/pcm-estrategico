@@ -30,12 +30,15 @@ export interface AuditoriaFilters {
 }
 
 export function useAuditoria(filters?: AuditoriaFilters) {
+  const { tenantId } = useAuth();
+
   return useQuery({
-    queryKey: ['auditoria', filters?.limit ?? null, filters?.offset ?? null, filters?.dateFrom ?? null, filters?.dateTo ?? null],
+    queryKey: ['auditoria', tenantId, filters?.limit ?? null, filters?.offset ?? null, filters?.dateFrom ?? null, filters?.dateTo ?? null],
     queryFn: async () => {
       let query = supabase
         .from('audit_logs')
         .select('*')
+        .eq('empresa_id', tenantId!)
         .order('created_at', { ascending: false });
 
       if (filters?.dateFrom) {
@@ -67,6 +70,7 @@ export function useAuditoria(filters?: AuditoriaFilters) {
         data_hora: row.created_at,
       })) as AuditoriaRow[];
     },
+    enabled: !!tenantId,
   });
 }
 
