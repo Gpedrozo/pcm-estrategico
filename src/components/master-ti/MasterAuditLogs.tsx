@@ -67,7 +67,7 @@ export function MasterAuditLogs() {
   const { data: dbAuditData, isLoading: loadingDbAudit } = useQuery({
     queryKey: ['master-db-audit-logs', dbPage, dbSearch, dbTableFilter],
     queryFn: async () => {
-      let query = supabase.from('enterprise_audit_logs').select('*', { count: 'exact' }).order('created_at', { ascending: false }).range(dbPage * PAGE_SIZE, (dbPage + 1) * PAGE_SIZE - 1);
+      let query = supabase.from('enterprise_audit_logs').select('*', { count: 'exact' }).not('dados_antes', 'is', null).order('created_at', { ascending: false }).range(dbPage * PAGE_SIZE, (dbPage + 1) * PAGE_SIZE - 1);
       if (tenantId) query = query.eq('empresa_id', tenantId);
       if (dbSearch) {
         const s = dbSearch.replace(/[%_()\\*]/g, '');
@@ -96,17 +96,19 @@ export function MasterAuditLogs() {
     enabled: activeTab === 'db_audit',
   });
 
-  // Stats — both tabs now read from enterprise_audit_logs
+  // Stats — differentiated: all actions vs only rows with diff data
   const { data: statsData } = useQuery({
     queryKey: ['master-audit-stats'],
     queryFn: async () => {
       const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
       const withTenant = (q: any) => tenantId ? q.eq('empresa_id', tenantId) : q;
-      const [totalAudit, todayAudit] = await Promise.all([
+      const [totalAudit, todayAudit, totalDbAudit, todayDbAudit] = await Promise.all([
         withTenant(supabase.from('enterprise_audit_logs').select('*', { count: 'exact', head: true })),
         withTenant(supabase.from('enterprise_audit_logs').select('*', { count: 'exact', head: true })).gte('created_at', oneDayAgo),
+        withTenant(supabase.from('enterprise_audit_logs').select('*', { count: 'exact', head: true }).not('dados_antes', 'is', null)),
+        withTenant(supabase.from('enterprise_audit_logs').select('*', { count: 'exact', head: true }).not('dados_antes', 'is', null)).gte('created_at', oneDayAgo),
       ]);
-      return { totalAudit: totalAudit.count ?? 0, todayAudit: todayAudit.count ?? 0, totalDbAudit: totalAudit.count ?? 0, todayDbAudit: todayAudit.count ?? 0 };
+      return { totalAudit: totalAudit.count ?? 0, todayAudit: todayAudit.count ?? 0, totalDbAudit: totalDbAudit.count ?? 0, todayDbAudit: todayDbAudit.count ?? 0 };
     },
   });
 
@@ -166,8 +168,8 @@ export function MasterAuditLogs() {
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList>
-          <TabsTrigger value="auditoria" className="gap-2"><Activity className="h-4 w-4" /> Ações do Sistema</TabsTrigger>
-          <TabsTrigger value="db_audit" className="gap-2"><Database className="h-4 w-4" /> Alterações no Banco</TabsTrigger>
+          <TabsTrigger value="auditoria" className="gap-2"><Activity className="h-4 w-4" /> Todas as Ações</TabsTrigger>
+          <TabsTrigger value="db_audit" className="gap-2"><Database className="h-4 w-4" /> Alterações com Diff</TabsTrigger>
         </TabsList>
 
         <TabsContent value="auditoria" className="space-y-4 mt-4">

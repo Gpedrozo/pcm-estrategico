@@ -5,9 +5,30 @@ interface AuditInput {
   table: string;
   recordId?: string | null;
   empresaId?: string | null;
-  severity?: 'info' | 'warning' | 'error' | 'critical';
-  source?: string;
-  metadata?: Record<string, unknown>;
+  dadosAntes?: Record<string, unknown> | null;
+  dadosDepois?: Record<string, unknown> | null;
+  correlacaoId?: string | null;
+  resultado?: 'sucesso' | 'erro' | 'rejeitado';
+  mensagemErro?: string | null;
+}
+
+const VALID_ACTIONS = new Set([
+  'CREATE', 'UPDATE', 'DELETE', 'CLOSE', 'APPROVE', 'REJECT', 'LOGIN', 'LOGOUT', 'EXPORT',
+]);
+
+function normalizeAction(action: string): string {
+  const upper = action.toUpperCase();
+  if (VALID_ACTIONS.has(upper)) return upper;
+  const prefix = upper.split('_')[0];
+  if (VALID_ACTIONS.has(prefix)) return prefix;
+  if (upper.includes('LOGIN')) return 'LOGIN';
+  if (upper.includes('LOGOUT')) return 'LOGOUT';
+  if (upper.includes('CLOSE')) return 'CLOSE';
+  if (upper.includes('DELETE') || upper.includes('REMOVE')) return 'DELETE';
+  if (upper.includes('CREATE') || upper.includes('GENERATE')) return 'CREATE';
+  if (upper.includes('UPDATE') || upper.includes('EDIT')) return 'UPDATE';
+  if (upper.includes('EXPORT')) return 'EXPORT';
+  return 'UPDATE';
 }
 
 /**
@@ -22,19 +43,28 @@ export async function writeAuditLog(input: AuditInput): Promise<void> {
       table,
       recordId = null,
       empresaId = null,
-      severity = 'info',
-      source = 'mecanico-app',
-      metadata = {},
+      dadosAntes = null,
+      dadosDepois = null,
+      correlacaoId = null,
+      resultado = 'sucesso',
+      mensagemErro = null,
     } = input;
 
+    const { data: { user } } = await supabase.auth.getUser();
+
     await supabase.rpc('app_write_audit_log', {
-      p_action: action,
-      p_table: table,
-      p_record_id: recordId,
       p_empresa_id: empresaId,
-      p_severity: severity,
-      p_source: source,
-      p_metadata: metadata,
+      p_usuario_id: user?.id ?? null,
+      p_acao: normalizeAction(action),
+      p_tabela: table,
+      p_registro_id: recordId,
+      p_dados_antes: dadosAntes,
+      p_dados_depois: dadosDepois,
+      p_ip_address: null,
+      p_user_agent: null,
+      p_correlacao_id: correlacaoId,
+      p_resultado: resultado,
+      p_mensagem_erro: mensagemErro,
     });
   } catch {
     // Audit is fire-and-forget — never throw

@@ -79,20 +79,5 @@ export function useAuditLogs(empresa_id?: string, limit: number = 100) {
   });
 }
 
-// Write audit log (call after mutations)
-export async function writeAuditLog(params: {
-  empresa_id: string;
-  usuario_id?: string;
-  acao: 'CREATE' | 'UPDATE' | 'DELETE' | 'CLOSE' | 'APPROVE' | 'REJECT' | 'LOGIN' | 'LOGOUT' | 'EXPORT';
-  tabela: string;
-  registro_id?: string;
-  dados_antes?: any;
-  dados_depois?: any;
-  ip_address?: string;
-  resultado?: 'sucesso' | 'erro' | 'rejeitado';
-  mensagem_erro?: string;
-}) {
-  const { data, error } = await supabase.rpc('app_write_audit_log', params);
-  if (error) console.error('[Audit] Write failed:', error);
-  return data;
-}
+// REMOVED: duplicate writeAuditLog that used wrong param names (no p_ prefix).
+// Use writeAuditLog from '@/lib/audit' instead.

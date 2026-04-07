@@ -17,7 +17,12 @@ interface AuditInput {
   mensagemErro?: string | null
 }
 
-// Map frontend actions to RPC-allowed values
+// RPC-allowed action values
+const VALID_ACTIONS = new Set([
+  'CREATE', 'UPDATE', 'DELETE', 'CLOSE', 'APPROVE', 'REJECT', 'LOGIN', 'LOGOUT', 'EXPORT',
+])
+
+// Map Portuguese verbs to English RPC actions
 const ACTION_MAP: Record<string, string> = {
   CRIAR: 'CREATE',
   EDITAR: 'UPDATE',
@@ -26,11 +31,44 @@ const ACTION_MAP: Record<string, string> = {
   APROVAR: 'APPROVE',
   REJEITAR: 'REJECT',
   EXPORTAR: 'EXPORT',
+  CADASTRAR: 'CREATE',
+  ATUALIZAR: 'UPDATE',
+  REMOVER: 'DELETE',
+  DESATIVAR: 'DELETE',
+  REVOGAR: 'DELETE',
+  GERAR: 'CREATE',
+  RESETAR: 'UPDATE',
+  DUPLICAR: 'CREATE',
+  REATIVAR: 'UPDATE',
 }
 
 function normalizeAction(action: string): string {
   const upper = action.toUpperCase()
-  return ACTION_MAP[upper] ?? upper
+
+  // Direct match (e.g. 'CREATE', 'LOGIN')
+  if (VALID_ACTIONS.has(upper)) return upper
+
+  // Full PT word match (e.g. 'CRIAR')
+  if (ACTION_MAP[upper]) return ACTION_MAP[upper]
+
+  // Extract verb prefix from composite actions (e.g. 'CREATE_EQUIPAMENTO' → 'CREATE')
+  const prefix = upper.split('_')[0]
+  if (VALID_ACTIONS.has(prefix)) return prefix
+  if (ACTION_MAP[prefix]) return ACTION_MAP[prefix]
+
+  // Known compound patterns
+  if (upper.includes('LOGIN')) return 'LOGIN'
+  if (upper.includes('LOGOUT')) return 'LOGOUT'
+  if (upper.includes('CLOSE')) return 'CLOSE'
+  if (upper.includes('DELETE') || upper.includes('REMOVE')) return 'DELETE'
+  if (upper.includes('CREATE') || upper.includes('GENERATE')) return 'CREATE'
+  if (upper.includes('UPDATE') || upper.includes('EDIT') || upper.includes('CHANGE')) return 'UPDATE'
+  if (upper.includes('EXPORT')) return 'EXPORT'
+  if (upper.includes('APPROVE')) return 'APPROVE'
+  if (upper.includes('REJECT')) return 'REJECT'
+
+  // Fallback — default to UPDATE (safest generic action)
+  return 'UPDATE'
 }
 
 export async function writeAuditLog(input: AuditInput) {

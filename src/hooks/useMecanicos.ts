@@ -89,7 +89,7 @@ export function useCreateMecanico() {
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['mecanicos', tenantId] });
       queryClient.invalidateQueries({ queryKey: ['mecanicos-ativos', tenantId] });
-      writeAuditLog({ action: 'CREATE_MECANICO', table: 'mecanicos', recordId: data?.id, empresaId: tenantId, source: 'useMecanicos' });
+      writeAuditLog({ action: 'CREATE_MECANICO', table: 'mecanicos', recordId: data?.id, empresaId: tenantId, dadosDepois: data as unknown as Record<string, unknown> });
       toast({
         title: 'Mecânico Cadastrado',
         description: `${data.nome} foi cadastrado com sucesso.`,
@@ -118,7 +118,7 @@ export function useUpdateMecanico() {
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['mecanicos', tenantId] });
       queryClient.invalidateQueries({ queryKey: ['mecanicos-ativos', tenantId] });
-      writeAuditLog({ action: 'UPDATE_MECANICO', table: 'mecanicos', recordId: data?.id, empresaId: tenantId, source: 'useMecanicos' });
+      writeAuditLog({ action: 'UPDATE_MECANICO', table: 'mecanicos', recordId: data?.id, empresaId: tenantId, dadosDepois: data as unknown as Record<string, unknown> });
       toast({
         title: 'Mecânico Atualizado',
         description: `${data.nome} foi atualizado com sucesso.`,

@@ -133,7 +133,7 @@ export function useCreateOrdemServico() {
       queryClient.invalidateQueries({ queryKey: ['ordens-servico-pending', tenantId] });
       queryClient.invalidateQueries({ queryKey: ['indicadores', tenantId] });
       queryClient.invalidateQueries({ queryKey: ['document-sequences', tenantId] });
-      writeAuditLog({ action: 'CREATE_ORDEM_SERVICO', table: 'ordens_servico', recordId: data?.id, empresaId: tenantId, source: 'useOrdensServico', metadata: { numero_os: data?.numero_os, tipo: data?.tipo } });
+      writeAuditLog({ action: 'CREATE_ORDEM_SERVICO', table: 'ordens_servico', recordId: data?.id, empresaId: tenantId, dadosDepois: data as unknown as Record<string, unknown> });
       toast({
         title: 'O.S Criada com Sucesso!',
         description: `Ordem de Serviço nº ${data.numero_os} foi registrada.`,
@@ -164,7 +164,7 @@ export function useUpdateOrdemServico() {
       queryClient.invalidateQueries({ queryKey: ['ordens-servico-recent', tenantId] });
       queryClient.invalidateQueries({ queryKey: ['ordens-servico-pending', tenantId] });
       queryClient.invalidateQueries({ queryKey: ['indicadores', tenantId] });
-      writeAuditLog({ action: 'UPDATE_ORDEM_SERVICO', table: 'ordens_servico', recordId: data?.id, empresaId: tenantId, source: 'useOrdensServico', metadata: { status: data?.status } });
+      writeAuditLog({ action: 'UPDATE_ORDEM_SERVICO', table: 'ordens_servico', recordId: data?.id, empresaId: tenantId, dadosDepois: data as unknown as Record<string, unknown> });
     },
     onError: (error: any) => {
       toast({

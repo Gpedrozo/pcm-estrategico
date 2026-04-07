@@ -14,18 +14,15 @@ import { Search, Filter, ClipboardList, User, Clock, Tag, AlertTriangle } from '
 import { Skeleton } from '@/components/ui/skeleton';
 
 const acaoLabels: Record<string, { label: string; color: string }> = {
+  CREATE: { label: 'Criar', color: 'bg-success/10 text-success' },
+  UPDATE: { label: 'Atualizar', color: 'bg-info/10 text-info' },
+  DELETE: { label: 'Excluir', color: 'bg-destructive/10 text-destructive' },
+  CLOSE: { label: 'Fechar', color: 'bg-primary/10 text-primary' },
+  APPROVE: { label: 'Aprovar', color: 'bg-success/10 text-success' },
+  REJECT: { label: 'Rejeitar', color: 'bg-warning/10 text-warning' },
   LOGIN: { label: 'Login', color: 'bg-info/10 text-info' },
   LOGOUT: { label: 'Logout', color: 'bg-muted text-muted-foreground' },
-  CRIAR_OS: { label: 'Criar O.S', color: 'bg-success/10 text-success' },
-  FECHAR_OS: { label: 'Fechar O.S', color: 'bg-primary/10 text-primary' },
-  IMPRIMIR_OS: { label: 'Imprimir', color: 'bg-warning/10 text-warning' },
-  GERAR_PDF: { label: 'Gerar PDF', color: 'bg-warning/10 text-warning' },
-  CRIAR_USUARIO: { label: 'Criar Usuário', color: 'bg-success/10 text-success' },
-  EDITAR_USUARIO: { label: 'Editar Usuário', color: 'bg-info/10 text-info' },
-  CRIAR_PLANO_PREVENTIVO: { label: 'Criar Plano', color: 'bg-info/10 text-info' },
-  EXECUTAR_PLANO_PREVENTIVO: { label: 'Executar Plano', color: 'bg-info/10 text-info' },
-  CADASTRAR_MATERIAL: { label: 'Cadastrar Material', color: 'bg-success/10 text-success' },
-  AJUSTAR_ESTOQUE: { label: 'Ajustar Estoque', color: 'bg-warning/10 text-warning' },
+  EXPORT: { label: 'Exportar', color: 'bg-warning/10 text-warning' },
 };
 
 export default function Auditoria() {

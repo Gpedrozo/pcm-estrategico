@@ -108,4 +108,42 @@ describe('app_write_audit_log integration', () => {
       error: 'unauthenticated',
     });
   });
+
+  it('normalizes composite actions by extracting verb prefix', async () => {
+    mockedCallRpc.mockResolvedValue({ data: null, error: null });
+
+    const cases = [
+      { input: 'CREATE_EQUIPAMENTO', expected: 'CREATE' },
+      { input: 'UPDATE_FMEA', expected: 'UPDATE' },
+      { input: 'DELETE_CONTRATO', expected: 'DELETE' },
+      { input: 'CLOSE_OS_ATOMIC', expected: 'CLOSE' },
+    ];
+
+    for (const { input, expected } of cases) {
+      mockedCallRpc.mockClear();
+      await writeAuditLog({ action: input, table: 'test', empresaId: 'e-1' });
+      expect(mockedCallRpc).toHaveBeenCalledWith('app_write_audit_log', expect.objectContaining({
+        p_acao: expected,
+      }));
+    }
+  });
+
+  it('normalizes actions with embedded keywords', async () => {
+    mockedCallRpc.mockResolvedValue({ data: null, error: null });
+
+    const cases = [
+      { input: 'AUTH_LOGIN_FAILED', expected: 'LOGIN' },
+      { input: 'AUTH_PASSWORD_CHANGED', expected: 'UPDATE' },
+      { input: 'GENERATE_DOCUMENT_NUMBER', expected: 'CREATE' },
+      { input: 'OWNER2_REMOVE_USER', expected: 'UPDATE' },
+    ];
+
+    for (const { input, expected } of cases) {
+      mockedCallRpc.mockClear();
+      await writeAuditLog({ action: input, table: 'test', empresaId: 'e-1' });
+      expect(mockedCallRpc).toHaveBeenCalledWith('app_write_audit_log', expect.objectContaining({
+        p_acao: expected,
+      }));
+    }
+  });
 });

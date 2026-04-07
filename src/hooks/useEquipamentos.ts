@@ -88,7 +88,7 @@ export function useCreateEquipamento() {
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['equipamentos', tenantId] });
-      writeAuditLog({ action: 'CREATE_EQUIPAMENTO', table: 'equipamentos', recordId: data?.id, empresaId: tenantId, source: 'useEquipamentos' });
+      writeAuditLog({ action: 'CREATE_EQUIPAMENTO', table: 'equipamentos', recordId: data?.id, empresaId: tenantId, dadosDepois: data as unknown as Record<string, unknown> });
       toast({
         title: 'Equipamento Cadastrado',
         description: `TAG ${data.tag} foi cadastrado com sucesso.`,
@@ -116,7 +116,7 @@ export function useUpdateEquipamento() {
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['equipamentos', tenantId] });
-      writeAuditLog({ action: 'UPDATE_EQUIPAMENTO', table: 'equipamentos', recordId: data?.id, empresaId: tenantId, source: 'useEquipamentos' });
+      writeAuditLog({ action: 'UPDATE_EQUIPAMENTO', table: 'equipamentos', recordId: data?.id, empresaId: tenantId, dadosDepois: data as unknown as Record<string, unknown> });
       toast({
         title: 'Equipamento Atualizado',
         description: `TAG ${data.tag} foi atualizado com sucesso.`,
