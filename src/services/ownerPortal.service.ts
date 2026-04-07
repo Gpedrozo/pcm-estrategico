@@ -112,6 +112,37 @@ export interface OwnerAuditLog {
   created_at?: string | null
 }
 
+/**
+ * Normalizes a raw audit row (which may use English or Portuguese column names)
+ * into the canonical OwnerAuditLog interface with Portuguese field names.
+ * Handles 3 possible schemas:
+ *   1. English (migration 20260301): executor_id, target_entity, action, before, after, ip
+ *   2. Portuguese (migration 20260402): usuario_id, acao, tabela, dados_antes, dados_depois
+ *   3. Edge function (legacy): actor_id, action_type, details, severity, source
+ */
+function normalizeAuditRow(raw: Record<string, unknown>): OwnerAuditLog {
+  const afterData = (raw.dados_depois ?? raw.after ?? raw.details ?? null) as Record<string, unknown> | null
+  return {
+    id: String(raw.id ?? ''),
+    empresa_id: (raw.empresa_id as string) ?? null,
+    usuario_id: String(raw.usuario_id ?? raw.executor_id ?? raw.actor_id ?? '') || null,
+    usuario_email: String(raw.usuario_email ?? raw.actor_email ?? (afterData as any)?.actor_email ?? '') || null,
+    acao: String(raw.acao ?? raw.action ?? raw.action_type ?? '') || null,
+    tabela: String(raw.tabela ?? raw.target_entity ?? raw.table_name ?? '') || null,
+    registro_id: String(raw.registro_id ?? raw.target_id ?? raw.record_id ?? '') || null,
+    dados_antes: (raw.dados_antes ?? raw.before ?? raw.old_data ?? null) as Record<string, unknown> | null,
+    dados_depois: afterData,
+    diferenca: (raw.diferenca ?? null) as Record<string, unknown> | null,
+    ip_address: String(raw.ip_address ?? raw.ip ?? '') || null,
+    user_agent: String(raw.user_agent ?? '') || null,
+    ocorreu_em: String(raw.ocorreu_em ?? raw.created_at ?? '') || null,
+    created_at: String(raw.created_at ?? raw.ocorreu_em ?? '') || null,
+    correlacao_id: String(raw.correlacao_id ?? raw.correlation_id ?? '') || null,
+    resultado: String(raw.resultado ?? '') || 'sucesso',
+    mensagem_erro: String(raw.mensagem_erro ?? '') || null,
+  }
+}
+
 export interface OwnerSupportTicket {
   id: string
   empresa_id?: string | null
@@ -659,8 +690,9 @@ export async function deleteSupportTicket(ticketId: string) {
 }
 
 export async function listAuditLogs(filters?: Record<string, unknown>): Promise<OwnerAuditLog[]> {
-  const data = await callOwnerAdmin<{ logs: OwnerAuditLog[] }>({ action: 'list_audit_logs', filters: filters ?? {} })
-  return Array.isArray(data?.logs) ? data.logs : []
+  const data = await callOwnerAdmin<{ logs: Record<string, unknown>[] }>({ action: 'list_audit_logs', filters: filters ?? {} })
+  const rows = Array.isArray(data?.logs) ? data.logs : []
+  return rows.map(normalizeAuditRow)
 }
 
 export async function getCompanySettings(empresaId: string) {

@@ -1410,13 +1410,16 @@ async function logPlatformAudit(
   },
 ) {
   await admin.from("enterprise_audit_logs").insert({
-    actor_id: payload.actorId,
-    actor_email: payload.actorEmail ?? null,
+    executor_id: payload.actorId,
     empresa_id: payload.empresaId ?? null,
-    action_type: payload.actionType,
-    details: payload.details ?? {},
-    severity: "info",
-    source: "owner-portal-admin",
+    target_entity: "system",
+    action: payload.actionType,
+    after: {
+      ...(payload.details ?? {}),
+      actor_email: payload.actorEmail ?? null,
+      severity: "info",
+      source: "owner-portal-admin",
+    },
   });
 }
 
@@ -1459,13 +1462,16 @@ async function logOwnerMasterHiddenAudit(
   },
 ) {
   await admin.from("enterprise_audit_logs").insert({
-    actor_id: payload.actorId,
-    actor_email: payload.actorEmail ?? null,
+    executor_id: payload.actorId,
     empresa_id: payload.empresaId ?? null,
-    action_type: payload.actionType,
-    details: payload.details ?? {},
-    severity: "info",
-    source: "owner-master-shadow",
+    target_entity: "system",
+    action: payload.actionType,
+    after: {
+      ...(payload.details ?? {}),
+      actor_email: payload.actorEmail ?? null,
+      severity: "info",
+      source: "owner-master-shadow",
+    },
   });
 }
 
@@ -2084,8 +2090,7 @@ Deno.serve(async (req) => {
 
     const { data: alerts } = await admin
       .from("enterprise_audit_logs")
-      .select("id,action_type,severity,created_at")
-      .in("severity", ["warning", "error", "critical"])
+      .select("*")
       .order("created_at", { ascending: false })
       .limit(20);
 
@@ -4262,11 +4267,8 @@ Deno.serve(async (req) => {
       .order("created_at", { ascending: false })
       .limit(1000);
 
-    if (!isOwnerMaster) query = query.neq("source", "owner-master-shadow");
-
     if (filters.empresa_id) query = query.eq("empresa_id", filters.empresa_id);
-    if (filters.user_id) query = query.eq("actor_id", filters.user_id);
-    if (filters.module) query = query.ilike("source", `%${filters.module}%`);
+    if (filters.user_id) query = query.eq("executor_id", filters.user_id);
     if (filters.from) query = query.gte("created_at", filters.from);
     if (filters.to) query = query.lte("created_at", filters.to);
 
@@ -5491,7 +5493,7 @@ Deno.serve(async (req) => {
     const { error: auditCleanupError } = await admin
       .from("enterprise_audit_logs")
       .delete()
-      .or("details->>action.ilike.%stress%,details::text.ilike.%stress-company-%,details::text.ilike.%stress-plan-%");
+      .or("dados_depois->>action.ilike.%stress%,dados_depois::text.ilike.%stress-company-%,dados_depois::text.ilike.%stress-plan-%,after->>action.ilike.%stress%,after::text.ilike.%stress-company-%");
 
     if (!auditCleanupError) {
       summary.enterprise_audit_logs = 1;
