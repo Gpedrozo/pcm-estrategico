@@ -31,6 +31,7 @@ import {
   HardHat,
   UserCircle,
   Smartphone,
+  Monitor,
 } from 'lucide-react';
 import { NavLink, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
@@ -122,8 +123,12 @@ const adminMenuItems = [
   { title: 'Central Admin', url: '/administracao', icon: Settings },
 ];
 
+const masterTIMenuItems = [
+  { title: 'Master TI', url: '/master-ti', icon: Monitor },
+];
+
 export function AppSidebar() {
-  const { user, logout, isAdmin, effectiveRole } = useAuth();
+  const { user, logout, isAdmin, isMasterTI, effectiveRole } = useAuth();
   const { branding } = useBranding();
   const tenantContext = useOptionalTenant();
   const tenant = tenantContext?.tenant ?? null;
@@ -351,6 +356,20 @@ export function AppSidebar() {
             <SidebarGroupContent>
               <SidebarMenu>
                 {adminMenuItems.map(renderMenuLink)}
+                {isMasterTI && masterTIMenuItems.map(renderMenuLink)}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
+
+        {isMasterTI && !isAdmin && (
+          <SidebarGroup className="mt-4">
+            <SidebarGroupLabel className="text-sidebar-foreground/50 uppercase text-xs font-semibold px-3 mb-2">
+              Administração
+            </SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                {masterTIMenuItems.map(renderMenuLink)}
               </SidebarMenu>
             </SidebarGroupContent>
           </SidebarGroup>
