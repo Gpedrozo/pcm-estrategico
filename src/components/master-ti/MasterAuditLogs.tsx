@@ -118,9 +118,9 @@ export function MasterAuditLogs() {
   const actionColor = (acao: string) => {
     const a = acao.toUpperCase();
     if (a.includes('LOGIN') || a.includes('LOGOUT')) return 'bg-info/10 text-info border-info/20';
-    if (a.includes('CRIAR') || a.includes('CADASTR') || a.includes('INSERT')) return 'bg-success/10 text-success border-success/20';
-    if (a.includes('EDITAR') || a.includes('ATUALIZ') || a.includes('UPDATE') || a.includes('FECHAR')) return 'bg-warning/10 text-warning border-warning/20';
-    if (a.includes('EXCLUIR') || a.includes('DELET') || a.includes('DELETE')) return 'bg-destructive/10 text-destructive border-destructive/20';
+    if (a.includes('CREATE') || a.includes('CRIAR') || a.includes('CADASTR') || a.includes('INSERT') || a.includes('APPROVE')) return 'bg-success/10 text-success border-success/20';
+    if (a.includes('UPDATE') || a.includes('EDITAR') || a.includes('ATUALIZ') || a.includes('CLOSE') || a.includes('FECHAR') || a.includes('EXPORT')) return 'bg-warning/10 text-warning border-warning/20';
+    if (a.includes('DELETE') || a.includes('EXCLUIR') || a.includes('REJECT')) return 'bg-destructive/10 text-destructive border-destructive/20';
     return 'bg-secondary text-secondary-foreground';
   };
 
@@ -183,13 +183,15 @@ export function MasterAuditLogs() {
                 <SelectTrigger className="w-44"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="ALL">Todas as ações</SelectItem>
+                  <SelectItem value="CREATE">Criar</SelectItem>
+                  <SelectItem value="UPDATE">Atualizar</SelectItem>
+                  <SelectItem value="DELETE">Excluir</SelectItem>
+                  <SelectItem value="CLOSE">Fechar</SelectItem>
+                  <SelectItem value="APPROVE">Aprovar</SelectItem>
+                  <SelectItem value="REJECT">Rejeitar</SelectItem>
                   <SelectItem value="LOGIN">Login</SelectItem>
                   <SelectItem value="LOGOUT">Logout</SelectItem>
-                  <SelectItem value="CRIAR">Criar</SelectItem>
-                  <SelectItem value="EDITAR">Editar</SelectItem>
-                  <SelectItem value="EXCLUIR">Excluir</SelectItem>
-                  <SelectItem value="ATUALIZAR">Atualizar</SelectItem>
-                  <SelectItem value="FECHAR">Fechar</SelectItem>
+                  <SelectItem value="EXPORT">Exportar</SelectItem>
                 </SelectContent>
               </Select>
             </div>

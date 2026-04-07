@@ -16,11 +16,32 @@ const VALID_ACTIONS = new Set([
   'CREATE', 'UPDATE', 'DELETE', 'CLOSE', 'APPROVE', 'REJECT', 'LOGIN', 'LOGOUT', 'EXPORT',
 ]);
 
+const ACTION_MAP: Record<string, string> = {
+  CRIAR: 'CREATE',
+  EDITAR: 'UPDATE',
+  EXCLUIR: 'DELETE',
+  FECHAR: 'CLOSE',
+  APROVAR: 'APPROVE',
+  REJEITAR: 'REJECT',
+  EXPORTAR: 'EXPORT',
+  CADASTRAR: 'CREATE',
+  ATUALIZAR: 'UPDATE',
+  REMOVER: 'DELETE',
+  DESATIVAR: 'DELETE',
+  REVOGAR: 'DELETE',
+  GERAR: 'CREATE',
+  RESETAR: 'UPDATE',
+  DUPLICAR: 'CREATE',
+  REATIVAR: 'UPDATE',
+};
+
 function normalizeAction(action: string): string {
   const upper = action.toUpperCase();
   if (VALID_ACTIONS.has(upper)) return upper;
+  if (ACTION_MAP[upper]) return ACTION_MAP[upper];
   const prefix = upper.split('_')[0];
   if (VALID_ACTIONS.has(prefix)) return prefix;
+  if (ACTION_MAP[prefix]) return ACTION_MAP[prefix];
   if (upper.includes('LOGIN')) return 'LOGIN';
   if (upper.includes('LOGOUT')) return 'LOGOUT';
   if (upper.includes('CLOSE')) return 'CLOSE';
