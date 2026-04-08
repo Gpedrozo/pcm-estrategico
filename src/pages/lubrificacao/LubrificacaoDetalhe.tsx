@@ -60,9 +60,17 @@ export function LubrificacaoDetalhe({ plano, equipamentos, onEdit }: Lubrificaca
 
   return (
     <Card>
-      <CardHeader className="flex flex-row items-start justify-between space-y-0">
+      <CardHeader className="space-y-3">
+        <div className="flex items-center justify-end gap-2 flex-wrap">
+          <Badge variant="outline">{plano.status || 'programado'}</Badge>
+          <Button size="sm" variant="outline" className="gap-1" onClick={() => handlePrint()}>
+            <Printer className="h-3.5 w-3.5" />
+            Imprimir
+          </Button>
+          <Button size="sm" variant="outline" onClick={() => onEdit(plano)}>Editar plano</Button>
+        </div>
         <div className="space-y-1">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             <CardTitle className="text-xl">{plano.nome}</CardTitle>
             <span className={`text-xs font-semibold px-2 py-0.5 rounded border ${prioridadeCores[prioridade]}`}>
               {prioridadeLabels[prioridade]}
@@ -91,14 +99,6 @@ export function LubrificacaoDetalhe({ plano, equipamentos, onEdit }: Lubrificaca
             </div>
           )}
         </div>
-        <div className="flex gap-2">
-          <Badge variant="outline">{plano.status || 'programado'}</Badge>
-          <Button size="sm" variant="outline" className="gap-1" onClick={() => handlePrint()}>
-            <Printer className="h-3.5 w-3.5" />
-            Imprimir
-          </Button>
-          <Button size="sm" variant="outline" onClick={() => onEdit(plano)}>Editar plano</Button>
-        </div>
       </CardHeader>
       <CardContent>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
@@ -125,28 +125,28 @@ export function LubrificacaoDetalhe({ plano, equipamentos, onEdit }: Lubrificaca
         {pontosPlano && pontosPlano.length > 0 && (
           <div className="mt-4 border-t pt-3">
             <p className="text-sm font-semibold mb-2">Pontos de Lubrificação ({pontosPlano.length}) — Tempo total: {pontosPlano.reduce((s, p) => s + (p.tempo_estimado_min || 0), 0)} min</p>
-            <div className="border border-border rounded-lg overflow-hidden max-h-[350px] overflow-y-auto">
-              <table className="w-full text-xs">
+            <div className="border border-border rounded-lg overflow-hidden max-h-[350px] overflow-auto">
+              <table className="w-full text-xs" style={{ tableLayout: 'fixed' }}>
                 <thead className="bg-muted/60 sticky top-0">
                   <tr>
-                    <th className="text-left px-2 py-1.5 font-semibold w-8">Item</th>
+                    <th className="text-left px-2 py-1.5 font-semibold w-10">Item</th>
                     <th className="text-left px-2 py-1.5 font-semibold">Descrição</th>
-                    <th className="text-left px-2 py-1.5 font-semibold">Lubrificante</th>
-                    <th className="text-left px-2 py-1.5 font-semibold">Qtd</th>
-                    <th className="text-right px-2 py-1.5 font-semibold">Min</th>
+                    <th className="text-left px-2 py-1.5 font-semibold w-24">Lubrificante</th>
+                    <th className="text-left px-2 py-1.5 font-semibold w-14">Qtd</th>
+                    <th className="text-right px-2 py-1.5 font-semibold w-12">Min</th>
                   </tr>
                 </thead>
                 <tbody>
                   {pontosPlano.map((p, i) => (
                     <tr key={p.id} className="border-t border-border hover:bg-muted/30">
                       <td className="px-2 py-1.5 font-mono font-bold text-primary">{i + 1}</td>
-                      <td className="px-2 py-1.5">
-                        {p.descricao}
+                      <td className="px-2 py-1.5 min-w-0">
+                        <span className="block truncate">{p.descricao}</span>
                         {/* R2: TAG badge só se plano NÃO tem equipamento */}
-                        {!plano.equipamento_id && p.equipamento_tag && <Badge variant="secondary" className="ml-1 text-[10px]">{p.equipamento_tag}</Badge>}
+                        {!plano.equipamento_id && p.equipamento_tag && <Badge variant="secondary" className="mt-0.5 text-[10px]">{p.equipamento_tag}</Badge>}
                       </td>
-                      <td className="px-2 py-1.5 text-muted-foreground">{p.lubrificante && p.lubrificante !== plano.lubrificante ? p.lubrificante : '—'}</td>
-                      <td className="px-2 py-1.5 text-muted-foreground">{p.quantidade || '—'}</td>
+                      <td className="px-2 py-1.5 text-muted-foreground truncate">{p.lubrificante && p.lubrificante !== plano.lubrificante ? p.lubrificante : '—'}</td>
+                      <td className="px-2 py-1.5 text-muted-foreground truncate">{p.quantidade || '—'}</td>
                       <td className="px-2 py-1.5 text-right font-mono">{p.tempo_estimado_min}</td>
                     </tr>
                   ))}

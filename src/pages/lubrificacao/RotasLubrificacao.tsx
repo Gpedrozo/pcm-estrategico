@@ -354,14 +354,14 @@ export default function RotasLubrificacao() {
                   <p className="font-semibold mb-2">Pontos da Rota ({pontosDB?.length || 0})</p>
                   <div className="space-y-2 max-h-[400px] overflow-y-auto">
                     {pontosDB?.map((p, i) => (
-                      <div key={p.id} className="p-2 rounded border border-border bg-muted/30 text-xs">
-                        <div className="flex items-center gap-2">
-                          <span className="font-mono font-bold text-primary">Item {i + 1}.</span>
-                          {p.equipamento_tag && <Badge variant="secondary" className="text-[10px]">{p.equipamento_tag}</Badge>}
-                          {p.requer_parada && <Badge variant="destructive" className="text-[10px] gap-0.5"><Lock className="h-2.5 w-2.5" /> Parada</Badge>}
+                      <div key={p.id} className="p-2 rounded border border-border bg-muted/30 text-xs overflow-hidden">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="font-mono font-bold text-primary flex-shrink-0">Item {i + 1}.</span>
+                          {p.equipamento_tag && <Badge variant="secondary" className="text-[10px] truncate max-w-[120px]">{p.equipamento_tag}</Badge>}
+                          {p.requer_parada && <Badge variant="destructive" className="text-[10px] gap-0.5 flex-shrink-0"><Lock className="h-2.5 w-2.5" /> Parada</Badge>}
                         </div>
-                        <p className="mt-0.5">{p.descricao}</p>
-                        {p.lubrificante && <p className="text-muted-foreground">Lub: {p.lubrificante} {p.quantidade ? `(${p.quantidade})` : ''}</p>}
+                        <p className="mt-0.5 break-words">{p.descricao}</p>
+                        {p.lubrificante && <p className="text-muted-foreground truncate">Lub: {p.lubrificante} {p.quantidade ? `(${p.quantidade})` : ''}</p>}
                         {p.tempo_estimado_min > 0 && <p className="text-muted-foreground">Tempo: {p.tempo_estimado_min} min</p>}
                       </div>
                     ))}
