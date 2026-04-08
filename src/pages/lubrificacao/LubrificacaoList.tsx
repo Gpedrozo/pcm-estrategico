@@ -83,18 +83,18 @@ export function LubrificacaoList({
           </Select>
         </div>
 
-        <div className="border border-border rounded-lg overflow-hidden">
-          <table className="table-industrial">
+        <div className="border border-border rounded-lg overflow-x-auto">
+          <table className="table-industrial min-w-[900px] w-full">
             <thead>
               <tr>
-                <th>Código</th>
+                <th className="whitespace-nowrap">Código</th>
                 <th>Descrição</th>
                 <th>Equipamento</th>
                 <th>Lubrificante</th>
-                <th>Prioridade</th>
+                <th className="whitespace-nowrap">Prioridade</th>
                 <th>Status</th>
-                <th>Próxima Execução</th>
-                <th>Ações</th>
+                <th className="whitespace-nowrap">Próx. Execução</th>
+                <th className="whitespace-nowrap">Ações</th>
               </tr>
             </thead>
             <tbody>
