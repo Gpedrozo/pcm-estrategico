@@ -1,25 +1,6 @@
-import { useState } from 'react';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
-import { useUsuarios, useUpdateUsuarioRole, useUpdateUsuarioNome, type UsuarioCompleto } from '@/hooks/useUsuarios';
-import { Search, Edit, Shield, User as UserIcon, AlertTriangle, Loader2, Users } from 'lucide-react';
-import { Skeleton } from '@/components/ui/skeleton';
-import { useAuth } from '@/contexts/AuthContext';
-import { ROLE_LABELS } from '@/lib/roleLabels';
+// [REMOVED] Dead page — route /usuarios redirects to /administracao?tab=usuarios.
+// User management lives exclusively in Administracao.tsx tab "usuarios".
+export default function Usuarios() { return null }
 
 type UserRole = 'ADMIN' | 'USUARIO' | 'MASTER_TI' | 'SOLICITANTE';
 

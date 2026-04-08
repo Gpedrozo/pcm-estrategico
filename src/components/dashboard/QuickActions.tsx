@@ -74,7 +74,7 @@ export function QuickActions({ osAbertas = 0, planosVencidos = 0 }: QuickActions
     {
       label: 'Configurações',
       icon: <Settings className="h-4 w-4" />,
-      href: '/usuarios',
+      href: '/administracao?tab=usuarios',
       variant: 'outline',
     },
   ];
