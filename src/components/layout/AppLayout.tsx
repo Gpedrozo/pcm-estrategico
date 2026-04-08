@@ -5,6 +5,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Menu, Loader2, AlertTriangle, Sun, Moon } from 'lucide-react';
 import type { OwnerCompany } from '@/services/ownerPortal.service';
 import { NotificationCenter } from '@/components/notifications/NotificationCenter';
+import { AssistentePCM } from '@/components/assistente/AssistentePCM';
 import { GlobalSearch } from './GlobalSearch';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { getImpersonationExpiresAt, getImpersonationPayload, impersonateCompany, listPlatformCompanies, stopImpersonation } from '@/services/ownerPortal.service';
@@ -498,6 +499,7 @@ export function AppLayout() {
               </div>
             </div>
           </main>
+          <AssistentePCM />
 
           {isCompanyChooserOpen && (
             <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
