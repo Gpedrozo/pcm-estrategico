@@ -5,8 +5,8 @@ export const contratoSchema = z.object({
   titulo: z.string().min(5, 'Título é obrigatório (mínimo 5 caracteres)'),
   descricao: z.string().optional().nullable(),
   fornecedor_id: z.string().optional().nullable(),
-  tipo: z.enum(['SERVICO', 'MATERIAL', 'MISTO', 'LOCACAO']).default('SERVICO'),
-  status: z.enum(['ATIVO', 'SUSPENSO', 'ENCERRADO', 'VENCIDO']).default('ATIVO'),
+  tipo: z.enum(['SERVICO', 'FORNECIMENTO', 'MATERIAL', 'MISTO', 'LOCACAO']).default('SERVICO'),
+  status: z.enum(['RASCUNHO', 'ATIVO', 'SUSPENSO', 'ENCERRADO', 'CANCELADO', 'VENCIDO']).default('ATIVO'),
   data_inicio: z.string().min(1, 'Data de início é obrigatória'),
   data_fim: z.string().optional().nullable(),
   valor_total: z.number().min(0, 'Valor total deve ser maior ou igual a zero').optional().default(0),
@@ -16,5 +16,7 @@ export const contratoSchema = z.object({
   responsavel_nome: z.string().optional().nullable(),
   penalidade_descricao: z.string().optional().nullable(),
 });
+
+export const contratoUpdateSchema = contratoSchema.partial();
 
 export type ContratoFormData = z.infer<typeof contratoSchema>;

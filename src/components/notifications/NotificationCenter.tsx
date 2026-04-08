@@ -246,6 +246,67 @@ export function NotificationCenter() {
         }
       } catch { /* skip */ }
 
+      // --- Treinamentos SSMA vencendo ou vencidos ---
+      try {
+        const { data: treinamentos, error: trErr } = await supabase
+          .from('treinamentos_ssma')
+          .select('id, colaborador_nome, tipo_curso, nome_curso, data_validade, dias_alerta_antes, status')
+          .eq('empresa_id', tenantId)
+          .in('status', ['PROXIMO_VENCIMENTO', 'VENCIDO'])
+          .order('data_validade', { ascending: true })
+          .limit(10);
+
+        if (!trErr && treinamentos && treinamentos.length > 0) {
+          const vencidos = treinamentos.filter((t: any) => t.status === 'VENCIDO');
+          const vencendo = treinamentos.filter((t: any) => t.status === 'PROXIMO_VENCIMENTO');
+
+          if (vencidos.length > 0) {
+            const details = vencidos
+              .slice(0, 3)
+              .map((t: any) => `${t.colaborador_nome} — ${t.tipo_curso}`)
+              .join(' · ');
+            const extra = vencidos.length > 3 ? ` + ${vencidos.length - 3} mais` : '';
+
+            const nId = 'treinamentos-vencidos';
+            notifs.push({
+              id: nId,
+              type: 'error',
+              title: `${vencidos.length} Treinamento(s) Vencido(s)`,
+              message: `${details}${extra}`,
+              read: readIds.has(nId),
+              dismissed: dismissedIds.has(nId),
+              created_at: new Date().toISOString(),
+              link: '/ssma',
+            });
+          }
+
+          if (vencendo.length > 0) {
+            const details = vencendo
+              .slice(0, 3)
+              .map((t: any) => {
+                const dias = t.data_validade
+                  ? Math.ceil((new Date(t.data_validade).getTime() - Date.now()) / 86400000)
+                  : 0;
+                return `${t.colaborador_nome} — ${t.tipo_curso} (${dias}d)`;
+              })
+              .join(' · ');
+            const extra = vencendo.length > 3 ? ` + ${vencendo.length - 3} mais` : '';
+
+            const nId = 'treinamentos-vencendo';
+            notifs.push({
+              id: nId,
+              type: 'warning',
+              title: `${vencendo.length} Treinamento(s) Próximo(s) do Vencimento`,
+              message: `${details}${extra}`,
+              read: readIds.has(nId),
+              dismissed: dismissedIds.has(nId),
+              created_at: new Date().toISOString(),
+              link: '/ssma',
+            });
+          }
+        }
+      } catch { /* skip */ }
+
       // Welcome (always read)
       const wId = 'welcome';
       notifs.push({

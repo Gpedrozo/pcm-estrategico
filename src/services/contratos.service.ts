@@ -1,5 +1,5 @@
 import { supabase } from '@/integrations/supabase/client';
-import { contratoSchema, type ContratoFormData } from '@/schemas/contrato.schema';
+import { contratoSchema, contratoUpdateSchema, type ContratoFormData } from '@/schemas/contrato.schema';
 import { writeAuditLog } from '@/lib/audit';
 
 export const contratosService = {
@@ -57,9 +57,10 @@ export const contratosService = {
   },
 
   async atualizar(id: string, payload: Partial<ContratoFormData>, empresaId: string) {
+    const validated = contratoUpdateSchema.parse(payload);
     const { data, error } = await supabase
       .from('contratos')
-      .update(payload)
+      .update(validated)
       .eq('id', id)
       .eq('empresa_id', empresaId)
       .select()

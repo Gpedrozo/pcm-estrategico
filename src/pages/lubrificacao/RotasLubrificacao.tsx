@@ -183,8 +183,8 @@ export default function RotasLubrificacao() {
   };
 
   const handleSubmit = async () => {
-    if (!formData.codigo || !formData.nome) {
-      toast({ title: 'Preencha código e nome da rota', variant: 'destructive' });
+    if (!formData.nome) {
+      toast({ title: 'Preencha o nome da rota', variant: 'destructive' });
       return;
     }
 
@@ -398,8 +398,12 @@ export default function RotasLubrificacao() {
           <div className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
               <div className="space-y-1.5">
-                <Label>Código *</Label>
-                <Input value={formData.codigo} onChange={(e) => setFormData((f) => ({ ...f, codigo: e.target.value }))} placeholder="Ex: ROTA-SE-01" />
+                <Label>Código</Label>
+                {editingRota ? (
+                  <Input value={editingRota.codigo} disabled className="bg-muted font-mono" />
+                ) : (
+                  <p className="text-sm text-muted-foreground border rounded-md px-3 py-2 bg-muted">Gerado automaticamente</p>
+                )}
               </div>
               <div className="space-y-1.5">
                 <Label>Nome *</Label>

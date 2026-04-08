@@ -15,7 +15,7 @@ export default function Fornecedores() {
   const [search, setSearch] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [formData, setFormData] = useState({
-    codigo: '',
+    codigo: 'AUTO',
     razao_social: '',
     nome_fantasia: '',
     cnpj: '',
@@ -47,7 +47,7 @@ export default function Fornecedores() {
     setIsModalOpen(false);
     clearFornecedorDraft();
     setFormData({
-      codigo: '', razao_social: '', nome_fantasia: '', cnpj: '', tipo: 'PRESTADOR',
+      codigo: 'AUTO', razao_social: '', nome_fantasia: '', cnpj: '', tipo: 'PRESTADOR',
       especialidade: '', telefone: '', email: '', contato_nome: '', endereco: '', observacoes: ''
     });
   };
@@ -177,8 +177,8 @@ export default function Fornecedores() {
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label>Código *</Label>
-                <Input value={formData.codigo} onChange={(e) => setFormData({...formData, codigo: e.target.value.toUpperCase()})} required />
+                <Label>Código</Label>
+                <p className="text-sm text-muted-foreground border rounded-md px-3 py-2 bg-muted">Gerado automaticamente</p>
               </div>
               <div className="space-y-2">
                 <Label>Tipo *</Label>

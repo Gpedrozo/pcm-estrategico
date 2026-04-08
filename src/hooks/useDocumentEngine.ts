@@ -33,6 +33,15 @@ const DEFAULT_PREFIX_BY_TYPE: Record<string, string> = {
   LUBRIFICACAO: 'LB',
   INSPECAO: 'IN',
   RELATORIO: 'RL',
+  SOLICITACAO: 'SS',
+  PERMISSAO_TRABALHO: 'PT',
+  INCIDENTE: 'IC',
+  RCA: 'RCA',
+  MELHORIA: 'ML',
+  CONTRATO: 'CT',
+  FORNECEDOR: 'FN',
+  LUBRIFICANTE: 'EL',
+  ROTA_LUB: 'RL',
 };
 
 const DOCUMENT_SEQUENCES_TABLE = 'document_sequences';
