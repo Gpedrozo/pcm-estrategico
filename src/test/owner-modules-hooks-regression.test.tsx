@@ -65,7 +65,7 @@ describe('owner v1 page stability', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Cadastro' }))
     await waitFor(() => {
-      expect(screen.getAllByText('Criar empresa').length).toBeGreaterThan(0)
+      expect(screen.getAllByText('Cadastrar empresa').length).toBeGreaterThan(0)
     })
 
     fireEvent.click(screen.getByRole('button', { name: 'Usuarios' }))
