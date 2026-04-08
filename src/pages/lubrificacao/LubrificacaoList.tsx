@@ -124,7 +124,7 @@ export function LubrificacaoList({
                       <td>
                         <Badge variant="outline">{plano.status || 'programado'}</Badge>
                       </td>
-                      <td>
+                      <td className="whitespace-nowrap">
                         <div className="flex items-center gap-1">
                           {vencido && <AlertTriangle className="h-3.5 w-3.5 text-red-500 flex-shrink-0" />}
                           <span className={vencido ? 'text-red-600 font-semibold' : ''}>
@@ -132,7 +132,7 @@ export function LubrificacaoList({
                           </span>
                         </div>
                       </td>
-                      <td>
+                      <td className="whitespace-nowrap">
                         <div className="flex gap-1">
                           <Button size="icon" variant="ghost" onClick={(e) => { e.stopPropagation(); onSelect(plano); }}><Eye className="h-4 w-4" /></Button>
                           <Button size="icon" variant="ghost" onClick={(e) => { e.stopPropagation(); onEdit(plano); }}><Edit className="h-4 w-4" /></Button>
