@@ -166,7 +166,7 @@ export default function ConfiguracoesEmpresa() {
 
   if (isLoading) {
     return (
-      <div className="space-y-6">
+      <div className="module-page space-y-6">
         <Skeleton className="h-8 w-64" />
         <Skeleton className="h-48 w-full" />
         <Skeleton className="h-64 w-full" />
@@ -175,7 +175,7 @@ export default function ConfiguracoesEmpresa() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="module-page space-y-6">
       <div>
         <h1 className="text-2xl font-bold text-foreground">Configurações da Empresa</h1>
         <p className="text-muted-foreground">Dados legais são somente leitura no tenant. Ajuste aqui apenas dados operacionais.</p>

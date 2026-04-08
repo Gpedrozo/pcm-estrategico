@@ -352,6 +352,7 @@ export default function Materiais() {
                               variant="ghost"
                               size="icon"
                               onClick={() => openEditModal(material)}
+                              aria-label="Editar material"
                             >
                               <Edit className="h-4 w-4" />
                             </Button>
@@ -361,6 +362,7 @@ export default function Materiais() {
                                 size="icon"
                                 className="text-destructive hover:text-destructive"
                                 onClick={() => openDeleteDialog(material)}
+                                aria-label="Excluir material"
                               >
                                 <Trash2 className="h-4 w-4" />
                               </Button>

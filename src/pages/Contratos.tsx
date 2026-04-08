@@ -139,14 +139,25 @@ export default function Contratos() {
   };
 
   if (isLoading) {
-    return <Skeleton className="h-96 w-full" />;
+    return (
+      <div className="module-page space-y-6">
+        <Skeleton className="h-8 w-64" />
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          {[1, 2, 3, 4].map(i => <Skeleton key={i} className="h-24" />)}
+        </div>
+        <Skeleton className="h-96 w-full" />
+      </div>
+    );
   }
 
   return (
     <div className="module-page space-y-6">
 
       <div className="module-page-header flex items-center justify-between">
-        <h1 className="text-2xl font-bold">Contratos e Terceiros</h1>
+        <div>
+          <h1 className="text-2xl font-bold text-foreground">Contratos e Terceiros</h1>
+          <p className="text-muted-foreground">Gestão de contratos com terceiros e prestadores de serviço</p>
+        </div>
         <Button onClick={() => {
           setEditingContrato(null);
           resetForm();

@@ -383,13 +383,13 @@ export default function Equipamentos() {
                     </div>
                   </div>
                   <div className="flex gap-1" onClick={e => e.stopPropagation()}>
-                    <Button variant="ghost" size="icon" onClick={() => handleViewDetails(equip)}>
+                    <Button variant="ghost" size="icon" onClick={() => handleViewDetails(equip)} aria-label="Ver detalhes">
                       <Eye className="h-4 w-4" />
                     </Button>
                     <Button variant="ghost" size="icon" onClick={() => setQrEquip(equip)} title="QR Code">
                       <QrCode className="h-4 w-4" />
                     </Button>
-                    <Button variant="ghost" size="icon" onClick={() => handleEdit(equip)}>
+                    <Button variant="ghost" size="icon" onClick={() => handleEdit(equip)} aria-label="Editar equipamento">
                       <Edit className="h-4 w-4" />
                     </Button>
                     {isAdmin && (

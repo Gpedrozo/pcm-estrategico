@@ -2,7 +2,7 @@ import { Outlet, Navigate, useLocation } from 'react-router-dom';
 import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
 import { AppSidebar } from './AppSidebar';
 import { useAuth } from '@/contexts/AuthContext';
-import { Menu, Loader2, AlertTriangle } from 'lucide-react';
+import { Menu, Loader2, AlertTriangle, Sun, Moon } from 'lucide-react';
 import type { OwnerCompany } from '@/services/ownerPortal.service';
 import { NotificationCenter } from '@/components/notifications/NotificationCenter';
 import { GlobalSearch } from './GlobalSearch';
@@ -30,7 +30,18 @@ export function AppLayout() {
   const [companies, setCompanies] = useState<OwnerCompany[]>([]);
   const [selectedCompanyId, setSelectedCompanyId] = useState('');
   const [companySearch, setCompanySearch] = useState('');
+  const [companySearchInput, setCompanySearchInput] = useState('');
   const [isDomainRedirectRunning, setIsDomainRedirectRunning] = useState(false);
+  const [isDark, setIsDark] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    const stored = localStorage.getItem('pcm-theme');
+    if (stored) return stored === 'dark';
+    return document.documentElement.classList.contains('dark');
+  });
+  useEffect(() => {
+    document.documentElement.classList.toggle('dark', isDark);
+    localStorage.setItem('pcm-theme', isDark ? 'dark' : 'light');
+  }, [isDark]);
   const { data: tenantVisualIdentity } = useTenantVisualIdentity();
   const { data: subscriptionAlert } = useSubscriptionAlert();
   const [subscriptionAlertDismissed, setSubscriptionAlertDismissed] = useState(false);
@@ -99,6 +110,12 @@ export function AppLayout() {
     || effectiveRole === 'SYSTEM_ADMIN';
 
   const activeCompanyId = impersonation?.empresaId ?? '';
+
+  // Debounce company search input (300ms)
+  useEffect(() => {
+    const timer = setTimeout(() => setCompanySearch(companySearchInput), 300);
+    return () => clearTimeout(timer);
+  }, [companySearchInput]);
 
   const filteredCompanies = useMemo(() => {
     const term = companySearch.trim().toLowerCase();
@@ -187,6 +204,7 @@ export function AppLayout() {
     setIsCompanyChooserOpen(true);
     setIsLoadingCompanies(true);
     setCompanySearch('');
+    setCompanySearchInput('');
     setCompanyLoadError('');
 
     try {
@@ -400,7 +418,7 @@ export function AppLayout() {
         <AppSidebar />
         <div className="flex-1 flex flex-col">
           <header className="h-14 border-b border-border/80 bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/85 flex items-center px-4 gap-4">
-            <SidebarTrigger className="p-2 hover:bg-muted rounded-md">
+            <SidebarTrigger className="p-2 hover:bg-muted rounded-md" aria-label="Abrir/fechar menu lateral">
               <Menu className="h-5 w-5" />
             </SidebarTrigger>
             <GlobalSearch onOpen={() => {
@@ -420,6 +438,14 @@ export function AppLayout() {
                 Acessar empresa
               </button>
             )}
+            <button
+              onClick={() => setIsDark(prev => !prev)}
+              className="p-2 hover:bg-muted rounded-md text-muted-foreground hover:text-foreground transition-colors"
+              aria-label={isDark ? 'Ativar modo claro' : 'Ativar modo escuro'}
+              title={isDark ? 'Modo claro' : 'Modo escuro'}
+            >
+              {isDark ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
+            </button>
             <NotificationCenter />
             <span className="text-sm text-muted-foreground hidden md:block">
               {new Date().toLocaleDateString('pt-BR', { 
@@ -487,8 +513,8 @@ export function AppLayout() {
                     id="company-context-search"
                     className="h-10 w-full rounded border border-input bg-background px-2 text-sm text-foreground placeholder:text-muted-foreground"
                     placeholder="Digite nome, slug ou id"
-                    value={companySearch}
-                    onChange={(e) => setCompanySearch(e.target.value)}
+                    value={companySearchInput}
+                    onChange={(e) => setCompanySearchInput(e.target.value)}
                     disabled={isLoadingCompanies || isEnteringCompany}
                   />
 
