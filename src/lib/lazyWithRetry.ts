@@ -1,51 +1,63 @@
 import { lazy, type ComponentType, type LazyExoticComponent } from 'react';
 
-const LAZY_RELOAD_MARKER = 'pcm-lazy-import-reload-v1';
-const LAZY_RELOAD_COOLDOWN_MS = 45_000;
+const RELOAD_ATTEMPT_KEY = 'pcm-lazy-reload-attempt-v2';
+const RELOAD_TS_KEY = 'pcm-lazy-import-reload-v1';
+const MAX_RELOAD_ATTEMPTS = 3;
+const RELOAD_COOLDOWN_MS = 10_000;
+const MAX_IMPORT_RETRIES = 3;
+const RETRY_DELAY_MS = 1_500;
 
-function isDynamicImportFailure(error: unknown): boolean {
+export function isDynamicImportFailure(error: unknown): boolean {
   const message = String((error as { message?: string })?.message ?? error ?? '').toLowerCase();
   return (
     message.includes('failed to fetch dynamically imported module') ||
     message.includes('importing a module script failed') ||
     message.includes('loading chunk') ||
-    message.includes('chunkloaderror')
+    message.includes('chunkloaderror') ||
+    message.includes('loading css chunk')
   );
 }
 
-function hasReloadedRecently() {
+function getReloadAttempts(): number {
   try {
-    const now = Date.now();
-    for (const key of [LAZY_RELOAD_MARKER, 'pcm-chunk-reload-at-v1', 'pcm.boundary.chunk_reload.at.v1']) {
-      const raw = window.sessionStorage.getItem(key);
-      const at = Number(raw ?? 0);
-      if (Number.isFinite(at) && at > 0 && now - at <= LAZY_RELOAD_COOLDOWN_MS) {
-        return true;
-      }
-    }
-    return false;
+    return Number(window.sessionStorage.getItem(RELOAD_ATTEMPT_KEY) ?? 0);
   } catch {
-    return false;
+    return 0;
   }
 }
 
-function markReload() {
+function incrementReloadAttempt() {
   try {
-    window.sessionStorage.setItem(LAZY_RELOAD_MARKER, String(Date.now()));
+    const current = getReloadAttempts();
+    window.sessionStorage.setItem(RELOAD_ATTEMPT_KEY, String(current + 1));
+    window.sessionStorage.setItem(RELOAD_TS_KEY, String(Date.now()));
   } catch {
     // noop
   }
 }
 
-function clearReloadMarkOnSuccess() {
+function isInCooldown(): boolean {
   try {
-    window.sessionStorage.removeItem(LAZY_RELOAD_MARKER);
+    const raw = window.sessionStorage.getItem(RELOAD_TS_KEY);
+    const at = Number(raw ?? 0);
+    return Number.isFinite(at) && at > 0 && Date.now() - at <= RELOAD_COOLDOWN_MS;
+  } catch {
+    return false;
+  }
+}
+
+function clearReloadState() {
+  try {
+    window.sessionStorage.removeItem(RELOAD_ATTEMPT_KEY);
+    window.sessionStorage.removeItem(RELOAD_TS_KEY);
+    window.sessionStorage.removeItem('pcm.boundary.chunk_reload.at.v1');
+    window.sessionStorage.removeItem('pcm-chunk-reload-at-v1');
   } catch {
     // noop
   }
 }
 
-async function purgeAllCachesAndServiceWorkers() {
+export async function purgeAllCachesAndServiceWorkers() {
   try {
     if ('serviceWorker' in navigator) {
       const registrations = await navigator.serviceWorker.getRegistrations();
@@ -65,27 +77,68 @@ async function purgeAllCachesAndServiceWorkers() {
   }
 }
 
+async function fetchFreshIndex(): Promise<void> {
+  try {
+    await fetch('/', { cache: 'no-store', headers: { 'Cache-Control': 'no-cache' } });
+  } catch {
+    // noop – just priming the CDN edge with fresh content
+  }
+}
+
+function wait(ms: number) {
+  return new Promise<void>((resolve) => setTimeout(resolve, ms));
+}
+
+async function retryImport<T>(importer: () => Promise<T>, retries: number): Promise<T> {
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    try {
+      return await importer();
+    } catch (error) {
+      if (attempt === retries || !isDynamicImportFailure(error)) {
+        throw error;
+      }
+      // Before retrying, force-fetch the index.html to bust CDN cache
+      if (attempt === 0) {
+        await fetchFreshIndex();
+      }
+      await wait(RETRY_DELAY_MS * (attempt + 1));
+    }
+  }
+  throw new Error('retryImport: exhausted');
+}
+
+function doFullReload() {
+  incrementReloadAttempt();
+  void purgeAllCachesAndServiceWorkers()
+    .then(() => fetchFreshIndex())
+    .finally(() => {
+      const target = new URL(window.location.href);
+      // Clean up old recovery params
+      target.searchParams.delete('recoverChunk');
+      target.searchParams.delete('chunk_reload');
+      target.searchParams.set('v', Date.now().toString());
+      window.location.replace(target.toString());
+    });
+}
+
 export function lazyWithRetry<T extends ComponentType<any>>(
   importer: () => Promise<{ default: T }>,
 ): LazyExoticComponent<T> {
   return lazy(async () => {
     try {
-      const module = await importer();
-      clearReloadMarkOnSuccess();
+      const module = await retryImport(importer, MAX_IMPORT_RETRIES);
+      clearReloadState();
       return module;
     } catch (error) {
-      if (typeof window !== 'undefined' && isDynamicImportFailure(error) && !hasReloadedRecently()) {
-        markReload();
-        void purgeAllCachesAndServiceWorkers().finally(() => {
-          const current = new URL(window.location.href);
-          current.searchParams.set('recoverChunk', Date.now().toString());
-          window.location.replace(current.toString());
-        });
+      if (typeof window === 'undefined' || !isDynamicImportFailure(error)) {
+        throw error;
+      }
 
-        // Mantem suspense pendente enquanto a navegacao ocorre.
-        await new Promise(() => {
-          // intentional noop
-        });
+      const attempts = getReloadAttempts();
+      if (attempts < MAX_RELOAD_ATTEMPTS && !isInCooldown()) {
+        doFullReload();
+        // Keep suspense pending while navigation occurs
+        await new Promise(() => {});
       }
 
       throw error;

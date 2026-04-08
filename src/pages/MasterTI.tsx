@@ -1,4 +1,4 @@
-import { useState, lazy, Suspense } from "react";
+import { useState, Suspense } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import {
   Shield,
@@ -18,69 +18,70 @@ import {
 } from "lucide-react";
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { lazyWithRetry } from "@/lib/lazyWithRetry";
 
 // Lazy load heavy modules
-const MasterUsersManager = lazy(() =>
+const MasterUsersManager = lazyWithRetry(() =>
   import("@/components/master-ti/MasterUsersManager").then((m) => ({
     default: m.MasterUsersManager,
   }))
 );
 
-const MasterPermissionsManager = lazy(() =>
+const MasterPermissionsManager = lazyWithRetry(() =>
   import("@/components/master-ti/MasterPermissionsManager").then((m) => ({
     default: m.MasterPermissionsManager,
   }))
 );
 
-const MasterEmpresaData = lazy(() =>
+const MasterEmpresaData = lazyWithRetry(() =>
   import("@/components/master-ti/MasterEmpresaData").then((m) => ({
     default: m.MasterEmpresaData,
   }))
 );
 
-const MasterLogoManager = lazy(() =>
+const MasterLogoManager = lazyWithRetry(() =>
   import("@/components/master-ti/MasterLogoManager").then((m) => ({
     default: m.MasterLogoManager,
   }))
 );
 
-const MasterDatabaseManager = lazy(() =>
+const MasterDatabaseManager = lazyWithRetry(() =>
   import("@/components/master-ti/MasterDatabaseManager").then((m) => ({
     default: m.MasterDatabaseManager,
   }))
 );
 
-const MasterSystemMonitor = lazy(() =>
+const MasterSystemMonitor = lazyWithRetry(() =>
   import("@/components/master-ti/MasterSystemMonitor").then((m) => ({
     default: m.MasterSystemMonitor,
   }))
 );
 
-const MasterGlobalSettings = lazy(() =>
+const MasterGlobalSettings = lazyWithRetry(() =>
   import("@/components/master-ti/MasterGlobalSettings").then((m) => ({
     default: m.MasterGlobalSettings,
   }))
 );
 
-const MasterAuditLogs = lazy(() =>
+const MasterAuditLogs = lazyWithRetry(() =>
   import("@/components/master-ti/MasterAuditLogs").then((m) => ({
     default: m.MasterAuditLogs,
   }))
 );
 
-const MasterSecurity = lazy(() =>
+const MasterSecurity = lazyWithRetry(() =>
   import("@/components/master-ti/MasterSecurity").then((m) => ({
     default: m.MasterSecurity,
   }))
 );
 
-const MasterDocumentLayouts = lazy(() =>
+const MasterDocumentLayouts = lazyWithRetry(() =>
   import("@/components/master-ti/MasterDocumentLayouts").then((m) => ({
     default: m.MasterDocumentLayouts,
   }))
 );
 
-const DispositivosMoveis = lazy(() =>
+const DispositivosMoveis = lazyWithRetry(() =>
   import("@/components/admin/DispositivosMoveis")
 );
 

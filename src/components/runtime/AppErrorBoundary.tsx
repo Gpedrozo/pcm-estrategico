@@ -3,6 +3,7 @@ import { AlertTriangle } from 'lucide-react';
 import { logger } from '@/lib/logger';
 import { writeAuditLog } from '@/lib/audit';
 import { captureError } from '@/lib/monitoring';
+import { isDynamicImportFailure, purgeAllCachesAndServiceWorkers } from '@/lib/lazyWithRetry';
 
 type Props = {
   children: React.ReactNode;
@@ -11,91 +12,57 @@ type Props = {
 type State = {
   hasError: boolean;
   message: string;
+  isChunkError: boolean;
 };
 
-const BOUNDARY_CHUNK_RELOAD_MARKER = 'pcm.boundary.chunk_reload.at.v1';
-const BOUNDARY_CHUNK_RELOAD_COOLDOWN_MS = 30_000;
-
-function isDynamicChunkLoadError(raw: unknown) {
-  const message = String((raw as { message?: string })?.message ?? raw ?? '').toLowerCase();
-
-  return (
-    message.includes('failed to fetch dynamically imported module')
-    || message.includes('importing a module script failed')
-    || message.includes('loading chunk')
-    || message.includes('chunkloaderror')
-  );
-}
-
-function hasRecentBoundaryChunkReload() {
+function nuclearReload() {
+  // Clear ALL session markers
   try {
-    const now = Date.now();
-    for (const key of [BOUNDARY_CHUNK_RELOAD_MARKER, 'pcm-chunk-reload-at-v1', 'pcm-lazy-import-reload-v1']) {
-      const raw = window.sessionStorage.getItem(key);
-      const timestamp = Number(raw ?? 0);
-      if (Number.isFinite(timestamp) && timestamp > 0 && (now - timestamp) <= BOUNDARY_CHUNK_RELOAD_COOLDOWN_MS) {
-        return true;
+    const keysToRemove: string[] = [];
+    for (let i = 0; i < window.sessionStorage.length; i++) {
+      const key = window.sessionStorage.key(i);
+      if (key && (key.includes('pcm') || key.includes('chunk') || key.includes('reload'))) {
+        keysToRemove.push(key);
       }
     }
-    return false;
+    keysToRemove.forEach((k) => window.sessionStorage.removeItem(k));
   } catch {
-    return false;
-  }
-}
-
-async function clearCachesForChunkRecovery() {
-  try {
-    if ('serviceWorker' in navigator) {
-      const registrations = await navigator.serviceWorker.getRegistrations();
-      await Promise.all(registrations.map((registration) => registration.unregister()));
-    }
-  } catch {
-    // noop
+    try { window.sessionStorage.clear(); } catch { /* noop */ }
   }
 
+  // Clear localStorage deploy markers
   try {
-    if ('caches' in window) {
-      const cacheKeys = await caches.keys();
-      await Promise.all(cacheKeys.map((k) => caches.delete(k)));
-    }
-  } catch {
-    // noop
-  }
-}
+    window.localStorage.removeItem('pcm-last-build-hash');
+  } catch { /* noop */ }
 
-function recoverFromBoundaryChunkError(error: unknown) {
-  if (!isDynamicChunkLoadError(error)) return false;
-  if (hasRecentBoundaryChunkReload()) return false;
-
-  try {
-    const now = Date.now();
-    window.sessionStorage.setItem(BOUNDARY_CHUNK_RELOAD_MARKER, String(now));
-    void clearCachesForChunkRecovery().finally(() => {
-      const targetUrl = new URL(window.location.href);
-      targetUrl.searchParams.set('chunk_reload', String(now));
-      window.location.replace(targetUrl.toString());
+  void purgeAllCachesAndServiceWorkers()
+    .then(() => fetch('/', { cache: 'no-store', headers: { 'Cache-Control': 'no-cache' } }).catch(() => {}))
+    .finally(() => {
+      // Navigate to root with cache bust, avoiding any stale route
+      window.location.replace(`/?force_reload=${Date.now()}`);
     });
-    return true;
-  } catch {
-    return false;
-  }
 }
 
 export class AppErrorBoundary extends React.Component<Props, State> {
   state: State = {
     hasError: false,
     message: '',
+    isChunkError: false,
   };
 
   static getDerivedStateFromError(error: unknown): State {
+    const isChunk = isDynamicImportFailure(error);
     return {
       hasError: true,
       message: String((error as { message?: string })?.message ?? error ?? 'Erro inesperado de renderizacao.'),
+      isChunkError: isChunk,
     };
   }
 
   componentDidCatch(error: unknown, errorInfo: React.ErrorInfo) {
-    if (recoverFromBoundaryChunkError(error)) {
+    // For chunk errors, always attempt nuclear reload on first boundary hit
+    if (isDynamicImportFailure(error)) {
+      nuclearReload();
       return;
     }
 
@@ -130,28 +97,34 @@ export class AppErrorBoundary extends React.Component<Props, State> {
       <div className="min-h-screen flex items-center justify-center bg-background p-6">
         <div className="w-full max-w-lg rounded-lg border border-destructive/40 bg-card p-6 text-center space-y-4">
           <AlertTriangle className="mx-auto h-8 w-8 text-destructive" />
-          <h1 className="text-xl font-semibold">Falha ao carregar a aplicacao</h1>
+          <h1 className="text-xl font-semibold">
+            {this.state.isChunkError ? 'Atualizacao em andamento' : 'Falha ao carregar a aplicacao'}
+          </h1>
           <p className="text-sm text-muted-foreground">
-            O sistema encontrou um erro inesperado apos o login. Tente recarregar a pagina.
+            {this.state.isChunkError
+              ? 'Uma nova versao do sistema foi publicada. Limpando cache e recarregando...'
+              : 'O sistema encontrou um erro inesperado. Tente recarregar a pagina.'}
           </p>
           <div className="grid gap-2 sm:grid-cols-2">
             <button
-              onClick={() => window.location.reload()}
-              className="rounded-md border border-border px-4 py-2 text-sm font-medium hover:bg-muted"
+              onClick={() => nuclearReload()}
+              className="rounded-md border border-primary bg-primary text-primary-foreground px-4 py-2 text-sm font-medium hover:bg-primary/90"
             >
-              Recarregar
+              Limpar cache e recarregar
             </button>
             <button
               onClick={() => {
-                const next = encodeURIComponent(`${window.location.pathname}${window.location.search}` || '/dashboard');
-                window.location.assign(`/login?next=${next}`);
+                try { window.sessionStorage.clear(); } catch { /* noop */ }
+                window.location.assign('/login');
               }}
               className="rounded-md border border-border px-4 py-2 text-sm font-medium hover:bg-muted"
             >
               Voltar ao login
             </button>
           </div>
-          <p className="text-xs text-muted-foreground/80 break-all">{this.state.message}</p>
+          {!this.state.isChunkError && (
+            <p className="text-xs text-muted-foreground/80 break-all">{this.state.message}</p>
+          )}
         </div>
       </div>
     );

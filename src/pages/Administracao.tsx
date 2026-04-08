@@ -1,4 +1,4 @@
-import { useEffect, useState, lazy, Suspense } from 'react';
+import { useEffect, useState, Suspense } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -35,10 +35,11 @@ import {
   ChevronRight,
 } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
+import { lazyWithRetry } from '@/lib/lazyWithRetry';
 
-const DispositivosMoveis = lazy(() => import('@/components/admin/DispositivosMoveis'));
-const MasterEmpresaData = lazy(() => import('@/components/master-ti/MasterEmpresaData').then(m => ({ default: m.MasterEmpresaData })));
-const MasterLogoManager = lazy(() => import('@/components/master-ti/MasterLogoManager').then(m => ({ default: m.MasterLogoManager })));
+const DispositivosMoveis = lazyWithRetry(() => import('@/components/admin/DispositivosMoveis'));
+const MasterEmpresaData = lazyWithRetry(() => import('@/components/master-ti/MasterEmpresaData').then(m => ({ default: m.MasterEmpresaData })));
+const MasterLogoManager = lazyWithRetry(() => import('@/components/master-ti/MasterLogoManager').then(m => ({ default: m.MasterLogoManager })));
 import { toast } from '@/hooks/use-toast';
 import { useTenantAdminConfig, useSaveTenantAdminConfig } from '@/hooks/useTenantAdminConfig';
 import {
