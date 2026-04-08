@@ -65,3 +65,6 @@ verify_jwt = true
 
 [functions.mecanico-device-auth]
 verify_jwt = false
+
+[functions.assistente-pcm]
+verify_jwt = true

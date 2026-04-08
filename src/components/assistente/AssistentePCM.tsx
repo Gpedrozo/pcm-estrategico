@@ -80,7 +80,16 @@ export function AssistentePCM() {
         },
       });
 
-      if (error) throw error;
+      if (error) {
+        // supabase.functions.invoke wraps non-2xx; real message may be in data
+        const realMsg = data?.error || data?.message || error.message || '';
+        throw new Error(realMsg);
+      }
+
+      // Edge function can return error in body even with 200
+      if (data?.error) {
+        throw new Error(data.error);
+      }
 
       const assistantMessage: ChatMessage = {
         id: crypto.randomUUID(),
@@ -92,10 +101,16 @@ export function AssistentePCM() {
 
       setChatMessages((prev) => [...prev, assistantMessage]);
     } catch (err) {
+      const errorMsg = err instanceof Error ? err.message : '';
+      const isNotDeployed = errorMsg.includes('FunctionNotFound') || errorMsg.includes('404') || errorMsg.includes('not found');
+      const userMessage2 = isNotDeployed
+        ? 'A função do assistente IA ainda não foi deployada no Supabase. Execute: supabase functions deploy assistente-pcm'
+        : `Erro ao consultar o assistente: ${errorMsg || 'verifique sua conexão e tente novamente.'}`;
+
       const assistantMessage: ChatMessage = {
         id: crypto.randomUUID(),
         role: 'assistant',
-        content: 'Erro ao consultar o assistente. Verifique sua conexão e tente novamente.',
+        content: userMessage2,
         timestamp: new Date(),
       };
       setChatMessages((prev) => [...prev, assistantMessage]);
