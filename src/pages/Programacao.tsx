@@ -28,11 +28,12 @@ import { useMaintenanceSchedule, useUpdateMaintenanceStatus } from '@/hooks/useM
 import { usePontosPlano } from '@/hooks/usePontosPlano';
 import { useCreateOrdemServico } from '@/hooks/useOrdensServico';
 import { useDadosEmpresa } from '@/hooks/useDadosEmpresa';
-import { format, addDays, startOfWeek, isSameDay, parseISO } from 'date-fns';
+import { format, addDays, addMonths, subMonths, startOfWeek, startOfMonth, endOfMonth, startOfDay, endOfDay, isSameDay, parseISO, getDaysInMonth, getDay } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
 type EventTone = 'executado' | 'vencido' | 'proximo' | 'futuro';
 type CalendarFilter = 'all' | 'preventiva' | 'lubrificacao' | 'pred-inspecao';
+type ViewMode = 'day' | 'week' | 'month';
 
 function mapMaintenanceTipoToOsTipo(tipo: string) {
   if (tipo === 'preventiva') return 'PREVENTIVA';
@@ -45,26 +46,34 @@ function mapMaintenanceTipoToOsTipo(tipo: string) {
 export default function Programacao() {
   const navigate = useNavigate();
   const { toast } = useToast();
-  const [currentWeekStart, setCurrentWeekStart] = useState(() => 
-    startOfWeek(new Date(), { weekStartsOn: 1 })
-  );
+  const [viewMode, setViewMode] = useState<ViewMode>('week');
+  const [currentDate, setCurrentDate] = useState(() => new Date());
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
   const [rescheduleDate, setRescheduleDate] = useState('');
   const [newActivityDate, setNewActivityDate] = useState<string | null>(null);
   const [calendarFilter, setCalendarFilter] = useState<CalendarFilter>('all');
 
-  const weekStartIso = currentWeekStart.toISOString();
-  const weekEndIso = addDays(currentWeekStart, 6).toISOString();
+  const { fromIso, toIso } = useMemo(() => {
+    if (viewMode === 'day') {
+      return { fromIso: startOfDay(currentDate).toISOString(), toIso: endOfDay(currentDate).toISOString() };
+    }
+    if (viewMode === 'month') {
+      return { fromIso: startOfMonth(currentDate).toISOString(), toIso: endOfMonth(currentDate).toISOString() };
+    }
+    const ws = startOfWeek(currentDate, { weekStartsOn: 1 });
+    return { fromIso: ws.toISOString(), toIso: addDays(ws, 6).toISOString() };
+  }, [viewMode, currentDate]);
 
-  const { data: eventos, isLoading } = useMaintenanceSchedule(weekStartIso, weekEndIso);
+  const { data: eventos, isLoading } = useMaintenanceSchedule(fromIso, toIso);
   const { data: equipamentos } = useEquipamentos();
   const { data: empresa } = useDadosEmpresa();
   const updateSchedule = useUpdateMaintenanceStatus();
   const createOSMutation = useCreateOrdemServico();
 
+  const weekStart = useMemo(() => startOfWeek(currentDate, { weekStartsOn: 1 }), [currentDate]);
   const weekDays = useMemo(() => {
-    return Array.from({ length: 7 }, (_, i) => addDays(currentWeekStart, i));
-  }, [currentWeekStart]);
+    return Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
+  }, [weekStart]);
 
   const selectedEvent = useMemo(
     () => (eventos || []).find((item) => item.id === selectedEventId) || null,
@@ -102,51 +111,93 @@ export default function Programacao() {
     return 'Futuro';
   };
 
-  const eventosByDay = useMemo(() => {
-    if (!eventos) return {};
+  const tipoBadgeClasses = (tipo: string) => {
+    if (tipo === 'preventiva') return 'bg-blue-500/10 text-blue-700 border-blue-300';
+    if (tipo === 'lubrificacao') return 'bg-yellow-500/10 text-yellow-700 border-yellow-300';
+    if (tipo === 'inspecao') return 'bg-green-500/10 text-green-700 border-green-300';
+    if (tipo === 'preditiva') return 'bg-purple-500/10 text-purple-700 border-purple-300';
+    return '';
+  };
 
-    const eventsFilteredByType = eventos.filter((evento) => {
+  const tipoDotColor = (tipo: string) => {
+    if (tipo === 'preventiva') return 'bg-blue-500';
+    if (tipo === 'lubrificacao') return 'bg-yellow-500';
+    if (tipo === 'inspecao') return 'bg-green-500';
+    if (tipo === 'preditiva') return 'bg-purple-500';
+    return 'bg-gray-400';
+  };
+
+  const filteredEventos = useMemo(() => {
+    if (!eventos) return [];
+    return eventos.filter((evento) => {
       if (calendarFilter === 'all') return true;
       if (calendarFilter === 'pred-inspecao') return ['preditiva', 'inspecao'].includes(evento.tipo);
       return evento.tipo === calendarFilter;
     });
-    
+  }, [eventos, calendarFilter]);
+
+  const eventosByDay = useMemo(() => {
     const grouped: { [key: string]: typeof eventos } = {};
-    
-    weekDays.forEach(day => {
-      const dayKey = format(day, 'yyyy-MM-dd');
-      grouped[dayKey] = eventsFilteredByType.filter((evento) => {
-        const eventDate = parseISO(evento.data_programada);
-        return isSameDay(eventDate, day);
-      });
-    });
-    
+    for (const evento of filteredEventos) {
+      const dayKey = format(parseISO(evento.data_programada), 'yyyy-MM-dd');
+      if (!grouped[dayKey]) grouped[dayKey] = [];
+      grouped[dayKey].push(evento);
+    }
     return grouped;
-  }, [eventos, weekDays, calendarFilter]);
+  }, [filteredEventos]);
 
   const stats = useMemo(() => {
-    const allEvents = Object.values(eventosByDay).flat();
-    const executed = allEvents.filter((item) => eventTone(item.status, item.data_programada) === 'executado').length;
-    const overdue = allEvents.filter((item) => eventTone(item.status, item.data_programada) === 'vencido').length;
-    const near = allEvents.filter((item) => eventTone(item.status, item.data_programada) === 'proximo').length;
-
+    const executed = filteredEventos.filter((item) => eventTone(item.status, item.data_programada) === 'executado').length;
+    const overdue = filteredEventos.filter((item) => eventTone(item.status, item.data_programada) === 'vencido').length;
+    const near = filteredEventos.filter((item) => eventTone(item.status, item.data_programada) === 'proximo').length;
     return {
-      total: allEvents.length,
+      total: filteredEventos.length,
       executadas: executed,
       vencidas: overdue,
       proximas: near,
     };
-  }, [eventosByDay]);
+  }, [filteredEventos]);
 
-  const navigateWeek = (direction: 'prev' | 'next') => {
-    setCurrentWeekStart(prev => 
-      direction === 'next' ? addDays(prev, 7) : addDays(prev, -7)
-    );
+  const monthCells = useMemo(() => {
+    if (viewMode !== 'month') return [];
+    const ms = startOfMonth(currentDate);
+    const dim = getDaysInMonth(currentDate);
+    const dow = getDay(ms);
+    const padBefore = dow === 0 ? 6 : dow - 1;
+    const cells: { date: Date; inMonth: boolean }[] = [];
+    for (let i = padBefore; i > 0; i--) cells.push({ date: addDays(ms, -i), inMonth: false });
+    for (let i = 0; i < dim; i++) cells.push({ date: addDays(ms, i), inMonth: true });
+    const target = cells.length <= 35 ? 35 : 42;
+    const afterStart = addDays(ms, dim);
+    for (let i = 0; cells.length < target; i++) cells.push({ date: addDays(afterStart, i), inMonth: false });
+    return cells;
+  }, [viewMode, currentDate]);
+
+  const navigatePeriod = (direction: 'prev' | 'next') => {
+    setCurrentDate(prev => {
+      if (viewMode === 'day') return addDays(prev, direction === 'next' ? 1 : -1);
+      if (viewMode === 'month') return direction === 'next' ? addMonths(prev, 1) : subMonths(prev, 1);
+      return addDays(prev, direction === 'next' ? 7 : -7);
+    });
   };
 
   const goToToday = () => {
-    setCurrentWeekStart(startOfWeek(new Date(), { weekStartsOn: 1 }));
+    setCurrentDate(new Date());
   };
+
+  const navLabel = useMemo(() => {
+    if (viewMode === 'day') return format(currentDate, "dd 'de' MMMM yyyy (EEEE)", { locale: ptBR });
+    if (viewMode === 'month') return format(currentDate, "MMMM 'de' yyyy", { locale: ptBR });
+    return `${format(weekStart, "dd 'de' MMMM", { locale: ptBR })} - ${format(addDays(weekStart, 6), "dd 'de' MMMM yyyy", { locale: ptBR })}`;
+  }, [viewMode, currentDate, weekStart]);
+
+  const summaryText = useMemo(() => {
+    if (stats.total === 0) return 'Nenhuma atividade no período';
+    const parts = [`${stats.total} atividade${stats.total > 1 ? 's' : ''}`];
+    if (stats.vencidas > 0) parts.push(`${stats.vencidas} vencida${stats.vencidas > 1 ? 's' : ''}`);
+    if (stats.executadas > 0) parts.push(`${stats.executadas} executada${stats.executadas > 1 ? 's' : ''}`);
+    return parts.join(' · ');
+  }, [stats]);
 
   const resolveEquipamentoByEvent = (event: { equipamento_id: string | null; titulo: string }) => {
     const byId = equipamentos?.find((item) => item.id === event.equipamento_id);
@@ -604,22 +655,120 @@ export default function Programacao() {
 
       <div className="flex items-center justify-between bg-card border border-border rounded-lg p-4">
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="icon" onClick={() => navigateWeek('prev')}>
+          <div className="flex items-center border border-border rounded-md overflow-hidden mr-2">
+            <button onClick={() => setViewMode('day')} className={`px-3 py-1.5 text-xs font-medium transition-colors ${viewMode === 'day' ? 'bg-primary text-primary-foreground' : 'hover:bg-muted'}`}>Dia</button>
+            <button onClick={() => setViewMode('week')} className={`px-3 py-1.5 text-xs font-medium transition-colors border-x border-border ${viewMode === 'week' ? 'bg-primary text-primary-foreground' : 'hover:bg-muted'}`}>Semana</button>
+            <button onClick={() => setViewMode('month')} className={`px-3 py-1.5 text-xs font-medium transition-colors ${viewMode === 'month' ? 'bg-primary text-primary-foreground' : 'hover:bg-muted'}`}>Mês</button>
+          </div>
+          <Button variant="outline" size="icon" onClick={() => navigatePeriod('prev')}>
             <ChevronLeft className="h-4 w-4" />
           </Button>
           <Button variant="outline" onClick={goToToday}>
             Hoje
           </Button>
-          <Button variant="outline" size="icon" onClick={() => navigateWeek('next')}>
+          <Button variant="outline" size="icon" onClick={() => navigatePeriod('next')}>
             <ChevronRight className="h-4 w-4" />
           </Button>
-          <span className="ml-4 font-semibold">
-            {format(currentWeekStart, "dd 'de' MMMM", { locale: ptBR })} - {format(addDays(currentWeekStart, 6), "dd 'de' MMMM yyyy", { locale: ptBR })}
+          <span className="ml-4 font-semibold capitalize">
+            {navLabel}
           </span>
         </div>
-        <p className="text-sm text-muted-foreground">Sem ordens de serviço nesta agenda</p>
+        <p className="text-sm text-muted-foreground">{summaryText}</p>
       </div>
 
+      {/* === MONTH VIEW === */}
+      {viewMode === 'month' && (
+        <div className="bg-card border border-border rounded-lg overflow-hidden">
+          <div className="grid grid-cols-7 border-b border-border">
+            {['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom'].map(d => (
+              <div key={d} className="p-2 text-center text-xs font-medium text-muted-foreground">{d}</div>
+            ))}
+          </div>
+          <div className="grid grid-cols-7">
+            {monthCells.map((cell, idx) => {
+              const dayKey = format(cell.date, 'yyyy-MM-dd');
+              const dayEvts = eventosByDay[dayKey] || [];
+              const isToday = isSameDay(cell.date, new Date());
+              const isWeekend = cell.date.getDay() === 0 || cell.date.getDay() === 6;
+              return (
+                <div
+                  key={idx}
+                  onClick={() => { setCurrentDate(cell.date); setViewMode('day'); }}
+                  className={`min-h-[80px] p-2 border-b border-r border-border cursor-pointer hover:bg-muted/50 transition-colors ${!cell.inMonth ? 'opacity-30' : ''} ${isWeekend && cell.inMonth ? 'bg-muted/20' : ''} ${isToday ? 'bg-primary/5 ring-1 ring-primary ring-inset' : ''}`}
+                >
+                  <div className="flex items-center justify-between mb-1">
+                    <span className={`text-sm ${isToday ? 'font-bold text-primary' : ''}`}>
+                      {format(cell.date, 'd')}
+                    </span>
+                    {dayEvts.length > 0 && (
+                      <span className="text-[10px] text-muted-foreground">{dayEvts.length}</span>
+                    )}
+                  </div>
+                  <div className="flex flex-wrap gap-1">
+                    {dayEvts.slice(0, 4).map((evt, i) => (
+                      <span key={i} className={`w-2 h-2 rounded-full ${tipoDotColor(evt.tipo)}`} title={evt.titulo} />
+                    ))}
+                    {dayEvts.length > 4 && (
+                      <span className="text-[9px] text-muted-foreground">+{dayEvts.length - 4}</span>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* === DAY VIEW === */}
+      {viewMode === 'day' && (
+        <div className="space-y-3">
+          {(() => {
+            const dayKey = format(currentDate, 'yyyy-MM-dd');
+            const dayEvts = eventosByDay[dayKey] || [];
+            if (dayEvts.length === 0) {
+              return (
+                <Card>
+                  <CardContent className="p-8 text-center">
+                    <Calendar className="h-12 w-12 text-muted-foreground mx-auto mb-3" />
+                    <p className="text-muted-foreground">Nenhuma atividade programada para este dia</p>
+                    <Button variant="outline" className="mt-4 gap-2" onClick={() => setNewActivityDate(dayKey)}>
+                      <Plus className="h-4 w-4" /> Programar atividade
+                    </Button>
+                  </CardContent>
+                </Card>
+              );
+            }
+            return dayEvts.map((evento) => {
+              const tone = eventTone(evento.status, evento.data_programada);
+              const equip = equipamentos?.find((e) => e.id === evento.equipamento_id);
+              return (
+                <Card
+                  key={evento.id}
+                  onClick={() => { setSelectedEventId(evento.id); setRescheduleDate(evento.data_programada.slice(0, 16)); }}
+                  className={`cursor-pointer hover:shadow-md transition-shadow ${toneClasses(tone)}`}
+                >
+                  <CardContent className="p-4">
+                    <div className="flex items-center justify-between mb-2">
+                      <Badge variant="outline" className={`text-xs ${tipoBadgeClasses(evento.tipo)}`}>{evento.tipo}</Badge>
+                      <span className="text-xs text-muted-foreground">{toneLabel(tone)}</span>
+                    </div>
+                    <p className="font-semibold text-primary">{evento.titulo}</p>
+                    <div className="flex items-center gap-4 mt-1 text-sm text-muted-foreground">
+                      <span>{new Date(evento.data_programada).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</span>
+                      {equip && <span>{equip.tag || equip.nome}</span>}
+                      {evento.responsavel && <span>{evento.responsavel}</span>}
+                    </div>
+                    {evento.descricao && <p className="text-sm text-muted-foreground mt-1 line-clamp-2">{evento.descricao}</p>}
+                  </CardContent>
+                </Card>
+              );
+            });
+          })()}
+        </div>
+      )}
+
+      {/* === WEEK VIEW === */}
+      {viewMode === 'week' && (
       <div className="grid grid-cols-7 gap-2">
         {weekDays.map((day) => {
           const dayKey = format(day, 'yyyy-MM-dd');
@@ -636,6 +785,7 @@ export default function Programacao() {
                 <CardTitle className="text-sm flex items-center justify-between">
                   <span className={isToday ? 'text-primary font-bold' : ''}>
                     {format(day, 'EEE', { locale: ptBR })}
+                    {dayEvents.length > 0 && <span className="ml-1 text-muted-foreground font-normal text-[10px]">({dayEvents.length})</span>}
                   </span>
                   <div className="flex items-center gap-1">
                     <button
@@ -669,7 +819,7 @@ export default function Programacao() {
                       className={`p-2 rounded border text-xs cursor-pointer hover:shadow-md transition-shadow ${toneClasses(tone)}`}
                     >
                       <div className="flex items-center justify-between mb-1">
-                        <Badge variant="outline" className="text-[10px] px-1 py-0">{evento.tipo}</Badge>
+                        <Badge variant="outline" className={`text-[10px] px-1 py-0 ${tipoBadgeClasses(evento.tipo)}`}>{evento.tipo}</Badge>
                         <span className="text-[10px] text-muted-foreground">{toneLabel(tone)}</span>
                       </div>
                       <p className="font-medium text-primary truncate">{evento.titulo}</p>
@@ -683,6 +833,7 @@ export default function Programacao() {
           );
         })}
       </div>
+      )}
 
       <Dialog open={!!selectedEvent} onOpenChange={(open) => !open && setSelectedEventId(null)}>
         <DialogContent className="max-w-lg">
