@@ -3597,7 +3597,7 @@ Deno.serve(async (req) => {
     return ok({ success: true }, 200, req);
   }
 
-  // ── delete_user (soft delete — owner_master only) ──
+  // ── delete_user (hard delete — owner_master only) ──
   if (body.action === "delete_user") {
     if (!body.user_id) return fail("user_id is required", 400, null, req);
 
@@ -3614,30 +3614,56 @@ Deno.serve(async (req) => {
       return fail("Não é permitido excluir usuários SYSTEM_OWNER ou SYSTEM_ADMIN.", 400, null, req);
     }
 
-    // Banir no auth
-    const { error: banError } = await admin.auth.admin.updateUserById(body.user_id, {
-      ban_duration: "876000h",
-    });
-    if (banError) return fail(banError.message, 400, null, req);
-
-    // Soft delete no profiles
-    const { error: updateError } = await admin
-      .from("profiles")
-      .update({
-        status: "excluido",
-        deleted_at: new Date().toISOString(),
-        deleted_by: auth.user.id,
-      })
-      .eq("id", body.user_id);
-
-    if (updateError) return fail(updateError.message, 400, null, req);
-
+    // Coletar dados do perfil ANTES de deletar (para audit log)
     const { data: profileData } = await admin
       .from("profiles")
       .select("empresa_id,nome,email")
       .eq("id", body.user_id)
       .maybeSingle();
 
+    const cleanupErrors: string[] = [];
+
+    // ── 1. DELETE de tabelas de identidade/roles ──
+    try { await admin.from("user_roles").delete().eq("user_id", body.user_id); } catch (e: any) { cleanupErrors.push(`user_roles: ${e.message}`); }
+    try { await admin.from("rbac_user_roles").delete().eq("user_id", body.user_id); } catch (e: any) { cleanupErrors.push(`rbac_user_roles: ${e.message}`); }
+    try { await admin.from("permissoes_granulares").delete().eq("user_id", body.user_id); } catch (e: any) { cleanupErrors.push(`permissoes_granulares: ${e.message}`); }
+
+    // ── 2. DELETE de tabelas de sessão/tokens ──
+    try { await admin.from("auth_session_transfer_tokens").delete().eq("created_by", body.user_id); } catch (e: any) { cleanupErrors.push(`auth_session_transfer_tokens: ${e.message}`); }
+    try { await admin.from("owner_impersonation_sessions").delete().eq("owner_user_id", body.user_id); } catch (e: any) { cleanupErrors.push(`owner_impersonation_sessions: ${e.message}`); }
+
+    // ── 3. DELETE de membros_empresa ──
+    try { await admin.from("membros_empresa").delete().eq("user_id", body.user_id); } catch (e: any) { cleanupErrors.push(`membros_empresa: ${e.message}`); }
+
+    // ── 4. SET NULL em tabelas operacionais (preservar registros, anonimizar autoria) ──
+    try { await admin.from("ordens_servico").update({ usuario_abertura: null }).eq("usuario_abertura", body.user_id); } catch (e: any) { cleanupErrors.push(`ordens_servico.usuario_abertura: ${e.message}`); }
+    try { await admin.from("ordens_servico").update({ usuario_fechamento: null }).eq("usuario_fechamento", body.user_id); } catch (e: any) { cleanupErrors.push(`ordens_servico.usuario_fechamento: ${e.message}`); }
+    try { await admin.from("movimentacoes_materiais").update({ usuario_id: null }).eq("usuario_id", body.user_id); } catch (e: any) { cleanupErrors.push(`movimentacoes_materiais: ${e.message}`); }
+    try { await admin.from("inspecoes").update({ inspetor_id: null }).eq("inspetor_id", body.user_id); } catch (e: any) { cleanupErrors.push(`inspecoes: ${e.message}`); }
+    try { await admin.from("execucoes_preventivas").update({ executor_id: null }).eq("executor_id", body.user_id); } catch (e: any) { cleanupErrors.push(`execucoes_preventivas: ${e.message}`); }
+    try { await admin.from("execucoes_os_pausas").update({ created_by: null }).eq("created_by", body.user_id); } catch (e: any) { cleanupErrors.push(`execucoes_os_pausas: ${e.message}`); }
+
+    // ── 5. SET NULL em tabelas de suporte/contratos ──
+    try { await admin.from("support_tickets").update({ requester_user_id: null }).eq("requester_user_id", body.user_id); } catch (e: any) { cleanupErrors.push(`support_tickets.requester: ${e.message}`); }
+    try { await admin.from("support_tickets").update({ user_id: null }).eq("user_id", body.user_id); } catch (e: any) { cleanupErrors.push(`support_tickets.user_id: ${e.message}`); }
+    try { await admin.from("support_tickets").update({ owner_responder_id: null }).eq("owner_responder_id", body.user_id); } catch (e: any) { cleanupErrors.push(`support_tickets.owner_responder: ${e.message}`); }
+    try { await admin.from("support_tickets").update({ assigned_to: null }).eq("assigned_to", body.user_id); } catch (e: any) { cleanupErrors.push(`support_tickets.assigned_to: ${e.message}`); }
+    try { await admin.from("contracts").update({ signed_by: null }).eq("signed_by", body.user_id); } catch (e: any) { cleanupErrors.push(`contracts.signed_by: ${e.message}`); }
+    try { await admin.from("contracts").update({ created_by: null }).eq("created_by", body.user_id); } catch (e: any) { cleanupErrors.push(`contracts.created_by: ${e.message}`); }
+    try { await admin.from("contracts").update({ updated_by: null }).eq("updated_by", body.user_id); } catch (e: any) { cleanupErrors.push(`contracts.updated_by: ${e.message}`); }
+    try { await admin.from("contract_versions").update({ created_by: null }).eq("created_by", body.user_id); } catch (e: any) { cleanupErrors.push(`contract_versions: ${e.message}`); }
+
+    // ── 6. SET NULL em tabelas diversas ──
+    try { await admin.from("feature_flags").update({ updated_by: null }).eq("updated_by", body.user_id); } catch (e: any) { cleanupErrors.push(`feature_flags: ${e.message}`); }
+    try { await admin.from("dispositivos_moveis").update({ desativado_por: null }).eq("desativado_por", body.user_id); } catch (e: any) { cleanupErrors.push(`dispositivos_moveis: ${e.message}`); }
+    try { await admin.from("qrcodes_vinculacao").update({ created_by: null }).eq("created_by", body.user_id); } catch (e: any) { cleanupErrors.push(`qrcodes_vinculacao: ${e.message}`); }
+    try { await admin.from("auditoria").update({ usuario_id: null }).eq("usuario_id", body.user_id); } catch (e: any) { cleanupErrors.push(`auditoria: ${e.message}`); }
+
+    // ── 7. Logs de auditoria — preservar para compliance (não anonimizar) ──
+    // audit_logs, enterprise_audit_logs, security_logs, operational_logs, system_error_events
+    // mantidos intocados por exigência de compliance/rastreabilidade
+
+    // ── 8. Audit log da exclusão ANTES de deletar ──
     await logPlatformAudit(admin, {
       actorId: auth.user.id,
       actorEmail: auth.user.email,
@@ -3647,11 +3673,23 @@ Deno.serve(async (req) => {
         user_id: body.user_id,
         user_nome: profileData?.nome ?? null,
         user_email: profileData?.email ?? null,
-        soft_delete: true,
+        hard_delete: true,
+        cleanup_errors: cleanupErrors.length > 0 ? cleanupErrors : undefined,
       },
     });
 
-    return ok({ success: true }, 200, req);
+    // ── 9. Hard delete do profiles ──
+    const { error: deleteProfileError } = await admin
+      .from("profiles")
+      .delete()
+      .eq("id", body.user_id);
+    if (deleteProfileError) cleanupErrors.push(`profiles: ${deleteProfileError.message}`);
+
+    // ── 10. Hard delete do auth.users ──
+    const { error: deleteAuthError } = await admin.auth.admin.deleteUser(body.user_id);
+    if (deleteAuthError) return fail(`Falha ao excluir usuário do auth: ${deleteAuthError.message}. Limpeza parcial realizada.`, 400, null, req);
+
+    return ok({ success: true, cleanup_warnings: cleanupErrors.length > 0 ? cleanupErrors : undefined }, 200, req);
   }
 
   if (body.action === "list_plans") {
