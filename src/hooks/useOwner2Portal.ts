@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { invokeOwner2, type Owner2Action } from '@/services/owner2Portal.service'
+import { type OwnerAction as Owner2Action } from '@/services/ownerPortal.service'
 import {
   callOwnerAdmin,
   getCompanySettings,

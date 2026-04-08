@@ -48,6 +48,8 @@ export type OwnerAction =
   | 'asaas_sync_subscription'
   | 'list_subscription_payments'
   | 'enforce_subscription_expiry'
+  | 'set_asaas_api_key'
+  | 'get_asaas_config'
 
 export interface OwnerCompany {
   id: string
