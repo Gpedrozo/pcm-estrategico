@@ -59,7 +59,7 @@ export default function SSMA() {
 
   const [treinamentoForm, setTreinamentoForm] = useState({
     colaborador_nome: '',
-    tipo_curso: 'NR-10' as TipoCurso,
+    tipo_curso: '' as TipoCurso | '',
     nome_curso: '',
     instituicao: '',
     carga_horaria: 0,
@@ -123,6 +123,7 @@ export default function SSMA() {
     e.preventDefault();
     await createTreinamento.mutateAsync({
       ...treinamentoForm,
+      tipo_curso: (treinamentoForm.tipo_curso || 'OUTRO') as TipoCurso,
       carga_horaria: treinamentoForm.carga_horaria || null,
       data_validade: treinamentoForm.data_validade || null,
       instituicao: treinamentoForm.instituicao || null,
@@ -132,7 +133,7 @@ export default function SSMA() {
     setIsTreinamentoModalOpen(false);
     clearTreinamentoDraft();
     setTreinamentoForm({
-      colaborador_nome: '', tipo_curso: 'NR-10', nome_curso: '',
+      colaborador_nome: '', tipo_curso: '' as TipoCurso | '', nome_curso: '',
       instituicao: '', carga_horaria: 0,
       data_realizacao: new Date().toISOString().split('T')[0],
       data_validade: '', dias_alerta_antes: 30,
@@ -570,12 +571,12 @@ export default function SSMA() {
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label>Tipo de Curso *</Label>
+                <Label>Tipo de Curso</Label>
                 <Select value={treinamentoForm.tipo_curso} onValueChange={(v: any) => {
                   const label = TIPO_CURSO_LABELS[v as TipoCurso] || v;
-                  setTreinamentoForm({...treinamentoForm, tipo_curso: v, nome_curso: treinamentoForm.nome_curso || label});
+                  setTreinamentoForm({...treinamentoForm, tipo_curso: v, nome_curso: label});
                 }}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectTrigger><SelectValue placeholder="Selecione (opcional)" /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="NR-05">NR-05 — CIPA</SelectItem>
                     <SelectItem value="NR-06">NR-06 — EPI</SelectItem>
