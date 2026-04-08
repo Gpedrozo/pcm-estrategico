@@ -13,10 +13,6 @@ const AI_URL = Deno.env.get("AI_GATEWAY_URL") || "https://api.groq.com/openai/v1
 const AI_KEY = Deno.env.get("AI_GATEWAY_API_KEY") || "";
 const AI_MODEL = Deno.env.get("AI_MODEL") || "llama-3.3-70b-versatile";
 
-/**
- * Base de conhecimento do manual — conteúdo condensado dos 22 capítulos.
- * Funciona como RAG inline (sem necessidade de vector store para o tamanho atual).
- */
 const MANUAL_KNOWLEDGE_BASE = `
 # MANUAL DE OPERAÇÃO — PCM ESTRATÉGICO
 ## Base de Conhecimento para Assistente IA
@@ -85,7 +81,7 @@ Menu: Planejamento > Programação.
 ### CAP 09 — MANUTENÇÃO PREVENTIVA
 Menu: Planejamento > Preventiva.
 - Criar planos preventivos: associar TAG, definir atividades e frequência (semanal, mensal, trimestral etc).
-- Ativar plano → alimenta a Programação automaticamente.
+- Ativar plano alimenta a Programação automaticamente.
 - Registrar execuções e medir aderência.
 - Templates de preventiva para padronização.
 - Preventiva = baseada em TEMPO (frequência fixa).
@@ -114,7 +110,7 @@ Menu: Planejamento > Inspeções.
 Menu: Análises > FMEA/RCM. (Apenas ADMIN+)
 - Mapear modos de falha por equipamento/processo.
 - Avaliar: Severidade (S), Ocorrência (O), Detecção (D).
-- RPN = S × O × D → priorizar ações preventivas.
+- RPN = S x O x D para priorizar ações preventivas.
 
 ### CAP 14 — RCA (ANÁLISE DE CAUSA RAIZ)
 Menu: Análises > RCA Clássico. (Apenas ADMIN+)
@@ -129,7 +125,6 @@ Menu: Análises > Inteligência IA. (Apenas ADMIN+)
 - A IA analisa: todas as O.S, execuções, custos, preventivas, preditivas, paradas do equipamento.
 - Resultado: resumo, causas prováveis, hipótese principal, ações preventivas, criticidade (Baixo/Médio/Alto/Crítico), score de confiança (0-100%).
 - Relatório imprimível. Histórico de análises salvo por equipamento.
-- Diferencial: algo que nenhum outro CMMS oferece como funcionalidade nativa.
 
 ### CAP 16 — MELHORIAS
 Menu: Análises > Melhorias. (Apenas ADMIN+)
@@ -140,18 +135,17 @@ Menu: Análises > Melhorias. (Apenas ADMIN+)
 ### CAP 17 — CADASTROS ESTRUTURAIS
 Menu: Cadastros (7 submódulos).
 - Hierarquia: plantas, áreas, linhas.
-- Equipamentos: TAG, nome, criticidade, risco, localização, fabricante, modelo, série, sistema. Componentes vinculados. Importação via planilha.
+- Equipamentos: TAG, nome, criticidade, risco, localização, fabricante, modelo, série, sistema.
 - Mecânicos: equipe técnica.
 - Materiais: código, nome, unidade, custo, estoque atual/mínimo, localização. Movimentação de entrada/saída. Alerta de baixo estoque.
 - Fornecedores: dados de contato e histórico.
 - Contratos: gestão de contratos de manutenção.
-- Documentos: POP, Manual, Desenho, Instrução, Catálogo. Classificação, versão, status.
+- Documentos: POP, Manual, Desenho, Instrução, Catálogo.
 
 ### CAP 18 — CUSTOS E RELATÓRIOS
 Menu: Relatórios. (Apenas ADMIN+)
 - Relatórios: O.S por período, KPI, custos, backlog, aderência preventiva, desempenho por equipamento, produtividade de mecânicos, resumo executivo.
 - Exportação em PDF e Excel.
-- Painel de estatísticas rápidas.
 
 ### CAP 19 — SSMA
 Menu: Segurança > SSMA. (Apenas ADMIN+)
@@ -163,12 +157,12 @@ Menu: Administração. (Apenas ADMIN+)
 - Usuários: pesquisar, editar nome, alterar perfil.
 - Auditoria: trilha por período, usuário e ação.
 - Configurações da empresa: parâmetros do tenant.
-- Master TI (se MASTER_TI): monitor de sistema (23 módulos), banco de dados, layouts, logos, permissões granulares, segurança.
+- Master TI (se MASTER_TI): monitor de sistema, banco de dados, layouts, logos, permissões granulares, segurança.
 
 ### CAP 21 — ROTINA OPERACIONAL
-Diário: dashboard → triagem solicitações → priorizar backlog → emitir/fechar O.S → alertas.
-Semanal: programação → aderência preventiva → alertas preditivos → histórico → melhorias/SSMA.
-Mensal: custos/relatórios → indicadores de confiabilidade → auditoria → plano de ação.
+Diário: dashboard, triagem solicitações, priorizar backlog, emitir/fechar O.S, alertas.
+Semanal: programação, aderência preventiva, alertas preditivos, histórico, melhorias/SSMA.
+Mensal: custos/relatórios, indicadores de confiabilidade, auditoria, plano de ação.
 
 ### CAP 22 — KPIs E MÉTRICAS
 - MTBF (Tempo médio entre falhas).
@@ -176,16 +170,15 @@ Mensal: custos/relatórios → indicadores de confiabilidade → auditoria → p
 - Disponibilidade.
 - Aderência preventiva.
 - Backlog vencido.
-- Tempo médio de atendimento.
 - Custo por ativo.
 - Taxa de reincidência.
 
 ### FUNCIONALIDADES ADICIONAIS
-- Centro de Notificações: ícone de sino no cabeçalho com alertas automáticos (O.S urgentes, backlog alto, preventiva atrasada). Clique para navegar.
-- Suporte/Tickets: menu Ajuda > Suporte. Abrir chamados com assunto, mensagem, prioridade (Baixa/Média/Alta/Crítica), anexos. Acompanhar status e respostas.
-- Painel do Mecânico (Web): login por código + senha. Visualizar O.S atribuídas, executar e fechar.
-- App Mobile: aplicativo para mecânicos em campo. Agenda, execução de O.S, checklist, QR code, solicitação de material. Vinculação de dispositivo via QR code.
-- Instalador: menu Ajuda > Instalar. Instruções por plataforma (Windows/Mac/Android/iOS).
+- Centro de Notificações: ícone de sino no cabeçalho com alertas automáticos.
+- Suporte/Tickets: menu Ajuda > Suporte. Abrir chamados com prioridade e anexos.
+- Painel do Mecânico (Web): login por código + senha. Visualizar e fechar O.S.
+- App Mobile: aplicativo para mecânicos em campo com agenda, QR code e checklist.
+- Instalador: menu Ajuda > Instalar. Instruções por plataforma.
 `;
 
 function buildSystemPrompt(role: string, contextoTela: string | undefined) {
@@ -281,10 +274,10 @@ Deno.serve(async (req: Request) => {
     let resposta = rawContent;
     let capituloRelacionado: string | null = null;
 
-    const chapterMatch = rawContent.match(/\[Capítulo:\s*([a-z0-9-]+)\]/i);
+    const chapterMatch = rawContent.match(/\[Cap[ií]tulo:\s*([a-z0-9-]+)\]/i);
     if (chapterMatch) {
       capituloRelacionado = chapterMatch[1];
-      resposta = rawContent.replace(/\[Capítulo:\s*[a-z0-9-]+\]/i, "").trim();
+      resposta = rawContent.replace(/\[Cap[ií]tulo:\s*[a-z0-9-]+\]/i, "").trim();
     }
 
     return ok({
