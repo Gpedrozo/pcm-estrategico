@@ -56,14 +56,14 @@ describe('owner v1 page stability', () => {
 
     expect(screen.getByText('Owner Portal')).toBeInTheDocument()
     expect(screen.getAllByText('Dashboard').length).toBeGreaterThan(0)
-    expect(screen.getByRole('button', { name: 'Empresas' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Cadastro' })).toBeInTheDocument()
     expect(screen.getByText('MRR')).toBeInTheDocument()
   })
 
   it('switches tab without crashing', async () => {
     renderOwner()
 
-    fireEvent.click(screen.getByRole('button', { name: 'Empresas' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Cadastro' }))
     await waitFor(() => {
       expect(screen.getAllByText('Criar empresa').length).toBeGreaterThan(0)
     })
