@@ -32,7 +32,7 @@ export default function Contratos() {
   const [editingContrato, setEditingContrato] = useState<any>(null);
 
   const [formData, setFormData] = useState<ContratoInsert>({
-    numero_contrato: '',
+    numero_contrato: 'AUTO',
     titulo: '',
     descricao: '',
     fornecedor_id: '',
@@ -133,7 +133,7 @@ export default function Contratos() {
   const resetForm = () => {
     clearContratoDraft();
     setFormData({
-      numero_contrato: '',
+      numero_contrato: 'AUTO',
       titulo: '',
       descricao: '',
       fornecedor_id: '',
@@ -339,14 +339,12 @@ export default function Contratos() {
             {/* Número + Título */}
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="numero_contrato">Nº Contrato *</Label>
-                <Input
-                  id="numero_contrato"
-                  required
-                  value={formData.numero_contrato}
-                  onChange={(e) => setFormData({ ...formData, numero_contrato: e.target.value })}
-                  placeholder="Ex: CT-001"
-                />
+                <Label>Nº Contrato</Label>
+                {editingContrato ? (
+                  <Input value={editingContrato.numero_contrato} disabled className="bg-muted font-mono" />
+                ) : (
+                  <p className="text-sm text-muted-foreground border rounded-md px-3 py-2 bg-muted">Gerado automaticamente</p>
+                )}
               </div>
               <div className="space-y-2">
                 <Label htmlFor="titulo">Título *</Label>
