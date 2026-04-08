@@ -8,8 +8,17 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Plus, Search, ShieldAlert, AlertTriangle, FileWarning, Calendar } from 'lucide-react';
+import { Plus, Search, ShieldAlert, AlertTriangle, FileWarning, Calendar, GraduationCap, Trash2 } from 'lucide-react';
 import { useIncidentesSSMA, useCreateIncidenteSSMA, usePermissoesTrabalho, useCreatePermissaoTrabalho } from '@/hooks/useSSMA';
+import {
+  useTreinamentosSSMA,
+  useCreateTreinamentoSSMA,
+  useDeleteTreinamentoSSMA,
+  diasParaVencer,
+  TIPO_CURSO_LABELS,
+  type TipoCurso,
+  type TreinamentoSSMARow,
+} from '@/hooks/useTreinamentosSSMA';
 import { useEquipamentos } from '@/hooks/useEquipamentos';
 import { useAuth } from '@/contexts/AuthContext';
 import { useFormDraft } from '@/hooks/useFormDraft';
@@ -20,6 +29,7 @@ export default function SSMA() {
   const [activeTab, setActiveTab] = useState('incidentes');
   const [isIncidenteModalOpen, setIsIncidenteModalOpen] = useState(false);
   const [isPTModalOpen, setIsPTModalOpen] = useState(false);
+  const [isTreinamentoModalOpen, setIsTreinamentoModalOpen] = useState(false);
 
   const [incidenteForm, setIncidenteForm] = useState({
     tipo: 'QUASE_ACIDENTE' as 'ACIDENTE' | 'QUASE_ACIDENTE' | 'INCIDENTE_AMBIENTAL' | 'DESVIO',
@@ -47,11 +57,28 @@ export default function SSMA() {
   });
   const { clearDraft: clearPTDraft } = useFormDraft('draft:ssma-pt', ptForm, setPTForm);
 
+  const [treinamentoForm, setTreinamentoForm] = useState({
+    colaborador_nome: '',
+    tipo_curso: 'NR-10' as TipoCurso,
+    nome_curso: '',
+    instituicao: '',
+    carga_horaria: 0,
+    data_realizacao: new Date().toISOString().split('T')[0],
+    data_validade: '',
+    dias_alerta_antes: 30,
+    numero_certificado: '',
+    observacoes: '',
+  });
+  const { clearDraft: clearTreinamentoDraft } = useFormDraft('draft:ssma-treinamento', treinamentoForm, setTreinamentoForm);
+
   const { data: incidentes, isLoading: loadingIncidentes } = useIncidentesSSMA();
   const { data: permissoes, isLoading: loadingPT } = usePermissoesTrabalho();
+  const { data: treinamentos, isLoading: loadingTreinamentos } = useTreinamentosSSMA();
   const { data: equipamentos } = useEquipamentos();
   const createIncidente = useCreateIncidenteSSMA();
   const createPT = useCreatePermissaoTrabalho();
+  const createTreinamento = useCreateTreinamentoSSMA();
+  const deleteTreinamento = useDeleteTreinamentoSSMA();
 
   const handleSubmitIncidente = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -92,6 +119,45 @@ export default function SSMA() {
     });
   };
 
+  const handleSubmitTreinamento = async (e: React.FormEvent) => {
+    e.preventDefault();
+    await createTreinamento.mutateAsync({
+      ...treinamentoForm,
+      carga_horaria: treinamentoForm.carga_horaria || null,
+      data_validade: treinamentoForm.data_validade || null,
+      instituicao: treinamentoForm.instituicao || null,
+      numero_certificado: treinamentoForm.numero_certificado || null,
+      observacoes: treinamentoForm.observacoes || null,
+    });
+    setIsTreinamentoModalOpen(false);
+    clearTreinamentoDraft();
+    setTreinamentoForm({
+      colaborador_nome: '', tipo_curso: 'NR-10', nome_curso: '',
+      instituicao: '', carga_horaria: 0,
+      data_realizacao: new Date().toISOString().split('T')[0],
+      data_validade: '', dias_alerta_antes: 30,
+      numero_certificado: '', observacoes: '',
+    });
+  };
+
+  const getStatusTreinamentoBadge = (status: string) => {
+    const styles: Record<string, string> = {
+      'VALIDO': 'bg-success/10 text-success',
+      'PROXIMO_VENCIMENTO': 'bg-warning/10 text-warning',
+      'VENCIDO': 'bg-destructive/10 text-destructive',
+    };
+    return styles[status] || '';
+  };
+
+  const getStatusTreinamentoLabel = (status: string) => {
+    const labels: Record<string, string> = {
+      'VALIDO': 'Válido',
+      'PROXIMO_VENCIMENTO': 'Vencendo',
+      'VENCIDO': 'Vencido',
+    };
+    return labels[status] || status;
+  };
+
   const getTipoBadge = (tipo: string) => {
     const styles: Record<string, string> = {
       'ACIDENTE': 'bg-destructive text-destructive-foreground',
@@ -128,7 +194,7 @@ export default function SSMA() {
     return styles[status] || '';
   };
 
-  const isLoading = loadingIncidentes || loadingPT;
+  const isLoading = loadingIncidentes || loadingPT || loadingTreinamentos;
 
   if (isLoading) {
     return (
@@ -144,12 +210,12 @@ export default function SSMA() {
       <div className="module-page-header flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-foreground">SSMA - Saúde, Segurança e Meio Ambiente</h1>
-          <p className="text-muted-foreground">Gestão de incidentes e permissões de trabalho</p>
+          <p className="text-muted-foreground">Gestão de incidentes, permissões de trabalho e treinamentos</p>
         </div>
       </div>
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4">
         <div className="bg-card border border-border rounded-lg p-4">
           <div className="flex items-center gap-2">
             <ShieldAlert className="h-5 w-5 text-destructive" />
@@ -178,6 +244,20 @@ export default function SSMA() {
           </div>
           <p className="text-2xl font-bold text-success">{permissoes?.filter(p => p.status === 'APROVADA' || p.status === 'EM_EXECUCAO').length || 0}</p>
         </div>
+        <div className="bg-card border border-border rounded-lg p-4">
+          <div className="flex items-center gap-2">
+            <GraduationCap className="h-5 w-5 text-warning" />
+            <p className="text-sm text-muted-foreground">Cursos Vencendo</p>
+          </div>
+          <p className="text-2xl font-bold text-warning">{treinamentos?.filter(t => t.status === 'PROXIMO_VENCIMENTO').length || 0}</p>
+        </div>
+        <div className="bg-card border border-border rounded-lg p-4">
+          <div className="flex items-center gap-2">
+            <GraduationCap className="h-5 w-5 text-destructive" />
+            <p className="text-sm text-muted-foreground">Cursos Vencidos</p>
+          </div>
+          <p className="text-2xl font-bold text-destructive">{treinamentos?.filter(t => t.status === 'VENCIDO').length || 0}</p>
+        </div>
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
@@ -185,14 +265,19 @@ export default function SSMA() {
           <TabsList>
             <TabsTrigger value="incidentes">Incidentes</TabsTrigger>
             <TabsTrigger value="permissoes">Permissões de Trabalho</TabsTrigger>
+            <TabsTrigger value="treinamentos">Treinamentos / NRs</TabsTrigger>
           </TabsList>
           {activeTab === 'incidentes' ? (
             <Button onClick={() => setIsIncidenteModalOpen(true)} className="gap-2">
               <Plus className="h-4 w-4" />Registrar Incidente
             </Button>
-          ) : (
+          ) : activeTab === 'permissoes' ? (
             <Button onClick={() => setIsPTModalOpen(true)} className="gap-2">
               <Plus className="h-4 w-4" />Nova Permissão
+            </Button>
+          ) : (
+            <Button onClick={() => setIsTreinamentoModalOpen(true)} className="gap-2">
+              <Plus className="h-4 w-4" />Novo Treinamento
             </Button>
           )}
         </div>
@@ -266,6 +351,70 @@ export default function SSMA() {
                       <td><Badge className={getStatusBadge(pt.status)}>{pt.status}</Badge></td>
                     </tr>
                   ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="treinamentos" className="mt-4">
+          <div className="bg-card border border-border rounded-lg overflow-hidden">
+            <table className="table-industrial">
+              <thead>
+                <tr>
+                  <th>Colaborador</th>
+                  <th>Tipo</th>
+                  <th>Curso</th>
+                  <th>Realização</th>
+                  <th>Validade</th>
+                  <th>Dias p/ Vencer</th>
+                  <th>Status</th>
+                  <th>Ações</th>
+                </tr>
+              </thead>
+              <tbody>
+                {treinamentos?.length === 0 ? (
+                  <tr><td colSpan={8} className="text-center py-8 text-muted-foreground">Nenhum treinamento registrado</td></tr>
+                ) : (
+                  treinamentos
+                    ?.filter(t => {
+                      if (!search) return true;
+                      const s = search.toLowerCase();
+                      return t.colaborador_nome.toLowerCase().includes(s)
+                        || t.nome_curso.toLowerCase().includes(s)
+                        || t.tipo_curso.toLowerCase().includes(s);
+                    })
+                    .map((tr) => {
+                      const dias = diasParaVencer(tr.data_validade);
+                      return (
+                        <tr key={tr.id}>
+                          <td className="font-medium">{tr.colaborador_nome}</td>
+                          <td><Badge variant="outline">{tr.tipo_curso}</Badge></td>
+                          <td className="max-w-[200px] truncate">{tr.nome_curso}</td>
+                          <td>{new Date(tr.data_realizacao).toLocaleDateString('pt-BR')}</td>
+                          <td>{tr.data_validade ? new Date(tr.data_validade).toLocaleDateString('pt-BR') : 'Sem validade'}</td>
+                          <td className="font-mono">
+                            {dias !== null ? (
+                              <span className={dias <= 0 ? 'text-destructive font-bold' : dias <= 30 ? 'text-warning font-bold' : 'text-success'}>
+                                {dias <= 0 ? `${Math.abs(dias)}d vencido` : `${dias}d`}
+                              </span>
+                            ) : '—'}
+                          </td>
+                          <td><Badge className={getStatusTreinamentoBadge(tr.status)}>{getStatusTreinamentoLabel(tr.status)}</Badge></td>
+                          <td>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-7 w-7 text-destructive hover:text-destructive"
+                              onClick={() => deleteTreinamento.mutate(tr.id)}
+                              disabled={deleteTreinamento.isPending}
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </Button>
+                          </td>
+                        </tr>
+                      );
+                    })
                 )}
               </tbody>
             </table>
@@ -405,6 +554,90 @@ export default function SSMA() {
             <div className="flex gap-3 pt-4">
               <Button type="submit" className="flex-1" disabled={createPT.isPending}>Criar Permissão</Button>
               <Button type="button" variant="outline" onClick={() => setIsPTModalOpen(false)}>Cancelar</Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Treinamento Modal */}
+      <Dialog open={isTreinamentoModalOpen} onOpenChange={setIsTreinamentoModalOpen}>
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+          <DialogHeader><DialogTitle>Registrar Treinamento / Curso</DialogTitle></DialogHeader>
+          <form onSubmit={handleSubmitTreinamento} className="space-y-4">
+            <div className="space-y-2">
+              <Label>Nome do Colaborador *</Label>
+              <Input value={treinamentoForm.colaborador_nome} onChange={(e) => setTreinamentoForm({...treinamentoForm, colaborador_nome: e.target.value})} required placeholder="Ex: João da Silva" />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Tipo de Curso *</Label>
+                <Select value={treinamentoForm.tipo_curso} onValueChange={(v: any) => {
+                  const label = TIPO_CURSO_LABELS[v as TipoCurso] || v;
+                  setTreinamentoForm({...treinamentoForm, tipo_curso: v, nome_curso: treinamentoForm.nome_curso || label});
+                }}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="NR-05">NR-05 — CIPA</SelectItem>
+                    <SelectItem value="NR-06">NR-06 — EPI</SelectItem>
+                    <SelectItem value="NR-10">NR-10 — Segurança Elétrica</SelectItem>
+                    <SelectItem value="NR-11">NR-11 — Movimentação de Cargas</SelectItem>
+                    <SelectItem value="NR-12">NR-12 — Máquinas e Equipamentos</SelectItem>
+                    <SelectItem value="NR-13">NR-13 — Caldeiras e Vasos de Pressão</SelectItem>
+                    <SelectItem value="NR-17">NR-17 — Ergonomia</SelectItem>
+                    <SelectItem value="NR-20">NR-20 — Inflamáveis</SelectItem>
+                    <SelectItem value="NR-23">NR-23 — Proteção Incêndios</SelectItem>
+                    <SelectItem value="NR-33">NR-33 — Espaço Confinado</SelectItem>
+                    <SelectItem value="NR-35">NR-35 — Trabalho em Altura</SelectItem>
+                    <SelectItem value="CIPA">CIPA</SelectItem>
+                    <SelectItem value="BRIGADA">Brigada de Incêndio</SelectItem>
+                    <SelectItem value="PRIMEIRO_SOCORRO">Primeiro Socorro</SelectItem>
+                    <SelectItem value="EMPILHADEIRA">Operador Empilhadeira</SelectItem>
+                    <SelectItem value="PONTE_ROLANTE">Ponte Rolante</SelectItem>
+                    <SelectItem value="INTEGRACAO">Integração de Segurança</SelectItem>
+                    <SelectItem value="OUTRO">Outro</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Carga Horária (h)</Label>
+                <Input type="number" min={0} value={treinamentoForm.carga_horaria || ''} onChange={(e) => setTreinamentoForm({...treinamentoForm, carga_horaria: parseInt(e.target.value) || 0})} placeholder="Ex: 40" />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label>Nome do Curso *</Label>
+              <Input value={treinamentoForm.nome_curso} onChange={(e) => setTreinamentoForm({...treinamentoForm, nome_curso: e.target.value})} required placeholder="Ex: NR-35 Trabalho em Altura - Reciclagem" />
+            </div>
+            <div className="space-y-2">
+              <Label>Instituição / Instrutor</Label>
+              <Input value={treinamentoForm.instituicao} onChange={(e) => setTreinamentoForm({...treinamentoForm, instituicao: e.target.value})} placeholder="Ex: SENAI, empresa interna..." />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Data de Realização *</Label>
+                <Input type="date" value={treinamentoForm.data_realizacao} onChange={(e) => setTreinamentoForm({...treinamentoForm, data_realizacao: e.target.value})} required />
+              </div>
+              <div className="space-y-2">
+                <Label>Data de Validade</Label>
+                <Input type="date" value={treinamentoForm.data_validade} onChange={(e) => setTreinamentoForm({...treinamentoForm, data_validade: e.target.value})} />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Alertar (dias antes)</Label>
+                <Input type="number" min={1} max={365} value={treinamentoForm.dias_alerta_antes} onChange={(e) => setTreinamentoForm({...treinamentoForm, dias_alerta_antes: parseInt(e.target.value) || 30})} />
+              </div>
+              <div className="space-y-2">
+                <Label>Nº Certificado</Label>
+                <Input value={treinamentoForm.numero_certificado} onChange={(e) => setTreinamentoForm({...treinamentoForm, numero_certificado: e.target.value})} placeholder="Opcional" />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label>Observações</Label>
+              <Textarea value={treinamentoForm.observacoes} onChange={(e) => setTreinamentoForm({...treinamentoForm, observacoes: e.target.value})} rows={2} />
+            </div>
+            <div className="flex gap-3 pt-4">
+              <Button type="submit" className="flex-1" disabled={createTreinamento.isPending}>Registrar Treinamento</Button>
+              <Button type="button" variant="outline" onClick={() => setIsTreinamentoModalOpen(false)}>Cancelar</Button>
             </div>
           </form>
         </DialogContent>
