@@ -125,7 +125,7 @@ export function MasterSecurity() {
               <div className={`p-2 rounded-lg ${s.bg}`}><s.icon className={`h-5 w-5 ${s.color}`} /></div>
               <div>
                 <p className="text-2xl font-bold">{s.value}</p>
-                <p className="text-[11px] text-muted-foreground">{s.label}</p>
+                <p className="text-xs text-muted-foreground">{s.label}</p>
               </div>
             </CardContent>
           </Card>
@@ -179,7 +179,7 @@ export function MasterSecurity() {
 
         <TabsContent value="logs" className="mt-4 space-y-4">
           <div className="flex gap-3">
-            <div className="relative flex-1 max-w-sm">
+            <div className="relative flex-1 max-w-md">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input placeholder="Buscar ação ou recurso..." value={logSearch} onChange={e => { setLogSearch(e.target.value); setLogPage(0); }} className="pl-9" />
             </div>

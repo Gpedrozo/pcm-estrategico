@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, lazy, Suspense } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -29,10 +29,16 @@ import {
   Save,
   RefreshCw,
   Smartphone,
+  Search,
+  Loader2,
+  ChevronLeft,
+  ChevronRight,
 } from 'lucide-react';
-import DispositivosMoveis from '@/components/admin/DispositivosMoveis';
-import { MasterEmpresaData } from '@/components/master-ti/MasterEmpresaData';
-import { MasterLogoManager } from '@/components/master-ti/MasterLogoManager';
+import { Skeleton } from '@/components/ui/skeleton';
+
+const DispositivosMoveis = lazy(() => import('@/components/admin/DispositivosMoveis'));
+const MasterEmpresaData = lazy(() => import('@/components/master-ti/MasterEmpresaData').then(m => ({ default: m.MasterEmpresaData })));
+const MasterLogoManager = lazy(() => import('@/components/master-ti/MasterLogoManager').then(m => ({ default: m.MasterLogoManager })));
 import { toast } from '@/hooks/use-toast';
 import { useTenantAdminConfig, useSaveTenantAdminConfig } from '@/hooks/useTenantAdminConfig';
 import {
@@ -116,6 +122,8 @@ const padronizacoesDefault: PadronizacoesConfig = {
   tipos_falha: ['ELETRICA', 'MECANICA', 'INSTRUMENTACAO', 'LUBRIFICACAO'],
 };
 
+const PAGE_SIZE = 15;
+
 const linkCards = [
   { title: 'Gestao de Usuarios', description: 'Perfis, edicao e ciclo de acesso', tab: 'usuarios', icon: Users },
   { title: 'Processo e SLA', description: 'Regras de abertura, fechamento e SLA', tab: 'processo', icon: Workflow },
@@ -126,6 +134,14 @@ const linkCards = [
   { title: 'Dados da Empresa', description: 'Razao social, CNPJ, endereco', tab: 'empresa', icon: Building2 },
   { title: 'Estrutura Organizacional', description: 'Plantas, areas e sistemas', to: '/hierarquia', icon: Network },
 ];
+
+function TabFallback() {
+  return (
+    <div className="flex justify-center p-12">
+      <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+    </div>
+  );
+}
 
 export default function Administracao() {
   const [searchParams] = useSearchParams();
@@ -155,6 +171,8 @@ export default function Administracao() {
   const [padronizacoesForm, setPadronizacoesForm] = useState<PadronizacoesConfig>(padronizacoesDefault);
   const [visualIdentityForm, setVisualIdentityForm] = useState<TenantVisualIdentityConfig>(tenantVisualIdentityDefault);
   const [usuariosSearch, setUsuariosSearch] = useState('');
+  const [roleFilter, setRoleFilter] = useState('ALL');
+  const [page, setPage] = useState(0);
   const [activeTab, setActiveTab] = useState('usuarios');
 
   useEffect(() => {
@@ -231,6 +249,7 @@ export default function Administracao() {
   };
 
   const filteredUsuarios = usuarios.filter((usuario) => {
+    if (roleFilter !== 'ALL' && usuario.role !== roleFilter) return false;
     const search = usuariosSearch.trim().toLowerCase();
     if (!search) return true;
 
@@ -241,11 +260,25 @@ export default function Administracao() {
     );
   });
 
+  const totalPages = Math.ceil(filteredUsuarios.length / PAGE_SIZE);
+  const pagedUsuarios = filteredUsuarios.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
+  const userStats = {
+    total: usuarios.length,
+    admins: usuarios.filter(u => u.role === 'ADMIN').length,
+    usuarios: usuarios.filter(u => u.role === 'USUARIO').length,
+    solicitantes: usuarios.filter(u => u.role === 'SOLICITANTE').length,
+  };
+
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-foreground">Central de Administracao</h1>
-        <p className="text-muted-foreground">Governanca completa da empresa cliente em um unico lugar.</p>
+      <div className="flex items-center gap-4">
+        <div className="w-12 h-12 rounded-xl bg-primary flex items-center justify-center">
+          <Shield className="h-6 w-6 text-primary-foreground" />
+        </div>
+        <div>
+          <h1 className="text-2xl font-bold">Central de Administracao</h1>
+          <p className="text-muted-foreground text-sm">Governanca completa da empresa cliente em um unico lugar.</p>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
@@ -273,16 +306,16 @@ export default function Administracao() {
         ))}
       </div>
 
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-        <TabsList className="flex flex-wrap h-auto">
-          <TabsTrigger value="usuarios" className="gap-2"><Users className="h-4 w-4" /> Usuarios</TabsTrigger>
-          <TabsTrigger value="processo" className="gap-2"><Workflow className="h-4 w-4" /> Processo</TabsTrigger>
-          <TabsTrigger value="identidade" className="gap-2"><Palette className="h-4 w-4" /> Identidade</TabsTrigger>
-          <TabsTrigger value="padronizacoes" className="gap-2"><SlidersHorizontal className="h-4 w-4" /> Padronizacoes</TabsTrigger>
-          <TabsTrigger value="alertas" className="gap-2"><Bell className="h-4 w-4" /> Alertas</TabsTrigger>
-          <TabsTrigger value="indicadores" className="gap-2"><BarChart3 className="h-4 w-4" /> Indicadores</TabsTrigger>
-          <TabsTrigger value="empresa" className="gap-2"><Building2 className="h-4 w-4" /> Empresa</TabsTrigger>
-          <TabsTrigger value="dispositivos" className="gap-2"><Smartphone className="h-4 w-4" /> Dispositivos</TabsTrigger>
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+        <TabsList className="bg-card border border-border h-auto flex-wrap gap-1 p-1">
+          <TabsTrigger value="usuarios" className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"><Users className="h-4 w-4" /> Usuarios</TabsTrigger>
+          <TabsTrigger value="processo" className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"><Workflow className="h-4 w-4" /> Processo</TabsTrigger>
+          <TabsTrigger value="identidade" className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"><Palette className="h-4 w-4" /> Identidade</TabsTrigger>
+          <TabsTrigger value="padronizacoes" className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"><SlidersHorizontal className="h-4 w-4" /> Padronizacoes</TabsTrigger>
+          <TabsTrigger value="alertas" className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"><Bell className="h-4 w-4" /> Alertas</TabsTrigger>
+          <TabsTrigger value="indicadores" className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"><BarChart3 className="h-4 w-4" /> Indicadores</TabsTrigger>
+          <TabsTrigger value="empresa" className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"><Building2 className="h-4 w-4" /> Empresa</TabsTrigger>
+          <TabsTrigger value="dispositivos" className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"><Smartphone className="h-4 w-4" /> Dispositivos</TabsTrigger>
         </TabsList>
 
         <TabsContent value="identidade">
@@ -364,97 +397,134 @@ export default function Administracao() {
           </Card>
 
           <div className="mt-6">
-            <MasterLogoManager />
+            <Suspense fallback={<TabFallback />}>
+              <MasterLogoManager />
+            </Suspense>
           </div>
         </TabsContent>
 
         <TabsContent value="usuarios">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Gestao de Usuarios Corporativa</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-                <div className="space-y-2">
-                  <Label>Buscar usuario</Label>
-                  <Input
-                    value={usuariosSearch}
-                    onChange={(e) => setUsuariosSearch(e.target.value)}
-                    placeholder="Nome, email ou perfil"
-                  />
-                </div>
-                <div className="flex items-end justify-start md:justify-end text-xs text-muted-foreground">
-                  Gestao unificada direto na Central Admin.
-                </div>
-              </div>
+          <div className="space-y-6">
+            {/* Stats */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              {[
+                { label: 'Total', value: userStats.total, icon: Users, bg: 'bg-muted' },
+                { label: 'Administradores', value: userStats.admins, icon: Shield, bg: 'bg-primary/10' },
+                { label: 'Usuarios', value: userStats.usuarios, icon: Users, bg: 'bg-secondary' },
+                { label: 'Solicitantes', value: userStats.solicitantes, icon: Users, bg: 'bg-info/10' },
+              ].map(s => (
+                <Card key={s.label}>
+                  <CardContent className="p-4 flex items-center gap-3">
+                    <div className={`p-2 rounded-lg ${s.bg}`}><s.icon className="h-5 w-5" /></div>
+                    <div>
+                      <p className="text-2xl font-bold">{s.value}</p>
+                      <p className="text-xs text-muted-foreground">{s.label}</p>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
 
-              <div className="rounded-lg border border-border overflow-hidden">
-                <table className="w-full text-sm">
-                  <thead className="bg-muted/40">
-                    <tr>
-                      <th className="text-left px-3 py-2">Usuario</th>
-                      <th className="text-left px-3 py-2">Perfil</th>
-                      <th className="text-left px-3 py-2">Status Senha</th>
-                      <th className="text-right px-3 py-2">Acoes</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {usuariosLoading ? (
-                      <tr>
-                        <td colSpan={4} className="px-3 py-6 text-center text-muted-foreground">Carregando usuarios...</td>
-                      </tr>
-                    ) : filteredUsuarios.length === 0 ? (
-                      <tr>
-                        <td colSpan={4} className="px-3 py-6 text-center text-muted-foreground">Nenhum usuario encontrado.</td>
-                      </tr>
-                    ) : (
-                      filteredUsuarios.map((usuario: UsuarioCompleto) => (
-                        <tr key={usuario.id} className="border-t border-border">
-                          <td className="px-3 py-3">
-                            <p className="font-medium">{usuario.nome}</p>
-                            <p className="text-xs text-muted-foreground">{usuario.email || 'Sem email no perfil'}</p>
-                          </td>
-                          <td className="px-3 py-3">
-                            <Select
-                              value={usuario.role}
-                              onValueChange={(value) => void updateUserRole(usuario.id, value as AppRole)}
-                            >
-                              <SelectTrigger className="w-[170px]">
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="USUARIO">Usuario</SelectItem>
-                                <SelectItem value="SOLICITANTE">Solicitante</SelectItem>
-                                <SelectItem value="ADMIN">Administrador</SelectItem>
-                              </SelectContent>
-                            </Select>
-                          </td>
-                          <td className="px-3 py-3">
-                            <Badge variant={usuario.force_password_change ? 'destructive' : 'secondary'}>
-                              {usuario.force_password_change ? 'Troca obrigatoria ativa' : 'Sem troca obrigatoria'}
-                            </Badge>
-                          </td>
-                          <td className="px-3 py-3">
-                            <div className="flex justify-end">
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => void markForcePasswordChange(usuario.id, !usuario.force_password_change)}
-                                className="gap-2"
-                              >
-                                <RefreshCw className="h-4 w-4" />
-                                {usuario.force_password_change ? 'Liberar Senha' : 'Forcar Troca'}
-                              </Button>
-                            </div>
-                          </td>
-                        </tr>
-                      ))
-                    )}
-                  </tbody>
-                </table>
+            {/* Search & Filter */}
+            <div className="flex flex-col md:flex-row gap-3">
+              <div className="relative flex-1 max-w-md">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Buscar por nome, email ou perfil..."
+                  value={usuariosSearch}
+                  onChange={(e) => { setUsuariosSearch(e.target.value); setPage(0); }}
+                  className="pl-9"
+                />
               </div>
-            </CardContent>
-          </Card>
+              <Select value={roleFilter} onValueChange={(v) => { setRoleFilter(v); setPage(0); }}>
+                <SelectTrigger className="w-48"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="ALL">Todos os perfis</SelectItem>
+                  <SelectItem value="ADMIN">Administrador</SelectItem>
+                  <SelectItem value="USUARIO">Usuario</SelectItem>
+                  <SelectItem value="SOLICITANTE">Solicitante</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Table */}
+            {usuariosLoading ? (
+              <div className="space-y-4">{[1, 2, 3].map(i => <Skeleton key={i} className="h-20 w-full" />)}</div>
+            ) : (
+              <Card>
+                <CardContent className="p-0">
+                  <table className="table-industrial w-full">
+                    <thead>
+                      <tr>
+                        <th>Usuario</th>
+                        <th>Perfil</th>
+                        <th>Status Senha</th>
+                        <th className="text-right">Acoes</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {pagedUsuarios.length === 0 ? (
+                        <tr>
+                          <td colSpan={4} className="text-center py-8 text-muted-foreground">Nenhum usuario encontrado.</td>
+                        </tr>
+                      ) : (
+                        pagedUsuarios.map((usuario: UsuarioCompleto) => (
+                          <tr key={usuario.id}>
+                            <td>
+                              <p className="font-medium">{usuario.nome}</p>
+                              <p className="text-xs text-muted-foreground">{usuario.email || 'Sem email no perfil'}</p>
+                            </td>
+                            <td>
+                              <Select
+                                value={usuario.role}
+                                onValueChange={(value) => void updateUserRole(usuario.id, value as AppRole)}
+                              >
+                                <SelectTrigger className="w-[170px]">
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="USUARIO">Usuario</SelectItem>
+                                  <SelectItem value="SOLICITANTE">Solicitante</SelectItem>
+                                  <SelectItem value="ADMIN">Administrador</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </td>
+                            <td>
+                              <Badge variant={usuario.force_password_change ? 'destructive' : 'secondary'}>
+                                {usuario.force_password_change ? 'Troca obrigatoria ativa' : 'Sem troca obrigatoria'}
+                              </Badge>
+                            </td>
+                            <td>
+                              <div className="flex justify-end">
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => void markForcePasswordChange(usuario.id, !usuario.force_password_change)}
+                                  className="gap-2"
+                                >
+                                  <RefreshCw className="h-4 w-4" />
+                                  {usuario.force_password_change ? 'Liberar Senha' : 'Forcar Troca'}
+                                </Button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Pagination */}
+            {totalPages > 1 && (
+              <div className="flex items-center justify-center gap-2">
+                <Button variant="outline" size="icon" disabled={page === 0} onClick={() => setPage(p => p - 1)}><ChevronLeft className="h-4 w-4" /></Button>
+                <span className="text-sm text-muted-foreground">Pagina {page + 1} de {totalPages}</span>
+                <Button variant="outline" size="icon" disabled={page >= totalPages - 1} onClick={() => setPage(p => p + 1)}><ChevronRight className="h-4 w-4" /></Button>
+              </div>
+            )}
+          </div>
         </TabsContent>
 
         <TabsContent value="processo">
@@ -699,11 +769,15 @@ export default function Administracao() {
         </TabsContent>
 
         <TabsContent value="dispositivos">
-          <DispositivosMoveis />
+          <Suspense fallback={<TabFallback />}>
+            <DispositivosMoveis />
+          </Suspense>
         </TabsContent>
 
         <TabsContent value="empresa">
-          <MasterEmpresaData />
+          <Suspense fallback={<TabFallback />}>
+            <MasterEmpresaData />
+          </Suspense>
         </TabsContent>
       </Tabs>
     </div>

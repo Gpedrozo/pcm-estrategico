@@ -175,7 +175,7 @@ export function MasterAuditLogs() {
         <TabsContent value="auditoria" className="space-y-4 mt-4">
           <div className="flex flex-col md:flex-row gap-3 items-start md:items-center justify-between">
             <div className="flex gap-3 flex-1">
-              <div className="relative flex-1 max-w-sm">
+              <div className="relative flex-1 max-w-md">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input placeholder="Buscar..." value={search} onChange={e => { setSearch(e.target.value); setPage(0); }} className="pl-9" />
               </div>
@@ -239,7 +239,7 @@ export function MasterAuditLogs() {
 
         <TabsContent value="db_audit" className="space-y-4 mt-4">
           <div className="flex flex-col md:flex-row gap-3">
-            <div className="relative flex-1 max-w-sm">
+            <div className="relative flex-1 max-w-md">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input placeholder="Buscar tabela ou operação..." value={dbSearch} onChange={e => { setDbSearch(e.target.value); setDbPage(0); }} className="pl-9" />
             </div>
