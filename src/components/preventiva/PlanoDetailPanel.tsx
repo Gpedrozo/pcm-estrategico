@@ -57,6 +57,10 @@ export default function PlanoDetailPanel({ plano, equipamentos }: Props) {
   const [execObs, setExecObs] = useState('');
   const [saveTemplateOpen, setSaveTemplateOpen] = useState(false);
   const [templateNome, setTemplateNome] = useState('');
+  const [editingAtividade, setEditingAtividade] = useState<AtividadePreventiva | null>(null);
+  const [editingAtividadeData, setEditingAtividadeData] = useState({ nome: '', responsavel: '', observacoes: '' });
+  const [editingServico, setEditingServico] = useState<{ servico: ServicoPreventivo; atividadeId: string } | null>(null);
+  const [editingServicoData, setEditingServicoData] = useState({ descricao: '', tempo_estimado_min: 0, observacoes: '' });
   const printRef = useRef<HTMLDivElement>(null);
   const handlePrintPlano = useReactToPrint({
     contentRef: printRef,
@@ -133,6 +137,41 @@ export default function PlanoDetailPanel({ plano, equipamentos }: Props) {
       updateAtividade.mutateAsync({ id: atv.id, plano_id: plano.id, ordem: sorted[swapIdx].ordem }),
       updateAtividade.mutateAsync({ id: sorted[swapIdx].id, plano_id: plano.id, ordem: atv.ordem }),
     ]);
+  };
+
+  const handleOpenEditAtividade = (atv: AtividadePreventiva) => {
+    setEditingAtividade(atv);
+    setEditingAtividadeData({ nome: atv.nome, responsavel: atv.responsavel || '', observacoes: atv.observacoes || '' });
+  };
+
+  const handleSaveEditAtividade = async () => {
+    if (!editingAtividade || !editingAtividadeData.nome.trim()) return;
+    await updateAtividade.mutateAsync({
+      id: editingAtividade.id,
+      plano_id: plano.id,
+      nome: editingAtividadeData.nome,
+      responsavel: editingAtividadeData.responsavel || null,
+      observacoes: editingAtividadeData.observacoes || null,
+    });
+    setEditingAtividade(null);
+  };
+
+  const handleOpenEditServico = (srv: ServicoPreventivo, atividadeId: string) => {
+    setEditingServico({ servico: srv, atividadeId });
+    setEditingServicoData({ descricao: srv.descricao, tempo_estimado_min: srv.tempo_estimado_min, observacoes: srv.observacoes || '' });
+  };
+
+  const handleSaveEditServico = async () => {
+    if (!editingServico || !editingServicoData.descricao.trim()) return;
+    await updateServico.mutateAsync({
+      id: editingServico.servico.id,
+      _plano_id: plano.id,
+      _atividade_id: editingServico.atividadeId,
+      descricao: editingServicoData.descricao,
+      tempo_estimado_min: editingServicoData.tempo_estimado_min,
+      observacoes: editingServicoData.observacoes || null,
+    });
+    setEditingServico(null);
   };
 
   const handleSavePlanoEdit = async () => {
@@ -300,6 +339,9 @@ export default function PlanoDetailPanel({ plano, equipamentos }: Props) {
                         <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => handleMoveAtividade(atv, 'down')} disabled={aIdx === (atividades?.length || 0) - 1}>
                           <ArrowDown className="h-3.5 w-3.5" />
                         </Button>
+                        <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => handleOpenEditAtividade(atv)} title="Editar atividade">
+                          <Edit className="h-3.5 w-3.5" />
+                        </Button>
                         <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive" onClick={() => confirm({ title: 'Excluir atividade', description: `Excluir a atividade "${atv.nome}" e todas as suas sub-atividades?`, onConfirm: () => deleteAtividade.mutateAsync({ id: atv.id, plano_id: plano.id }) })}>
                           <Trash2 className="h-3.5 w-3.5" />
                         </Button>
@@ -310,25 +352,30 @@ export default function PlanoDetailPanel({ plano, equipamentos }: Props) {
                     {isExpanded && (
                       <div className="border-t border-border">
                         {/* Spreadsheet header */}
-                        <div className="grid grid-cols-[40px_1fr_100px_80px_60px] gap-2 px-3 py-2 bg-muted/20 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                        <div className="grid grid-cols-[40px_1fr_100px_80px_90px] gap-2 px-3 py-2 bg-muted/20 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                           <span>#</span>
                           <span>Sub-atividade</span>
                           <span>Tempo</span>
                           <span>Status</span>
-                          <span></span>
+                          <span>Ações</span>
                         </div>
 
                         {(atv.servicos || []).map((srv, sIdx) => (
-                          <div key={srv.id} className="grid grid-cols-[40px_1fr_100px_80px_60px] gap-2 px-3 py-2 border-t border-border/50 items-center hover:bg-muted/20 text-sm">
+                          <div key={srv.id} className="grid grid-cols-[40px_1fr_100px_80px_90px] gap-2 px-3 py-2 border-t border-border/50 items-center hover:bg-muted/20 text-sm">
                             <span className="text-muted-foreground font-mono text-xs">{sIdx + 1}</span>
                             <span className="truncate">{srv.descricao}</span>
                             <span className="font-mono text-xs">{formatMin(srv.tempo_estimado_min)}</span>
                             <Badge variant={srv.concluido ? 'default' : 'outline'} className="text-[10px] h-5 w-fit">
                               {srv.concluido ? 'OK' : 'Pendente'}
                             </Badge>
-                            <Button size="icon" variant="ghost" className="h-6 w-6 text-destructive" onClick={() => confirm({ title: 'Excluir sub-atividade', description: `Excluir a sub-atividade "${srv.descricao}"?`, onConfirm: () => deleteServico.mutateAsync({ id: srv.id, _plano_id: plano.id, _atividade_id: atv.id }) })}>
-                              <Trash2 className="h-3 w-3" />
-                            </Button>
+                            <div className="flex gap-1">
+                              <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => handleOpenEditServico(srv, atv.id)} title="Editar sub-atividade">
+                                <Edit className="h-3 w-3" />
+                              </Button>
+                              <Button size="icon" variant="ghost" className="h-6 w-6 text-destructive" onClick={() => confirm({ title: 'Excluir sub-atividade', description: `Excluir a sub-atividade "${srv.descricao}"?`, onConfirm: () => deleteServico.mutateAsync({ id: srv.id, _plano_id: plano.id, _atividade_id: atv.id }) })}>
+                                <Trash2 className="h-3 w-3" />
+                              </Button>
+                            </div>
                           </div>
                         ))}
 
@@ -508,6 +555,56 @@ export default function PlanoDetailPanel({ plano, equipamentos }: Props) {
           </div>
           <DialogFooter>
             <Button onClick={handleAddSubAtividade} disabled={createServico.isPending}>Adicionar</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Atividade */}
+      <Dialog open={!!editingAtividade} onOpenChange={() => setEditingAtividade(null)}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader><DialogTitle>Editar Atividade</DialogTitle><DialogDescription>Altere os dados da atividade</DialogDescription></DialogHeader>
+          <div className="space-y-3">
+            <div className="space-y-1">
+              <Label className="text-xs">Nome *</Label>
+              <Input value={editingAtividadeData.nome} onChange={e => setEditingAtividadeData(p => ({ ...p, nome: e.target.value }))} placeholder="Nome da atividade" />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs">Responsável</Label>
+              <Input value={editingAtividadeData.responsavel} onChange={e => setEditingAtividadeData(p => ({ ...p, responsavel: e.target.value }))} placeholder="Opcional" />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs">Observações</Label>
+              <Textarea value={editingAtividadeData.observacoes} onChange={e => setEditingAtividadeData(p => ({ ...p, observacoes: e.target.value }))} rows={2} placeholder="Opcional" />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditingAtividade(null)}>Cancelar</Button>
+            <Button onClick={handleSaveEditAtividade} disabled={updateAtividade.isPending || !editingAtividadeData.nome.trim()}>Salvar</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Sub-atividade */}
+      <Dialog open={!!editingServico} onOpenChange={() => setEditingServico(null)}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader><DialogTitle>Editar Sub-atividade</DialogTitle><DialogDescription>Altere os dados da sub-atividade</DialogDescription></DialogHeader>
+          <div className="space-y-3">
+            <div className="space-y-1">
+              <Label className="text-xs">Descrição *</Label>
+              <Input value={editingServicoData.descricao} onChange={e => setEditingServicoData(p => ({ ...p, descricao: e.target.value }))} placeholder="Descrição da sub-atividade" />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs">Tempo Estimado (min)</Label>
+              <Input type="number" value={editingServicoData.tempo_estimado_min} onChange={e => setEditingServicoData(p => ({ ...p, tempo_estimado_min: parseInt(e.target.value) || 0 }))} />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs">Observações</Label>
+              <Textarea value={editingServicoData.observacoes} onChange={e => setEditingServicoData(p => ({ ...p, observacoes: e.target.value }))} rows={2} placeholder="Opcional" />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditingServico(null)}>Cancelar</Button>
+            <Button onClick={handleSaveEditServico} disabled={updateServico.isPending || !editingServicoData.descricao.trim()}>Salvar</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
