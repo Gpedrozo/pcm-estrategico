@@ -234,10 +234,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     };
 
-    window.addEventListener('pagehide', markWindowClosed);
+    // Use 'beforeunload' instead of 'pagehide'.
+    // 'pagehide' fires on tab switches in Safari/iOS, which falsely marks
+    // the window as closed and triggers force-logout on the next full reload.
+    // 'beforeunload' only fires on real navigation/close — not tab switches.
+    window.addEventListener('beforeunload', markWindowClosed);
 
     return () => {
-      window.removeEventListener('pagehide', markWindowClosed);
+      window.removeEventListener('beforeunload', markWindowClosed);
     };
   }, [session, user]);
 
