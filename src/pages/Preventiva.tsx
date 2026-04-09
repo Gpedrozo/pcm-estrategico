@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback, useEffect } from 'react';
+import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -35,8 +35,11 @@ export default function Preventiva() {
   const { data: planos, isLoading, isError, error } = usePlanosPreventivos();
   const { data: equipamentos } = useEquipamentos();
 
+  const calendarModalAppliedRef = useRef(false);
   useEffect(() => {
+    if (calendarModalAppliedRef.current) return;
     if ((location.state as any)?.dataProgramada) {
+      calendarModalAppliedRef.current = true;
       setIsCreateOpen(true);
     }
   }, [location.state]);

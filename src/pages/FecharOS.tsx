@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -123,11 +123,52 @@ export default function FecharOS() {
 
   const { clearDraft: clearFecharOSDraft } = useFormDraft(
     'draft:fechar-os',
-    { formData, selectedOSId: selectedOS?.id || null },
+    {
+      formData,
+      selectedOSId: selectedOS?.id || null,
+      materiaisUsados: materiaisUsados.map((m) => ({
+        materialId: m.material.id,
+        quantidade: m.quantidade,
+      })),
+      pausasExecucao,
+      teveIntervalos,
+      activeTab,
+    },
     (saved) => {
       if (saved.formData) setFormData(saved.formData);
+      if (saved.teveIntervalos !== undefined) setTeveIntervalos(saved.teveIntervalos);
+      if (saved.pausasExecucao?.length) setPausasExecucao(saved.pausasExecucao);
+      if (saved.activeTab) setActiveTab(saved.activeTab);
+      // selectedOS and materiais are restored below once query data is available
     },
   );
+
+  // Restore selectedOS from draft once pendingOS is loaded
+  const draftRestoredRef = useRef(false);
+  useEffect(() => {
+    if (draftRestoredRef.current || !pendingOS || pendingOS.length === 0) return;
+    draftRestoredRef.current = true;
+    try {
+      const raw = sessionStorage.getItem('draft:fechar-os');
+      if (!raw) return;
+      const saved = JSON.parse(raw);
+      if (saved.selectedOSId && !selectedOS) {
+        const os = pendingOS.find((item) => item.id === saved.selectedOSId);
+        if (os) setSelectedOS(os);
+      }
+      // Restore materiais once materiaisDisponiveis are available
+      if (saved.materiaisUsados?.length && materiaisDisponiveis?.length) {
+        const restored: MaterialUsado[] = [];
+        for (const item of saved.materiaisUsados) {
+          const mat = materiaisDisponiveis.find((m) => m.id === item.materialId);
+          if (mat) restored.push({ material: mat, quantidade: item.quantidade });
+        }
+        if (restored.length) setMateriaisUsados(restored);
+      }
+    } catch {
+      // ignore
+    }
+  }, [pendingOS, materiaisDisponiveis]);
 
   const selectedMecanico = mecanicos?.find(m => m.id === formData.mecanicoId);
 
@@ -486,7 +527,9 @@ export default function FecharOS() {
 
   const isLoading = loadingOS || loadingMecanicos;
 
+  const deepLinkAppliedRef = useRef(false);
   useEffect(() => {
+    if (deepLinkAppliedRef.current) return;
     const osId = searchParams.get('osId');
     const mecanicoId = searchParams.get('mecanicoId');
     if (!osId || !pendingOS || pendingOS.length === 0) return;
@@ -494,6 +537,7 @@ export default function FecharOS() {
     const os = pendingOS.find((item) => item.id === osId);
     if (!os) return;
 
+    deepLinkAppliedRef.current = true;
     handleSelectOS(os);
     if (mecanicoId) {
       setFormData((prev) => ({ ...prev, mecanicoId }));

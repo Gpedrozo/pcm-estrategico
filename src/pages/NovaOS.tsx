@@ -121,20 +121,18 @@ export default function NovaOS() {
     return solicitacoesPendentes.filter((ss) => ss.tag === formData.tag && !ss.os_id);
   }, [solicitacoesPendentes, formData.tag]);
 
+  const solicitacaoAppliedRef = useRef(false);
   useEffect(() => {
+    if (solicitacaoAppliedRef.current) return;
     setSolicitacaoVinculada(solicitacaoOrigem);
-  }, [solicitacaoOrigem]);
-
-  useEffect(() => {
-    if (!solicitacaoOrigem) {
-      return;
-    }
+    if (!solicitacaoOrigem) return;
 
     if (solicitacaoOrigem.status !== 'APROVADA') {
       navigate('/solicitacoes', { replace: true });
       return;
     }
 
+    solicitacaoAppliedRef.current = true;
     setFormData((prev) => ({
       ...prev,
       tag: solicitacaoOrigem.tag || prev.tag,

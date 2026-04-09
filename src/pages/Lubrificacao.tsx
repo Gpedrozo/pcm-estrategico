@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Plus, Droplet } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -28,8 +28,11 @@ export default function Lubrificacao() {
 
   const dataProgramadaFromCalendar = (location.state as any)?.dataProgramada as string | undefined;
 
+  const calendarFormAppliedRef = useRef(false);
   useEffect(() => {
+    if (calendarFormAppliedRef.current) return;
     if (dataProgramadaFromCalendar) {
+      calendarFormAppliedRef.current = true;
       setEditingPlano(null);
       setFormOpen(true);
     }

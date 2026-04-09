@@ -111,8 +111,11 @@ export default function Inspecoes() {
   const updateMutation = useUpdateInspecao();
   const createOSMutation = useCreateOrdemServico();
 
+  const calendarModalAppliedRef = useRef(false);
   useEffect(() => {
+    if (calendarModalAppliedRef.current) return;
     if ((location.state as any)?.dataProgramada) {
+      calendarModalAppliedRef.current = true;
       setIsModalOpen(true);
     }
   }, [location.state]);

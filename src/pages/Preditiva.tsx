@@ -230,8 +230,11 @@ export default function Preditiva() {
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
   const { data: historicoAlteracoes, isLoading: loadingHistorico } = useHistoricoAlteracoesMedicao(historyMedicaoId);
 
+  const calendarModalAppliedRef = useRef(false);
   useEffect(() => {
+    if (calendarModalAppliedRef.current) return;
     if ((location.state as any)?.dataProgramada) {
+      calendarModalAppliedRef.current = true;
       setIsModalOpen(true);
     }
   }, [location.state]);
