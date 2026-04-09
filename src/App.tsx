@@ -8,6 +8,7 @@ import { usePermission } from "@/hooks/usePermission";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { ExperienceRouter } from "@/components/layout/ExperienceRouter";
 import { MecanicoLayout } from "@/components/layout/MecanicoLayout";
+import { PortalMecanicoLayout } from "@/components/layout/PortalMecanicoLayout";
 import { EnvironmentGuard } from "@/components/guards/EnvironmentGuard";
 import { MasterTIGuard } from "@/components/guards/MasterTIGuard";
 import { TenantDomainMiddleware } from '@/components/guards/TenantDomainMiddleware';
@@ -79,6 +80,15 @@ const MecanicoHistorico = lazyWithRetry(() => import('./pages/mecanico/MecanicoH
 const MecanicoFinalizar = lazyWithRetry(() => import('./pages/mecanico/MecanicoFinalizar'))
 const MecanicoEquipamento = lazyWithRetry(() => import('./pages/mecanico/MecanicoEquipamento'))
 const MecanicoPreventivas = lazyWithRetry(() => import('./pages/mecanico/MecanicoPreventivas'))
+
+// Portal do Mecânico — módulo isolado (sem sidebar, sem device binding)
+const PortalMecanicoDashboard = lazyWithRetry(() => import('./pages/portal-mecanico/PortalMecanicoDashboard'))
+const PortalMecanicoExecucao = lazyWithRetry(() => import('./pages/portal-mecanico/PortalMecanicoExecucao'))
+const PortalMecanicoFinalizar = lazyWithRetry(() => import('./pages/portal-mecanico/PortalMecanicoFinalizar'))
+const PortalMecanicoSolicitacao = lazyWithRetry(() => import('./pages/portal-mecanico/PortalMecanicoSolicitacao'))
+const PortalMecanicoEquipamentos = lazyWithRetry(() => import('./pages/portal-mecanico/PortalMecanicoEquipamentos'))
+const PortalMecanicoPreventivas = lazyWithRetry(() => import('./pages/portal-mecanico/PortalMecanicoPreventivas'))
+const PortalMecanicoHistorico = lazyWithRetry(() => import('./pages/portal-mecanico/PortalMecanicoHistorico'))
 
 // Manual de Operação v2 (22 chapters)
 const ManualLayout = lazyWithRetry(() => import('./components/manual/ManualLayout'))
@@ -345,6 +355,17 @@ function TenantRoutes() {
                 <Route path="/mecanico/finalizar/:id" element={<MecanicoFinalizar />} />
                 <Route path="/mecanico/equipamento" element={<MecanicoEquipamento />} />
                 <Route path="/mecanico/preventivas" element={<MecanicoPreventivas />} />
+              </Route>
+
+              {/* Portal do Mecânico — módulo 100% isolado, sem sidebar, login por código+senha */}
+              <Route element={<PortalMecanicoLayout />}>
+                <Route path="/portal-mecanico" element={<PortalMecanicoDashboard />} />
+                <Route path="/portal-mecanico/os/:id" element={<PortalMecanicoExecucao />} />
+                <Route path="/portal-mecanico/finalizar/:id" element={<PortalMecanicoFinalizar />} />
+                <Route path="/portal-mecanico/solicitar" element={<PortalMecanicoSolicitacao />} />
+                <Route path="/portal-mecanico/equipamentos" element={<PortalMecanicoEquipamentos />} />
+                <Route path="/portal-mecanico/preventivas" element={<PortalMecanicoPreventivas />} />
+                <Route path="/portal-mecanico/historico" element={<PortalMecanicoHistorico />} />
               </Route>
 
               <Route element={<ExperienceRouter />}>
