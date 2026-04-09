@@ -21,7 +21,7 @@ import { useMateriaisAtivos, useAddMaterialOS, type MaterialRow } from '@/hooks/
 import { useCreateExecucaoOS, useCloseOSAtomic } from '@/hooks/useExecucoesOS';
 import { useLogAuditoria } from '@/hooks/useAuditoria';
 import { useTenantAdminConfig } from '@/hooks/useTenantAdminConfig';
-import { useFormDraft } from '@/hooks/useFormDraft';
+import { useFormDraft, readDraft } from '@/hooks/useFormDraft';
 import { useAuth } from '@/contexts/AuthContext';
 import { logger } from '@/lib/logger';
 import { updateWithColumnFallback } from '@/lib/supabaseCompat';
@@ -76,9 +76,17 @@ export default function FecharOS() {
   const closeOSAtomicMutation = useCloseOSAtomic();
   const addMaterialOSMutation = useAddMaterialOS();
   
-  const [selectedOS, setSelectedOS] = useState<OrdemServicoRow | null>(null);
-  const [activeTab, setActiveTab] = useState('execucao');
-  const [formData, setFormData] = useState({
+  // ── Synchronous draft restoration (zero-flash) ──
+  const _draft = readDraft<{
+    formData: typeof _defaultFormData;
+    selectedOSId: string | null;
+    materiaisUsados: { materialId: string; quantidade: number }[];
+    pausasExecucao: PausaExecucao[];
+    teveIntervalos: boolean;
+    activeTab: string;
+  }>('draft:fechar-os');
+
+  const _defaultFormData = {
     mecanicoId: '',
     dataInicio: new Date().toISOString().slice(0, 10),
     horaInicio: '',
@@ -86,7 +94,11 @@ export default function FecharOS() {
     horaFim: '',
     servicoExecutado: '',
     custoTerceiros: '',
-  });
+  };
+
+  const [selectedOS, setSelectedOS] = useState<OrdemServicoRow | null>(null);
+  const [activeTab, setActiveTab] = useState(_draft?.activeTab || 'execucao');
+  const [formData, setFormData] = useState(_draft?.formData || _defaultFormData);
   const [materiaisUsados, setMateriaisUsados] = useState<MaterialUsado[]>([]);
   const [materialSelecionado, setMaterialSelecionado] = useState('');
   const [quantidadeMaterial, setQuantidadeMaterial] = useState('');
@@ -95,8 +107,8 @@ export default function FecharOS() {
   const [pausaFim, setPausaFim] = useState('');
   const [pausaDataFim, setPausaDataFim] = useState(new Date().toISOString().slice(0, 10));
   const [pausaMotivo, setPausaMotivo] = useState('Intervalo');
-  const [pausasExecucao, setPausasExecucao] = useState<PausaExecucao[]>([]);
-  const [teveIntervalos, setTeveIntervalos] = useState(false);
+  const [pausasExecucao, setPausasExecucao] = useState<PausaExecucao[]>(_draft?.pausasExecucao || []);
+  const [teveIntervalos, setTeveIntervalos] = useState(_draft?.teveIntervalos || false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [searchOS, setSearchOS] = useState('');
   const servicoMinLength = 20;
@@ -134,39 +146,28 @@ export default function FecharOS() {
       teveIntervalos,
       activeTab,
     },
-    (saved) => {
-      if (saved.formData) setFormData(saved.formData);
-      if (saved.teveIntervalos !== undefined) setTeveIntervalos(saved.teveIntervalos);
-      if (saved.pausasExecucao?.length) setPausasExecucao(saved.pausasExecucao);
-      if (saved.activeTab) setActiveTab(saved.activeTab);
-      // selectedOS and materiais are restored below once query data is available
-    },
   );
 
-  // Restore selectedOS from draft once pendingOS is loaded
+  // Restore selectedOS + materiais from draft once query data is loaded
   const draftRestoredRef = useRef(false);
   useEffect(() => {
-    if (draftRestoredRef.current || !pendingOS || pendingOS.length === 0) return;
+    if (draftRestoredRef.current || !_draft) return;
+    if (!pendingOS || pendingOS.length === 0) return;
+
     draftRestoredRef.current = true;
-    try {
-      const raw = sessionStorage.getItem('draft:fechar-os');
-      if (!raw) return;
-      const saved = JSON.parse(raw);
-      if (saved.selectedOSId && !selectedOS) {
-        const os = pendingOS.find((item) => item.id === saved.selectedOSId);
-        if (os) setSelectedOS(os);
+
+    if (_draft.selectedOSId && !selectedOS) {
+      const os = pendingOS.find((item) => item.id === _draft.selectedOSId);
+      if (os) setSelectedOS(os);
+    }
+
+    if (_draft.materiaisUsados?.length && materiaisDisponiveis?.length) {
+      const restored: MaterialUsado[] = [];
+      for (const item of _draft.materiaisUsados) {
+        const mat = materiaisDisponiveis.find((m) => m.id === item.materialId);
+        if (mat) restored.push({ material: mat, quantidade: item.quantidade });
       }
-      // Restore materiais once materiaisDisponiveis are available
-      if (saved.materiaisUsados?.length && materiaisDisponiveis?.length) {
-        const restored: MaterialUsado[] = [];
-        for (const item of saved.materiaisUsados) {
-          const mat = materiaisDisponiveis.find((m) => m.id === item.materialId);
-          if (mat) restored.push({ material: mat, quantidade: item.quantidade });
-        }
-        if (restored.length) setMateriaisUsados(restored);
-      }
-    } catch {
-      // ignore
+      if (restored.length) setMateriaisUsados(restored);
     }
   }, [pendingOS, materiaisDisponiveis]);
 

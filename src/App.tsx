@@ -1,4 +1,4 @@
-import { Suspense, useEffect, useRef } from 'react'
+import { Suspense, useEffect, useRef, useState } from 'react'
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -114,7 +114,8 @@ const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
       retry: 1,
-      staleTime: 60_000,
+      staleTime: 5 * 60_000,       // 5 min → dados em cache servem sem refetch
+      gcTime: 30 * 60_000,          // 30 min → cache preservado após unmount de rota lazy
       refetchOnWindowFocus: false,
       refetchOnReconnect: false,
     },
@@ -199,6 +200,12 @@ const OwnerOnlyRoute = ({ children }: { children: React.ReactNode }) => {
 };
 
 function RouteLoading() {
+  const [show, setShow] = useState(false);
+  useEffect(() => {
+    const t = setTimeout(() => setShow(true), 150);
+    return () => clearTimeout(t);
+  }, []);
+  if (!show) return null;
   return (
     <div className="min-h-screen flex items-center justify-center bg-background">
       <Loader2 className="h-8 w-8 animate-spin text-primary" />

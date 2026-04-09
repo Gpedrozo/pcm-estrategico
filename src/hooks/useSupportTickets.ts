@@ -180,8 +180,7 @@ export function useSupportTickets() {
       return (data ?? []).map((ticket) => rowToTicket(ticket as Record<string, unknown>, hasThreadCols))
     },
     enabled: Boolean(tenantId && user?.id),
-    staleTime: 10_000,
-    refetchInterval: 10_000,
+    refetchInterval: 30_000,
   })
 }
 
