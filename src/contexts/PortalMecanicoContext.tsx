@@ -2,7 +2,7 @@ import { createContext, useContext, useState, useCallback, useEffect, useRef } f
 import { useMecanicoValidarCredenciais, useMecanicoLogin, useMecanicoLogout } from '@/hooks/useMecanicoSessionTracking';
 import { useMecanicosAtivos } from '@/hooks/useMecanicos';
 import { useToast } from '@/hooks/use-toast';
-import { useAuth } from '@/contexts/AuthContext';
+import { useTenant } from '@/contexts/TenantContext';
 
 interface MecanicoLogado {
   id: string;
@@ -29,7 +29,8 @@ export function usePortalMecanico() {
 
 export function PortalMecanicoProvider({ children }: { children: React.ReactNode }) {
   const { toast } = useToast();
-  const { tenantId } = useAuth();
+  const { tenant } = useTenant();
+  const tenantId = tenant?.id ?? null;
   const { data: mecanicos } = useMecanicosAtivos();
   const validarCredenciais = useMecanicoValidarCredenciais();
   const registrarLogin = useMecanicoLogin();
