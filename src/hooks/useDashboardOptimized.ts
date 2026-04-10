@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '@/contexts/AuthContext';
-import { supabase } from '@/lib/supabase';
+import { supabase } from '@/integrations/supabase/client';
 import { useState, useCallback } from 'react';
 
 // Dashboard aggregation hook — replaces 4 separate queries
