@@ -99,14 +99,6 @@ export function PortalMecanicoProvider({ children }: { children: React.ReactNode
       })()
     : null;
 
-  const getWebDeviceId = (): string => {
-    try {
-      let id = sessionStorage.getItem('portal_mecanico_device_id');
-      if (!id) { id = crypto.randomUUID(); sessionStorage.setItem('portal_mecanico_device_id', id); }
-      return id;
-    } catch { return crypto.randomUUID(); }
-  };
-
   const login = useCallback((codigo: string, senha: string) => {
     const code = codigo.trim().toUpperCase();
     if (!code || !senha.trim()) {
@@ -136,12 +128,11 @@ export function PortalMecanicoProvider({ children }: { children: React.ReactNode
         return;
       }
 
-      const deviceId = getWebDeviceId();
+      // Portal web: não envia dispositivo_id (não tem dispositivo vinculado)
 
       validarCredenciais.mutate(
         {
           empresa_id: empresaId,
-          dispositivo_id: deviceId,
           codigo_acesso: code,
           senha_acesso: senha,
         },
@@ -165,9 +156,7 @@ export function PortalMecanicoProvider({ children }: { children: React.ReactNode
             registrarLogin.mutate(
               {
                 empresa_id: empresaId,
-                dispositivo_id: deviceId,
                 mecanico_id: id,
-                device_token: deviceId,
                 codigo_acesso: code,
               },
               {

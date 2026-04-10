@@ -31,9 +31,9 @@ export function useMecanicoLogin() {
   return useMutation({
     mutationFn: async (input: {
       empresa_id: string;
-      dispositivo_id: string;
+      dispositivo_id?: string | null;
       mecanico_id: string;
-      device_token: string;
+      device_token?: string | null;
       codigo_acesso: string;
     }) => {
       // Get IP and User Agent
@@ -43,9 +43,9 @@ export function useMecanicoLogin() {
 
       const { data, error } = await supabase.rpc('registrar_login_mecanico', {
         p_empresa_id: input.empresa_id,
-        p_dispositivo_id: input.dispositivo_id,
+        p_dispositivo_id: input.dispositivo_id || null,
         p_mecanico_id: input.mecanico_id,
-        p_device_token: input.device_token,
+        p_device_token: input.device_token || null,
         p_codigo_acesso: input.codigo_acesso,
         p_ip_address: ip_address,
         p_user_agent: user_agent,
@@ -102,7 +102,7 @@ export function useMecanicoValidarCredenciais() {
   return useMutation({
     mutationFn: async (input: {
       empresa_id: string;
-      dispositivo_id: string;
+      dispositivo_id?: string | null;
       codigo_acesso: string;
       senha_acesso: string;
     }) => {
@@ -113,7 +113,7 @@ export function useMecanicoValidarCredenciais() {
 
       const { data, error } = await supabase.rpc('validar_credenciais_mecanico_servidor', {
         p_empresa_id: input.empresa_id,
-        p_dispositivo_id: input.dispositivo_id,
+        p_dispositivo_id: input.dispositivo_id || null,
         p_codigo_acesso: input.codigo_acesso,
         p_senha_acesso: input.senha_acesso,
         p_ip_address: ip_address,
