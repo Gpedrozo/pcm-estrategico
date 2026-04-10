@@ -70,7 +70,7 @@ export default function OwnerUsuariosTab({
 
   // ── Helpers ──
   const isDeviceUser = (u: Record<string, unknown>) =>
-    String(u.nome ?? '').startsWith('device-') || String(u.email ?? '').endsWith('@dispositivo.local')
+    String(u.nome ?? '').toLowerCase().startsWith('dispositivo ') || String(u.email ?? '').toLowerCase().endsWith('@mecanico.pcm.local')
 
   // ── Filtros e resumo ──
   const usersFiltered = useMemo(() => {

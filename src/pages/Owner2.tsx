@@ -205,7 +205,7 @@ export default function Owner() {
   const companiesQuery = useOwner2Companies(activeTab !== 'owner-master')
   const usersQuery = useOwner2Users(
     companyId || undefined,
-    activeTab === 'usuarios' || activeTab === 'configuracoes' || activeTab === 'dashboard',
+    activeTab === 'usuarios' || activeTab === 'configuracoes' || activeTab === 'dashboard' || activeTab === 'sistema',
     isOwnerMaster,
   )
   const plansQuery = useOwner2Plans(activeTab === 'comercial' || activeTab === 'dashboard' || activeTab === 'cadastro')
@@ -286,12 +286,16 @@ export default function Owner() {
 
   const companies = useMemo(() => safeArray<Record<string, unknown>>((companiesQuery.data as any)?.companies), [companiesQuery.data])
   const users = useMemo(() => safeArray<Record<string, unknown>>((usersQuery.data as any)?.users), [usersQuery.data])
-  const activeHumanUsers = useMemo(() => users.filter((u) => {
+  const isDeviceUser = (u: Record<string, unknown>) => {
     const nome = String(u.nome ?? '').toLowerCase()
     const email = String(u.email ?? '').toLowerCase()
-    const isDevice = nome.startsWith('device-') || email.endsWith('@dispositivo.local')
-    return !isDevice && String(u.status ?? '').toLowerCase() === 'ativo'
-  }), [users])
+    return nome.startsWith('dispositivo ') || email.endsWith('@mecanico.pcm.local')
+  }
+  const deviceUsers = useMemo(() => users.filter(isDeviceUser), [users])
+  const humanUsers = useMemo(() => users.filter((u) => !isDeviceUser(u)), [users])
+  const activeHumanUsers = useMemo(() => humanUsers.filter((u) => {
+    return String(u.status ?? '').toLowerCase() === 'ativo'
+  }), [humanUsers])
   const plans = useMemo(() => safeArray<Record<string, unknown>>((plansQuery.data as any)?.plans), [plansQuery.data])
   const subscriptions = useMemo(() => safeArray<Record<string, unknown>>((subscriptionsQuery.data as any)?.subscriptions), [subscriptionsQuery.data])
   const contracts = useMemo(() => safeArray<Record<string, unknown>>((contractsQuery.data as any)?.contracts), [contractsQuery.data])
@@ -2320,7 +2324,7 @@ export default function Owner() {
                 <div className="grid gap-2">
                   <select className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" value={systemUserId} onChange={(e) => setSystemUserId(e.target.value)}>
                     <option value="">Usuário para promoção/timeout</option>
-                    {users.map((u) => (
+                    {humanUsers.map((u) => (
                       <option key={String(u.id)} value={String(u.id)}>{String(u.nome ?? u.email ?? u.id)}</option>
                     ))}
                   </select>
@@ -2328,7 +2332,14 @@ export default function Owner() {
                   <button
                     className="rounded-lg border border-slate-300 px-3 py-2 text-sm"
                     disabled={busy || !systemUserId}
-                    onClick={() => runAction('create_system_admin', { user_id: systemUserId }, 'Permissão SYSTEM_ADMIN concedida.')}
+                    onClick={() => openCriticalAction({
+                      title: 'Conceder SYSTEM_ADMIN',
+                      description: `Promover o usuário selecionado a SYSTEM_ADMIN. Esta é uma operação de alta criticidade.`,
+                      confirmText: 'SYSTEM_ADMIN',
+                      action: 'create_system_admin',
+                      payload: { user_id: systemUserId },
+                      successMessage: 'Permissão SYSTEM_ADMIN concedida.',
+                    })}
                   >
                     Conceder SYSTEM_ADMIN
                   </button>
@@ -2358,15 +2369,34 @@ export default function Owner() {
                   >
                     Executar purge da tabela
                   </button>
+
+                  <div className="mt-3 border-t border-slate-200 pt-3">
+                    <p className="mb-2 text-xs font-semibold text-slate-600">Dispositivos (conexões QR Code)</p>
+                    <p className="mb-2 text-xs text-slate-500">{deviceUsers.length} dispositivo(s) registrado(s) no banco.</p>
+                    <button
+                      className="rounded-lg border border-rose-300 bg-rose-50 px-3 py-2 text-sm text-rose-700"
+                      disabled={busy || deviceUsers.length === 0}
+                      onClick={() => openCriticalAction({
+                        title: 'Purge de dispositivos',
+                        description: `Remover ${deviceUsers.length} registro(s) de dispositivo (QR Code) do banco de dados. Isso apaga os usuários fake criados por conexões de app mecânico. Dispositivos poderão reconectar via novo QR code.`,
+                        confirmText: 'PURGE_DEVICES',
+                        action: 'purge_device_users',
+                        payload: { empresa_id: companyId || undefined },
+                        successMessage: `${deviceUsers.length} dispositivo(s) removido(s) com sucesso.`,
+                      })}
+                    >
+                      Purgar dispositivos expirados ({deviceUsers.length})
+                    </button>
+                  </div>
                 </div>
               </SurfaceCard>
 
               <SurfaceCard title="Resumo operacional do sistema" subtitle="Visão rápida de segurança e manutenção">
                 <div className="grid gap-2 sm:grid-cols-2">
                   <MetricTile label="Tabelas detectadas" value={tables.length} icon={Database} tone="sky" />
-                  <MetricTile label="Usuários globais" value={users.length} icon={Users} tone="emerald" />
+                  <MetricTile label="Usuários reais" value={humanUsers.length} icon={Users} tone="emerald" />
+                  <MetricTile label="Dispositivos QR" value={deviceUsers.length} icon={Settings2} tone="rose" />
                   <MetricTile label="Empresa em escopo" value={companyId ? 'Selecionada' : 'Global'} icon={Building2} tone="amber" />
-                  <MetricTile label="Módulo" value="Sistema" icon={Settings2} tone="rose" />
                 </div>
 
                 <div className="mt-3 rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs text-slate-700">

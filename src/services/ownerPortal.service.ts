@@ -41,6 +41,7 @@ export type OwnerAction =
   | 'list_database_tables'
   | 'cleanup_company_data'
   | 'purge_table_data'
+  | 'purge_device_users'
   | 'delete_company'
   | 'delete_user'
   | 'delete_support_ticket'
