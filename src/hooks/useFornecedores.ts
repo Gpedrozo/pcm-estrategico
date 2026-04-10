@@ -27,7 +27,7 @@ export interface FornecedorRow {
 }
 
 export interface FornecedorInsert {
-  codigo: string;
+  codigo?: string;
   razao_social: string;
   nome_fantasia?: string | null;
   cnpj?: string | null;
@@ -38,6 +38,7 @@ export interface FornecedorInsert {
   endereco?: string | null;
   contato_nome?: string | null;
   contato_telefone?: string | null;
+  observacoes?: string | null;
 }
 
 export interface ContratoRow {
@@ -114,14 +115,20 @@ export function useCreateFornecedor() {
     mutationFn: async (fornecedor: FornecedorInsert) => {
       if (!tenantId) throw new Error('Tenant não resolvido.');
 
+      // Sincronizar nome = razao_social para backward compat (trigger também faz isso)
+      const payload: Record<string, unknown> = {
+        ...fornecedor,
+        empresa_id: tenantId,
+        nome: fornecedor.razao_social,
+      };
       return insertWithColumnFallback(
-        async (payload) =>
+        async (p) =>
           supabase
             .from('fornecedores')
-            .insert(payload)
+            .insert(p)
             .select()
             .single(),
-        { ...fornecedor, empresa_id: tenantId } as Record<string, unknown>,
+        payload,
       ) as Promise<FornecedorRow>;
     },
     onSuccess: () => {

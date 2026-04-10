@@ -8,7 +8,7 @@ export const contratosService = {
       .from('contratos')
       .select(`
         *,
-        fornecedor:fornecedores(razao_social, nome_fantasia)
+        fornecedor:fornecedores(nome, razao_social, nome_fantasia)
       `)
       .eq('empresa_id', empresaId)
       .order('created_at', { ascending: false });
@@ -22,7 +22,7 @@ export const contratosService = {
       .from('contratos')
       .select(`
         *,
-        fornecedor:fornecedores(razao_social, nome_fantasia)
+        fornecedor:fornecedores(nome, razao_social, nome_fantasia)
       `)
       .eq('empresa_id', empresaId)
       .eq('status', 'ATIVO')

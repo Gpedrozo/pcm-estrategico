@@ -274,7 +274,7 @@ export default function Contratos() {
               <tr key={contrato.id}>
                 <td>{contrato.numero_contrato}</td>
                 <td>{contrato.titulo}</td>
-                <td>{contrato.fornecedor?.razao_social || '-'}</td>
+                <td>{contrato.fornecedor?.razao_social || contrato.fornecedor?.nome || '-'}</td>
                 <td>{contrato.tipo}</td>
                 <td>
                   {contrato.valor_total?.toLocaleString('pt-BR', {
@@ -384,7 +384,7 @@ export default function Contratos() {
                   <SelectContent>
                     {fornecedores?.map((f) => (
                       <SelectItem key={f.id} value={f.id}>
-                        {f.razao_social}
+                        {f.razao_social || f.nome_fantasia || (f as any).nome || f.id}
                       </SelectItem>
                     ))}
                   </SelectContent>
