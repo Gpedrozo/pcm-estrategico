@@ -48,7 +48,8 @@ function statelessSigningSecret() {
   const configured = (Deno.env.get("SESSION_TRANSFER_SIGNING_SECRET") ?? "").trim();
   if (configured) return configured;
   const fallback = (Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "").trim();
-  return fallback || "session-transfer-fallback-secret";
+  if (!fallback) throw new Error("No signing secret configured — set SESSION_TRANSFER_SIGNING_SECRET or SUPABASE_SERVICE_ROLE_KEY");
+  return fallback;
 }
 
 async function signHmacSha256(input: string) {

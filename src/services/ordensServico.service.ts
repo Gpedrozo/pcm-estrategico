@@ -44,10 +44,10 @@ export const ordensServicoService = {
   async criar(payload: OrdemServicoFormData, empresaId: string) {
     const validated = ordemServicoSchema.parse(payload);
     const insertPayload = compactObject({
-      empresa_id: empresaId,
       ...validated,
       prioridade: validated.prioridade ?? 'MEDIA',
       status: 'ABERTA',
+      empresa_id: empresaId, // MUST be last to prevent spread override
     });
 
     const data = await insertWithColumnFallback(

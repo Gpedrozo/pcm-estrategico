@@ -28,7 +28,8 @@ loadDotEnvFile()
 
 const OWNER_BASE_URL = process.env.OWNER_BASE_URL || 'https://owner.gppis.com.br'
 const OWNER_EMAIL = process.env.OWNER_EMAIL || 'pedrozo@gppis.com.br'
-const OWNER_PASSWORD = process.env.OWNER_PASSWORD || '@Gpp280693'
+const OWNER_PASSWORD = process.env.OWNER_PASSWORD
+if (!OWNER_PASSWORD) throw new Error('OWNER_PASSWORD env var required')
 const OWNER_E2E_RUNS = Number(process.env.OWNER_E2E_RUNS || 5)
 const HEADLESS = String(process.env.OWNER_E2E_HEADLESS || 'true').toLowerCase() !== 'false'
 const AUTO_RELOGIN_ON_CRASH = String(process.env.OWNER_E2E_AUTO_RELOGIN || 'true').toLowerCase() !== 'false'

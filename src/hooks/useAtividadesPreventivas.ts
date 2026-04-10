@@ -70,7 +70,7 @@ export function useCreateAtividade() {
             .insert(payload)
             .select()
             .single(),
-        { empresa_id: tenantId, ...input } as Record<string, unknown>,
+        { ...input, empresa_id: tenantId } as Record<string, unknown>,
       );
     },
     onSuccess: (d) => {
@@ -142,7 +142,7 @@ export function useCreateServico() {
             .insert(payload)
             .select()
             .single(),
-        { empresa_id: tenantId, ...rest } as Record<string, unknown>,
+        { ...rest, empresa_id: tenantId } as Record<string, unknown>,
       );
       // Recalc atividade tempo
       await recalcAtividadeTempo(input.atividade_id);

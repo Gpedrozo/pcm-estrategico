@@ -103,10 +103,12 @@ const useMedicoesPreditivas = (tenantId: string | null, allowedTags: string[], a
       }
 
       // Fallback para esquemas antigos sem empresa_id: filtra em memória pelos ativos do tenant.
+      console.warn('[Preditiva] Coluna empresa_id ausente — fallback de compatibilidade ativado');
       const allRows = await supabase
         .from('medicoes_preditivas')
         .select('*')
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: false })
+        .limit(500); // Security: cap fallback to prevent massive cross-tenant data leak
 
       if (allRows.error) throw allRows.error;
 
@@ -353,7 +355,6 @@ export default function Preditiva() {
     }
 
     const createdMedicao = await createMutation.mutateAsync({
-      empresa_id: tenantId,
       ...formData,
       status,
       unidade: formData.unidade || undefined,
@@ -361,6 +362,7 @@ export default function Preditiva() {
       limite_critico: limiteCritico,
       responsavel_nome: user?.nome,
       equipamento_id: equipamento?.id ?? null,
+      empresa_id: tenantId, // MUST be last to prevent spread override
     });
 
     try {

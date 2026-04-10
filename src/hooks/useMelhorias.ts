@@ -112,9 +112,9 @@ export function useCreateMelhoria() {
             .select()
             .single(),
         {
-          empresa_id: tenantId,
           ...melhoria,
           roi_meses,
+          empresa_id: tenantId, // MUST be last to prevent spread override
         } as Record<string, unknown>,
       ) as Promise<MelhoriaRow>;
     },

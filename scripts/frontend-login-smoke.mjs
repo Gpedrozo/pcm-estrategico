@@ -10,7 +10,7 @@ const client = createClient(URL, PUB, {
 async function testOwnerLogin() {
   const login = await client.auth.signInWithPassword({
     email: 'pedrozo@gppis.com.br',
-    password: '@Gpp280693',
+    password: process.env.OWNER_PASSWORD,
   })
 
   if (login.error || !login.data.session?.access_token || !login.data.user?.id) {

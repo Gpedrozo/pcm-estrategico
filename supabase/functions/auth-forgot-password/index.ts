@@ -38,7 +38,22 @@ Deno.serve(async (req) => {
 
     const rawRedirect = String(body?.redirect_to ?? "").trim();
     const fallbackRedirect = `${new URL(req.url).origin}/reset-password`;
-    const redirectTo = rawRedirect || fallbackRedirect;
+
+    // Security: validate redirect_to against allowlist to prevent open redirect
+    function isAllowedRedirect(url: string): boolean {
+      try {
+        const parsed = new URL(url);
+        const host = parsed.hostname.toLowerCase();
+        if (host === "gppis.com.br" || host === "www.gppis.com.br") return true;
+        return host.endsWith(".gppis.com.br") && !host.includes("..");
+      } catch {
+        return false;
+      }
+    }
+
+    const redirectTo = (rawRedirect && isAllowedRedirect(rawRedirect))
+      ? rawRedirect
+      : fallbackRedirect;
 
     const response = await fetch(`${env("SUPABASE_URL")}/auth/v1/recover`, {
       method: "POST",

@@ -4,7 +4,8 @@ import { chromium } from 'playwright'
 const URL = process.env.SUPABASE_URL || 'https://dvwsferonoczgmvfubgu.supabase.co'
 const PUB = process.env.SUPABASE_PUBLISHABLE_KEY || 'sb_publishable_d0dYFE0Pp0GaM43BpDGvtw_7F9cCOXU'
 const OWNER_EMAIL = process.env.OWNER_EMAIL || 'pedrozo@gppis.com.br'
-const OWNER_PASSWORD = process.env.OWNER_PASSWORD || '@Gpp280693'
+const OWNER_PASSWORD = process.env.OWNER_PASSWORD
+if (!OWNER_PASSWORD) throw new Error('OWNER_PASSWORD env var required')
 
 const client = createClient(URL, PUB, {
   auth: { persistSession: false, autoRefreshToken: false },

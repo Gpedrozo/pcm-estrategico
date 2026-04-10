@@ -34,7 +34,8 @@ if (!SUPABASE_URL || !SERVICE_ROLE_KEY || !PUBLISHABLE_KEY) {
 }
 
 const OWNER_EMAIL = 'pedrozo@gppis.com.br'
-const OWNER_PASSWORD = '@Gpp280693'
+const OWNER_PASSWORD = process.env.OWNER_PASSWORD
+if (!OWNER_PASSWORD) throw new Error('OWNER_PASSWORD env var required')
 
 const admin = createClient(SUPABASE_URL, SERVICE_ROLE_KEY, {
   auth: { persistSession: false, autoRefreshToken: false },

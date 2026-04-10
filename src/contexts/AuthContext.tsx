@@ -558,8 +558,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     collect(metadata?.app_metadata?.role);
     collect(metadata?.app_metadata?.roles);
-    collect(metadata?.user_metadata?.role);
-    collect(metadata?.user_metadata?.roles);
+    // Security fix: user_metadata is user-writable (supabase.auth.updateUser),
+    // so it MUST NOT be trusted as a role source on the frontend.
+    // Note: can_access_empresa() in the DB still reads user_metadata for device-auth JWTs — that's OK.
 
     return Array.from(new Set(
       rawRoles
@@ -572,7 +573,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     app_metadata?: Record<string, unknown>;
     user_metadata?: Record<string, unknown>;
   }) => {
-    const candidate = metadata?.app_metadata?.empresa_id ?? metadata?.user_metadata?.empresa_id;
+    // Security fix: only trust app_metadata (server-set). user_metadata is user-writable.
+    const candidate = metadata?.app_metadata?.empresa_id;
     if (typeof candidate !== 'string') return null;
     const normalized = candidate.trim();
     return normalized || null;
@@ -582,7 +584,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     app_metadata?: Record<string, unknown>;
     user_metadata?: Record<string, unknown>;
   }) => {
-    const candidate = metadata?.app_metadata?.empresa_slug ?? metadata?.user_metadata?.empresa_slug;
+    // Security fix: only trust app_metadata (server-set). user_metadata is user-writable.
+    const candidate = metadata?.app_metadata?.empresa_slug;
     if (typeof candidate !== 'string') return null;
     const normalized = candidate.trim().toLowerCase();
     return normalized || null;
@@ -592,11 +595,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     app_metadata?: Record<string, unknown>;
     user_metadata?: Record<string, unknown>;
   }) => {
+    // Security fix: only trust app_metadata (server-set). user_metadata is user-writable.
     const candidate =
       metadata?.app_metadata?.force_password_change
-      ?? metadata?.user_metadata?.force_password_change
-      ?? metadata?.app_metadata?.must_change_password
-      ?? metadata?.user_metadata?.must_change_password;
+      ?? metadata?.app_metadata?.must_change_password;
 
     return Boolean(candidate);
   }, []);
@@ -848,14 +850,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (recoveredGlobalRole) return profileData;
     }
 
-    const ownerBackendAllowed = await verifyOwnerBackendAccess(token);
-    if (ownerBackendAllowed) {
-      logger.warn('owner_role_fallback_applied', {
-        userId,
-        email,
-      });
-      return elevateToSystemOwner(profileData);
-    }
+    // Security fix (VULN-AUTH-04): removed backend fallback elevation.
+    // If owner doesn't have SYSTEM_OWNER role in user_roles, fix the DB — don't self-elevate.
+    // The old code called verifyOwnerBackendAccess() and auto-granted SYSTEM_OWNER to anyone
+    // whose token passed health_check, which is a privilege escalation vector.
 
     return profileData;
   }, [elevateToSystemOwner, extractEmpresaSlugFromMetadata, fetchUserProfile, resolveDomainEmpresaId, verifyOwnerBackendAccess]);

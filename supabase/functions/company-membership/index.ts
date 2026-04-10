@@ -84,6 +84,14 @@ Deno.serve(async (req) => {
   if (body.action === "upsert_member") {
     if (!body.user_id || !body.role) return fail("user_id and role are required", 400, null, req);
 
+    // Security: whitelist assignable roles to prevent privilege escalation
+    const TENANT_ASSIGNABLE_ROLES = ["ADMIN", "USUARIO", "TECHNICIAN", "SOLICITANTE", "VIEWER", "PLANNER", "MANAGER"];
+    const normalizedRole = String(body.role).toUpperCase().trim();
+    if (!TENANT_ASSIGNABLE_ROLES.includes(normalizedRole)) {
+      return fail(`Role "${body.role}" is not allowed for tenant assignment`, 400, null, req);
+    }
+    body.role = normalizedRole;
+
     const { error: limitError } = await admin.rpc("check_company_plan_limit", {
       p_empresa_id: body.empresa_id,
       p_limit_type: "users",

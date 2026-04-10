@@ -110,9 +110,9 @@ export function useCreatePlanoPreventivo() {
             .select()
             .single(),
         {
-          empresa_id: tenantId,
           ...plano,
           proxima_execucao: proximaExecucao.toISOString(),
+          empresa_id: tenantId, // MUST be last to prevent spread override
         } as Record<string, unknown>,
       );
 

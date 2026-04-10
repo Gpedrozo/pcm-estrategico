@@ -105,9 +105,9 @@ export function useCreateInspecao() {
             .select()
             .single(),
         {
-          empresa_id: tenantId,
           ...inspecao,
           status: 'EM_ANDAMENTO',
+          empresa_id: tenantId, // MUST be last to prevent spread override
         } as Record<string, unknown>,
       );
 

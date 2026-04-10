@@ -88,7 +88,7 @@ export function useCreatePlanoLubrificacao() {
       if (!tenantId) throw new Error('Tenant não resolvido.');
 
       const planoId = (plano as Partial<PlanoLubrificacao>).id ?? crypto.randomUUID();
-      const payload = { id: planoId, empresa_id: tenantId, ...plano };
+      const payload = { ...plano, id: planoId, empresa_id: tenantId };
 
       const { error } = await supabase
         .from('planos_lubrificacao')
@@ -222,14 +222,17 @@ export function useDeletePlanoLubrificacao() {
 }
 
 export function useExecucoesByPlanoLubrificacao(planoId: string | null) {
+  const { tenantId } = useAuth();
   return useQuery({
-    queryKey: ['execucoes-lubrificacao', planoId],
+    queryKey: ['execucoes-lubrificacao', planoId, tenantId],
     enabled: !!planoId,
     queryFn: async () => {
-      const { data, error } = await supabase
+      let query = supabase
         .from('execucoes_lubrificacao')
         .select('*')
-        .eq('plano_id', planoId!)
+        .eq('plano_id', planoId!);
+      if (tenantId) query = query.eq('empresa_id', tenantId);
+      const { data, error } = await query
         .order('data_execucao', { ascending: false })
         .limit(50);
 
@@ -279,11 +282,13 @@ export function useGenerateExecucoesNow() {
 
   return useMutation({
     mutationFn: async () => {
+      if (!tenantId) throw new Error('Tenant não resolvido.');
       const now = new Date().toISOString();
 
       const { data: planos, error: e1 } = await supabase
         .from('planos_lubrificacao')
         .select('*')
+        .eq('empresa_id', tenantId)
         .lte('proxima_execucao', now)
         .or('proxima_execucao.is.null');
 

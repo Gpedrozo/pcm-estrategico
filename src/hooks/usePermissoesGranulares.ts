@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/contexts/AuthContext';
 import { writeAuditLog } from '@/lib/audit';
 
 export interface PermissaoGranular {
@@ -34,14 +35,17 @@ export const MODULOS = [
 ] as const;
 
 export function usePermissoesUsuario(userId: string | undefined) {
+  const { tenantId } = useAuth();
   return useQuery({
-    queryKey: ['permissoes_granulares', userId],
+    queryKey: ['permissoes_granulares', userId, tenantId],
     queryFn: async () => {
       if (!userId) return [];
-      const { data, error } = await supabase
+      let query = supabase
         .from('permissoes_granulares')
         .select('*')
         .eq('user_id', userId);
+      if (tenantId) query = query.eq('empresa_id', tenantId);
+      const { data, error } = await query.limit(1000);
       if (error) throw error;
       return data as PermissaoGranular[];
     },
@@ -52,14 +56,17 @@ export function usePermissoesUsuario(userId: string | undefined) {
 export function useSavePermissoes() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const { tenantId } = useAuth();
 
   return useMutation({
     mutationFn: async ({ userId, permissoes }: { userId: string; permissoes: Partial<PermissaoGranular>[] }) => {
-      // Delete existing permissions for user
-      await supabase.from('permissoes_granulares').delete().eq('user_id', userId);
+      // Delete existing permissions for user within the current tenant
+      let deleteQuery = supabase.from('permissoes_granulares').delete().eq('user_id', userId);
+      if (tenantId) deleteQuery = deleteQuery.eq('empresa_id', tenantId);
+      await deleteQuery;
       
-      // Insert new permissions
-      const rows = permissoes.map(p => ({ ...p, user_id: userId }));
+      // Insert new permissions with empresa_id
+      const rows = permissoes.map(p => ({ ...p, user_id: userId, ...(tenantId ? { empresa_id: tenantId } : {}) }));
       if (rows.length > 0) {
         const { error } = await supabase.from('permissoes_granulares').insert(rows);
         if (error) throw error;
@@ -69,6 +76,7 @@ export function useSavePermissoes() {
         action: 'UPDATE_PERMISSIONS',
         table: 'permissoes_granulares',
         recordId: userId,
+        empresaId: tenantId,
         source: 'use_save_permissoes',
         metadata: {
           user_id: userId,
