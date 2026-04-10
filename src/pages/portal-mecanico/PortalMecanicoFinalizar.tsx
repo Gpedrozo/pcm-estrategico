@@ -5,7 +5,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { useOrdensServico, useUpdateOrdemServico } from '@/hooks/useOrdensServico';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { useTenant } from '@/contexts/TenantContext';
+import { useOptionalTenant } from '@/contexts/TenantContext';
 import {
   ArrowLeft,
   CheckCircle2,
@@ -36,8 +36,8 @@ export default function PortalMecanicoFinalizar() {
   const navigate = useNavigate();
   const location = useLocation();
   const { toast } = useToast();
-  const { tenant } = useTenant();
-  const tenantId = tenant?.id ?? null;
+  const tenantCtx = useOptionalTenant();
+  const tenantId = tenantCtx?.tenant?.id ?? sessionStorage.getItem('portal_mecanico_empresa_id');
   const { data: ordens } = useOrdensServico();
   const updateOS = useUpdateOrdemServico();
 

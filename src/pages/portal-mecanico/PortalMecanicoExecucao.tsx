@@ -5,7 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { useOrdensServico, useUpdateOrdemServico } from '@/hooks/useOrdensServico';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { useTenant } from '@/contexts/TenantContext';
+import { useOptionalTenant } from '@/contexts/TenantContext';
 import { Textarea } from '@/components/ui/textarea';
 import {
   ArrowLeft,
@@ -49,8 +49,8 @@ export default function PortalMecanicoExecucao() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { tenant } = useTenant();
-  const tenantId = tenant?.id ?? null;
+  const tenantCtx = useOptionalTenant();
+  const tenantId = tenantCtx?.tenant?.id ?? sessionStorage.getItem('portal_mecanico_empresa_id');
   const { data: ordens } = useOrdensServico();
   const updateOS = useUpdateOrdemServico();
 

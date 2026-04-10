@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { useCreateSolicitacao } from '@/hooks/useSolicitacoes';
 import { useEquipamentos } from '@/hooks/useEquipamentos';
-import { useTenant } from '@/contexts/TenantContext';
+import { useOptionalTenant } from '@/contexts/TenantContext';
 import { usePortalMecanico } from '@/contexts/PortalMecanicoContext';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
@@ -28,8 +28,8 @@ const DESCRICAO_CHIPS = ['Vazamento', 'Vibração excessiva', 'Barulho estranho'
 export default function PortalMecanicoSolicitacao() {
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { tenant } = useTenant();
-  const tenantId = tenant?.id ?? null;
+  const tenantCtx = useOptionalTenant();
+  const tenantId = tenantCtx?.tenant?.id ?? sessionStorage.getItem('portal_mecanico_empresa_id');
   const { mecanico } = usePortalMecanico();
   const { data: equipamentos } = useEquipamentos();
   const createSolicitacao = useCreateSolicitacao();

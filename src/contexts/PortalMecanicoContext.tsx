@@ -2,7 +2,8 @@ import { createContext, useContext, useState, useCallback, useEffect, useRef } f
 import { useMecanicoValidarCredenciais, useMecanicoLogin, useMecanicoLogout } from '@/hooks/useMecanicoSessionTracking';
 import { useMecanicosAtivos } from '@/hooks/useMecanicos';
 import { useToast } from '@/hooks/use-toast';
-import { useTenant } from '@/contexts/TenantContext';
+import { useOptionalTenant } from '@/contexts/TenantContext';
+import { supabase } from '@/integrations/supabase/client';
 
 interface MecanicoLogado {
   id: string;
@@ -29,8 +30,8 @@ export function usePortalMecanico() {
 
 export function PortalMecanicoProvider({ children }: { children: React.ReactNode }) {
   const { toast } = useToast();
-  const { tenant } = useTenant();
-  const tenantId = tenant?.id ?? null;
+  const tenantCtx = useOptionalTenant();
+  const tenantId = tenantCtx?.tenant?.id ?? null;
   const { data: mecanicos } = useMecanicosAtivos();
   const validarCredenciais = useMecanicoValidarCredenciais();
   const registrarLogin = useMecanicoLogin();
@@ -104,70 +105,91 @@ export function PortalMecanicoProvider({ children }: { children: React.ReactNode
       toast({ title: 'Dados obrigatórios', description: 'Informe código e senha.', variant: 'destructive' });
       return;
     }
-    if (!tenantId) {
-      toast({ title: 'Erro', description: 'Empresa não identificada.', variant: 'destructive' });
-      return;
-    }
 
     setIsLoggingIn(true);
 
-    validarCredenciais.mutate(
-      {
-        empresa_id: tenantId,
-        dispositivo_id: `portal-web-${navigator.userAgent.slice(0, 50)}`,
-        codigo_acesso: code,
-        senha_acesso: senha,
-      },
-      {
-        onSuccess: (result) => {
-          if (!result.ok) {
-            toast({
-              title: `Erro: ${result.resultado}`,
-              description: result.motivo || 'Falha na validação',
-              variant: 'destructive',
-            });
-            if (result.tentativas !== undefined && result.tentativas > 0) {
-              toast({ title: 'Aviso', description: `${5 - result.tentativas} tentativa(s) restante(s)` });
+    // Resolve empresa_id: primeiro tenta pelo tenant (subdomínio), senão busca via RPC
+    const resolveEmpresaId = async (): Promise<string | null> => {
+      if (tenantId) return tenantId;
+
+      // Fallback: buscar empresa_id via RPC (SECURITY DEFINER, funciona com anon)
+      const { data, error } = await supabase.rpc('resolver_empresa_mecanico', {
+        p_codigo_acesso: code,
+      });
+
+      if (error || !data) return null;
+      return data as string;
+    };
+
+    resolveEmpresaId().then((empresaId) => {
+      if (!empresaId) {
+        toast({ title: 'Erro', description: 'Empresa não identificada. Verifique o código de acesso.', variant: 'destructive' });
+        setIsLoggingIn(false);
+        return;
+      }
+
+      validarCredenciais.mutate(
+        {
+          empresa_id: empresaId,
+          dispositivo_id: `portal-web-${navigator.userAgent.slice(0, 50)}`,
+          codigo_acesso: code,
+          senha_acesso: senha,
+        },
+        {
+          onSuccess: (result) => {
+            if (!result.ok) {
+              toast({
+                title: `Erro: ${result.resultado}`,
+                description: result.motivo || 'Falha na validação',
+                variant: 'destructive',
+              });
+              if (result.tentativas !== undefined && result.tentativas > 0) {
+                toast({ title: 'Aviso', description: `${5 - result.tentativas} tentativa(s) restante(s)` });
+              }
+              setIsLoggingIn(false);
+              return;
             }
+
+            const id = result.mecanico_id || '';
+
+            registrarLogin.mutate(
+              {
+                empresa_id: empresaId,
+                dispositivo_id: `portal-web-${navigator.userAgent.slice(0, 50)}`,
+                mecanico_id: id,
+                device_token: 'portal-mecanico-web',
+                codigo_acesso: code,
+              },
+              {
+                onSuccess: (loginResult) => {
+                  try {
+                    sessionStorage.setItem('portal_mecanico_id', id);
+                    sessionStorage.setItem('portal_mecanico_nome', result.mecanico_nome || '');
+                    sessionStorage.setItem('portal_mecanico_session_id', loginResult.session_id);
+                    sessionStorage.setItem('portal_mecanico_empresa_id', empresaId);
+                  } catch {}
+                  setMecanicoId(id);
+                  setSessionId(loginResult.session_id);
+                  setIsLoggingIn(false);
+                  toast({ title: 'Login realizado', description: `Bem-vindo, ${result.mecanico_nome}!` });
+                },
+                onError: (e: Error) => {
+                  toast({ title: 'Erro ao registrar login', description: e.message, variant: 'destructive' });
+                  setIsLoggingIn(false);
+                },
+              },
+            );
+          },
+          onError: (e: Error) => {
+            toast({ title: 'Erro na validação', description: e.message, variant: 'destructive' });
             setIsLoggingIn(false);
-            return;
-          }
-
-          const id = result.mecanico_id || '';
-
-          registrarLogin.mutate(
-            {
-              empresa_id: tenantId,
-              dispositivo_id: `portal-web-${navigator.userAgent.slice(0, 50)}`,
-              mecanico_id: id,
-              device_token: 'portal-mecanico-web',
-              codigo_acesso: code,
-            },
-            {
-              onSuccess: (loginResult) => {
-                try {
-                  sessionStorage.setItem('portal_mecanico_id', id);
-                  sessionStorage.setItem('portal_mecanico_nome', result.mecanico_nome || '');
-                  sessionStorage.setItem('portal_mecanico_session_id', loginResult.session_id);
-                } catch {}
-                setMecanicoId(id);
-                setSessionId(loginResult.session_id);
-                setIsLoggingIn(false);
-                toast({ title: 'Login realizado', description: `Bem-vindo, ${result.mecanico_nome}!` });
-              },
-              onError: (e: Error) => {
-                toast({ title: 'Erro ao registrar login', description: e.message, variant: 'destructive' });
-                setIsLoggingIn(false);
-              },
-            },
-          );
+          },
         },
-        onError: (e: Error) => {
-          toast({ title: 'Erro na validação', description: e.message, variant: 'destructive' });
-          setIsLoggingIn(false);
-        },
-      },
-    );
+      );
+    }).catch(() => {
+      toast({ title: 'Erro', description: 'Falha ao identificar empresa.', variant: 'destructive' });
+      setIsLoggingIn(false);
+    });
   }, [tenantId, validarCredenciais, registrarLogin, toast]);
 
   const logout = useCallback(() => {
@@ -180,6 +202,7 @@ export function PortalMecanicoProvider({ children }: { children: React.ReactNode
       sessionStorage.removeItem('portal_mecanico_id');
       sessionStorage.removeItem('portal_mecanico_nome');
       sessionStorage.removeItem('portal_mecanico_session_id');
+      sessionStorage.removeItem('portal_mecanico_empresa_id');
     } catch {}
   }, [sessionId, registrarLogout]);
 
