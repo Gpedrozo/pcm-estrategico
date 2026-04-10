@@ -124,6 +124,36 @@ DO $$ BEGIN
 END $$;
 
 -- ─────────────────────────────────────────────────────────────
+-- 0b. GARANTIR audit_logs (pode não existir se migration UTF-16 falhou)
+-- ─────────────────────────────────────────────────────────────
+
+CREATE TABLE IF NOT EXISTS public.audit_logs (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  empresa_id uuid REFERENCES public.empresas(id),
+  action text NOT NULL,
+  table_name text NOT NULL,
+  record_id text,
+  source text NOT NULL DEFAULT 'app',
+  severity text NOT NULL DEFAULT 'info',
+  actor_user_id uuid,
+  actor_email text,
+  correlation_id uuid DEFAULT gen_random_uuid(),
+  metadata jsonb NOT NULL DEFAULT '{}'::jsonb,
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+
+ALTER TABLE public.audit_logs ENABLE ROW LEVEL SECURITY;
+
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'audit_logs_secdef_insert' AND tablename = 'audit_logs') THEN
+    CREATE POLICY audit_logs_secdef_insert ON public.audit_logs FOR INSERT WITH CHECK (true);
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'audit_logs_secdef_select' AND tablename = 'audit_logs') THEN
+    CREATE POLICY audit_logs_secdef_select ON public.audit_logs FOR SELECT USING (true);
+  END IF;
+END $$;
+
+-- ─────────────────────────────────────────────────────────────
 -- 1. RECREATE validar_credenciais_mecanico_servidor
 --    com p_dispositivo_id UUID DEFAULT NULL
 -- ─────────────────────────────────────────────────────────────
@@ -310,13 +340,12 @@ BEGIN
 
   -- Audit log
   INSERT INTO audit_logs (
-    action, schema_name, table_name, record_id, actor_email, metadata
+    action, table_name, record_id, actor_email, metadata
   ) VALUES (
     'VALIDACAO_SENHA_MECANICO_SUCESSO',
-    'public',
     'mecanicos',
-    v_mecanico.id,
-    v_mecanico.email,
+    v_mecanico.id::text,
+    v_mecanico.nome,
     jsonb_build_object(
       'dispositivo_id', p_dispositivo_id,
       'ip', p_ip_address,
@@ -329,8 +358,7 @@ BEGIN
     'resultado', 'SUCESSO',
     'mecanico_id', v_mecanico.id,
     'mecanico_nome', v_mecanico.nome,
-    'especialidade', v_mecanico.especialidade,
-    'email', v_mecanico.email
+    'especialidade', v_mecanico.especialidade
   );
 END;
 $$;
@@ -399,12 +427,11 @@ BEGIN
 
   -- Audit log
   INSERT INTO audit_logs (
-    action, schema_name, table_name, record_id, actor_email, metadata
+    action, table_name, record_id, actor_email, metadata
   ) VALUES (
     'MECANICO_LOGIN',
-    'public',
     'log_mecanicos_login',
-    v_session_id,
+    v_session_id::text,
     (SELECT email FROM profiles WHERE id = p_mecanico_id LIMIT 1),
     jsonb_build_object(
       'mecanico_id', p_mecanico_id,
@@ -450,9 +477,9 @@ BEGIN
   END IF;
 
   INSERT INTO audit_logs (
-    action, schema_name, table_name, record_id, actor_email, metadata
+    action, table_name, record_id, actor_email, metadata
   ) VALUES (
-    'MECANICO_LOGOUT', 'public', 'log_mecanicos_login', p_session_id,
+    'MECANICO_LOGOUT', 'log_mecanicos_login', p_session_id::text,
     (SELECT email FROM profiles WHERE id = v_session.mecanico_id LIMIT 1),
     jsonb_build_object('mecanico_id', v_session.mecanico_id, 'duracao_minutos', v_session.duracao_minutos, 'motivo', v_session.motivo_logout)
   );
