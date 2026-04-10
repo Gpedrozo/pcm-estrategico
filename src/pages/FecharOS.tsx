@@ -424,14 +424,17 @@ export default function FecharOS() {
         logger.warn('atomic_close_fallback', { error: String(atomicError) });
 
         // Backward compatibility fallback when migration is not applied yet.
+        // Build full ISO timestamps: hora_inicio/hora_fim are TIMESTAMPTZ since migration 20260404060000
+        const fallbackHoraInicio = `${formData.dataInicio}T${formData.horaInicio || '08:00'}:00`;
+        const fallbackHoraFim = `${formData.dataFim}T${formData.horaFim || '17:00'}:00`;
         await createExecucaoMutation.mutateAsync({
           os_id: selectedOS.id,
           mecanico_id: formData.mecanicoId || null,
           mecanico_nome: mecanicoNome,
           data_inicio: formData.dataInicio,
-          hora_inicio: formData.horaInicio,
+          hora_inicio: fallbackHoraInicio,
           data_fim: formData.dataFim,
-          hora_fim: formData.horaFim,
+          hora_fim: fallbackHoraFim,
           tempo_execucao: tempoExecucao,
           tempo_execucao_bruto: tempoExecucaoBruto,
           tempo_pausas: tempoPausas,
