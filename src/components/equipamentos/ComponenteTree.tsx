@@ -37,7 +37,7 @@ function TreeNode({
   onAddChild,
   isAdmin 
 }: TreeNodeProps) {
-  const [isExpanded, setIsExpanded] = useState(true);
+  const [isExpanded, setIsExpanded] = useState(false);
   const hasChildren = componente.children && componente.children.length > 0;
   
   const tipoLabel = TIPOS_COMPONENTE.find(t => t.value === componente.tipo)?.label || componente.tipo;
