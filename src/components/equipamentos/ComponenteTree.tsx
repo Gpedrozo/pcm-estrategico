@@ -9,6 +9,19 @@ import {
 } from '@/hooks/useComponentesEquipamento';
 import { cn } from '@/lib/utils';
 
+// Ordena componentes pelo código de nível (ex: "1", "1.1", "1.1.2") numericamente
+function compareNivel(a: ComponenteEquipamento, b: ComponenteEquipamento): number {
+  const nivelA = (a.especificacoes?.nivel as string | undefined) || a.codigo || '';
+  const nivelB = (b.especificacoes?.nivel as string | undefined) || b.codigo || '';
+  const partsA = nivelA.split('.').map(Number);
+  const partsB = nivelB.split('.').map(Number);
+  for (let i = 0; i < Math.max(partsA.length, partsB.length); i++) {
+    const diff = (partsA[i] ?? 0) - (partsB[i] ?? 0);
+    if (diff !== 0) return diff;
+  }
+  return nivelA.localeCompare(nivelB);
+}
+
 interface ComponenteTreeProps {
   componentes: ComponenteEquipamento[];
   onEdit: (componente: ComponenteEquipamento) => void;
