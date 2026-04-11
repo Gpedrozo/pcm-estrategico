@@ -14,7 +14,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useConfirmDialog } from '@/components/ui/confirm-dialog';
 import {
   Plus, Trash2, Edit, Play, Clock, Calendar, ChevronDown, ChevronRight,
-  GripVertical, Copy, History, CheckSquare, Download, Timer, Save, X,
+  GripVertical, Copy, History, Timer, Save, X,
   FileText, ListChecks, Settings, ArrowUp, ArrowDown, Printer, Eye
 } from 'lucide-react';
 import type { PlanoPreventivo } from '@/hooks/usePlanosPreventivos';

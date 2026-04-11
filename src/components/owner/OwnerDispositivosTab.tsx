@@ -16,13 +16,9 @@ import { useToast } from '@/hooks/use-toast';
 import { useConfirmDialog } from '@/components/ui/confirm-dialog';
 import {
   Smartphone,
-  ShieldOff,
-  Trash2,
   Ban,
   Wifi,
   WifiOff,
-  Clock,
-  AlertTriangle,
   Settings,
   Building2,
 } from 'lucide-react';
@@ -34,7 +30,7 @@ interface Props {
   busy: boolean;
 }
 
-export default function OwnerDispositivosTab({ selectedEmpresaId, empresas, runAction, busy }: Props) {
+export default function OwnerDispositivosTab({ selectedEmpresaId, empresas: _empresas, runAction: _runAction, busy: _busy }: Props) {
   const { toast } = useToast();
   const { data: dispositivos, isLoading } = useDispositivosMoveis(selectedEmpresaId || undefined);
   const toggleDevice = useToggleDispositivo();
@@ -45,7 +41,7 @@ export default function OwnerDispositivosTab({ selectedEmpresaId, empresas, runA
   const [maxDispositivos, setMaxDispositivos] = useState('10');
 
   const ativos = (dispositivos || []).filter(d => d.ativo);
-  const inativos = (dispositivos || []).filter(d => !d.ativo);
+  const _inativos = (dispositivos || []).filter(d => !d.ativo);
 
   const timeSince = (d: string | null) => {
     if (!d) return 'Nunca';
