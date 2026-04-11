@@ -11,11 +11,11 @@ import {
 import { writeAuditLog } from '@/lib/audit';
 
 const SOLICITACOES_TABLE_CANDIDATES = ['solicitacoes_manutencao', 'solicitacoes'] as const;
-type SolicitacoesTableName = (typeof SOLICITACOES_TABLE_CANDIDATES)[number];
+export type SolicitacoesTableName = (typeof SOLICITACOES_TABLE_CANDIDATES)[number];
 
 let cachedSolicitacoesTable: SolicitacoesTableName | null = null;
 
-async function getSolicitacoesTable(): Promise<SolicitacoesTableName> {
+export async function getSolicitacoesTable(): Promise<SolicitacoesTableName> {
   if (cachedSolicitacoesTable) return cachedSolicitacoesTable;
 
   for (const table of SOLICITACOES_TABLE_CANDIDATES) {

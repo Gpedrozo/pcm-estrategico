@@ -27,6 +27,7 @@ import { useOrdensServico, type OrdemServicoRow } from '@/hooks/useOrdensServico
 import { useEquipamentos } from '@/hooks/useEquipamentos';
 import { useExecucaoByOSId, useExecucoesOS } from '@/hooks/useExecucoesOS';
 import { supabase } from '@/integrations/supabase/client';
+import { getSolicitacoesTable } from '@/hooks/useSolicitacoes';
 import { OSStatusBadge } from '@/components/os/OSStatusBadge';
 import { OSTypeBadge } from '@/components/os/OSTypeBadge';
 import { OSPrintDialog } from '@/components/os/OSPrintDialog';
@@ -88,13 +89,20 @@ function OSDetailsModal({
   useEffect(() => {
     setSolicitacaoOrigem(null);
     if (!os?.id) return;
-    supabase
-      .from('solicitacoes_manutencao')
-      .select('numero_solicitacao')
-      .eq('os_id', os.id)
-      .limit(1)
-      .single()
-      .then(({ data }) => { if (data) setSolicitacaoOrigem(data as { numero_solicitacao: number }); });
+    const osId = os.id;
+    void (async () => {
+      const table = await getSolicitacoesTable();
+      const { data } = await (supabase
+        .from(table as any)
+        .select('numero_solicitacao')
+        .eq('os_id', osId)
+        .limit(1)
+        .maybeSingle() as any);
+      if (data) {
+        const num = Number(data.numero_solicitacao ?? 0);
+        if (num > 0) setSolicitacaoOrigem({ numero_solicitacao: num });
+      }
+    })();
   }, [os?.id]);
 
   if (!os) return null;

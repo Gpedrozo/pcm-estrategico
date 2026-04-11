@@ -404,11 +404,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (isOwnerDomain(window.location.hostname)) return null;
 
     const hostname = window.location.hostname.toLowerCase();
+    // @ts-expect-error — empresa_config not yet in generated types
     const { data: domainConfig, error } = await (supabase
-      .from('empresa_config' as any)
+      .from('empresa_config')
       .select('empresa_id')
       .eq('dominio_custom', hostname)
-      .maybeSingle() as any);
+      .maybeSingle()) as unknown as { data: { empresa_id: string } | null; error: { message: string } | null };
 
     if (!error && domainConfig?.empresa_id) {
       return domainConfig.empresa_id as string;
@@ -1454,11 +1455,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return { error: tenantDomainError };
     }
 
+    // @ts-expect-error — empresa_config not yet in generated types
     const { data: domainConfig, error: domainConfigError } = await (supabase
-      .from('empresa_config' as any)
+      .from('empresa_config')
       .select('empresa_id')
       .eq('dominio_custom', hostname)
-      .maybeSingle() as any);
+      .maybeSingle()) as unknown as { data: { empresa_id: string } | null; error: { message: string } | null };
 
     if (domainConfigError) {
       return { error: 'Falha ao validar domínio da empresa.' };

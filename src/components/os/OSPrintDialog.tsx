@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { useReactToPrint } from 'react-to-print';
 import { useDadosEmpresa } from '@/hooks/useDadosEmpresa';
 import { supabase } from '@/integrations/supabase/client';
+import { getSolicitacoesTable } from '@/hooks/useSolicitacoes';
 import { OSPrintTemplate } from './OSPrintTemplate';
 import { PRINT_PAGE_STYLE } from '@/components/print/DocumentPrintBase';
 
@@ -39,14 +40,22 @@ export function OSPrintDialog({ os, trigger, solicitacaoNumero: solicitacaoNumer
   useEffect(() => {
     if (solicitacaoNumeroProp != null) { setResolvedSolNum(solicitacaoNumeroProp); return; }
     if (!os.id) { setResolvedSolNum(null); return; }
-    // @ts-expect-error — solicitacoes_manutencao not yet in generated types
-    supabase.from('solicitacoes_manutencao').select('numero_solicitacao').eq('os_id', os.id).limit(1).single()
-      .then(({ data }: { data: { numero_solicitacao: number } | null }) => { setResolvedSolNum(data ? data.numero_solicitacao : null); });
+    const osId = os.id;
+    void (async () => {
+      const table = await getSolicitacoesTable();
+      const { data } = await (supabase
+        .from(table as any)
+        .select('numero_solicitacao')
+        .eq('os_id', osId)
+        .limit(1)
+        .maybeSingle() as any) as { data: { numero_solicitacao?: number } | null };
+      setResolvedSolNum(data ? Number(data.numero_solicitacao ?? 0) || null : null);
+    })();
   }, [os.id, solicitacaoNumeroProp]);
 
   useEffect(() => {
     if (!os.id) { setServicoExecutado(null); return; }
-    supabase.from('execucoes_os').select('servico_executado').eq('ordem_servico_id', os.id).order('created_at', { ascending: false }).limit(1).maybeSingle()
+    supabase.from('execucoes_os').select('servico_executado').eq('os_id', os.id).order('created_at', { ascending: false }).limit(1).maybeSingle()
       .then(({ data }: { data: { servico_executado: string | null } | null }) => { setServicoExecutado(data ? data.servico_executado : null); });
   }, [os.id]);
 
