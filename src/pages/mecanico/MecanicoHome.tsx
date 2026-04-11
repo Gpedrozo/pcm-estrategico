@@ -187,7 +187,7 @@ export default function MecanicoHome() {
                     sessionStorage.setItem('mecanico_logado_nome', result.mecanico_nome || '');
                     sessionStorage.setItem('mecanico_session_id', loginResult.session_id);
                     sessionStorage.setItem('mecanico_session_inicio', loginResult.login_em);
-                  } catch {}
+                  } catch { /* sessionStorage unavailable */ }
 
                   setMecanicoId(mecanicoId);
                   setSessionId(loginResult.session_id);

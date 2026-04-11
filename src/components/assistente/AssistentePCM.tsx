@@ -229,7 +229,7 @@ function HelpTab({
   visibleChapters,
   roleLabel,
   roleScope,
-  pathname,
+  pathname: _pathname,
 }: {
   currentChapter: ReturnType<typeof manualChapters.find>;
   visibleChapters: typeof manualChapters;

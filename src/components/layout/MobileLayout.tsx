@@ -33,14 +33,14 @@ export function MobileLayout() {
   const technicianPaths = ['/mecanico', '/suporte', '/manuais-operacao', '/manual'];
   const solicitantePaths = ['/operador', '/suporte', '/manuais-operacao', '/manual'];
 
+  const { isOnline, pendingCount } = useOfflineSync();
+
   const allowedPaths = effectiveRole === 'SOLICITANTE' ? solicitantePaths : technicianPaths;
   const defaultPath = effectiveRole === 'SOLICITANTE' ? '/operador' : '/mecanico';
 
   if (!allowedPaths.some(p => location.pathname === p || location.pathname.startsWith(p + '/'))) {
     return <Navigate to={defaultPath} replace />;
   }
-
-  const { isOnline, pendingCount } = useOfflineSync();
 
   return (
     <DeviceBindingGuard>

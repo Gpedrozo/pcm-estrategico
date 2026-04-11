@@ -108,7 +108,7 @@ export default function MecanicoExecucao() {
         onSuccess: () => {
           const now = Date.now();
           setStartedAt(now);
-          try { sessionStorage.setItem(timerKey, String(now)); } catch {}
+          try { sessionStorage.setItem(timerKey, String(now)); } catch { /* ignore */ }
           toast({ title: 'Execução iniciada!', description: `OS #${os.numero_os} em andamento.` });
         },
       },
@@ -118,7 +118,7 @@ export default function MecanicoExecucao() {
   const handlePausar = () => {
     if (intervalRef.current) clearInterval(intervalRef.current);
     setStartedAt(null);
-    try { sessionStorage.removeItem(timerKey); } catch {}
+    try { sessionStorage.removeItem(timerKey); } catch { /* ignore */ }
     toast({ title: 'Execução pausada' });
   };
 
@@ -142,7 +142,7 @@ export default function MecanicoExecucao() {
       },
       {
         onSuccess: () => {
-          try { sessionStorage.removeItem(timerKey); } catch {}
+          try { sessionStorage.removeItem(timerKey); } catch { /* ignore */ }
           toast({ title: 'OS devolvida', description: 'Encaminhada de volta ao planejamento.' });
           navigate('/mecanico');
         },

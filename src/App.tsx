@@ -5,7 +5,6 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { usePermission } from "@/hooks/usePermission";
-import { AppLayout } from "@/components/layout/AppLayout";
 import { ExperienceRouter } from "@/components/layout/ExperienceRouter";
 import { MecanicoLayout } from "@/components/layout/MecanicoLayout";
 import { PortalMecanicoLayout } from "@/components/layout/PortalMecanicoLayout";
@@ -67,7 +66,6 @@ const NotFound = lazyWithRetry(() => import('./pages/NotFound'))
 const Instalar = lazyWithRetry(() => import('./pages/Instalar'))
 const ArquivosOwner = lazyWithRetry(() => import('./pages/ArquivosOwner'))
 const RootCauseAIPage = lazyWithRetry(() => import('./modules/rootCauseAI/RootCauseAIPage'))
-const ManualOperacao = lazyWithRetry(() => import('./pages/ManualOperacao'))
 const SystemStatus = lazyWithRetry(() => import('./pages/SystemStatus'))
 const PainelOperador = lazyWithRetry(() => import('./pages/PainelOperador'))
 

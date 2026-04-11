@@ -135,7 +135,7 @@ export default function MecanicoFinalizar() {
       },
       {
         onSuccess: () => {
-          try { sessionStorage.removeItem(`mec_timer_${os.id}`); } catch {}
+          try { sessionStorage.removeItem(`mec_timer_${os.id}`); } catch { /* ignore */ }
           toast({ title: 'O.S. Finalizada!', description: `OS #${os.numero_os} fechada com sucesso.` });
           navigate('/mecanico');
         },

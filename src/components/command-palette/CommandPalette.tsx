@@ -16,8 +16,6 @@ import {
   FileCheck,
   History,
   Wrench,
-  Users,
-  ClipboardList,
   Tag,
   Building2,
   Package,

@@ -63,7 +63,7 @@ export function PortalMecanicoProvider({ children }: { children: React.ReactNode
           sessionStorage.removeItem('portal_mecanico_id');
           sessionStorage.removeItem('portal_mecanico_nome');
           sessionStorage.removeItem('portal_mecanico_session_id');
-        } catch {}
+        } catch { /* ignore */ }
         toast({ title: 'Sessão expirada', description: 'Faça login novamente.' });
       }, 30 * 60 * 1000);
     }
@@ -166,7 +166,7 @@ export function PortalMecanicoProvider({ children }: { children: React.ReactNode
                     sessionStorage.setItem('portal_mecanico_nome', result.mecanico_nome || '');
                     sessionStorage.setItem('portal_mecanico_session_id', loginResult.session_id);
                     sessionStorage.setItem('portal_mecanico_empresa_id', empresaId);
-                  } catch {}
+                  } catch { /* ignore */ }
                   setMecanicoId(id);
                   setSessionId(loginResult.session_id);
                   setIsLoggingIn(false);
@@ -202,7 +202,7 @@ export function PortalMecanicoProvider({ children }: { children: React.ReactNode
       sessionStorage.removeItem('portal_mecanico_nome');
       sessionStorage.removeItem('portal_mecanico_session_id');
       sessionStorage.removeItem('portal_mecanico_empresa_id');
-    } catch {}
+    } catch { /* ignore */ }
   }, [sessionId, registrarLogout]);
 
   return (

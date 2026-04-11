@@ -40,7 +40,7 @@ export function usePermissoesUsuario(userId: string | undefined) {
     queryKey: ['permissoes_granulares', userId, tenantId],
     queryFn: async () => {
       if (!userId || !tenantId) return [];
-      let query = supabase
+      const query = supabase
         .from('permissoes_granulares')
         .select('*')
         .eq('user_id', userId)
