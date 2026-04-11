@@ -1,4 +1,4 @@
-import { Outlet, Navigate } from 'react-router-dom';
+import { Outlet } from 'react-router-dom';
 import { PortalMecanicoProvider, usePortalMecanico } from '@/contexts/PortalMecanicoContext';
 import { PortalMecanicoTopBar } from './PortalMecanicoTopBar';
 import { PortalMecanicoNav } from './PortalMecanicoNav';

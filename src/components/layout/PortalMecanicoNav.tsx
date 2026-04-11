@@ -4,9 +4,7 @@ import {
   ClipboardList,
   Search,
   Calendar,
-  History,
   Plus,
-  Wrench,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 

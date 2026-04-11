@@ -177,7 +177,7 @@ export function AppSidebar() {
 
   const isSolicitanteOnly = effectiveRole === 'SOLICITANTE';
   const isTechnicianOnly = effectiveRole === 'TECHNICIAN';
-  const isUsuarioOrBelow = isSolicitanteOnly || effectiveRole === 'USUARIO';
+  const _isUsuarioOrBelow = isSolicitanteOnly || effectiveRole === 'USUARIO';
   const isAdminOrAbove = isAdmin || effectiveRole === 'MASTER_TI' || effectiveRole === 'SYSTEM_OWNER' || effectiveRole === 'SYSTEM_ADMIN';
   const isRestrictedRole = isSolicitanteOnly || isTechnicianOnly;
 
