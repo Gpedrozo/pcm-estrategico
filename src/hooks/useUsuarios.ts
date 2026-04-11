@@ -127,10 +127,13 @@ export function useUpdateUsuarioNome() {
 
   return useMutation({
     mutationFn: async ({ userId, nome }: { userId: string; nome: string }) => {
+      if (!tenantId) throw new Error('Tenant não identificado.');
+
       const { error } = await supabase
         .from('profiles')
         .update({ nome })
-        .eq('id', userId);
+        .eq('id', userId)
+        .eq('empresa_id', tenantId);
 
       if (error) throw error;
 

@@ -8,7 +8,8 @@ export const materiaisService = {
       .from('materiais')
       .select('*')
       .eq('empresa_id', empresaId)
-      .order('nome');
+      .order('nome')
+      .limit(500);
 
     if (error) throw new Error(`Falha ao carregar materiais: ${error.message}`);
     return data;
@@ -20,7 +21,8 @@ export const materiaisService = {
       .select('*')
       .eq('empresa_id', empresaId)
       .eq('ativo', true)
-      .order('nome');
+      .order('nome')
+      .limit(500);
 
     if (error) throw new Error(`Falha ao carregar materiais ativos: ${error.message}`);
     return data;

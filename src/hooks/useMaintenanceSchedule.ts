@@ -78,6 +78,8 @@ export function useUpdateMaintenanceStatus() {
 
   return useMutation({
     mutationFn: async ({ id, status, dataProgramada }: { id: string; status?: string; dataProgramada?: string }) => {
+      if (!tenantId) throw new Error('Tenant não identificado.');
+
       const payload: Record<string, string> = {};
       if (status) payload.status = status;
       if (dataProgramada) payload.data_programada = dataProgramada;
@@ -86,6 +88,7 @@ export function useUpdateMaintenanceStatus() {
         .from('maintenance_schedule')
         .update(payload)
         .eq('id', id)
+        .eq('empresa_id', tenantId)
         .select()
         .single();
 

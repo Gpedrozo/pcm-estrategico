@@ -464,17 +464,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
 
         // Reject tampered localStorage impersonation sessions unless backend confirms validity.
-        if (parsed.id && parsed.sessionToken) {
-          try {
-            await validateImpersonationSession({
-              empresa_id: parsed.empresaId,
-              impersonation_session_id: parsed.id,
-              impersonation_session_token: parsed.sessionToken,
-            });
-          } catch {
-            window.localStorage.removeItem(IMPERSONATION_STORAGE_KEY);
-            return;
-          }
+        if (!parsed.id || !parsed.sessionToken) {
+          // Missing validation tokens — reject unverified impersonation session.
+          window.localStorage.removeItem(IMPERSONATION_STORAGE_KEY);
+          return;
+        }
+
+        try {
+          await validateImpersonationSession({
+            empresa_id: parsed.empresaId,
+            impersonation_session_id: parsed.id,
+            impersonation_session_token: parsed.sessionToken,
+          });
+        } catch {
+          window.localStorage.removeItem(IMPERSONATION_STORAGE_KEY);
+          return;
         }
 
         setImpersonation(parsed);

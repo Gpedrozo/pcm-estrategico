@@ -4,7 +4,7 @@
  * Usa RAG simplificado: o conteúdo do manual é inline no prompt.
  */
 
-import { adminClient, requireUser, tokenFromRequest } from "../_shared/auth.ts";
+import { adminClient, requireUser, requireTenantContext, tokenFromRequest } from "../_shared/auth.ts";
 import { preflight, ok, fail, resolveCorsHeaders, rejectIfOriginNotAllowed } from "../_shared/response.ts";
 import { enforceRateLimit } from "../_shared/rateLimit.ts";
 import { z } from "../_shared/validation.ts";
@@ -233,9 +233,14 @@ Deno.serve(async (req: Request) => {
 
     const { user } = authResult;
 
+    // Enforce tenant isolation — user must belong to a tenant
+    const admin = adminClient();
+    const scope = await requireTenantContext(admin, req, user.id, null);
+    if ("error" in scope) return fail(scope.error, scope.status, null, req);
+
     // Rate limit: 10 AI calls per 60s per IP
     const asstIp = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? req.headers.get("x-real-ip") ?? "unknown";
-    const rl = await enforceRateLimit(adminClient(), { scope: "ai_assistente_pcm", identifier: asstIp, maxRequests: 10, windowSeconds: 60 });
+    const rl = await enforceRateLimit(admin, { scope: "ai_assistente_pcm", identifier: `${scope.empresaId}:${asstIp}`, maxRequests: 10, windowSeconds: 60 });
     if (!rl.allowed) return fail("Too many requests", 429, null, req);
 
     // Parse body

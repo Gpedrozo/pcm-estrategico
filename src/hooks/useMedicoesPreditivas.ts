@@ -172,12 +172,15 @@ export function useUpdateMedicaoPreditiva() {
 
   return useMutation({
     mutationFn: async ({ id, previousValues, ...updates }: MedicaoPreditivaUpdate & { id: string; previousValues?: Record<string, unknown> }) => {
+      if (!tenantId) throw new Error('Tenant não identificado.');
+
       const data = await updateWithColumnFallback(
         async (payload) =>
           supabase
             .from('medicoes_preditivas')
             .update(payload)
             .eq('id', id)
+            .eq('empresa_id', tenantId)
             .select()
             .single(),
         updates as Record<string, unknown>,
