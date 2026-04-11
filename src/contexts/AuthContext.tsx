@@ -679,9 +679,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (slug) tenantSlug = slug;
       }
 
-      const forcePasswordChange =
-        Boolean(profile?.force_password_change)
-        || extractForcePasswordChangeFromMetadata(metadata);
+      // DB (profiles) is the source of truth. Only fallback to JWT metadata
+      // when the profile row was not fetched (e.g. RLS / network error).
+      // Using || here caused an infinite loop: after password change the DB
+      // was already false, but the stale JWT still carried true in app_metadata.
+      const forcePasswordChange = profile
+        ? Boolean(profile.force_password_change)
+        : extractForcePasswordChangeFromMetadata(metadata);
 
       const effectiveRole = getEffectiveRole({ roles, email });
 
@@ -1390,6 +1394,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         ).catch(() => null);
       }
     }
+
+    // Refresh the session so the browser gets a new JWT with the updated
+    // app_metadata (force_password_change: false).  Without this, a page
+    // reload would read the stale cached JWT and re-enter the loop.
+    await supabase.auth.refreshSession().catch(() => null);
 
     const { data: userResult } = await supabase.auth.getUser();
     const currentUser = userResult.user;
