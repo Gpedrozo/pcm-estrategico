@@ -155,12 +155,14 @@ export function useUpdatePermissaoTrabalho() {
 
   return useMutation({
     mutationFn: async ({ id, ...updates }: Partial<PermissaoTrabalhoRow> & { id: string }) => {
+      if (!tenantId) throw new Error('Tenant não resolvido.');
       return updateWithColumnFallback(
         async (payload) =>
           supabase
             .from('permissoes_trabalho')
             .update(payload)
             .eq('id', id)
+            .eq('empresa_id', tenantId)
             .select()
             .single(),
         updates as Record<string, unknown>,
@@ -248,12 +250,14 @@ export function useUpdateIncidenteSSMA() {
 
   return useMutation({
     mutationFn: async ({ id, ...updates }: Partial<IncidenteSSMARow> & { id: string }) => {
+      if (!tenantId) throw new Error('Tenant não resolvido.');
       return updateWithColumnFallback(
         async (payload) =>
           supabase
             .from('incidentes_ssma')
             .update(payload)
             .eq('id', id)
+            .eq('empresa_id', tenantId)
             .select()
             .single(),
         updates as Record<string, unknown>,

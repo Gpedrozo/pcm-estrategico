@@ -56,7 +56,7 @@ export function useDeleteMaintenanceSchedule() {
 
   return useMutation({
     mutationFn: async ({ tipo, origemId }: { tipo: 'preventiva' | 'lubrificacao' | 'inspecao' | 'preditiva'; origemId: string }) =>
-      deleteMaintenanceSchedule(tipo, origemId),
+      deleteMaintenanceSchedule(tipo, origemId, tenantId || undefined),
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: ['maintenance-schedule'] });
       writeAuditLog({ action: 'DELETE_MAINTENANCE_SCHEDULE', table: 'maintenance_schedule', recordId: variables.origemId, empresaId: tenantId, source: 'useMaintenanceSchedule', severity: 'warning', metadata: { tipo: variables.tipo } });

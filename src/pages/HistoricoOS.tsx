@@ -28,6 +28,7 @@ import { useEquipamentos } from '@/hooks/useEquipamentos';
 import { useExecucaoByOSId, useExecucoesOS } from '@/hooks/useExecucoesOS';
 import { supabase } from '@/integrations/supabase/client';
 import { getSolicitacoesTable } from '@/hooks/useSolicitacoes';
+import { useAuth } from '@/contexts/AuthContext';
 import { OSStatusBadge } from '@/components/os/OSStatusBadge';
 import { OSTypeBadge } from '@/components/os/OSTypeBadge';
 import { OSPrintDialog } from '@/components/os/OSPrintDialog';
@@ -84,11 +85,12 @@ function OSDetailsModal({
   onClose: () => void;
 }) {
   const { data: execucao } = useExecucaoByOSId(os?.id);
+  const { tenantId } = useAuth();
   const [solicitacaoOrigem, setSolicitacaoOrigem] = useState<{ numero_solicitacao: number } | null>(null);
 
   useEffect(() => {
     setSolicitacaoOrigem(null);
-    if (!os?.id) return;
+    if (!os?.id || !tenantId) return;
     const osId = os.id;
     void (async () => {
       const table = await getSolicitacoesTable();
@@ -96,6 +98,7 @@ function OSDetailsModal({
         .from(table as any)
         .select('numero_solicitacao')
         .eq('os_id', osId)
+        .eq('empresa_id', tenantId)
         .limit(1)
         .maybeSingle() as any);
       if (data) {

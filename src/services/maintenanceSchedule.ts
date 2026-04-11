@@ -62,12 +62,15 @@ export async function upsertMaintenanceSchedule(input: MaintenanceScheduleUpsert
   } as MaintenanceScheduleRow;
 }
 
-export async function deleteMaintenanceSchedule(tipo: MaintenanceTipo, origemId: string) {
-  const { error } = await supabase
+export async function deleteMaintenanceSchedule(tipo: MaintenanceTipo, origemId: string, empresaId?: string) {
+  if (!empresaId) throw new Error('empresa_id obrigatório para delete em maintenance_schedule');
+  let query = supabase
     .from('maintenance_schedule')
     .delete()
     .eq('tipo', tipo)
-    .eq('origem_id', origemId);
+    .eq('origem_id', origemId)
+    .eq('empresa_id', empresaId);
 
+  const { error } = await query;
   if (error) throw error;
 }

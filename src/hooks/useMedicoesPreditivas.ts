@@ -251,12 +251,14 @@ export function useDeleteMedicaoPreditiva() {
 
   return useMutation({
     mutationFn: async (id: string) => {
-      await deleteMaintenanceSchedule('preditiva', id);
+      if (!tenantId) throw new Error('Tenant não resolvido.');
+      await deleteMaintenanceSchedule('preditiva', id, tenantId || undefined);
 
       const { error } = await supabase
         .from('medicoes_preditivas')
         .delete()
-        .eq('id', id);
+        .eq('id', id)
+        .eq('empresa_id', tenantId);
 
       if (error) throw error;
       return id;

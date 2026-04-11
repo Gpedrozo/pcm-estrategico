@@ -39,8 +39,8 @@ export function useOfflineSync() {
     switch (action.tipo) {
       case 'UPDATE_OS': {
         const { id, empresa_id, ...updates } = action.payload;
-        let q = supabase.from('ordens_servico').update(updates).eq('id', id as string);
-        if (empresa_id) q = q.eq('empresa_id', empresa_id as string);
+        if (!empresa_id) return false;
+        const q = supabase.from('ordens_servico').update(updates).eq('id', id as string).eq('empresa_id', empresa_id as string);
         const { error } = await q;
         return !error;
       }

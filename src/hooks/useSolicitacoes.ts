@@ -193,6 +193,7 @@ export function useUpdateSolicitacao() {
 
   return useMutation({
     mutationFn: async ({ id, ...updates }: Partial<SolicitacaoRow> & { id: string }) => {
+      if (!tenantId) throw new Error('Tenant não resolvido.');
       const table = await getSolicitacoesTable();
 
       const data = await updateWithColumnFallback(
@@ -201,6 +202,7 @@ export function useUpdateSolicitacao() {
             .from(table)
             .update(payloadToUpdate)
             .eq('id', id)
+            .eq('empresa_id', tenantId)
             .select()
             .single(),
         updates as Record<string, unknown>,

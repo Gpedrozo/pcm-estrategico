@@ -99,9 +99,11 @@ export function useDeleteRotaLubrificacao() {
 
 // ─── Pontos da Rota ─────────────────────────────────
 export function usePontosRota(rotaId: string | null | undefined) {
+  const { tenantId } = useAuth();
   return useQuery({
-    queryKey: ['rotas-lubrificacao-pontos', rotaId],
+    queryKey: ['rotas-lubrificacao-pontos', rotaId, tenantId],
     queryFn: async () => {
+      if (!tenantId) return [];
       const { data, error } = await supabase
         .from('rotas_lubrificacao_pontos')
         .select('*')
@@ -111,7 +113,7 @@ export function usePontosRota(rotaId: string | null | undefined) {
       if (error) throw error;
       return data as RotaPonto[];
     },
-    enabled: Boolean(rotaId),
+    enabled: Boolean(rotaId) && Boolean(tenantId),
   });
 }
 
@@ -122,6 +124,7 @@ export function useSavePontosRota() {
   return useMutation({
     mutationFn: async ({ rotaId, pontos }: { rotaId: string; pontos: RotaPontoInsert[] }) => {
       // Delete existing and re-insert (simple approach for ordering)
+      if (!tenantId) throw new Error('Tenant não resolvido.');
       const { error: delError } = await supabase
         .from('rotas_lubrificacao_pontos')
         .delete()

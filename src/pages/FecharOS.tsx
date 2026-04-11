@@ -63,7 +63,7 @@ interface PausaExecucao {
 export default function FecharOS() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const { user } = useAuth();
+  const { user, tenantId } = useAuth();
   const { toast } = useToast();
   const { log } = useLogAuditoria();
 
@@ -461,6 +461,7 @@ export default function FecharOS() {
               .from('ordens_servico')
               .update(payload)
               .eq('id', selectedOS.id)
+              .eq('empresa_id', tenantId!)
               .select()
               .single()
               .then((r) => r),

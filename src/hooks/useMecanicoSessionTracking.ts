@@ -137,20 +137,23 @@ export function useMecanicoValidarCredenciais() {
 /**
  * Hook para obter lista de mecânicos online agora (real-time)
  */
-export function useMecanicosOnlineAgora() {
+export function useMecanicosOnlineAgora(empresaId?: string) {
   return useQuery({
-    queryKey: ['mecanicos-online-agora'],
+    queryKey: ['mecanicos-online-agora', empresaId],
     queryFn: async () => {
+      if (!empresaId) return [];
       const { data, error } = await supabase
         .from('v_mecanicos_online_agora')
         .select('*')
+        .eq('empresa_id', empresaId)
         .order('login_em', { ascending: false })
         .limit(500);
 
       if (error) throw error;
       return data || [];
     },
-    refetchInterval: 10000, // Atualiza a cada 10 segundos
+    enabled: !!empresaId,
+    refetchInterval: 10000,
   });
 }
 
@@ -197,13 +200,13 @@ export function useDevicesBloqueados(empresa_id?: string) {
   return useQuery({
     queryKey: ['devices-bloqueados', empresa_id],
     queryFn: async () => {
-      let query = supabase.from('v_devices_bloqueados').select('*');
-
-      if (empresa_id) {
-        query = query.eq('empresa_id', empresa_id);
-      }
-
-      const { data, error } = await query.order('bloqueado_em', { ascending: false }).limit(500);
+      if (!empresa_id) return [];
+      const { data, error } = await supabase
+        .from('v_devices_bloqueados')
+        .select('*')
+        .eq('empresa_id', empresa_id)
+        .order('bloqueado_em', { ascending: false })
+        .limit(500);
 
       if (error) throw error;
       return data || [];

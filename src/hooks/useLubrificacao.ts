@@ -199,7 +199,7 @@ export function useDeletePlanoLubrificacao() {
     mutationFn: async (id: string) => {
       if (!tenantId) throw new Error('Tenant não resolvido.');
 
-      await deleteMaintenanceSchedule('lubrificacao', id);
+      await deleteMaintenanceSchedule('lubrificacao', id, tenantId);
 
       const { error } = await supabase
         .from('planos_lubrificacao')
@@ -249,8 +249,10 @@ export function useCreateExecucaoLubrificacao() {
 
   return useMutation({
     mutationFn: async (input: { plano_id: string; executor_nome?: string; observacoes?: string; fotos?: unknown; quantidade_utilizada?: number }) => {
+      if (!tenantId) throw new Error('Tenant não resolvido.');
       const payload = {
         ...input,
+        empresa_id: tenantId,
         data_execucao: new Date().toISOString(),
         status: 'CONCLUIDO',
       };
@@ -302,6 +304,7 @@ export function useGenerateExecucoesNow() {
       const nowIso = new Date().toISOString();
       const execInserts = planosTyped.map(p => ({
         plano_id: p.id,
+        empresa_id: tenantId,
         data_execucao: nowIso,
         status: 'PENDENTE',
       }));
@@ -324,6 +327,7 @@ export function useGenerateExecucoesNow() {
           tipo: 'LUBRIFICACAO',
           prioridade: 'NORMAL',
           status: 'ABERTA',
+          empresa_id: tenantId,
           tag: p.tag || '',
           equipamento: p.equipamento_id || p.nome || '',
           solicitante: 'Sistema Automático',
@@ -346,7 +350,8 @@ export function useGenerateExecucoesNow() {
             await supabase
               .from('execucoes_lubrificacao')
               .update({ os_gerada_id: u.os_gerada_id })
-              .eq('id', u.id);
+              .eq('id', u.id)
+              .eq('empresa_id', tenantId);
           }
         }
       } catch (err) {
@@ -370,7 +375,8 @@ export function useGenerateExecucoesNow() {
               proxima_execucao: next.toISOString(),
               updated_at: new Date().toISOString()
             })
-            .eq('id', plano.id);
+            .eq('id', plano.id)
+            .eq('empresa_id', tenantId);
         } catch (err) {
           logger.error('plano_next_exec_update_failed', { planoId: plano.id, error: String(err) });
         }

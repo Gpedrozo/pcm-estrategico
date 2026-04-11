@@ -18,7 +18,7 @@ export function useIndicadores() {
         .from('ordens_servico')
         .select('status,data_fechamento,tipo,tempo_estimado,created_at,empresa_id')
         .eq('empresa_id', tenantId)
-        .limit(5000);
+        .limit(2000);
 
       if (ordensError) throw ordensError;
 
@@ -27,7 +27,7 @@ export function useIndicadores() {
         .from('execucoes_os')
         .select('tempo_execucao,custo_mao_obra,custo_materiais,custo_terceiros,data_execucao,empresa_id')
         .eq('empresa_id', tenantId)
-        .limit(5000);
+        .limit(2000);
 
       if (execucoesError) throw execucoesError;
 

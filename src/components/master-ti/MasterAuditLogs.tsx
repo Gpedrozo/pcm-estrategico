@@ -27,8 +27,9 @@ export function MasterAuditLogs() {
   const { data: auditData, isLoading: loadingAudit } = useQuery({
     queryKey: ['master-audit-logs', page, search, actionFilter],
     queryFn: async () => {
+      if (!tenantId) return { logs: [], total: 0 };
       let query = supabase.from('enterprise_audit_logs').select('*', { count: 'exact' }).order('created_at', { ascending: false }).range(page * PAGE_SIZE, (page + 1) * PAGE_SIZE - 1);
-      if (tenantId) query = query.eq('empresa_id', tenantId);
+      query = query.eq('empresa_id', tenantId);
       if (search) {
         const s = search.replace(/[%_()\\*]/g, '');
         query = query.or(`acao.ilike.%${s}%,tabela.ilike.%${s}%,usuario_email.ilike.%${s}%`);
@@ -67,8 +68,9 @@ export function MasterAuditLogs() {
   const { data: dbAuditData, isLoading: loadingDbAudit } = useQuery({
     queryKey: ['master-db-audit-logs', dbPage, dbSearch, dbTableFilter],
     queryFn: async () => {
+      if (!tenantId) return { logs: [], total: 0 };
       let query = supabase.from('enterprise_audit_logs').select('*', { count: 'exact' }).not('dados_antes', 'is', null).order('created_at', { ascending: false }).range(dbPage * PAGE_SIZE, (dbPage + 1) * PAGE_SIZE - 1);
-      if (tenantId) query = query.eq('empresa_id', tenantId);
+      query = query.eq('empresa_id', tenantId);
       if (dbSearch) {
         const s = dbSearch.replace(/[%_()\\*]/g, '');
         query = query.or(`tabela.ilike.%${s}%,acao.ilike.%${s}%,usuario_email.ilike.%${s}%`);
@@ -100,8 +102,9 @@ export function MasterAuditLogs() {
   const { data: statsData } = useQuery({
     queryKey: ['master-audit-stats'],
     queryFn: async () => {
+      if (!tenantId) return { totalAudit: 0, todayAudit: 0, totalDbAudit: 0, todayDbAudit: 0 };
       const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
-      const withTenant = (q: any) => tenantId ? q.eq('empresa_id', tenantId) : q;
+      const withTenant = (q: any) => q.eq('empresa_id', tenantId);
       const [totalAudit, todayAudit, totalDbAudit, todayDbAudit] = await Promise.all([
         withTenant(supabase.from('enterprise_audit_logs').select('*', { count: 'exact', head: true })),
         withTenant(supabase.from('enterprise_audit_logs').select('*', { count: 'exact', head: true })).gte('created_at', oneDayAgo),

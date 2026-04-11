@@ -40,12 +40,12 @@ export function useAtividadesByPlano(planoId: string | null) {
     queryKey: ['atividades-preventivas', planoId, tenantId],
     enabled: !!planoId && !!tenantId,
     queryFn: async () => {
-      let query = supabase
+      if (!tenantId) return [];
+      const { data, error } = await supabase
         .from('atividades_preventivas')
         .select('*, servicos:servicos_preventivos(*)')
-        .eq('plano_id', planoId!);
-      if (tenantId) query = query.eq('empresa_id', tenantId);
-      const { data, error } = await query
+        .eq('plano_id', planoId!)
+        .eq('empresa_id', tenantId)
         .order('ordem')
         .limit(500);
 
@@ -152,7 +152,7 @@ export function useCreateServico() {
         { ...rest, empresa_id: tenantId } as Record<string, unknown>,
       );
       // Recalc atividade tempo
-      await recalcAtividadeTempo(input.atividade_id);
+      await recalcAtividadeTempo(input.atividade_id, tenantId);
       return _plano_id;
     },
     onSuccess: (planoId) => {
@@ -179,7 +179,7 @@ export function useUpdateServico() {
             .single(),
         updates as Record<string, unknown>,
       );
-      await recalcAtividadeTempo(_atividade_id);
+      await recalcAtividadeTempo(_atividade_id, tenantId);
       return _plano_id;
     },
     onSuccess: (planoId) => {
@@ -197,7 +197,7 @@ export function useDeleteServico() {
       if (!tenantId) throw new Error('Tenant não identificado.');
       const { error } = await supabase.from('servicos_preventivos').delete().eq('id', id).eq('empresa_id', tenantId);
       if (error) throw error;
-      await recalcAtividadeTempo(_atividade_id);
+      await recalcAtividadeTempo(_atividade_id, tenantId);
       return _plano_id;
     },
     onSuccess: (planoId) => {
@@ -207,11 +207,13 @@ export function useDeleteServico() {
   });
 }
 
-async function recalcAtividadeTempo(atividadeId: string) {
+async function recalcAtividadeTempo(atividadeId: string, tenantId: string | null) {
+  if (!tenantId) return;
   const { data } = await supabase
     .from('servicos_preventivos')
     .select('tempo_estimado_min')
-    .eq('atividade_id', atividadeId);
+    .eq('atividade_id', atividadeId)
+    .eq('empresa_id', tenantId);
 
   const total = (data || []).reduce((sum, s) => sum + (s.tempo_estimado_min || 0), 0);
   await updateWithColumnFallback(
@@ -220,6 +222,7 @@ async function recalcAtividadeTempo(atividadeId: string) {
         .from('atividades_preventivas')
         .update(payload)
         .eq('id', atividadeId)
+        .eq('empresa_id', tenantId)
         .select()
         .single(),
     { tempo_total_min: total },

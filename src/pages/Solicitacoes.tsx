@@ -18,7 +18,7 @@ import { useFormDraft } from '@/hooks/useFormDraft';
 
 export default function Solicitacoes() {
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, tenantId } = useAuth();
   const [search, setSearch] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedSol, setSelectedSol] = useState<SolicitacaoRow | null>(null);
@@ -62,8 +62,8 @@ export default function Solicitacoes() {
     setShowRejectInput(false);
     setRejectReason('');
     setLinkedOSNumero(null);
-    if (sol.os_id) {
-      supabase.from('ordens_servico').select('numero_os').eq('id', sol.os_id).single()
+    if (sol.os_id && tenantId) {
+      supabase.from('ordens_servico').select('numero_os').eq('id', sol.os_id).eq('empresa_id', tenantId).single()
         .then(({ data }) => { if (data) setLinkedOSNumero(data.numero_os); });
     }
   };

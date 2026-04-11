@@ -14,12 +14,15 @@ export interface TemplatePreventivo {
 }
 
 export function useTemplatesPreventivos() {
+  const { tenantId } = useAuth();
   return useQuery({
-    queryKey: ['templates-preventivos'],
+    queryKey: ['templates-preventivos', tenantId],
+    enabled: !!tenantId,
     queryFn: async () => {
       const { data, error } = await supabase
         .from('templates_preventivos')
         .select('*')
+        .eq('empresa_id', tenantId!)
         .order('nome')
         .limit(500);
       if (error) throw error;
@@ -35,6 +38,7 @@ export function useCreateTemplate() {
 
   return useMutation({
     mutationFn: async (input: { nome: string; descricao?: string; estrutura: any }) => {
+      if (!tenantId) throw new Error('Tenant não resolvido.');
       return insertWithColumnFallback(
         async (payload) =>
           supabase
@@ -42,7 +46,7 @@ export function useCreateTemplate() {
             .insert(payload)
             .select()
             .single(),
-        input as Record<string, unknown>,
+        { ...input, empresa_id: tenantId } as Record<string, unknown>,
       );
     },
     onSuccess: (data) => {
@@ -61,7 +65,8 @@ export function useDeleteTemplate() {
 
   return useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase.from('templates_preventivos').delete().eq('id', id);
+      if (!tenantId) throw new Error('Tenant não resolvido.');
+      const { error } = await supabase.from('templates_preventivos').delete().eq('id', id).eq('empresa_id', tenantId);
       if (error) throw error;
       return id;
     },

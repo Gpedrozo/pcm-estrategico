@@ -103,8 +103,9 @@ export function MasterDatabaseManager() {
 
   const updateRowMutation = useMutation({
     mutationFn: async ({ table, id, updates }: { table: TableName; id: string; updates: Record<string, unknown> }) => {
+      if (!tenantId) throw new Error('Tenant obrigatório para update.');
       let updateQuery = supabase.from(table).update(updates).eq('id', id);
-      if (tenantId && TABLES_WITH_EMPRESA_ID.has(table)) {
+      if (TABLES_WITH_EMPRESA_ID.has(table)) {
         updateQuery = updateQuery.eq('empresa_id', tenantId);
       }
       const { error } = await updateQuery;

@@ -356,14 +356,16 @@ export function useSistemas() {
 }
 
 export function useSistemasByArea(areaId: string | undefined) {
+  const { tenantId } = useAuth();
   return useQuery({
-    queryKey: ['sistemas', 'area', areaId],
+    queryKey: ['sistemas', 'area', areaId, tenantId],
     queryFn: async () => {
-      if (!areaId) return [];
+      if (!areaId || !tenantId) return [];
       
       const { data, error } = await supabase
         .from('sistemas')
         .select('*')
+        .eq('empresa_id', tenantId)
         .eq('area_id', areaId)
         .eq('ativo', true)
         .order('codigo')
@@ -372,7 +374,7 @@ export function useSistemasByArea(areaId: string | undefined) {
       if (error) throw error;
       return data as SistemaRow[];
     },
-    enabled: !!areaId,
+    enabled: !!areaId && !!tenantId,
   });
 }
 

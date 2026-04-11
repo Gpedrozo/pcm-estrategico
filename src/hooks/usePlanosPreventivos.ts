@@ -219,7 +219,7 @@ export function useDeletePlanoPreventivo() {
     mutationFn: async (id: string) => {
       if (!tenantId) throw new Error('Tenant não resolvido.');
 
-      await deleteMaintenanceSchedule('preventiva', id);
+      await deleteMaintenanceSchedule('preventiva', id, tenantId);
 
       const { error } = await supabase
         .from('planos_preventivos')

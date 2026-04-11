@@ -346,10 +346,12 @@ export function useRemoveMaterialOS() {
 
   return useMutation({
     mutationFn: async ({ id, osId }: { id: string; osId: string }) => {
+      if (!tenantId) throw new Error('Tenant não resolvido.');
       const { error } = await supabase
         .from('materiais_os')
         .delete()
-        .eq('id', id);
+        .eq('id', id)
+        .eq('empresa_id', tenantId);
       
       if (error) throw error;
       return { osId };

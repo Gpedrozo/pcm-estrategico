@@ -158,12 +158,14 @@ export function useUpdateFornecedor() {
 
   return useMutation({
     mutationFn: async ({ id, ...updates }: Partial<FornecedorRow> & { id: string }) => {
+      if (!tenantId) throw new Error('Tenant não resolvido.');
       return updateWithColumnFallback(
         async (payload) =>
           supabase
             .from('fornecedores')
             .update(payload)
             .eq('id', id)
+            .eq('empresa_id', tenantId)
             .select()
             .single(),
         updates as Record<string, unknown>,
