@@ -35,7 +35,7 @@ export default function PortalMecanicoDashboard() {
   const { data: mecanicosDB } = useMecanicosAtivos();
   const { data: todasOrdens } = useOrdensServico();
 
-  const mecDB = useMemo(() => {
+  const _mecDB = useMemo(() => {
     if (!mecanico) return null;
     return (mecanicosDB || []).find(m => m.id === mecanico.id) ?? null;
   }, [mecanicosDB, mecanico]);

@@ -7,7 +7,7 @@ const {
   invalidateQueriesSpy,
   toastSpy,
   singleSpy,
-  selectSpy,
+  selectSpy: _selectSpy,
   insertSpy,
   limitSpy,
   probeSelectSpy,
