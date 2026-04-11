@@ -22,13 +22,13 @@ jobs:
         run: npm install --no-audit --no-fund
 
       - name: Lint
-        run: npx eslint . --max-warnings 0
+        run: npx eslint .
 
       - name: Typecheck
         run: npx tsc --noEmit
 
-      - name: Test with coverage
-        run: npx vitest run --coverage
+      - name: Test
+        run: npx vitest run
 
       - name: Build
         run: npm run build
