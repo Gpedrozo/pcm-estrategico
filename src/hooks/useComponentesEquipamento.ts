@@ -213,10 +213,12 @@ export function useUpdateComponente() {
 
   return useMutation({
     mutationFn: async ({ id, ...updates }: ComponenteUpdate) => {
+      if (!tenantId) throw new Error('Tenant não identificado.');
       const { data, error } = await supabase
         .from('componentes_equipamento')
         .update(updates)
         .eq('id', id)
+        .eq('empresa_id', tenantId)
         .select()
         .single();
 
@@ -249,10 +251,12 @@ export function useDeleteComponente() {
 
   return useMutation({
     mutationFn: async (id: string) => {
+      if (!tenantId) throw new Error('Tenant não identificado.');
       const { error } = await supabase
         .from('componentes_equipamento')
         .delete()
-        .eq('id', id);
+        .eq('id', id)
+        .eq('empresa_id', tenantId);
 
       if (error) throw error;
       return id;

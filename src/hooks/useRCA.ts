@@ -144,12 +144,14 @@ export function useUpdateRCA() {
 
   return useMutation({
     mutationFn: async ({ id, ...updates }: Partial<RCARow> & { id: string }) => {
+      if (!tenantId) throw new Error('Tenant não identificado.');
       return updateWithColumnFallback(
         async (payload) =>
           supabase
             .from('analise_causa_raiz')
             .update(payload)
             .eq('id', id)
+            .eq('empresa_id', tenantId)
             .select()
             .single(),
         updates as Record<string, unknown>,
@@ -237,12 +239,14 @@ export function useUpdateAcaoCorretiva() {
 
   return useMutation({
     mutationFn: async ({ id, ...updates }: Partial<AcaoCorretivaRow> & { id: string }) => {
+      if (!tenantId) throw new Error('Tenant não identificado.');
       return updateWithColumnFallback(
         async (payload) =>
           supabase
             .from('acoes_corretivas')
             .update(payload)
             .eq('id', id)
+            .eq('empresa_id', tenantId)
             .select()
             .single(),
         updates as Record<string, unknown>,

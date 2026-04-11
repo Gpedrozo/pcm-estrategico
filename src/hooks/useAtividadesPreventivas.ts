@@ -87,12 +87,14 @@ export function useUpdateAtividade() {
   const { tenantId } = useAuth();
   return useMutation({
     mutationFn: async ({ id, plano_id, ...updates }: Partial<AtividadePreventiva> & { id: string; plano_id: string }) => {
+      if (!tenantId) throw new Error('Tenant não identificado.');
       await updateWithColumnFallback(
         async (payload) =>
           supabase
             .from('atividades_preventivas')
             .update(payload)
             .eq('id', id)
+            .eq('empresa_id', tenantId)
             .select()
             .single(),
         updates as Record<string, unknown>,
@@ -113,7 +115,8 @@ export function useDeleteAtividade() {
 
   return useMutation({
     mutationFn: async ({ id, plano_id }: { id: string; plano_id: string }) => {
-      const { error } = await supabase.from('atividades_preventivas').delete().eq('id', id);
+      if (!tenantId) throw new Error('Tenant não identificado.');
+      const { error } = await supabase.from('atividades_preventivas').delete().eq('id', id).eq('empresa_id', tenantId);
       if (error) throw error;
       return plano_id;
     },
@@ -160,12 +163,14 @@ export function useUpdateServico() {
   const { tenantId } = useAuth();
   return useMutation({
     mutationFn: async ({ id, _plano_id, _atividade_id, ...updates }: Partial<ServicoPreventivo> & { id: string; _plano_id: string; _atividade_id: string }) => {
+      if (!tenantId) throw new Error('Tenant não identificado.');
       await updateWithColumnFallback(
         async (payload) =>
           supabase
             .from('servicos_preventivos')
             .update(payload)
             .eq('id', id)
+            .eq('empresa_id', tenantId)
             .select()
             .single(),
         updates as Record<string, unknown>,
@@ -185,7 +190,8 @@ export function useDeleteServico() {
   const { tenantId } = useAuth();
   return useMutation({
     mutationFn: async ({ id, _plano_id, _atividade_id }: { id: string; _plano_id: string; _atividade_id: string }) => {
-      const { error } = await supabase.from('servicos_preventivos').delete().eq('id', id);
+      if (!tenantId) throw new Error('Tenant não identificado.');
+      const { error } = await supabase.from('servicos_preventivos').delete().eq('id', id).eq('empresa_id', tenantId);
       if (error) throw error;
       await recalcAtividadeTempo(_atividade_id);
       return _plano_id;

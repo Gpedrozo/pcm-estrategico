@@ -55,12 +55,14 @@ export function useUpdateAtividade() {
 
   return useMutation({
     mutationFn: async ({ id, plano_id, ...updates }: Partial<AtividadeLubrificacao> & { id: string; plano_id: string }) => {
+      if (!tenantId) throw new Error('Tenant não identificado.');
       return updateWithColumnFallback(
         async (payload) =>
           supabase
             .from('atividades_lubrificacao')
             .update(payload)
             .eq('id', id)
+            .eq('empresa_id', tenantId)
             .select()
             .single(),
         updates as Record<string, unknown>,
@@ -82,7 +84,8 @@ export function useDeleteAtividade() {
 
   return useMutation({
     mutationFn: async ({ id, plano_id }: { id: string; plano_id: string }) => {
-      const { error } = await supabase.from('atividades_lubrificacao').delete().eq('id', id);
+      if (!tenantId) throw new Error('Tenant não identificado.');
+      const { error } = await supabase.from('atividades_lubrificacao').delete().eq('id', id).eq('empresa_id', tenantId);
       if (error) throw error;
       return { id, plano_id };
     },

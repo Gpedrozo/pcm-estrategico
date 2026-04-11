@@ -53,10 +53,12 @@ export function useUpdateLubrificante() {
   const { tenantId } = useAuth();
   return useMutation({
     mutationFn: async ({ id, ...payload }: Partial<LubrificanteInsert> & { id: string }) => {
+      if (!tenantId) throw new Error('Tenant não identificado.');
       const { data, error } = await supabase
         .from('lubrificantes')
         .update({ ...payload, updated_at: new Date().toISOString() })
         .eq('id', id)
+        .eq('empresa_id', tenantId)
         .select()
         .single();
       if (error) throw error;
@@ -74,7 +76,8 @@ export function useDeleteLubrificante() {
   const { tenantId } = useAuth();
   return useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase.from('lubrificantes').delete().eq('id', id);
+      if (!tenantId) throw new Error('Tenant não identificado.');
+      const { error } = await supabase.from('lubrificantes').delete().eq('id', id).eq('empresa_id', tenantId);
       if (error) throw error;
       return id;
     },

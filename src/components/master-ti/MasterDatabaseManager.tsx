@@ -21,7 +21,8 @@ const TABLES = [
   'avaliacoes_fornecedores', 'documentos_tecnicos', 'solicitacoes_manutencao',
   'enterprise_audit_logs', 'audit_logs', 'profiles', 'user_roles', 'plantas', 'areas', 'sistemas',
   'componentes_equipamento', 'configuracoes_sistema', 'security_logs', 'rate_limits',
-  'dados_empresa', 'permissoes_granulares', 'ai_root_cause_analysis', 'contrato_alertas',
+  'dados_empresa', 'permissoes_granulares',
+  'contrato_alertas',
   'notificacoes',
 ] as const;
 
@@ -33,7 +34,7 @@ const TABLES_WITH_EMPRESA_ID = new Set<string>([
   'execucoes_os', 'materiais_os', 'movimentacoes_materiais', 'fmea', 'analise_causa_raiz',
   'acoes_corretivas', 'inspecoes', 'anomalias_inspecao', 'medicoes_preditivas',
   'melhorias', 'incidentes_ssma', 'permissoes_trabalho', 'fornecedores', 'contratos',
-  'avaliacoes_fornecedores', 'documentos_tecnicos',
+  'avaliacoes_fornecedores', 'documentos_tecnicos', 'solicitacoes_manutencao',
   'enterprise_audit_logs', 'audit_logs', 'profiles', 'user_roles', 'plantas', 'areas', 'sistemas',
   'componentes_equipamento', 'configuracoes_sistema', 'security_logs', 'rate_limits',
   'dados_empresa', 'permissoes_granulares',
@@ -52,6 +53,7 @@ export function MasterDatabaseManager() {
   const { data: tableCounts, isLoading } = useQuery({
     queryKey: ['master-db-counts'],
     queryFn: async () => {
+      if (!tenantId) throw new Error('Tenant não identificado. Faça login novamente.');
       const counts: Record<string, number> = {};
       await Promise.all(
         TABLES.map(async (table) => {
@@ -74,6 +76,7 @@ export function MasterDatabaseManager() {
     queryKey: ['master-db-view', viewingTable, viewPage],
     queryFn: async () => {
       if (!viewingTable) return null;
+      if (!tenantId) throw new Error('Tenant não identificado. Faça login novamente.');
       const hasTenantCol = tenantId && TABLES_WITH_EMPRESA_ID.has(viewingTable);
       let mainQuery = supabase
         .from(viewingTable)

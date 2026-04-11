@@ -56,10 +56,12 @@ export function useUpdateRotaLubrificacao() {
 
   return useMutation({
     mutationFn: async ({ id, ...payload }: Partial<RotaLubrificacaoInsert> & { id: string }) => {
+      if (!tenantId) throw new Error('Tenant não identificado.');
       const { data, error } = await supabase
         .from('rotas_lubrificacao')
         .update({ ...payload, updated_at: new Date().toISOString() })
         .eq('id', id)
+        .eq('empresa_id', tenantId)
         .select()
         .single();
       if (error) throw error;
@@ -78,10 +80,12 @@ export function useDeleteRotaLubrificacao() {
 
   return useMutation({
     mutationFn: async (id: string) => {
+      if (!tenantId) throw new Error('Tenant não identificado.');
       const { error } = await supabase
         .from('rotas_lubrificacao')
         .delete()
-        .eq('id', id);
+        .eq('id', id)
+        .eq('empresa_id', tenantId);
       if (error) throw error;
       return id;
     },

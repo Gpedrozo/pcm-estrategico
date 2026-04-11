@@ -224,6 +224,7 @@ export function useUpdateTreinamentoSSMA() {
             .from('treinamentos_ssma')
             .update(p)
             .eq('id', id)
+            .eq('empresa_id', tenantId!)
             .select()
             .single(),
         payload,
@@ -259,10 +260,12 @@ export function useDeleteTreinamentoSSMA() {
 
   return useMutation({
     mutationFn: async (id: string) => {
+      if (!tenantId) throw new Error('Tenant não identificado.');
       const { error } = await supabase
         .from('treinamentos_ssma')
         .delete()
-        .eq('id', id);
+        .eq('id', id)
+        .eq('empresa_id', tenantId);
 
       if (error) throw error;
     },

@@ -130,12 +130,14 @@ export function useUpdateFMEA() {
 
   return useMutation({
     mutationFn: async ({ id, ...updates }: Partial<FMEARow> & { id: string }) => {
+      if (!tenantId) throw new Error('Tenant não identificado.');
       return updateWithColumnFallback(
         async (payload) =>
           supabase
             .from('fmea')
             .update(payload)
             .eq('id', id)
+            .eq('empresa_id', tenantId)
             .select()
             .single(),
         updates as Record<string, unknown>,
@@ -166,10 +168,12 @@ export function useDeleteFMEA() {
 
   return useMutation({
     mutationFn: async (id: string) => {
+      if (!tenantId) throw new Error('Tenant não identificado.');
       const { error } = await supabase
         .from('fmea')
         .delete()
-        .eq('id', id);
+        .eq('id', id)
+        .eq('empresa_id', tenantId);
 
       if (error) throw error;
     },
