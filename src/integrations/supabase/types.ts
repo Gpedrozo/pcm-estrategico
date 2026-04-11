@@ -671,6 +671,53 @@ export type Database = {
           },
         ]
       }
+      empresa_config: {
+        Row: {
+          id: string
+          empresa_id: string
+          nome_exibicao: string | null
+          dominio_custom: string | null
+          logo_url: string | null
+          cor_primaria: string | null
+          cor_secundaria: string | null
+          inactivity_timeout_minutes: number | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          empresa_id: string
+          nome_exibicao?: string | null
+          dominio_custom?: string | null
+          logo_url?: string | null
+          cor_primaria?: string | null
+          cor_secundaria?: string | null
+          inactivity_timeout_minutes?: number | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          empresa_id?: string
+          nome_exibicao?: string | null
+          dominio_custom?: string | null
+          logo_url?: string | null
+          cor_primaria?: string | null
+          cor_secundaria?: string | null
+          inactivity_timeout_minutes?: number | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "empresa_config_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: true
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       document_layouts: {
         Row: {
           ativo: boolean
