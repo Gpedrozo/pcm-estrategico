@@ -97,7 +97,7 @@ export default function PortalMecanicoFinalizar() {
       },
       {
         onSuccess: () => {
-          try { sessionStorage.removeItem(`portal_mec_timer_${os.id}`); } catch {}
+          try { sessionStorage.removeItem(`portal_mec_timer_${os.id}`); } catch { /* ignore */ }
           toast({ title: 'O.S. Finalizada!', description: `OS #${os.numero_os} fechada com sucesso.` });
           navigate('/portal-mecanico');
         },

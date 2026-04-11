@@ -67,7 +67,7 @@ export const OSDistributionChart = memo(function OSDistributionChart({ data, tit
                 outerRadius={100}
                 paddingAngle={2}
                 dataKey="value"
-                label={({ name, percent }) => 
+                label={({ percent }) => 
                   percent > 0.05 ? `${(percent * 100).toFixed(0)}%` : ''
                 }
                 labelLine={false}

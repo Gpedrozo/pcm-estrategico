@@ -251,7 +251,7 @@ export default function MecanicoHome() {
       sessionStorage.removeItem('mecanico_logado_nome');
       sessionStorage.removeItem('mecanico_session_id');
       sessionStorage.removeItem('mecanico_session_inicio');
-    } catch {}
+    } catch { /* ignore */ }
   };
 
   /* ─── Tela de Login (inputs enormes para mãos sujas) ─── */

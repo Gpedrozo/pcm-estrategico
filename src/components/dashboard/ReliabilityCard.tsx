@@ -1,4 +1,4 @@
-import { Activity, TrendingUp, Shield } from 'lucide-react';
+import { Activity, Shield } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
 interface ReliabilityCardProps {

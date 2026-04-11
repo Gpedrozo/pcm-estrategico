@@ -64,7 +64,7 @@ export async function upsertMaintenanceSchedule(input: MaintenanceScheduleUpsert
 
 export async function deleteMaintenanceSchedule(tipo: MaintenanceTipo, origemId: string, empresaId?: string) {
   if (!empresaId) throw new Error('empresa_id obrigatório para delete em maintenance_schedule');
-  let query = supabase
+  const query = supabase
     .from('maintenance_schedule')
     .delete()
     .eq('tipo', tipo)

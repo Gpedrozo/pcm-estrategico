@@ -9,6 +9,7 @@ import { useOfflineSync } from '@/hooks/useOfflineSync';
 export function MobileLayout() {
   const { isAuthenticated, isLoading, isHydrating, authStatus, effectiveRole, forcePasswordChange } = useAuth();
   const location = useLocation();
+  const { isOnline, pendingCount } = useOfflineSync();
 
   // Loading states
   if (isLoading || isHydrating || authStatus === 'loading' || authStatus === 'hydrating') {
@@ -32,8 +33,6 @@ export function MobileLayout() {
   // Allowed paths for mobile roles
   const technicianPaths = ['/mecanico', '/suporte', '/manuais-operacao', '/manual'];
   const solicitantePaths = ['/operador', '/suporte', '/manuais-operacao', '/manual'];
-
-  const { isOnline, pendingCount } = useOfflineSync();
 
   const allowedPaths = effectiveRole === 'SOLICITANTE' ? solicitantePaths : technicianPaths;
   const defaultPath = effectiveRole === 'SOLICITANTE' ? '/operador' : '/mecanico';
