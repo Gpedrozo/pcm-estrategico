@@ -22,7 +22,7 @@ export const routeToManualSlug: Record<string, string> = {
   '/os/nova': 'emitir-os',
   '/os/fechar': 'fechar-os',
   '/os/historico': 'historico',
-  '/painel-mecanico': 'fechar-os',
+  '/os/portal-mecanico': 'fechar-os',
   '/painel-operador': 'solicitacoes',
   '/programacao': 'programacao',
   '/preventiva': 'preventiva',

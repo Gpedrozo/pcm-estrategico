@@ -49,7 +49,6 @@ interface FormData {
   especialidade: string;
   custo_hora: string;
   codigo_acesso: string;
-  senha_acesso: string;
   escala_trabalho: string;
   folgas_planejadas: string;
   ferias_inicio: string;
@@ -64,7 +63,6 @@ const initialFormData: FormData = {
   especialidade: '',
   custo_hora: '',
   codigo_acesso: '',
-  senha_acesso: '',
   escala_trabalho: '',
   folgas_planejadas: '',
   ferias_inicio: '',
@@ -140,7 +138,6 @@ export default function Mecanicos() {
       especialidade: formData.especialidade || null,
       custo_hora: formData.custo_hora ? parseFloat(formData.custo_hora) : null,
       codigo_acesso: formData.codigo_acesso || null,
-      senha_acesso: formData.senha_acesso || null,
       escala_trabalho: formData.escala_trabalho || null,
       folgas_planejadas: formData.folgas_planejadas || null,
       ferias_inicio: formData.ferias_inicio || null,
@@ -169,7 +166,6 @@ export default function Mecanicos() {
       especialidade: mec.especialidade || '',
       custo_hora: mec.custo_hora?.toString() || '',
       codigo_acesso: mec.codigo_acesso || '',
-      senha_acesso: mec.senha_acesso || '',
       escala_trabalho: mec.escala_trabalho || '',
       folgas_planejadas: mec.folgas_planejadas || '',
       ferias_inicio: mec.ferias_inicio || '',
@@ -472,16 +468,6 @@ export default function Mecanicos() {
                   value={formData.codigo_acesso}
                   onChange={(e) => setFormData({ ...formData, codigo_acesso: e.target.value.toUpperCase() })}
                   placeholder="Ex: MEC-001"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="senha_acesso">Senha de Acesso (portal)</Label>
-                <Input
-                  id="senha_acesso"
-                  type="password"
-                  value={formData.senha_acesso}
-                  onChange={(e) => setFormData({ ...formData, senha_acesso: e.target.value })}
-                  placeholder="Somente para acesso operacional"
                 />
               </div>
             </div>
