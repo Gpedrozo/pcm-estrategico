@@ -202,7 +202,7 @@ const OwnerOnlyRoute = ({ children }: { children: React.ReactNode }) => {
     return <Navigate to={`/login?next=${nextParam}`} replace />;
   }
 
-  if (forcePasswordChange) {
+  if (forcePasswordChange && location.pathname !== '/change-password') {
     return <Navigate to="/change-password" replace />;
   }
 
@@ -234,7 +234,9 @@ function OwnerRoutes() {
           path="/change-password"
           element={
             <EnvironmentGuard allowOwner>
-              <ChangePassword />
+              <OwnerOnlyRoute>
+                <ChangePassword />
+              </OwnerOnlyRoute>
             </EnvironmentGuard>
           }
         />

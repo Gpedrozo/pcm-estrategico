@@ -398,6 +398,25 @@ Deno.serve(async (req) => {
       }
     }
 
+    // ── Check owner-domain role — block non-owner roles from owner portal ──
+    const requestOrigin = req.headers.get("origin") ?? "";
+    const isOwnerOrigin = requestOrigin.includes("owner.gppis.com.br")
+      || requestOrigin.includes("owner.localhost");
+    if (isOwnerOrigin) {
+      const ownerAllowedRoles = new Set(["SYSTEM_OWNER", "SYSTEM_ADMIN"]);
+      const hasOwnerRole = profile.roles.some((r) => ownerAllowedRoles.has(r));
+      if (!hasOwnerRole) {
+        console.warn("[auth-login] owner domain login denied — insufficient role", {
+          user_email: email,
+          roles: profile.roles,
+          origin: requestOrigin,
+        });
+        return fail("Acesso negado. Apenas SYSTEM_OWNER e SYSTEM_ADMIN podem acessar o Owner Portal.", 403, {
+          code: "owner_role_required",
+        }, req);
+      }
+    }
+
     // ── Check empresa status — block if company is blocked ─────────────
     if (admin && tenant?.id) {
       try {

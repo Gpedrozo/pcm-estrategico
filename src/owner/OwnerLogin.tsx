@@ -109,9 +109,11 @@ export default function OwnerLogin() {
   useEffect(() => {
     if (isLoading || isHydrating || authStatus === 'loading' || authStatus === 'hydrating') return;
     if (!isAuthenticated || authStatus !== 'authenticated') return;
+    // Block non-owner roles BEFORE checking forcePasswordChange to prevent flash
+    if (!isOwnerRole) return;
     if (!forcePasswordChange) return;
     navigate('/change-password', { replace: true });
-  }, [authStatus, forcePasswordChange, isAuthenticated, isHydrating, isLoading, navigate]);
+  }, [authStatus, forcePasswordChange, isAuthenticated, isHydrating, isLoading, isOwnerRole, navigate]);
 
   useEffect(() => {
     if (isLoading || isHydrating || authStatus === 'loading' || authStatus === 'hydrating') return;
