@@ -1,9 +1,9 @@
 import { createClient } from '@supabase/supabase-js'
 
-const URL = process.env.SUPABASE_URL || 'https://dvwsferonoczgmvfubgu.supabase.co'
-const PUB = process.env.SUPABASE_PUBLISHABLE_KEY || 'sb_publishable_d0dYFE0Pp0GaM43BpDGvtw_7F9cCOXU'
-const EMAIL = process.argv[2] || 'coopertradicao@gmail.com'
-const PASSWORD = process.argv[3] || 'Tmp#zZ8AauYGtaxMa3!'
+const URL = process.env.SUPABASE_URL; if (!URL) throw new Error('SUPABASE_URL env var required')
+const PUB = process.env.SUPABASE_PUBLISHABLE_KEY; if (!PUB) throw new Error('SUPABASE_PUBLISHABLE_KEY env var required')
+const EMAIL = process.argv[2]; if (!EMAIL) throw new Error('Usage: node script.mjs <email> <password>')
+const PASSWORD = process.argv[3]; if (!PASSWORD) throw new Error('Usage: node script.mjs <email> <password>')
 
 const supabase = createClient(URL, PUB, { auth: { persistSession: false, autoRefreshToken: false } })
 

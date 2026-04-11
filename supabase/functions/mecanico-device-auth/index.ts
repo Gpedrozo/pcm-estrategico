@@ -1,5 +1,6 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "jsr:@supabase/supabase-js@2";
+import { enforceRateLimit } from "../_shared/rateLimit.ts";
 
 declare const Deno: any;
 
@@ -41,10 +42,31 @@ function respond(body: Record<string, unknown>, req: Request) {
   });
 }
 
+// Timing-safe string comparison via HMAC-SHA256 to prevent timing attacks
+async function timingSafeCompare(a: string, b: string): Promise<boolean> {
+  const enc = new TextEncoder();
+  const key = await crypto.subtle.importKey(
+    "raw", enc.encode("pcm-compare-key"), { name: "HMAC", hash: "SHA-256" }, false, ["sign"],
+  );
+  const [sigA, sigB] = await Promise.all([
+    crypto.subtle.sign("HMAC", key, enc.encode(a)),
+    crypto.subtle.sign("HMAC", key, enc.encode(b)),
+  ]);
+  const vA = new Uint8Array(sigA), vB = new Uint8Array(sigB);
+  let diff = 0;
+  for (let i = 0; i < vA.length; i++) diff |= vA[i] ^ vB[i];
+  return diff === 0;
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: cors(req) });
   }
+
+  // Rate limit: 20 requests per 60 seconds per IP
+  const daIp = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? req.headers.get("x-real-ip") ?? "unknown";
+  const rl = await enforceRateLimit(adminClient(), { scope: "device_auth", identifier: daIp, maxRequests: 20, windowSeconds: 60 });
+  if (!rl.allowed) return respond({ ok: false, error: "Too many requests" }, req);
 
   try {
     const body = await req.json().catch(() => ({}));
@@ -178,7 +200,7 @@ Deno.serve(async (req: Request) => {
         if (mecErr) return respond({ ok: false, error: "Erro ao buscar mec\u00e2nico" }, req);
         if (!mec) return respond({ ok: false, error: "Mec\u00e2nico n\u00e3o encontrado" }, req);
         if (!mec.senha_acesso) return respond({ ok: true, valid: true }, req);
-        const valid = mec.senha_acesso === senhaInput;
+        const valid = await timingSafeCompare(mec.senha_acesso, senhaInput);
         return respond({ ok: true, valid }, req);
       } catch (e) {
         console.error("[device-auth] validar_senha error:", e);

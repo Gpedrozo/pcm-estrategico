@@ -1,8 +1,8 @@
 import { chromium } from 'playwright'
 
 const BASE_LOGIN_URL = 'https://gppis.com.br/login'
-const EMAIL = 'coopertradicao@gmail.com'
-const PASSWORD = 'Tmp#zZ8AauYGtaxMa3!'
+const EMAIL = process.env.COOPER_EMAIL; if (!EMAIL) throw new Error('COOPER_EMAIL env var required')
+const PASSWORD = process.env.COOPER_PASSWORD; if (!PASSWORD) throw new Error('COOPER_PASSWORD env var required')
 
 async function main() {
   const browser = await chromium.launch({ headless: true })

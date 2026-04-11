@@ -4,8 +4,9 @@
  * Usa RAG simplificado: o conteúdo do manual é inline no prompt.
  */
 
-import { requireUser, tokenFromRequest } from "../_shared/auth.ts";
+import { adminClient, requireUser, tokenFromRequest } from "../_shared/auth.ts";
 import { preflight, ok, fail, resolveCorsHeaders } from "../_shared/response.ts";
+import { enforceRateLimit } from "../_shared/rateLimit.ts";
 
 declare const Deno: any;
 
@@ -221,6 +222,11 @@ Deno.serve(async (req: Request) => {
     }
 
     const { user } = authResult;
+
+    // Rate limit: 10 AI calls per 60s per IP
+    const asstIp = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? req.headers.get("x-real-ip") ?? "unknown";
+    const rl = await enforceRateLimit(adminClient(), { scope: "ai_assistente_pcm", identifier: asstIp, maxRequests: 10, windowSeconds: 60 });
+    if (!rl.allowed) return fail("Too many requests", 429, null, req);
 
     // Parse body
     const body = await req.json();

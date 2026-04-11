@@ -1,7 +1,7 @@
 import { createClient } from '@supabase/supabase-js'
 
-const URL = process.env.SUPABASE_URL || 'https://dvwsferonoczgmvfubgu.supabase.co'
-const PUB = process.env.SUPABASE_PUBLISHABLE_KEY || 'sb_publishable_d0dYFE0Pp0GaM43BpDGvtw_7F9cCOXU'
+const URL = process.env.SUPABASE_URL; if (!URL) throw new Error('SUPABASE_URL env var required')
+const PUB = process.env.SUPABASE_PUBLISHABLE_KEY; if (!PUB) throw new Error('SUPABASE_PUBLISHABLE_KEY env var required')
 
 const client = createClient(URL, PUB, {
   auth: { persistSession: false, autoRefreshToken: false },
@@ -9,7 +9,7 @@ const client = createClient(URL, PUB, {
 
 async function testOwnerLogin() {
   const login = await client.auth.signInWithPassword({
-    email: 'pedrozo@gppis.com.br',
+    email: process.env.OWNER_EMAIL,
     password: process.env.OWNER_PASSWORD,
   })
 

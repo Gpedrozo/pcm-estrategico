@@ -1,6 +1,7 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { adminClient, requireTenantContext, requireUser } from "../_shared/auth.ts";
 import { fail, ok, preflight, rejectIfOriginNotAllowed } from "../_shared/response.ts";
+import { enforceRateLimit } from "../_shared/rateLimit.ts";
 
 Deno.serve(async (req: Request) => {
   console.log("[IA] >>>", req.method, req.url);
@@ -34,6 +35,11 @@ Deno.serve(async (req: Request) => {
       return fail(auth.error ?? "Unauthorized", auth.status ?? 401, null, req);
     }
     console.log("[IA] Auth OK:", auth.user.email);
+
+    // Rate limit: 10 AI calls per 60s per IP
+    const iaIp = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? req.headers.get("x-real-ip") ?? "unknown";
+    const rl = await enforceRateLimit(adminClient(), { scope: "ai_analisar_causa", identifier: iaIp, maxRequests: 10, windowSeconds: 60 });
+    if (!rl.allowed) return fail("Too many requests", 429, null, req);
 
     // ── 2. Body ──────────────────────────────────────────────
     console.log("[IA] Step 2: parse body");

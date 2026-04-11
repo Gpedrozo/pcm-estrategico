@@ -5,7 +5,7 @@
   const base = 'http://127.0.0.1:4173';
   const shots = [['dashboard','/dashboard'],['solicitacoes','/solicitacoes'],['os_nova','/os/nova'],['os_fechar','/os/fechar'],['os_historico','/os/historico'],['programacao','/programacao'],['preventiva','/preventiva'],['preditiva','/preditiva'],['inspecoes','/inspecoes'],['equipamentos','/equipamentos'],['materiais','/materiais'],['documentos','/documentos'],['relatorios','/relatorios']];
   await page.goto(base + '/login', { waitUntil: 'domcontentloaded' });
-  await page.fill('#login-email', 'pedrozo@gppis.com.br');
+  await page.fill('#login-email', process.env.OWNER_EMAIL || (() => { throw new Error('OWNER_EMAIL env var required') })());
   await page.fill('#login-password', process.env.OWNER_PASSWORD || (() => { throw new Error('OWNER_PASSWORD env var required') })());
   await Promise.all([
     page.waitForLoadState('networkidle').catch(()=>null),

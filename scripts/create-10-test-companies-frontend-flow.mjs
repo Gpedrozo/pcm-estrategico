@@ -8,7 +8,7 @@ if (!SUPABASE_URL || !SUPABASE_KEY) {
   throw new Error('Missing VITE_SUPABASE_URL or VITE_SUPABASE_PUBLISHABLE_KEY/VITE_SUPABASE_ANON_KEY in environment')
 }
 
-const OWNER_EMAIL = process.env.OWNER_EMAIL || 'pedrozo@gppis.com.br'
+const OWNER_EMAIL = process.env.OWNER_EMAIL; if (!OWNER_EMAIL) throw new Error('OWNER_EMAIL env var required')
 const OWNER_PASSWORD = process.env.OWNER_PASSWORD
 if (!OWNER_PASSWORD) throw new Error('OWNER_PASSWORD env var required')
 

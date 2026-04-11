@@ -2,9 +2,9 @@ import { createClient } from '@supabase/supabase-js'
 import { chromium } from 'playwright'
 import { mkdirSync, writeFileSync } from 'node:fs'
 
-const URL = process.env.SUPABASE_URL || 'https://dvwsferonoczgmvfubgu.supabase.co'
-const PUB = process.env.SUPABASE_PUBLISHABLE_KEY || 'sb_publishable_d0dYFE0Pp0GaM43BpDGvtw_7F9cCOXU'
-const EMAIL = process.env.OWNER_EMAIL || 'pedrozo@gppis.com.br'
+const URL = process.env.SUPABASE_URL; if (!URL) throw new Error('SUPABASE_URL env var required')
+const PUB = process.env.SUPABASE_PUBLISHABLE_KEY; if (!PUB) throw new Error('SUPABASE_PUBLISHABLE_KEY env var required')
+const EMAIL = process.env.OWNER_EMAIL; if (!EMAIL) throw new Error('OWNER_EMAIL env var required')
 const PASSWORD = process.env.OWNER_PASSWORD
 if (!PASSWORD) throw new Error('OWNER_PASSWORD env var required')
 

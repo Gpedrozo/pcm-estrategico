@@ -3,8 +3,8 @@ import { chromium } from 'playwright'
 const TENANT_LOGIN_URL = 'https://cooper.gppis.com.br/login'
 const TENANT_DASHBOARD_URL = 'https://cooper.gppis.com.br/dashboard'
 const BASE_LOGIN_HOST = 'gppis.com.br'
-const EMAIL = 'coopertradicao@gmail.com'
-const PASSWORD = 'Tmp#zZ8AauYGtaxMa3!'
+const EMAIL = process.env.COOPER_EMAIL; if (!EMAIL) throw new Error('COOPER_EMAIL env var required')
+const PASSWORD = process.env.COOPER_PASSWORD; if (!PASSWORD) throw new Error('COOPER_PASSWORD env var required')
 
 async function waitForAuthenticatedRoute(page) {
   const started = Date.now()

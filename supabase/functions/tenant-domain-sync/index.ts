@@ -118,7 +118,11 @@ Deno.serve(async (req: Request) => {
   const headerSecret = normalizeToken(req.headers.get("x-domain-sync-secret"));
   const bearerSecret = normalizeToken(req.headers.get("authorization"));
 
-  if (DOMAIN_SYNC_SECRET) {
+  if (!DOMAIN_SYNC_SECRET) {
+    return fail("DOMAIN_SYNC_SECRET not configured — rejecting (fail-closed)", 500, null, req);
+  }
+
+  {
     const authorized = headerSecret === DOMAIN_SYNC_SECRET || bearerSecret === DOMAIN_SYNC_SECRET;
     if (!authorized) return unauthorizedResponse(req);
   }

@@ -1,6 +1,7 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { adminClient } from "../_shared/auth.ts";
 import { fail, ok, preflight, rejectIfOriginNotAllowed } from "../_shared/response.ts";
+import { enforceRateLimit } from "../_shared/rateLimit.ts";
 
 type Payload = {
   action: "create" | "consume";
@@ -194,6 +195,10 @@ Deno.serve(async (req) => {
   }
 
   if (body.action === "consume") {
+    const consumeIp = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? req.headers.get("x-real-ip") ?? "unknown";
+    const rl = await enforceRateLimit(adminClient(), { scope: "session_transfer_consume", identifier: consumeIp, maxRequests: 10, windowSeconds: 60 });
+    if (!rl.allowed) return fail("Too many requests", 429, null, req);
+
     const code = String(body.code ?? "").trim();
     if (!code) {
       return fail("code is required", 400, null, req);

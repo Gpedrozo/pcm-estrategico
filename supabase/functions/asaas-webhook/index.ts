@@ -234,7 +234,15 @@ Deno.serve(async (req: Request) => {
     });
   }
 
-  if (asaasWebhookToken) {
+  if (!asaasWebhookToken) {
+    console.error("[asaas-webhook] ASAAS_WEBHOOK_TOKEN not configured — rejecting request (fail-closed)");
+    return new Response(JSON.stringify({ error: "Webhook not configured" }), {
+      status: 500,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+
+  {
     const tokenHeader = req.headers.get("asaas-access-token") ?? req.headers.get("x-asaas-access-token") ?? "";
     if (!tokenHeader || tokenHeader !== asaasWebhookToken) {
       await logAlert("ASAAS_WEBHOOK_INVALID_TOKEN", "warning", {

@@ -33,7 +33,7 @@ if (!SUPABASE_URL || !SERVICE_ROLE_KEY || !PUBLISHABLE_KEY) {
   throw new Error('Missing SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY or VITE_SUPABASE_PUBLISHABLE_KEY')
 }
 
-const OWNER_EMAIL = 'pedrozo@gppis.com.br'
+const OWNER_EMAIL = process.env.OWNER_EMAIL; if (!OWNER_EMAIL) throw new Error('OWNER_EMAIL env var required')
 const OWNER_PASSWORD = process.env.OWNER_PASSWORD
 if (!OWNER_PASSWORD) throw new Error('OWNER_PASSWORD env var required')
 
@@ -166,7 +166,7 @@ async function main() {
   const repaired = await ensureOwnerUser()
   console.log(JSON.stringify(repaired))
 
-  console.log('[2/3] Verifying frontend login with pedrozo@gppis.com.br')
+  console.log(`[2/3] Verifying frontend login with ${OWNER_EMAIL}`)
   const verification = await verifyFrontendLoginAndOwnerAccess()
   console.log(JSON.stringify(verification))
 
