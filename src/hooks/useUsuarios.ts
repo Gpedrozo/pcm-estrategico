@@ -7,6 +7,10 @@ import { useAuth } from '@/contexts/AuthContext';
 export interface ProfileRow {
   id: string;
   nome: string;
+  email: string | null;
+  empresa_id: string;
+  status?: string | null;
+  force_password_change: boolean;
   created_at: string;
   updated_at: string;
 }

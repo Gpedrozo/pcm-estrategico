@@ -13,7 +13,6 @@ export interface MecanicoRow {
   custo_hora: number | null;
   ativo: boolean;
   codigo_acesso?: string | null;
-  senha_acesso?: string | null;
   escala_trabalho?: string | null;
   folgas_planejadas?: string | null;
   ferias_inicio?: string | null;
@@ -30,7 +29,6 @@ export interface MecanicoInsert {
   custo_hora?: number | null;
   ativo?: boolean;
   codigo_acesso?: string | null;
-  senha_acesso?: string | null;
   escala_trabalho?: string | null;
   folgas_planejadas?: string | null;
   ferias_inicio?: string | null;
@@ -45,7 +43,6 @@ export interface MecanicoUpdate {
   custo_hora?: number | null;
   ativo?: boolean;
   codigo_acesso?: string | null;
-  senha_acesso?: string | null;
   escala_trabalho?: string | null;
   folgas_planejadas?: string | null;
   ferias_inicio?: string | null;

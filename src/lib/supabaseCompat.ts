@@ -1,3 +1,5 @@
+import { logger } from '@/lib/logger';
+
 export function getSupabaseErrorMessage(error: unknown): string {
   if (!error || typeof error !== 'object') return '';
   if ('message' in error) return String((error as { message?: unknown }).message ?? '');
@@ -48,6 +50,7 @@ export async function insertWithColumnFallback<T>(
       throw error;
     }
 
+    logger.warn('supabase_compat_column_dropped_insert', { column: missingColumn, attempt: attempt + 1 });
     delete currentPayload[missingColumn];
   }
 
@@ -70,6 +73,7 @@ export async function updateWithColumnFallback<T>(
       throw error;
     }
 
+    logger.warn('supabase_compat_column_dropped_update', { column: missingColumn, attempt: attempt + 1 });
     delete currentPayload[missingColumn];
   }
 

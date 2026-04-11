@@ -168,7 +168,7 @@ export function useCreateSolicitacao() {
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['solicitacoes', tenantId] });
-      writeAuditLog({ action: 'CREATE_SOLICITACAO', table: 'solicitacoes_manutencao', recordId: data?.id, empresaId: tenantId, source: 'useSolicitacoes', metadata: { classificacao: data?.classificacao, impacto: data?.impacto } });
+      writeAuditLog({ action: 'CREATE_SOLICITACAO', table: cachedSolicitacoesTable ?? 'solicitacoes', recordId: data?.id, empresaId: tenantId, source: 'useSolicitacoes', metadata: { classificacao: data?.classificacao, impacto: data?.impacto } });
       toast({
         title: 'Solicitação criada',
         description: 'A solicitação foi registrada com sucesso.',
@@ -208,7 +208,7 @@ export function useUpdateSolicitacao() {
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['solicitacoes', tenantId] });
-      writeAuditLog({ action: 'UPDATE_SOLICITACAO', table: 'solicitacoes_manutencao', recordId: data?.id, empresaId: tenantId, source: 'useSolicitacoes', metadata: { status: data?.status } });
+      writeAuditLog({ action: 'UPDATE_SOLICITACAO', table: cachedSolicitacoesTable ?? 'solicitacoes', recordId: data?.id, empresaId: tenantId, source: 'useSolicitacoes', metadata: { status: data?.status } });
       toast({
         title: 'Solicitação atualizada',
         description: 'A solicitação foi atualizada com sucesso.',
