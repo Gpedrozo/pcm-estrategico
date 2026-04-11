@@ -125,7 +125,7 @@ export const RotaPrintTemplate = forwardRef<HTMLDivElement, RotaPrintTemplatePro
           <>
             <PrintSectionHeader label="INSTRUÇÕES / RECOMENDAÇÕES" />
             <div className="p-2 text-[8px] border-b-2 border-black space-y-1">
-              {pontos.filter((p) => p.instrucoes).map((p, i) => {
+              {pontos.filter((p) => p.instrucoes).map((p, _i) => {
                 const itemIdx = pontos.indexOf(p);
                 return (
                   <p key={p.id}>

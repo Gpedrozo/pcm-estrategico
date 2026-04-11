@@ -36,6 +36,7 @@ export default function PlanoFormDialog({ open, onOpenChange }: Props) {
         onSuccess: (val) => setCodigo(val)
       });
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
   const [equipamentoId, setEquipamentoId] = useState<string | null>(null);

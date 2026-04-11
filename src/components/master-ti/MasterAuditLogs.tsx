@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Search, FileText, Download, ChevronLeft, ChevronRight, Activity, Database, Clock, BarChart3, Eye } from 'lucide-react';
+import { Search, Download, ChevronLeft, ChevronRight, Activity, Database, Clock, BarChart3, Eye } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { exportAuditLogsCSV } from '@/lib/auditExport';

@@ -229,7 +229,7 @@ export function MasterDatabaseManager() {
                             <div className="flex gap-1">
                               <Button variant="ghost" size="icon" className="h-6 w-6"
                                 onClick={() => {
-                                  const { id, created_at, updated_at, ...updates } = editingRow.data;
+                                  const { id: _id, created_at: _created_at, updated_at: _updated_at, ...updates } = editingRow.data;
                                   updateRowMutation.mutate({ table: viewingTable!, id: row.id, updates });
                                 }}
                                 disabled={updateRowMutation.isPending}>
