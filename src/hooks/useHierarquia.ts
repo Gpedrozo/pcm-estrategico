@@ -251,7 +251,7 @@ export function useAreasByPlanta(plantaId: string | undefined) {
       if (error) throw error;
       return data as AreaRow[];
     },
-    enabled: !!plantaId,
+    enabled: !!plantaId && !!tenantId,
   });
 }
 
