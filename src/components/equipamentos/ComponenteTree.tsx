@@ -9,12 +9,42 @@ import {
 } from '@/hooks/useComponentesEquipamento';
 import { cn } from '@/lib/utils';
 
-// Ordena componentes pelo código de nível (ex: "1", "1.1", "1.1.2") numericamente
+// Extrai o código de nível numérico de um componente de forma robusta.
+// Suporta 4 fontes em ordem de prioridade:
+//   1. novo import: especificacoes.nivel = "1.1.1"
+//   2. import antigo: especificacoes.subitem = "1.1" ou item = "1"
+//   3. codigo com sufixo numérico: "ELV-001-1.2.3" → "1.2.3"
+//   4. fallback: string alfanumérica
+function extractNivelCode(comp: ComponenteEquipamento): string {
+  const specs = comp.especificacoes as Record<string, string> | null;
+
+  const nivelSpec = specs?.nivel;
+  if (nivelSpec && /^\d[\d.]*$/.test(String(nivelSpec).trim())) {
+    return String(nivelSpec).trim();
+  }
+
+  const subitemSpec = specs?.subitem;
+  if (subitemSpec && /^\d[\d.]*$/.test(String(subitemSpec).trim())) {
+    return String(subitemSpec).trim();
+  }
+  const itemSpec = specs?.item;
+  if (itemSpec && /^\d[\d.]*$/.test(String(itemSpec).trim())) {
+    return String(itemSpec).trim();
+  }
+
+  const matchCodigo = comp.codigo.match(/[-](\d+(?:\.\d+)*)$/);
+  if (matchCodigo) return matchCodigo[1];
+
+  if (/^\d[\d.]*$/.test(comp.codigo)) return comp.codigo;
+
+  return comp.codigo;
+}
+
 function compareNivel(a: ComponenteEquipamento, b: ComponenteEquipamento): number {
-  const nivelA = (a.especificacoes?.nivel as string | undefined) || a.codigo || '';
-  const nivelB = (b.especificacoes?.nivel as string | undefined) || b.codigo || '';
-  const partsA = nivelA.split('.').map(Number);
-  const partsB = nivelB.split('.').map(Number);
+  const nivelA = extractNivelCode(a);
+  const nivelB = extractNivelCode(b);
+  const partsA = nivelA.split('.').map(p => parseInt(p, 10) || 0);
+  const partsB = nivelB.split('.').map(p => parseInt(p, 10) || 0);
   for (let i = 0; i < Math.max(partsA.length, partsB.length); i++) {
     const diff = (partsA[i] ?? 0) - (partsB[i] ?? 0);
     if (diff !== 0) return diff;
