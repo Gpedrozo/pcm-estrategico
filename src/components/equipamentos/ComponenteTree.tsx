@@ -52,6 +52,7 @@ function TreeNode({
 }: TreeNodeProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   const hasChildren = componente.children && componente.children.length > 0;
+  const sortedChildren = hasChildren ? [...componente.children!].sort(compareNivel) : [];
   
   const tipoLabel = TIPOS_COMPONENTE.find(t => t.value === componente.tipo)?.label || componente.tipo;
   const estadoInfo = ESTADOS_COMPONENTE.find(e => e.value === componente.estado);
@@ -152,7 +153,7 @@ function TreeNode({
 
       {hasChildren && isExpanded && (
         <div>
-          {componente.children!.map(child => (
+          {sortedChildren.map(child => (
             <TreeNode
               key={child.id}
               componente={child}
@@ -188,9 +189,11 @@ export function ComponenteTree({
     );
   }
 
+  const sortedRoots = [...componentes].sort(compareNivel);
+
   return (
     <div className="border rounded-lg divide-y">
-      {componentes.map(componente => (
+      {sortedRoots.map(componente => (
         <TreeNode
           key={componente.id}
           componente={componente}
