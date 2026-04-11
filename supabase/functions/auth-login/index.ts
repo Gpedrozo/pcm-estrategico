@@ -285,12 +285,15 @@ Deno.serve(async (req) => {
     }
 
     if (fetchError) {
-      console.error("[auth-login] rate-limit storage unavailable, continuing without throttle", {
+      console.error("[auth-login] rate-limit storage unavailable — fail-closed", {
         reason: fetchError.message,
       });
+      return fail("Serviço temporariamente indisponível. Tente novamente.", 429, {
+        retry_after_seconds: 30,
+      }, req);
     }
 
-    const currentAttempt = fetchError ? null : currentAttemptRaw;
+    const currentAttempt = currentAttemptRaw;
 
     const blockedUntilMs = currentAttempt?.blocked_until ? new Date(currentAttempt.blocked_until).getTime() : 0;
     if (blockedUntilMs > now) {
@@ -403,8 +406,14 @@ Deno.serve(async (req) => {
 
     // ── Check owner-domain role — block non-owner roles from owner portal ──
     const requestOrigin = req.headers.get("origin") ?? "";
-    const isOwnerOrigin = requestOrigin.includes("owner.gppis.com.br")
-      || requestOrigin.includes("owner.localhost");
+    let isOwnerOrigin = false;
+    try {
+      const originUrl = new URL(requestOrigin);
+      isOwnerOrigin = originUrl.hostname === "owner.gppis.com.br"
+        || originUrl.hostname === "owner.localhost";
+    } catch {
+      isOwnerOrigin = false;
+    }
     if (isOwnerOrigin) {
       const ownerAllowedRoles = new Set(["SYSTEM_OWNER", "SYSTEM_ADMIN"]);
       const hasOwnerRole = profile.roles.some((r) => ownerAllowedRoles.has(r));

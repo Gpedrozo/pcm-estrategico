@@ -63,9 +63,20 @@ export function buildTenantLoginUrl(
     params.set('email', email);
   }
 
-  const next = String(options?.next ?? '').trim();
-  if (next) {
-    params.set('next', next);
+  const rawNext = String(options?.next ?? '').trim();
+  if (rawNext) {
+    // Prevent open redirect — only allow same-origin relative paths
+    try {
+      const parsed = new URL(rawNext, window.location.origin);
+      if (parsed.origin === window.location.origin) {
+        params.set('next', parsed.pathname + parsed.search);
+      }
+    } catch {
+      // If rawNext is already a relative path, use it directly after sanitization
+      if (rawNext.startsWith('/')) {
+        params.set('next', rawNext);
+      }
+    }
   }
 
   const query = params.toString();

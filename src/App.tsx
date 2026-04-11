@@ -173,8 +173,8 @@ const OwnerOnlyRoute = ({ children }: { children: React.ReactNode }) => {
 
     logger.info('owner_route_guard_trace', {
       path: location.pathname,
-      search: location.search,
-      hash: location.hash,
+      search: location.search ? '[redacted]' : '',
+      hash: location.hash ? '[redacted]' : '',
       isAuthenticated,
       isLoading,
       isHydrating,

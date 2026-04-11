@@ -76,6 +76,9 @@ export function resolveCorsHeaders(
     "Access-Control-Allow-Origin": allowOrigin,
     "Access-Control-Allow-Headers": allowHeaders,
     "Access-Control-Allow-Methods": methods,
+    "X-Content-Type-Options": "nosniff",
+    "X-Frame-Options": "DENY",
+    "Cache-Control": "no-cache, no-store, must-revalidate",
     Vary: "Origin",
   };
 }

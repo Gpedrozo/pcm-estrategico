@@ -17,7 +17,8 @@ function anonClient() {
 }
 
 async function devicePassword(deviceToken: string): Promise<string> {
-  const secret = Deno.env.get("DEVICE_AUTH_SECRET") || env("SUPABASE_SERVICE_ROLE_KEY");
+  const secret = Deno.env.get("DEVICE_AUTH_SECRET");
+  if (!secret) throw new Error("DEVICE_AUTH_SECRET is required — do NOT fall back to SERVICE_ROLE_KEY");
   const encoder = new TextEncoder();
   const keyData = await crypto.subtle.importKey(
     "raw", encoder.encode(secret), { name: "HMAC", hash: "SHA-256" }, false, ["sign"],
