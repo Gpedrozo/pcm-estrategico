@@ -3,7 +3,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useVincularDispositivo, useVerificarDispositivo } from '@/hooks/useDispositivosMoveis';
 import { getDeviceConfig, saveDeviceConfig, clearDeviceConfig } from '@/lib/offlineSync';
-import { Loader2, QrCode, Keyboard, ShieldAlert, Wifi, WifiOff, Wrench, RefreshCw, Camera, X } from 'lucide-react';
+import { Loader2, Keyboard, ShieldAlert, Wifi, WifiOff, Wrench, RefreshCw, Camera, X } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 
@@ -28,11 +28,7 @@ export default function DeviceBindingGuard({ children }: { children: React.React
   const vincular = useVincularDispositivo();
   const { toast } = useToast();
 
-  useEffect(() => {
-    checkDevice();
-  }, []);
-
-  const checkDevice = async () => {
+  const checkDevice = useCallback(async () => {
     setState('LOADING');
     const deviceToken = await getDeviceConfig('device_token') as string | null;
     if (!deviceToken) {
@@ -62,7 +58,12 @@ export default function DeviceBindingGuard({ children }: { children: React.React
         setState('BOUND');
       },
     });
-  };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    checkDevice();
+  }, [checkDevice]);
 
   const getDeviceId = () => {
     let id = localStorage.getItem('pcm_device_id');
