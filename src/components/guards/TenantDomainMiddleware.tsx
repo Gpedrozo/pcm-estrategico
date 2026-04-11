@@ -57,7 +57,7 @@ export function TenantDomainMiddleware({ children }: { children: React.ReactNode
     if (!error || !isAuthenticated) return
     if (isLoginRoute || hasSessionTransferHash()) return
     void forceTenantLocalReauth('tenant_error')
-  }, [authStatus, error, hostContext.isTenantSubdomain, isAuthenticated, isHydrating, isLoading, isAuthLoading, isLoginRoute, location.pathname, location.search])
+  }, [authStatus, error, forceTenantLocalReauth, hostContext.isTenantSubdomain, isAuthenticated, isHydrating, isLoading, isAuthLoading, isLoginRoute, location.pathname, location.search])
 
   useEffect(() => {
     if (mismatchTimerRef.current !== null) {
@@ -82,7 +82,7 @@ export function TenantDomainMiddleware({ children }: { children: React.ReactNode
         mismatchTimerRef.current = null
       }
     }
-  }, [authStatus, hostContext.isTenantSubdomain, isAuthenticated, isHydrating, isLoading, isAuthLoading, isLoginRoute, tenant?.id, tenantId, location.pathname, location.search])
+  }, [authStatus, forceTenantLocalReauth, hostContext.isTenantSubdomain, isAuthenticated, isHydrating, isLoading, isAuthLoading, isLoginRoute, tenant?.id, tenantId, location.pathname, location.search])
 
   if (isOwnerHost) return <>{children}</>
 

@@ -6,8 +6,6 @@ import {
   FileCheck, 
   History, 
   Wrench, 
-  Users, 
-  ClipboardList,
   Tag,
   LogOut,
   Settings,

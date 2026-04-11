@@ -9,7 +9,6 @@ import { AssistentePCM } from '@/components/assistente/AssistentePCM';
 import { GlobalSearch } from './GlobalSearch';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { getImpersonationExpiresAt, getImpersonationPayload, impersonateCompany, listPlatformCompanies, stopImpersonation } from '@/services/ownerPortal.service';
-import { supabase } from '@/integrations/supabase/client';
 import { resolveOrRepairTenantHost } from '@/lib/tenantDomain';
 import { useSubscriptionAlert } from '@/hooks/useSubscriptionAlert';
 import { createSessionTransferHash } from '@/lib/sessionTransfer';
