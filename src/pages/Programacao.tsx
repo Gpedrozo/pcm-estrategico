@@ -570,10 +570,11 @@ export default function Programacao() {
     html += '</div>'; /* close .doc */
 
     /* FOOTER */
+    const esc = (t: string) => t.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
     const footerParts = [nomeEmpresa];
     if (empresa?.endereco) footerParts.push(empresa.endereco);
     if (empresa?.cidade) footerParts.push(`${empresa.cidade}/${empresa?.estado || ''}`);
-    html += `<div class="footer"><span>${footerParts.join(' • ')}</span><span>Página 1/1 • Emitido em ${dataEmissao}</span></div>`;
+    html += `<div class="footer"><span>${esc(footerParts.join(' • '))}</span><span>Página 1/1 • Emitido em ${esc(dataEmissao)}</span></div>`;
 
     body.innerHTML = html;
 

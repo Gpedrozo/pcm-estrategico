@@ -35,14 +35,17 @@ interface AtividadePreventivaRow extends AtividadePreventiva {
 }
 
 export function useAtividadesByPlano(planoId: string | null) {
+  const { tenantId } = useAuth();
   return useQuery({
-    queryKey: ['atividades-preventivas', planoId],
-    enabled: !!planoId,
+    queryKey: ['atividades-preventivas', planoId, tenantId],
+    enabled: !!planoId && !!tenantId,
     queryFn: async () => {
-      const { data, error } = await supabase
+      let query = supabase
         .from('atividades_preventivas')
         .select('*, servicos:servicos_preventivos(*)')
-        .eq('plano_id', planoId!)
+        .eq('plano_id', planoId!);
+      if (tenantId) query = query.eq('empresa_id', tenantId);
+      const { data, error } = await query
         .order('ordem');
 
       if (error) throw error;

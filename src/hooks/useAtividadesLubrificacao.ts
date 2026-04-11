@@ -7,14 +7,17 @@ import { writeAuditLog } from '@/lib/audit';
 import { useAuth } from '@/contexts/AuthContext';
 
 export function useAtividadesByPlano(planoId: string | null) {
+  const { tenantId } = useAuth();
   return useQuery({
-    queryKey: ['atividades-lubrificacao', planoId],
-    enabled: !!planoId,
+    queryKey: ['atividades-lubrificacao', planoId, tenantId],
+    enabled: !!planoId && !!tenantId,
     queryFn: async () => {
-      const { data, error } = await supabase
+      let query = supabase
         .from('atividades_lubrificacao')
         .select('*')
-        .eq('plano_id', planoId!)
+        .eq('plano_id', planoId!);
+      if (tenantId) query = query.eq('empresa_id', tenantId);
+      const { data, error } = await query
         .order('ordem', { ascending: true });
       if (error) throw error;
       return data as AtividadeLubrificacao[];
@@ -29,6 +32,7 @@ export function useCreateAtividade() {
 
   return useMutation({
     mutationFn: async (input: Partial<AtividadeLubrificacao> & { plano_id: string }) => {
+      if (!tenantId) throw new Error('Tenant não resolvido.');
       return insertWithColumnFallback(
         async (payload) =>
           supabase
@@ -36,7 +40,7 @@ export function useCreateAtividade() {
             .insert(payload)
             .select()
             .single(),
-        input as Record<string, unknown>,
+        { ...input, empresa_id: tenantId } as Record<string, unknown>,
       ) as Promise<AtividadeLubrificacao>;
     },
     onSuccess: (data, vars) => {

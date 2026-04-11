@@ -48,9 +48,7 @@ function base64UrlToBytes(input: string) {
 function statelessSigningSecret() {
   const configured = (Deno.env.get("SESSION_TRANSFER_SIGNING_SECRET") ?? "").trim();
   if (configured) return configured;
-  const fallback = (Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "").trim();
-  if (!fallback) throw new Error("No signing secret configured — set SESSION_TRANSFER_SIGNING_SECRET or SUPABASE_SERVICE_ROLE_KEY");
-  return fallback;
+  throw new Error("SESSION_TRANSFER_SIGNING_SECRET must be set. Do not use SERVICE_ROLE_KEY as a signing secret.");
 }
 
 async function signHmacSha256(input: string) {

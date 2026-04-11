@@ -131,37 +131,45 @@ function buildComponentTree(components: ComponenteEquipamento[]): ComponenteEqui
 }
 
 export function useComponentesEquipamento(equipamentoId?: string) {
+  const { tenantId } = useAuth();
   return useQuery({
-    queryKey: ['componentes-equipamento', equipamentoId],
+    queryKey: ['componentes-equipamento', equipamentoId, tenantId],
     queryFn: async () => {
       if (!equipamentoId) return [];
       
-      const { data, error } = await supabase
+      let query = supabase
         .from('componentes_equipamento')
         .select('*')
-        .eq('equipamento_id', equipamentoId)
+        .eq('equipamento_id', equipamentoId);
+      if (tenantId) query = query.eq('empresa_id', tenantId);
+      const { data, error } = await query
         .order('tipo', { ascending: true })
-        .order('nome', { ascending: true });
+        .order('nome', { ascending: true })
+        .limit(500);
 
       if (error) throw error;
       return buildComponentTree(data as ComponenteEquipamento[]);
     },
-    enabled: !!equipamentoId,
+    enabled: !!equipamentoId && !!tenantId,
   });
 }
 
 export function useAllComponentes(equipamentoId?: string) {
+  const { tenantId } = useAuth();
   return useQuery({
-    queryKey: ['componentes-equipamento-flat', equipamentoId],
+    queryKey: ['componentes-equipamento-flat', equipamentoId, tenantId],
     queryFn: async () => {
       if (!equipamentoId) return [];
       
-      const { data, error } = await supabase
+      let query = supabase
         .from('componentes_equipamento')
         .select('*')
-        .eq('equipamento_id', equipamentoId)
+        .eq('equipamento_id', equipamentoId);
+      if (tenantId) query = query.eq('empresa_id', tenantId);
+      const { data, error } = await query
         .order('tipo', { ascending: true })
-        .order('nome', { ascending: true });
+        .order('nome', { ascending: true })
+        .limit(500);
 
       if (error) throw error;
       return data as ComponenteEquipamento[];

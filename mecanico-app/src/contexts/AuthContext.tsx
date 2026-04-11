@@ -7,10 +7,12 @@
 
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as SecureStore from 'expo-secure-store';
 import { Platform } from 'react-native';
 import { supabase, setGlobalAuth, clearGlobalAuth } from '../lib/supabase';
 import type { Mecanico } from '../types';
 
+// Sensitive tokens use SecureStore; non-sensitive data uses AsyncStorage
 const STORAGE_KEYS = {
   EMPRESA_ID: '@pcm:empresa_id',
   EMPRESA_NOME: '@pcm:empresa_nome',
@@ -19,9 +21,20 @@ const STORAGE_KEYS = {
   MECANICO_ID: '@pcm:mecanico_id',
   MECANICO_NOME: '@pcm:mecanico_nome',
   MECANICO_CODIGO: '@pcm:mecanico_codigo',
-  ACCESS_TOKEN: '@pcm:access_token',
-  REFRESH_TOKEN: '@pcm:refresh_token',
+  ACCESS_TOKEN: 'pcm_access_token',
+  REFRESH_TOKEN: 'pcm_refresh_token',
 };
+
+// Helpers for secure token storage
+async function setSecureItem(key: string, value: string) {
+  await SecureStore.setItemAsync(key, value);
+}
+async function getSecureItem(key: string): Promise<string | null> {
+  return SecureStore.getItemAsync(key);
+}
+async function deleteSecureItem(key: string) {
+  await SecureStore.deleteItemAsync(key);
+}
 
 interface AuthState {
   isLoading: boolean;
@@ -73,8 +86,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return false;
       }
       await setGlobalAuth(data.access_token, data.refresh_token || data.access_token);
-      await AsyncStorage.setItem(STORAGE_KEYS.ACCESS_TOKEN, data.access_token);
-      if (data.refresh_token) await AsyncStorage.setItem(STORAGE_KEYS.REFRESH_TOKEN, data.refresh_token);
+      await setSecureItem(STORAGE_KEYS.ACCESS_TOKEN, data.access_token);
+      if (data.refresh_token) await setSecureItem(STORAGE_KEYS.REFRESH_TOKEN, data.refresh_token);
       console.log('[auth] JWT set OK, role=authenticated');
       return true;
     } catch (e: any) {
@@ -177,7 +190,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // ── Unbind device (clear everything + drop JWT) ──
   const unbindDevice = useCallback(async () => {
     await clearGlobalAuth();
-    await AsyncStorage.multiRemove(Object.values(STORAGE_KEYS));
+    await deleteSecureItem(STORAGE_KEYS.ACCESS_TOKEN);
+    await deleteSecureItem(STORAGE_KEYS.REFRESH_TOKEN);
+    await AsyncStorage.multiRemove(Object.values(STORAGE_KEYS).filter(k => !k.startsWith('pcm_')));
     setState({
       isLoading: false,
       isDeviceBound: false,

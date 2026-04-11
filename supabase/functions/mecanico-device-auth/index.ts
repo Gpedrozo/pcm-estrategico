@@ -15,10 +15,15 @@ function anonClient() {
   return createClient(env("SUPABASE_URL"), env("SUPABASE_ANON_KEY"));
 }
 
-function devicePassword(deviceToken: string) {
-  // SERVICE_ROLE_KEY está sempre disponível em Edge Functions; JWT_SECRET não
-  const secret = env("SUPABASE_SERVICE_ROLE_KEY").slice(-12);
-  return `pcm-da-${deviceToken}-${secret}`;
+async function devicePassword(deviceToken: string): Promise<string> {
+  const secret = Deno.env.get("DEVICE_AUTH_SECRET") || env("SUPABASE_SERVICE_ROLE_KEY");
+  const encoder = new TextEncoder();
+  const keyData = await crypto.subtle.importKey(
+    "raw", encoder.encode(secret), { name: "HMAC", hash: "SHA-256" }, false, ["sign"],
+  );
+  const signature = await crypto.subtle.sign("HMAC", keyData, encoder.encode(`device:${deviceToken}`));
+  const hash = Array.from(new Uint8Array(signature)).map(b => b.toString(16).padStart(2, "0")).join("");
+  return `pcm-da-${hash.slice(0, 32)}`;
 }
 
 // CORS aberto — segurança via device_token, não via origin
@@ -252,7 +257,7 @@ async function authenticateWithDevice(
   req: Request
 ): Promise<Response> {
     const email = `device-${device.device_id}@mecanico.pcm.local`;
-    const password = devicePassword(device.token);
+    const password = await devicePassword(device.token);
 
     // 3. Tenta sign-in
     const anon = anonClient();

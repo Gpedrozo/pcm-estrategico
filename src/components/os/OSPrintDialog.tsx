@@ -46,7 +46,6 @@ export function OSPrintDialog({ os, trigger, solicitacaoNumero: solicitacaoNumer
 
   useEffect(() => {
     if (!os.id) { setServicoExecutado(null); return; }
-    // @ts-expect-error — execucoes_os not yet in generated types
     supabase.from('execucoes_os').select('servico_executado').eq('ordem_servico_id', os.id).order('created_at', { ascending: false }).limit(1).maybeSingle()
       .then(({ data }: { data: { servico_executado: string | null } | null }) => { setServicoExecutado(data ? data.servico_executado : null); });
   }, [os.id]);

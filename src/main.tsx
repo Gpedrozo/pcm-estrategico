@@ -44,8 +44,14 @@ async function reportCriticalClientIssue(action: string, metadata: Record<string
 	}
 }
 
+function escapeHtml(text: string): string {
+	const div = document.createElement('div');
+	div.appendChild(document.createTextNode(text));
+	return div.innerHTML;
+}
+
 function renderBootstrapFatalFallback(raw: unknown) {
-	const message = String((raw as { message?: string })?.message ?? raw ?? "Erro inesperado ao inicializar aplicacao.");
+	const message = escapeHtml(String((raw as { message?: string })?.message ?? raw ?? "Erro inesperado ao inicializar aplicacao."));
 	const root = document.getElementById("root");
 	if (!root) return;
 
