@@ -1,5 +1,6 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "jsr:@supabase/supabase-js@2";
+import { adminClient } from "../_shared/auth.ts";
 import { fail, ok, preflight, rejectIfOriginNotAllowed } from "../_shared/response.ts";
 
 type Payload = {
@@ -35,10 +36,6 @@ function env(name: string) {
 function envOptional(name: string) {
   const value = Deno.env.get(name);
   return value && value.trim() ? value : null;
-}
-
-function adminClient() {
-  return createClient(env("SUPABASE_URL"), env("SUPABASE_SERVICE_ROLE_KEY"));
 }
 
 function normalizeEmail(email: string) {

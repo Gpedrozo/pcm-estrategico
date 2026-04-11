@@ -1,5 +1,6 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "jsr:@supabase/supabase-js@2";
+import { adminClient } from "../_shared/auth.ts";
 import { enforceRateLimit } from "../_shared/rateLimit.ts";
 
 declare const Deno: any;
@@ -8,10 +9,6 @@ function env(name: string) {
   const value = Deno.env.get(name);
   if (!value) throw new Error(`Missing env: ${name}`);
   return value;
-}
-
-function adminClient() {
-  return createClient(env("SUPABASE_URL"), env("SUPABASE_SERVICE_ROLE_KEY"));
 }
 
 function anonClient() {

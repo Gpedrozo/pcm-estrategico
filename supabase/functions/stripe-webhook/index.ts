@@ -1,6 +1,6 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import Stripe from "npm:stripe@14.25.0";
-import { createClient } from "jsr:@supabase/supabase-js@2";
+import { adminClient } from "../_shared/auth.ts";
 
 const allowedOrigins = (Deno.env.get("CORS_ALLOWED_ORIGINS") ?? "")
   .split(",")
@@ -49,13 +49,6 @@ const stripe = new Stripe(stripeSecretKey, {
 });
 
 type SubscriptionStatus = "trialing" | "active" | "past_due" | "canceled" | "incomplete" | "unpaid" | "paused";
-
-function adminClient() {
-  return createClient(
-    Deno.env.get("SUPABASE_URL") ?? "",
-    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
-  );
-}
 
 async function logOperationalAlert(
   actionType: string,

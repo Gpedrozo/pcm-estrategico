@@ -1,6 +1,7 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { adminClient, requireTenantContext, requireUser } from "../_shared/auth.ts";
 import { fail, ok, preflight, rejectIfOriginNotAllowed } from "../_shared/response.ts";
+import { enforceRateLimit } from "../_shared/rateLimit.ts";
 
 interface OrdemServico {
   id: string;
@@ -37,6 +38,9 @@ Deno.serve(async (req) => {
     if ("error" in auth) return fail(auth.error ?? "Unauthorized", auth.status ?? 401, null, req);
 
     const supabase = adminClient();
+
+    const rl = await enforceRateLimit(supabase, { scope: "kpi_report", identifier: auth.user.id, maxRequests: 30, windowSeconds: 60 });
+    if (!rl.allowed) return fail(rl.reason ?? "Rate limit exceeded", 429, null, req);
 
     const url = new URL(req.url);
     const period = url.searchParams.get("period") || "month"; // month, quarter, year
