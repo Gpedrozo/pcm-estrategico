@@ -67,6 +67,8 @@ async function fetchSolicitacoes(empresaId: string, statuses?: string[]) {
     query = query.in('status', statuses);
   }
 
+  query = query.limit(500);
+
   const { data, error } = await query;
 
   if (error) throw error;

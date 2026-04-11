@@ -69,7 +69,8 @@ export function useRCAs() {
         .from('analise_causa_raiz')
         .select('*')
         .eq('empresa_id', tenantId)
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: false })
+        .limit(500);
 
       if (error) throw error;
       return data as RCARow[];
@@ -186,6 +187,7 @@ export function useAcoesCorretivas(rcaId?: string) {
         .select('*')
         .eq('empresa_id', tenantId!)
         .eq('rca_id', rcaId!)
+        .limit(500)
         .order('prazo');
 
       if (error) throw error;

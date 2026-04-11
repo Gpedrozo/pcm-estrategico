@@ -4,10 +4,12 @@ import { fail, ok, preflight, rejectIfOriginNotAllowed } from "../_shared/respon
 import { createRequestTrace, traceDurationMs, writeOperationalLog } from "../_shared/observability.ts";
 import { logAuditEvent } from "../_shared/audit.ts";
 import { captureSystemError } from "../_shared/monitoring.ts";
+import { enforceRateLimit } from "../_shared/rateLimit.ts";
+import { validateBody, z } from "../_shared/validation.ts";
 
-type Payload = {
-  new_password?: string;
-};
+const PayloadSchema = z.object({
+  new_password: z.string().min(8, "Senha deve ter no mínimo 8 caracteres").max(128),
+});
 
 Deno.serve(async (req) => {
   const trace = createRequestTrace("auth-change-password", req, "change_password");
@@ -24,14 +26,20 @@ Deno.serve(async (req) => {
 
     if ("error" in auth) return fail(auth.error ?? "Unauthorized", auth.status ?? 401, null, req);
 
-    const body = (await req.json().catch(() => null)) as Payload | null;
-    const newPassword = body?.new_password?.trim() ?? "";
-
-    if (newPassword.length < 8) {
-      return fail("new_password must have at least 8 characters", 400, null, req);
-    }
-
     const admin = adminClient();
+
+    const rl = await enforceRateLimit(admin, {
+      scope: "auth-change-password",
+      identifier: auth.user.id,
+      maxRequests: 10,
+      windowSeconds: 60,
+    });
+    if (!rl.allowed) return fail("Rate limit exceeded", 429, null, req);
+
+    const validated = await validateBody(req, PayloadSchema);
+    if (validated.error) return validated.error;
+
+    const newPassword = validated.data.new_password.trim();
 
     const currentAppMetadata = (auth.user.app_metadata ?? {}) as Record<string, unknown>;
     const currentUserMetadata = (auth.user.user_metadata ?? {}) as Record<string, unknown>;

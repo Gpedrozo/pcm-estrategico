@@ -55,7 +55,8 @@ export function useFMEA() {
         .from('fmea')
         .select('*')
         .eq('empresa_id', tenantId)
-        .order('rpn', { ascending: false });
+        .order('rpn', { ascending: false })
+        .limit(500);
 
       if (error) throw error;
       return data as FMEARow[];
@@ -77,6 +78,7 @@ export function useFMEAByEquipamento(tag?: string) {
         .select('*')
         .eq('empresa_id', tenantId)
         .eq('tag', tag!)
+        .limit(500)
         .order('rpn', { ascending: false });
 
       if (error) throw error;

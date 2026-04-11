@@ -118,7 +118,8 @@ export function useTreinamentosSSMA() {
         .from('treinamentos_ssma')
         .select('*')
         .eq('empresa_id', tenantId!)
-        .order('data_validade', { ascending: true, nullsFirst: false });
+        .order('data_validade', { ascending: true, nullsFirst: false })
+        .limit(500);
 
       if (error) throw error;
 
@@ -143,7 +144,8 @@ export function useTreinamentosVencendo() {
         .select('*')
         .eq('empresa_id', tenantId!)
         .in('status', ['PROXIMO_VENCIMENTO', 'VENCIDO'])
-        .order('data_validade', { ascending: true });
+        .order('data_validade', { ascending: true })
+        .limit(500);
 
       if (error) throw error;
       return (data as TreinamentoSSMARow[]).map((t) => ({

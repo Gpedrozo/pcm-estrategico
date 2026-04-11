@@ -292,7 +292,8 @@ export function useMateriaisOS(osId: string) {
           material:materiais(*)
         `)
         .eq('empresa_id', tenantId!)
-        .eq('os_id', osId);
+        .eq('os_id', osId)
+        .limit(500);
       
       if (error) throw error;
       return data as MaterialOSRow[];

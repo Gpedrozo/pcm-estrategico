@@ -9,7 +9,8 @@ export const ordensServicoService = {
       .from('ordens_servico')
       .select('*')
       .eq('empresa_id', empresaId)
-      .order('numero_os', { ascending: false });
+      .order('numero_os', { ascending: false })
+      .limit(500);
 
     if (error) throw new Error(`Falha ao carregar ordens de serviço: ${error.message}`);
     return data;
@@ -35,7 +36,8 @@ export const ordensServicoService = {
       .neq('status', 'FECHADA')
       .neq('status', 'CANCELADA')
       .order('prioridade', { ascending: true })
-      .order('data_solicitacao', { ascending: true });
+      .order('data_solicitacao', { ascending: true })
+      .limit(500);
 
     if (error) throw new Error(`Falha ao carregar O.S pendentes: ${error.message}`);
     return data;

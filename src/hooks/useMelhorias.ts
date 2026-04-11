@@ -61,7 +61,8 @@ export function useMelhorias() {
         .from('melhorias')
         .select('*')
         .eq('empresa_id', tenantId!)
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: false })
+        .limit(500);
 
       if (error) throw error;
       return (data || []) as MelhoriaRow[];
@@ -81,7 +82,8 @@ export function useMelhoriasAprovadas() {
         .select('*')
         .eq('empresa_id', tenantId!)
         .in('status', ['APROVADA', 'EM_IMPLEMENTACAO', 'IMPLEMENTADA'])
-        .order('data_aprovacao', { ascending: false });
+        .order('data_aprovacao', { ascending: false })
+        .limit(500);
 
       if (error) throw error;
       return (data || []) as MelhoriaRow[];

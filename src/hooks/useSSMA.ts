@@ -80,7 +80,8 @@ export function usePermissoesTrabalho() {
         .from('permissoes_trabalho')
         .select('*')
         .eq('empresa_id', tenantId!)
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: false })
+        .limit(500);
 
       if (error) throw error;
       return data as PermissaoTrabalhoRow[];
@@ -100,7 +101,8 @@ export function usePermissoesAbertas() {
         .select('*')
         .eq('empresa_id', tenantId!)
         .in('status', ['PENDENTE', 'APROVADA', 'EM_EXECUCAO'])
-        .order('data_inicio');
+        .order('data_inicio')
+        .limit(500);
 
       if (error) throw error;
       return data as PermissaoTrabalhoRow[];
@@ -192,7 +194,8 @@ export function useIncidentesSSMA() {
         .from('incidentes_ssma')
         .select('*')
         .eq('empresa_id', tenantId!)
-        .order('data_ocorrencia', { ascending: false });
+        .order('data_ocorrencia', { ascending: false })
+        .limit(500);
 
       if (error) throw error;
       return data as IncidenteSSMARow[];

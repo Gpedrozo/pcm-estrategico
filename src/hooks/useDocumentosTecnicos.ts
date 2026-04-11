@@ -69,7 +69,8 @@ export function useDocumentosTecnicos() {
         .from('documentos_tecnicos')
         .select('*')
         .eq('empresa_id', tenantId)
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: false })
+        .limit(500);
 
       if (error) throw error;
       return data as DocumentoTecnicoRow[];
@@ -91,7 +92,8 @@ export function useDocumentoByTag(tag: string | undefined) {
         .select('*')
         .eq('empresa_id', tenantId)
         .eq('tag', tag)
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: false })
+        .limit(500);
 
       if (error) throw error;
       return data as DocumentoTecnicoRow[];

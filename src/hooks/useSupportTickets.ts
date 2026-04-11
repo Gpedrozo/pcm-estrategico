@@ -162,6 +162,7 @@ export function useSupportTickets() {
           .select(selectClause)
           .eq('empresa_id', tenantId)
           .order('updated_at', { ascending: false })
+          .limit(500)
         if (!isAdmin) q = q.eq('user_id', user.id)
         return q
       }

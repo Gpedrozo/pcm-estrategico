@@ -2,6 +2,7 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "jsr:@supabase/supabase-js@2";
 import { adminClient } from "../_shared/auth.ts";
 import { enforceRateLimit } from "../_shared/rateLimit.ts";
+import { z } from "../_shared/validation.ts";
 
 declare const Deno: any;
 
@@ -71,7 +72,22 @@ Deno.serve(async (req: Request) => {
   if (!rl.allowed) return respond({ ok: false, error: "Too many requests" }, req);
 
   try {
-    const body = await req.json().catch(() => ({}));
+    const rawBody = await req.json().catch(() => ({}));
+    const DeviceAuthSchema = z.object({
+      device_token: z.string().max(512).optional(),
+      qr_token: z.string().max(512).optional(),
+      device_id: z.string().max(255).optional(),
+      device_nome: z.string().max(255).optional(),
+      device_os: z.string().max(100).optional(),
+      action: z.string().max(50).optional(),
+      mecanico_id: z.string().uuid().optional(),
+      senha: z.string().max(128).optional(),
+      p_mecanico_id: z.string().uuid().optional(),
+      p_senha: z.string().max(128).optional(),
+    });
+    const parsed = DeviceAuthSchema.safeParse(rawBody);
+    if (!parsed.success) return respond({ ok: false, error: "Invalid request body" }, req);
+    const body = parsed.data;
     const deviceToken = String(body.device_token ?? "").trim();
     const qrToken = String(body.qr_token ?? "").trim();
     const deviceId = String(body.device_id ?? "").trim();

@@ -2,6 +2,14 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { adminClient, requireTenantContext, requireUser } from "../_shared/auth.ts";
 import { fail, ok, preflight, rejectIfOriginNotAllowed } from "../_shared/response.ts";
 import { enforceRateLimit } from "../_shared/rateLimit.ts";
+import { z } from "../_shared/validation.ts";
+
+const CausaRaizSchema = z.object({
+  tag: z.string().min(1).max(100),
+  empresa_id: z.string().uuid().optional(),
+  date_from: z.string().max(30).optional(),
+  date_to: z.string().max(30).optional(),
+});
 
 Deno.serve(async (req: Request) => {
   console.log("[IA] >>>", req.method, req.url);
@@ -43,9 +51,12 @@ Deno.serve(async (req: Request) => {
 
     // ── 2. Body ──────────────────────────────────────────────
     console.log("[IA] Step 2: parse body");
-    let body: { tag?: string; empresa_id?: string; date_from?: string; date_to?: string } | null = null;
+    let body: z.infer<typeof CausaRaizSchema> | null = null;
     try {
-      body = await req.json();
+      const raw = await req.json();
+      const parsed = CausaRaizSchema.safeParse(raw);
+      if (!parsed.success) return fail("Invalid request body", 400, null, req);
+      body = parsed.data;
     } catch (e) {
       console.error("[IA] Body parse error:", e);
       body = null;

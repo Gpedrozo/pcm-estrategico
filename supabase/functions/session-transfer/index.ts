@@ -2,15 +2,18 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { adminClient } from "../_shared/auth.ts";
 import { fail, ok, preflight, rejectIfOriginNotAllowed } from "../_shared/response.ts";
 import { enforceRateLimit } from "../_shared/rateLimit.ts";
+import { z } from "../_shared/validation.ts";
 
-type Payload = {
-  action: "create" | "consume";
-  access_token?: string;
-  refresh_token?: string;
-  target_host?: string;
-  ttl_seconds?: number;
-  code?: string;
-};
+const SessionTransferSchema = z.object({
+  action: z.enum(["create", "consume"]),
+  access_token: z.string().max(4096).optional(),
+  refresh_token: z.string().max(4096).optional(),
+  target_host: z.string().max(255).optional(),
+  ttl_seconds: z.number().int().min(10).max(600).optional(),
+  code: z.string().max(512).optional(),
+});
+
+type Payload = z.infer<typeof SessionTransferSchema>;
 
 function normalizeHost(input?: string | null) {
   const value = String(input ?? "").trim().toLowerCase();
@@ -133,14 +136,22 @@ Deno.serve(async (req) => {
     return fail("Method not allowed", 405, null, req);
   }
 
+  try {
   let body: Payload;
   try {
-    body = await req.json();
+    const raw = await req.json();
+    const parsed = SessionTransferSchema.safeParse(raw);
+    if (!parsed.success) return fail("Invalid request body", 400, null, req);
+    body = parsed.data;
   } catch {
     return fail("Invalid JSON body", 400, null, req);
   }
 
   if (body.action === "create") {
+    const createIp = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? req.headers.get("x-real-ip") ?? "unknown";
+    const rlCreate = await enforceRateLimit(adminClient(), { scope: "session_transfer_create", identifier: createIp, maxRequests: 20, windowSeconds: 60 });
+    if (!rlCreate.allowed) return fail("Too many requests", 429, null, req);
+
     const accessToken = String(body.access_token ?? "").trim();
     const refreshToken = String(body.refresh_token ?? "").trim();
     if (!accessToken || !refreshToken) {
@@ -286,4 +297,8 @@ Deno.serve(async (req) => {
   }
 
   return fail("Unsupported action", 400, null, req);
+  } catch (err: any) {
+    console.error("session-transfer unhandled error:", err);
+    return fail(err?.message ?? "Internal server error", 500, null, req);
+  }
 });

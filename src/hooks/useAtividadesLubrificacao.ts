@@ -18,7 +18,8 @@ export function useAtividadesByPlano(planoId: string | null) {
         .eq('plano_id', planoId!);
       if (tenantId) query = query.eq('empresa_id', tenantId);
       const { data, error } = await query
-        .order('ordem', { ascending: true });
+        .order('ordem', { ascending: true })
+        .limit(500);
       if (error) throw error;
       return data as AtividadeLubrificacao[];
     },

@@ -47,7 +47,8 @@ export function useUsuarios() {
         .select('*')
         .eq('empresa_id', tenantId)
         .neq('status', 'excluido')
-        .order('nome', { ascending: true });
+        .order('nome', { ascending: true })
+        .limit(500);
 
       if (profilesError) throw profilesError;
 
@@ -55,11 +56,10 @@ export function useUsuarios() {
       const { data: roles, error: rolesError } = await supabase
         .from('user_roles')
         .select('*')
-        .eq('empresa_id', tenantId);
+        .eq('empresa_id', tenantId)
+        .limit(500);
 
       if (rolesError) throw rolesError;
-
-      // Combine data
       const usuarios: UsuarioCompleto[] = (profiles || []).map(profile => {
         const userRole = roles?.find(r => r.user_id === profile.id);
         return {

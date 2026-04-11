@@ -23,7 +23,8 @@ export function useMaintenanceSchedule(fromIso?: string, toIso?: string) {
         .from('maintenance_schedule')
         .select('*')
         .eq('empresa_id', tenantId)
-        .order('data_programada', { ascending: true });
+        .order('data_programada', { ascending: true })
+        .limit(500);
 
       if (fromIso) tenantQuery = tenantQuery.gte('data_programada', fromIso);
       if (toIso) tenantQuery = tenantQuery.lte('data_programada', toIso);

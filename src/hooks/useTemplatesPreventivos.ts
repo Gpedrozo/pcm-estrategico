@@ -20,7 +20,8 @@ export function useTemplatesPreventivos() {
       const { data, error } = await supabase
         .from('templates_preventivos')
         .select('*')
-        .order('nome');
+        .order('nome')
+        .limit(500);
       if (error) throw error;
       return data as TemplatePreventivo[];
     },

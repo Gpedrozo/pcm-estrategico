@@ -57,14 +57,15 @@ export const equipamentosService = {
       `)
       .eq('empresa_id', empresaId);
 
-    const { data, error } = await withSistemaQuery.order('tag', { ascending: true });
+    const { data, error } = await withSistemaQuery.order('tag', { ascending: true }).limit(500);
 
     if (error && isMissingEquipamentosSistemasRelationshipError(error)) {
       const { data: fallbackData, error: fallbackError } = await supabase
         .from(table)
         .select('*')
         .eq('empresa_id', empresaId)
-        .order('tag', { ascending: true });
+        .order('tag', { ascending: true })
+        .limit(500);
 
       if (fallbackError) {
         throw new Error(`Falha ao carregar equipamentos: ${fallbackError.message}`);

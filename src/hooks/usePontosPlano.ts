@@ -17,7 +17,8 @@ export function usePontosPlano(planoId: string | null | undefined) {
         .select('*')
         .eq('plano_id', planoId)
         .is('rota_id', null)
-        .order('ordem', { ascending: true });
+        .order('ordem', { ascending: true })
+        .limit(500);
       if (error) throw error;
       return (data || []) as RotaPonto[];
     },

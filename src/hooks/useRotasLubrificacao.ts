@@ -20,7 +20,8 @@ export function useRotasLubrificacao() {
         .from('rotas_lubrificacao')
         .select('*')
         .eq('empresa_id', tenantId!)
-        .order('codigo');
+        .order('codigo')
+        .limit(500);
 
       if (error) throw error;
       return data as RotaLubrificacao[];
@@ -105,7 +106,8 @@ export function usePontosRota(rotaId: string | null | undefined) {
         .from('rotas_lubrificacao_pontos')
         .select('*')
         .eq('rota_id', rotaId!)
-        .order('ordem');
+        .order('ordem')
+        .limit(500);
       if (error) throw error;
       return data as RotaPonto[];
     },

@@ -69,7 +69,7 @@ export function useOwner2Companies(enabled = true) {
         .from('empresas')
         .select('id,nome,slug,status,created_at,updated_at')
         .order('created_at', { ascending: false })
-        .limit(5000)
+        .limit(500)
 
       return { companies: Array.isArray(rows) ? rows : [] }
     },

@@ -2,11 +2,14 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "jsr:@supabase/supabase-js@2";
 import { adminClient } from "../_shared/auth.ts";
 import { fail, ok, preflight, rejectIfOriginNotAllowed } from "../_shared/response.ts";
+import { z } from "../_shared/validation.ts";
 
-type Payload = {
-  email?: string;
-  password?: string;
-};
+const LoginSchema = z.object({
+  email: z.string().email().max(255),
+  password: z.string().min(1).max(128),
+});
+
+type Payload = z.infer<typeof LoginSchema>;
 
 type ProfilePayload = {
   id: string;
@@ -243,13 +246,13 @@ Deno.serve(async (req) => {
   if (req.method !== "POST") return fail("Method not allowed", 405, null, req);
 
   try {
-    const body = (await req.json().catch(() => null)) as Payload | null;
-    const email = normalizeEmail(body?.email ?? "");
-    const password = String(body?.password ?? "");
-
-    if (!email || !password) {
+    const raw = await req.json().catch(() => null);
+    const parsed = LoginSchema.safeParse(raw);
+    if (!parsed.success) {
       return fail("Email and password required", 400, null, req);
     }
+    const email = normalizeEmail(parsed.data.email);
+    const password = parsed.data.password;
 
     const ipAddress = resolveClientIp(req);
     let admin: ReturnType<typeof createClient> | null = null;

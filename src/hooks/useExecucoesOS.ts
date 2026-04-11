@@ -97,7 +97,8 @@ export function useExecucoesOS() {
         .from('execucoes_os')
         .select('*')
         .eq('empresa_id', tenantId)
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: false })
+        .limit(500);
 
       if (error) throw error;
       return data as ExecucaoOSRow[];

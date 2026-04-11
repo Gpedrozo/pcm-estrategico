@@ -92,7 +92,8 @@ export function useDocumentSequences() {
         .from(DOCUMENT_SEQUENCES_TABLE)
         .select('*')
         .eq('empresa_id', tenantId)
-        .order('tipo_documento');
+        .order('tipo_documento')
+        .limit(500);
 
       if (error) {
         if (isMissingDocumentSequencesTable(error)) {
@@ -233,7 +234,7 @@ export function useDocumentLayouts(tipo?: string) {
       let query = supabase.from('document_layouts').select('*').order('created_at', { ascending: false });
       query = query.eq('empresa_id', tenantId);
       if (tipo) query = query.eq('tipo_documento', tipo);
-      const { data, error } = await query;
+      const { data, error } = await query.limit(500);
       if (error) throw error;
       return data as DocumentLayout[];
     },

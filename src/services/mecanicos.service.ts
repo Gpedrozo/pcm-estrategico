@@ -32,7 +32,8 @@ export const mecanicosService = {
       .from(table)
       .select('*')
       .eq('empresa_id', empresaId)
-      .order('nome', { ascending: true });
+      .order('nome', { ascending: true })
+      .limit(500);
 
     if (error) throw new Error(`Falha ao carregar mecânicos: ${error.message}`);
     return data ?? [];
@@ -45,7 +46,8 @@ export const mecanicosService = {
       .select('*')
       .eq('empresa_id', empresaId)
       .eq('ativo', true)
-      .order('nome', { ascending: true });
+      .order('nome', { ascending: true })
+      .limit(500);
 
     if (error) throw new Error(`Falha ao carregar mecânicos ativos: ${error.message}`);
     return data ?? [];

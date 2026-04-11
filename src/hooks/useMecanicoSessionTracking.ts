@@ -144,7 +144,8 @@ export function useMecanicosOnlineAgora() {
       const { data, error } = await supabase
         .from('v_mecanicos_online_agora')
         .select('*')
-        .order('login_em', { ascending: false });
+        .order('login_em', { ascending: false })
+        .limit(500);
 
       if (error) throw error;
       return data || [];
@@ -180,7 +181,7 @@ export function useRelatorioSessoesMecanicos(filters?: {
         query = query.lte('logout_em', filters.data_fim);
       }
 
-      const { data, error } = await query.order('login_em', { ascending: false });
+      const { data, error } = await query.order('login_em', { ascending: false }).limit(500);
 
       if (error) throw error;
       return data || [];
@@ -202,7 +203,7 @@ export function useDevicesBloqueados(empresa_id?: string) {
         query = query.eq('empresa_id', empresa_id);
       }
 
-      const { data, error } = await query.order('bloqueado_em', { ascending: false });
+      const { data, error } = await query.order('bloqueado_em', { ascending: false }).limit(500);
 
       if (error) throw error;
       return data || [];

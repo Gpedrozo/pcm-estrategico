@@ -58,7 +58,8 @@ export function useMedicoesPreditivas() {
         .from('medicoes_preditivas')
         .select('*')
         .eq('empresa_id', tenantId!)
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: false })
+        .limit(500);
 
       if (error) throw error;
       return data as MedicaoPreditivaRow[];
@@ -80,7 +81,8 @@ export function useMedicoesByTag(tag: string | undefined) {
         .select('*')
         .eq('empresa_id', tenantId!)
         .eq('tag', tag)
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: false })
+        .limit(500);
 
       if (error) throw error;
       return data as MedicaoPreditivaRow[];
@@ -100,7 +102,8 @@ export function useMedicoesAlertas() {
         .select('*')
         .eq('empresa_id', tenantId!)
         .in('status', ['ALERTA', 'CRITICO'])
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: false })
+        .limit(500);
 
       if (error) throw error;
       return data as MedicaoPreditivaRow[];
@@ -277,16 +280,20 @@ export function useDeleteMedicaoPreditiva() {
 }
 
 export function useHistoricoAlteracoesMedicao(recordId: string | null) {
+  const { tenantId } = useAuth();
+
   return useQuery({
-    queryKey: ['enterprise_audit_logs', 'medicoes_preditivas', recordId],
+    queryKey: ['enterprise_audit_logs', 'medicoes_preditivas', recordId, tenantId],
     queryFn: async () => {
-      if (!recordId) return [];
+      if (!recordId || !tenantId) return [];
 
       const { data, error } = await supabase
         .from('enterprise_audit_logs')
         .select('*')
+        .eq('empresa_id', tenantId)
         .eq('tabela', 'medicoes_preditivas')
         .eq('registro_id', recordId)
+        .limit(500)
         .order('created_at', { ascending: false });
 
       if (error) throw error;

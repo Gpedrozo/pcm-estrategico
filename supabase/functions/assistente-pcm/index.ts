@@ -5,8 +5,15 @@
  */
 
 import { adminClient, requireUser, tokenFromRequest } from "../_shared/auth.ts";
-import { preflight, ok, fail, resolveCorsHeaders } from "../_shared/response.ts";
+import { preflight, ok, fail, resolveCorsHeaders, rejectIfOriginNotAllowed } from "../_shared/response.ts";
 import { enforceRateLimit } from "../_shared/rateLimit.ts";
+import { z } from "../_shared/validation.ts";
+
+const AssistenteSchema = z.object({
+  pergunta: z.string().min(3, "Pergunta muito curta.").max(500, "Pergunta muito longa (máximo 500 caracteres)."),
+  role: z.string().max(50).optional(),
+  contexto_tela: z.string().max(500).optional(),
+});
 
 declare const Deno: any;
 
@@ -205,6 +212,9 @@ ${MANUAL_KNOWLEDGE_BASE}`;
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") return preflight(req);
 
+  const originError = rejectIfOriginNotAllowed(req);
+  if (originError) return originError;
+
   // Health check
   if (req.method === "GET") {
     return ok({
@@ -229,18 +239,15 @@ Deno.serve(async (req: Request) => {
     if (!rl.allowed) return fail("Too many requests", 429, null, req);
 
     // Parse body
-    const body = await req.json();
-    const pergunta = String(body.pergunta ?? "").trim();
-    const role = String(body.role ?? "USUARIO").trim();
-    const contextoTela = body.contexto_tela ? String(body.contexto_tela).trim() : undefined;
-
-    if (!pergunta || pergunta.length < 3) {
-      return fail("Pergunta muito curta.", 400, null, req);
+    const rawBody = await req.json().catch(() => null);
+    const parsed = AssistenteSchema.safeParse(rawBody);
+    if (!parsed.success) {
+      const msg = parsed.error.issues[0]?.message ?? "Invalid request body";
+      return fail(msg, 400, null, req);
     }
-
-    if (pergunta.length > 500) {
-      return fail("Pergunta muito longa (máximo 500 caracteres).", 400, null, req);
-    }
+    const pergunta = parsed.data.pergunta.trim();
+    const role = (parsed.data.role ?? "USUARIO").trim();
+    const contextoTela = parsed.data.contexto_tela?.trim();
 
     if (!AI_KEY) {
       return fail("Assistente IA não configurado. Contacte o administrador.", 503, null, req);

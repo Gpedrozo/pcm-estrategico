@@ -59,7 +59,8 @@ export function usePlanosPreventivos() {
         .from('planos_preventivos')
         .select('*')
         .eq('empresa_id', tenantId!)
-        .order('codigo');
+        .order('codigo')
+        .limit(500);
 
       if (error) throw error;
       return data as PlanoPreventivo[];
@@ -79,7 +80,8 @@ export function usePlanosPreventivosAtivos() {
         .select('*')
         .eq('empresa_id', tenantId!)
         .eq('ativo', true)
-        .order('proxima_execucao');
+        .order('proxima_execucao')
+        .limit(500);
 
       if (error) throw error;
       return data as PlanoPreventivo[];

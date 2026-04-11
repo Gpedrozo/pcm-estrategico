@@ -20,7 +20,8 @@ export function useLubrificantes() {
         .from('lubrificantes')
         .select('*')
         .eq('empresa_id', tenantId!)
-        .order('codigo');
+        .order('codigo')
+        .limit(500);
       if (error) throw error;
       return data as Lubrificante[];
     },
@@ -100,7 +101,8 @@ export function useMovimentacoes(lubrificanteId: string | null) {
         .select('*')
         .eq('lubrificante_id', lubrificanteId!)
         .eq('empresa_id', tenantId!)
-        .order('data', { ascending: false });
+        .order('data', { ascending: false })
+        .limit(500);
       if (error) throw error;
       return data as MovimentacaoLubrificante[];
     },

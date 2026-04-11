@@ -75,7 +75,8 @@ export function useFornecedores() {
         .from('fornecedores')
         .select('*')
         .eq('empresa_id', tenantId)
-        .order('razao_social');
+        .order('razao_social')
+        .limit(500);
 
       if (error) throw error;
       return data as FornecedorRow[];
@@ -97,7 +98,8 @@ export function useFornecedoresAtivos() {
         .select('*')
         .eq('empresa_id', tenantId)
         .eq('ativo', true)
-        .order('razao_social');
+        .order('razao_social')
+        .limit(500);
 
       if (error) throw error;
       return data as FornecedorRow[];

@@ -59,7 +59,8 @@ export function useInspecoes() {
         .from('inspecoes')
         .select('*')
         .eq('empresa_id', tenantId!)
-        .order('data_inspecao', { ascending: false });
+        .order('data_inspecao', { ascending: false })
+        .limit(500);
 
       if (error) throw error;
       return (data || []) as InspecaoRow[];
@@ -80,7 +81,8 @@ export function useInspecoesHoje() {
         .select('*')
         .eq('empresa_id', tenantId!)
         .eq('data_inspecao', hoje)
-        .order('hora_inicio');
+        .order('hora_inicio')
+        .limit(500);
 
       if (error) throw error;
       return (data || []) as InspecaoRow[];
@@ -214,7 +216,7 @@ export function useAnomalias(inspecaoId?: string) {
         query = query.eq('inspecao_id', inspecaoId);
       }
       
-      const { data, error } = await query.order('created_at', { ascending: false });
+      const { data, error } = await query.order('created_at', { ascending: false }).limit(500);
 
       if (error) throw error;
       return data as AnomaliaRow[];
