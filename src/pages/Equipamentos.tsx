@@ -302,9 +302,21 @@ export default function Equipamentos() {
                 const targetEquip = equipMap.get(eq.tag);
                 const comps = componentesByTag[eq.tag] || [];
                 if (targetEquip && comps.length > 0) {
-                  for (const comp of comps) {
-                    await createComponenteMutation.mutateAsync({
+                  // Ordena do mais raso para o mais profundo: pais inseridos antes dos filhos
+                  const sorted = [...comps].sort((a, b) => {
+                    const dA = (a.nivelCode || '').split('.').length;
+                    const dB = (b.nivelCode || '').split('.').length;
+                    return dA - dB;
+                  });
+                  // nivelCode -> UUID gerado no banco para resolver parent_id dos filhos
+                  const nivelToId = new Map<string, string>();
+                  for (const comp of sorted) {
+                    const parent_id = comp.parentNivelCode
+                      ? (nivelToId.get(comp.parentNivelCode) ?? null)
+                      : null;
+                    const created = await createComponenteMutation.mutateAsync({
                       equipamento_id: targetEquip.id,
+                      parent_id,
                       codigo: comp.codigo,
                       nome: comp.nome,
                       tipo: comp.tipo || 'OUTRO',
@@ -314,6 +326,9 @@ export default function Equipamentos() {
                       observacoes: comp.observacoes,
                       especificacoes: comp.especificacoes,
                     });
+                    if (created?.id && comp.nivelCode) {
+                      nivelToId.set(comp.nivelCode, created.id);
+                    }
                   }
                 }
               }
