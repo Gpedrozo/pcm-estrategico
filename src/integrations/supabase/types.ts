@@ -742,7 +742,12 @@ export type Database = {
           estado: string | null
           id: string
           inscricao_estadual: string | null
+          logo_login_url: string | null
+          logo_menu_url: string | null
           logo_os_url: string | null
+          logo_pdf_url: string | null
+          logo_principal_url: string | null
+          logo_relatorio_url: string | null
           logo_url: string | null
           nome_fantasia: string | null
           razao_social: string | null
@@ -764,7 +769,12 @@ export type Database = {
           estado?: string | null
           id?: string
           inscricao_estadual?: string | null
+          logo_login_url?: string | null
+          logo_menu_url?: string | null
           logo_os_url?: string | null
+          logo_pdf_url?: string | null
+          logo_principal_url?: string | null
+          logo_relatorio_url?: string | null
           logo_url?: string | null
           nome_fantasia?: string | null
           razao_social?: string | null
@@ -786,7 +796,12 @@ export type Database = {
           estado?: string | null
           id?: string
           inscricao_estadual?: string | null
+          logo_login_url?: string | null
+          logo_menu_url?: string | null
           logo_os_url?: string | null
+          logo_pdf_url?: string | null
+          logo_principal_url?: string | null
+          logo_relatorio_url?: string | null
           logo_url?: string | null
           nome_fantasia?: string | null
           razao_social?: string | null
@@ -3793,6 +3808,14 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      get_login_branding_by_email: {
+        Args: { p_email: string }
+        Returns: Array<{
+          razao_social: string | null
+          nome_fantasia: string | null
+          logo_login_url: string | null
+        }>
+      }
       app_write_audit_log: {
         Args: {
           p_action: string
