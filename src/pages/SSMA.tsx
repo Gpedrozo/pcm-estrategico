@@ -8,10 +8,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Plus, Search, ShieldAlert, AlertTriangle, FileWarning, Calendar, GraduationCap, Trash2, HardHat, FileSearch2, BarChart3, Printer, Download, FileSpreadsheet, FileText } from 'lucide-react';
+import { Plus, Search, ShieldAlert, AlertTriangle, FileWarning, Calendar, GraduationCap, Trash2, HardHat, FileSearch2, BarChart3, Printer, FileSpreadsheet, FileText, PackagePlus, PackageMinus, ArrowDown, ArrowUp, RotateCcw } from 'lucide-react';
 import { useReactToPrint } from 'react-to-print';
 import { useIncidentesSSMA, useCreateIncidenteSSMA, usePermissoesTrabalho, useCreatePermissaoTrabalho } from '@/hooks/useSSMA';
-import { useEPIs, useCreateEPI, useEntregasEPI, useCreateEntregaEPI } from '@/hooks/useEPIs';
+import { useEPIs, useCreateEPI, useEntregasEPI, useCreateEntregaEPI, useMovimentacoesEPI, useCreateMovimentacaoEPI, calcularSaldoMovimentacao, type TipoMovimentacaoEPI } from '@/hooks/useEPIs';
 import { useFichasSeguranca, useCreateFichaSeguranca, useUpdateFichaSeguranca } from '@/hooks/useFichasSeguranca';
 import {
   useTreinamentosSSMA,
@@ -22,6 +22,7 @@ import {
   type TipoCurso,
   type TreinamentoSSMARow,
 } from '@/hooks/useTreinamentosSSMA';
+import { useAPR, useCreateAPR, useDeleteAPR, CLASSIFICACAO_LABELS } from '@/hooks/useAPR';
 import { useEquipamentos } from '@/hooks/useEquipamentos';
 import { useAuth } from '@/contexts/AuthContext';
 import { useFormDraft } from '@/hooks/useFormDraft';
@@ -48,6 +49,8 @@ export default function SSMA() {
   const [isEPIModalOpen, setIsEPIModalOpen] = useState(false);
   const [isEntregaEPIModalOpen, setIsEntregaEPIModalOpen] = useState(false);
   const [isFichaModalOpen, setIsFichaModalOpen] = useState(false);
+  const [isAPRModalOpen, setIsAPRModalOpen] = useState(false);
+  const [isMovimentacaoEPIModalOpen, setIsMovimentacaoEPIModalOpen] = useState(false);
 
   // Estados para impressão de Ficha EPI
   const [fichaEPIColaborador, setFichaEPIColaborador] = useState('');
@@ -147,6 +150,15 @@ export default function SSMA() {
     observacoes: '',
   });
 
+  const [movimentacaoEPIForm, setMovimentacaoEPIForm] = useState({
+    epi_id: '',
+    tipo: 'ENTRADA' as TipoMovimentacaoEPI,
+    quantidade: 1,
+    motivo: '',
+    documento_ref: '',
+    colaborador_nome: '',
+  });
+
   const [fichaForm, setFichaForm] = useState({
     nome_produto: '',
     codigo: '',
@@ -160,12 +172,29 @@ export default function SSMA() {
     data_validade: '',
   });
 
+  const [aprForm, setAPRForm] = useState({
+    atividade: '',
+    local_setor: '',
+    data_analise: new Date().toISOString().split('T')[0],
+    responsavel: user?.nome || '',
+    perigo: '',
+    risco: '',
+    probabilidade: 3,
+    severidade: 3,
+    medidas_controle: '',
+    responsavel_acao: '',
+    prazo_acao: '',
+    observacoes: '',
+  });
+
   const { data: incidentes, isLoading: loadingIncidentes } = useIncidentesSSMA();
   const { data: permissoes, isLoading: loadingPT } = usePermissoesTrabalho();
   const { data: treinamentos, isLoading: loadingTreinamentos } = useTreinamentosSSMA();
   const { data: epis, isLoading: loadingEPIs } = useEPIs();
   const { data: entregasEPI } = useEntregasEPI();
+  const { data: movimentacoesEPI } = useMovimentacoesEPI();
   const { data: fichas, isLoading: loadingFichas } = useFichasSeguranca();
+  const { data: aprs, isLoading: loadingAPR } = useAPR();
   const { data: equipamentos } = useEquipamentos();
   const createIncidente = useCreateIncidenteSSMA();
   const createPT = useCreatePermissaoTrabalho();
@@ -173,8 +202,11 @@ export default function SSMA() {
   const deleteTreinamento = useDeleteTreinamentoSSMA();
   const createEPI = useCreateEPI();
   const createEntregaEPI = useCreateEntregaEPI();
+  const createMovimentacaoEPI = useCreateMovimentacaoEPI();
   const createFicha = useCreateFichaSeguranca();
   const updateFicha = useUpdateFichaSeguranca();
+  const createAPR = useCreateAPR();
+  const deleteAPR = useDeleteAPR();
 
   // Callback para salvar arquivo/anexos na FISPQ
   const handleFichaDocumentoSalvo = (fichaId: string, arquivo_url: string | null, documentos_anexos: DocumentoAnexo[]) => {
@@ -271,6 +303,73 @@ export default function SSMA() {
     setEntregaForm({ epi_id: '', colaborador_nome: '', quantidade: 1, data_entrega: new Date().toISOString().split('T')[0], motivo: '', observacoes: '' });
   };
 
+  const handleSubmitMovimentacaoEPI = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const epi = epis?.find((item) => item.id === movimentacaoEPIForm.epi_id);
+    if (!epi) return;
+
+    const { saldo_antes, saldo_depois } = calcularSaldoMovimentacao(
+      epi.estoque_atual,
+      movimentacaoEPIForm.tipo,
+      movimentacaoEPIForm.quantidade,
+    );
+
+    await createMovimentacaoEPI.mutateAsync({
+      epi_id: movimentacaoEPIForm.epi_id,
+      tipo: movimentacaoEPIForm.tipo,
+      quantidade: movimentacaoEPIForm.quantidade,
+      saldo_antes,
+      saldo_depois,
+      motivo: movimentacaoEPIForm.motivo || null,
+      documento_ref: movimentacaoEPIForm.documento_ref || null,
+      colaborador_nome: movimentacaoEPIForm.colaborador_nome || null,
+    });
+
+    setIsMovimentacaoEPIModalOpen(false);
+    setMovimentacaoEPIForm({
+      epi_id: '',
+      tipo: 'ENTRADA',
+      quantidade: 1,
+      motivo: '',
+      documento_ref: '',
+      colaborador_nome: '',
+    });
+  };
+
+  const handleSubmitAPR = async (e: React.FormEvent) => {
+    e.preventDefault();
+    await createAPR.mutateAsync({
+      atividade: aprForm.atividade,
+      local_setor: aprForm.local_setor || null,
+      data_analise: aprForm.data_analise,
+      responsavel: aprForm.responsavel,
+      perigo: aprForm.perigo,
+      risco: aprForm.risco,
+      probabilidade: aprForm.probabilidade,
+      severidade: aprForm.severidade,
+      medidas_controle: aprForm.medidas_controle || null,
+      responsavel_acao: aprForm.responsavel_acao || null,
+      prazo_acao: aprForm.prazo_acao || null,
+      observacoes: aprForm.observacoes || null,
+    });
+
+    setIsAPRModalOpen(false);
+    setAPRForm({
+      atividade: '',
+      local_setor: '',
+      data_analise: new Date().toISOString().split('T')[0],
+      responsavel: user?.nome || '',
+      perigo: '',
+      risco: '',
+      probabilidade: 3,
+      severidade: 3,
+      medidas_controle: '',
+      responsavel_acao: '',
+      prazo_acao: '',
+      observacoes: '',
+    });
+  };
+
   const handleSubmitFicha = async (e: React.FormEvent) => {
     e.preventDefault();
     await createFicha.mutateAsync({
@@ -343,7 +442,7 @@ export default function SSMA() {
     return styles[status] || '';
   };
 
-  const isLoading = loadingIncidentes || loadingPT || loadingTreinamentos || loadingEPIs || loadingFichas;
+  const isLoading = loadingIncidentes || loadingPT || loadingTreinamentos || loadingEPIs || loadingFichas || loadingAPR;
 
   if (isLoading) {
     return (
@@ -424,40 +523,76 @@ export default function SSMA() {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between gap-2 flex-wrap">
           <TabsList>
+            <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
             <TabsTrigger value="incidentes">Incidentes</TabsTrigger>
             <TabsTrigger value="permissoes">Permissões de Trabalho</TabsTrigger>
             <TabsTrigger value="treinamentos">Treinamentos / NRs</TabsTrigger>
             <TabsTrigger value="epis">EPIs</TabsTrigger>
             <TabsTrigger value="fichas">FISPQs</TabsTrigger>
+            <TabsTrigger value="apr">APR</TabsTrigger>
           </TabsList>
           {activeTab === 'incidentes' ? (
-            <Button onClick={() => setIsIncidenteModalOpen(true)} className="gap-2">
-              <Plus className="h-4 w-4" />Registrar Incidente
-            </Button>
+            <div className="flex gap-2">
+              <Button onClick={() => setIsIncidenteModalOpen(true)} className="gap-2">
+                <Plus className="h-4 w-4" />Registrar Incidente
+              </Button>
+              <Button variant="outline" size="icon" title="Exportar PDF" onClick={() => exportIncidentesPDF(incidentes || [])}>
+                <FileText className="h-4 w-4" />
+              </Button>
+              <Button variant="outline" size="icon" title="Exportar XLSX" onClick={() => exportIncidentesXLSX(incidentes || [])}>
+                <FileSpreadsheet className="h-4 w-4" />
+              </Button>
+            </div>
           ) : activeTab === 'permissoes' ? (
             <Button onClick={() => setIsPTModalOpen(true)} className="gap-2">
               <Plus className="h-4 w-4" />Nova Permissão
             </Button>
           ) : activeTab === 'treinamentos' ? (
-            <Button onClick={() => setIsTreinamentoModalOpen(true)} className="gap-2">
-              <Plus className="h-4 w-4" />Novo Treinamento
-            </Button>
+            <div className="flex gap-2">
+              <Button onClick={() => setIsTreinamentoModalOpen(true)} className="gap-2">
+                <Plus className="h-4 w-4" />Novo Treinamento
+              </Button>
+              <Button variant="outline" size="icon" title="Exportar PDF" onClick={() => exportTreinamentosPDF(treinamentos || [])}>
+                <FileText className="h-4 w-4" />
+              </Button>
+              <Button variant="outline" size="icon" title="Exportar XLSX" onClick={() => exportTreinamentosXLSX(treinamentos || [])}>
+                <FileSpreadsheet className="h-4 w-4" />
+              </Button>
+            </div>
           ) : activeTab === 'epis' ? (
             <div className="flex gap-2">
               <Button onClick={() => setIsEPIModalOpen(true)} className="gap-2">
                 <Plus className="h-4 w-4" />Cadastrar EPI
               </Button>
               <Button variant="outline" onClick={() => setIsEntregaEPIModalOpen(true)} className="gap-2">
-                <Plus className="h-4 w-4" />Registrar Entrega
+                <PackageMinus className="h-4 w-4" />Registrar Entrega
+              </Button>
+              <Button variant="secondary" onClick={() => setIsMovimentacaoEPIModalOpen(true)} className="gap-2">
+                <PackagePlus className="h-4 w-4" />Movimentar Estoque
+              </Button>
+              <Button variant="outline" size="icon" title="Exportar PDF" onClick={() => exportEstoqueEPIPDF(epis || [])}>
+                <FileText className="h-4 w-4" />
+              </Button>
+              <Button variant="outline" size="icon" title="Exportar XLSX" onClick={() => exportEstoqueEPIXLSX(epis || [])}>
+                <FileSpreadsheet className="h-4 w-4" />
               </Button>
             </div>
-          ) : (
-            <Button onClick={() => setIsFichaModalOpen(true)} className="gap-2">
-              <Plus className="h-4 w-4" />Nova FISPQ
+          ) : activeTab === 'fichas' ? (
+            <div className="flex gap-2">
+              <Button onClick={() => setIsFichaModalOpen(true)} className="gap-2">
+                <Plus className="h-4 w-4" />Nova FISPQ
+              </Button>
+              <Button variant="outline" size="icon" title="Exportar XLSX" onClick={() => exportFISPQsXLSX(fichas || [])}>
+                <FileSpreadsheet className="h-4 w-4" />
+              </Button>
+            </div>
+          ) : activeTab === 'apr' ? (
+            <Button onClick={() => setIsAPRModalOpen(true)} className="gap-2">
+              <Plus className="h-4 w-4" />Nova APR
             </Button>
-          )}
+          ) : null}
         </div>
 
         <div className="bg-card border border-border rounded-lg p-4 mt-4">
@@ -466,6 +601,10 @@ export default function SSMA() {
             <Input placeholder="Buscar..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9" />
           </div>
         </div>
+
+        <TabsContent value="dashboard" className="mt-4">
+          <SSMADashboard />
+        </TabsContent>
 
         <TabsContent value="incidentes" className="mt-4">
           <div className="bg-card border border-border rounded-lg overflow-hidden">
@@ -739,6 +878,7 @@ export default function SSMA() {
                     <th>Qtd</th>
                     <th>Data Entrega</th>
                     <th>Motivo</th>
+                    <th>Ações</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -751,6 +891,24 @@ export default function SSMA() {
                         <td className="font-mono">{ent.quantidade}</td>
                         <td>{new Date(ent.data_entrega).toLocaleDateString('pt-BR')}</td>
                         <td className="max-w-[200px] truncate">{ent.motivo || '—'}</td>
+                        <td>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7"
+                            title="Imprimir Ficha de Entrega"
+                            onClick={() => {
+                              setFichaEPIColaborador(ent.colaborador_nome);
+                              setIsFichaEPIPrintOpen(true);
+                              setTimeout(() => {
+                                handlePrintFichaEPI();
+                                setIsFichaEPIPrintOpen(false);
+                              }, 200);
+                            }}
+                          >
+                            <Printer className="h-3.5 w-3.5" />
+                          </Button>
+                        </td>
                       </tr>
                     );
                   })}
@@ -758,6 +916,51 @@ export default function SSMA() {
               </table>
             </div>
           )}
+
+          <div className="bg-card border border-border rounded-lg overflow-hidden mt-4">
+            <div className="p-4 border-b border-border flex items-center gap-2">
+              <RotateCcw className="h-4 w-4" />
+              <h3 className="font-semibold">Movimentações de Estoque (Entrada/Saída)</h3>
+            </div>
+            <table className="table-industrial">
+              <thead>
+                <tr>
+                  <th>Data</th>
+                  <th>EPI</th>
+                  <th>Tipo</th>
+                  <th>Qtd</th>
+                  <th>Saldo Antes</th>
+                  <th>Saldo Depois</th>
+                  <th>Motivo</th>
+                </tr>
+              </thead>
+              <tbody>
+                {(movimentacoesEPI?.length ?? 0) === 0 ? (
+                  <tr><td colSpan={7} className="text-center py-8 text-muted-foreground">Nenhuma movimentação registrada</td></tr>
+                ) : (
+                  movimentacoesEPI?.slice(0, 30).map((mov) => {
+                    const epiNome = epis?.find((e) => e.id === mov.epi_id)?.nome || mov.epi_id.slice(0, 8);
+                    return (
+                      <tr key={mov.id}>
+                        <td>{new Date(mov.created_at).toLocaleDateString('pt-BR')}</td>
+                        <td className="font-medium">{epiNome}</td>
+                        <td>
+                          <Badge variant="outline" className="gap-1">
+                            {mov.tipo === 'ENTRADA' ? <ArrowDown className="h-3 w-3 text-success" /> : <ArrowUp className="h-3 w-3 text-destructive" />}
+                            {mov.tipo}
+                          </Badge>
+                        </td>
+                        <td className="font-mono">{mov.quantidade}</td>
+                        <td className="font-mono">{mov.saldo_antes}</td>
+                        <td className="font-mono font-bold">{mov.saldo_depois}</td>
+                        <td className="max-w-[220px] truncate">{mov.motivo || '—'}</td>
+                      </tr>
+                    );
+                  })
+                )}
+              </tbody>
+            </table>
+          </div>
         </TabsContent>
 
         {/* ── TAB FISPQs ──────────────────────────────── */}
@@ -773,11 +976,13 @@ export default function SSMA() {
                   <th>EPI Recomendado</th>
                   <th>Validade</th>
                   <th>Status</th>
+                  <th>Documentos</th>
+                  <th>Ações</th>
                 </tr>
               </thead>
               <tbody>
                 {fichas?.length === 0 ? (
-                  <tr><td colSpan={7} className="text-center py-8 text-muted-foreground">Nenhuma FISPQ cadastrada</td></tr>
+                  <tr><td colSpan={9} className="text-center py-8 text-muted-foreground">Nenhuma FISPQ cadastrada</td></tr>
                 ) : (
                   fichas?.filter(f => {
                     if (!search) return true;
@@ -797,6 +1002,83 @@ export default function SSMA() {
                         ) : (
                           <Badge variant="secondary">Inativa</Badge>
                         )}
+                      </td>
+                      <td>
+                        <FISPQDocumentos
+                          fichaId={ficha.id}
+                          arquivoUrl={(ficha as any).arquivo_url || null}
+                          documentosAnexos={((ficha as any).documentos_anexos as DocumentoAnexo[]) || []}
+                          onSalvar={handleFichaDocumentoSalvo}
+                        />
+                      </td>
+                      <td>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7"
+                          onClick={() => {
+                            setFichaParaImprimir(ficha);
+                            setTimeout(() => handlePrintFISPQ(), 200);
+                          }}
+                          title="Imprimir FISPQ"
+                        >
+                          <Printer className="h-3.5 w-3.5" />
+                        </Button>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="apr" className="mt-4">
+          <div className="bg-card border border-border rounded-lg overflow-hidden">
+            <table className="table-industrial">
+              <thead>
+                <tr>
+                  <th>Atividade</th>
+                  <th>Local/Setor</th>
+                  <th>Perigo</th>
+                  <th>Risco</th>
+                  <th>Prob.</th>
+                  <th>Sev.</th>
+                  <th>Grau</th>
+                  <th>Classificação</th>
+                  <th>Status</th>
+                  <th>Ações</th>
+                </tr>
+              </thead>
+              <tbody>
+                {(aprs?.length ?? 0) === 0 ? (
+                  <tr><td colSpan={10} className="text-center py-8 text-muted-foreground">Nenhuma APR cadastrada</td></tr>
+                ) : (
+                  aprs?.filter((apr) => {
+                    if (!search) return true;
+                    const s = search.toLowerCase();
+                    return apr.atividade.toLowerCase().includes(s) || apr.perigo.toLowerCase().includes(s) || apr.risco.toLowerCase().includes(s);
+                  }).map((apr) => (
+                    <tr key={apr.id}>
+                      <td className="font-medium max-w-[180px] truncate">{apr.atividade}</td>
+                      <td>{apr.local_setor || '—'}</td>
+                      <td className="max-w-[180px] truncate">{apr.perigo}</td>
+                      <td className="max-w-[180px] truncate">{apr.risco}</td>
+                      <td className="font-mono">{apr.probabilidade}</td>
+                      <td className="font-mono">{apr.severidade}</td>
+                      <td className="font-mono font-bold">{apr.grau_risco}</td>
+                      <td><Badge variant="outline">{CLASSIFICACAO_LABELS[apr.classificacao] || apr.classificacao}</Badge></td>
+                      <td><Badge className={getStatusBadge(apr.status)}>{apr.status}</Badge></td>
+                      <td>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7 text-destructive hover:text-destructive"
+                          onClick={() => deleteAPR.mutate(apr.id)}
+                          disabled={deleteAPR.isPending}
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
                       </td>
                     </tr>
                   ))
@@ -1192,6 +1474,149 @@ export default function SSMA() {
           </form>
         </DialogContent>
       </Dialog>
+
+      <Dialog open={isMovimentacaoEPIModalOpen} onOpenChange={setIsMovimentacaoEPIModalOpen}>
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+          <DialogHeader><DialogTitle>Movimentação de Estoque de EPI</DialogTitle></DialogHeader>
+          <form onSubmit={handleSubmitMovimentacaoEPI} className="space-y-4">
+            <div className="space-y-2">
+              <Label>EPI *</Label>
+              <Select value={movimentacaoEPIForm.epi_id} onValueChange={(v) => setMovimentacaoEPIForm({ ...movimentacaoEPIForm, epi_id: v })}>
+                <SelectTrigger><SelectValue placeholder="Selecione o EPI" /></SelectTrigger>
+                <SelectContent>
+                  {epis?.filter(e => e.ativo).map(e => (
+                    <SelectItem key={e.id} value={e.id}>{e.nome} (Estoque: {e.estoque_atual})</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Tipo</Label>
+                <Select value={movimentacaoEPIForm.tipo} onValueChange={(v: TipoMovimentacaoEPI) => setMovimentacaoEPIForm({ ...movimentacaoEPIForm, tipo: v })}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="ENTRADA">ENTRADA</SelectItem>
+                    <SelectItem value="SAIDA">SAIDA</SelectItem>
+                    <SelectItem value="DEVOLUCAO">DEVOLUCAO</SelectItem>
+                    <SelectItem value="AJUSTE">AJUSTE</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>{movimentacaoEPIForm.tipo === 'AJUSTE' ? 'Novo Saldo' : 'Quantidade'}</Label>
+                <Input
+                  type="number"
+                  min={movimentacaoEPIForm.tipo === 'AJUSTE' ? 0 : 1}
+                  value={movimentacaoEPIForm.quantidade}
+                  onChange={(e) => setMovimentacaoEPIForm({ ...movimentacaoEPIForm, quantidade: parseInt(e.target.value) || 0 })}
+                />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label>Documento Ref.</Label>
+              <Input value={movimentacaoEPIForm.documento_ref} onChange={(e) => setMovimentacaoEPIForm({ ...movimentacaoEPIForm, documento_ref: e.target.value })} placeholder="Ex: NF 12345" />
+            </div>
+            <div className="space-y-2">
+              <Label>Colaborador</Label>
+              <Input value={movimentacaoEPIForm.colaborador_nome} onChange={(e) => setMovimentacaoEPIForm({ ...movimentacaoEPIForm, colaborador_nome: e.target.value })} placeholder="Opcional" />
+            </div>
+            <div className="space-y-2">
+              <Label>Motivo</Label>
+              <Input value={movimentacaoEPIForm.motivo} onChange={(e) => setMovimentacaoEPIForm({ ...movimentacaoEPIForm, motivo: e.target.value })} placeholder="Ex: Compra, ajuste de inventário" />
+            </div>
+            <div className="flex gap-3 pt-4">
+              <Button type="submit" className="flex-1" disabled={createMovimentacaoEPI.isPending}>Registrar Movimentação</Button>
+              <Button type="button" variant="outline" onClick={() => setIsMovimentacaoEPIModalOpen(false)}>Cancelar</Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={isAPRModalOpen} onOpenChange={setIsAPRModalOpen}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader><DialogTitle>Nova APR - Análise Preliminar de Risco</DialogTitle></DialogHeader>
+          <form onSubmit={handleSubmitAPR} className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Atividade *</Label>
+                <Input value={aprForm.atividade} onChange={(e) => setAPRForm({ ...aprForm, atividade: e.target.value })} required />
+              </div>
+              <div className="space-y-2">
+                <Label>Local/Setor</Label>
+                <Input value={aprForm.local_setor} onChange={(e) => setAPRForm({ ...aprForm, local_setor: e.target.value })} />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Responsável *</Label>
+                <Input value={aprForm.responsavel} onChange={(e) => setAPRForm({ ...aprForm, responsavel: e.target.value })} required />
+              </div>
+              <div className="space-y-2">
+                <Label>Data</Label>
+                <Input type="date" value={aprForm.data_analise} onChange={(e) => setAPRForm({ ...aprForm, data_analise: e.target.value })} />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Perigo *</Label>
+                <Textarea value={aprForm.perigo} onChange={(e) => setAPRForm({ ...aprForm, perigo: e.target.value })} rows={2} required />
+              </div>
+              <div className="space-y-2">
+                <Label>Risco *</Label>
+                <Textarea value={aprForm.risco} onChange={(e) => setAPRForm({ ...aprForm, risco: e.target.value })} rows={2} required />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Probabilidade (1-5)</Label>
+                <Input type="number" min={1} max={5} value={aprForm.probabilidade} onChange={(e) => setAPRForm({ ...aprForm, probabilidade: parseInt(e.target.value) || 1 })} />
+              </div>
+              <div className="space-y-2">
+                <Label>Severidade (1-5)</Label>
+                <Input type="number" min={1} max={5} value={aprForm.severidade} onChange={(e) => setAPRForm({ ...aprForm, severidade: parseInt(e.target.value) || 1 })} />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label>Medidas de Controle</Label>
+              <Textarea value={aprForm.medidas_controle} onChange={(e) => setAPRForm({ ...aprForm, medidas_controle: e.target.value })} rows={2} />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Responsável pela Ação</Label>
+                <Input value={aprForm.responsavel_acao} onChange={(e) => setAPRForm({ ...aprForm, responsavel_acao: e.target.value })} />
+              </div>
+              <div className="space-y-2">
+                <Label>Prazo da Ação</Label>
+                <Input type="date" value={aprForm.prazo_acao} onChange={(e) => setAPRForm({ ...aprForm, prazo_acao: e.target.value })} />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label>Observações</Label>
+              <Textarea value={aprForm.observacoes} onChange={(e) => setAPRForm({ ...aprForm, observacoes: e.target.value })} rows={2} />
+            </div>
+            <div className="flex gap-3 pt-4">
+              <Button type="submit" className="flex-1" disabled={createAPR.isPending}>Registrar APR</Button>
+              <Button type="button" variant="outline" onClick={() => setIsAPRModalOpen(false)}>Cancelar</Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      <div className="hidden">
+        {fichaParaImprimir && (
+          <FISPQPrintTemplate ref={fispqPrintRef} ficha={fichaParaImprimir} empresa={empresa} />
+        )}
+        {isFichaEPIPrintOpen && entregasEPI && (
+          <FichaEPIPrintTemplate
+            ref={fichaEPIPrintRef}
+            colaboradorNome={fichaEPIColaborador}
+            entregas={entregasEPI.filter((e) => e.colaborador_nome === fichaEPIColaborador)}
+            epis={epis || []}
+            empresa={empresa}
+          />
+        )}
+      </div>
     </div>
   );
 }
