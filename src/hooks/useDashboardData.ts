@@ -196,7 +196,7 @@ export function useDashboardData() {
     }).length;
     
     return { urgentes, atrasadas };
-  }, [ordensServico]);
+  }, [ordensServico, dashboardKpis]);
 
   // Recent OS
   const osRecentes = useMemo(() => {
@@ -217,7 +217,7 @@ export function useDashboardData() {
     
     const concluidas = preventivas.filter(os => os.status === 'FECHADA').length;
     return (concluidas / preventivas.length) * 100;
-  }, [ordensServico]);
+  }, [ordensServico, dashboardKpis]);
 
   // Corretivas vs Preventivas ratio
   const taxaCorretivaPreventiva = useMemo(() => {
@@ -384,7 +384,7 @@ export function useDashboardData() {
       confiabilidade: Math.min(confiabilidade, 100),
       oee: Math.min(oee, 100),
     };
-  }, [ordensServico, execucoes]);
+  }, [ordensServico, execucoes, dashboardKpis]);
 
   return {
     indicadores,

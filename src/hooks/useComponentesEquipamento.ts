@@ -296,7 +296,7 @@ export function useDuplicateComponente() {
   return useMutation({
     mutationFn: async ({ componente, newCodigo }: { componente: ComponenteEquipamento; newCodigo: string }) => {
       if (!tenantId) throw new Error('Tenant não resolvido.');
-      const { id, created_at, updated_at, children, ...rest } = componente;
+      const { id: _id, created_at: _created_at, updated_at: _updated_at, children: _children, ...rest } = componente;
       const { data, error } = await supabase
         .from('componentes_equipamento')
         .insert({ ...rest, codigo: newCodigo, empresa_id: tenantId } as any)

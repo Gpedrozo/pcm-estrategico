@@ -855,7 +855,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // whose token passed health_check, which is a privilege escalation vector.
 
     return profileData;
-  }, [elevateToSystemOwner, extractEmpresaIdFromMetadata, extractEmpresaSlugFromMetadata, fetchUserProfile, resolveDomainEmpresaId, verifyOwnerBackendAccess]);
+  }, [extractEmpresaIdFromMetadata, extractEmpresaSlugFromMetadata, fetchUserProfile, resolveDomainEmpresaId]);
 
   const resolveUserProfileWithRetry = useCallback(async (
     userId: string,

@@ -59,7 +59,7 @@ export function useUpdateAtividade() {
   const { tenantId } = useAuth();
 
   return useMutation({
-    mutationFn: async ({ id, plano_id, ...updates }: Partial<AtividadeLubrificacao> & { id: string; plano_id: string }) => {
+    mutationFn: async ({ id, plano_id: _plano_id, ...updates }: Partial<AtividadeLubrificacao> & { id: string; plano_id: string }) => {
       if (!tenantId) throw new Error('Tenant não identificado.');
       return updateWithColumnFallback(
         async (payload) =>
