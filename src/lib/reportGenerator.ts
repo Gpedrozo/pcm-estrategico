@@ -52,8 +52,10 @@ async function loadImageAsDataUrl(url: string): Promise<string | null> {
   }
 }
 
-// Cor primária do sistema: #28374B
-const BRAND: [number, number, number] = [40, 55, 75];
+// ─── Paleta — Modelo D: Laudo Industrial Compacto ────────────
+const BRAND: [number, number, number] = [30, 35, 45];   // quase-preto (cabeçalho de tabelas)
+const DARK: [number, number, number]  = [25, 30, 40];   // títulos e linhas estruturais
+const MGRAY: [number, number, number] = [100, 100, 100]; // metadados e labels
 
 function buildAddress(o: ReportOptions): string {
   const parts: string[] = [];
@@ -64,94 +66,130 @@ function buildAddress(o: ReportOptions): string {
   return parts.join(' — ');
 }
 
-async function addProfessionalHeader(doc: jsPDF, options: ReportOptions, startY: number = 10): Promise<number> {
+// Bloco de resumo KPI — linha única compacta (estilo laudo)
+function drawKPISummary(
+  doc: jsPDF,
+  label: string,
+  items: string[],
+  y: number,
+  LEFT: number,
+  pageWidth: number
+): number {
+  doc.setDrawColor(140, 140, 140); doc.setLineWidth(0.3);
+  doc.line(LEFT, y, pageWidth - LEFT, y);
+  y += 4.5;
+  doc.setFontSize(6.5); doc.setFont('helvetica', 'bold'); doc.setTextColor(...DARK);
+  doc.text(label, LEFT, y);
+  y += 4;
+  doc.setFont('helvetica', 'normal'); doc.setFontSize(7.5); doc.setTextColor(35, 35, 35);
+  doc.text(items.join('   |   '), LEFT, y);
+  y += 4;
+  doc.setDrawColor(140, 140, 140); doc.setLineWidth(0.3);
+  doc.line(LEFT, y, pageWidth - LEFT, y);
+  return y + 3;
+}
+
+async function addProfessionalHeader(doc: jsPDF, options: ReportOptions, startY: number = 8): Promise<number> {
   const pageWidth = doc.internal.pageSize.getWidth();
   const LEFT = 14;
   const now = format(new Date(), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR });
   const logoDataUrl = await loadImageAsDataUrl(options.logoUrl || '');
-  const LOGO_W = 30, LOGO_H = 18;
-  const textX = logoDataUrl ? LEFT + LOGO_W + 6 : LEFT;
+  const LOGO_W = 26, LOGO_H = 15;
 
-  // Tarja azul no topo
-  doc.setFillColor(...BRAND);
-  doc.rect(0, 0, pageWidth, 5, 'F');
+  // ═══ Linha grossa superior
+  doc.setDrawColor(...DARK); doc.setLineWidth(1.5);
+  doc.line(LEFT, startY, pageWidth - LEFT, startY);
+
+  let y = startY + 6;
+  const textX = logoDataUrl ? LEFT + LOGO_W + 5 : LEFT;
 
   if (logoDataUrl) {
-    try { doc.addImage(logoDataUrl, 'PNG', LEFT, startY, LOGO_W, LOGO_H); } catch {/* ignorar */}
+    try { doc.addImage(logoDataUrl, 'PNG', LEFT, y - 1, LOGO_W, LOGO_H); } catch {/* */}
   }
 
-  // Nome Fantasia
-  const nome = options.empresaNome || options.empresaRazaoSocial || 'MANUTENÇÃO INDUSTRIAL';
-  doc.setFontSize(14); doc.setFont('helvetica', 'bold');
-  doc.setTextColor(...BRAND);
-  doc.text(nome, textX, startY + 5);
+  // Nome da empresa
+  const nome = options.empresaNome || options.empresaRazaoSocial || 'PCM ESTRATÉGICO';
+  doc.setFontSize(11); doc.setFont('helvetica', 'bold'); doc.setTextColor(...DARK);
+  doc.text(nome, textX, y + 4);
 
-  doc.setFontSize(7); doc.setFont('helvetica', 'normal');
-  doc.setTextColor(90, 90, 90);
-  let lineY = startY + 10;
-
-  if (options.empresaRazaoSocial && options.empresaRazaoSocial !== nome) {
-    doc.text(options.empresaRazaoSocial.toUpperCase(), textX, lineY); lineY += 4;
-  }
-
+  // CNPJ / IE à direita
   const fiscal = [
     options.empresaCnpj ? `CNPJ: ${options.empresaCnpj}` : '',
-    options.empresaIE ? `I.E.: ${options.empresaIE}` : '',
-  ].filter(Boolean).join('  •  ');
-  if (fiscal) { doc.text(fiscal, textX, lineY); lineY += 4; }
+    options.empresaIE   ? `I.E.: ${options.empresaIE}`   : '',
+  ].filter(Boolean).join('  |  ');
+  if (fiscal) {
+    doc.setFontSize(7); doc.setFont('helvetica', 'normal'); doc.setTextColor(...MGRAY);
+    doc.text(fiscal, pageWidth - LEFT, y + 4, { align: 'right' });
+  }
 
+  y += 9;
+  doc.setFontSize(7); doc.setFont('helvetica', 'normal'); doc.setTextColor(...MGRAY);
+
+  if (options.empresaRazaoSocial && options.empresaRazaoSocial !== nome) {
+    doc.text(options.empresaRazaoSocial, textX, y); y += 4;
+  }
   const addr = buildAddress(options);
-  if (addr) { doc.text(addr, textX, lineY); lineY += 4; }
+  if (addr) { doc.text(addr, textX, y); y += 4; }
 
   const contacts = [
     options.empresaTelefone ? `Tel: ${options.empresaTelefone}` : '',
-    options.empresaWhatsapp && options.empresaWhatsapp !== options.empresaTelefone ? `WA: ${options.empresaWhatsapp}` : '',
+    options.empresaWhatsapp && options.empresaWhatsapp !== options.empresaTelefone
+      ? `WhatsApp: ${options.empresaWhatsapp}` : '',
     options.empresaEmail || '',
-    options.empresaSite || '',
-  ].filter(Boolean).join('  •  ');
-  if (contacts) { doc.text(contacts, textX, lineY); }
+    options.empresaSite  || '',
+  ].filter(Boolean).join('  |  ');
+  if (contacts) { doc.text(contacts, textX, y); y += 4; }
 
-  // Divisórias
-  const divY = Math.max(startY + LOGO_H + 4, lineY + 5);
-  doc.setDrawColor(...BRAND); doc.setLineWidth(0.8);
+  // ─── Linha média
+  const divY = Math.max(y + 1, logoDataUrl ? startY + LOGO_H + 8 : y + 1);
+  doc.setDrawColor(...DARK); doc.setLineWidth(0.7);
   doc.line(LEFT, divY, pageWidth - LEFT, divY);
-  doc.setDrawColor(190, 205, 225); doc.setLineWidth(0.3);
-  doc.line(LEFT, divY + 1.5, pageWidth - LEFT, divY + 1.5);
+  y = divY + 5;
 
   // Título do relatório
-  doc.setFontSize(12); doc.setFont('helvetica', 'bold');
-  doc.setTextColor(...BRAND);
-  doc.text(options.title.toUpperCase(), LEFT, divY + 8);
+  doc.setFontSize(10); doc.setFont('helvetica', 'bold'); doc.setTextColor(...DARK);
+  doc.text(`RELATÓRIO: ${options.title.toUpperCase()}`, LEFT, y);
+
+  // Referência à direita
+  const refCode = `Doc.: ${options.title.replace(/\s+/g, '-').substring(0, 14).toUpperCase()}-${format(new Date(), 'yyyyMM')}`;
+  doc.setFontSize(7); doc.setFont('helvetica', 'normal'); doc.setTextColor(...MGRAY);
+  doc.text(refCode, pageWidth - LEFT, y, { align: 'right' });
+  y += 5;
+
+  // Período  ·  Emissão  ·  Responsável
+  const periodo = (options.dateFrom && options.dateTo)
+    ? `Período: ${format(new Date(options.dateFrom + 'T00:00:00'), 'dd/MM/yyyy', { locale: ptBR })} a ${format(new Date(options.dateTo + 'T00:00:00'), 'dd/MM/yyyy', { locale: ptBR })}`
+    : '';
+  const metaLine = [
+    periodo,
+    `Emissão: ${now}`,
+    options.empresaResponsavelNome ? `Responsável: ${options.empresaResponsavelNome}` : '',
+  ].filter(Boolean).join('   ·   ');
+  doc.setFontSize(7.5); doc.setFont('helvetica', 'normal'); doc.setTextColor(50, 50, 50);
+  doc.text(metaLine, LEFT, y);
+  y += 4;
 
   if (options.subtitle) {
-    doc.setFontSize(8); doc.setFont('helvetica', 'italic');
-    doc.setTextColor(110, 110, 110);
-    doc.text(options.subtitle, LEFT, divY + 14);
+    doc.setFontSize(7.5); doc.setFont('helvetica', 'italic'); doc.setTextColor(...MGRAY);
+    doc.text(options.subtitle, LEFT, y); y += 4;
   }
 
-  doc.setFontSize(7.5); doc.setFont('helvetica', 'normal');
-  doc.setTextColor(80, 80, 80);
-  if (options.dateFrom && options.dateTo) {
-    const f1 = format(new Date(options.dateFrom + 'T00:00:00'), 'dd/MM/yyyy', { locale: ptBR });
-    const f2 = format(new Date(options.dateTo + 'T00:00:00'), 'dd/MM/yyyy', { locale: ptBR });
-    doc.text(`Período: ${f1} a ${f2}`, pageWidth - LEFT, divY + 8, { align: 'right' });
-  }
-  doc.text(`Emitido em: ${now}`, pageWidth - LEFT, divY + 14, { align: 'right' });
-
-  let contentY = divY + (options.subtitle ? 20 : 16);
+  // ─── Linha fina inferior
+  doc.setDrawColor(150, 150, 150); doc.setLineWidth(0.3);
+  doc.line(LEFT, y, pageWidth - LEFT, y);
+  y += 4;
 
   if (options.observacoes) {
-    doc.setFillColor(248, 250, 253);
-    doc.setDrawColor(190, 205, 225); doc.setLineWidth(0.3);
-    doc.roundedRect(LEFT, contentY, pageWidth - LEFT * 2, 9, 1.5, 1.5, 'FD');
-    doc.setFontSize(7); doc.setFont('helvetica', 'italic');
-    doc.setTextColor(80, 80, 80);
-    doc.text(`Obs: ${options.observacoes}`, LEFT + 3, contentY + 6);
-    contentY += 12;
+    doc.setFontSize(7); doc.setFont('helvetica', 'italic'); doc.setTextColor(70, 70, 70);
+    doc.text(`Obs.: ${options.observacoes}`, LEFT, y);
+    y += 5;
+    doc.setDrawColor(150, 150, 150); doc.setLineWidth(0.3);
+    doc.line(LEFT, y - 1, pageWidth - LEFT, y - 1);
+    y += 3;
   }
 
   doc.setTextColor(0, 0, 0);
-  return contentY + 2;
+  return y;
 }
 
 function addProfessionalFooter(doc: jsPDF, options: ReportOptions) {
@@ -163,27 +201,29 @@ function addProfessionalFooter(doc: jsPDF, options: ReportOptions) {
   for (let i = 1; i <= pageCount; i++) {
     doc.setPage(i);
 
-    // Linha separadora
-    doc.setDrawColor(190, 205, 225); doc.setLineWidth(0.3);
-    doc.line(LEFT, pageHeight - 16, pageWidth - LEFT, pageHeight - 16);
+    // Linha dupla — rodapé
+    doc.setDrawColor(...DARK); doc.setLineWidth(0.7);
+    doc.line(LEFT, pageHeight - 13, pageWidth - LEFT, pageHeight - 13);
+    doc.setDrawColor(160, 160, 160); doc.setLineWidth(0.2);
+    doc.line(LEFT, pageHeight - 12.2, pageWidth - LEFT, pageHeight - 12.2);
 
-    doc.setFontSize(7); doc.setFont('helvetica', 'normal');
-    doc.setTextColor(120, 120, 120);
+    doc.setFontSize(6.5); doc.setFont('helvetica', 'normal'); doc.setTextColor(100, 100, 100);
+    const empresa  = options.empresaNome || '';
+    const cnpjStr  = options.empresaCnpj ? `  —  CNPJ ${options.empresaCnpj}` : '';
+    doc.text(`${empresa}${cnpjStr}`, LEFT, pageHeight - 8);
 
-    // Esquerda: empresa
-    doc.text(options.empresaNome || '', LEFT, pageHeight - 11);
+    const versionText = options.layoutVersion ? `v${options.layoutVersion}  |  ` : '';
+    doc.text(`${versionText}Pág. ${i} de ${pageCount}`, pageWidth - LEFT, pageHeight - 8, { align: 'right' });
 
-    // Direita: página
-    const versionText = options.layoutVersion ? `v${options.layoutVersion} • ` : '';
-    doc.text(`${versionText}Pág. ${i} / ${pageCount}`, pageWidth - LEFT, pageHeight - 11, { align: 'right' });
-
-    // Linha de assinatura (responsavel) na última página
     if (i === pageCount && options.empresaResponsavelNome) {
       const signX = pageWidth / 2;
-      doc.setDrawColor(100, 100, 100); doc.setLineWidth(0.3);
-      doc.line(signX - 35, pageHeight - 7, signX + 35, pageHeight - 7);
-      doc.setFontSize(6.5); doc.setTextColor(100, 100, 100);
-      doc.text(`${options.empresaResponsavelNome} — ${options.empresaResponsavelCargo || 'Responsável'}`, signX, pageHeight - 4, { align: 'center' });
+      doc.setDrawColor(80, 80, 80); doc.setLineWidth(0.3);
+      doc.line(signX - 35, pageHeight - 4.5, signX + 35, pageHeight - 4.5);
+      doc.setFontSize(6); doc.setTextColor(80, 80, 80);
+      doc.text(
+        `${options.empresaResponsavelNome}${options.empresaResponsavelCargo ? '  —  ' + options.empresaResponsavelCargo : ''}`,
+        signX, pageHeight - 2, { align: 'center' }
+      );
     }
   }
 }
@@ -205,38 +245,21 @@ export async function generateOSReportPDF(
     return true;
   });
 
-  // KPIs de resumo
+  // Resumo operacional
   const totalOS = filtered.length;
   const fechadas = filtered.filter(o => o.status === 'FECHADA').length;
   const abertas = filtered.filter(o => o.status === 'ABERTA' || o.status === 'EM_ANDAMENTO').length;
   const corretivas = filtered.filter(o => o.tipo === 'CORRETIVA').length;
   const preventivas = filtered.filter(o => o.tipo === 'PREVENTIVA').length;
-
-  // Box de KPIs
-  const summaryBoxH = 16;
-  const boxes = [
-    { label: 'Total de OS', value: String(totalOS), color: BRAND },
-    { label: 'Fechadas', value: String(fechadas), color: [22, 163, 74] as [number,number,number] },
-    { label: 'Em aberto', value: String(abertas), color: [202, 138, 4] as [number,number,number] },
-    { label: 'Corretivas', value: String(corretivas), color: [220, 38, 38] as [number,number,number] },
-    { label: 'Preventivas', value: String(preventivas), color: [37, 99, 235] as [number,number,number] },
-  ];
   const pageWidth = doc.internal.pageSize.getWidth();
-  const boxW = (pageWidth - LEFT * 2) / boxes.length;
-  boxes.forEach((b, i) => {
-    const bx = LEFT + i * boxW;
-    doc.setFillColor(245, 248, 253);
-    doc.setDrawColor(...b.color); doc.setLineWidth(0.4);
-    doc.roundedRect(bx + 1, startY, boxW - 2, summaryBoxH, 1.5, 1.5, 'FD');
-    doc.setFontSize(14); doc.setFont('helvetica', 'bold');
-    doc.setTextColor(...b.color);
-    doc.text(b.value, bx + boxW / 2, startY + 9, { align: 'center' });
-    doc.setFontSize(6.5); doc.setFont('helvetica', 'normal');
-    doc.setTextColor(100, 100, 100);
-    doc.text(b.label, bx + boxW / 2, startY + 14, { align: 'center' });
-  });
 
-  const tableY = startY + summaryBoxH + 4;
+  const tableY = drawKPISummary(doc, 'RESUMO OPERACIONAL', [
+    `OS Totais: ${totalOS}`,
+    `Fechadas: ${fechadas}`,
+    `Em Aberto: ${abertas}`,
+    `Corretivas: ${corretivas} (${totalOS > 0 ? ((corretivas / totalOS) * 100).toFixed(0) : 0}%)`,
+    `Preventivas: ${preventivas} (${totalOS > 0 ? ((preventivas / totalOS) * 100).toFixed(0) : 0}%)`,
+  ], startY, LEFT, pageWidth);
   const prioridadeCor: Record<string, [number,number,number]> = {
     URGENTE: [220, 38, 38], ALTA: [234, 88, 12], MEDIA: [202, 138, 4], BAIXA: [22, 163, 74],
   };
@@ -370,33 +393,20 @@ export async function generateIndicadoresPDF(
     margin: { left: LEFT, right: LEFT },
   });
 
-  // Nota de referência das metas
+  // Nota de referência
   const finalY = (doc as any).lastAutoTable?.finalY || startY + 60;
-  doc.setFontSize(7); doc.setFont('helvetica', 'italic');
-  doc.setTextColor(120, 120, 120);
-  doc.text('Metas de referência baseadas em benchmarks de manutenção industrial (NBR 5462 / JIPM).', LEFT, finalY + 8);
+  doc.setFontSize(7); doc.setFont('helvetica', 'italic'); doc.setTextColor(100, 100, 100);
+  doc.text('Referência: metas baseadas em benchmarks de manutenção industrial (NBR 5462 / JIPM).', LEFT, finalY + 7);
 
-  // Bloco gráfico visual de disponibilidade
+  // Síntese de disponibilidade
   if (indicadores?.disponibilidade != null) {
     const disp = Math.min(100, Math.max(0, Number(indicadores.disponibilidade)));
-    const barY = finalY + 18;
-    const barW = pageWidth - LEFT * 2;
-    doc.setFontSize(8); doc.setFont('helvetica', 'bold');
-    doc.setTextColor(...BRAND);
-    doc.text(`Disponibilidade: ${disp.toFixed(1)}%`, LEFT, barY);
-    // Barra de fundo
-    doc.setFillColor(230, 235, 240);
-    doc.roundedRect(LEFT, barY + 3, barW, 7, 1.5, 1.5, 'F');
-    // Barra de valor
-    const cor = disp >= 95 ? statusCor.ok : disp >= 85 ? statusCor.alerta : statusCor.critico;
-    doc.setFillColor(...cor);
-    doc.roundedRect(LEFT, barY + 3, barW * (disp / 100), 7, 1.5, 1.5, 'F');
-    // Meta line
-    doc.setDrawColor(80, 80, 80); doc.setLineWidth(0.5);
-    const metaX = LEFT + barW * 0.95;
-    doc.line(metaX, barY + 2, metaX, barY + 11);
-    doc.setFontSize(6.5); doc.setTextColor(80, 80, 80);
-    doc.text('Meta 95%', metaX + 1, barY + 8);
+    const dispStatus = disp >= 95 ? 'DENTRO DA META' : disp >= 85 ? 'ATENÇÃO' : 'ABAIXO DA META';
+    doc.setFontSize(8); doc.setFont('helvetica', 'bold'); doc.setTextColor(...DARK);
+    doc.text(
+      `Disponibilidade Operacional: ${disp.toFixed(1)}%  —  ${dispStatus}  (meta: ≥ 95%)`,
+      LEFT, finalY + 14
+    );
   }
 
   addProfessionalFooter(doc, options);
@@ -428,25 +438,15 @@ export async function generateCustosPDF(
   const custoCorr = filtered.filter(o => o.tipo === 'CORRETIVA').reduce((s, o) => s + (Number(o.custo_real) || 0), 0);
   const custoPrev = filtered.filter(o => o.tipo === 'PREVENTIVA').reduce((s, o) => s + (Number(o.custo_real) || 0), 0);
 
-  // KPIs financeiros em destaque
-  const kpiBoxes = [
-    { label: 'Custo Total', value: custoTotal, cor: BRAND },
-    { label: 'Mão de Obra', value: custoMO, cor: [37,99,235] as [number,number,number] },
-    { label: 'Materiais', value: custoMat, cor: [22,163,74] as [number,number,number] },
-    { label: 'Corretiva', value: custoCorr, cor: [220,38,38] as [number,number,number] },
-    { label: 'Preventiva', value: custoPrev, cor: [202,138,4] as [number,number,number] },
-  ];
-  const boxW = (pageWidth - LEFT * 2) / kpiBoxes.length;
-  kpiBoxes.forEach((b, i) => {
-    const bx = LEFT + i * boxW;
-    doc.setFillColor(245, 248, 253);
-    doc.setDrawColor(...b.cor); doc.setLineWidth(0.5);
-    doc.roundedRect(bx + 1, startY, boxW - 2, 18, 2, 2, 'FD');
-    doc.setFontSize(7); doc.setFont('helvetica', 'normal'); doc.setTextColor(100,100,100);
-    doc.text(b.label, bx + boxW/2, startY + 5, { align: 'center' });
-    doc.setFontSize(9.5); doc.setFont('helvetica', 'bold'); doc.setTextColor(...b.cor);
-    doc.text(`R$ ${b.value.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, bx + boxW/2, startY + 13, { align: 'center' });
-  });
+  // Resumo financeiro
+  const fmt = (v: number) => `R$ ${v.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;
+  const custoTableY = drawKPISummary(doc, 'RESUMO FINANCEIRO', [
+    `Custo Total: ${fmt(custoTotal)}`,
+    `Mão de Obra: ${fmt(custoMO)}`,
+    `Materiais: ${fmt(custoMat)}`,
+    `Corretiva: ${fmt(custoCorr)}`,
+    `Preventiva: ${fmt(custoPrev)}`,
+  ], startY, LEFT, pageWidth);
 
   // Tabela: ranking de equipamentos por custo
   const byTag: Record<string, { tag: string; nome: string; custo: number; qtd: number }> = {};
@@ -458,11 +458,11 @@ export async function generateCustosPDF(
   });
   const ranking = Object.values(byTag).sort((a, b) => b.custo - a.custo).slice(0, 15);
 
-  doc.setFontSize(9); doc.setFont('helvetica', 'bold'); doc.setTextColor(...BRAND);
-  doc.text('Top 15 Equipamentos por Custo', LEFT, startY + 24);
+  doc.setFontSize(8.5); doc.setFont('helvetica', 'bold'); doc.setTextColor(...DARK);
+  doc.text('Top 15 Equipamentos por Custo', LEFT, custoTableY + 3);
 
   autoTable(doc, {
-    startY: startY + 27,
+    startY: custoTableY + 6,
     head: [['#', 'TAG', 'Equipamento', 'Qtd OS', 'Custo Total (R$)', '% do Total']],
     body: ranking.map((r, i) => [
       String(i + 1),
@@ -487,7 +487,7 @@ export async function generateCustosPDF(
 
   // Tabela: custo por tipo
   const t1Y = (doc as any).lastAutoTable?.finalY || startY + 80;
-  doc.setFontSize(9); doc.setFont('helvetica', 'bold'); doc.setTextColor(...BRAND);
+  doc.setFontSize(8.5); doc.setFont('helvetica', 'bold'); doc.setTextColor(...DARK);
   doc.text('Custo por Tipo de Manutenção', LEFT, t1Y + 8);
 
   const tiposMap: Record<string, number> = {};
@@ -544,25 +544,20 @@ export async function generateBacklogPDF(
     { label: '30+ dias (crítico)', min: 30, max: 9999, cor: [220,38,38] as [number,number,number] },
   ];
 
-  // Resumo de aging
-  const boxW = (pageWidth - LEFT * 2) / faixas.length;
-  faixas.forEach((f, i) => {
+  // Resumo aging
+  const agingItems = faixas.map(f => {
     const count = backlog.filter(o => { const d = getDias(o); return d >= f.min && d < f.max; }).length;
-    const bx = LEFT + i * boxW;
-    doc.setFillColor(245,248,253);
-    doc.setDrawColor(...f.cor); doc.setLineWidth(0.5);
-    doc.roundedRect(bx + 1, startY, boxW - 2, 18, 2, 2, 'FD');
-    doc.setFontSize(16); doc.setFont('helvetica', 'bold'); doc.setTextColor(...f.cor);
-    doc.text(String(count), bx + boxW/2, startY + 11, { align: 'center' });
-    doc.setFontSize(6.5); doc.setFont('helvetica', 'normal'); doc.setTextColor(100,100,100);
-    doc.text(f.label, bx + boxW/2, startY + 16, { align: 'center' });
+    return `${f.label}: ${count} OS`;
   });
-
-  doc.setFontSize(9); doc.setFont('helvetica', 'bold'); doc.setTextColor(...BRAND);
-  doc.text(`OS em Backlog: ${backlog.length} ordens (em aberto / em andamento / aguardando material)`, LEFT, startY + 24);
+  const backlogTableY = drawKPISummary(
+    doc,
+    `BACKLOG: ${backlog.length} ORDENS ABERTAS`,
+    agingItems,
+    startY, LEFT, pageWidth
+  );
 
   autoTable(doc, {
-    startY: startY + 27,
+    startY: backlogTableY,
     head: [['Nº OS', 'TAG', 'Equipamento', 'Tipo', 'Prioridade', 'Status', 'Data Abertura', 'Dias em Fila']],
     body: backlog
       .sort((a, b) => getDias(b) - getDias(a))
@@ -621,34 +616,15 @@ export async function generatePreventivasPDF(
   const exec = prevs.filter(o => o.status === 'FECHADA').length;
   const aderencia = prog > 0 ? (exec / prog) * 100 : 0;
 
-  // KPIs de aderência
-  const aderCor: [number,number,number] = aderencia >= 90 ? [22,163,74] : aderencia >= 70 ? [202,138,4] : [220,38,38];
-  const kpiW = (pageWidth - LEFT * 2) / 3;
-  [
-    { label: 'Programadas', value: String(prog), cor: BRAND },
-    { label: 'Executadas', value: String(exec), cor: [22,163,74] as [number,number,number] },
-    { label: '% Aderência', value: `${aderencia.toFixed(1)}%`, cor: aderCor },
-  ].forEach((b, i) => {
-    const bx = LEFT + i * kpiW;
-    doc.setFillColor(245,248,253);
-    doc.setDrawColor(...b.cor); doc.setLineWidth(0.5);
-    doc.roundedRect(bx + 2, startY, kpiW - 4, 18, 2, 2, 'FD');
-    doc.setFontSize(16); doc.setFont('helvetica', 'bold'); doc.setTextColor(...b.cor);
-    doc.text(b.value, bx + kpiW/2, startY + 11, { align: 'center' });
-    doc.setFontSize(7); doc.setFont('helvetica', 'normal'); doc.setTextColor(100,100,100);
-    doc.text(b.label, bx + kpiW/2, startY + 16, { align: 'center' });
-  });
-
-  // Barra de progresso de aderência
-  const barY = startY + 22;
-  const barW = pageWidth - LEFT * 2;
-  doc.setFillColor(225, 230, 240); doc.roundedRect(LEFT, barY, barW, 8, 2, 2, 'F');
-  doc.setFillColor(...aderCor); doc.roundedRect(LEFT, barY, barW * (aderencia / 100), 8, 2, 2, 'F');
-  const metaX = LEFT + barW * 0.9;
-  doc.setDrawColor(60,60,60); doc.setLineWidth(0.5);
-  doc.line(metaX, barY - 1, metaX, barY + 9);
-  doc.setFontSize(6.5); doc.setTextColor(60,60,60);
-  doc.text('Meta 90%', metaX + 1, barY + 6);
+  // Resumo aderência
+  const aderStatus = aderencia >= 90 ? 'DENTRO DA META' : aderencia >= 70 ? 'ATENÇÃO' : 'ABAIXO DA META';
+  const prevTableY = drawKPISummary(doc, 'ADERÊNCIA A PREVENTIVAS', [
+    `Programadas: ${prog}`,
+    `Executadas: ${exec}`,
+    `Pendentes: ${prog - exec}`,
+    `Aderência: ${aderencia.toFixed(1)}%  (meta: ≥ 90%)`,
+    aderStatus,
+  ], startY, LEFT, pageWidth);
 
   // Tabela por TAG
   const byTag: Record<string, { tag: string; nome: string; prog: number; exec: number }> = {};
@@ -659,11 +635,11 @@ export async function generatePreventivasPDF(
     if (o.status === 'FECHADA') byTag[o.tag].exec++;
   });
 
-  doc.setFontSize(9); doc.setFont('helvetica', 'bold'); doc.setTextColor(...BRAND);
-  doc.text('Aderência por Equipamento', LEFT, barY + 16);
+  doc.setFontSize(8.5); doc.setFont('helvetica', 'bold'); doc.setTextColor(...DARK);
+  doc.text('Aderência por Equipamento', LEFT, prevTableY + 3);
 
   autoTable(doc, {
-    startY: barY + 19,
+    startY: prevTableY + 6,
     head: [['TAG', 'Equipamento', 'Programadas', 'Executadas', 'Pendentes', '% Aderência']],
     body: Object.values(byTag).sort((a, b) => b.prog - a.prog).map(r => {
       const pct = r.prog > 0 ? ((r.exec / r.prog) * 100).toFixed(1) : '0.0';
@@ -814,7 +790,7 @@ export async function generateMecanicosPDF(
 
   // Rodapé com totais
   const finalY = (doc as any).lastAutoTable?.finalY || startY + 60;
-  doc.setFontSize(8); doc.setFont('helvetica', 'bold'); doc.setTextColor(...BRAND);
+  doc.setFontSize(8); doc.setFont('helvetica', 'bold'); doc.setTextColor(...DARK);
   doc.text(
     `Total: ${ranking.length} técnicos | ${totalOS} OS executadas | ${totalH.toFixed(1)}h trabalhadas`,
     LEFT, finalY + 7
@@ -851,50 +827,35 @@ export async function generateExecutivoPDF(
   const custoTotal = filtered.reduce((s, o) => s + (Number(o.custo_real) || 0), 0);
   const corrPct = totalOS > 0 ? (filtered.filter(o => o.tipo === 'CORRETIVA').length / totalOS) * 100 : 0;
 
-  // Bloco 2x2 de KPIs grandes
-  const grid = [
-    { label: 'Ordens de Serviço', value: String(totalOS), sub: `${fechadas} fechadas • ${abertas} abertas`, cor: BRAND },
-    { label: 'Disponibilidade', value: `${(indicadores?.disponibilidade || 0).toFixed(1)}%`, sub: 'Meta: ≥ 95%', cor: indicadores?.disponibilidade >= 95 ? [22,163,74] as [number,number,number] : [220,38,38] as [number,number,number] },
-    { label: 'MTBF', value: `${(indicadores?.mtbf || 0).toFixed(1)}h`, sub: 'Meta: ≥ 200h', cor: indicadores?.mtbf >= 200 ? [22,163,74] as [number,number,number] : [202,138,4] as [number,number,number] },
-    { label: 'Custo Total', value: `R$ ${(custoTotal / 1000).toFixed(1)}k`, sub: `${corrPct.toFixed(0)}% corretivas`, cor: [37,99,235] as [number,number,number] },
-  ];
-  const gridW = (pageWidth - LEFT * 2) / 2;
-  const gridH = 22;
-  grid.forEach((g, i) => {
-    const gx = LEFT + (i % 2) * gridW;
-    const gy = startY + Math.floor(i / 2) * (gridH + 3);
-    doc.setFillColor(245,248,253);
-    doc.setDrawColor(...g.cor); doc.setLineWidth(0.6);
-    doc.roundedRect(gx + 1, gy, gridW - 2, gridH, 2, 2, 'FD');
-    doc.setFontSize(7); doc.setFont('helvetica', 'normal'); doc.setTextColor(100,100,100);
-    doc.text(g.label.toUpperCase(), gx + 8, gy + 6);
-    doc.setFontSize(18); doc.setFont('helvetica', 'bold'); doc.setTextColor(...g.cor);
-    doc.text(g.value, gx + 8, gy + 16);
-    doc.setFontSize(7); doc.setFont('helvetica', 'normal'); doc.setTextColor(130,130,130);
-    doc.text(g.sub, pageWidth / 2 + (i % 2 === 0 ? -gridW/2 : gridW/2) - 5, gy + 20, { align: 'right' });
-  });
+  // Resumo executivo compacto
+  const dispStr = `${(indicadores?.disponibilidade || 0).toFixed(1)}%${indicadores?.disponibilidade >= 95 ? ' (OK)' : ' (!)' }`;
+  const mtbfStr = `${(indicadores?.mtbf || 0).toFixed(1)}h${indicadores?.mtbf >= 200 ? ' (OK)' : ''}`;
+  const execSummaryY = drawKPISummary(doc, 'RESUMO EXECUTIVO', [
+    `OS: ${totalOS}  (${fechadas} fechadas / ${abertas} abertas)`,
+    `Disponibilidade: ${dispStr}  meta ≥ 95%`,
+    `MTBF: ${mtbfStr}  meta ≥ 200h`,
+    `Custo: R$ ${(custoTotal / 1000).toFixed(1)}k  —  ${corrPct.toFixed(0)}% corretivas`,
+  ], startY, LEFT, pageWidth);
 
-  const afterGridY = startY + 2 * (gridH + 3) + 6;
-
-  // Alertas críticos
+  // Alertas (texto)
   const criticos = alertas.filter(a => a.tipo === 'CRITICO' || a.tipo === 'ALERTA');
+  let afterGridY = execSummaryY;
   if (criticos.length > 0) {
-    doc.setFillColor(254, 242, 242);
-    doc.setDrawColor(220, 38, 38); doc.setLineWidth(0.5);
-    const alertBoxH = Math.min(criticos.length * 6 + 10, 40);
-    doc.roundedRect(LEFT, afterGridY, pageWidth - LEFT * 2, alertBoxH, 2, 2, 'FD');
-    doc.setFontSize(8); doc.setFont('helvetica', 'bold'); doc.setTextColor(220, 38, 38);
-    doc.text('⚠ Alertas Críticos', LEFT + 4, afterGridY + 7);
-    doc.setFontSize(7); doc.setFont('helvetica', 'normal'); doc.setTextColor(100, 40, 40);
-    criticos.slice(0, 5).forEach((a, i) => {
-      doc.text(`• ${a.titulo || a.mensagem || ''}`, LEFT + 6, afterGridY + 13 + i * 5.5);
+    doc.setFontSize(7.5); doc.setFont('helvetica', 'bold'); doc.setTextColor(50, 50, 50);
+    doc.text('ALERTAS:', LEFT, afterGridY + 4);
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(7.5); doc.setTextColor(80, 30, 30);
+    criticos.slice(0, 5).forEach((a, idx) => {
+      doc.text(`• ${a.titulo || a.mensagem || ''}`, LEFT + 22, afterGridY + 4 + idx * 5);
     });
+    afterGridY += Math.min(criticos.length * 5 + 9, 35);
+    doc.setDrawColor(150, 150, 150); doc.setLineWidth(0.3);
+    doc.line(LEFT, afterGridY, pageWidth - LEFT, afterGridY);
+    afterGridY += 4;
   }
 
-  // Top 5 KPIs semáforo
-  const kpiY = afterGridY + (criticos.length > 0 ? Math.min(criticos.length * 6 + 14, 45) : 4);
-  doc.setFontSize(9); doc.setFont('helvetica', 'bold'); doc.setTextColor(...BRAND);
-  doc.text('Semáforo de KPIs', LEFT, kpiY + 5);
+  const kpiY = afterGridY;
+  doc.setFontSize(8.5); doc.setFont('helvetica', 'bold'); doc.setTextColor(...DARK);
+  doc.text('SEMÁFORO DE KPIs', LEFT, kpiY + 5);
 
   const kpiDisplay = kpis.slice(0, 8);
   autoTable(doc, {
