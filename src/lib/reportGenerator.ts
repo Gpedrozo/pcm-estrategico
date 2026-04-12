@@ -39,7 +39,7 @@ async function loadImageAsDataUrl(url: string): Promise<string | null> {
 }
 
 async function addProfessionalHeader(doc: jsPDF, options: ReportOptions, startY: number = 15): Promise<number> {
-  const { empresaNome, empresaCnpj, empresaTelefone, empresaEmail, title, layoutVersion } = options;
+  const { empresaNome, empresaCnpj, empresaTelefone, empresaEmail, title } = options;
   const pageWidth = doc.internal.pageSize.getWidth();
   const now = format(new Date(), 'dd/MM/yyyy HH:mm', { locale: ptBR });
   const logoDataUrl = await loadImageAsDataUrl(options.logoUrl || '');

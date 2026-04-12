@@ -2,8 +2,7 @@ import { useMemo } from 'react';
 import { useOrdensServico, type OrdemServicoRow } from './useOrdensServico';
 import { useExecucoesOS, type ExecucaoOSRow } from './useExecucoesOS';
 import { useIndicadores } from './useIndicadores';
-import { useAuth } from '@/contexts/AuthContext';
-import { differenceInDays, differenceInHours, subDays, parseISO, format, subMonths } from 'date-fns';
+import { differenceInDays, differenceInHours, subDays, parseISO, format } from 'date-fns';
 
 // ─── Tipos ──────────────────────────────────────────────────────
 export type AlertaSeveridade = 'critico' | 'alerta' | 'atencao' | 'ok';
@@ -109,7 +108,6 @@ function tendenciaFromVariacao(v: number): 'subindo' | 'caindo' | 'estavel' {
 
 // ─── Hook Principal ─────────────────────────────────────────────
 export function useRelatoriosInteligentes(filterDateFrom?: string, filterDateTo?: string) {
-  const { tenantId } = useAuth();
   const { data: ordensServico, isLoading: loadingOS } = useOrdensServico();
   const { data: execucoes, isLoading: loadingExec } = useExecucoesOS();
   const { data: indicadores, isLoading: loadingInd } = useIndicadores();
@@ -147,7 +145,7 @@ export function useRelatoriosInteligentes(filterDateFrom?: string, filterDateTo?
   }, [ordensServico, periodoAtualStart, periodoAtualEnd, periodoAnteriorStart, periodoAnteriorEnd]);
 
   // ── Separar execuções por período ───────────────────────────
-  const { execPeriodoAtual, execPeriodoAnterior } = useMemo(() => {
+  const { execPeriodoAnterior } = useMemo(() => {
     if (!execucoes) return { execPeriodoAtual: [], execPeriodoAnterior: [] };
     const atual: ExecucaoOSRow[] = [];
     const anterior: ExecucaoOSRow[] = [];

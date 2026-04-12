@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Card, CardContent } from '@/components/ui/card';
-import { Plus, Search, FileText, DollarSign, Clock, Building2, AlertCircle, CheckCircle2, Pencil, Trash2 } from 'lucide-react';
+import { Plus, Search, FileText, DollarSign, AlertCircle, CheckCircle2, Pencil, Trash2 } from 'lucide-react';
 import { useConfirmDialog } from '@/components/ui/confirm-dialog';
 import { 
   useContratos, 
@@ -21,7 +21,6 @@ import { useFornecedores } from '@/hooks/useFornecedores';
 import { useAuth } from '@/contexts/AuthContext';
 import { format, differenceInDays, parseISO } from 'date-fns';
 import { useFormDraft } from '@/hooks/useFormDraft';
-import { ptBR } from 'date-fns/locale';
 
 export default function Contratos() {
   const { user } = useAuth();
