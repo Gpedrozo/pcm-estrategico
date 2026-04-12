@@ -1,191 +1,290 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Loader2, Save, Building2, Plus } from 'lucide-react';
+import { Textarea } from '@/components/ui/textarea';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
+import { Loader2, Building2, AlertTriangle, MessageSquareDiff } from 'lucide-react';
 import { useDadosEmpresa } from '@/hooks/useDadosEmpresa';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
+import { useCreateSupportTicket } from '@/hooks/useSupportTickets';
 import { useToast } from '@/hooks/use-toast';
-import { useLogAuditoria } from '@/hooks/useAuditoria';
-import { writeAuditLog } from '@/lib/audit';
-import { useAuth } from '@/contexts/AuthContext';
 
-const FIELDS_CADASTRAIS = [
-  { label: 'Razão Social *', key: 'razao_social' },
-  { label: 'Nome Fantasia', key: 'nome_fantasia' },
-  { label: 'CNPJ', key: 'cnpj' },
-  { label: 'Inscrição Estadual', key: 'inscricao_estadual' },
-];
+// --- Field definitions -------------------------------------------------------
 
-const FIELDS_CONTATO = [
-  { label: 'Telefone', key: 'telefone' },
-  { label: 'WhatsApp', key: 'whatsapp' },
-  { label: 'E-mail', key: 'email' },
-  { label: 'Site', key: 'site' },
+const FIELD_GROUPS = [
+  {
+    group: 'Dados Cadastrais',
+    fields: [
+      { label: 'Razão Social',        key: 'razao_social'        },
+      { label: 'Nome Fantasia',        key: 'nome_fantasia'       },
+      { label: 'CNPJ',                 key: 'cnpj'                },
+      { label: 'Inscrição Estadual',   key: 'inscricao_estadual'  },
+    ],
+  },
+  {
+    group: 'Endereço',
+    fields: [
+      { label: 'Endereço',  key: 'endereco' },
+      { label: 'Cidade',    key: 'cidade'   },
+      { label: 'Estado',    key: 'estado'   },
+      { label: 'CEP',       key: 'cep'      },
+    ],
+  },
+  {
+    group: 'Contato',
+    fields: [
+      { label: 'Telefone',  key: 'telefone' },
+      { label: 'WhatsApp',  key: 'whatsapp' },
+      { label: 'E-mail',    key: 'email'    },
+      { label: 'Site',      key: 'site'     },
+    ],
+  },
+  {
+    group: 'Responsável Técnico',
+    fields: [
+      { label: 'Nome',  key: 'responsavel_nome'  },
+      { label: 'Cargo', key: 'responsavel_cargo' },
+    ],
+  },
 ] as const;
 
-type EmpresaFormData = {
-  razao_social: string;
-  nome_fantasia: string;
-  cnpj: string;
-  inscricao_estadual: string;
-  endereco: string;
-  cidade: string;
-  estado: string;
-  cep: string;
-  telefone: string;
-  whatsapp: string;
-  email: string;
-  site: string;
-  responsavel_nome: string;
-  responsavel_cargo: string;
-};
+const ALL_FIELDS = FIELD_GROUPS.flatMap(g => g.fields);
+type FieldKey = typeof ALL_FIELDS[number]['key'];
 
-type FormFieldKey = keyof EmpresaFormData;
+// --- Helper ------------------------------------------------------------------
+
+function FieldRow({ label, value }: { label: string; value: string | null | undefined }) {
+  return (
+    <div className="space-y-0.5">
+      <p className="text-xs font-medium text-muted-foreground">{label}</p>
+      {value ? (
+        <p className="text-sm font-medium">{value}</p>
+      ) : (
+        <p className="text-sm italic text-muted-foreground/50">Não informado</p>
+      )}
+    </div>
+  );
+}
+
+// --- Main component ----------------------------------------------------------
 
 export function MasterEmpresaData() {
   const { data: empresa, isLoading } = useDadosEmpresa();
-  const { tenantId } = useAuth();
-  const queryClient = useQueryClient();
+  const createTicket = useCreateSupportTicket();
   const { toast } = useToast();
-  const { log } = useLogAuditoria();
 
-  const [form, setForm] = useState<EmpresaFormData>({
-    razao_social: '', nome_fantasia: '', cnpj: '', inscricao_estadual: '',
-    endereco: '', cidade: '', estado: '', cep: '',
-    telefone: '', whatsapp: '', email: '', site: '',
-    responsavel_nome: '', responsavel_cargo: '',
-  });
+  const [dialogOpen,    setDialogOpen]    = useState(false);
+  const [selectedField, setSelectedField] = useState<FieldKey | ''>('');
+  const [correctValue,  setCorrectValue]  = useState('');
+  const [justification, setJustification] = useState('');
 
-  useEffect(() => {
-    if (empresa) {
-      setForm({
-        razao_social: empresa.razao_social || '',
-        nome_fantasia: empresa.nome_fantasia || '',
-        cnpj: empresa.cnpj || '',
-        inscricao_estadual: empresa.inscricao_estadual || '',
-        endereco: empresa.endereco || '',
-        cidade: empresa.cidade || '',
-        estado: empresa.estado || '',
-        cep: empresa.cep || '',
-        telefone: empresa.telefone || '',
-        whatsapp: empresa.whatsapp || '',
-        email: empresa.email || '',
-        site: empresa.site || '',
-        responsavel_nome: empresa.responsavel_nome || '',
-        responsavel_cargo: empresa.responsavel_cargo || '',
+  const handleSendRequest = async () => {
+    if (!selectedField || !correctValue.trim()) {
+      toast({
+        title: 'Campos obrigatórios',
+        description: 'Selecione o campo e informe o valor correto.',
+        variant: 'destructive',
       });
-    }
-  }, [empresa]);
-
-  const saveMutation = useMutation({
-    mutationFn: async (formData: EmpresaFormData) => {
-      if (empresa?.id) {
-        if (!tenantId) throw new Error('Tenant não resolvido para update.');
-        const { error } = await supabase.from('dados_empresa').update(formData).eq('id', empresa.id).eq('empresa_id', tenantId);
-        if (error) throw error;
-        await writeAuditLog({
-          action: 'UPDATE_COMPANY',
-          table: 'dados_empresa',
-          recordId: empresa.id,
-          source: 'master_empresa_data',
-          metadata: { razao_social: formData.razao_social },
-        });
-      } else {
-        if (!tenantId) throw new Error('empresa_id obrigatório para cadastro');
-        const { data, error } = await supabase.from('dados_empresa').insert([{ ...formData, empresa_id: tenantId }]).select('id').single();
-        if (error) throw error;
-        await writeAuditLog({
-          action: 'CREATE_COMPANY',
-          table: 'dados_empresa',
-          recordId: data?.id,
-          source: 'master_empresa_data',
-          metadata: { razao_social: formData.razao_social },
-        });
-      }
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['dados-empresa'] });
-      toast({ title: 'Sucesso!', description: empresa?.id ? 'Dados atualizados.' : 'Empresa cadastrada.' });
-      log(empresa?.id ? 'EDITAR_EMPRESA' : 'CRIAR_EMPRESA', `Dados da empresa ${empresa?.id ? 'atualizados' : 'cadastrados'}`, 'MASTER_TI');
-    },
-    onError: (error: Error) => toast({ title: 'Erro ao salvar', description: error.message, variant: 'destructive' }),
-  });
-
-  const handleSave = () => {
-    if (!form.razao_social.trim()) {
-      toast({ title: 'Campo obrigatório', description: 'Razão Social é obrigatória.', variant: 'destructive' });
       return;
     }
-    saveMutation.mutate(form);
+
+    const fieldLabel   = ALL_FIELDS.find(f => f.key === selectedField)?.label ?? selectedField;
+    const currentValue = empresa
+      ? ((empresa[selectedField as keyof typeof empresa] as string | null) ?? 'Não informado')
+      : 'Não informado';
+
+    const subject = `Solicitação de correção cadastral — ${fieldLabel}`;
+    const message = [
+      `Campo: ${fieldLabel}`,
+      `Valor atual: ${currentValue}`,
+      `Valor solicitado: ${correctValue.trim()}`,
+      justification.trim() ? `Justificativa: ${justification.trim()}` : '',
+    ].filter(Boolean).join('\n');
+
+    try {
+      await createTicket.mutateAsync({ subject, message, priority: 'normal' });
+      toast({
+        title: 'Chamado enviado!',
+        description: 'Sua solicitação foi enviada ao Owner para análise.',
+      });
+      setDialogOpen(false);
+      setSelectedField('');
+      setCorrectValue('');
+      setJustification('');
+    } catch (err: unknown) {
+      const errorMsg = err instanceof Error ? err.message : 'Erro desconhecido';
+      toast({ title: 'Erro ao enviar chamado', description: errorMsg, variant: 'destructive' });
+    }
   };
 
-  const updateField = (key: FormFieldKey, value: string) => setForm(f => ({ ...f, [key]: value }));
+  if (isLoading) {
+    return (
+      <div className="flex justify-center p-8">
+        <Loader2 className="h-8 w-8 animate-spin" />
+      </div>
+    );
+  }
 
-  if (isLoading) return <div className="flex justify-center p-8"><Loader2 className="h-8 w-8 animate-spin" /></div>;
+  if (!empresa) {
+    return (
+      <Card>
+        <CardContent className="p-10 text-center space-y-3">
+          <Building2 className="h-14 w-14 mx-auto text-muted-foreground/30" />
+          <h3 className="text-lg font-semibold">Cadastro pendente</h3>
+          <p className="text-sm text-muted-foreground max-w-xs mx-auto">
+            Os dados desta empresa ainda não foram cadastrados pelo Owner.
+            Aguarde o cadastro ser realizado no painel Owner.
+          </p>
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-wrap gap-3">
         <div className="flex items-center gap-3">
           <Building2 className="h-6 w-6 text-primary" />
           <div>
             <h2 className="text-xl font-bold">Dados da Empresa</h2>
-            {!empresa && <p className="text-sm text-muted-foreground">Preencha os dados para cadastrar a empresa.</p>}
+            <p className="text-sm text-muted-foreground">
+              Visualização somente leitura. Para corrigir algum dado, utilize "Solicitar Correção".
+            </p>
           </div>
         </div>
-        <Button onClick={handleSave} disabled={saveMutation.isPending} className="gap-2">
-          {saveMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : empresa ? <Save className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
-          {empresa ? 'Salvar Alterações' : 'Cadastrar Empresa'}
-        </Button>
+
+        <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+          <DialogTrigger asChild>
+            <Button variant="outline" className="gap-2">
+              <MessageSquareDiff className="h-4 w-4" />
+              Solicitar Correção
+            </Button>
+          </DialogTrigger>
+
+          <DialogContent className="max-w-2xl">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <AlertTriangle className="h-5 w-5 text-warning" />
+                Solicitar Correção de Dado Cadastral
+              </DialogTitle>
+            </DialogHeader>
+
+            <div className="grid grid-cols-2 gap-6" style={{ maxHeight: '60vh' }}>
+              <div
+                className="space-y-4 overflow-y-auto pr-3 border-r border-border"
+                style={{ maxHeight: '55vh' }}
+              >
+                <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide sticky top-0 bg-background pb-1">
+                  Dados Atuais
+                </p>
+                {ALL_FIELDS.map(f => (
+                  <FieldRow
+                    key={f.key}
+                    label={f.label}
+                    value={empresa[f.key as keyof typeof empresa] as string | null}
+                  />
+                ))}
+              </div>
+
+              <div className="space-y-4">
+                <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">
+                  Correção Solicitada
+                </p>
+
+                <div className="space-y-1.5">
+                  <Label>Campo a corrigir *</Label>
+                  <Select
+                    value={selectedField}
+                    onValueChange={(v) => setSelectedField(v as FieldKey)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione o campo..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {ALL_FIELDS.map(f => (
+                        <SelectItem key={f.key} value={f.key}>
+                          {f.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label>Valor correto *</Label>
+                  <Textarea
+                    placeholder="Informe o valor correto..."
+                    value={correctValue}
+                    onChange={(e) => setCorrectValue(e.target.value)}
+                    rows={3}
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label>
+                    Justificativa{' '}
+                    <span className="text-muted-foreground font-normal">(opcional)</span>
+                  </Label>
+                  <Textarea
+                    placeholder="Motivo da correção..."
+                    value={justification}
+                    onChange={(e) => setJustification(e.target.value)}
+                    rows={2}
+                  />
+                </div>
+              </div>
+            </div>
+
+            <DialogFooter className="gap-2">
+              <Button variant="outline" onClick={() => setDialogOpen(false)}>
+                Cancelar
+              </Button>
+              <Button
+                onClick={handleSendRequest}
+                disabled={createTicket.isPending}
+                className="gap-2"
+              >
+                {createTicket.isPending
+                  ? <Loader2 className="h-4 w-4 animate-spin" />
+                  : <MessageSquareDiff className="h-4 w-4" />}
+                Enviar Chamado ao Owner
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <Card>
-          <CardHeader><CardTitle className="text-base">Dados Cadastrais</CardTitle></CardHeader>
-          <CardContent className="space-y-4">
-            {FIELDS_CADASTRAIS.map(f => (
-              <div key={f.key} className="space-y-1">
-                <Label>{f.label}</Label>
-                <Input value={form[f.key as FormFieldKey]} onChange={e => updateField(f.key as FormFieldKey, e.target.value)} />
-              </div>
-            ))}
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader><CardTitle className="text-base">Endereço</CardTitle></CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-1"><Label>Endereço</Label><Input value={form.endereco} onChange={e => updateField('endereco', e.target.value)} /></div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-1"><Label>Cidade</Label><Input value={form.cidade} onChange={e => updateField('cidade', e.target.value)} /></div>
-              <div className="space-y-1"><Label>Estado</Label><Input value={form.estado} onChange={e => updateField('estado', e.target.value)} /></div>
-            </div>
-            <div className="space-y-1"><Label>CEP</Label><Input value={form.cep} onChange={e => updateField('cep', e.target.value)} /></div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader><CardTitle className="text-base">Contato</CardTitle></CardHeader>
-          <CardContent className="space-y-4">
-            {FIELDS_CONTATO.map(f => (
-              <div key={f.key} className="space-y-1">
-                <Label>{f.label}</Label>
-                <Input value={form[f.key as FormFieldKey]} onChange={e => updateField(f.key as FormFieldKey, e.target.value)} />
-              </div>
-            ))}
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader><CardTitle className="text-base">Responsável Técnico</CardTitle></CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-1"><Label>Nome</Label><Input value={form.responsavel_nome} onChange={e => updateField('responsavel_nome', e.target.value)} /></div>
-            <div className="space-y-1"><Label>Cargo</Label><Input value={form.responsavel_cargo} onChange={e => updateField('responsavel_cargo', e.target.value)} /></div>
-          </CardContent>
-        </Card>
+        {FIELD_GROUPS.map(group => (
+          <Card key={group.group}>
+            <CardHeader>
+              <CardTitle className="text-base">{group.group}</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {group.fields.map(f => (
+                <FieldRow
+                  key={f.key}
+                  label={f.label}
+                  value={empresa[f.key as keyof typeof empresa] as string | null}
+                />
+              ))}
+            </CardContent>
+          </Card>
+        ))}
       </div>
     </div>
   );

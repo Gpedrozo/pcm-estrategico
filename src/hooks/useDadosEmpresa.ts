@@ -25,6 +25,12 @@ export interface DadosEmpresa {
   responsavel_cargo: string | null;
   logo_url: string | null;
   logo_os_url: string | null;
+  /** Per-context logo columns managed by MasterLogoManager */
+  logo_principal_url: string | null;
+  logo_menu_url: string | null;
+  logo_login_url: string | null;
+  logo_pdf_url: string | null;
+  logo_relatorio_url: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -50,7 +56,7 @@ export function useDadosEmpresa() {
 
       if (error) throw error;
 
-      // Fetch logo URLs stored in configuracoes_sistema (dados_empresa may not have logo columns)
+      // Fetch logo URLs stored in configuracoes_sistema (fallback for legacy tenants)
       const { data: logosConfig } = await supabase
         .from('configuracoes_sistema')
         .select('valor')
@@ -63,12 +69,19 @@ export function useDadosEmpresa() {
       if (data) {
         const row = data as Record<string, unknown>;
         const empresaId = (row.empresa_id ?? row.id ?? tenantId) as string;
+        const logoUrlLegacy = (row.logo_url as string | null) ?? logos.logo_url ?? null;
+        const logoOsLegacy  = (row.logo_os_url as string | null) ?? logos.logo_os_url ?? null;
         return {
           ...row,
           id: empresaId,
           empresa_id: empresaId,
-          logo_url: (row.logo_url as string | null) ?? logos.logo_url ?? null,
-          logo_os_url: (row.logo_os_url as string | null) ?? logos.logo_os_url ?? null,
+          logo_url: logoUrlLegacy,
+          logo_os_url: logoOsLegacy,
+          logo_principal_url: (row.logo_principal_url as string | null) ?? logoUrlLegacy,
+          logo_menu_url:      (row.logo_menu_url      as string | null) ?? logoUrlLegacy,
+          logo_login_url:     (row.logo_login_url     as string | null) ?? logoUrlLegacy,
+          logo_pdf_url:       (row.logo_pdf_url       as string | null) ?? logoOsLegacy ?? logoUrlLegacy,
+          logo_relatorio_url: (row.logo_relatorio_url as string | null) ?? logoOsLegacy ?? logoUrlLegacy,
         } as unknown as DadosEmpresa;
       }
 
@@ -100,12 +113,19 @@ export function useDadosEmpresa() {
       if (inserted) {
         const row = inserted as Record<string, unknown>;
         const empresaId = (row.empresa_id ?? row.id ?? tenantId) as string;
+        const logoUrlLegacy = (row.logo_url as string | null) ?? logos.logo_url ?? null;
+        const logoOsLegacy  = (row.logo_os_url as string | null) ?? logos.logo_os_url ?? null;
         return {
           ...row,
           id: empresaId,
           empresa_id: empresaId,
-          logo_url: logos.logo_url ?? null,
-          logo_os_url: logos.logo_os_url ?? null,
+          logo_url: logoUrlLegacy,
+          logo_os_url: logoOsLegacy,
+          logo_principal_url: (row.logo_principal_url as string | null) ?? logoUrlLegacy,
+          logo_menu_url:      (row.logo_menu_url      as string | null) ?? logoUrlLegacy,
+          logo_login_url:     (row.logo_login_url     as string | null) ?? logoUrlLegacy,
+          logo_pdf_url:       (row.logo_pdf_url       as string | null) ?? logoOsLegacy ?? logoUrlLegacy,
+          logo_relatorio_url: (row.logo_relatorio_url as string | null) ?? logoOsLegacy ?? logoUrlLegacy,
         } as unknown as DadosEmpresa;
       }
 

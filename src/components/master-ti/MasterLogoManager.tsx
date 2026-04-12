@@ -35,7 +35,8 @@ export function MasterLogoManager() {
   const updateLogoMutation = useMutation({
     mutationFn: async ({ logoKey, url }: { logoKey: string; url: string | null }) => {
       if (!empresa?.id) throw new Error('Cadastre os dados da empresa primeiro.');
-      const { error } = await supabase.from('dados_empresa').update({ [logoKey]: url }).eq('id', empresa.id);
+      const { error } = await supabase.from('dados_empresa').update({ [logoKey]: url })
+        .eq('empresa_id', empresa.empresa_id);
       if (error) throw error;
     },
     onSuccess: (_, vars) => {

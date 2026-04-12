@@ -197,7 +197,7 @@ export default function Login() {
     window.history.replaceState({}, document.title, cleanedUrl);
   }, [authStatus, isAuthenticated]);
 
-  const activeBranding = branding || {
+  const activeBranding = branding || emailBranding || {
     nome_fantasia: 'PCM ESTRATÉGICO',
     razao_social: 'PCM ESTRATÉGICO',
     logo_login_url: null,

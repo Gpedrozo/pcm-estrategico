@@ -40,10 +40,11 @@ export function BrandingProvider({ children }: { children: React.ReactNode }) {
       setIsLoading(true);
       setError(null);
 
-      // Fetch company basic data
+      // Single query — read all branding data directly from dados_empresa.
+      // Includes the new per-context logo columns added in migration 20260412200000.
       const { data, error: fetchError } = await supabase
         .from('dados_empresa')
-        .select('razao_social, nome_fantasia')
+        .select('razao_social, nome_fantasia, logo_url, logo_os_url, logo_principal_url, logo_menu_url, logo_login_url, logo_pdf_url, logo_relatorio_url')
         .eq('empresa_id', tenant.id)
         .limit(1)
         .maybeSingle();
@@ -53,11 +54,22 @@ export function BrandingProvider({ children }: { children: React.ReactNode }) {
       if (fetchError) {
         setError(fetchError.message);
         setBranding(null);
-      } else {
-        // Fetch logos from configuracoes_sistema (source of truth)
-        let logoPrincipal: string | null = null;
-        let logoOS: string | null = null;
+        setIsLoading(false);
+        return;
+      }
 
+      // Cast to a loose record so we can access new columns safely even before
+      // DB migration runs (they will be undefined -> null).
+      const r = data as Record<string, string | null | undefined> | null;
+
+      // Check if the new per-context columns are populated.
+      const hasNewCols = Boolean(r?.logo_principal_url || r?.logo_login_url || r?.logo_os_url);
+
+      // Fallback: if new columns don't exist yet, read from configuracoes_sistema.
+      let fallbackLogoPrincipal: string | null = null;
+      let fallbackLogoOS: string | null = null;
+
+      if (!hasNewCols) {
         const { data: configData } = await supabase
           .from('configuracoes_sistema')
           .select('valor')
@@ -71,29 +83,34 @@ export function BrandingProvider({ children }: { children: React.ReactNode }) {
           try {
             const logos = typeof configData.valor === 'string'
               ? JSON.parse(configData.valor)
-              : configData.valor;
-            logoPrincipal = logos.logo_url ?? null;
-            logoOS = logos.logo_os_url ?? logoPrincipal;
+              : configData.valor as Record<string, string | null>;
+            fallbackLogoPrincipal = logos.logo_url ?? null;
+            fallbackLogoOS = logos.logo_os_url ?? fallbackLogoPrincipal;
           } catch {
-            // Malformed JSON in configuracoes_sistema — ignore logos
+            // Malformed JSON — ignore
           }
         }
-
-        if (!data && !logoPrincipal) {
-          setBranding(null);
-        } else {
-          setBranding({
-            razao_social: data?.razao_social ?? '',
-            nome_fantasia: data?.nome_fantasia ?? null,
-            logo_principal_url: logoPrincipal,
-            logo_login_url: logoPrincipal,
-            logo_menu_url: logoPrincipal,
-            logo_os_url: logoOS,
-            logo_pdf_url: logoOS,
-            logo_relatorio_url: logoOS,
-          });
-        }
       }
+
+      if (!r && !fallbackLogoPrincipal) {
+        setBranding(null);
+        setIsLoading(false);
+        return;
+      }
+
+      const logoP  = r?.logo_principal_url ?? r?.logo_url ?? fallbackLogoPrincipal ?? null;
+      const logoOS = r?.logo_os_url ?? r?.logo_url ?? fallbackLogoOS ?? logoP;
+
+      setBranding({
+        razao_social:       r?.razao_social       ?? '',
+        nome_fantasia:      r?.nome_fantasia       ?? null,
+        logo_principal_url: logoP,
+        logo_menu_url:      r?.logo_menu_url       ?? logoP,
+        logo_login_url:     r?.logo_login_url      ?? logoP,
+        logo_os_url:        logoOS,
+        logo_pdf_url:       r?.logo_pdf_url        ?? logoOS ?? logoP,
+        logo_relatorio_url: r?.logo_relatorio_url  ?? logoOS ?? logoP,
+      });
 
       setIsLoading(false);
     }
