@@ -72,6 +72,7 @@ export default function Owner() {
 
   const [companyId, setCompanyId] = useState('')
   const [authPassword, setAuthPassword] = useState('')
+  const [newCompanyName, setNewCompanyName] = useState('')
 
   // Dark/light mode — sincronizado com a chave pcm-theme do sistema
   const [isDark, setIsDark] = useState(() => {
