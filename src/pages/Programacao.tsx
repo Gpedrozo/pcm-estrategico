@@ -269,9 +269,11 @@ export default function Programacao() {
     const equipTag = equipamento?.tag || 'N/A';
     const equipSetor = (equipamento as Record<string, unknown>)?.setor as string || '';
 
+    const esc = (t: string) => t.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+
     const doc = printWindow.document;
     doc.open();
-    doc.write(`<!doctype html><html><head><meta charset="utf-8"><title>Ficha ${tipoLabel}</title>
+    doc.write(`<!doctype html><html><head><meta charset="utf-8"><title>Ficha ${esc(tipoLabel)}</title>
 <style>
   @page { size: A4; margin: 0; }
   * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -368,14 +370,14 @@ export default function Programacao() {
     /* HEADER */
     html += '<div class="header">';
     html += '<div class="header-logo">';
-    html += logoUrl ? `<img src="${logoUrl}" alt="Logo">` : '<div class="placeholder">LOGO</div>';
+    html += logoUrl ? `<img src="${esc(logoUrl)}" alt="Logo">` : '<div class="placeholder">LOGO</div>';
     html += '</div>';
     html += '<div class="header-center">';
-    html += `<div class="header-company">${nomeEmpresa.toUpperCase()}</div>`;
-    html += `<div class="header-title">FICHA DE EXECUÇÃO — ${tipoLabel}</div>`;
+    html += `<div class="header-company">${esc(nomeEmpresa.toUpperCase())}</div>`;
+    html += `<div class="header-title">FICHA DE EXECUÇÃO — ${esc(tipoLabel)}</div>`;
     html += '</div>';
     html += '<div class="header-right">';
-    html += `<div><span class="lbl">Nº Documento:</span><span class="doc-num">${docNum}</span></div>`;
+    html += `<div><span class="lbl">Nº Documento:</span><span class="doc-num">${esc(docNum)}</span></div>`;
     html += `<div><span class="lbl">Emissão:</span><span>${dataEmissao}</span></div>`;
     html += `<div><span class="lbl">Revisão:</span><span>00</span></div>`;
     html += `<div><span class="lbl">Página:</span><span>1 / 1</span></div>`;
@@ -383,37 +385,37 @@ export default function Programacao() {
 
     /* COMPANY BAR */
     const barParts: string[] = [];
-    if (empresa?.cnpj) barParts.push(`CNPJ: ${empresa.cnpj}`);
-    if (empresa?.telefone) barParts.push(`Tel: ${empresa.telefone}`);
-    if (empresa?.email) barParts.push(empresa.email);
+    if (empresa?.cnpj) barParts.push(`CNPJ: ${esc(empresa.cnpj)}`);
+    if (empresa?.telefone) barParts.push(`Tel: ${esc(empresa.telefone)}`);
+    if (empresa?.email) barParts.push(esc(empresa.email));
     if (barParts.length > 0) {
       html += `<div class="company-bar">${barParts.map(p => `<span>${p}</span>`).join('')}</div>`;
     }
 
     /* INFO GRID - ROW 1 */
     html += '<div class="info-grid cols-4">';
-    html += `<div class="info-cell"><span class="info-label">TAG / MÁQUINA</span><span class="info-value mono">${equipTag}</span></div>`;
-    html += `<div class="info-cell"><span class="info-label">EQUIPAMENTO</span><span class="info-value">${equipNome}</span></div>`;
-    html += `<div class="info-cell"><span class="info-label">TIPO</span><span class="info-value">${tipoLabel}</span></div>`;
-    html += `<div class="info-cell"><span class="info-label">STATUS</span><span class="info-value">${(selectedEvent.status || 'programado').toUpperCase()}</span></div>`;
+    html += `<div class="info-cell"><span class="info-label">TAG / MÁQUINA</span><span class="info-value mono">${esc(equipTag)}</span></div>`;
+    html += `<div class="info-cell"><span class="info-label">EQUIPAMENTO</span><span class="info-value">${esc(equipNome)}</span></div>`;
+    html += `<div class="info-cell"><span class="info-label">TIPO</span><span class="info-value">${esc(tipoLabel)}</span></div>`;
+    html += `<div class="info-cell"><span class="info-label">STATUS</span><span class="info-value">${esc((selectedEvent.status || 'programado').toUpperCase())}</span></div>`;
     html += '</div>';
 
     /* INFO GRID - ROW 2 */
     html += '<div class="info-grid cols-3">';
-    html += `<div class="info-cell"><span class="info-label">DATA PROGRAMADA</span><span class="info-value">${dataFormatada}</span></div>`;
-    html += `<div class="info-cell"><span class="info-label">RESPONSÁVEL</span><span class="info-value">${selectedEvent.responsavel || '—'}</span></div>`;
-    html += `<div class="info-cell"><span class="info-label">SETOR</span><span class="info-value">${equipSetor || '—'}</span></div>`;
+    html += `<div class="info-cell"><span class="info-label">DATA PROGRAMADA</span><span class="info-value">${esc(dataFormatada)}</span></div>`;
+    html += `<div class="info-cell"><span class="info-label">RESPONSÁVEL</span><span class="info-value">${esc(selectedEvent.responsavel || '—')}</span></div>`;
+    html += `<div class="info-cell"><span class="info-label">SETOR</span><span class="info-value">${esc(equipSetor || '—')}</span></div>`;
     html += '</div>';
 
     /* TITLE */
     html += '<div class="section-block">';
-    html += `<div style="padding:2mm;font-size:9px;"><strong style="color:#666;font-size:8px;">TÍTULO: </strong><strong>${(selectedEvent.titulo || '—').toUpperCase()}</strong></div>`;
+    html += `<div style="padding:2mm;font-size:9px;"><strong style="color:#666;font-size:8px;">TÍTULO: </strong><strong>${esc((selectedEvent.titulo || '—').toUpperCase())}</strong></div>`;
     html += '</div>';
 
     /* DESCRIPTION */
     html += '<div class="section-block">';
     html += '<div class="section-hdr">DESCRIÇÃO DA ATIVIDADE</div>';
-    html += `<div class="section-content">${selectedEvent.descricao || '—'}</div>`;
+    html += `<div class="section-content">${esc(selectedEvent.descricao || '—')}</div>`;
     html += '</div>';
 
     /* TYPE-SPECIFIC SECTIONS */
@@ -570,7 +572,6 @@ export default function Programacao() {
     html += '</div>'; /* close .doc */
 
     /* FOOTER */
-    const esc = (t: string) => t.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
     const footerParts = [nomeEmpresa];
     if (empresa?.endereco) footerParts.push(empresa.endereco);
     if (empresa?.cidade) footerParts.push(`${empresa.cidade}/${empresa?.estado || ''}`);

@@ -51,6 +51,7 @@ export function useSavePontosPlano() {
 
       const rows = pontos.map((p, i) => ({
         ...p,
+        empresa_id: tenantId,
         plano_id: planoId,
         rota_id: null,
         ordem: i,

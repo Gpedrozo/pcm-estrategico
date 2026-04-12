@@ -68,11 +68,15 @@ export function BrandingProvider({ children }: { children: React.ReactNode }) {
         if (!isMounted) return;
 
         if (configData?.valor) {
-          const logos = typeof configData.valor === 'string'
-            ? JSON.parse(configData.valor)
-            : configData.valor;
-          logoPrincipal = logos.logo_url ?? null;
-          logoOS = logos.logo_os_url ?? logoPrincipal;
+          try {
+            const logos = typeof configData.valor === 'string'
+              ? JSON.parse(configData.valor)
+              : configData.valor;
+            logoPrincipal = logos.logo_url ?? null;
+            logoOS = logos.logo_os_url ?? logoPrincipal;
+          } catch {
+            // Malformed JSON in configuracoes_sistema — ignore logos
+          }
         }
 
         if (!data && !logoPrincipal) {

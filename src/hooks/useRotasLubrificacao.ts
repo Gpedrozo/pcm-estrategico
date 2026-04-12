@@ -128,6 +128,7 @@ export function useSavePontosRota() {
       const { error: delError } = await supabase
         .from('rotas_lubrificacao_pontos')
         .delete()
+        .eq('empresa_id', tenantId)
         .eq('rota_id', rotaId);
       if (delError) throw delError;
 
@@ -135,7 +136,7 @@ export function useSavePontosRota() {
 
       const { data, error } = await supabase
         .from('rotas_lubrificacao_pontos')
-        .insert(pontos.map((p, i) => ({ ...p, rota_id: rotaId, ordem: i })))
+        .insert(pontos.map((p, i) => ({ ...p, empresa_id: tenantId, rota_id: rotaId, ordem: i })))
         .select();
       if (error) throw error;
       return data as RotaPonto[];

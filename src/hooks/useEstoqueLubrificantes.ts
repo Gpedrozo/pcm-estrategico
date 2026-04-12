@@ -133,7 +133,8 @@ export function useCreateMovimentacao() {
           return supabase
             .from('lubrificantes')
             .update({ estoque_atual: supabase.rpc ? undefined : 0 })
-            .eq('id', payload.lubrificante_id);
+            .eq('id', payload.lubrificante_id)
+            .eq('empresa_id', tenantId!);
         }
       });
 

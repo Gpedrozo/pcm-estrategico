@@ -502,6 +502,7 @@ export default function Preditiva() {
             .from('medicoes_preditivas')
             .update(payload)
             .eq('id', editingMedicao.id)
+            .eq('empresa_id', tenantId!)
             .select()
             .single(),
         updates as Record<string, unknown>,
