@@ -7,7 +7,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { 
   Plus, 
@@ -18,7 +18,6 @@ import {
   Download, 
   Eye,
   Calendar,
-  User,
   Tag,
   Clock,
   CheckCircle2,
@@ -30,6 +29,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import { uploadToStorage } from '@/services/storage';
+import { insertWithColumnFallback } from '@/lib/supabaseCompat';
 import { useFormDraft } from '@/hooks/useFormDraft';
 
 interface DocumentoTecnico {
@@ -74,29 +74,30 @@ const useCreateDocumento = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (data: { codigo: string; titulo: string; tipo: string; tag?: string; descricao?: string; versao?: string; status?: string }) => {
+    mutationFn: async (data: { codigo: string; titulo: string; tipo: string; tag?: string; descricao?: string; versao?: string; status?: string; arquivo_url?: string; arquivo_nome?: string }) => {
       if (!tenantId) throw new Error('Tenant não identificado para cadastro do documento.');
 
-      const { data: result, error } = await supabase
-        .from('documentos_tecnicos')
-        .insert([{ ...data, empresa_id: tenantId }])
-        .select()
-        .single();
-      if (error) throw error;
-      return result;
+      return insertWithColumnFallback(
+        async (payload) =>
+          supabase
+            .from('documentos_tecnicos')
+            .insert(payload)
+            .select()
+            .single(),
+        { ...data, empresa_id: tenantId } as Record<string, unknown>,
+      );
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['documentos_tecnicos'] });
       toast({ title: 'Documento cadastrado com sucesso' });
     },
-    onError: () => {
-      toast({ title: 'Erro ao cadastrar documento', variant: 'destructive' });
+    onError: (error: Error) => {
+      toast({ title: 'Erro ao cadastrar documento', description: error.message, variant: 'destructive' });
     },
   });
 };
 
 export default function DocumentosTecnicos() {
-  const { user } = useAuth();
   const [search, setSearch] = useState('');
   const [activeTab, setActiveTab] = useState('todos');
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -129,27 +130,31 @@ export default function DocumentosTecnicos() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    let arquivo_url: string | undefined;
-    let arquivo_nome: string | undefined;
+    try {
+      let arquivo_url: string | undefined;
+      let arquivo_nome: string | undefined;
 
-    if (arquivo) {
-      const path = `documentos-tecnicos/${Date.now()}-${arquivo.name}`;
-      arquivo_url = await uploadToStorage('public', path, arquivo);
-      arquivo_nome = arquivo.name;
+      if (arquivo) {
+        const path = `documentos-tecnicos/${Date.now()}-${arquivo.name}`;
+        arquivo_url = await uploadToStorage('public', path, arquivo);
+        arquivo_nome = arquivo.name;
+      }
+
+      await createMutation.mutateAsync({
+        ...formData,
+        status: 'RASCUNHO',
+        arquivo_url,
+        arquivo_nome,
+      });
+      setIsModalOpen(false);
+      setArquivo(null);
+      clearDocDraft();
+      setFormData({
+        codigo: '', titulo: '', tipo: 'POP', tag: '', descricao: '', versao: '1.0'
+      });
+    } catch (err) {
+      toast({ title: 'Erro ao cadastrar documento', description: err instanceof Error ? err.message : 'Falha inesperada.', variant: 'destructive' });
     }
-
-    await createMutation.mutateAsync({
-      ...formData,
-      status: 'RASCUNHO',
-      arquivo_url,
-      arquivo_nome,
-    });
-    setIsModalOpen(false);
-    setArquivo(null);
-    clearDocDraft();
-    setFormData({
-      codigo: '', titulo: '', tipo: 'POP', tag: '', descricao: '', versao: '1.0'
-    });
   };
 
   const handleVisualizar = (doc: DocumentoTecnico) => {

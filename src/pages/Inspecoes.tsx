@@ -27,7 +27,7 @@ import { InspecaoPrintTemplate } from '@/components/inspecao/InspecaoPrintTempla
 import { useReactToPrint } from 'react-to-print';
 import { PRINT_PAGE_STYLE } from '@/components/print/DocumentPrintBase';
 import { useLocation } from 'react-router-dom';
-import { useFormDraft } from '@/hooks/useFormDraft';
+import { useFormDraft, readDraft } from '@/hooks/useFormDraft';
 
 interface ChecklistItem {
   item: string;
@@ -93,7 +93,8 @@ export default function Inspecoes() {
   const [selectedInspecao, setSelectedInspecao] = useState<InspecaoRow | null>(null);
   const [checklist, setChecklist] = useState<ChecklistItem[]>(INSPECTION_MODELS.DIARIA_OPERACIONAL);
   const [osSuggestion, setOsSuggestion] = useState<OSPendingSuggestion | null>(null);
-  const [formData, setFormData] = useState({
+  const _inspecaoDraft = readDraft<typeof _defaultInspecaoForm>('draft:inspecao');
+  const _defaultInspecaoForm = {
     rota_nome: '',
     descricao: '',
     rota_tipo: 'DIARIA_OPERACIONAL',
@@ -102,8 +103,9 @@ export default function Inspecoes() {
     frequencia: 'DIARIA',
     turno: 'A',
     inspetor_nome: user?.nome || '',
-  });
-  const { clearDraft: clearInspecaoDraft } = useFormDraft('draft:inspecao', formData, setFormData);
+  };
+  const [formData, setFormData] = useState(_inspecaoDraft || _defaultInspecaoForm);
+  const { clearDraft: clearInspecaoDraft } = useFormDraft('draft:inspecao', formData);
 
   const { data: inspecoes, isLoading } = useInspecoes();
   const { data: empresa } = useDadosEmpresa();
@@ -111,8 +113,11 @@ export default function Inspecoes() {
   const updateMutation = useUpdateInspecao();
   const createOSMutation = useCreateOrdemServico();
 
+  const calendarModalAppliedRef = useRef(false);
   useEffect(() => {
+    if (calendarModalAppliedRef.current) return;
     if ((location.state as any)?.dataProgramada) {
+      calendarModalAppliedRef.current = true;
       setIsModalOpen(true);
     }
   }, [location.state]);

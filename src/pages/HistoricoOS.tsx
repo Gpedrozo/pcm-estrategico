@@ -27,6 +27,8 @@ import { useOrdensServico, type OrdemServicoRow } from '@/hooks/useOrdensServico
 import { useEquipamentos } from '@/hooks/useEquipamentos';
 import { useExecucaoByOSId, useExecucoesOS } from '@/hooks/useExecucoesOS';
 import { supabase } from '@/integrations/supabase/client';
+import { getSolicitacoesTable } from '@/hooks/useSolicitacoes';
+import { useAuth } from '@/contexts/AuthContext';
 import { OSStatusBadge } from '@/components/os/OSStatusBadge';
 import { OSTypeBadge } from '@/components/os/OSTypeBadge';
 import { OSPrintDialog } from '@/components/os/OSPrintDialog';
@@ -83,18 +85,27 @@ function OSDetailsModal({
   onClose: () => void;
 }) {
   const { data: execucao } = useExecucaoByOSId(os?.id);
+  const { tenantId } = useAuth();
   const [solicitacaoOrigem, setSolicitacaoOrigem] = useState<{ numero_solicitacao: number } | null>(null);
 
   useEffect(() => {
     setSolicitacaoOrigem(null);
-    if (!os?.id) return;
-    supabase
-      .from('solicitacoes_manutencao')
-      .select('numero_solicitacao')
-      .eq('os_id', os.id)
-      .limit(1)
-      .single()
-      .then(({ data }) => { if (data) setSolicitacaoOrigem(data as { numero_solicitacao: number }); });
+    if (!os?.id || !tenantId) return;
+    const osId = os.id;
+    void (async () => {
+      const table = await getSolicitacoesTable();
+      const { data } = await (supabase
+        .from(table as any)
+        .select('numero_solicitacao')
+        .eq('os_id', osId)
+        .eq('empresa_id', tenantId)
+        .limit(1)
+        .maybeSingle() as any);
+      if (data) {
+        const num = Number(data.numero_solicitacao ?? 0);
+        if (num > 0) setSolicitacaoOrigem({ numero_solicitacao: num });
+      }
+    })();
   }, [os?.id]);
 
   if (!os) return null;
@@ -153,7 +164,7 @@ function OSDetailsModal({
 
           <div>
             <Label className="text-xs text-muted-foreground">Problema Apresentado</Label>
-            <p className="mt-1 p-3 bg-muted/50 rounded-lg">{os.problema}</p>
+            <p className="mt-1 p-3 bg-muted/50 rounded-lg">{os.problema || <span className="italic text-muted-foreground">Não informado</span>}</p>
           </div>
 
           {/* RCA Fields */}
@@ -303,8 +314,8 @@ export default function HistoricoOS() {
           !os.numero_os.toString().includes(filters.search) &&
           !os.tag.toLowerCase().includes(searchLower) &&
           !os.equipamento.toLowerCase().includes(searchLower) &&
-          !os.problema.toLowerCase().includes(searchLower) &&
-          !os.solicitante.toLowerCase().includes(searchLower)
+          !(os.problema || '').toLowerCase().includes(searchLower) &&
+          !(os.solicitante || '').toLowerCase().includes(searchLower)
         ) {
           return false;
         }
@@ -826,6 +837,18 @@ export default function HistoricoOS() {
                           <p className="font-medium">{formatDateTime(execucaoByOsId.get(hoveredOS.id)?.data_fim, execucaoByOsId.get(hoveredOS.id)?.hora_fim)}</p>
                         </div>
                       </div>
+                      {hoveredOS.problema && (
+                        <div className="mt-2 pt-2 border-t border-emerald-500/20">
+                          <p className="text-muted-foreground font-medium">Problema:</p>
+                          <p className="mt-0.5 line-clamp-2">{hoveredOS.problema}</p>
+                        </div>
+                      )}
+                      {execucaoByOsId.get(hoveredOS.id)?.servico_executado && (
+                        <div className="mt-2 pt-2 border-t border-emerald-500/20">
+                          <p className="text-muted-foreground font-medium">Serviço Realizado:</p>
+                          <p className="mt-0.5 line-clamp-3">{execucaoByOsId.get(hoveredOS.id)?.servico_executado}</p>
+                        </div>
+                      )}
                     </div>
                   ) : hoveredOS.status === 'CANCELADA' ? (
                     <div className="rounded-md border border-rose-500/30 bg-rose-500/5 p-3 text-xs">
@@ -839,7 +862,12 @@ export default function HistoricoOS() {
                   ) : (
                     <div className="rounded-md border border-amber-500/30 bg-amber-500/5 p-3 text-xs">
                       <p className="font-semibold uppercase tracking-wide text-amber-700 dark:text-amber-300">O.S em aberto</p>
-                      <p className="mt-1 text-muted-foreground">Visualize detalhes completos para acompanhar execução.</p>
+                      {hoveredOS.problema && (
+                        <div className="mt-2">
+                          <p className="text-muted-foreground font-medium">Problema:</p>
+                          <p className="mt-0.5 line-clamp-3">{hoveredOS.problema}</p>
+                        </div>
+                      )}
                     </div>
                   )}
 

@@ -20,7 +20,7 @@ interface OnboardingStep {
 }
 
 export function OnboardingWizard() {
-  const { user } = useAuth();
+  const { user: _user } = useAuth();
   const { data: plantas } = usePlantas();
   const { data: equipamentos } = useEquipamentos();
   const { data: mecanicos } = useMecanicos();

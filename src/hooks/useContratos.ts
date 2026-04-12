@@ -26,7 +26,7 @@ export interface ContratoRow {
   anexos: unknown | null;
   created_at: string;
   updated_at: string;
-  fornecedor?: { razao_social: string; nome_fantasia: string | null } | null;
+  fornecedor?: { nome: string | null; razao_social: string | null; nome_fantasia: string | null } | null;
 }
 
 export type ContratoInsert = ContratoFormData;

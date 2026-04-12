@@ -59,7 +59,8 @@ export function usePlanosPreventivos() {
         .from('planos_preventivos')
         .select('*')
         .eq('empresa_id', tenantId!)
-        .order('codigo');
+        .order('codigo')
+        .limit(500);
 
       if (error) throw error;
       return data as PlanoPreventivo[];
@@ -79,7 +80,8 @@ export function usePlanosPreventivosAtivos() {
         .select('*')
         .eq('empresa_id', tenantId!)
         .eq('ativo', true)
-        .order('proxima_execucao');
+        .order('proxima_execucao')
+        .limit(500);
 
       if (error) throw error;
       return data as PlanoPreventivo[];
@@ -110,9 +112,9 @@ export function useCreatePlanoPreventivo() {
             .select()
             .single(),
         {
-          empresa_id: tenantId,
           ...plano,
           proxima_execucao: proximaExecucao.toISOString(),
+          empresa_id: tenantId, // MUST be last to prevent spread override
         } as Record<string, unknown>,
       );
 
@@ -142,7 +144,7 @@ export function useCreatePlanoPreventivo() {
         description: 'O plano preventivo foi criado com sucesso.',
       });
     },
-    onError: (error: any) => {
+    onError: (error: Error) => {
       toast({
         title: 'Erro ao criar plano',
         description: error.message,
@@ -198,7 +200,7 @@ export function useUpdatePlanoPreventivo() {
         description: 'O plano preventivo foi atualizado com sucesso.',
       });
     },
-    onError: (error: any) => {
+    onError: (error: Error) => {
       toast({
         title: 'Erro ao atualizar plano',
         description: error.message,
@@ -217,7 +219,7 @@ export function useDeletePlanoPreventivo() {
     mutationFn: async (id: string) => {
       if (!tenantId) throw new Error('Tenant não resolvido.');
 
-      await deleteMaintenanceSchedule('preventiva', id);
+      await deleteMaintenanceSchedule('preventiva', id, tenantId);
 
       const { error } = await supabase
         .from('planos_preventivos')
@@ -235,7 +237,7 @@ export function useDeletePlanoPreventivo() {
         description: 'O plano preventivo foi excluído com sucesso.',
       });
     },
-    onError: (error: any) => {
+    onError: (error: Error) => {
       toast({
         title: 'Erro ao excluir plano',
         description: error.message,

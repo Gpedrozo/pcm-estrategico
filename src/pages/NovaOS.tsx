@@ -42,7 +42,7 @@ import { useSolicitacoesPendentes, useUpdateSolicitacao, type SolicitacaoRow } f
 import { resolvePrioridadeFromClassificacao, useTenantPadronizacoes } from '@/hooks/useTenantPadronizacoes';
 import { useDadosEmpresa } from '@/hooks/useDadosEmpresa';
 import { useAuth } from '@/contexts/AuthContext';
-import { useFormDraft } from '@/hooks/useFormDraft';
+import { useFormDraft, readDraft } from '@/hooks/useFormDraft';
 import { ArrowLeft, Check, Loader2, Printer, CheckCircle, AlertTriangle, FileText } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { OSPrintTemplate } from '@/components/os/OSPrintTemplate';
@@ -72,8 +72,15 @@ export default function NovaOS() {
 
   const solicitacaoOrigem = (location.state as { solicitacao?: SolicitacaoRow } | null)?.solicitacao ?? null;
   const [solicitacaoVinculada, setSolicitacaoVinculada] = useState<SolicitacaoRow | null>(solicitacaoOrigem);
-  
-  const [formData, setFormData] = useState({
+
+  // ── Synchronous draft restoration (zero-flash) ──
+  const _novaOSDraft = readDraft<{
+    formData: { tag: string; solicitante: string; problema: string; tipo: TipoOS | ''; prioridade: string; tempoEstimado: string; mecanicoResponsavelId: string };
+    semTag: boolean;
+    equipamentoManual: string;
+  }>('draft:nova-os');
+
+  const [formData, setFormData] = useState(_novaOSDraft?.formData || {
     tag: '',
     solicitante: '',
     problema: '',
@@ -98,8 +105,8 @@ export default function NovaOS() {
   const [nomeEmpresa, setNomeEmpresa] = useState('MANUTENÇÃO INDUSTRIAL');
   const [showSolicitacoesModal, setShowSolicitacoesModal] = useState(false);
   const [dismissedTagWarnings, setDismissedTagWarnings] = useState<Record<string, boolean>>({});
-  const [semTag, setSemTag] = useState(false);
-  const [equipamentoManual, setEquipamentoManual] = useState('');
+  const [semTag, setSemTag] = useState(_novaOSDraft?.semTag || false);
+  const [equipamentoManual, setEquipamentoManual] = useState(_novaOSDraft?.equipamentoManual || '');
   const [tagComboOpen, setTagComboOpen] = useState(false);
   const [tagSearch, setTagSearch] = useState('');
   const [showCadastrarAtivoDialog, setShowCadastrarAtivoDialog] = useState(false);
@@ -109,11 +116,6 @@ export default function NovaOS() {
   const { clearDraft: clearNovaOSDraft } = useFormDraft(
     'draft:nova-os',
     { formData, semTag, equipamentoManual },
-    (saved) => {
-      if (saved.formData) setFormData(saved.formData);
-      if (saved.semTag !== undefined) setSemTag(saved.semTag);
-      if (saved.equipamentoManual) setEquipamentoManual(saved.equipamentoManual);
-    },
   );
 
   const solicitacoesAbertasDaTag = useMemo(() => {
@@ -121,20 +123,18 @@ export default function NovaOS() {
     return solicitacoesPendentes.filter((ss) => ss.tag === formData.tag && !ss.os_id);
   }, [solicitacoesPendentes, formData.tag]);
 
+  const solicitacaoAppliedRef = useRef(false);
   useEffect(() => {
+    if (solicitacaoAppliedRef.current) return;
     setSolicitacaoVinculada(solicitacaoOrigem);
-  }, [solicitacaoOrigem]);
-
-  useEffect(() => {
-    if (!solicitacaoOrigem) {
-      return;
-    }
+    if (!solicitacaoOrigem) return;
 
     if (solicitacaoOrigem.status !== 'APROVADA') {
       navigate('/solicitacoes', { replace: true });
       return;
     }
 
+    solicitacaoAppliedRef.current = true;
     setFormData((prev) => ({
       ...prev,
       tag: solicitacaoOrigem.tag || prev.tag,

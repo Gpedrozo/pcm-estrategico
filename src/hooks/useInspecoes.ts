@@ -59,7 +59,8 @@ export function useInspecoes() {
         .from('inspecoes')
         .select('*')
         .eq('empresa_id', tenantId!)
-        .order('data_inspecao', { ascending: false });
+        .order('data_inspecao', { ascending: false })
+        .limit(500);
 
       if (error) throw error;
       return (data || []) as InspecaoRow[];
@@ -80,7 +81,8 @@ export function useInspecoesHoje() {
         .select('*')
         .eq('empresa_id', tenantId!)
         .eq('data_inspecao', hoje)
-        .order('hora_inicio');
+        .order('hora_inicio')
+        .limit(500);
 
       if (error) throw error;
       return (data || []) as InspecaoRow[];
@@ -105,9 +107,9 @@ export function useCreateInspecao() {
             .select()
             .single(),
         {
-          empresa_id: tenantId,
           ...inspecao,
           status: 'EM_ANDAMENTO',
+          empresa_id: tenantId, // MUST be last to prevent spread override
         } as Record<string, unknown>,
       );
 
@@ -135,7 +137,7 @@ export function useCreateInspecao() {
         description: 'A inspeção foi registrada com sucesso.',
       });
     },
-    onError: (error: any) => {
+    onError: (error: Error) => {
       toast({
         title: 'Erro ao criar inspeção',
         description: error.message,
@@ -189,7 +191,7 @@ export function useUpdateInspecao() {
         description: 'A inspeção foi atualizada com sucesso.',
       });
     },
-    onError: (error: any) => {
+    onError: (error: Error) => {
       toast({
         title: 'Erro ao atualizar inspeção',
         description: error.message,
@@ -214,7 +216,7 @@ export function useAnomalias(inspecaoId?: string) {
         query = query.eq('inspecao_id', inspecaoId);
       }
       
-      const { data, error } = await query.order('created_at', { ascending: false });
+      const { data, error } = await query.order('created_at', { ascending: false }).limit(500);
 
       if (error) throw error;
       return data as AnomaliaRow[];
@@ -254,7 +256,7 @@ export function useCreateAnomalia() {
         description: 'A anomalia foi registrada com sucesso.',
       });
     },
-    onError: (error: any) => {
+    onError: (error: Error) => {
       toast({
         title: 'Erro ao registrar anomalia',
         description: error.message,

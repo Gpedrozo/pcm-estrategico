@@ -69,7 +69,8 @@ export function useDocumentosTecnicos() {
         .from('documentos_tecnicos')
         .select('*')
         .eq('empresa_id', tenantId)
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: false })
+        .limit(500);
 
       if (error) throw error;
       return data as DocumentoTecnicoRow[];
@@ -91,7 +92,8 @@ export function useDocumentoByTag(tag: string | undefined) {
         .select('*')
         .eq('empresa_id', tenantId)
         .eq('tag', tag)
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: false })
+        .limit(500);
 
       if (error) throw error;
       return data as DocumentoTecnicoRow[];
@@ -146,12 +148,15 @@ export function useUpdateDocumentoTecnico() {
 
   return useMutation({
     mutationFn: async ({ id, ...updates }: DocumentoTecnicoUpdate & { id: string }) => {
+      if (!tenantId) throw new Error('Tenant não identificado.');
+
       return updateWithColumnFallback(
         async (payload) =>
           supabase
             .from('documentos_tecnicos')
             .update(payload)
             .eq('id', id)
+            .eq('empresa_id', tenantId)
             .select()
             .single(),
         updates as Record<string, unknown>,
@@ -182,10 +187,13 @@ export function useDeleteDocumentoTecnico() {
 
   return useMutation({
     mutationFn: async (id: string) => {
+      if (!tenantId) throw new Error('Tenant não identificado.');
+
       const { error } = await supabase
         .from('documentos_tecnicos')
         .delete()
-        .eq('id', id);
+        .eq('id', id)
+        .eq('empresa_id', tenantId);
 
       if (error) throw error;
       return id;

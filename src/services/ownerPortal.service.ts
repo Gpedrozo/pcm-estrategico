@@ -41,6 +41,7 @@ export type OwnerAction =
   | 'list_database_tables'
   | 'cleanup_company_data'
   | 'purge_table_data'
+  | 'purge_device_users'
   | 'delete_company'
   | 'delete_user'
   | 'delete_support_ticket'
@@ -292,12 +293,12 @@ const isUnsupportedActionMessage = (value: unknown) => {
   return msg.includes('unsupported action') || msg.includes('missing action')
 }
 
-const isMissingTableMessage = (value: unknown) => {
+const _isMissingTableMessage = (value: unknown) => {
   const msg = String(value ?? '').toLowerCase()
   return msg.includes('could not find the table') || msg.includes('does not exist') || msg.includes('schema cache')
 }
 
-const isEmpresaForeignKeyMessage = (value: unknown) => {
+const _isEmpresaForeignKeyMessage = (value: unknown) => {
   const msg = String(value ?? '').toLowerCase()
   return msg.includes('violates foreign key constraint') && msg.includes('empresa')
 }

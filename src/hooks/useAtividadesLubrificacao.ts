@@ -7,15 +7,19 @@ import { writeAuditLog } from '@/lib/audit';
 import { useAuth } from '@/contexts/AuthContext';
 
 export function useAtividadesByPlano(planoId: string | null) {
+  const { tenantId } = useAuth();
   return useQuery({
-    queryKey: ['atividades-lubrificacao', planoId],
-    enabled: !!planoId,
+    queryKey: ['atividades-lubrificacao', planoId, tenantId],
+    enabled: !!planoId && !!tenantId,
     queryFn: async () => {
-      const { data, error } = await supabase
+      let query = supabase
         .from('atividades_lubrificacao')
         .select('*')
-        .eq('plano_id', planoId!)
-        .order('ordem', { ascending: true });
+        .eq('plano_id', planoId!);
+      if (tenantId) query = query.eq('empresa_id', tenantId);
+      const { data, error } = await query
+        .order('ordem', { ascending: true })
+        .limit(500);
       if (error) throw error;
       return data as AtividadeLubrificacao[];
     },
@@ -29,6 +33,7 @@ export function useCreateAtividade() {
 
   return useMutation({
     mutationFn: async (input: Partial<AtividadeLubrificacao> & { plano_id: string }) => {
+      if (!tenantId) throw new Error('Tenant não resolvido.');
       return insertWithColumnFallback(
         async (payload) =>
           supabase
@@ -36,7 +41,7 @@ export function useCreateAtividade() {
             .insert(payload)
             .select()
             .single(),
-        input as Record<string, unknown>,
+        { ...input, empresa_id: tenantId } as Record<string, unknown>,
       ) as Promise<AtividadeLubrificacao>;
     },
     onSuccess: (data, vars) => {
@@ -44,7 +49,7 @@ export function useCreateAtividade() {
       toast({ title: 'Atividade criada' });
       writeAuditLog({ action: 'CREATE_ATIVIDADE_LUBRIFICACAO', table: 'atividades_lubrificacao', recordId: data?.id, empresaId: tenantId, source: 'useAtividadesLubrificacao' });
     },
-    onError: (e: any) => toast({ title: 'Erro', description: e.message, variant: 'destructive' }),
+    onError: (e: Error) => toast({ title: 'Erro', description: e.message, variant: 'destructive' }),
   });
 }
 
@@ -54,13 +59,15 @@ export function useUpdateAtividade() {
   const { tenantId } = useAuth();
 
   return useMutation({
-    mutationFn: async ({ id, plano_id, ...updates }: Partial<AtividadeLubrificacao> & { id: string; plano_id: string }) => {
+    mutationFn: async ({ id, plano_id: _plano_id, ...updates }: Partial<AtividadeLubrificacao> & { id: string; plano_id: string }) => {
+      if (!tenantId) throw new Error('Tenant não identificado.');
       return updateWithColumnFallback(
         async (payload) =>
           supabase
             .from('atividades_lubrificacao')
             .update(payload)
             .eq('id', id)
+            .eq('empresa_id', tenantId)
             .select()
             .single(),
         updates as Record<string, unknown>,
@@ -71,7 +78,7 @@ export function useUpdateAtividade() {
       toast({ title: 'Atividade atualizada' });
       writeAuditLog({ action: 'UPDATE_ATIVIDADE_LUBRIFICACAO', table: 'atividades_lubrificacao', recordId: data?.id, empresaId: tenantId, source: 'useAtividadesLubrificacao' });
     },
-    onError: (e: any) => toast({ title: 'Erro', description: e.message, variant: 'destructive' }),
+    onError: (e: Error) => toast({ title: 'Erro', description: e.message, variant: 'destructive' }),
   });
 }
 
@@ -82,7 +89,8 @@ export function useDeleteAtividade() {
 
   return useMutation({
     mutationFn: async ({ id, plano_id }: { id: string; plano_id: string }) => {
-      const { error } = await supabase.from('atividades_lubrificacao').delete().eq('id', id);
+      if (!tenantId) throw new Error('Tenant não identificado.');
+      const { error } = await supabase.from('atividades_lubrificacao').delete().eq('id', id).eq('empresa_id', tenantId);
       if (error) throw error;
       return { id, plano_id };
     },
@@ -91,6 +99,6 @@ export function useDeleteAtividade() {
       toast({ title: 'Atividade excluída' });
       writeAuditLog({ action: 'DELETE_ATIVIDADE_LUBRIFICACAO', table: 'atividades_lubrificacao', recordId: d.id, empresaId: tenantId, source: 'useAtividadesLubrificacao', severity: 'warning' });
     },
-    onError: (e: any) => toast({ title: 'Erro', description: e.message, variant: 'destructive' }),
+    onError: (e: Error) => toast({ title: 'Erro', description: e.message, variant: 'destructive' }),
   });
 }

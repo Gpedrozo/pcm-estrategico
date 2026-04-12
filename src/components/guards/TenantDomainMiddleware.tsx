@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useCallback, useEffect, useRef } from 'react'
 import { useLocation } from 'react-router-dom'
 import { AlertTriangle, Loader2 } from 'lucide-react'
 import { useTenant } from '@/contexts/TenantContext'
@@ -37,7 +37,7 @@ export function TenantDomainMiddleware({ children }: { children: React.ReactNode
   const hostContext = resolveHostContext(hostname)
   const isLoginRoute = location.pathname === '/login'
 
-  const forceTenantLocalReauth = async (reason: string) => {
+  const forceTenantLocalReauth = useCallback(async (reason: string) => {
     try {
       await supabase.auth.signOut({ scope: 'local' })
       await supabase.auth.signOut().catch(() => null)
@@ -49,7 +49,7 @@ export function TenantDomainMiddleware({ children }: { children: React.ReactNode
       const next = encodeURIComponent(`${location.pathname}${location.search}` || '/dashboard')
       window.location.assign(`/login?reason=${encodeURIComponent(reason)}&next=${next}`)
     }
-  }
+  }, [location.pathname, location.search])
 
   useEffect(() => {
     if (!hostContext.isTenantSubdomain || isLoading || isAuthLoading || isHydrating) return
@@ -57,7 +57,7 @@ export function TenantDomainMiddleware({ children }: { children: React.ReactNode
     if (!error || !isAuthenticated) return
     if (isLoginRoute || hasSessionTransferHash()) return
     void forceTenantLocalReauth('tenant_error')
-  }, [authStatus, error, hostContext.isTenantSubdomain, isAuthenticated, isHydrating, isLoading, isAuthLoading, isLoginRoute, location.pathname, location.search])
+  }, [authStatus, error, forceTenantLocalReauth, hostContext.isTenantSubdomain, isAuthenticated, isHydrating, isLoading, isAuthLoading, isLoginRoute, location.pathname, location.search])
 
   useEffect(() => {
     if (mismatchTimerRef.current !== null) {
@@ -82,7 +82,7 @@ export function TenantDomainMiddleware({ children }: { children: React.ReactNode
         mismatchTimerRef.current = null
       }
     }
-  }, [authStatus, hostContext.isTenantSubdomain, isAuthenticated, isHydrating, isLoading, isAuthLoading, isLoginRoute, tenant?.id, tenantId, location.pathname, location.search])
+  }, [authStatus, forceTenantLocalReauth, hostContext.isTenantSubdomain, isAuthenticated, isHydrating, isLoading, isAuthLoading, isLoginRoute, tenant?.id, tenantId, location.pathname, location.search])
 
   if (isOwnerHost) return <>{children}</>
 

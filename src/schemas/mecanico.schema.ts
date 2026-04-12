@@ -11,7 +11,6 @@ export const mecanicoSchema = z.object({
   custo_hora: z.number().min(0, 'Custo/hora deve ser >= 0').optional().nullable(),
   ativo: z.boolean().default(true),
   codigo_acesso: z.string().optional().nullable(),
-  senha_acesso: z.string().optional().nullable(),
   escala_trabalho: z.string().optional().nullable(),
   folgas_planejadas: z.string().optional().nullable(),
   ferias_inicio: z.string().optional().nullable(),

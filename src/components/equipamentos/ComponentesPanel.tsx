@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Plus, Filter, Download, Upload } from 'lucide-react';
+import { Plus, Filter } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -23,7 +23,7 @@ interface ComponentesPanelProps {
   equipamentoTag: string;
 }
 
-export function ComponentesPanel({ equipamentoId, equipamentoTag }: ComponentesPanelProps) {
+export function ComponentesPanel({ equipamentoId, equipamentoTag: _equipamentoTag }: ComponentesPanelProps) {
   const { isAdmin } = useAuth();
 
   const [search, setSearch] = useState('');

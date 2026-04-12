@@ -8,10 +8,11 @@ export const contratosService = {
       .from('contratos')
       .select(`
         *,
-        fornecedor:fornecedores(razao_social, nome_fantasia)
+        fornecedor:fornecedores(nome, razao_social, nome_fantasia)
       `)
       .eq('empresa_id', empresaId)
-      .order('created_at', { ascending: false });
+      .order('created_at', { ascending: false })
+      .limit(500);
 
     if (error) throw new Error(`Falha ao carregar contratos: ${error.message}`);
     return data;
@@ -22,11 +23,12 @@ export const contratosService = {
       .from('contratos')
       .select(`
         *,
-        fornecedor:fornecedores(razao_social, nome_fantasia)
+        fornecedor:fornecedores(nome, razao_social, nome_fantasia)
       `)
       .eq('empresa_id', empresaId)
       .eq('status', 'ATIVO')
-      .order('data_fim', { ascending: true });
+      .order('data_fim', { ascending: true })
+      .limit(500);
 
     if (error) throw new Error(`Falha ao carregar contratos ativos: ${error.message}`);
     return data;
@@ -105,7 +107,8 @@ export const contratosService = {
       .select('*')
       .eq('empresa_id', empresaId)
       .eq('fornecedor_id', fornecedorId)
-      .order('created_at', { ascending: false });
+      .order('created_at', { ascending: false })
+      .limit(500);
 
     if (error) throw new Error(`Falha ao carregar contratos do fornecedor: ${error.message}`);
     return data;

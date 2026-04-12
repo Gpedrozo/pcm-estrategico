@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '@/contexts/AuthContext';
-import { supabase } from '@/lib/supabase';
-import { useState, useCallback } from 'react';
+import { supabase } from '@/integrations/supabase/client';
+// react hooks reserved for future dashboard interactivity
 
 // Dashboard aggregation hook — replaces 4 separate queries
 export function useDashboardSummary() {
@@ -20,7 +20,6 @@ export function useDashboardSummary() {
       return data?.[0] || null;
     },
     enabled: !!tenantId,
-    staleTime: 30_000, // 30s cache
     refetchInterval: 60_000, // Auto-refresh every 60s
   });
 }
@@ -50,7 +49,6 @@ export function useEquipamentosSearch(searchTerm: string = '', page: number = 0)
       };
     },
     enabled: !!tenantId,
-    staleTime: 60_000, // 60s cache for searches
   });
 }
 
@@ -75,7 +73,6 @@ export function useAuditLogs(empresa_id?: string, limit: number = 100) {
       return data || [];
     },
     enabled: !!empresaId,
-    staleTime: 45_000,
   });
 }
 

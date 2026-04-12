@@ -26,14 +26,14 @@ export interface MecanicoValidacaoResult {
  */
 export function useMecanicoLogin() {
   const { toast } = useToast();
-  const qc = useQueryClient();
+  const _loginQc = useQueryClient();
 
   return useMutation({
     mutationFn: async (input: {
       empresa_id: string;
-      dispositivo_id: string;
+      dispositivo_id?: string | null;
       mecanico_id: string;
-      device_token: string;
+      device_token?: string | null;
       codigo_acesso: string;
     }) => {
       // Get IP and User Agent
@@ -43,9 +43,9 @@ export function useMecanicoLogin() {
 
       const { data, error } = await supabase.rpc('registrar_login_mecanico', {
         p_empresa_id: input.empresa_id,
-        p_dispositivo_id: input.dispositivo_id,
+        p_dispositivo_id: input.dispositivo_id || null,
         p_mecanico_id: input.mecanico_id,
-        p_device_token: input.device_token,
+        p_device_token: input.device_token || null,
         p_codigo_acesso: input.codigo_acesso,
         p_ip_address: ip_address,
         p_user_agent: user_agent,
@@ -69,8 +69,8 @@ export function useMecanicoLogin() {
  * Hook para registrar logout do mecânico no servidor
  */
 export function useMecanicoLogout() {
-  const { toast } = useToast();
-  const qc = useQueryClient();
+  const _logoutToast = useToast();
+  const _logoutQc = useQueryClient();
 
   return useMutation({
     mutationFn: async (input: { session_id: string; motivo?: string }) => {
@@ -82,7 +82,7 @@ export function useMecanicoLogout() {
       if (error) throw error;
       return data;
     },
-    onSuccess: (_data, variables) => {
+    onSuccess: () => {
       writeAuditLog({ action: 'MECANICO_LOGOUT', table: 'mecanico_sessoes', source: 'useMecanicoSessionTracking' });
     },
     onError: (e: Error) => {
@@ -102,7 +102,7 @@ export function useMecanicoValidarCredenciais() {
   return useMutation({
     mutationFn: async (input: {
       empresa_id: string;
-      dispositivo_id: string;
+      dispositivo_id?: string | null;
       codigo_acesso: string;
       senha_acesso: string;
     }) => {
@@ -113,7 +113,7 @@ export function useMecanicoValidarCredenciais() {
 
       const { data, error } = await supabase.rpc('validar_credenciais_mecanico_servidor', {
         p_empresa_id: input.empresa_id,
-        p_dispositivo_id: input.dispositivo_id,
+        p_dispositivo_id: input.dispositivo_id || null,
         p_codigo_acesso: input.codigo_acesso,
         p_senha_acesso: input.senha_acesso,
         p_ip_address: ip_address,
@@ -137,19 +137,23 @@ export function useMecanicoValidarCredenciais() {
 /**
  * Hook para obter lista de mecânicos online agora (real-time)
  */
-export function useMecanicosOnlineAgora() {
+export function useMecanicosOnlineAgora(empresaId?: string) {
   return useQuery({
-    queryKey: ['mecanicos-online-agora'],
+    queryKey: ['mecanicos-online-agora', empresaId],
     queryFn: async () => {
+      if (!empresaId) return [];
       const { data, error } = await supabase
         .from('v_mecanicos_online_agora')
         .select('*')
-        .order('login_em', { ascending: false });
+        .eq('empresa_id', empresaId)
+        .order('login_em', { ascending: false })
+        .limit(500);
 
       if (error) throw error;
       return data || [];
     },
-    refetchInterval: 10000, // Atualiza a cada 10 segundos
+    enabled: !!empresaId,
+    refetchInterval: 10000,
   });
 }
 
@@ -180,7 +184,7 @@ export function useRelatorioSessoesMecanicos(filters?: {
         query = query.lte('logout_em', filters.data_fim);
       }
 
-      const { data, error } = await query.order('login_em', { ascending: false });
+      const { data, error } = await query.order('login_em', { ascending: false }).limit(500);
 
       if (error) throw error;
       return data || [];
@@ -196,13 +200,13 @@ export function useDevicesBloqueados(empresa_id?: string) {
   return useQuery({
     queryKey: ['devices-bloqueados', empresa_id],
     queryFn: async () => {
-      let query = supabase.from('v_devices_bloqueados').select('*');
-
-      if (empresa_id) {
-        query = query.eq('empresa_id', empresa_id);
-      }
-
-      const { data, error } = await query.order('bloqueado_em', { ascending: false });
+      if (!empresa_id) return [];
+      const { data, error } = await supabase
+        .from('v_devices_bloqueados')
+        .select('*')
+        .eq('empresa_id', empresa_id)
+        .order('bloqueado_em', { ascending: false })
+        .limit(500);
 
       if (error) throw error;
       return data || [];

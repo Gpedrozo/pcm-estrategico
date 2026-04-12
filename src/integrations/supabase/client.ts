@@ -124,8 +124,12 @@ const hasLocalStorageApi =
 
 const authStorage = hasLocalStorageApi ? window.localStorage : memoryStorage
 
-const fallbackUrl = 'http://127.0.0.1:54321'
-const fallbackKey = isTestEnvironment ? 'test-key' : 'runtime-fallback-key'
+const fallbackUrl = isTestEnvironment ? 'http://127.0.0.1:54321' : ''
+const fallbackKey = isTestEnvironment ? 'test-key' : ''
+
+if (!isTestEnvironment && !SUPABASE_URL) {
+  throw new Error('VITE_SUPABASE_URL must be set in production/development.');
+}
 
 export const supabase = createClient<Database>(SUPABASE_URL || fallbackUrl, SUPABASE_KEY || fallbackKey, {
   auth: {

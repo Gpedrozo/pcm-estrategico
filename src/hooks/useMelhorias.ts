@@ -61,7 +61,8 @@ export function useMelhorias() {
         .from('melhorias')
         .select('*')
         .eq('empresa_id', tenantId!)
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: false })
+        .limit(500);
 
       if (error) throw error;
       return (data || []) as MelhoriaRow[];
@@ -81,7 +82,8 @@ export function useMelhoriasAprovadas() {
         .select('*')
         .eq('empresa_id', tenantId!)
         .in('status', ['APROVADA', 'EM_IMPLEMENTACAO', 'IMPLEMENTADA'])
-        .order('data_aprovacao', { ascending: false });
+        .order('data_aprovacao', { ascending: false })
+        .limit(500);
 
       if (error) throw error;
       return (data || []) as MelhoriaRow[];
@@ -112,9 +114,9 @@ export function useCreateMelhoria() {
             .select()
             .single(),
         {
-          empresa_id: tenantId,
           ...melhoria,
           roi_meses,
+          empresa_id: tenantId, // MUST be last to prevent spread override
         } as Record<string, unknown>,
       ) as Promise<MelhoriaRow>;
     },
@@ -126,7 +128,7 @@ export function useCreateMelhoria() {
         description: 'A proposta de melhoria foi registrada com sucesso.',
       });
     },
-    onError: (error: any) => {
+    onError: (error: Error) => {
       toast({
         title: 'Erro ao registrar melhoria',
         description: error.message,
@@ -165,7 +167,7 @@ export function useUpdateMelhoria() {
         description: 'A melhoria foi atualizada com sucesso.',
       });
     },
-    onError: (error: any) => {
+    onError: (error: Error) => {
       toast({
         title: 'Erro ao atualizar melhoria',
         description: error.message,

@@ -28,9 +28,7 @@ import {
   DEFAULT_INACTIVITY_TIMEOUT_MS,
   INACTIVITY_NOTICE_STORAGE_KEY,
   LOGIN_PROFILE_TIMEOUT_MS,
-  TENANT_HOST_RESOLVE_TIMEOUT_MS,
   HYDRATION_TIMEOUT_MS,
-  CROSS_DOMAIN_REDIRECT_MARKER_STORAGE_KEY,
   SESSION_TRANSFER_MAX_AGE_MS,
   SESSION_TRANSFER_PARAM,
 } from '@/lib/authConstants';
@@ -40,25 +38,18 @@ import {
   resetLoginRateLimit,
 } from '@/lib/authRateLimit';
 import {
-  type OwnerEdgeLoginResult,
   signInThroughOwnerEdge,
 } from '@/lib/authOwnerEdge';
 import {
   isTenantBaseDomain,
   stripAuthHandoffFromUrl,
-  getNavigationType,
   shouldForceLogoutByClosedWindowMarker,
-  markSessionTransferRedirectInProgress,
   isSessionTransferRedirectInProgress,
   clearSessionTransferRedirectInProgress,
   isCrossDomainRedirectInProgress,
   markConsumedSessionTransfer,
   wasSessionTransferAlreadyConsumed,
-  getRedirectRetryCount,
-  markRedirectRetryAttempt,
   clearRedirectRetryAttempts,
-  shouldBlockCrossDomainRedirect,
-  getRetryCountFromCurrentUrl,
   withTimeout,
 } from '@/lib/authSessionHelpers';
 
@@ -234,10 +225,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     };
 
-    window.addEventListener('pagehide', markWindowClosed);
+    // Use 'beforeunload' instead of 'pagehide'.
+    // 'pagehide' fires on tab switches in Safari/iOS, which falsely marks
+    // the window as closed and triggers force-logout on the next full reload.
+    // 'beforeunload' only fires on real navigation/close — not tab switches.
+    window.addEventListener('beforeunload', markWindowClosed);
 
     return () => {
-      window.removeEventListener('pagehide', markWindowClosed);
+      window.removeEventListener('beforeunload', markWindowClosed);
     };
   }, [session, user]);
 
@@ -400,11 +395,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (isOwnerDomain(window.location.hostname)) return null;
 
     const hostname = window.location.hostname.toLowerCase();
-    const { data: domainConfig, error } = await (supabase
-      .from('empresa_config' as any)
+    const { data: domainConfig, error } = await supabase
+      .from('empresa_config')
       .select('empresa_id')
       .eq('dominio_custom', hostname)
-      .maybeSingle() as any);
+      .maybeSingle();
 
     if (!error && domainConfig?.empresa_id) {
       return domainConfig.empresa_id as string;
@@ -460,17 +455,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
 
         // Reject tampered localStorage impersonation sessions unless backend confirms validity.
-        if (parsed.id && parsed.sessionToken) {
-          try {
-            await validateImpersonationSession({
-              empresa_id: parsed.empresaId,
-              impersonation_session_id: parsed.id,
-              impersonation_session_token: parsed.sessionToken,
-            });
-          } catch {
-            window.localStorage.removeItem(IMPERSONATION_STORAGE_KEY);
-            return;
-          }
+        if (!parsed.id || !parsed.sessionToken) {
+          // Missing validation tokens — reject unverified impersonation session.
+          window.localStorage.removeItem(IMPERSONATION_STORAGE_KEY);
+          return;
+        }
+
+        try {
+          await validateImpersonationSession({
+            empresa_id: parsed.empresaId,
+            impersonation_session_id: parsed.id,
+            impersonation_session_token: parsed.sessionToken,
+          });
+        } catch {
+          window.localStorage.removeItem(IMPERSONATION_STORAGE_KEY);
+          return;
         }
 
         setImpersonation(parsed);
@@ -554,8 +553,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     collect(metadata?.app_metadata?.role);
     collect(metadata?.app_metadata?.roles);
-    collect(metadata?.user_metadata?.role);
-    collect(metadata?.user_metadata?.roles);
+    // Security fix: user_metadata is user-writable (supabase.auth.updateUser),
+    // so it MUST NOT be trusted as a role source on the frontend.
+    // Note: can_access_empresa() in the DB still reads user_metadata for device-auth JWTs — that's OK.
 
     return Array.from(new Set(
       rawRoles
@@ -568,7 +568,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     app_metadata?: Record<string, unknown>;
     user_metadata?: Record<string, unknown>;
   }) => {
-    const candidate = metadata?.app_metadata?.empresa_id ?? metadata?.user_metadata?.empresa_id;
+    // Security fix: only trust app_metadata (server-set). user_metadata is user-writable.
+    const candidate = metadata?.app_metadata?.empresa_id;
     if (typeof candidate !== 'string') return null;
     const normalized = candidate.trim();
     return normalized || null;
@@ -578,7 +579,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     app_metadata?: Record<string, unknown>;
     user_metadata?: Record<string, unknown>;
   }) => {
-    const candidate = metadata?.app_metadata?.empresa_slug ?? metadata?.user_metadata?.empresa_slug;
+    // Security fix: only trust app_metadata (server-set). user_metadata is user-writable.
+    const candidate = metadata?.app_metadata?.empresa_slug;
     if (typeof candidate !== 'string') return null;
     const normalized = candidate.trim().toLowerCase();
     return normalized || null;
@@ -588,11 +590,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     app_metadata?: Record<string, unknown>;
     user_metadata?: Record<string, unknown>;
   }) => {
+    // Security fix: only trust app_metadata (server-set). user_metadata is user-writable.
     const candidate =
       metadata?.app_metadata?.force_password_change
-      ?? metadata?.user_metadata?.force_password_change
-      ?? metadata?.app_metadata?.must_change_password
-      ?? metadata?.user_metadata?.must_change_password;
+      ?? metadata?.app_metadata?.must_change_password;
 
     return Boolean(candidate);
   }, []);
@@ -673,9 +674,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (slug) tenantSlug = slug;
       }
 
-      const forcePasswordChange =
-        Boolean(profile?.force_password_change)
-        || extractForcePasswordChangeFromMetadata(metadata);
+      // DB (profiles) is the source of truth. Only fallback to JWT metadata
+      // when the profile row was not fetched (e.g. RLS / network error).
+      // Using || here caused an infinite loop: after password change the DB
+      // was already false, but the stale JWT still carried true in app_metadata.
+      const forcePasswordChange = profile
+        ? Boolean(profile.force_password_change)
+        : extractForcePasswordChangeFromMetadata(metadata);
 
       const effectiveRole = getEffectiveRole({ roles, email });
 
@@ -706,7 +711,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, [extractEmpresaIdFromMetadata, extractEmpresaSlugFromMetadata, extractForcePasswordChangeFromMetadata, extractRolesFromMetadata]);
 
-  const elevateToSystemOwner = useCallback((profileData: {
+  const _elevateToSystemOwner = useCallback((profileData: {
     nome: string;
     tipo: AppRole;
     roles: AppRole[];
@@ -727,7 +732,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
   }, []);
 
-  const verifyOwnerBackendAccess = useCallback(async (token?: string | null): Promise<boolean> => {
+  const _verifyOwnerBackendAccess = useCallback(async (token?: string | null): Promise<boolean> => {
     try {
       let accessToken = token ?? null;
       if (!accessToken) {
@@ -755,7 +760,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     userId: string,
     email?: string | null,
     metadata?: { app_metadata?: Record<string, unknown>; user_metadata?: Record<string, unknown> },
-    token?: string | null,
+    _token?: string | null,
   ) => {
     let domainEmpresaId = await resolveDomainEmpresaId();
 
@@ -764,7 +769,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const metadataEmpresaId = extractEmpresaIdFromMetadata(metadata);
       const metadataEmpresaSlug = extractEmpresaSlugFromMetadata(metadata);
       const hostname = window.location.hostname.toLowerCase();
-      const baseDomain = TENANT_BASE_DOMAIN.toLowerCase();
+      const _baseDomain = TENANT_BASE_DOMAIN.toLowerCase();
       const hostSlug = resolveTenantHostSlug(hostname);
 
       if (metadataEmpresaId && metadataEmpresaSlug && hostSlug && hostSlug === metadataEmpresaSlug) {
@@ -844,17 +849,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (recoveredGlobalRole) return profileData;
     }
 
-    const ownerBackendAllowed = await verifyOwnerBackendAccess(token);
-    if (ownerBackendAllowed) {
-      logger.warn('owner_role_fallback_applied', {
-        userId,
-        email,
-      });
-      return elevateToSystemOwner(profileData);
-    }
+    // Security fix (VULN-AUTH-04): removed backend fallback elevation.
+    // If owner doesn't have SYSTEM_OWNER role in user_roles, fix the DB — don't self-elevate.
+    // The old code called verifyOwnerBackendAccess() and auto-granted SYSTEM_OWNER to anyone
+    // whose token passed health_check, which is a privilege escalation vector.
 
     return profileData;
-  }, [elevateToSystemOwner, extractEmpresaSlugFromMetadata, fetchUserProfile, resolveDomainEmpresaId, verifyOwnerBackendAccess]);
+  }, [extractEmpresaIdFromMetadata, extractEmpresaSlugFromMetadata, fetchUserProfile, resolveDomainEmpresaId]);
 
   const resolveUserProfileWithRetry = useCallback(async (
     userId: string,
@@ -1332,7 +1333,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     });
 
     return { error: null };
-  }, [extractEmpresaSlugFromMetadata, resolveDomainEmpresaId, resolveUserProfileWithRetry, transitionAuthStatus]);
+  }, [extractEmpresaIdFromMetadata, extractEmpresaSlugFromMetadata, resolveDomainEmpresaId, resolveUserProfile, resolveUserProfileWithRetry, transitionAuthStatus]);
 
   const changePassword = useCallback(async (newPassword: string): Promise<{ error: string | null }> => {
     const normalizedPassword = newPassword.trim();
@@ -1389,6 +1390,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     }
 
+    // Refresh the session so the browser gets a new JWT with the updated
+    // app_metadata (force_password_change: false).  Without this, a page
+    // reload would read the stale cached JWT and re-enter the loop.
+    await supabase.auth.refreshSession().catch(() => null);
+
     const { data: userResult } = await supabase.auth.getUser();
     const currentUser = userResult.user;
 
@@ -1443,11 +1449,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return { error: tenantDomainError };
     }
 
-    const { data: domainConfig, error: domainConfigError } = await (supabase
-      .from('empresa_config' as any)
+    const { data: domainConfig, error: domainConfigError } = await supabase
+      .from('empresa_config')
       .select('empresa_id')
       .eq('dominio_custom', hostname)
-      .maybeSingle() as any);
+      .maybeSingle();
 
     if (domainConfigError) {
       return { error: 'Falha ao validar domínio da empresa.' };

@@ -28,7 +28,7 @@ import { useReactToPrint } from 'react-to-print';
 import { PRINT_PAGE_STYLE } from '@/components/print/DocumentPrintBase';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { toast } from '@/hooks/use-toast';
+import { toast, useToast } from '@/hooks/use-toast';
 import { upsertMaintenanceSchedule } from '@/services/maintenanceSchedule';
 import { getSupabaseErrorMessage, insertWithColumnFallback, updateWithColumnFallback } from '@/lib/supabaseCompat';
 import { useCreateOrdemServico } from '@/hooks/useOrdensServico';
@@ -103,10 +103,12 @@ const useMedicoesPreditivas = (tenantId: string | null, allowedTags: string[], a
       }
 
       // Fallback para esquemas antigos sem empresa_id: filtra em memória pelos ativos do tenant.
+      console.warn('[Preditiva] Coluna empresa_id ausente — fallback de compatibilidade ativado');
       const allRows = await supabase
         .from('medicoes_preditivas')
         .select('*')
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: false })
+        .limit(500); // Security: cap fallback to prevent massive cross-tenant data leak
 
       if (allRows.error) throw allRows.error;
 
@@ -124,6 +126,8 @@ const useMedicoesPreditivas = (tenantId: string | null, allowedTags: string[], a
 
 const useCreateMedicao = () => {
   const queryClient = useQueryClient();
+  const { tenantId } = useAuth();
+  const { toast } = useToast();
   return useMutation({
     mutationFn: async (data: {
       empresa_id: string;
@@ -230,8 +234,11 @@ export default function Preditiva() {
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
   const { data: historicoAlteracoes, isLoading: loadingHistorico } = useHistoricoAlteracoesMedicao(historyMedicaoId);
 
+  const calendarModalAppliedRef = useRef(false);
   useEffect(() => {
+    if (calendarModalAppliedRef.current) return;
     if ((location.state as any)?.dataProgramada) {
+      calendarModalAppliedRef.current = true;
       setIsModalOpen(true);
     }
   }, [location.state]);
@@ -350,7 +357,6 @@ export default function Preditiva() {
     }
 
     const createdMedicao = await createMutation.mutateAsync({
-      empresa_id: tenantId,
       ...formData,
       status,
       unidade: formData.unidade || undefined,
@@ -358,6 +364,7 @@ export default function Preditiva() {
       limite_critico: limiteCritico,
       responsavel_nome: user?.nome,
       equipamento_id: equipamento?.id ?? null,
+      empresa_id: tenantId, // MUST be last to prevent spread override
     });
 
     try {
@@ -497,6 +504,7 @@ export default function Preditiva() {
             .from('medicoes_preditivas')
             .update(payload)
             .eq('id', editingMedicao.id)
+            .eq('empresa_id', tenantId!)
             .select()
             .single(),
         updates as Record<string, unknown>,

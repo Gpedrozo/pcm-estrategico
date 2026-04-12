@@ -121,7 +121,8 @@ export function usePlantasAtivas() {
         .select('*')
         .eq('empresa_id', tenantId)
         .eq('ativo', true)
-        .order('codigo');
+        .order('codigo')
+        .limit(500);
       
       if (error) throw error;
       return data as PlantaRow[];
@@ -231,22 +232,26 @@ export function useAreas() {
 }
 
 export function useAreasByPlanta(plantaId: string | undefined) {
+  const { tenantId } = useAuth();
+
   return useQuery({
-    queryKey: ['areas', 'planta', plantaId],
+    queryKey: ['areas', 'planta', plantaId, tenantId],
     queryFn: async () => {
-      if (!plantaId) return [];
+      if (!plantaId || !tenantId) return [];
       
       const { data, error } = await supabase
         .from('areas')
         .select('*')
+        .eq('empresa_id', tenantId)
         .eq('planta_id', plantaId)
         .eq('ativo', true)
-        .order('codigo');
+        .order('codigo')
+        .limit(500);
       
       if (error) throw error;
       return data as AreaRow[];
     },
-    enabled: !!plantaId,
+    enabled: !!plantaId && !!tenantId,
   });
 }
 
@@ -351,22 +356,25 @@ export function useSistemas() {
 }
 
 export function useSistemasByArea(areaId: string | undefined) {
+  const { tenantId } = useAuth();
   return useQuery({
-    queryKey: ['sistemas', 'area', areaId],
+    queryKey: ['sistemas', 'area', areaId, tenantId],
     queryFn: async () => {
-      if (!areaId) return [];
+      if (!areaId || !tenantId) return [];
       
       const { data, error } = await supabase
         .from('sistemas')
         .select('*')
+        .eq('empresa_id', tenantId)
         .eq('area_id', areaId)
         .eq('ativo', true)
-        .order('codigo');
+        .order('codigo')
+        .limit(500);
       
       if (error) throw error;
       return data as SistemaRow[];
     },
-    enabled: !!areaId,
+    enabled: !!areaId && !!tenantId,
   });
 }
 

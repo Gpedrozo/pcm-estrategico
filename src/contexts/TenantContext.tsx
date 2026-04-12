@@ -83,7 +83,7 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
         return;
       }
 
-      const { data: domainConfig, error: domainError } = await supabase
+      const { data: domainConfig, error: _domainError } = await supabase
         .from('empresa_config')
         .select('empresa_id')
         .eq('dominio_custom', hostname)
@@ -114,13 +114,10 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
           const authUser = authUserResult?.user;
           const metadataEmpresaId = typeof authUser?.app_metadata?.empresa_id === 'string'
             ? authUser.app_metadata.empresa_id
-            : typeof authUser?.user_metadata?.empresa_id === 'string'
-              ? authUser.user_metadata.empresa_id
-              : null;
+            : null;
 
           const metadataEmpresaSlug = String(
             authUser?.app_metadata?.empresa_slug
-            ?? authUser?.user_metadata?.empresa_slug
             ?? '',
           ).trim().toLowerCase();
 
@@ -146,12 +143,9 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
           const authUser = authUserResult?.user;
           const metadataEmpresaId = typeof authUser?.app_metadata?.empresa_id === 'string'
             ? authUser.app_metadata.empresa_id
-            : typeof authUser?.user_metadata?.empresa_id === 'string'
-              ? authUser.user_metadata.empresa_id
-              : null;
+            : null;
           const metadataEmpresaSlug = String(
             authUser?.app_metadata?.empresa_slug
-            ?? authUser?.user_metadata?.empresa_slug
             ?? '',
           ).trim().toLowerCase();
 
@@ -184,12 +178,9 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
               const authUser = authUserResult?.user;
               const metadataEmpresaId = typeof authUser?.app_metadata?.empresa_id === 'string'
                 ? authUser.app_metadata.empresa_id
-                : typeof authUser?.user_metadata?.empresa_id === 'string'
-                  ? authUser.user_metadata.empresa_id
-                  : null;
+                : null;
               const metadataEmpresaSlug = String(
                 authUser?.app_metadata?.empresa_slug
-                ?? authUser?.user_metadata?.empresa_slug
                 ?? '',
               ).trim().toLowerCase();
 

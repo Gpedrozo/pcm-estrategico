@@ -4,13 +4,16 @@ import { logAuditEvent, failRateLimited } from "../_shared/audit.ts";
 import { createRequestTrace, traceDurationMs, writeOperationalLog } from "../_shared/observability.ts";
 import { enforceRateLimit } from "../_shared/rateLimit.ts";
 import { fail, ok, preflight, rejectIfOriginNotAllowed } from "../_shared/response.ts";
+import { z } from "../_shared/validation.ts";
 
-type Payload = {
-  action: "list_members" | "upsert_member" | "disable_member";
-  empresa_id: string;
-  user_id?: string;
-  role?: string;
-};
+const MembershipSchema = z.object({
+  action: z.enum(["list_members", "upsert_member", "disable_member"]),
+  empresa_id: z.string().uuid(),
+  user_id: z.string().uuid().optional(),
+  role: z.string().max(50).optional(),
+});
+
+type Payload = z.infer<typeof MembershipSchema>;
 
 async function canManageMembers(admin: ReturnType<typeof adminClient>, userId: string, empresaId: string) {
   const system = await isSystemOperator(admin, userId);
@@ -38,11 +41,14 @@ Deno.serve(async (req) => {
 
   if (req.method !== "POST") return fail("Method not allowed", 405, null, req);
 
+  try {
   const auth = await requireUser(req);
   if ("error" in auth) return fail(auth.error ?? "Unauthorized", auth.status ?? 401, null, req);
 
-  const body = (await req.json().catch(() => null)) as Payload | null;
-  if (!body?.action || !body.empresa_id) return fail("action and empresa_id are required", 400, null, req);
+  const raw = (await req.json().catch(() => null));
+  const parsed = MembershipSchema.safeParse(raw);
+  if (!parsed.success) return fail("action and empresa_id are required", 400, null, req);
+  const body = parsed.data;
 
   const admin = adminClient();
 
@@ -83,6 +89,14 @@ Deno.serve(async (req) => {
 
   if (body.action === "upsert_member") {
     if (!body.user_id || !body.role) return fail("user_id and role are required", 400, null, req);
+
+    // Security: whitelist assignable roles to prevent privilege escalation
+    const TENANT_ASSIGNABLE_ROLES = ["ADMIN", "USUARIO", "TECHNICIAN", "SOLICITANTE", "VIEWER", "PLANNER", "MANAGER"];
+    const normalizedRole = String(body.role).toUpperCase().trim();
+    if (!TENANT_ASSIGNABLE_ROLES.includes(normalizedRole)) {
+      return fail(`Role "${body.role}" is not allowed for tenant assignment`, 400, null, req);
+    }
+    body.role = normalizedRole;
 
     const { error: limitError } = await admin.rpc("check_company_plan_limit", {
       p_empresa_id: body.empresa_id,
@@ -172,4 +186,8 @@ Deno.serve(async (req) => {
   }
 
   return fail("Unsupported action", 400, null, req);
+  } catch (err: any) {
+    console.error("company-membership unhandled error:", err);
+    return fail(err?.message ?? "Internal server error", 500, null, req);
+  }
 });

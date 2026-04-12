@@ -1,6 +1,8 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { adminClient, unauthorizedResponse } from "../_shared/auth.ts";
 import { fail, ok, preflight, rejectIfOriginNotAllowed } from "../_shared/response.ts";
+import { enforceRateLimit } from "../_shared/rateLimit.ts";
+import { z } from "../_shared/validation.ts";
 
 declare const Deno: {
   env: {
@@ -118,17 +120,33 @@ Deno.serve(async (req: Request) => {
   const headerSecret = normalizeToken(req.headers.get("x-domain-sync-secret"));
   const bearerSecret = normalizeToken(req.headers.get("authorization"));
 
-  if (DOMAIN_SYNC_SECRET) {
+  if (!DOMAIN_SYNC_SECRET) {
+    return fail("DOMAIN_SYNC_SECRET not configured — rejecting (fail-closed)", 500, null, req);
+  }
+
+  {
     const authorized = headerSecret === DOMAIN_SYNC_SECRET || bearerSecret === DOMAIN_SYNC_SECRET;
     if (!authorized) return unauthorizedResponse(req);
   }
+
+  // Rate limit: 30 requests per 60s per IP
+  const syncIp = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? req.headers.get("x-real-ip") ?? "unknown";
+  const rl = await enforceRateLimit(adminClient(), { scope: "tenant_domain_sync", identifier: syncIp, maxRequests: 30, windowSeconds: 60 });
+  if (!rl.allowed) return fail("Rate limit exceeded", 429, null, req);
 
   const configError = ensureConfigured();
   if (configError) {
     return fail("Cloudflare nao configurado para sincronizacao automatica", 400, { reason: configError }, req);
   }
 
-  const payload = await req.json().catch(() => ({}));
+  const rawPayload = await req.json().catch(() => ({}));
+  const DomainSyncSchema = z.object({
+    dry_run: z.boolean().optional(),
+    limit: z.number().int().min(1).max(1000).optional(),
+  });
+  const parsed = DomainSyncSchema.safeParse(rawPayload);
+  if (!parsed.success) return fail("Invalid request body", 400, null, req);
+  const payload = parsed.data;
   const dryRun = Boolean(payload?.dry_run);
   const requestedLimit = Number(payload?.limit ?? DEFAULT_SYNC_BATCH_LIMIT);
   const limit = Number.isFinite(requestedLimit) ? Math.max(1, Math.min(1000, Math.trunc(requestedLimit))) : 200;
@@ -180,7 +198,12 @@ Deno.serve(async (req: Request) => {
     candidates.push({ empresa_id: row.id, slug, domain });
   }
 
-  const existingDomains = await listCloudflareCustomDomains();
+  let existingDomains: Set<string>;
+  try {
+    existingDomains = await listCloudflareCustomDomains();
+  } catch (cfError: any) {
+    return fail("Falha ao listar dominios no Cloudflare", 502, { reason: cfError?.message ?? "unknown" }, req);
+  }
 
   let alreadyProvisioned = 0;
   const missing = [] as Array<{ empresa_id: string; slug: string; domain: string }>;

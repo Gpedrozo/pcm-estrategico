@@ -26,9 +26,7 @@ import {
   Trash2,
   Plus,
   Copy,
-  Printer,
   Ban,
-  RefreshCw,
   Clock,
   Wifi,
   WifiOff,
@@ -172,7 +170,7 @@ export default function DispositivosMoveis() {
                     <div className="space-y-1">
                       <div className="flex items-center gap-2">
                         <Badge variant="outline" className="font-mono text-xs">{qr.token.slice(0, 8)}...</Badge>
-                        <Badge className={qr.tipo === 'UNICO' ? 'bg-purple-100 text-purple-800' : 'bg-blue-100 text-blue-800'}>
+                        <Badge className={qr.tipo === 'UNICO' ? 'bg-secondary text-secondary-foreground' : 'bg-info/10 text-foreground'}>
                           {qr.tipo === 'UNICO' ? 'Uso Único' : 'Múltiplo'}
                         </Badge>
                       </div>
@@ -233,11 +231,11 @@ export default function DispositivosMoveis() {
                       <div className="flex items-center gap-2 flex-wrap">
                         <span className="font-semibold text-sm">{d.device_nome || 'Dispositivo desconhecido'}</span>
                         {d.ativo ? (
-                          <Badge className="bg-green-100 text-green-800 text-xs">
+                          <Badge className="bg-success/10 text-success text-xs">
                             <Wifi className="h-3 w-3 mr-0.5" /> Ativo
                           </Badge>
                         ) : (
-                          <Badge className="bg-red-100 text-red-800 text-xs">
+                          <Badge className="bg-destructive/10 text-destructive text-xs">
                             <WifiOff className="h-3 w-3 mr-0.5" /> Desativado
                           </Badge>
                         )}
@@ -264,7 +262,7 @@ export default function DispositivosMoveis() {
                         <Button
                           variant="outline"
                           size="sm"
-                          className="text-red-600 border-red-200 hover:bg-red-50"
+                          className="text-destructive border-destructive/20 hover:bg-destructive/10"
                           onClick={() => toggleDevice.mutate({ id: d.id, ativo: false })}
                           disabled={toggleDevice.isPending}
                         >
@@ -274,7 +272,7 @@ export default function DispositivosMoveis() {
                         <Button
                           variant="outline"
                           size="sm"
-                          className="text-green-600 border-green-200 hover:bg-green-50"
+                          className="text-success border-success/20 hover:bg-success/10"
                           onClick={() => toggleDevice.mutate({ id: d.id, ativo: true })}
                           disabled={toggleDevice.isPending}
                         >

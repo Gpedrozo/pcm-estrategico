@@ -58,7 +58,8 @@ export function useMedicoesPreditivas() {
         .from('medicoes_preditivas')
         .select('*')
         .eq('empresa_id', tenantId!)
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: false })
+        .limit(500);
 
       if (error) throw error;
       return data as MedicaoPreditivaRow[];
@@ -80,7 +81,8 @@ export function useMedicoesByTag(tag: string | undefined) {
         .select('*')
         .eq('empresa_id', tenantId!)
         .eq('tag', tag)
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: false })
+        .limit(500);
 
       if (error) throw error;
       return data as MedicaoPreditivaRow[];
@@ -100,7 +102,8 @@ export function useMedicoesAlertas() {
         .select('*')
         .eq('empresa_id', tenantId!)
         .in('status', ['ALERTA', 'CRITICO'])
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: false })
+        .limit(500);
 
       if (error) throw error;
       return data as MedicaoPreditivaRow[];
@@ -169,12 +172,15 @@ export function useUpdateMedicaoPreditiva() {
 
   return useMutation({
     mutationFn: async ({ id, previousValues, ...updates }: MedicaoPreditivaUpdate & { id: string; previousValues?: Record<string, unknown> }) => {
+      if (!tenantId) throw new Error('Tenant não identificado.');
+
       const data = await updateWithColumnFallback(
         async (payload) =>
           supabase
             .from('medicoes_preditivas')
             .update(payload)
             .eq('id', id)
+            .eq('empresa_id', tenantId)
             .select()
             .single(),
         updates as Record<string, unknown>,
@@ -248,12 +254,14 @@ export function useDeleteMedicaoPreditiva() {
 
   return useMutation({
     mutationFn: async (id: string) => {
-      await deleteMaintenanceSchedule('preditiva', id);
+      if (!tenantId) throw new Error('Tenant não resolvido.');
+      await deleteMaintenanceSchedule('preditiva', id, tenantId || undefined);
 
       const { error } = await supabase
         .from('medicoes_preditivas')
         .delete()
-        .eq('id', id);
+        .eq('id', id)
+        .eq('empresa_id', tenantId);
 
       if (error) throw error;
       return id;
@@ -277,16 +285,20 @@ export function useDeleteMedicaoPreditiva() {
 }
 
 export function useHistoricoAlteracoesMedicao(recordId: string | null) {
+  const { tenantId } = useAuth();
+
   return useQuery({
-    queryKey: ['enterprise_audit_logs', 'medicoes_preditivas', recordId],
+    queryKey: ['enterprise_audit_logs', 'medicoes_preditivas', recordId, tenantId],
     queryFn: async () => {
-      if (!recordId) return [];
+      if (!recordId || !tenantId) return [];
 
       const { data, error } = await supabase
         .from('enterprise_audit_logs')
         .select('*')
+        .eq('empresa_id', tenantId)
         .eq('tabela', 'medicoes_preditivas')
         .eq('registro_id', recordId)
+        .limit(500)
         .order('created_at', { ascending: false });
 
       if (error) throw error;

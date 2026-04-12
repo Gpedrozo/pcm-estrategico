@@ -53,6 +53,15 @@ export function getNavigationType(): string | null {
 
 export function shouldForceLogoutByClosedWindowMarker() {
   try {
+    // Skip during chunk-error recovery reloads.
+    // doFullReload adds ?v=<timestamp>, nuclearReload adds ?force_reload=<timestamp>.
+    // These are programmatic navigations (location.replace), NOT real window re-opens.
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.has('force_reload') || urlParams.has('v') || urlParams.has('recoverChunk') || urlParams.has('chunk_reload')) {
+      window.localStorage.removeItem(TAB_CLOSE_MARKER_STORAGE_KEY);
+      return false;
+    }
+
     const transfer = getSessionTransferFromUrl();
     if (transfer.token) {
       window.localStorage.removeItem(TAB_CLOSE_MARKER_STORAGE_KEY);

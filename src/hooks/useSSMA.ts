@@ -80,7 +80,8 @@ export function usePermissoesTrabalho() {
         .from('permissoes_trabalho')
         .select('*')
         .eq('empresa_id', tenantId!)
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: false })
+        .limit(500);
 
       if (error) throw error;
       return data as PermissaoTrabalhoRow[];
@@ -100,7 +101,8 @@ export function usePermissoesAbertas() {
         .select('*')
         .eq('empresa_id', tenantId!)
         .in('status', ['PENDENTE', 'APROVADA', 'EM_EXECUCAO'])
-        .order('data_inicio');
+        .order('data_inicio')
+        .limit(500);
 
       if (error) throw error;
       return data as PermissaoTrabalhoRow[];
@@ -136,7 +138,7 @@ export function useCreatePermissaoTrabalho() {
         description: 'A permissão de trabalho foi criada com sucesso.',
       });
     },
-    onError: (error: any) => {
+    onError: (error: Error) => {
       toast({
         title: 'Erro ao criar PT',
         description: error.message,
@@ -153,12 +155,14 @@ export function useUpdatePermissaoTrabalho() {
 
   return useMutation({
     mutationFn: async ({ id, ...updates }: Partial<PermissaoTrabalhoRow> & { id: string }) => {
+      if (!tenantId) throw new Error('Tenant não resolvido.');
       return updateWithColumnFallback(
         async (payload) =>
           supabase
             .from('permissoes_trabalho')
             .update(payload)
             .eq('id', id)
+            .eq('empresa_id', tenantId)
             .select()
             .single(),
         updates as Record<string, unknown>,
@@ -172,7 +176,7 @@ export function useUpdatePermissaoTrabalho() {
         description: 'A permissão de trabalho foi atualizada com sucesso.',
       });
     },
-    onError: (error: any) => {
+    onError: (error: Error) => {
       toast({
         title: 'Erro ao atualizar PT',
         description: error.message,
@@ -192,7 +196,8 @@ export function useIncidentesSSMA() {
         .from('incidentes_ssma')
         .select('*')
         .eq('empresa_id', tenantId!)
-        .order('data_ocorrencia', { ascending: false });
+        .order('data_ocorrencia', { ascending: false })
+        .limit(500);
 
       if (error) throw error;
       return data as IncidenteSSMARow[];
@@ -228,7 +233,7 @@ export function useCreateIncidenteSSMA() {
         description: 'O incidente foi registrado com sucesso.',
       });
     },
-    onError: (error: any) => {
+    onError: (error: Error) => {
       toast({
         title: 'Erro ao registrar incidente',
         description: error.message,
@@ -245,12 +250,14 @@ export function useUpdateIncidenteSSMA() {
 
   return useMutation({
     mutationFn: async ({ id, ...updates }: Partial<IncidenteSSMARow> & { id: string }) => {
+      if (!tenantId) throw new Error('Tenant não resolvido.');
       return updateWithColumnFallback(
         async (payload) =>
           supabase
             .from('incidentes_ssma')
             .update(payload)
             .eq('id', id)
+            .eq('empresa_id', tenantId)
             .select()
             .single(),
         updates as Record<string, unknown>,
@@ -264,7 +271,7 @@ export function useUpdateIncidenteSSMA() {
         description: 'O incidente foi atualizado com sucesso.',
       });
     },
-    onError: (error: any) => {
+    onError: (error: Error) => {
       toast({
         title: 'Erro ao atualizar incidente',
         description: error.message,

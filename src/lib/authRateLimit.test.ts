@@ -5,8 +5,6 @@ import {
   registerFailedLoginAttempt,
 } from '@/lib/authRateLimit';
 
-const RATE_LIMIT_KEY = 'pcm.auth.login.rate_limit.v1';
-
 // Mock localStorage since jsdom may not fully support it
 const store = new Map<string, string>();
 const localStorageMock = {

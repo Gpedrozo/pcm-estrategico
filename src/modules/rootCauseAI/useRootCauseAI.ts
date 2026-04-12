@@ -84,13 +84,16 @@ export function useGenerateAnalysis() {
 export function useDeleteAnalysis() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const { tenantId } = useAuth();
 
   return useMutation({
     mutationFn: async (id: string) => {
+      if (!tenantId) throw new Error('Tenant não resolvido.');
       const { error } = await supabase
         .from('ai_root_cause_analysis')
         .delete()
-        .eq('id', id);
+        .eq('id', id)
+        .eq('empresa_id', tenantId);
       if (error) throw error;
     },
     onSuccess: () => {

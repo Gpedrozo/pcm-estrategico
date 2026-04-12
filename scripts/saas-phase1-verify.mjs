@@ -27,8 +27,8 @@ loadDotEnvFile()
 
 const SUPABASE_URL =
   process.env.SUPABASE_URL ||
-  process.env.VITE_SUPABASE_URL ||
-  'https://dvwsferonoczgmvfubgu.supabase.co'
+  process.env.VITE_SUPABASE_URL;
+if (!SUPABASE_URL) throw new Error('SUPABASE_URL or VITE_SUPABASE_URL env var required')
 
 const SUPABASE_KEY =
   process.env.SUPABASE_SERVICE_ROLE_KEY ||

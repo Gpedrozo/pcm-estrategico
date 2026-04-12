@@ -20,7 +20,8 @@ export function useRotasLubrificacao() {
         .from('rotas_lubrificacao')
         .select('*')
         .eq('empresa_id', tenantId!)
-        .order('codigo');
+        .order('codigo')
+        .limit(500);
 
       if (error) throw error;
       return data as RotaLubrificacao[];
@@ -56,10 +57,12 @@ export function useUpdateRotaLubrificacao() {
 
   return useMutation({
     mutationFn: async ({ id, ...payload }: Partial<RotaLubrificacaoInsert> & { id: string }) => {
+      if (!tenantId) throw new Error('Tenant não identificado.');
       const { data, error } = await supabase
         .from('rotas_lubrificacao')
         .update({ ...payload, updated_at: new Date().toISOString() })
         .eq('id', id)
+        .eq('empresa_id', tenantId)
         .select()
         .single();
       if (error) throw error;
@@ -78,10 +81,12 @@ export function useDeleteRotaLubrificacao() {
 
   return useMutation({
     mutationFn: async (id: string) => {
+      if (!tenantId) throw new Error('Tenant não identificado.');
       const { error } = await supabase
         .from('rotas_lubrificacao')
         .delete()
-        .eq('id', id);
+        .eq('id', id)
+        .eq('empresa_id', tenantId);
       if (error) throw error;
       return id;
     },
@@ -94,18 +99,21 @@ export function useDeleteRotaLubrificacao() {
 
 // ─── Pontos da Rota ─────────────────────────────────
 export function usePontosRota(rotaId: string | null | undefined) {
+  const { tenantId } = useAuth();
   return useQuery({
-    queryKey: ['rotas-lubrificacao-pontos', rotaId],
+    queryKey: ['rotas-lubrificacao-pontos', rotaId, tenantId],
     queryFn: async () => {
+      if (!tenantId) return [];
       const { data, error } = await supabase
         .from('rotas_lubrificacao_pontos')
         .select('*')
         .eq('rota_id', rotaId!)
-        .order('ordem');
+        .order('ordem')
+        .limit(500);
       if (error) throw error;
       return data as RotaPonto[];
     },
-    enabled: Boolean(rotaId),
+    enabled: Boolean(rotaId) && Boolean(tenantId),
   });
 }
 
@@ -116,9 +124,11 @@ export function useSavePontosRota() {
   return useMutation({
     mutationFn: async ({ rotaId, pontos }: { rotaId: string; pontos: RotaPontoInsert[] }) => {
       // Delete existing and re-insert (simple approach for ordering)
+      if (!tenantId) throw new Error('Tenant não resolvido.');
       const { error: delError } = await supabase
         .from('rotas_lubrificacao_pontos')
         .delete()
+        .eq('empresa_id', tenantId)
         .eq('rota_id', rotaId);
       if (delError) throw delError;
 
@@ -126,7 +136,7 @@ export function useSavePontosRota() {
 
       const { data, error } = await supabase
         .from('rotas_lubrificacao_pontos')
-        .insert(pontos.map((p, i) => ({ ...p, rota_id: rotaId, ordem: i })))
+        .insert(pontos.map((p, i) => ({ ...p, empresa_id: tenantId, rota_id: rotaId, ordem: i })))
         .select();
       if (error) throw error;
       return data as RotaPonto[];

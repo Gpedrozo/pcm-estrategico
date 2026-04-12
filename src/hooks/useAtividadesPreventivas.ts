@@ -35,15 +35,19 @@ interface AtividadePreventivaRow extends AtividadePreventiva {
 }
 
 export function useAtividadesByPlano(planoId: string | null) {
+  const { tenantId } = useAuth();
   return useQuery({
-    queryKey: ['atividades-preventivas', planoId],
-    enabled: !!planoId,
+    queryKey: ['atividades-preventivas', planoId, tenantId],
+    enabled: !!planoId && !!tenantId,
     queryFn: async () => {
+      if (!tenantId) return [];
       const { data, error } = await supabase
         .from('atividades_preventivas')
         .select('*, servicos:servicos_preventivos(*)')
         .eq('plano_id', planoId!)
-        .order('ordem');
+        .eq('empresa_id', tenantId)
+        .order('ordem')
+        .limit(500);
 
       if (error) throw error;
 
@@ -70,7 +74,7 @@ export function useCreateAtividade() {
             .insert(payload)
             .select()
             .single(),
-        { empresa_id: tenantId, ...input } as Record<string, unknown>,
+        { ...input, empresa_id: tenantId } as Record<string, unknown>,
       );
     },
     onSuccess: (d) => {
@@ -87,12 +91,14 @@ export function useUpdateAtividade() {
   const { tenantId } = useAuth();
   return useMutation({
     mutationFn: async ({ id, plano_id, ...updates }: Partial<AtividadePreventiva> & { id: string; plano_id: string }) => {
+      if (!tenantId) throw new Error('Tenant não identificado.');
       await updateWithColumnFallback(
         async (payload) =>
           supabase
             .from('atividades_preventivas')
             .update(payload)
             .eq('id', id)
+            .eq('empresa_id', tenantId)
             .select()
             .single(),
         updates as Record<string, unknown>,
@@ -113,7 +119,8 @@ export function useDeleteAtividade() {
 
   return useMutation({
     mutationFn: async ({ id, plano_id }: { id: string; plano_id: string }) => {
-      const { error } = await supabase.from('atividades_preventivas').delete().eq('id', id);
+      if (!tenantId) throw new Error('Tenant não identificado.');
+      const { error } = await supabase.from('atividades_preventivas').delete().eq('id', id).eq('empresa_id', tenantId);
       if (error) throw error;
       return plano_id;
     },
@@ -142,10 +149,10 @@ export function useCreateServico() {
             .insert(payload)
             .select()
             .single(),
-        { empresa_id: tenantId, ...rest } as Record<string, unknown>,
+        { ...rest, empresa_id: tenantId } as Record<string, unknown>,
       );
       // Recalc atividade tempo
-      await recalcAtividadeTempo(input.atividade_id);
+      await recalcAtividadeTempo(input.atividade_id, tenantId);
       return _plano_id;
     },
     onSuccess: (planoId) => {
@@ -160,17 +167,19 @@ export function useUpdateServico() {
   const { tenantId } = useAuth();
   return useMutation({
     mutationFn: async ({ id, _plano_id, _atividade_id, ...updates }: Partial<ServicoPreventivo> & { id: string; _plano_id: string; _atividade_id: string }) => {
+      if (!tenantId) throw new Error('Tenant não identificado.');
       await updateWithColumnFallback(
         async (payload) =>
           supabase
             .from('servicos_preventivos')
             .update(payload)
             .eq('id', id)
+            .eq('empresa_id', tenantId)
             .select()
             .single(),
         updates as Record<string, unknown>,
       );
-      await recalcAtividadeTempo(_atividade_id);
+      await recalcAtividadeTempo(_atividade_id, tenantId);
       return _plano_id;
     },
     onSuccess: (planoId) => {
@@ -185,9 +194,10 @@ export function useDeleteServico() {
   const { tenantId } = useAuth();
   return useMutation({
     mutationFn: async ({ id, _plano_id, _atividade_id }: { id: string; _plano_id: string; _atividade_id: string }) => {
-      const { error } = await supabase.from('servicos_preventivos').delete().eq('id', id);
+      if (!tenantId) throw new Error('Tenant não identificado.');
+      const { error } = await supabase.from('servicos_preventivos').delete().eq('id', id).eq('empresa_id', tenantId);
       if (error) throw error;
-      await recalcAtividadeTempo(_atividade_id);
+      await recalcAtividadeTempo(_atividade_id, tenantId);
       return _plano_id;
     },
     onSuccess: (planoId) => {
@@ -197,11 +207,13 @@ export function useDeleteServico() {
   });
 }
 
-async function recalcAtividadeTempo(atividadeId: string) {
+async function recalcAtividadeTempo(atividadeId: string, tenantId: string | null) {
+  if (!tenantId) return;
   const { data } = await supabase
     .from('servicos_preventivos')
     .select('tempo_estimado_min')
-    .eq('atividade_id', atividadeId);
+    .eq('atividade_id', atividadeId)
+    .eq('empresa_id', tenantId);
 
   const total = (data || []).reduce((sum, s) => sum + (s.tempo_estimado_min || 0), 0);
   await updateWithColumnFallback(
@@ -210,6 +222,7 @@ async function recalcAtividadeTempo(atividadeId: string) {
         .from('atividades_preventivas')
         .update(payload)
         .eq('id', atividadeId)
+        .eq('empresa_id', tenantId)
         .select()
         .single(),
     { tempo_total_min: total },

@@ -26,8 +26,8 @@ export function useSubscriptionAlert() {
       if (!tenantId) return null;
 
       const { data, error } = await supabase
-        .from('subscriptions' as never)
-        .select('status,renewal_at,ends_at,plan_id')
+        .from('subscriptions')
+        .select('status,renewal_at,plan_id')
         .eq('empresa_id', tenantId)
         .maybeSingle();
 
@@ -38,9 +38,9 @@ export function useSubscriptionAlert() {
       let planName: string | null = null;
       if (row.plan_id) {
         const { data: plan } = await supabase
-          .from('plans' as never)
+          .from('plans')
           .select('name')
-          .eq('id', row.plan_id)
+          .eq('id', row.plan_id as string)
           .maybeSingle();
         if (plan) planName = (plan as Record<string, unknown>).name as string;
       }

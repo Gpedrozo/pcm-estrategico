@@ -41,7 +41,6 @@ export function useOwner2Health(enabled = true) {
     queryKey: owner2Keys.health,
     queryFn: () => getOwnerBackendHealth(),
     enabled,
-    staleTime: 15_000,
     retry: 1,
   })
 }
@@ -51,7 +50,6 @@ export function useOwner2Dashboard(enabled = true) {
     queryKey: owner2Keys.dashboard,
     queryFn: () => getPlatformStats(),
     enabled,
-    staleTime: 15_000,
     retry: 0,
   })
 }
@@ -71,12 +69,11 @@ export function useOwner2Companies(enabled = true) {
         .from('empresas')
         .select('id,nome,slug,status,created_at,updated_at')
         .order('created_at', { ascending: false })
-        .limit(5000)
+        .limit(500)
 
       return { companies: Array.isArray(rows) ? rows : [] }
     },
     enabled,
-    staleTime: 30_000,
     retry: 1,
   })
 }
@@ -122,8 +119,7 @@ export function useOwner2Tickets(enabled = true) {
     queryKey: owner2Keys.tickets,
     queryFn: async () => ({ tickets: await listSupportTickets() }),
     enabled,
-    staleTime: 10_000,
-    refetchInterval: 10_000,
+    refetchInterval: 30_000,
     retry: 0,
   })
 }
@@ -161,7 +157,6 @@ export function useOwner2Tables(
     queryKey: owner2Keys.tables(empresaId),
     queryFn: async () => ({ tables: await listDatabaseTables(empresaId ?? null) }),
     enabled,
-    staleTime: 10_000,
     refetchInterval: computeRefetchInterval,
     refetchIntervalInBackground: false,
     refetchOnWindowFocus: false,

@@ -194,7 +194,6 @@ describe('mecanicoSchema', () => {
       especialidade: null,
       custo_hora: null,
       codigo_acesso: null,
-      senha_acesso: null,
     });
     expect(result.telefone).toBeNull();
   });

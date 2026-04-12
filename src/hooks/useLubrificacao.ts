@@ -88,13 +88,17 @@ export function useCreatePlanoLubrificacao() {
       if (!tenantId) throw new Error('Tenant não resolvido.');
 
       const planoId = (plano as Partial<PlanoLubrificacao>).id ?? crypto.randomUUID();
-      const payload = { id: planoId, empresa_id: tenantId, ...plano };
+      const payload = { ...plano, id: planoId, empresa_id: tenantId };
 
-      const { error } = await supabase
+      const { data: inserted, error } = await supabase
         .from('planos_lubrificacao')
-        .insert(payload);
+        .insert(payload)
+        .select()
+        .single();
 
       if (error) throw toReadableError(error);
+
+      const result = (inserted ?? payload) as PlanoLubrificacao;
 
       try {
         await upsertMaintenanceSchedule({
@@ -116,7 +120,7 @@ export function useCreatePlanoLubrificacao() {
         });
       }
 
-      return payload as PlanoLubrificacao;
+      return result;
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['planos-lubrificacao', tenantId] });
@@ -199,7 +203,7 @@ export function useDeletePlanoLubrificacao() {
     mutationFn: async (id: string) => {
       if (!tenantId) throw new Error('Tenant não resolvido.');
 
-      await deleteMaintenanceSchedule('lubrificacao', id);
+      await deleteMaintenanceSchedule('lubrificacao', id, tenantId);
 
       const { error } = await supabase
         .from('planos_lubrificacao')
@@ -222,14 +226,17 @@ export function useDeletePlanoLubrificacao() {
 }
 
 export function useExecucoesByPlanoLubrificacao(planoId: string | null) {
+  const { tenantId } = useAuth();
   return useQuery({
-    queryKey: ['execucoes-lubrificacao', planoId],
+    queryKey: ['execucoes-lubrificacao', planoId, tenantId],
     enabled: !!planoId,
     queryFn: async () => {
-      const { data, error } = await supabase
+      let query = supabase
         .from('execucoes_lubrificacao')
         .select('*')
-        .eq('plano_id', planoId!)
+        .eq('plano_id', planoId!);
+      if (tenantId) query = query.eq('empresa_id', tenantId);
+      const { data, error } = await query
         .order('data_execucao', { ascending: false })
         .limit(50);
 
@@ -246,8 +253,10 @@ export function useCreateExecucaoLubrificacao() {
 
   return useMutation({
     mutationFn: async (input: { plano_id: string; executor_nome?: string; observacoes?: string; fotos?: unknown; quantidade_utilizada?: number }) => {
+      if (!tenantId) throw new Error('Tenant não resolvido.');
       const payload = {
         ...input,
+        empresa_id: tenantId,
         data_execucao: new Date().toISOString(),
         status: 'CONCLUIDO',
       };
@@ -279,11 +288,13 @@ export function useGenerateExecucoesNow() {
 
   return useMutation({
     mutationFn: async () => {
+      if (!tenantId) throw new Error('Tenant não resolvido.');
       const now = new Date().toISOString();
 
       const { data: planos, error: e1 } = await supabase
         .from('planos_lubrificacao')
         .select('*')
+        .eq('empresa_id', tenantId)
         .lte('proxima_execucao', now)
         .or('proxima_execucao.is.null');
 
@@ -297,6 +308,7 @@ export function useGenerateExecucoesNow() {
       const nowIso = new Date().toISOString();
       const execInserts = planosTyped.map(p => ({
         plano_id: p.id,
+        empresa_id: tenantId,
         data_execucao: nowIso,
         status: 'PENDENTE',
       }));
@@ -319,6 +331,7 @@ export function useGenerateExecucoesNow() {
           tipo: 'LUBRIFICACAO',
           prioridade: 'NORMAL',
           status: 'ABERTA',
+          empresa_id: tenantId,
           tag: p.tag || '',
           equipamento: p.equipamento_id || p.nome || '',
           solicitante: 'Sistema Automático',
@@ -341,7 +354,8 @@ export function useGenerateExecucoesNow() {
             await supabase
               .from('execucoes_lubrificacao')
               .update({ os_gerada_id: u.os_gerada_id })
-              .eq('id', u.id);
+              .eq('id', u.id)
+              .eq('empresa_id', tenantId);
           }
         }
       } catch (err) {
@@ -365,7 +379,8 @@ export function useGenerateExecucoesNow() {
               proxima_execucao: next.toISOString(),
               updated_at: new Date().toISOString()
             })
-            .eq('id', plano.id);
+            .eq('id', plano.id)
+            .eq('empresa_id', tenantId);
         } catch (err) {
           logger.error('plano_next_exec_update_failed', { planoId: plano.id, error: String(err) });
         }

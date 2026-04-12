@@ -2,16 +2,13 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { 
-  TrendingUp, 
-  TrendingDown, 
   AlertTriangle,
   CheckCircle,
-  XCircle,
   Clock,
   Wrench,
   Zap
 } from 'lucide-react';
-import { format, subDays, differenceInDays, parseISO } from 'date-fns';
+import { format, differenceInDays, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 
@@ -31,7 +28,7 @@ interface RecentActivityFeedProps {
 }
 
 export function RecentActivityFeed({ activities, onViewAll }: RecentActivityFeedProps) {
-  const getIcon = (type: RecentActivity['type'], status?: RecentActivity['status']) => {
+  const getIcon = (type: RecentActivity['type'], _status?: RecentActivity['status']) => {
     switch (type) {
       case 'os_created':
         return <Wrench className="h-4 w-4" />;

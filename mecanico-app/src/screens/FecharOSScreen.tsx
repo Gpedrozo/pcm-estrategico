@@ -61,7 +61,7 @@ export default function FecharOSScreen() {
   const loadData = async () => {
     if (!empresaId) return;
     const [osRes, mecRes, matRes] = await Promise.all([
-      supabase.from('ordens_servico').select('*').eq('id', osId).single(),
+      supabase.from('ordens_servico').select('*').eq('id', osId).eq('empresa_id', empresaId).single(),
       supabase.from('mecanicos').select('*').eq('empresa_id', empresaId).eq('ativo', true).is('deleted_at', null),
       supabase.from('materiais').select('*').eq('empresa_id', empresaId),
     ]);

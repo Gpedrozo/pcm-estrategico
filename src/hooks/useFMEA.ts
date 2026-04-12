@@ -55,7 +55,8 @@ export function useFMEA() {
         .from('fmea')
         .select('*')
         .eq('empresa_id', tenantId)
-        .order('rpn', { ascending: false });
+        .order('rpn', { ascending: false })
+        .limit(500);
 
       if (error) throw error;
       return data as FMEARow[];
@@ -77,6 +78,7 @@ export function useFMEAByEquipamento(tag?: string) {
         .select('*')
         .eq('empresa_id', tenantId)
         .eq('tag', tag!)
+        .limit(500)
         .order('rpn', { ascending: false });
 
       if (error) throw error;
@@ -113,7 +115,7 @@ export function useCreateFMEA() {
         description: 'A análise FMEA foi criada com sucesso.',
       });
     },
-    onError: (error: any) => {
+    onError: (error: Error) => {
       toast({
         title: 'Erro ao criar FMEA',
         description: error.message,
@@ -130,12 +132,14 @@ export function useUpdateFMEA() {
 
   return useMutation({
     mutationFn: async ({ id, ...updates }: Partial<FMEARow> & { id: string }) => {
+      if (!tenantId) throw new Error('Tenant não identificado.');
       return updateWithColumnFallback(
         async (payload) =>
           supabase
             .from('fmea')
             .update(payload)
             .eq('id', id)
+            .eq('empresa_id', tenantId)
             .select()
             .single(),
         updates as Record<string, unknown>,
@@ -149,7 +153,7 @@ export function useUpdateFMEA() {
         description: 'A análise FMEA foi atualizada com sucesso.',
       });
     },
-    onError: (error: any) => {
+    onError: (error: Error) => {
       toast({
         title: 'Erro ao atualizar FMEA',
         description: error.message,
@@ -166,10 +170,12 @@ export function useDeleteFMEA() {
 
   return useMutation({
     mutationFn: async (id: string) => {
+      if (!tenantId) throw new Error('Tenant não identificado.');
       const { error } = await supabase
         .from('fmea')
         .delete()
-        .eq('id', id);
+        .eq('id', id)
+        .eq('empresa_id', tenantId);
 
       if (error) throw error;
     },
@@ -181,7 +187,7 @@ export function useDeleteFMEA() {
         description: 'A análise FMEA foi excluída com sucesso.',
       });
     },
-    onError: (error: any) => {
+    onError: (error: Error) => {
       toast({
         title: 'Erro ao excluir FMEA',
         description: error.message,

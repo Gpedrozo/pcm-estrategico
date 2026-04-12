@@ -131,37 +131,45 @@ function buildComponentTree(components: ComponenteEquipamento[]): ComponenteEqui
 }
 
 export function useComponentesEquipamento(equipamentoId?: string) {
+  const { tenantId } = useAuth();
   return useQuery({
-    queryKey: ['componentes-equipamento', equipamentoId],
+    queryKey: ['componentes-equipamento', equipamentoId, tenantId],
     queryFn: async () => {
       if (!equipamentoId) return [];
       
-      const { data, error } = await supabase
+      let query = supabase
         .from('componentes_equipamento')
         .select('*')
-        .eq('equipamento_id', equipamentoId)
+        .eq('equipamento_id', equipamentoId);
+      if (tenantId) query = query.eq('empresa_id', tenantId);
+      const { data, error } = await query
         .order('tipo', { ascending: true })
-        .order('nome', { ascending: true });
+        .order('nome', { ascending: true })
+        .limit(500);
 
       if (error) throw error;
       return buildComponentTree(data as ComponenteEquipamento[]);
     },
-    enabled: !!equipamentoId,
+    enabled: !!equipamentoId && !!tenantId,
   });
 }
 
 export function useAllComponentes(equipamentoId?: string) {
+  const { tenantId } = useAuth();
   return useQuery({
-    queryKey: ['componentes-equipamento-flat', equipamentoId],
+    queryKey: ['componentes-equipamento-flat', equipamentoId, tenantId],
     queryFn: async () => {
       if (!equipamentoId) return [];
       
-      const { data, error } = await supabase
+      let query = supabase
         .from('componentes_equipamento')
         .select('*')
-        .eq('equipamento_id', equipamentoId)
+        .eq('equipamento_id', equipamentoId);
+      if (tenantId) query = query.eq('empresa_id', tenantId);
+      const { data, error } = await query
         .order('tipo', { ascending: true })
-        .order('nome', { ascending: true });
+        .order('nome', { ascending: true })
+        .limit(500);
 
       if (error) throw error;
       return data as ComponenteEquipamento[];
@@ -213,10 +221,12 @@ export function useUpdateComponente() {
 
   return useMutation({
     mutationFn: async ({ id, ...updates }: ComponenteUpdate) => {
+      if (!tenantId) throw new Error('Tenant não identificado.');
       const { data, error } = await supabase
         .from('componentes_equipamento')
         .update(updates)
         .eq('id', id)
+        .eq('empresa_id', tenantId)
         .select()
         .single();
 
@@ -249,10 +259,12 @@ export function useDeleteComponente() {
 
   return useMutation({
     mutationFn: async (id: string) => {
+      if (!tenantId) throw new Error('Tenant não identificado.');
       const { error } = await supabase
         .from('componentes_equipamento')
         .delete()
-        .eq('id', id);
+        .eq('id', id)
+        .eq('empresa_id', tenantId);
 
       if (error) throw error;
       return id;
@@ -284,7 +296,7 @@ export function useDuplicateComponente() {
   return useMutation({
     mutationFn: async ({ componente, newCodigo }: { componente: ComponenteEquipamento; newCodigo: string }) => {
       if (!tenantId) throw new Error('Tenant não resolvido.');
-      const { id, created_at, updated_at, children, ...rest } = componente;
+      const { id: _id, created_at: _created_at, updated_at: _updated_at, children: _children, ...rest } = componente;
       const { data, error } = await supabase
         .from('componentes_equipamento')
         .insert({ ...rest, codigo: newCodigo, empresa_id: tenantId } as any)

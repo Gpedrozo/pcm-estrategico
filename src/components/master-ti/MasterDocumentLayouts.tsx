@@ -9,7 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import {
   FileText, Hash, RotateCcw, Settings, History, Save, Loader2, CheckCircle2,
-  Eye, EyeOff, GripVertical, ArrowUp, ArrowDown,
+  Eye, EyeOff, ArrowUp, ArrowDown,
 } from 'lucide-react';
 import {
   useDocumentSequences, useResetSequence,

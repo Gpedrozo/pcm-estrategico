@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -15,13 +15,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { usePendingOrdensServico, useUpdateOrdemServico, type OrdemServicoRow } from '@/hooks/useOrdensServico';
+import { usePendingOrdensServico, type OrdemServicoRow } from '@/hooks/useOrdensServico';
 import { useMecanicosAtivos } from '@/hooks/useMecanicos';
 import { useMateriaisAtivos, useAddMaterialOS, type MaterialRow } from '@/hooks/useMateriais';
 import { useCreateExecucaoOS, useCloseOSAtomic } from '@/hooks/useExecucoesOS';
+import { useUploadOSAnexo } from '@/hooks/useOSAnexos';
 import { useLogAuditoria } from '@/hooks/useAuditoria';
 import { useTenantAdminConfig } from '@/hooks/useTenantAdminConfig';
-import { useFormDraft } from '@/hooks/useFormDraft';
+import { useFormDraft, readDraft } from '@/hooks/useFormDraft';
 import { useAuth } from '@/contexts/AuthContext';
 import { logger } from '@/lib/logger';
 import { updateWithColumnFallback } from '@/lib/supabaseCompat';
@@ -37,6 +38,10 @@ import {
   AlertTriangle,
   Wrench,
   Clock,
+  Search,
+  ClipboardList,
+  Upload,
+  FileText,
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { OSStatusBadge } from '@/components/os/OSStatusBadge';
@@ -61,7 +66,7 @@ interface PausaExecucao {
 export default function FecharOS() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const { user } = useAuth();
+  const { user, tenantId } = useAuth();
   const { toast } = useToast();
   const { log } = useLogAuditoria();
 
@@ -69,14 +74,22 @@ export default function FecharOS() {
   const { data: mecanicos, isLoading: loadingMecanicos } = useMecanicosAtivos();
   const { data: materiaisDisponiveis } = useMateriaisAtivos();
   const { data: processoConfig } = useTenantAdminConfig<{ bloquear_fechamento_futuro?: boolean }>('tenant.admin.processo', { bloquear_fechamento_futuro: true });
-  const updateOSMutation = useUpdateOrdemServico();
   const createExecucaoMutation = useCreateExecucaoOS();
   const closeOSAtomicMutation = useCloseOSAtomic();
   const addMaterialOSMutation = useAddMaterialOS();
+  const uploadAnexoMutation = useUploadOSAnexo();
   
-  const [selectedOS, setSelectedOS] = useState<OrdemServicoRow | null>(null);
-  const [activeTab, setActiveTab] = useState('execucao');
-  const [formData, setFormData] = useState({
+  // ── Synchronous draft restoration (zero-flash) ──
+  const _draft = readDraft<{
+    formData: typeof _defaultFormData;
+    selectedOSId: string | null;
+    materiaisUsados: { materialId: string; quantidade: number }[];
+    pausasExecucao: PausaExecucao[];
+    teveIntervalos: boolean;
+    activeTab: string;
+  }>('draft:fechar-os');
+
+  const _defaultFormData = {
     mecanicoId: '',
     dataInicio: new Date().toISOString().slice(0, 10),
     horaInicio: '',
@@ -84,7 +97,11 @@ export default function FecharOS() {
     horaFim: '',
     servicoExecutado: '',
     custoTerceiros: '',
-  });
+  };
+
+  const [selectedOS, setSelectedOS] = useState<OrdemServicoRow | null>(null);
+  const [activeTab, setActiveTab] = useState(_draft?.activeTab || 'execucao');
+  const [formData, setFormData] = useState(_draft?.formData || _defaultFormData);
   const [materiaisUsados, setMateriaisUsados] = useState<MaterialUsado[]>([]);
   const [materialSelecionado, setMaterialSelecionado] = useState('');
   const [quantidadeMaterial, setQuantidadeMaterial] = useState('');
@@ -93,18 +110,71 @@ export default function FecharOS() {
   const [pausaFim, setPausaFim] = useState('');
   const [pausaDataFim, setPausaDataFim] = useState(new Date().toISOString().slice(0, 10));
   const [pausaMotivo, setPausaMotivo] = useState('Intervalo');
-  const [pausasExecucao, setPausasExecucao] = useState<PausaExecucao[]>([]);
-  const [teveIntervalos, setTeveIntervalos] = useState(false);
+  const [pausasExecucao, setPausasExecucao] = useState<PausaExecucao[]>(_draft?.pausasExecucao || []);
+  const [teveIntervalos, setTeveIntervalos] = useState(_draft?.teveIntervalos || false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [searchOS, setSearchOS] = useState('');
+  const [anexosPendentes, setAnexosPendentes] = useState<File[]>([]);
   const servicoMinLength = 20;
+
+  const filteredPendingOS = useMemo(() => {
+    if (!pendingOS) return [];
+    if (!searchOS.trim()) return pendingOS;
+    const s = searchOS.toLowerCase();
+    return pendingOS.filter(
+      (os) =>
+        os.numero_os?.toLowerCase().includes(s) ||
+        os.tag?.toLowerCase().includes(s) ||
+        os.equipamento?.toLowerCase().includes(s) ||
+        os.problema?.toLowerCase().includes(s),
+    );
+  }, [pendingOS, searchOS]);
+
+  const getDiasAberto = (os: OrdemServicoRow) => {
+    const criacao = (os as any).created_at || (os as any).data_abertura;
+    if (!criacao) return null;
+    const diff = Math.floor((Date.now() - new Date(criacao).getTime()) / 86400000);
+    return diff;
+  };
 
   const { clearDraft: clearFecharOSDraft } = useFormDraft(
     'draft:fechar-os',
-    { formData, selectedOSId: selectedOS?.id || null },
-    (saved) => {
-      if (saved.formData) setFormData(saved.formData);
+    {
+      formData,
+      selectedOSId: selectedOS?.id || null,
+      materiaisUsados: materiaisUsados.map((m) => ({
+        materialId: m.material.id,
+        quantidade: m.quantidade,
+      })),
+      pausasExecucao,
+      teveIntervalos,
+      activeTab,
     },
   );
+
+  // Restore selectedOS + materiais from draft once query data is loaded
+  const draftRestoredRef = useRef(false);
+  useEffect(() => {
+    if (draftRestoredRef.current || !_draft) return;
+    if (!pendingOS || pendingOS.length === 0) return;
+
+    draftRestoredRef.current = true;
+
+    if (_draft.selectedOSId && !selectedOS) {
+      const os = pendingOS.find((item) => item.id === _draft.selectedOSId);
+      if (os) setSelectedOS(os);
+    }
+
+    if (_draft.materiaisUsados?.length && materiaisDisponiveis?.length) {
+      const restored: MaterialUsado[] = [];
+      for (const item of _draft.materiaisUsados) {
+        const mat = materiaisDisponiveis.find((m) => m.id === item.materialId);
+        if (mat) restored.push({ material: mat, quantidade: item.quantidade });
+      }
+      if (restored.length) setMateriaisUsados(restored);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pendingOS, materiaisDisponiveis]);
 
   const selectedMecanico = mecanicos?.find(m => m.id === formData.mecanicoId);
 
@@ -359,14 +429,17 @@ export default function FecharOS() {
         logger.warn('atomic_close_fallback', { error: String(atomicError) });
 
         // Backward compatibility fallback when migration is not applied yet.
+        // Build full ISO timestamps: hora_inicio/hora_fim are TIMESTAMPTZ since migration 20260404060000
+        const fallbackHoraInicio = `${formData.dataInicio}T${formData.horaInicio || '08:00'}:00`;
+        const fallbackHoraFim = `${formData.dataFim}T${formData.horaFim || '17:00'}:00`;
         await createExecucaoMutation.mutateAsync({
           os_id: selectedOS.id,
           mecanico_id: formData.mecanicoId || null,
           mecanico_nome: mecanicoNome,
           data_inicio: formData.dataInicio,
-          hora_inicio: formData.horaInicio,
+          hora_inicio: fallbackHoraInicio,
           data_fim: formData.dataFim,
-          hora_fim: formData.horaFim,
+          hora_fim: fallbackHoraFim,
           tempo_execucao: tempoExecucao,
           tempo_execucao_bruto: tempoExecucaoBruto,
           tempo_pausas: tempoPausas,
@@ -393,6 +466,7 @@ export default function FecharOS() {
               .from('ordens_servico')
               .update(payload)
               .eq('id', selectedOS.id)
+              .eq('empresa_id', tenantId!)
               .select()
               .single()
               .then((r) => r),
@@ -411,6 +485,26 @@ export default function FecharOS() {
       }
 
       await log('FECHAR_OS', `Fechamento da O.S ${selectedOS.numero_os} - Custo total: ${formatCurrency(custoTotal)} - Tempo bruto: ${tempoExecucaoBruto} min - Pausas: ${tempoPausas} min - Tempo líquido: ${tempoExecucao} min`, selectedOS.tag);
+
+      // Upload de anexos (não-bloqueante)
+      if (anexosPendentes.length > 0) {
+        let uploadFails = 0;
+        for (const file of anexosPendentes) {
+          try {
+            await uploadAnexoMutation.mutateAsync({ osId: selectedOS.id, file });
+          } catch {
+            uploadFails++;
+          }
+        }
+        if (uploadFails > 0) {
+          toast({
+            title: 'Aviso: Anexos',
+            description: `${uploadFails} de ${anexosPendentes.length} arquivo(s) não foram enviados. Você pode anexá-los depois.`,
+            variant: 'default',
+          });
+        }
+        setAnexosPendentes([]);
+      }
 
       toast({
         title: 'O.S Fechada com Sucesso!',
@@ -454,6 +548,7 @@ export default function FecharOS() {
     setMateriaisUsados([]);
     setPausasExecucao([]);
     setTeveIntervalos(false);
+    setAnexosPendentes([]);
     setPausaDataInicio(new Date().toISOString().slice(0, 10));
     setPausaInicio('');
     setPausaDataFim(new Date().toISOString().slice(0, 10));
@@ -463,7 +558,9 @@ export default function FecharOS() {
 
   const isLoading = loadingOS || loadingMecanicos;
 
+  const deepLinkAppliedRef = useRef(false);
   useEffect(() => {
+    if (deepLinkAppliedRef.current) return;
     const osId = searchParams.get('osId');
     const mecanicoId = searchParams.get('mecanicoId');
     if (!osId || !pendingOS || pendingOS.length === 0) return;
@@ -471,6 +568,7 @@ export default function FecharOS() {
     const os = pendingOS.find((item) => item.id === osId);
     if (!os) return;
 
+    deepLinkAppliedRef.current = true;
     handleSelectOS(os);
     if (mecanicoId) {
       setFormData((prev) => ({ ...prev, mecanicoId }));
@@ -487,68 +585,106 @@ export default function FecharOS() {
   }
 
   return (
-    <div className="module-page max-w-6xl mx-auto space-y-6 pb-8">
+    <div className="module-page space-y-4 pb-8">
       {/* Header */}
       <div className="module-page-header flex items-start gap-4">
         <Button variant="outline" size="icon" className="shrink-0" onClick={() => navigate(-1)}>
             <ArrowLeft className="h-5 w-5" />
         </Button>
         <div className="space-y-1">
-          <h1 className="text-2xl font-bold text-foreground">Fechamento de Ordem de Servico</h1>
-          <p className="text-muted-foreground max-w-3xl">Registre execução e custos para concluir a O.S com rastreabilidade.</p>
+          <h1 className="text-2xl font-bold text-foreground">Fechamento de Ordem de Serviço</h1>
+          <p className="text-muted-foreground text-sm">Registre execução e custos para concluir a O.S com rastreabilidade.</p>
         </div>
       </div>
 
-      {/* Select OS */}
-      <div className="bg-card border border-border rounded-lg p-4 md:p-5">
-        <Label className="text-base font-semibold">Selecione a O.S para fechar</Label>
-        <div className="mt-3 space-y-2 max-h-56 overflow-y-auto">
-          {!pendingOS || pendingOS.length === 0 ? (
-            <p className="text-muted-foreground py-8 text-center">
-              Não há ordens de serviço pendentes.
-            </p>
-          ) : (
-            pendingOS.map((os) => (
-              <button
-                key={os.id}
-                type="button"
-                onClick={() => handleSelectOS(os)}
-                className={`w-full p-3 rounded-lg border text-left transition-all ${
-                  selectedOS?.id === os.id
-                    ? 'border-primary bg-primary/10'
-                    : 'border-border hover:border-muted-foreground/30 hover:bg-muted/30'
-                }`}
-              >
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3 flex-wrap">
-                    <span className="font-mono font-bold">{os.numero_os}</span>
-                    <span className="font-mono text-primary font-medium">{os.tag}</span>
-                    <OSTypeBadge tipo={normalizeOSType(os.tipo)} />
-                    <OSStatusBadge status={normalizeOSStatus(os.status)} />
-                  </div>
-                  {selectedOS?.id === os.id && (
-                    <Check className="h-5 w-5 text-primary flex-shrink-0" />
-                  )}
-                </div>
-                <p className="text-xs text-muted-foreground mt-1 line-clamp-1">
-                  {os.problema}
-                </p>
-              </button>
-            ))
-          )}
-        </div>
-      </div>
-
-      {/* Execution Form */}
-      {selectedOS && (
-        <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_320px] gap-6 items-start">
-          <div className="bg-card border border-border rounded-lg p-4 md:p-6">
-            <div className="flex items-center gap-2 mb-6">
-              <FileCheck className="h-5 w-5 text-primary" />
-              <h2 className="text-lg font-semibold">Fechamento Guiado da Execução</h2>
+      {/* Master-Detail Layout */}
+      <div className="grid grid-cols-1 xl:grid-cols-[340px_minmax(0,1fr)] gap-4 items-start">
+        {/* LEFT PANEL — Lista de O.S Pendentes */}
+        <div className="bg-card border border-border rounded-lg overflow-hidden xl:sticky xl:top-20 xl:max-h-[calc(100vh-6rem)]">
+          <div className="p-3 border-b border-border bg-muted/30">
+            <div className="flex items-center justify-between mb-2">
+              <h2 className="text-sm font-semibold text-foreground flex items-center gap-2">
+                <ClipboardList className="h-4 w-4 text-primary" />
+                O.S Pendentes
+              </h2>
+              <Badge variant="secondary" className="text-xs">{filteredPendingOS.length}</Badge>
             </div>
+            <div className="relative">
+              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Buscar nº, TAG, equipamento..."
+                value={searchOS}
+                onChange={(e) => setSearchOS(e.target.value)}
+                className="pl-8 h-9 text-sm"
+              />
+            </div>
+          </div>
 
-            <form id="close-os-form" onSubmit={handleSubmit} className="space-y-6">
+          <div className="overflow-y-auto xl:max-h-[calc(100vh-12rem)] p-2 space-y-1.5">
+            {filteredPendingOS.length === 0 ? (
+              <div className="py-10 text-center">
+                <ClipboardList className="h-8 w-8 mx-auto text-muted-foreground/40 mb-2" />
+                <p className="text-sm text-muted-foreground">
+                  {pendingOS && pendingOS.length > 0 ? 'Nenhuma O.S encontrada para o filtro.' : 'Não há ordens de serviço pendentes.'}
+                </p>
+              </div>
+            ) : (
+              filteredPendingOS.map((os) => {
+                const diasAberto = getDiasAberto(os);
+                const isSelected = selectedOS?.id === os.id;
+                return (
+                  <button
+                    key={os.id}
+                    type="button"
+                    onClick={() => handleSelectOS(os)}
+                    className={`w-full p-3 rounded-lg border text-left transition-all ${
+                      isSelected
+                        ? 'border-primary bg-primary/10 shadow-sm'
+                        : 'border-border/60 hover:border-muted-foreground/30 hover:bg-muted/30'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="font-mono font-bold text-sm truncate">{os.numero_os}</span>
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        <OSTypeBadge tipo={normalizeOSType(os.tipo)} />
+                        {isSelected && <Check className="h-4 w-4 text-primary" />}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 mt-1.5">
+                      <span className="font-mono text-xs text-primary font-medium">{os.tag}</span>
+                      <OSStatusBadge status={normalizeOSStatus(os.status)} />
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-1 line-clamp-1">{os.equipamento}</p>
+                    <p className="text-xs text-muted-foreground/70 mt-0.5 line-clamp-1">{os.problema}</p>
+                    {diasAberto != null && diasAberto > 0 && (
+                      <p className={`text-xs mt-1 ${diasAberto > 7 ? 'text-destructive' : diasAberto > 3 ? 'text-amber-600' : 'text-muted-foreground'}`}>
+                        há {diasAberto} {diasAberto === 1 ? 'dia' : 'dias'}
+                      </p>
+                    )}
+                  </button>
+                );
+              })
+            )}
+          </div>
+        </div>
+
+        {/* RIGHT PANEL — Formulário de Fechamento ou Placeholder */}
+        {!selectedOS ? (
+          <div className="bg-card border border-border rounded-lg flex flex-col items-center justify-center py-20 px-6 text-center">
+            <FileCheck className="h-12 w-12 text-muted-foreground/30 mb-4" />
+            <h2 className="text-lg font-semibold text-muted-foreground">Selecione uma O.S pendente</h2>
+            <p className="text-sm text-muted-foreground/70 mt-1 max-w-sm">
+              Escolha uma ordem de serviço na lista ao lado para iniciar o processo de fechamento.
+            </p>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {/* Card Info da O.S Selecionada */}
+            <div className="bg-card border border-border rounded-lg p-4">
+              <div className="flex items-center gap-2 mb-3">
+                <FileCheck className="h-5 w-5 text-primary" />
+                <h2 className="text-lg font-semibold">Fechamento — {selectedOS.numero_os}</h2>
+              </div>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3 p-3 bg-muted/30 rounded-lg border border-border/50">
                 <div>
                   <Label className="text-xs text-muted-foreground">O.S</Label>
@@ -560,318 +696,404 @@ export default function FecharOS() {
                 </div>
                 <div>
                   <Label className="text-xs text-muted-foreground">Equipamento</Label>
-                  <p className="text-sm">{selectedOS.equipamento}</p>
+                  <p className="text-sm truncate">{selectedOS.equipamento}</p>
                 </div>
                 <div>
                   <Label className="text-xs text-muted-foreground">Progresso</Label>
-                  <p className="font-medium">{progressoChecklist}%</p>
+                  <div className="flex items-center gap-2">
+                    <div className="h-2 flex-1 bg-muted rounded-full overflow-hidden">
+                      <div className="h-full bg-primary transition-all" style={{ width: `${progressoChecklist}%` }} />
+                    </div>
+                    <span className="font-mono font-medium text-sm">{progressoChecklist}%</span>
+                  </div>
                 </div>
               </div>
 
-              <Tabs value={activeTab} onValueChange={setActiveTab}>
-                <TabsList className="grid w-full grid-cols-2">
-                  <TabsTrigger value="execucao" className="gap-2"><Wrench className="h-4 w-4" />Execução</TabsTrigger>
-                  <TabsTrigger value="materiais" className="gap-2"><Package className="h-4 w-4" />Materiais</TabsTrigger>
-                </TabsList>
+              {/* Problema Apresentado */}
+              {selectedOS.problema && (
+                <div className="mt-3 p-3 bg-amber-500/5 border border-amber-500/20 rounded-lg">
+                  <Label className="text-xs text-muted-foreground font-semibold uppercase tracking-wide">Problema Apresentado</Label>
+                  <p className="mt-1 text-sm">{selectedOS.problema}</p>
+                </div>
+              )}
+            </div>
 
-                <TabsContent value="execucao" className="space-y-6 mt-6">
-                  <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="mecanico">Mecânico (opcional)</Label>
-                      <Select
-                        value={formData.mecanicoId}
-                        onValueChange={(value) => setFormData({ ...formData, mecanicoId: value })}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Selecione" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {mecanicos?.map((mec) => (
-                            <SelectItem key={mec.id} value={mec.id}>
-                              {mec.nome} ({mec.tipo === 'PROPRIO' ? 'Próprio' : mec.tipo === 'INTERNO' ? 'Interno' : 'Terceirizado'})
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
+            {/* Form Tabs */}
+            <div className="bg-card border border-border rounded-lg p-4 md:p-6">
+              <form id="close-os-form" onSubmit={handleSubmit} className="space-y-6">
+                <Tabs value={activeTab} onValueChange={setActiveTab}>
+                  <TabsList className="grid w-full grid-cols-2">
+                    <TabsTrigger value="execucao" className="gap-2"><Wrench className="h-4 w-4" />Execução</TabsTrigger>
+                    <TabsTrigger value="materiais" className="gap-2"><Package className="h-4 w-4" />Materiais</TabsTrigger>
+                  </TabsList>
 
-                    <div className="space-y-2">
-                      <Label htmlFor="dataInicio">Data Início *</Label>
-                      <Input
-                        id="dataInicio"
-                        type="date"
-                        value={formData.dataInicio}
-                        onChange={(e) => setFormData({ ...formData, dataInicio: e.target.value })}
-                        required
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="horaInicio">Hora Início *</Label>
-                      <Input
-                        id="horaInicio"
-                        type="time"
-                        value={formData.horaInicio}
-                        onChange={(e) => setFormData({ ...formData, horaInicio: e.target.value })}
-                        required
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="dataFim">Data Fim *</Label>
-                      <Input
-                        id="dataFim"
-                        type="date"
-                        value={formData.dataFim}
-                        onChange={(e) => setFormData({ ...formData, dataFim: e.target.value })}
-                        required
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="horaFim">Hora Fim *</Label>
-                      <Input
-                        id="horaFim"
-                        type="time"
-                        value={formData.horaFim}
-                        onChange={(e) => setFormData({ ...formData, horaFim: e.target.value })}
-                        required
-                      />
-                      {dataFimBloqueada && (
-                        <p className="text-xs text-destructive flex items-center gap-1">
-                          <AlertTriangle className="h-3 w-3" />
-                          Data/hora de fim não pode ser futura
-                        </p>
-                      )}
-                    </div>
-                  </div>
-
-                  {janelaExecucaoPreenchida && !janelaExecucaoValida && (
-                    <div className="rounded-md border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive">
-                      Horário inválido: a data/hora final precisa ser maior que a inicial.
-                    </div>
-                  )}
-
-                  {duracaoBruta && (
-                    <div className="rounded-lg bg-muted/40 border border-border/60 p-3 text-sm flex flex-wrap gap-4">
-                      <span>Bruto: <strong>{formatDuration(duracaoBruta)}</strong></span>
-                      <span>Pausas: <strong>{formatDuration(minutosPausas) || '0min'}</strong></span>
-                      <span>Líquido: <strong>{formatDuration(duracaoLiquida) || '0min'}</strong></span>
-                    </div>
-                  )}
-
-                  <div className="space-y-4 border-t pt-5">
-                    <div className="flex items-center gap-2">
-                      <Clock className="h-5 w-5 text-primary" />
-                      <Label className="text-base font-semibold">Pausas durante a execução</Label>
-                    </div>
-
-                    <div className="rounded-lg border border-border/60 p-3 bg-background/50">
-                      <p className="text-sm text-muted-foreground mb-3">Houve intervalos?</p>
-                      <div className="flex gap-2">
-                        <Button type="button" variant={teveIntervalos ? 'default' : 'outline'} onClick={() => setTeveIntervalos(true)}>Sim</Button>
-                        <Button
-                          type="button"
-                          variant={!teveIntervalos ? 'default' : 'outline'}
-                          onClick={() => {
-                            setTeveIntervalos(false);
-                            setPausasExecucao([]);
-                          }}
-                        >
-                          Não
-                        </Button>
-                      </div>
-                    </div>
-
-                    {teveIntervalos && (
-                      <div className="grid grid-cols-1 md:grid-cols-6 gap-3 rounded-lg border border-border/60 p-3 bg-background/50">
-                        <Input type="date" value={pausaDataInicio} onChange={(e) => setPausaDataInicio(e.target.value)} />
-                        <Input type="time" value={pausaInicio} onChange={(e) => setPausaInicio(e.target.value)} placeholder="Início pausa" />
-                        <Input type="date" value={pausaDataFim} onChange={(e) => setPausaDataFim(e.target.value)} />
-                        <Input type="time" value={pausaFim} onChange={(e) => setPausaFim(e.target.value)} placeholder="Fim pausa" />
-                        <Input value={pausaMotivo} onChange={(e) => setPausaMotivo(e.target.value)} placeholder="Motivo (ex.: almoço)" />
-                        <Button type="button" variant="outline" onClick={handleAddPausa} disabled={!pausaInicio || !pausaFim}>
-                          <Plus className="h-4 w-4 mr-1" />
-                          Adicionar pausa
-                        </Button>
-                      </div>
-                    )}
-
-                    {pausasExecucao.length > 0 && (
+                  <TabsContent value="execucao" className="space-y-6 mt-6">
+                    <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
                       <div className="space-y-2">
-                        {pausasExecucao.map((pausa) => (
-                          <div key={pausa.id} className="flex items-center justify-between p-2 bg-muted/40 rounded-lg border border-border/50">
-                            <div className="flex items-center gap-2">
-                              <Badge variant="outline">{pausa.data_inicio} {pausa.inicio} - {pausa.data_fim} {pausa.fim}</Badge>
-                              <span className="text-sm text-muted-foreground">{pausa.motivo}</span>
-                            </div>
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="icon"
-                              className="text-destructive hover:text-destructive"
-                              onClick={() => handleRemovePausa(pausa.id)}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="space-y-2 rounded-lg border border-border/60 p-3 bg-background/50">
-                    <Label htmlFor="servico">Serviço Executado *</Label>
-                    <div className="rounded-md border border-amber-500/30 bg-amber-500/10 p-2 text-xs text-amber-700">
-                      <p className="font-semibold">Descreva passo a passo e estado final do equipamento.</p>
-                    </div>
-                    <Textarea
-                      id="servico"
-                      value={formData.servicoExecutado}
-                      onChange={(e) => setFormData({ ...formData, servicoExecutado: e.target.value })}
-                      placeholder="Descreva tecnicamente ações realizadas, ajustes, testes e resultado final."
-                      rows={4}
-                      required
-                    />
-                    <div className="flex items-center justify-between text-xs">
-                      <span className={servicoValido ? 'text-success' : 'text-muted-foreground'}>
-                        Mínimo recomendado: {servicoMinLength} caracteres
-                      </span>
-                      <span className={servicoValido ? 'text-success' : 'text-warning'}>
-                        {formData.servicoExecutado.trim().length}/{servicoMinLength}
-                      </span>
-                    </div>
-                  </div>
-                </TabsContent>
-
-                <TabsContent value="materiais" className="space-y-6 mt-6">
-                  <div className="space-y-4 border-t pt-5">
-                    <div className="flex items-center gap-2">
-                      <Package className="h-5 w-5 text-primary" />
-                      <Label className="text-base font-semibold">Materiais Utilizados</Label>
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3 rounded-lg border border-border/60 p-3 bg-background/50">
-                      <div className="md:col-span-1">
+                        <Label htmlFor="mecanico">Mecânico (opcional)</Label>
                         <Select
-                          value={materialSelecionado}
-                          onValueChange={setMaterialSelecionado}
+                          value={formData.mecanicoId}
+                          onValueChange={(value) => setFormData({ ...formData, mecanicoId: value })}
                         >
                           <SelectTrigger>
-                            <SelectValue placeholder="Selecione material" />
+                            <SelectValue placeholder="Selecione" />
                           </SelectTrigger>
                           <SelectContent>
-                            {materiaisDisponiveis?.filter(m => m.estoque_atual > 0).map((mat) => (
-                              <SelectItem key={mat.id} value={mat.id}>
-                                {mat.codigo} - {mat.nome} (Est: {mat.estoque_atual})
+                            {mecanicos?.map((mec) => (
+                              <SelectItem key={mec.id} value={mec.id}>
+                                {mec.nome} ({mec.tipo === 'PROPRIO' ? 'Próprio' : mec.tipo === 'INTERNO' ? 'Interno' : 'Terceirizado'})
                               </SelectItem>
                             ))}
                           </SelectContent>
                         </Select>
                       </div>
-                      <div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="dataInicio">Data Início *</Label>
                         <Input
-                          type="number"
-                          min="0.01"
-                          step="0.01"
-                          value={quantidadeMaterial}
-                          onChange={(e) => setQuantidadeMaterial(e.target.value)}
-                          placeholder="Quantidade"
+                          id="dataInicio"
+                          type="date"
+                          value={formData.dataInicio}
+                          onChange={(e) => setFormData({ ...formData, dataInicio: e.target.value })}
+                          required
                         />
                       </div>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        onClick={handleAddMaterial}
-                        disabled={!materialSelecionado || !quantidadeMaterial}
-                      >
-                        <Plus className="h-4 w-4 mr-1" />
-                        Adicionar
-                      </Button>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="horaInicio">Hora Início *</Label>
+                        <Input
+                          id="horaInicio"
+                          type="time"
+                          value={formData.horaInicio}
+                          onChange={(e) => setFormData({ ...formData, horaInicio: e.target.value })}
+                          required
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="dataFim">Data Fim *</Label>
+                        <Input
+                          id="dataFim"
+                          type="date"
+                          value={formData.dataFim}
+                          onChange={(e) => setFormData({ ...formData, dataFim: e.target.value })}
+                          required
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="horaFim">Hora Fim *</Label>
+                        <Input
+                          id="horaFim"
+                          type="time"
+                          value={formData.horaFim}
+                          onChange={(e) => setFormData({ ...formData, horaFim: e.target.value })}
+                          required
+                        />
+                        {dataFimBloqueada && (
+                          <p className="text-xs text-destructive flex items-center gap-1">
+                            <AlertTriangle className="h-3 w-3" />
+                            Data/hora de fim não pode ser futura
+                          </p>
+                        )}
+                      </div>
                     </div>
 
-                    {materiaisUsados.length > 0 && (
-                      <div className="space-y-2">
-                        {materiaisUsados.map((item, index) => (
-                          <div key={index} className="flex items-center justify-between p-2 bg-muted/40 rounded-lg border border-border/50">
-                            <div className="flex items-center gap-3">
-                              <Badge variant="outline">{item.material.codigo}</Badge>
-                              <span className="text-sm">{item.material.nome}</span>
-                              <span className="text-muted-foreground">x {item.quantidade} {item.material.unidade}</span>
-                            </div>
-                            <div className="flex items-center gap-3">
-                              <span className="font-mono font-medium">
-                                {formatCurrency(item.quantidade * item.material.custo_unitario)}
-                              </span>
+                    {janelaExecucaoPreenchida && !janelaExecucaoValida && (
+                      <div className="rounded-md border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive">
+                        Horário inválido: a data/hora final precisa ser maior que a inicial.
+                      </div>
+                    )}
+
+                    {duracaoBruta && (
+                      <div className="rounded-lg bg-muted/40 border border-border/60 p-3 text-sm flex flex-wrap gap-4">
+                        <span>Bruto: <strong>{formatDuration(duracaoBruta)}</strong></span>
+                        <span>Pausas: <strong>{formatDuration(minutosPausas) || '0min'}</strong></span>
+                        <span>Líquido: <strong>{formatDuration(duracaoLiquida) || '0min'}</strong></span>
+                      </div>
+                    )}
+
+                    <div className="space-y-4 border-t pt-5">
+                      <div className="flex items-center gap-2">
+                        <Clock className="h-5 w-5 text-primary" />
+                        <Label className="text-base font-semibold">Pausas durante a execução</Label>
+                      </div>
+
+                      <div className="rounded-lg border border-border/60 p-3 bg-background/50">
+                        <p className="text-sm text-muted-foreground mb-3">Houve intervalos?</p>
+                        <div className="flex gap-2">
+                          <Button type="button" variant={teveIntervalos ? 'default' : 'outline'} onClick={() => setTeveIntervalos(true)}>Sim</Button>
+                          <Button
+                            type="button"
+                            variant={!teveIntervalos ? 'default' : 'outline'}
+                            onClick={() => {
+                              setTeveIntervalos(false);
+                              setPausasExecucao([]);
+                            }}
+                          >
+                            Não
+                          </Button>
+                        </div>
+                      </div>
+
+                      {teveIntervalos && (
+                        <div className="grid grid-cols-1 md:grid-cols-6 gap-3 rounded-lg border border-border/60 p-3 bg-background/50">
+                          <Input type="date" value={pausaDataInicio} onChange={(e) => setPausaDataInicio(e.target.value)} />
+                          <Input type="time" value={pausaInicio} onChange={(e) => setPausaInicio(e.target.value)} placeholder="Início pausa" />
+                          <Input type="date" value={pausaDataFim} onChange={(e) => setPausaDataFim(e.target.value)} />
+                          <Input type="time" value={pausaFim} onChange={(e) => setPausaFim(e.target.value)} placeholder="Fim pausa" />
+                          <Input value={pausaMotivo} onChange={(e) => setPausaMotivo(e.target.value)} placeholder="Motivo (ex.: almoço)" />
+                          <Button type="button" variant="outline" onClick={handleAddPausa} disabled={!pausaInicio || !pausaFim}>
+                            <Plus className="h-4 w-4 mr-1" />
+                            Adicionar pausa
+                          </Button>
+                        </div>
+                      )}
+
+                      {pausasExecucao.length > 0 && (
+                        <div className="space-y-2">
+                          {pausasExecucao.map((pausa) => (
+                            <div key={pausa.id} className="flex items-center justify-between p-2 bg-muted/40 rounded-lg border border-border/50">
+                              <div className="flex items-center gap-2">
+                                <Badge variant="outline">{pausa.data_inicio} {pausa.inicio} - {pausa.data_fim} {pausa.fim}</Badge>
+                                <span className="text-sm text-muted-foreground">{pausa.motivo}</span>
+                              </div>
                               <Button
                                 type="button"
                                 variant="ghost"
                                 size="icon"
                                 className="text-destructive hover:text-destructive"
-                                onClick={() => handleRemoveMaterial(index)}
+                                onClick={() => handleRemovePausa(pausa.id)}
                               >
                                 <Trash2 className="h-4 w-4" />
                               </Button>
                             </div>
-                          </div>
-                        ))}
+                          ))}
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="space-y-2 rounded-lg border border-border/60 p-3 bg-background/50">
+                      <Label htmlFor="servico">Serviço Executado *</Label>
+                      <div className="rounded-md border border-amber-500/30 bg-amber-500/10 p-2 text-xs text-amber-700">
+                        <p className="font-semibold">Descreva passo a passo e estado final do equipamento.</p>
                       </div>
+                      <Textarea
+                        id="servico"
+                        value={formData.servicoExecutado}
+                        onChange={(e) => setFormData({ ...formData, servicoExecutado: e.target.value })}
+                        placeholder="Descreva tecnicamente ações realizadas, ajustes, testes e resultado final."
+                        rows={4}
+                        required
+                      />
+                      <div className="flex items-center justify-between text-xs">
+                        <span className={servicoValido ? 'text-success' : 'text-muted-foreground'}>
+                          Mínimo recomendado: {servicoMinLength} caracteres
+                        </span>
+                        <span className={servicoValido ? 'text-success' : 'text-warning'}>
+                          {formData.servicoExecutado.trim().length}/{servicoMinLength}
+                        </span>
+                      </div>
+                    </div>
+                  </TabsContent>
+
+                  <TabsContent value="materiais" className="space-y-6 mt-6">
+                    <div className="space-y-4 border-t pt-5">
+                      <div className="flex items-center gap-2">
+                        <Package className="h-5 w-5 text-primary" />
+                        <Label className="text-base font-semibold">Materiais Utilizados</Label>
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-3 rounded-lg border border-border/60 p-3 bg-background/50">
+                        <div className="md:col-span-1">
+                          <Select
+                            value={materialSelecionado}
+                            onValueChange={setMaterialSelecionado}
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder="Selecione material" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {materiaisDisponiveis?.filter(m => m.estoque_atual > 0).map((mat) => (
+                                <SelectItem key={mat.id} value={mat.id}>
+                                  {mat.codigo} - {mat.nome} (Est: {mat.estoque_atual})
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div>
+                          <Input
+                            type="number"
+                            min="0.01"
+                            step="0.01"
+                            value={quantidadeMaterial}
+                            onChange={(e) => setQuantidadeMaterial(e.target.value)}
+                            placeholder="Quantidade"
+                          />
+                        </div>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={handleAddMaterial}
+                          disabled={!materialSelecionado || !quantidadeMaterial}
+                        >
+                          <Plus className="h-4 w-4 mr-1" />
+                          Adicionar
+                        </Button>
+                      </div>
+
+                      {materiaisUsados.length > 0 && (
+                        <div className="space-y-2">
+                          {materiaisUsados.map((item, index) => (
+                            <div key={index} className="flex items-center justify-between p-2 bg-muted/40 rounded-lg border border-border/50">
+                              <div className="flex items-center gap-3">
+                                <Badge variant="outline">{item.material.codigo}</Badge>
+                                <span className="text-sm">{item.material.nome}</span>
+                                <span className="text-muted-foreground">x {item.quantidade} {item.material.unidade}</span>
+                              </div>
+                              <div className="flex items-center gap-3">
+                                <span className="font-mono font-medium">
+                                  {formatCurrency(item.quantidade * item.material.custo_unitario)}
+                                </span>
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="icon"
+                                  className="text-destructive hover:text-destructive"
+                                  onClick={() => handleRemoveMaterial(index)}
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="space-y-2 rounded-lg border border-border/60 p-3 bg-background/50">
+                      <Label htmlFor="custoTerceiros">Custo Terceiros (R$)</Label>
+                      <Input
+                        id="custoTerceiros"
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        value={formData.custoTerceiros}
+                        onChange={(e) => setFormData({ ...formData, custoTerceiros: e.target.value })}
+                        placeholder="0.00"
+                      />
+                    </div>
+                  </TabsContent>
+
+                </Tabs>
+
+                {/* Upload de Anexos (Preventiva / Preditiva / Inspeção) */}
+                {selectedOS.tipo && ['PREVENTIVA', 'PREDITIVA', 'INSPECAO', 'LUBRIFICACAO'].includes(selectedOS.tipo.toUpperCase()) && (
+                  <div className="space-y-2 rounded-lg border border-border/60 p-3 bg-background/50">
+                    <Label className="flex items-center gap-2">
+                      <Upload className="h-4 w-4" />
+                      Anexos (fotos, laudos, relatórios)
+                    </Label>
+                    <input
+                      type="file"
+                      multiple
+                      accept="image/*,.pdf,.doc,.docx,.xls,.xlsx"
+                      className="block w-full text-sm file:mr-3 file:py-1.5 file:px-3 file:rounded-md file:border-0 file:text-sm file:font-medium file:bg-primary/10 file:text-primary hover:file:bg-primary/20 cursor-pointer"
+                      onChange={(e) => {
+                        if (e.target.files) {
+                          setAnexosPendentes((prev) => [...prev, ...Array.from(e.target.files!)]);
+                          e.target.value = '';
+                        }
+                      }}
+                    />
+                    {anexosPendentes.length > 0 && (
+                      <ul className="space-y-1 mt-2">
+                        {anexosPendentes.map((file, idx) => (
+                          <li key={`${file.name}-${idx}`} className="flex items-center justify-between text-sm bg-muted/30 rounded px-2 py-1">
+                            <span className="flex items-center gap-1.5 truncate">
+                              <FileText className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
+                              <span className="truncate">{file.name}</span>
+                              <span className="text-xs text-muted-foreground flex-shrink-0">({(file.size / 1024).toFixed(0)} KB)</span>
+                            </span>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              className="h-6 w-6 text-destructive hover:text-destructive"
+                              onClick={() => setAnexosPendentes((prev) => prev.filter((_, i) => i !== idx))}
+                            >
+                              <Trash2 className="h-3 w-3" />
+                            </Button>
+                          </li>
+                        ))}
+                      </ul>
                     )}
                   </div>
+                )}
 
-                  <div className="space-y-2 rounded-lg border border-border/60 p-3 bg-background/50">
-                    <Label htmlFor="custoTerceiros">Custo Terceiros (R$)</Label>
-                    <Input
-                      id="custoTerceiros"
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      value={formData.custoTerceiros}
-                      onChange={(e) => setFormData({ ...formData, custoTerceiros: e.target.value })}
-                      placeholder="0.00"
-                    />
-                  </div>
-                </TabsContent>
+                <div className="p-3 bg-muted/40 rounded-lg text-sm border border-border/50">
+                  <span className="text-muted-foreground">Usuário de fechamento: </span>
+                  <span className="font-medium">{user?.nome}</span>
+                </div>
+              </form>
+            </div>
 
-              </Tabs>
-
-              <div className="p-3 bg-muted/40 rounded-lg text-sm border border-border/50">
-                <span className="text-muted-foreground">Usuário de fechamento: </span>
-                <span className="font-medium">{user?.nome}</span>
-              </div>
-            </form>
-          </div>
-
-          <div className="space-y-4 xl:sticky xl:top-24">
+            {/* Resumo e Validação — inline no painel direito */}
             <Card>
-              <CardHeader>
+              <CardHeader className="pb-3">
                 <CardTitle className="text-base">Resumo e Validação</CardTitle>
               </CardHeader>
               <CardContent className="space-y-3 text-sm">
-                <div className="flex items-center justify-between"><span>Tempo bruto</span><strong>{formatDuration(duracaoBruta) || '-'}</strong></div>
-                <div className="flex items-center justify-between"><span>Pausas</span><strong>{formatDuration(minutosPausas) || '0min'}</strong></div>
-                <div className="flex items-center justify-between"><span>Tempo líquido</span><strong>{formatDuration(duracaoLiquida) || '-'}</strong></div>
-                <div className="flex items-center justify-between"><span>Mão de obra</span><strong>{formatCurrency(custoMaoObraEstimado)}</strong></div>
-                <div className="flex items-center justify-between"><span>Materiais</span><strong>{formatCurrency(custoMateriais)}</strong></div>
-                <div className="flex items-center justify-between"><span>Terceiros</span><strong>{formatCurrency(custoTerceirosValor)}</strong></div>
-                <div className="h-px bg-border" />
-                <div className="flex items-center justify-between text-base"><span>Total estimado</span><strong className="text-primary">{formatCurrency(custoTotalEstimado)}</strong></div>
-
-                <div className="h-px bg-border my-1" />
-                <p className="text-xs text-muted-foreground">Checklist</p>
-                <div className="h-2 bg-muted rounded-full overflow-hidden">
-                  <div className="h-full bg-primary transition-all" style={{ width: `${progressoChecklist}%` }} />
-                </div>
-                {checklist.map((item) => (
-                  <div key={item.label} className="flex items-center gap-2 text-sm">
-                    {item.ok ? <Check className="h-4 w-4 text-success" /> : (item as any).optional ? <span className="h-4 w-4 text-muted-foreground text-xs text-center">—</span> : <AlertTriangle className="h-4 w-4 text-warning" />}
-                    <span>{item.label}{(item as any).optional ? ' (opcional)' : ''}</span>
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                  <div className="bg-muted/30 rounded-lg p-3 border border-border/50">
+                    <p className="text-xs text-muted-foreground mb-0.5">Tempo bruto</p>
+                    <p className="font-mono font-bold">{formatDuration(duracaoBruta) || '-'}</p>
                   </div>
-                ))}
+                  <div className="bg-muted/30 rounded-lg p-3 border border-border/50">
+                    <p className="text-xs text-muted-foreground mb-0.5">Pausas</p>
+                    <p className="font-mono font-bold">{formatDuration(minutosPausas) || '0min'}</p>
+                  </div>
+                  <div className="bg-muted/30 rounded-lg p-3 border border-border/50">
+                    <p className="text-xs text-muted-foreground mb-0.5">Tempo líquido</p>
+                    <p className="font-mono font-bold">{formatDuration(duracaoLiquida) || '-'}</p>
+                  </div>
+                  <div className="bg-muted/30 rounded-lg p-3 border border-border/50">
+                    <p className="text-xs text-muted-foreground mb-0.5">Mão de obra</p>
+                    <p className="font-mono font-bold">{formatCurrency(custoMaoObraEstimado)}</p>
+                  </div>
+                  <div className="bg-muted/30 rounded-lg p-3 border border-border/50">
+                    <p className="text-xs text-muted-foreground mb-0.5">Materiais</p>
+                    <p className="font-mono font-bold">{formatCurrency(custoMateriais)}</p>
+                  </div>
+                  <div className="bg-muted/30 rounded-lg p-3 border border-border/50">
+                    <p className="text-xs text-muted-foreground mb-0.5">Terceiros</p>
+                    <p className="font-mono font-bold">{formatCurrency(custoTerceirosValor)}</p>
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between bg-primary/5 border border-primary/20 rounded-lg p-3">
+                  <span className="font-semibold">Total estimado</span>
+                  <span className="font-mono font-bold text-lg text-primary">{formatCurrency(custoTotalEstimado)}</span>
+                </div>
+
+                <div className="space-y-2 pt-1">
+                  <p className="text-xs text-muted-foreground font-medium">Checklist de validação</p>
+                  <div className="h-2 bg-muted rounded-full overflow-hidden">
+                    <div className="h-full bg-primary transition-all" style={{ width: `${progressoChecklist}%` }} />
+                  </div>
+                  {checklist.map((item) => (
+                    <div key={item.label} className="flex items-center gap-2 text-sm">
+                      {item.ok ? <Check className="h-4 w-4 text-success" /> : (item as any).optional ? <span className="h-4 w-4 text-muted-foreground text-xs text-center">—</span> : <AlertTriangle className="h-4 w-4 text-warning" />}
+                      <span>{item.label}{(item as any).optional ? ' (opcional)' : ''}</span>
+                    </div>
+                  ))}
+                </div>
+
                 <Button
                   type="submit"
                   form="close-os-form"
-                  className="w-full gap-2 h-11"
+                  className="w-full gap-2 h-11 mt-2"
                   disabled={isSubmitting || !canSubmit}
                 >
                   {isSubmitting ? (
@@ -889,8 +1111,8 @@ export default function FecharOS() {
               </CardContent>
             </Card>
           </div>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 }

@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { OWNER_TABS, OWNER_TAB_LABELS } from '@/pages/owner2/owner2Types'
-import type { OwnerTab, CompanyCredentialNote, CriticalActionRequest } from '@/pages/owner2/owner2Types'
+import type { CompanyCredentialNote, CriticalActionRequest } from '@/pages/owner2/owner2Types'
 
 describe('owner2Types', () => {
   it('OWNER_TABS has 15 entries', () => {

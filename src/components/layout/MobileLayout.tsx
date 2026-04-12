@@ -9,6 +9,7 @@ import { useOfflineSync } from '@/hooks/useOfflineSync';
 export function MobileLayout() {
   const { isAuthenticated, isLoading, isHydrating, authStatus, effectiveRole, forcePasswordChange } = useAuth();
   const location = useLocation();
+  const { isOnline, pendingCount } = useOfflineSync();
 
   // Loading states
   if (isLoading || isHydrating || authStatus === 'loading' || authStatus === 'hydrating') {
@@ -39,8 +40,6 @@ export function MobileLayout() {
   if (!allowedPaths.some(p => location.pathname === p || location.pathname.startsWith(p + '/'))) {
     return <Navigate to={defaultPath} replace />;
   }
-
-  const { isOnline, pendingCount } = useOfflineSync();
 
   return (
     <DeviceBindingGuard>

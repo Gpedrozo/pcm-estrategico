@@ -1,5 +1,0 @@
-AUTH_LOGIN_WRONG_STATUS=HTTP/1.1 400 Bad Request
-AUTH_LOGIN_WRONG_BODY={"error":"Email and password required","details":null}
-AUTH_TOKEN_KNOWN_STATUS=HTTP/1.1 400 Bad Request
-AUTH_TOKEN_KNOWN_BODY={"code":400,"error_code":"bad_json","msg":"Could not parse request body as JSON: invalid character 'e' looking for beginning of object key string"}
-ADMIN_USERS_STATUS=HTTP/1.1 200 OK

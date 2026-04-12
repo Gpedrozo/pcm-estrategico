@@ -19,6 +19,7 @@ import { NativeStackScreenProps, NativeStackNavigationProp } from '@react-naviga
 import uuid from 'react-native-uuid';
 import { useAuth } from '../contexts/AuthContext';
 import { writeAuditLog } from '../lib/audit';
+import { logger } from '../lib/logger';
 import {
   getOrdemServicoById,
   upsertExecucao,
@@ -130,7 +131,7 @@ export default function ExecutionScreen() {
               rpcSuccess = true;
               // Atualizar local para refletir fechamento
               await upsertOrdemServico({ ...os, status: 'FECHADA', data_fechamento: now, updated_at: now });
-              console.log('[exec] OS fechada via RPC atômica:', rpcResult);
+              logger.info('exec', 'OS fechada via RPC atômica', { rpcResult });
             } else {
               console.warn('[exec] RPC falhou, usando fallback local:', rpcError?.message);
             }
@@ -226,7 +227,7 @@ export default function ExecutionScreen() {
             if (!rpcError && rpcResult) {
               rpcSuccess = true;
               await upsertOrdemServico({ ...os, status: 'FECHADA', data_fechamento: now, updated_at: now });
-              console.log('[exec] OS fechada via RPC atômica (manual):', rpcResult);
+              logger.info('exec', 'OS fechada via RPC atômica (manual)', { rpcResult });
             }
           } catch { /* fallback to local */ }
         }

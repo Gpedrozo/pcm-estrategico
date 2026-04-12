@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -8,8 +8,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Plus, Search, ShieldAlert, AlertTriangle, FileWarning, Calendar, GraduationCap, Trash2 } from 'lucide-react';
+import { Plus, Search, ShieldAlert, AlertTriangle, FileWarning, Calendar, GraduationCap, Trash2, HardHat, FileSearch2, BarChart3, Printer, Download, FileSpreadsheet, FileText } from 'lucide-react';
+import { useReactToPrint } from 'react-to-print';
 import { useIncidentesSSMA, useCreateIncidenteSSMA, usePermissoesTrabalho, useCreatePermissaoTrabalho } from '@/hooks/useSSMA';
+import { useEPIs, useCreateEPI, useEntregasEPI, useCreateEntregaEPI } from '@/hooks/useEPIs';
+import { useFichasSeguranca, useCreateFichaSeguranca, useUpdateFichaSeguranca } from '@/hooks/useFichasSeguranca';
 import {
   useTreinamentosSSMA,
   useCreateTreinamentoSSMA,
@@ -22,14 +25,42 @@ import {
 import { useEquipamentos } from '@/hooks/useEquipamentos';
 import { useAuth } from '@/contexts/AuthContext';
 import { useFormDraft } from '@/hooks/useFormDraft';
+import { useDadosEmpresa } from '@/hooks/useDadosEmpresa';
+import { SSMADashboard } from '@/components/ssma/SSMADashboard';
+import { FichaEPIPrintTemplate } from '@/components/ssma/FichaEPIPrintTemplate';
+import { FISPQDocumentos, type DocumentoAnexo } from '@/components/ssma/FISPQDocumentos';
+import { FISPQPrintTemplate } from '@/components/ssma/FISPQPrintTemplate';
+import {
+  exportIncidentesPDF, exportIncidentesXLSX,
+  exportTreinamentosPDF, exportTreinamentosXLSX,
+  exportEstoqueEPIPDF, exportEstoqueEPIXLSX,
+  exportFISPQsXLSX,
+} from '@/lib/ssmaExport';
+import type { FichaSegurancaRow } from '@/hooks/useFichasSeguranca';
 
 export default function SSMA() {
   const { user } = useAuth();
   const [search, setSearch] = useState('');
-  const [activeTab, setActiveTab] = useState('incidentes');
+  const [activeTab, setActiveTab] = useState('dashboard');
   const [isIncidenteModalOpen, setIsIncidenteModalOpen] = useState(false);
   const [isPTModalOpen, setIsPTModalOpen] = useState(false);
   const [isTreinamentoModalOpen, setIsTreinamentoModalOpen] = useState(false);
+  const [isEPIModalOpen, setIsEPIModalOpen] = useState(false);
+  const [isEntregaEPIModalOpen, setIsEntregaEPIModalOpen] = useState(false);
+  const [isFichaModalOpen, setIsFichaModalOpen] = useState(false);
+
+  // Estados para impressão de Ficha EPI
+  const [fichaEPIColaborador, setFichaEPIColaborador] = useState('');
+  const [isFichaEPIPrintOpen, setIsFichaEPIPrintOpen] = useState(false);
+  const fichaEPIPrintRef = useRef<HTMLDivElement>(null);
+  const handlePrintFichaEPI = useReactToPrint({ contentRef: fichaEPIPrintRef });
+
+  // Estados para impressão de FISPQ
+  const [fichaParaImprimir, setFichaParaImprimir] = useState<FichaSegurancaRow | null>(null);
+  const fispqPrintRef = useRef<HTMLDivElement>(null);
+  const handlePrintFISPQ = useReactToPrint({ contentRef: fispqPrintRef });
+
+  const { data: empresa } = useDadosEmpresa();
 
   const [incidenteForm, setIncidenteForm] = useState({
     tipo: 'QUASE_ACIDENTE' as 'ACIDENTE' | 'QUASE_ACIDENTE' | 'INCIDENTE_AMBIENTAL' | 'DESVIO',
@@ -71,14 +102,58 @@ export default function SSMA() {
   });
   const { clearDraft: clearTreinamentoDraft } = useFormDraft('draft:ssma-treinamento', treinamentoForm, setTreinamentoForm);
 
+  const [epiForm, setEPIForm] = useState({
+    nome: '',
+    categoria: 'PROTECAO_CABECA' as string,
+    numero_ca: '',
+    fabricante: '',
+    validade_ca: '',
+    estoque_atual: 0,
+    estoque_minimo: 0,
+  });
+
+  const [entregaForm, setEntregaForm] = useState({
+    epi_id: '',
+    colaborador_nome: '',
+    quantidade: 1,
+    data_entrega: new Date().toISOString().split('T')[0],
+    motivo: '',
+    observacoes: '',
+  });
+
+  const [fichaForm, setFichaForm] = useState({
+    nome_produto: '',
+    codigo: '',
+    fabricante: '',
+    classificacao_ghs: '',
+    perigos_principais: '',
+    medidas_emergencia: '',
+    primeiros_socorros: '',
+    armazenamento: '',
+    epi_recomendado: '',
+    data_validade: '',
+  });
+
   const { data: incidentes, isLoading: loadingIncidentes } = useIncidentesSSMA();
   const { data: permissoes, isLoading: loadingPT } = usePermissoesTrabalho();
   const { data: treinamentos, isLoading: loadingTreinamentos } = useTreinamentosSSMA();
+  const { data: epis, isLoading: loadingEPIs } = useEPIs();
+  const { data: entregasEPI } = useEntregasEPI();
+  const { data: fichas, isLoading: loadingFichas } = useFichasSeguranca();
   const { data: equipamentos } = useEquipamentos();
   const createIncidente = useCreateIncidenteSSMA();
   const createPT = useCreatePermissaoTrabalho();
   const createTreinamento = useCreateTreinamentoSSMA();
   const deleteTreinamento = useDeleteTreinamentoSSMA();
+  const createEPI = useCreateEPI();
+  const createEntregaEPI = useCreateEntregaEPI();
+  const createFicha = useCreateFichaSeguranca();
+  const updateFicha = useUpdateFichaSeguranca();
+
+  // Callback para salvar arquivo/anexos na FISPQ
+  const handleFichaDocumentoSalvo = (fichaId: string, arquivo_url: string | null, documentos_anexos: DocumentoAnexo[]) => {
+    updateFicha.mutate({ id: fichaId, arquivo_url, documentos_anexos: documentos_anexos as unknown });
+  };
 
   const handleSubmitIncidente = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -141,6 +216,53 @@ export default function SSMA() {
     });
   };
 
+  const handleSubmitEPI = async (e: React.FormEvent) => {
+    e.preventDefault();
+    await createEPI.mutateAsync({
+      nome: epiForm.nome,
+      categoria: epiForm.categoria,
+      numero_ca: epiForm.numero_ca || null,
+      fabricante: epiForm.fabricante || null,
+      validade_ca: epiForm.validade_ca || null,
+      estoque_atual: epiForm.estoque_atual,
+      estoque_minimo: epiForm.estoque_minimo,
+    });
+    setIsEPIModalOpen(false);
+    setEPIForm({ nome: '', categoria: 'PROTECAO_CABECA', numero_ca: '', fabricante: '', validade_ca: '', estoque_atual: 0, estoque_minimo: 0 });
+  };
+
+  const handleSubmitEntregaEPI = async (e: React.FormEvent) => {
+    e.preventDefault();
+    await createEntregaEPI.mutateAsync({
+      epi_id: entregaForm.epi_id,
+      colaborador_nome: entregaForm.colaborador_nome,
+      quantidade: entregaForm.quantidade,
+      data_entrega: entregaForm.data_entrega,
+      motivo: entregaForm.motivo || null,
+      observacoes: entregaForm.observacoes || null,
+    });
+    setIsEntregaEPIModalOpen(false);
+    setEntregaForm({ epi_id: '', colaborador_nome: '', quantidade: 1, data_entrega: new Date().toISOString().split('T')[0], motivo: '', observacoes: '' });
+  };
+
+  const handleSubmitFicha = async (e: React.FormEvent) => {
+    e.preventDefault();
+    await createFicha.mutateAsync({
+      nome_produto: fichaForm.nome_produto,
+      codigo: fichaForm.codigo || null,
+      fabricante: fichaForm.fabricante || null,
+      classificacao_ghs: fichaForm.classificacao_ghs || null,
+      perigos_principais: fichaForm.perigos_principais || null,
+      medidas_emergencia: fichaForm.medidas_emergencia || null,
+      primeiros_socorros: fichaForm.primeiros_socorros || null,
+      armazenamento: fichaForm.armazenamento || null,
+      epi_recomendado: fichaForm.epi_recomendado || null,
+      data_validade: fichaForm.data_validade || null,
+    });
+    setIsFichaModalOpen(false);
+    setFichaForm({ nome_produto: '', codigo: '', fabricante: '', classificacao_ghs: '', perigos_principais: '', medidas_emergencia: '', primeiros_socorros: '', armazenamento: '', epi_recomendado: '', data_validade: '' });
+  };
+
   const getStatusTreinamentoBadge = (status: string) => {
     const styles: Record<string, string> = {
       'VALIDO': 'bg-success/10 text-success',
@@ -195,7 +317,7 @@ export default function SSMA() {
     return styles[status] || '';
   };
 
-  const isLoading = loadingIncidentes || loadingPT || loadingTreinamentos;
+  const isLoading = loadingIncidentes || loadingPT || loadingTreinamentos || loadingEPIs || loadingFichas;
 
   if (isLoading) {
     return (
@@ -211,12 +333,12 @@ export default function SSMA() {
       <div className="module-page-header flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-foreground">SSMA - Saúde, Segurança e Meio Ambiente</h1>
-          <p className="text-muted-foreground">Gestão de incidentes, permissões de trabalho e treinamentos</p>
+          <p className="text-muted-foreground">Gestão de incidentes, permissões de trabalho, treinamentos, EPIs e fichas de segurança</p>
         </div>
       </div>
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-4 lg:grid-cols-8 gap-4">
         <div className="bg-card border border-border rounded-lg p-4">
           <div className="flex items-center gap-2">
             <ShieldAlert className="h-5 w-5 text-destructive" />
@@ -259,6 +381,20 @@ export default function SSMA() {
           </div>
           <p className="text-2xl font-bold text-destructive">{treinamentos?.filter(t => t.status === 'VENCIDO').length || 0}</p>
         </div>
+        <div className="bg-card border border-border rounded-lg p-4">
+          <div className="flex items-center gap-2">
+            <HardHat className="h-5 w-5 text-primary" />
+            <p className="text-sm text-muted-foreground">EPIs Estoque Baixo</p>
+          </div>
+          <p className="text-2xl font-bold text-primary">{epis?.filter(e => e.ativo && e.estoque_atual <= e.estoque_minimo).length || 0}</p>
+        </div>
+        <div className="bg-card border border-border rounded-lg p-4">
+          <div className="flex items-center gap-2">
+            <FileSearch2 className="h-5 w-5 text-muted-foreground" />
+            <p className="text-sm text-muted-foreground">FISPQs Ativas</p>
+          </div>
+          <p className="text-2xl font-bold">{fichas?.filter(f => f.ativo).length || 0}</p>
+        </div>
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
@@ -267,6 +403,8 @@ export default function SSMA() {
             <TabsTrigger value="incidentes">Incidentes</TabsTrigger>
             <TabsTrigger value="permissoes">Permissões de Trabalho</TabsTrigger>
             <TabsTrigger value="treinamentos">Treinamentos / NRs</TabsTrigger>
+            <TabsTrigger value="epis">EPIs</TabsTrigger>
+            <TabsTrigger value="fichas">FISPQs</TabsTrigger>
           </TabsList>
           {activeTab === 'incidentes' ? (
             <Button onClick={() => setIsIncidenteModalOpen(true)} className="gap-2">
@@ -276,9 +414,22 @@ export default function SSMA() {
             <Button onClick={() => setIsPTModalOpen(true)} className="gap-2">
               <Plus className="h-4 w-4" />Nova Permissão
             </Button>
-          ) : (
+          ) : activeTab === 'treinamentos' ? (
             <Button onClick={() => setIsTreinamentoModalOpen(true)} className="gap-2">
               <Plus className="h-4 w-4" />Novo Treinamento
+            </Button>
+          ) : activeTab === 'epis' ? (
+            <div className="flex gap-2">
+              <Button onClick={() => setIsEPIModalOpen(true)} className="gap-2">
+                <Plus className="h-4 w-4" />Cadastrar EPI
+              </Button>
+              <Button variant="outline" onClick={() => setIsEntregaEPIModalOpen(true)} className="gap-2">
+                <Plus className="h-4 w-4" />Registrar Entrega
+              </Button>
+            </div>
+          ) : (
+            <Button onClick={() => setIsFichaModalOpen(true)} className="gap-2">
+              <Plus className="h-4 w-4" />Nova FISPQ
             </Button>
           )}
         </div>
@@ -416,6 +567,136 @@ export default function SSMA() {
                         </tr>
                       );
                     })
+                )}
+              </tbody>
+            </table>
+          </div>
+        </TabsContent>
+
+        {/* ── TAB EPIs ────────────────────────────────── */}
+        <TabsContent value="epis" className="mt-4">
+          <div className="bg-card border border-border rounded-lg overflow-hidden">
+            <table className="table-industrial">
+              <thead>
+                <tr>
+                  <th>Nome</th>
+                  <th>Categoria</th>
+                  <th>CA</th>
+                  <th>Fabricante</th>
+                  <th>Validade CA</th>
+                  <th>Estoque</th>
+                  <th>Mínimo</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {epis?.length === 0 ? (
+                  <tr><td colSpan={8} className="text-center py-8 text-muted-foreground">Nenhum EPI cadastrado</td></tr>
+                ) : (
+                  epis?.filter(e => {
+                    if (!search) return true;
+                    const s = search.toLowerCase();
+                    return e.nome.toLowerCase().includes(s) || e.categoria.toLowerCase().includes(s) || (e.numero_ca || '').toLowerCase().includes(s);
+                  }).map((epi) => {
+                    const estoqueBaixo = epi.estoque_atual <= epi.estoque_minimo;
+                    return (
+                      <tr key={epi.id}>
+                        <td className="font-medium">{epi.nome}</td>
+                        <td><Badge variant="outline">{epi.categoria.replace(/_/g, ' ')}</Badge></td>
+                        <td className="font-mono">{epi.numero_ca || '—'}</td>
+                        <td>{epi.fabricante || '—'}</td>
+                        <td>{epi.validade_ca ? new Date(epi.validade_ca).toLocaleDateString('pt-BR') : '—'}</td>
+                        <td className={`font-mono font-bold ${estoqueBaixo ? 'text-destructive' : 'text-success'}`}>{epi.estoque_atual}</td>
+                        <td className="font-mono">{epi.estoque_minimo}</td>
+                        <td>
+                          {estoqueBaixo ? (
+                            <Badge variant="destructive">Estoque Baixo</Badge>
+                          ) : (
+                            <Badge className="bg-success/10 text-success">OK</Badge>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
+              </tbody>
+            </table>
+          </div>
+          {/* Últimas Entregas */}
+          {(entregasEPI?.length ?? 0) > 0 && (
+            <div className="bg-card border border-border rounded-lg overflow-hidden mt-4">
+              <div className="p-4 border-b border-border">
+                <h3 className="font-semibold">Últimas Entregas de EPI</h3>
+              </div>
+              <table className="table-industrial">
+                <thead>
+                  <tr>
+                    <th>EPI</th>
+                    <th>Colaborador</th>
+                    <th>Qtd</th>
+                    <th>Data Entrega</th>
+                    <th>Motivo</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {entregasEPI?.slice(0, 20).map((ent) => {
+                    const epiNome = epis?.find(e => e.id === ent.epi_id)?.nome || ent.epi_id.slice(0, 8);
+                    return (
+                      <tr key={ent.id}>
+                        <td className="font-medium">{epiNome}</td>
+                        <td>{ent.colaborador_nome}</td>
+                        <td className="font-mono">{ent.quantidade}</td>
+                        <td>{new Date(ent.data_entrega).toLocaleDateString('pt-BR')}</td>
+                        <td className="max-w-[200px] truncate">{ent.motivo || '—'}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </TabsContent>
+
+        {/* ── TAB FISPQs ──────────────────────────────── */}
+        <TabsContent value="fichas" className="mt-4">
+          <div className="bg-card border border-border rounded-lg overflow-hidden">
+            <table className="table-industrial">
+              <thead>
+                <tr>
+                  <th>Código</th>
+                  <th>Produto</th>
+                  <th>Fabricante</th>
+                  <th>Classif. GHS</th>
+                  <th>EPI Recomendado</th>
+                  <th>Validade</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {fichas?.length === 0 ? (
+                  <tr><td colSpan={7} className="text-center py-8 text-muted-foreground">Nenhuma FISPQ cadastrada</td></tr>
+                ) : (
+                  fichas?.filter(f => {
+                    if (!search) return true;
+                    const s = search.toLowerCase();
+                    return f.nome_produto.toLowerCase().includes(s) || (f.codigo || '').toLowerCase().includes(s) || (f.fabricante || '').toLowerCase().includes(s);
+                  }).map((ficha) => (
+                    <tr key={ficha.id}>
+                      <td className="font-mono">{ficha.codigo || '—'}</td>
+                      <td className="font-medium">{ficha.nome_produto}</td>
+                      <td>{ficha.fabricante || '—'}</td>
+                      <td>{ficha.classificacao_ghs || '—'}</td>
+                      <td className="max-w-[200px] truncate">{ficha.epi_recomendado || '—'}</td>
+                      <td>{ficha.data_validade ? new Date(ficha.data_validade).toLocaleDateString('pt-BR') : '—'}</td>
+                      <td>
+                        {ficha.ativo ? (
+                          <Badge className="bg-success/10 text-success">Ativa</Badge>
+                        ) : (
+                          <Badge variant="secondary">Inativa</Badge>
+                        )}
+                      </td>
+                    </tr>
+                  ))
                 )}
               </tbody>
             </table>
@@ -639,6 +920,171 @@ export default function SSMA() {
             <div className="flex gap-3 pt-4">
               <Button type="submit" className="flex-1" disabled={createTreinamento.isPending}>Registrar Treinamento</Button>
               <Button type="button" variant="outline" onClick={() => setIsTreinamentoModalOpen(false)}>Cancelar</Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* EPI Modal */}
+      <Dialog open={isEPIModalOpen} onOpenChange={setIsEPIModalOpen}>
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+          <DialogHeader><DialogTitle>Cadastrar EPI</DialogTitle></DialogHeader>
+          <form onSubmit={handleSubmitEPI} className="space-y-4">
+            <div className="space-y-2">
+              <Label>Nome do EPI *</Label>
+              <Input value={epiForm.nome} onChange={(e) => setEPIForm({...epiForm, nome: e.target.value})} required placeholder="Ex: Capacete de Segurança classe B" />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Categoria *</Label>
+                <Select value={epiForm.categoria} onValueChange={(v) => setEPIForm({...epiForm, categoria: v})}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="PROTECAO_CABECA">Proteção Cabeça</SelectItem>
+                    <SelectItem value="PROTECAO_OLHOS">Proteção Olhos/Face</SelectItem>
+                    <SelectItem value="PROTECAO_AUDITIVA">Proteção Auditiva</SelectItem>
+                    <SelectItem value="PROTECAO_RESPIRATORIA">Proteção Respiratória</SelectItem>
+                    <SelectItem value="PROTECAO_MAOS">Proteção Mãos</SelectItem>
+                    <SelectItem value="PROTECAO_PES">Proteção Pés</SelectItem>
+                    <SelectItem value="PROTECAO_CORPO">Proteção Corpo</SelectItem>
+                    <SelectItem value="PROTECAO_QUEDAS">Proteção Quedas</SelectItem>
+                    <SelectItem value="OUTROS">Outros</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Nº CA</Label>
+                <Input value={epiForm.numero_ca} onChange={(e) => setEPIForm({...epiForm, numero_ca: e.target.value})} placeholder="Ex: 12345" />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Fabricante</Label>
+                <Input value={epiForm.fabricante} onChange={(e) => setEPIForm({...epiForm, fabricante: e.target.value})} />
+              </div>
+              <div className="space-y-2">
+                <Label>Validade CA</Label>
+                <Input type="date" value={epiForm.validade_ca} onChange={(e) => setEPIForm({...epiForm, validade_ca: e.target.value})} />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Estoque Atual</Label>
+                <Input type="number" min={0} value={epiForm.estoque_atual} onChange={(e) => setEPIForm({...epiForm, estoque_atual: parseInt(e.target.value) || 0})} />
+              </div>
+              <div className="space-y-2">
+                <Label>Estoque Mínimo</Label>
+                <Input type="number" min={0} value={epiForm.estoque_minimo} onChange={(e) => setEPIForm({...epiForm, estoque_minimo: parseInt(e.target.value) || 0})} />
+              </div>
+            </div>
+            <div className="flex gap-3 pt-4">
+              <Button type="submit" className="flex-1" disabled={createEPI.isPending}>Cadastrar EPI</Button>
+              <Button type="button" variant="outline" onClick={() => setIsEPIModalOpen(false)}>Cancelar</Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Entrega EPI Modal */}
+      <Dialog open={isEntregaEPIModalOpen} onOpenChange={setIsEntregaEPIModalOpen}>
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+          <DialogHeader><DialogTitle>Registrar Entrega de EPI</DialogTitle></DialogHeader>
+          <form onSubmit={handleSubmitEntregaEPI} className="space-y-4">
+            <div className="space-y-2">
+              <Label>EPI *</Label>
+              <Select value={entregaForm.epi_id} onValueChange={(v) => setEntregaForm({...entregaForm, epi_id: v})}>
+                <SelectTrigger><SelectValue placeholder="Selecione o EPI" /></SelectTrigger>
+                <SelectContent>
+                  {epis?.filter(e => e.ativo).map(e => (
+                    <SelectItem key={e.id} value={e.id}>{e.nome} (CA: {e.numero_ca || 'N/A'})</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Colaborador *</Label>
+              <Input value={entregaForm.colaborador_nome} onChange={(e) => setEntregaForm({...entregaForm, colaborador_nome: e.target.value})} required placeholder="Nome completo do colaborador" />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Quantidade</Label>
+                <Input type="number" min={1} value={entregaForm.quantidade} onChange={(e) => setEntregaForm({...entregaForm, quantidade: parseInt(e.target.value) || 1})} />
+              </div>
+              <div className="space-y-2">
+                <Label>Data da Entrega</Label>
+                <Input type="date" value={entregaForm.data_entrega} onChange={(e) => setEntregaForm({...entregaForm, data_entrega: e.target.value})} />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label>Motivo</Label>
+              <Input value={entregaForm.motivo} onChange={(e) => setEntregaForm({...entregaForm, motivo: e.target.value})} placeholder="Ex: Substituição por desgaste" />
+            </div>
+            <div className="space-y-2">
+              <Label>Observações</Label>
+              <Textarea value={entregaForm.observacoes} onChange={(e) => setEntregaForm({...entregaForm, observacoes: e.target.value})} rows={2} />
+            </div>
+            <div className="flex gap-3 pt-4">
+              <Button type="submit" className="flex-1" disabled={createEntregaEPI.isPending}>Registrar Entrega</Button>
+              <Button type="button" variant="outline" onClick={() => setIsEntregaEPIModalOpen(false)}>Cancelar</Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Ficha de Segurança (FISPQ) Modal */}
+      <Dialog open={isFichaModalOpen} onOpenChange={setIsFichaModalOpen}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader><DialogTitle>Cadastrar FISPQ / Ficha de Segurança</DialogTitle></DialogHeader>
+          <form onSubmit={handleSubmitFicha} className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Código</Label>
+                <Input value={fichaForm.codigo} onChange={(e) => setFichaForm({...fichaForm, codigo: e.target.value})} placeholder="Ex: FISPQ-001" />
+              </div>
+              <div className="space-y-2">
+                <Label>Nome do Produto *</Label>
+                <Input value={fichaForm.nome_produto} onChange={(e) => setFichaForm({...fichaForm, nome_produto: e.target.value})} required placeholder="Ex: Óleo lubrificante SAE 15W40" />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Fabricante</Label>
+                <Input value={fichaForm.fabricante} onChange={(e) => setFichaForm({...fichaForm, fabricante: e.target.value})} />
+              </div>
+              <div className="space-y-2">
+                <Label>Classificação GHS</Label>
+                <Input value={fichaForm.classificacao_ghs} onChange={(e) => setFichaForm({...fichaForm, classificacao_ghs: e.target.value})} placeholder="Ex: Inflamável Cat. 3" />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label>Principais Perigos</Label>
+              <Textarea value={fichaForm.perigos_principais} onChange={(e) => setFichaForm({...fichaForm, perigos_principais: e.target.value})} rows={2} placeholder="Descreva os perigos do produto..." />
+            </div>
+            <div className="space-y-2">
+              <Label>Medidas de Emergência</Label>
+              <Textarea value={fichaForm.medidas_emergencia} onChange={(e) => setFichaForm({...fichaForm, medidas_emergencia: e.target.value})} rows={2} />
+            </div>
+            <div className="space-y-2">
+              <Label>Primeiros Socorros</Label>
+              <Textarea value={fichaForm.primeiros_socorros} onChange={(e) => setFichaForm({...fichaForm, primeiros_socorros: e.target.value})} rows={2} />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Armazenamento</Label>
+                <Textarea value={fichaForm.armazenamento} onChange={(e) => setFichaForm({...fichaForm, armazenamento: e.target.value})} rows={2} />
+              </div>
+              <div className="space-y-2">
+                <Label>EPI Recomendado</Label>
+                <Textarea value={fichaForm.epi_recomendado} onChange={(e) => setFichaForm({...fichaForm, epi_recomendado: e.target.value})} rows={2} placeholder="Ex: Luvas nitrílicas, óculos..." />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label>Data de Validade da Ficha</Label>
+              <Input type="date" value={fichaForm.data_validade} onChange={(e) => setFichaForm({...fichaForm, data_validade: e.target.value})} />
+            </div>
+            <div className="flex gap-3 pt-4">
+              <Button type="submit" className="flex-1" disabled={createFicha.isPending}>Cadastrar FISPQ</Button>
+              <Button type="button" variant="outline" onClick={() => setIsFichaModalOpen(false)}>Cancelar</Button>
             </div>
           </form>
         </DialogContent>

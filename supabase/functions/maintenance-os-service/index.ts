@@ -5,21 +5,24 @@ import { createRequestTrace, traceDurationMs, writeOperationalLog } from "../_sh
 import { enforceRateLimit } from "../_shared/rateLimit.ts";
 import { captureSystemError } from "../_shared/monitoring.ts";
 import { fail, ok, preflight, rejectIfOriginNotAllowed } from "../_shared/response.ts";
+import { z } from "../_shared/validation.ts";
 
-type Payload = {
-  action: "open_os" | "start_execution" | "close_os";
-  empresa_id: string;
-  os_id?: string;
-  tipo?: string;
-  prioridade?: string;
-  ativo_tag?: string;
-  equipamento?: string;
-  problema?: string;
-  servico_executado?: string;
-  mecanico_nome?: string;
-  tempo_execucao_min?: number;
-  custo_total?: number;
-};
+const MaintenanceSchema = z.object({
+  action: z.enum(["open_os", "start_execution", "close_os"]),
+  empresa_id: z.string().uuid(),
+  os_id: z.string().uuid().optional(),
+  tipo: z.string().max(50).optional(),
+  prioridade: z.string().max(50).optional(),
+  ativo_tag: z.string().max(100).optional(),
+  equipamento: z.string().max(200).optional(),
+  problema: z.string().max(2000).optional(),
+  servico_executado: z.string().max(2000).optional(),
+  mecanico_nome: z.string().max(200).optional(),
+  tempo_execucao_min: z.number().int().min(0).max(99999).optional(),
+  custo_total: z.number().min(0).max(999999999).optional(),
+});
+
+type Payload = z.infer<typeof MaintenanceSchema>;
 
 Deno.serve(async (req) => {
   const trace = createRequestTrace("maintenance-os-service", req);
@@ -35,8 +38,10 @@ Deno.serve(async (req) => {
   const auth = await requireUser(req);
   if ("error" in auth) return fail(auth.error ?? "Unauthorized", auth.status ?? 401, null, req);
 
-  const payload = (await req.json().catch(() => null)) as Payload | null;
-  if (!payload?.action || !payload.empresa_id) return fail("action and empresa_id are required", 400, null, req);
+  const raw = (await req.json().catch(() => null));
+  const parsed = MaintenanceSchema.safeParse(raw);
+  if (!parsed.success) return fail("action and empresa_id are required", 400, null, req);
+  const payload = parsed.data;
 
   const admin = adminClient();
 

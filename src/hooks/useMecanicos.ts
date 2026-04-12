@@ -13,7 +13,6 @@ export interface MecanicoRow {
   custo_hora: number | null;
   ativo: boolean;
   codigo_acesso?: string | null;
-  senha_acesso?: string | null;
   escala_trabalho?: string | null;
   folgas_planejadas?: string | null;
   ferias_inicio?: string | null;
@@ -30,7 +29,6 @@ export interface MecanicoInsert {
   custo_hora?: number | null;
   ativo?: boolean;
   codigo_acesso?: string | null;
-  senha_acesso?: string | null;
   escala_trabalho?: string | null;
   folgas_planejadas?: string | null;
   ferias_inicio?: string | null;
@@ -45,7 +43,6 @@ export interface MecanicoUpdate {
   custo_hora?: number | null;
   ativo?: boolean;
   codigo_acesso?: string | null;
-  senha_acesso?: string | null;
   escala_trabalho?: string | null;
   folgas_planejadas?: string | null;
   ferias_inicio?: string | null;
@@ -95,7 +92,7 @@ export function useCreateMecanico() {
         description: `${data.nome} foi cadastrado com sucesso.`,
       });
     },
-    onError: (error: any) => {
+    onError: (error: Error) => {
       toast({
         title: 'Erro ao cadastrar',
         description: error.message || 'Ocorreu um erro ao cadastrar o mecânico.',
@@ -124,7 +121,7 @@ export function useUpdateMecanico() {
         description: `${data.nome} foi atualizado com sucesso.`,
       });
     },
-    onError: (error: any) => {
+    onError: (error: Error) => {
       toast({
         title: 'Erro ao atualizar',
         description: error.message || 'Ocorreu um erro ao atualizar o mecânico.',
@@ -144,16 +141,16 @@ export function useDeleteMecanico() {
       if (!tenantId) throw new Error('Tenant não resolvido.');
       await mecanicosService.excluir(id, tenantId);
     },
-    onSuccess: () => {
+    onSuccess: (_data, deletedId) => {
       queryClient.invalidateQueries({ queryKey: ['mecanicos', tenantId] });
       queryClient.invalidateQueries({ queryKey: ['mecanicos-ativos', tenantId] });
-      writeAuditLog({ action: 'DELETE_MECANICO', table: 'mecanicos', empresaId: tenantId, source: 'useMecanicos', severity: 'warning' });
+      writeAuditLog({ action: 'DELETE_MECANICO', table: 'mecanicos', recordId: deletedId, empresaId: tenantId, source: 'useMecanicos', severity: 'warning' });
       toast({
         title: 'Mecânico Excluído',
         description: 'O mecânico foi removido com sucesso.',
       });
     },
-    onError: (error: any) => {
+    onError: (error: Error) => {
       toast({
         title: 'Erro ao excluir',
         description: error.message || 'Ocorreu um erro ao excluir o mecânico.',

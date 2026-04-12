@@ -1,0 +1,158 @@
+diff --git a/src/lib/reportGenerator.ts b/src/lib/reportGenerator.ts
+--- src/lib/reportGenerator.ts
++++ src/lib/reportGenerator.ts
+@@ -227,25 +227,22 @@
+ }
+ 
+ export function generateEquipmentTechnicalTemplate() {
+   const headers = [
+-    'ITEM', 'SUBITEM', 'COMPONENTE', 'ESPECIFICAÇÃO TÉCNICA', 'MATERIAL',
++    'NIVEL', 'COMPONENTE', 'ESPECIFICAÇÃO TÉCNICA', 'MATERIAL',
+     'DIMENSÃO / MODELO', 'NORMA / FABRICANTE', 'QTD', 'UNIDADE', 'TAG_ATIVO', 'OBSERVAÇÕES',
+   ];
+-  const sample = [
+-    '1',
+-    '1.1',
+-    'Rolamento do Mancal',
+-    'Rolamento autocompensador',
+-    'Aço',
+-    '22210',
+-    'SKF',
+-    '2',
+-    'un',
+-    'ELV-001',
+-    'Componente crítico de inspeção semanal',
++  // NIVEL usa notação de ponto para indicar hierarquia:
++  // 1 = componente raiz, 1.1 = subcomponente, 1.1.1 = sub-subcomponente, etc.
++  const samples = [
++    ['1',         'Motor Principal',     'Motor trifásico 75kW',  'Aço', '75kW/4P',   'WEG',  '1', 'un', 'ELV-001', 'Componente raiz nível 1'],
++    ['1.1',       'Estator',             'Enrolamento trifásico',  '',    '',           '',     '1', 'un', 'ELV-001', 'Subcomponente nível 1.1'],
++    ['1.1.1',     'Bobina Fase A',       'Cobre esmaltado 2,5mm²','Cu',  '2,5mm²',    'ABNT', '3', 'un', 'ELV-001', 'Nível 1.1.1'],
++    ['1.1.1.1',   'Fio de cobre',        'Condutor sólido',        'Cu',  '2,5mm',     'NBR',  '1', 'm',  'ELV-001', 'Nível 1.1.1.1'],
++    ['2',         'Rolamento do Mancal', 'Rolamento autocomp.',    'Aço', '22210',     'SKF',  '2', 'un', 'ELV-001', ''],
++    ['2.1',       'Retentor',            'Vedação',                'NBR', '60x80x10',  'SKF',  '1', 'un', 'ELV-001', ''],
+   ];
+-  const ws = XLSX.utils.aoa_to_sheet([headers, sample]);
++  const ws = XLSX.utils.aoa_to_sheet([headers, ...samples]);
+   ws['!cols'] = headers.map((h) => ({ wch: Math.max(h.length + 2, 22) }));
+   const wb = XLSX.utils.book_new();
+   XLSX.utils.book_append_sheet(wb, ws, 'ComponentesTecnicos');
+   XLSX.writeFile(wb, 'Modelo_Tecnico_Ativos_Componentes.xlsx');
+@@ -308,29 +305,73 @@
+         const errors: { row: number; reason: string }[] = [];
+ 
+         const firstRowHeaders = rows[0].map((c) => String(c || '').trim().toUpperCase());
+         const isTechnicalModel =
+-          firstRowHeaders.includes('ITEM') &&
+-          firstRowHeaders.includes('SUBITEM') &&
++          (firstRowHeaders.includes('NIVEL') ||
++            (firstRowHeaders.includes('ITEM') && firstRowHeaders.includes('SUBITEM'))) &&
+           firstRowHeaders.includes('COMPONENTE') &&
+           firstRowHeaders.includes('TAG_ATIVO');
+ 
+         if (isTechnicalModel) {
++          // Detecta se é o novo formato (NIVEL) ou o antigo (ITEM + SUBITEM)
++          const usesNivelFormat = firstRowHeaders.includes('NIVEL');
+           const equipmentByTag = new Map<string, any>();
+ 
+           for (let i = 1; i < rows.length; i++) {
+             const row = rows[i];
+             if (!row || row.length === 0) continue;
+ 
+-            const componenteNome = String(row[2] || '').trim();
+-            const tag = String(row[9] || '').trim().toUpperCase();
++            let nivelCode: string;
++            let componenteNome: string;
++            let tag: string;
++            let especTecnica: string;
++            let material: string;
++            let dimModelo: string;
++            let fabricante: string;
++            let qtd: number;
++            let unidade: string;
++            let observacoes: string;
++
++            if (usesNivelFormat) {
++              // NIVEL | COMPONENTE | ESPEC | MATERIAL | DIM/MODELO | FABRICANTE | QTD | UNIDADE | TAG_ATIVO | OBS
++              nivelCode      = String(row[0] || '').trim();
++              componenteNome = String(row[1] || '').trim();
++              especTecnica   = String(row[2] || '').trim();
++              material       = String(row[3] || '').trim();
++              dimModelo      = String(row[4] || '').trim();
++              fabricante     = String(row[5] || '').trim();
++              qtd            = Number(row[6] || 1) || 1;
++              unidade        = String(row[7] || '').trim();
++              tag            = String(row[8] || '').trim().toUpperCase();
++              observacoes    = String(row[9] || '').trim();
++            } else {
++              // ITEM | SUBITEM | COMPONENTE | ESPEC | MATERIAL | DIM/MODELO | FABRICANTE | QTD | UNIDADE | TAG_ATIVO | OBS
++              const item     = String(row[0] || '').trim();
++              const subitem  = String(row[1] || '').trim();
++              nivelCode      = subitem ? `${item}.${subitem}` : item;
++              componenteNome = String(row[2] || '').trim();
++              especTecnica   = String(row[3] || '').trim();
++              material       = String(row[4] || '').trim();
++              dimModelo      = String(row[5] || '').trim();
++              fabricante     = String(row[6] || '').trim();
++              qtd            = Number(row[7] || 1) || 1;
++              unidade        = String(row[8] || '').trim();
++              tag            = String(row[9] || '').trim().toUpperCase();
++              observacoes    = String(row[10] || '').trim();
++            }
++
+             if (!componenteNome && !tag) continue;
+ 
+             if (!tag) {
+               errors.push({ row: i + 1, reason: 'TAG_ATIVO vazio no modelo técnico' });
+               continue;
+             }
+ 
++            if (!nivelCode) {
++              errors.push({ row: i + 1, reason: 'NIVEL vazio' });
++              continue;
++            }
++
+             if (!equipmentByTag.has(tag)) {
+               equipmentByTag.set(tag, {
+                 tag,
+                 nome: `Ativo ${tag}`,
+@@ -343,23 +384,29 @@
+               });
+             }
+ 
+             if (componenteNome) {
++              // Determina o pai removendo o último segmento do nível
++              // Ex: "1.1.1" -> pai é "1.1"; "1" -> sem pai (raiz)
++              const nivelParts = nivelCode.split('.');
++              const parentNivelCode = nivelParts.length > 1 ? nivelParts.slice(0, -1).join('.') : null;
++
+               if (!componentesByTag[tag]) componentesByTag[tag] = [];
+               componentesByTag[tag].push({
+-                codigo: `${String(row[0] || '').trim()}-${String(row[1] || '').trim()}`.replace(/^[-]+|[-]+$/g, '') || `${tag}-${i}`,
++                nivelCode,
++                parentNivelCode,
++                codigo: `${tag}-${nivelCode}`,
+                 nome: componenteNome,
+                 tipo: 'OUTRO',
+-                fabricante: String(row[6] || '').trim() || null,
+-                modelo: String(row[5] || '').trim() || null,
+-                quantidade: Number(row[7] || 1) || 1,
+-                observacoes: String(row[10] || '').trim() || null,
++                fabricante: fabricante || null,
++                modelo: dimModelo || null,
++                quantidade: qtd,
++                observacoes: observacoes || null,
+                 especificacoes: {
+-                  especificacao_tecnica: String(row[3] || '').trim(),
+-                  material: String(row[4] || '').trim(),
+-                  unidade: String(row[8] || '').trim(),
+-                  item: String(row[0] || '').trim(),
+-                  subitem: String(row[1] || '').trim(),
++                  nivel: nivelCode,
++                  especificacao_tecnica: especTecnica,
++                  material,
++                  unidade,
+                 },
+               });
+             }
+           }

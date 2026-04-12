@@ -49,7 +49,8 @@ export function useDispositivosMoveis(empresaId?: string) {
         .from('dispositivos_moveis')
         .select('*')
         .eq('empresa_id', eid)
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: false })
+        .limit(500);
       if (error) throw error;
       return (data || []) as DispositivoMovel[];
     },
@@ -147,7 +148,8 @@ export function useQRCodesVinculacao(empresaId?: string) {
         .from('qrcodes_vinculacao')
         .select('*')
         .eq('empresa_id', eid)
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: false })
+        .limit(500);
       if (error) throw error;
       return (data || []) as QRCodeVinculacao[];
     },

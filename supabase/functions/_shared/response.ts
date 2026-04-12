@@ -65,19 +65,27 @@ export function resolveCorsHeaders(
   extraHeaders = "",
 ) {
   const origin = req?.headers.get("origin") ?? null;
-  const allowOrigin = origin && isAllowedOrigin(origin) ? origin : "";
+  const allowOrigin = origin && isAllowedOrigin(origin) ? origin : null;
 
   const allowHeadersBase = "authorization, x-client-info, apikey, content-type, x-allow-password-change";
   const allowHeaders = extraHeaders
     ? `${allowHeadersBase}, ${extraHeaders}`
     : allowHeadersBase;
 
-  return {
-    "Access-Control-Allow-Origin": allowOrigin,
+  const headers: Record<string, string> = {
     "Access-Control-Allow-Headers": allowHeaders,
     "Access-Control-Allow-Methods": methods,
+    "X-Content-Type-Options": "nosniff",
+    "X-Frame-Options": "DENY",
+    "Cache-Control": "no-cache, no-store, must-revalidate",
     Vary: "Origin",
   };
+
+  if (allowOrigin) {
+    headers["Access-Control-Allow-Origin"] = allowOrigin;
+  }
+
+  return headers;
 }
 
 export function rejectIfOriginNotAllowed(req: Request) {

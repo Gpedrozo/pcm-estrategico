@@ -7,6 +7,10 @@ import { useAuth } from '@/contexts/AuthContext';
 export interface ProfileRow {
   id: string;
   nome: string;
+  email: string | null;
+  empresa_id: string;
+  status?: string | null;
+  force_password_change: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -43,7 +47,8 @@ export function useUsuarios() {
         .select('*')
         .eq('empresa_id', tenantId)
         .neq('status', 'excluido')
-        .order('nome', { ascending: true });
+        .order('nome', { ascending: true })
+        .limit(500);
 
       if (profilesError) throw profilesError;
 
@@ -51,11 +56,10 @@ export function useUsuarios() {
       const { data: roles, error: rolesError } = await supabase
         .from('user_roles')
         .select('*')
-        .eq('empresa_id', tenantId);
+        .eq('empresa_id', tenantId)
+        .limit(500);
 
       if (rolesError) throw rolesError;
-
-      // Combine data
       const usuarios: UsuarioCompleto[] = (profiles || []).map(profile => {
         const userRole = roles?.find(r => r.user_id === profile.id);
         return {
@@ -123,10 +127,13 @@ export function useUpdateUsuarioNome() {
 
   return useMutation({
     mutationFn: async ({ userId, nome }: { userId: string; nome: string }) => {
+      if (!tenantId) throw new Error('Tenant não identificado.');
+
       const { error } = await supabase
         .from('profiles')
         .update({ nome })
-        .eq('id', userId);
+        .eq('id', userId)
+        .eq('empresa_id', tenantId);
 
       if (error) throw error;
 

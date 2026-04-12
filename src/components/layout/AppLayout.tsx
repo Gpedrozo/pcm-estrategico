@@ -9,7 +9,6 @@ import { AssistentePCM } from '@/components/assistente/AssistentePCM';
 import { GlobalSearch } from './GlobalSearch';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { getImpersonationExpiresAt, getImpersonationPayload, impersonateCompany, listPlatformCompanies, stopImpersonation } from '@/services/ownerPortal.service';
-import { supabase } from '@/integrations/supabase/client';
 import { resolveOrRepairTenantHost } from '@/lib/tenantDomain';
 import { useSubscriptionAlert } from '@/hooks/useSubscriptionAlert';
 import { createSessionTransferHash } from '@/lib/sessionTransfer';
@@ -407,10 +406,10 @@ export function AppLayout() {
     return <Navigate to="/solicitacoes" replace />;
   }
 
-  const technicianAllowedPaths = ['/dashboard', '/painel-mecanico', '/solicitacoes', '/os/nova', '/os/fechar', '/os/historico', '/manuais-operacao', '/manual', '/suporte'];
+  const technicianAllowedPaths = ['/dashboard', '/os/portal-mecanico', '/solicitacoes', '/os/nova', '/os/fechar', '/os/historico', '/manuais-operacao', '/manual', '/suporte'];
 
   if (effectiveRole === 'TECHNICIAN' && !technicianAllowedPaths.some(p => location.pathname === p || location.pathname.startsWith(p + '/'))) {
-    return <Navigate to="/painel-mecanico" replace />;
+    return <Navigate to="/os/portal-mecanico" replace />;
   }
 
   return (

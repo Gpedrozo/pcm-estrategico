@@ -1,6 +1,14 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { adminClient, requireTenantContext, requireUser } from "../_shared/auth.ts";
 import { fail, ok, preflight, rejectIfOriginNotAllowed } from "../_shared/response.ts";
+import { enforceRateLimit } from "../_shared/rateLimit.ts";
+import { z } from "../_shared/validation.ts";
+
+const QuerySchema = z.object({
+  period: z.enum(["month", "quarter", "year"]).default("month"),
+  tag: z.string().max(100).optional(),
+  empresa_id: z.string().uuid().optional(),
+});
 
 interface OrdemServico {
   id: string;
@@ -38,12 +46,20 @@ Deno.serve(async (req) => {
 
     const supabase = adminClient();
 
-    const url = new URL(req.url);
-    const period = url.searchParams.get("period") || "month"; // month, quarter, year
-    const tag = url.searchParams.get("tag"); // optional filter by tag
-    const empresaId = url.searchParams.get("empresa_id");
+    const rl = await enforceRateLimit(supabase, { scope: "kpi_report", identifier: auth.user.id, maxRequests: 30, windowSeconds: 60 });
+    if (!rl.allowed) return fail(rl.reason ?? "Rate limit exceeded", 429, null, req);
 
-    const scope = await requireTenantContext(supabase, req, auth.user.id, empresaId);
+    const url = new URL(req.url);
+    const parsed = QuerySchema.safeParse({
+      period: url.searchParams.get("period") ?? undefined,
+      tag: url.searchParams.get("tag") ?? undefined,
+      empresa_id: url.searchParams.get("empresa_id") ?? undefined,
+    });
+    if (!parsed.success) return fail("Invalid query parameters", 400, null, req);
+
+    const { period, tag, empresa_id: empresaId } = parsed.data;
+
+    const scope = await requireTenantContext(supabase, req, auth.user.id, empresaId ?? null);
     if ("error" in scope) return fail(scope.error, scope.status, null, req);
 
     // Calculate date range

@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Plus, Search, Building2, Star, Phone, Mail } from 'lucide-react';
-import { useFornecedores, useCreateFornecedor, type FornecedorRow } from '@/hooks/useFornecedores';
+import { useFornecedores, useCreateFornecedor } from '@/hooks/useFornecedores';
 import { useFormDraft } from '@/hooks/useFormDraft';
 
 export default function Fornecedores() {

@@ -4,8 +4,16 @@
  * Usa RAG simplificado: o conteúdo do manual é inline no prompt.
  */
 
-import { requireUser, tokenFromRequest } from "../_shared/auth.ts";
-import { preflight, ok, fail, resolveCorsHeaders } from "../_shared/response.ts";
+import { adminClient, requireUser, requireTenantContext, tokenFromRequest } from "../_shared/auth.ts";
+import { preflight, ok, fail, resolveCorsHeaders, rejectIfOriginNotAllowed } from "../_shared/response.ts";
+import { enforceRateLimit } from "../_shared/rateLimit.ts";
+import { z } from "../_shared/validation.ts";
+
+const AssistenteSchema = z.object({
+  pergunta: z.string().min(3, "Pergunta muito curta.").max(500, "Pergunta muito longa (máximo 500 caracteres)."),
+  role: z.string().max(50).optional(),
+  contexto_tela: z.string().max(500).optional(),
+});
 
 declare const Deno: any;
 
@@ -204,6 +212,9 @@ ${MANUAL_KNOWLEDGE_BASE}`;
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") return preflight(req);
 
+  const originError = rejectIfOriginNotAllowed(req);
+  if (originError) return originError;
+
   // Health check
   if (req.method === "GET") {
     return ok({
@@ -222,19 +233,26 @@ Deno.serve(async (req: Request) => {
 
     const { user } = authResult;
 
+    // Enforce tenant isolation — user must belong to a tenant
+    const admin = adminClient();
+    const scope = await requireTenantContext(admin, req, user.id, null);
+    if ("error" in scope) return fail(scope.error, scope.status, null, req);
+
+    // Rate limit: 10 AI calls per 60s per IP
+    const asstIp = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? req.headers.get("x-real-ip") ?? "unknown";
+    const rl = await enforceRateLimit(admin, { scope: "ai_assistente_pcm", identifier: `${scope.empresaId}:${asstIp}`, maxRequests: 10, windowSeconds: 60 });
+    if (!rl.allowed) return fail("Too many requests", 429, null, req);
+
     // Parse body
-    const body = await req.json();
-    const pergunta = String(body.pergunta ?? "").trim();
-    const role = String(body.role ?? "USUARIO").trim();
-    const contextoTela = body.contexto_tela ? String(body.contexto_tela).trim() : undefined;
-
-    if (!pergunta || pergunta.length < 3) {
-      return fail("Pergunta muito curta.", 400, null, req);
+    const rawBody = await req.json().catch(() => null);
+    const parsed = AssistenteSchema.safeParse(rawBody);
+    if (!parsed.success) {
+      const msg = parsed.error.issues[0]?.message ?? "Invalid request body";
+      return fail(msg, 400, null, req);
     }
-
-    if (pergunta.length > 500) {
-      return fail("Pergunta muito longa (máximo 500 caracteres).", 400, null, req);
-    }
+    const pergunta = parsed.data.pergunta.trim();
+    const role = (parsed.data.role ?? "USUARIO").trim();
+    const contextoTela = parsed.data.contexto_tela?.trim();
 
     if (!AI_KEY) {
       return fail("Assistente IA não configurado. Contacte o administrador.", 503, null, req);

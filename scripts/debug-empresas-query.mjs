@@ -1,9 +1,10 @@
 import { createClient } from '@supabase/supabase-js'
 
-const URL = process.env.SUPABASE_URL || 'https://dvwsferonoczgmvfubgu.supabase.co'
-const PUB = process.env.SUPABASE_PUBLISHABLE_KEY || 'sb_publishable_d0dYFE0Pp0GaM43BpDGvtw_7F9cCOXU'
-const EMAIL = process.env.OWNER_EMAIL || 'pedrozo@gppis.com.br'
-const PASSWORD = process.env.OWNER_PASSWORD || '@Gpp280693'
+const URL = process.env.SUPABASE_URL; if (!URL) throw new Error('SUPABASE_URL env var required')
+const PUB = process.env.SUPABASE_PUBLISHABLE_KEY; if (!PUB) throw new Error('SUPABASE_PUBLISHABLE_KEY env var required')
+const EMAIL = process.env.OWNER_EMAIL; if (!EMAIL) throw new Error('OWNER_EMAIL env var required')
+const PASSWORD = process.env.OWNER_PASSWORD
+if (!PASSWORD) throw new Error('OWNER_PASSWORD env var required')
 const EMPRESA_ID = process.argv[2] || 'c8a7bfeb-ffd3-41c6-b6e7-e144b09b0b29'
 const PROJECTION = process.argv[3] || 'id,nome,ativo,slug'
 

@@ -21,6 +21,8 @@ import { useExecucoesOS } from '@/hooks/useExecucoesOS';
 import { useEquipamentos } from '@/hooks/useEquipamentos';
 import { format, subMonths, startOfMonth, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { generateExcelReport } from '@/lib/reportGenerator';
+import { toast } from '@/hooks/use-toast';
 
 export default function Custos() {
   const [activeTab, setActiveTab] = useState('resumo');
@@ -209,7 +211,23 @@ export default function Custos() {
               <SelectItem value="none">Sem comparação</SelectItem>
             </SelectContent>
           </Select>
-          <Button variant="outline" className="gap-2">
+          <Button variant="outline" className="gap-2" onClick={() => {
+            if (!custosPorEquipamento.length) {
+              toast({ title: 'Sem dados para exportar', variant: 'destructive' });
+              return;
+            }
+            const columns = [
+              { header: 'TAG', key: 'tag' },
+              { header: 'Equipamento', key: 'equipamento' },
+              { header: 'Mão de Obra (R$)', key: 'maoObra' },
+              { header: 'Materiais (R$)', key: 'materiais' },
+              { header: 'Terceiros (R$)', key: 'terceiros' },
+              { header: 'Total (R$)', key: 'total' },
+              { header: 'Qtd OS', key: 'qtdOS' },
+            ];
+            generateExcelReport(custosPorEquipamento, columns, `Custos_Manutencao_${format(new Date(), 'yyyy-MM-dd')}`);
+            toast({ title: 'Relatório exportado com sucesso' });
+          }}>
             <Download className="h-4 w-4" />
             Exportar
           </Button>

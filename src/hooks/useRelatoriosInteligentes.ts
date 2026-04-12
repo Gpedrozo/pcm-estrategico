@@ -2,8 +2,7 @@ import { useMemo } from 'react';
 import { useOrdensServico, type OrdemServicoRow } from './useOrdensServico';
 import { useExecucoesOS, type ExecucaoOSRow } from './useExecucoesOS';
 import { useIndicadores } from './useIndicadores';
-import { useAuth } from '@/contexts/AuthContext';
-import { differenceInDays, differenceInHours, subDays, parseISO, format, startOfMonth, subMonths } from 'date-fns';
+import { differenceInDays, differenceInHours, subDays, parseISO, format } from 'date-fns';
 
 // ─── Tipos ──────────────────────────────────────────────────────
 export type AlertaSeveridade = 'critico' | 'alerta' | 'atencao' | 'ok';
@@ -108,15 +107,28 @@ function tendenciaFromVariacao(v: number): 'subindo' | 'caindo' | 'estavel' {
 }
 
 // ─── Hook Principal ─────────────────────────────────────────────
-export function useRelatoriosInteligentes() {
-  const { tenantId } = useAuth();
+export function useRelatoriosInteligentes(filterDateFrom?: string, filterDateTo?: string) {
   const { data: ordensServico, isLoading: loadingOS } = useOrdensServico();
   const { data: execucoes, isLoading: loadingExec } = useExecucoesOS();
   const { data: indicadores, isLoading: loadingInd } = useIndicadores();
 
   const now = useMemo(() => new Date(), []);
-  const periodo30d = useMemo(() => subDays(now, 30), [now]);
-  const periodo60d = useMemo(() => subDays(now, 60), [now]);
+
+  // Se filtros foram passados, usar; senão, default 30 dias
+  const periodoAtualStart = useMemo(() => {
+    if (filterDateFrom) { const d = parseISO(filterDateFrom); return Number.isNaN(d.getTime()) ? subDays(now, 30) : d; }
+    return subDays(now, 30);
+  }, [filterDateFrom, now]);
+
+  const periodoAtualEnd = useMemo(() => {
+    if (filterDateTo) { const d = parseISO(filterDateTo); if (!Number.isNaN(d.getTime())) { d.setHours(23, 59, 59, 999); return d; } }
+    return now;
+  }, [filterDateTo, now]);
+
+  // O período anterior tem a mesma duração, imediatamente antes
+  const duracaoDias = useMemo(() => Math.max(differenceInDays(periodoAtualEnd, periodoAtualStart), 1), [periodoAtualStart, periodoAtualEnd]);
+  const periodoAnteriorStart = useMemo(() => subDays(periodoAtualStart, duracaoDias), [periodoAtualStart, duracaoDias]);
+  const periodoAnteriorEnd = useMemo(() => periodoAtualStart, [periodoAtualStart]);
 
   // ── Separar OS por período ──────────────────────────────────
   const { osPeriodoAtual, osPeriodoAnterior } = useMemo(() => {
@@ -126,25 +138,25 @@ export function useRelatoriosInteligentes() {
     ordensServico.forEach(os => {
       const d = parseDateSafe(os.data_solicitacao);
       if (!d) return;
-      if (d >= periodo30d) atual.push(os);
-      else if (d >= periodo60d && d < periodo30d) anterior.push(os);
+      if (d >= periodoAtualStart && d <= periodoAtualEnd) atual.push(os);
+      else if (d >= periodoAnteriorStart && d < periodoAnteriorEnd) anterior.push(os);
     });
     return { osPeriodoAtual: atual, osPeriodoAnterior: anterior };
-  }, [ordensServico, periodo30d, periodo60d]);
+  }, [ordensServico, periodoAtualStart, periodoAtualEnd, periodoAnteriorStart, periodoAnteriorEnd]);
 
   // ── Separar execuções por período ───────────────────────────
-  const { execPeriodoAtual, execPeriodoAnterior } = useMemo(() => {
+  const { execPeriodoAnterior } = useMemo(() => {
     if (!execucoes) return { execPeriodoAtual: [], execPeriodoAnterior: [] };
     const atual: ExecucaoOSRow[] = [];
     const anterior: ExecucaoOSRow[] = [];
     execucoes.forEach(ex => {
       const d = parseDateSafe(ex.data_execucao);
       if (!d) return;
-      if (d >= periodo30d) atual.push(ex);
-      else if (d >= periodo60d && d < periodo30d) anterior.push(ex);
+      if (d >= periodoAtualStart && d <= periodoAtualEnd) atual.push(ex);
+      else if (d >= periodoAnteriorStart && d < periodoAnteriorEnd) anterior.push(ex);
     });
     return { execPeriodoAtual: atual, execPeriodoAnterior: anterior };
-  }, [execucoes, periodo30d, periodo60d]);
+  }, [execucoes, periodoAtualStart, periodoAtualEnd, periodoAnteriorStart, periodoAnteriorEnd]);
 
   // ── Calcular MTTR período anterior ──────────────────────────
   const mttrAnterior = useMemo(() => {

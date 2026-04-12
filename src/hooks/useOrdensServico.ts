@@ -166,7 +166,7 @@ export function useUpdateOrdemServico() {
       queryClient.invalidateQueries({ queryKey: ['indicadores', tenantId] });
       writeAuditLog({ action: 'UPDATE_ORDEM_SERVICO', table: 'ordens_servico', recordId: data?.id, empresaId: tenantId, dadosDepois: data as unknown as Record<string, unknown> });
     },
-    onError: (error: any) => {
+    onError: (error: Error) => {
       toast({
         title: 'Erro ao atualizar O.S',
         description: error.message || 'Ocorreu um erro ao atualizar a ordem de serviço.',

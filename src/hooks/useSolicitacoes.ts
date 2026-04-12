@@ -11,11 +11,11 @@ import {
 import { writeAuditLog } from '@/lib/audit';
 
 const SOLICITACOES_TABLE_CANDIDATES = ['solicitacoes_manutencao', 'solicitacoes'] as const;
-type SolicitacoesTableName = (typeof SOLICITACOES_TABLE_CANDIDATES)[number];
+export type SolicitacoesTableName = (typeof SOLICITACOES_TABLE_CANDIDATES)[number];
 
 let cachedSolicitacoesTable: SolicitacoesTableName | null = null;
 
-async function getSolicitacoesTable(): Promise<SolicitacoesTableName> {
+export async function getSolicitacoesTable(): Promise<SolicitacoesTableName> {
   if (cachedSolicitacoesTable) return cachedSolicitacoesTable;
 
   for (const table of SOLICITACOES_TABLE_CANDIDATES) {
@@ -66,6 +66,8 @@ async function fetchSolicitacoes(empresaId: string, statuses?: string[]) {
   if (statuses && statuses.length > 0) {
     query = query.in('status', statuses);
   }
+
+  query = query.limit(500);
 
   const { data, error } = await query;
 
@@ -168,13 +170,13 @@ export function useCreateSolicitacao() {
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['solicitacoes', tenantId] });
-      writeAuditLog({ action: 'CREATE_SOLICITACAO', table: 'solicitacoes_manutencao', recordId: data?.id, empresaId: tenantId, source: 'useSolicitacoes', metadata: { classificacao: data?.classificacao, impacto: data?.impacto } });
+      writeAuditLog({ action: 'CREATE_SOLICITACAO', table: cachedSolicitacoesTable ?? 'solicitacoes', recordId: data?.id, empresaId: tenantId, source: 'useSolicitacoes', metadata: { classificacao: data?.classificacao, impacto: data?.impacto } });
       toast({
         title: 'Solicitação criada',
         description: 'A solicitação foi registrada com sucesso.',
       });
     },
-    onError: (error: any) => {
+    onError: (error: Error) => {
       toast({
         title: 'Erro ao criar solicitação',
         description: error.message,
@@ -191,6 +193,7 @@ export function useUpdateSolicitacao() {
 
   return useMutation({
     mutationFn: async ({ id, ...updates }: Partial<SolicitacaoRow> & { id: string }) => {
+      if (!tenantId) throw new Error('Tenant não resolvido.');
       const table = await getSolicitacoesTable();
 
       const data = await updateWithColumnFallback(
@@ -199,6 +202,7 @@ export function useUpdateSolicitacao() {
             .from(table)
             .update(payloadToUpdate)
             .eq('id', id)
+            .eq('empresa_id', tenantId)
             .select()
             .single(),
         updates as Record<string, unknown>,
@@ -208,13 +212,13 @@ export function useUpdateSolicitacao() {
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['solicitacoes', tenantId] });
-      writeAuditLog({ action: 'UPDATE_SOLICITACAO', table: 'solicitacoes_manutencao', recordId: data?.id, empresaId: tenantId, source: 'useSolicitacoes', metadata: { status: data?.status } });
+      writeAuditLog({ action: 'UPDATE_SOLICITACAO', table: cachedSolicitacoesTable ?? 'solicitacoes', recordId: data?.id, empresaId: tenantId, source: 'useSolicitacoes', metadata: { status: data?.status } });
       toast({
         title: 'Solicitação atualizada',
         description: 'A solicitação foi atualizada com sucesso.',
       });
     },
-    onError: (error: any) => {
+    onError: (error: Error) => {
       toast({
         title: 'Erro ao atualizar solicitação',
         description: error.message,

@@ -65,7 +65,8 @@ function reportPath() {
     throw new Error('Ambiente sem VITE_SUPABASE_URL/VITE_SUPABASE_ANON_KEY');
   }
 
-  const diagEmail = env.OWNER_DIAG_EMAIL || 'pedrozo@gppis.com.br';
+  const diagEmail = env.OWNER_DIAG_EMAIL;
+  if (!diagEmail) throw new Error('OWNER_DIAG_EMAIL env var required');
   const diagPassword = env.OWNER_DIAG_PASSWORD || null;
 
   const tests = [];

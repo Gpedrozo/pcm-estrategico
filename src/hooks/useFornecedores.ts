@@ -27,7 +27,7 @@ export interface FornecedorRow {
 }
 
 export interface FornecedorInsert {
-  codigo: string;
+  codigo?: string;
   razao_social: string;
   nome_fantasia?: string | null;
   cnpj?: string | null;
@@ -38,6 +38,7 @@ export interface FornecedorInsert {
   endereco?: string | null;
   contato_nome?: string | null;
   contato_telefone?: string | null;
+  observacoes?: string | null;
 }
 
 export interface ContratoRow {
@@ -74,7 +75,8 @@ export function useFornecedores() {
         .from('fornecedores')
         .select('*')
         .eq('empresa_id', tenantId)
-        .order('razao_social');
+        .order('razao_social')
+        .limit(500);
 
       if (error) throw error;
       return data as FornecedorRow[];
@@ -96,7 +98,8 @@ export function useFornecedoresAtivos() {
         .select('*')
         .eq('empresa_id', tenantId)
         .eq('ativo', true)
-        .order('razao_social');
+        .order('razao_social')
+        .limit(500);
 
       if (error) throw error;
       return data as FornecedorRow[];
@@ -114,14 +117,20 @@ export function useCreateFornecedor() {
     mutationFn: async (fornecedor: FornecedorInsert) => {
       if (!tenantId) throw new Error('Tenant não resolvido.');
 
+      // Sincronizar nome = razao_social para backward compat (trigger também faz isso)
+      const payload: Record<string, unknown> = {
+        ...fornecedor,
+        empresa_id: tenantId,
+        nome: fornecedor.razao_social,
+      };
       return insertWithColumnFallback(
-        async (payload) =>
+        async (p) =>
           supabase
             .from('fornecedores')
-            .insert(payload)
+            .insert(p)
             .select()
             .single(),
-        { ...fornecedor, empresa_id: tenantId } as Record<string, unknown>,
+        payload,
       ) as Promise<FornecedorRow>;
     },
     onSuccess: () => {
@@ -132,7 +141,7 @@ export function useCreateFornecedor() {
         description: 'O fornecedor foi cadastrado com sucesso.',
       });
     },
-    onError: (error: any) => {
+    onError: (error: Error) => {
       toast({
         title: 'Erro ao criar fornecedor',
         description: error.message,
@@ -149,12 +158,14 @@ export function useUpdateFornecedor() {
 
   return useMutation({
     mutationFn: async ({ id, ...updates }: Partial<FornecedorRow> & { id: string }) => {
+      if (!tenantId) throw new Error('Tenant não resolvido.');
       return updateWithColumnFallback(
         async (payload) =>
           supabase
             .from('fornecedores')
             .update(payload)
             .eq('id', id)
+            .eq('empresa_id', tenantId)
             .select()
             .single(),
         updates as Record<string, unknown>,
@@ -168,7 +179,7 @@ export function useUpdateFornecedor() {
         description: 'O fornecedor foi atualizado com sucesso.',
       });
     },
-    onError: (error: any) => {
+    onError: (error: Error) => {
       toast({
         title: 'Erro ao atualizar fornecedor',
         description: error.message,

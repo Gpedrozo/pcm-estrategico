@@ -5,9 +5,9 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { usePermission } from "@/hooks/usePermission";
-import { AppLayout } from "@/components/layout/AppLayout";
 import { ExperienceRouter } from "@/components/layout/ExperienceRouter";
 import { MecanicoLayout } from "@/components/layout/MecanicoLayout";
+import { PortalMecanicoLayout } from "@/components/layout/PortalMecanicoLayout";
 import { EnvironmentGuard } from "@/components/guards/EnvironmentGuard";
 import { MasterTIGuard } from "@/components/guards/MasterTIGuard";
 import { TenantDomainMiddleware } from '@/components/guards/TenantDomainMiddleware';
@@ -66,9 +66,7 @@ const NotFound = lazyWithRetry(() => import('./pages/NotFound'))
 const Instalar = lazyWithRetry(() => import('./pages/Instalar'))
 const ArquivosOwner = lazyWithRetry(() => import('./pages/ArquivosOwner'))
 const RootCauseAIPage = lazyWithRetry(() => import('./modules/rootCauseAI/RootCauseAIPage'))
-const ManualOperacao = lazyWithRetry(() => import('./pages/ManualOperacao'))
 const SystemStatus = lazyWithRetry(() => import('./pages/SystemStatus'))
-const PainelMecanico = lazyWithRetry(() => import('./pages/PainelMecanico'))
 const PainelOperador = lazyWithRetry(() => import('./pages/PainelOperador'))
 
 // Mobile-first mechanic experience
@@ -79,6 +77,15 @@ const MecanicoHistorico = lazyWithRetry(() => import('./pages/mecanico/MecanicoH
 const MecanicoFinalizar = lazyWithRetry(() => import('./pages/mecanico/MecanicoFinalizar'))
 const MecanicoEquipamento = lazyWithRetry(() => import('./pages/mecanico/MecanicoEquipamento'))
 const MecanicoPreventivas = lazyWithRetry(() => import('./pages/mecanico/MecanicoPreventivas'))
+
+// Portal do Mecânico — módulo isolado (sem sidebar, sem device binding)
+const PortalMecanicoDashboard = lazyWithRetry(() => import('./pages/portal-mecanico/PortalMecanicoDashboard'))
+const PortalMecanicoExecucao = lazyWithRetry(() => import('./pages/portal-mecanico/PortalMecanicoExecucao'))
+const PortalMecanicoFinalizar = lazyWithRetry(() => import('./pages/portal-mecanico/PortalMecanicoFinalizar'))
+const PortalMecanicoSolicitacao = lazyWithRetry(() => import('./pages/portal-mecanico/PortalMecanicoSolicitacao'))
+const PortalMecanicoEquipamentos = lazyWithRetry(() => import('./pages/portal-mecanico/PortalMecanicoEquipamentos'))
+const PortalMecanicoPreventivas = lazyWithRetry(() => import('./pages/portal-mecanico/PortalMecanicoPreventivas'))
+const PortalMecanicoHistorico = lazyWithRetry(() => import('./pages/portal-mecanico/PortalMecanicoHistorico'))
 
 // Manual de Operação v2 (22 chapters)
 const ManualLayout = lazyWithRetry(() => import('./components/manual/ManualLayout'))
@@ -114,7 +121,8 @@ const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
       retry: 1,
-      staleTime: 60_000,
+      staleTime: 5 * 60_000,       // 5 min → dados em cache servem sem refetch
+      gcTime: 30 * 60_000,          // 30 min → cache preservado após unmount de rota lazy
       refetchOnWindowFocus: false,
       refetchOnReconnect: false,
     },
@@ -165,8 +173,8 @@ const OwnerOnlyRoute = ({ children }: { children: React.ReactNode }) => {
 
     logger.info('owner_route_guard_trace', {
       path: location.pathname,
-      search: location.search,
-      hash: location.hash,
+      search: location.search ? '[redacted]' : '',
+      hash: location.hash ? '[redacted]' : '',
       isAuthenticated,
       isLoading,
       isHydrating,
@@ -191,7 +199,7 @@ const OwnerOnlyRoute = ({ children }: { children: React.ReactNode }) => {
     return <Navigate to={`/login?next=${nextParam}`} replace />;
   }
 
-  if (forcePasswordChange) {
+  if (forcePasswordChange && location.pathname !== '/change-password') {
     return <Navigate to="/change-password" replace />;
   }
 
@@ -223,7 +231,9 @@ function OwnerRoutes() {
           path="/change-password"
           element={
             <EnvironmentGuard allowOwner>
-              <ChangePassword />
+              <OwnerOnlyRoute>
+                <ChangePassword />
+              </OwnerOnlyRoute>
             </EnvironmentGuard>
           }
         />
@@ -346,6 +356,17 @@ function TenantRoutes() {
                 <Route path="/mecanico/preventivas" element={<MecanicoPreventivas />} />
               </Route>
 
+              {/* Portal do Mecânico — módulo 100% isolado, sem sidebar, login por código+senha */}
+              <Route element={<PortalMecanicoLayout />}>
+                <Route path="/portal-mecanico" element={<PortalMecanicoDashboard />} />
+                <Route path="/portal-mecanico/os/:id" element={<PortalMecanicoExecucao />} />
+                <Route path="/portal-mecanico/finalizar/:id" element={<PortalMecanicoFinalizar />} />
+                <Route path="/portal-mecanico/solicitar" element={<PortalMecanicoSolicitacao />} />
+                <Route path="/portal-mecanico/equipamentos" element={<PortalMecanicoEquipamentos />} />
+                <Route path="/portal-mecanico/preventivas" element={<PortalMecanicoPreventivas />} />
+                <Route path="/portal-mecanico/historico" element={<PortalMecanicoHistorico />} />
+              </Route>
+
               <Route element={<ExperienceRouter />}>
                 <Route path="/dashboard" element={<Dashboard />} />
                 <Route path="/solicitacoes" element={<Solicitacoes />} />
@@ -353,7 +374,7 @@ function TenantRoutes() {
                 <Route path="/os/fechar" element={<FecharOS />} />
                 <Route path="/os/portal-mecanico" element={<PortalMecanicoOS />} />
                 <Route path="/os/historico" element={<HistoricoOS />} />
-                <Route path="/painel-mecanico" element={<PainelMecanico />} />
+                <Route path="/painel-mecanico" element={<Navigate to="/os/portal-mecanico" replace />} />
                 <Route path="/painel-operador" element={<PainelOperador />} />
                 <Route path="/backlog" element={<Backlog />} />
                 <Route path="/programacao" element={<Programacao />} />

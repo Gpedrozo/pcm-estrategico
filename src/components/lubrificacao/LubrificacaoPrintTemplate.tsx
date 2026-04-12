@@ -245,7 +245,7 @@ export const LubrificacaoPrintTemplate = forwardRef<HTMLDivElement, Lubrificacao
           <div className="border-b-2 border-black">
             <PrintSectionHeader label="INSTRUÇÕES POR PONTO" />
             <div className="p-2 text-[9px] space-y-0.5">
-              {pontos.filter((p) => p.instrucoes).map((p, _i, filteredArr) => {
+              {pontos.filter((p) => p.instrucoes).map((p, _i, _filteredArr) => {
                 const itemIdx = pontos.indexOf(p);
                 return (
                   <p key={p.id}><strong className="font-mono">Item {itemIdx + 1}:</strong> {p.instrucoes}</p>

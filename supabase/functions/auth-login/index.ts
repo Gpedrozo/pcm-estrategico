@@ -1,11 +1,15 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "jsr:@supabase/supabase-js@2";
+import { adminClient } from "../_shared/auth.ts";
 import { fail, ok, preflight, rejectIfOriginNotAllowed } from "../_shared/response.ts";
+import { z } from "../_shared/validation.ts";
 
-type Payload = {
-  email?: string;
-  password?: string;
-};
+const LoginSchema = z.object({
+  email: z.string().email().max(255),
+  password: z.string().min(1).max(128),
+});
+
+type Payload = z.infer<typeof LoginSchema>;
 
 type ProfilePayload = {
   id: string;
@@ -35,10 +39,6 @@ function env(name: string) {
 function envOptional(name: string) {
   const value = Deno.env.get(name);
   return value && value.trim() ? value : null;
-}
-
-function adminClient() {
-  return createClient(env("SUPABASE_URL"), env("SUPABASE_SERVICE_ROLE_KEY"));
 }
 
 function normalizeEmail(email: string) {
@@ -246,13 +246,13 @@ Deno.serve(async (req) => {
   if (req.method !== "POST") return fail("Method not allowed", 405, null, req);
 
   try {
-    const body = (await req.json().catch(() => null)) as Payload | null;
-    const email = normalizeEmail(body?.email ?? "");
-    const password = String(body?.password ?? "");
-
-    if (!email || !password) {
+    const raw = await req.json().catch(() => null);
+    const parsed = LoginSchema.safeParse(raw);
+    if (!parsed.success) {
       return fail("Email and password required", 400, null, req);
     }
+    const email = normalizeEmail(parsed.data.email);
+    const password = parsed.data.password;
 
     const ipAddress = resolveClientIp(req);
     let admin: ReturnType<typeof createClient> | null = null;
@@ -285,12 +285,15 @@ Deno.serve(async (req) => {
     }
 
     if (fetchError) {
-      console.error("[auth-login] rate-limit storage unavailable, continuing without throttle", {
+      console.error("[auth-login] rate-limit storage unavailable — fail-closed", {
         reason: fetchError.message,
       });
+      return fail("Serviço temporariamente indisponível. Tente novamente.", 429, {
+        retry_after_seconds: 30,
+      }, req);
     }
 
-    const currentAttempt = fetchError ? null : currentAttemptRaw;
+    const currentAttempt = currentAttemptRaw;
 
     const blockedUntilMs = currentAttempt?.blocked_until ? new Date(currentAttempt.blocked_until).getTime() : 0;
     if (blockedUntilMs > now) {
@@ -398,6 +401,31 @@ Deno.serve(async (req) => {
         console.error("[auth-login] profile/tenant resolution degraded", {
           reason: error?.message ?? String(error),
         });
+      }
+    }
+
+    // ── Check owner-domain role — block non-owner roles from owner portal ──
+    const requestOrigin = req.headers.get("origin") ?? "";
+    let isOwnerOrigin = false;
+    try {
+      const originUrl = new URL(requestOrigin);
+      isOwnerOrigin = originUrl.hostname === "owner.gppis.com.br"
+        || originUrl.hostname === "owner.localhost";
+    } catch {
+      isOwnerOrigin = false;
+    }
+    if (isOwnerOrigin) {
+      const ownerAllowedRoles = new Set(["SYSTEM_OWNER", "SYSTEM_ADMIN"]);
+      const hasOwnerRole = profile.roles.some((r) => ownerAllowedRoles.has(r));
+      if (!hasOwnerRole) {
+        console.warn("[auth-login] owner domain login denied — insufficient role", {
+          user_email: email,
+          roles: profile.roles,
+          origin: requestOrigin,
+        });
+        return fail("Acesso negado. Apenas SYSTEM_OWNER e SYSTEM_ADMIN podem acessar o Owner Portal.", 403, {
+          code: "owner_role_required",
+        }, req);
       }
     }
 

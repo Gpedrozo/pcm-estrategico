@@ -1,5 +1,5 @@
 import { useEffect, useState, Suspense } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
+import { useSearchParams } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -18,14 +18,11 @@ import {
   Building2,
   Users,
   Shield,
-  Network,
   SlidersHorizontal,
   Workflow,
   Bell,
   BarChart3,
-  FileCheck2,
   Palette,
-  BadgeDollarSign,
   Save,
   RefreshCw,
   Smartphone,
@@ -124,17 +121,6 @@ const padronizacoesDefault: PadronizacoesConfig = {
 };
 
 const PAGE_SIZE = 15;
-
-const linkCards = [
-  { title: 'Gestao de Usuarios', description: 'Perfis, edicao e ciclo de acesso', tab: 'usuarios', icon: Users },
-  { title: 'Processo e SLA', description: 'Regras de abertura, fechamento e SLA', tab: 'processo', icon: Workflow },
-  { title: 'Identidade Visual', description: 'Tema da empresa ou tema original do sistema', tab: 'identidade', icon: Palette },
-  { title: 'Padronizacoes', description: 'Tipos, status e prioridades operacionais', tab: 'padronizacoes', icon: SlidersHorizontal },
-  { title: 'Alertas', description: 'Canais e gatilhos por criticidade', tab: 'alertas', icon: Bell },
-  { title: 'Indicadores', description: 'Parametros de calculo e pesos KPI', tab: 'indicadores', icon: BarChart3 },
-  { title: 'Dados da Empresa', description: 'Razao social, CNPJ, endereco', tab: 'empresa', icon: Building2 },
-  { title: 'Estrutura Organizacional', description: 'Plantas, areas e sistemas', to: '/hierarquia', icon: Network },
-];
 
 function TabFallback() {
   return (
@@ -271,7 +257,7 @@ export default function Administracao() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="module-page space-y-6">
       <div className="flex items-center gap-4">
         <div className="w-12 h-12 rounded-xl bg-primary flex items-center justify-center">
           <Shield className="h-6 w-6 text-primary-foreground" />
@@ -280,31 +266,6 @@ export default function Administracao() {
           <h1 className="text-2xl font-bold">Central de Administracao</h1>
           <p className="text-muted-foreground text-sm">Governanca completa da empresa cliente em um unico lugar.</p>
         </div>
-      </div>
-
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
-        {linkCards.map((item) => (
-          <Card key={item.title}>
-            <CardContent className="p-4">
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <p className="font-semibold text-sm">{item.title}</p>
-                  <p className="text-xs text-muted-foreground mt-1">{item.description}</p>
-                </div>
-                <item.icon className="h-5 w-5 text-primary" />
-              </div>
-              {item.tab ? (
-                <Button variant="outline" size="sm" className="mt-4 w-full" onClick={() => setActiveTab(item.tab)}>
-                  Acessar
-                </Button>
-              ) : (
-                <Button asChild variant="outline" size="sm" className="mt-4 w-full">
-                  <Link to={item.to}>Acessar</Link>
-                </Button>
-              )}
-            </CardContent>
-          </Card>
-        ))}
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
@@ -521,7 +482,7 @@ export default function Administracao() {
             {totalPages > 1 && (
               <div className="flex items-center justify-center gap-2">
                 <Button variant="outline" size="icon" disabled={page === 0} onClick={() => setPage(p => p - 1)}><ChevronLeft className="h-4 w-4" /></Button>
-                <span className="text-sm text-muted-foreground">Pagina {page + 1} de {totalPages}</span>
+                <span className="text-sm text-muted-foreground">Página {page + 1} de {totalPages}</span>
                 <Button variant="outline" size="icon" disabled={page >= totalPages - 1} onClick={() => setPage(p => p + 1)}><ChevronRight className="h-4 w-4" /></Button>
               </div>
             )}

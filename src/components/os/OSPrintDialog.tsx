@@ -2,6 +2,8 @@ import React, { useEffect, useRef, useState } from 'react';
 import { useReactToPrint } from 'react-to-print';
 import { useDadosEmpresa } from '@/hooks/useDadosEmpresa';
 import { supabase } from '@/integrations/supabase/client';
+import { getSolicitacoesTable } from '@/hooks/useSolicitacoes';
+import { useAuth } from '@/contexts/AuthContext';
 import { OSPrintTemplate } from './OSPrintTemplate';
 import { PRINT_PAGE_STYLE } from '@/components/print/DocumentPrintBase';
 
@@ -25,6 +27,7 @@ interface OSPrintDialogProps {
 
 export function OSPrintDialog({ os, trigger, solicitacaoNumero: solicitacaoNumeroProp }: OSPrintDialogProps) {
   const { data: empresa } = useDadosEmpresa();
+  const { tenantId } = useAuth();
   const [resolvedSolNum, setResolvedSolNum] = useState<number | null>(null);
   const [servicoExecutado, setServicoExecutado] = useState<string | null>(null);
   const docNum = `OS-${String(os.numero_os).padStart(6, '0')}`;
@@ -38,18 +41,26 @@ export function OSPrintDialog({ os, trigger, solicitacaoNumero: solicitacaoNumer
 
   useEffect(() => {
     if (solicitacaoNumeroProp != null) { setResolvedSolNum(solicitacaoNumeroProp); return; }
-    if (!os.id) { setResolvedSolNum(null); return; }
-    // @ts-expect-error — solicitacoes_manutencao not yet in generated types
-    supabase.from('solicitacoes_manutencao').select('numero_solicitacao').eq('os_id', os.id).limit(1).single()
-      .then(({ data }: { data: { numero_solicitacao: number } | null }) => { setResolvedSolNum(data ? data.numero_solicitacao : null); });
-  }, [os.id, solicitacaoNumeroProp]);
+    if (!os.id || !tenantId) { setResolvedSolNum(null); return; }
+    const osId = os.id;
+    void (async () => {
+      const table = await getSolicitacoesTable();
+      const { data } = await (supabase
+        .from(table as any)
+        .select('numero_solicitacao')
+        .eq('os_id', osId)
+        .eq('empresa_id', tenantId)
+        .limit(1)
+        .maybeSingle() as any) as { data: { numero_solicitacao?: number } | null };
+      setResolvedSolNum(data ? Number(data.numero_solicitacao ?? 0) || null : null);
+    })();
+  }, [os.id, solicitacaoNumeroProp, tenantId]);
 
   useEffect(() => {
-    if (!os.id) { setServicoExecutado(null); return; }
-    // @ts-expect-error — execucoes_os not yet in generated types
-    supabase.from('execucoes_os').select('servico_executado').eq('ordem_servico_id', os.id).order('created_at', { ascending: false }).limit(1).maybeSingle()
+    if (!os.id || !tenantId) { setServicoExecutado(null); return; }
+    supabase.from('execucoes_os').select('servico_executado').eq('os_id', os.id).eq('empresa_id', tenantId).order('created_at', { ascending: false }).limit(1).maybeSingle()
       .then(({ data }: { data: { servico_executado: string | null } | null }) => { setServicoExecutado(data ? data.servico_executado : null); });
-  }, [os.id]);
+  }, [os.id, tenantId]);
 
   return (
     <>

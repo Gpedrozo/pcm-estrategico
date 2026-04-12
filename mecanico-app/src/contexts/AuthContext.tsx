@@ -7,10 +7,13 @@
 
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as SecureStore from 'expo-secure-store';
 import { Platform } from 'react-native';
 import { supabase, setGlobalAuth, clearGlobalAuth } from '../lib/supabase';
+import { logger } from '../lib/logger';
 import type { Mecanico } from '../types';
 
+// Sensitive tokens use SecureStore; non-sensitive data uses AsyncStorage
 const STORAGE_KEYS = {
   EMPRESA_ID: '@pcm:empresa_id',
   EMPRESA_NOME: '@pcm:empresa_nome',
@@ -19,9 +22,20 @@ const STORAGE_KEYS = {
   MECANICO_ID: '@pcm:mecanico_id',
   MECANICO_NOME: '@pcm:mecanico_nome',
   MECANICO_CODIGO: '@pcm:mecanico_codigo',
-  ACCESS_TOKEN: '@pcm:access_token',
-  REFRESH_TOKEN: '@pcm:refresh_token',
+  ACCESS_TOKEN: 'pcm_access_token',
+  REFRESH_TOKEN: 'pcm_refresh_token',
 };
+
+// Helpers for secure token storage
+async function setSecureItem(key: string, value: string) {
+  await SecureStore.setItemAsync(key, value);
+}
+async function getSecureItem(key: string): Promise<string | null> {
+  return SecureStore.getItemAsync(key);
+}
+async function deleteSecureItem(key: string) {
+  await SecureStore.deleteItemAsync(key);
+}
 
 interface AuthState {
   isLoading: boolean;
@@ -64,21 +78,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // ── Helper: obtain JWT via mecanico-device-auth edge function ──
   const obtainJwt = useCallback(async (deviceToken: string): Promise<boolean> => {
     try {
-      console.log('[auth] Obtaining JWT via mecanico-device-auth...');
+      logger.info('auth', 'Obtaining JWT via mecanico-device-auth...');
       const { data, error } = await supabase.functions.invoke('mecanico-device-auth', {
         body: { device_token: deviceToken },
       });
       if (error || !data?.ok || !data?.access_token) {
-        console.warn('[auth] JWT fetch failed:', error?.message || data?.error);
+        logger.warn('auth', 'JWT fetch failed', { error: error?.message || data?.error });
         return false;
       }
       await setGlobalAuth(data.access_token, data.refresh_token || data.access_token);
-      await AsyncStorage.setItem(STORAGE_KEYS.ACCESS_TOKEN, data.access_token);
-      if (data.refresh_token) await AsyncStorage.setItem(STORAGE_KEYS.REFRESH_TOKEN, data.refresh_token);
-      console.log('[auth] JWT set OK, role=authenticated');
+      await setSecureItem(STORAGE_KEYS.ACCESS_TOKEN, data.access_token);
+      if (data.refresh_token) await setSecureItem(STORAGE_KEYS.REFRESH_TOKEN, data.refresh_token);
+      logger.info('auth', 'JWT set OK, role=authenticated');
       return true;
     } catch (e: any) {
-      console.warn('[auth] obtainJwt exception:', e?.message);
+      logger.warn('auth', 'obtainJwt exception', { error: e?.message });
       return false;
     }
   }, []);
@@ -131,7 +145,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         await AsyncStorage.setItem(STORAGE_KEYS.DEVICE_ID, deviceId);
       }
 
-      console.log('[bindDevice] Calling vincular_dispositivo with token:', qrToken.slice(0, 8) + '...');
+      logger.info('auth', 'Calling vincular_dispositivo', { token: qrToken.slice(0, 8) + '...' });
 
       const { data, error } = await supabase.rpc('vincular_dispositivo', {
         p_qr_token: qrToken,
@@ -177,7 +191,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // ── Unbind device (clear everything + drop JWT) ──
   const unbindDevice = useCallback(async () => {
     await clearGlobalAuth();
-    await AsyncStorage.multiRemove(Object.values(STORAGE_KEYS));
+    await deleteSecureItem(STORAGE_KEYS.ACCESS_TOKEN);
+    await deleteSecureItem(STORAGE_KEYS.REFRESH_TOKEN);
+    await AsyncStorage.multiRemove(Object.values(STORAGE_KEYS).filter(k => !k.startsWith('pcm_')));
     setState({
       isLoading: false,
       isDeviceBound: false,

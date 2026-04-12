@@ -1,6 +1,12 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { adminClient, requireTenantContext, requireUser } from "../_shared/auth.ts";
 import { fail, ok, preflight, rejectIfOriginNotAllowed } from "../_shared/response.ts";
+import { enforceRateLimit } from "../_shared/rateLimit.ts";
+import { z } from "../_shared/validation.ts";
+
+const GenerateSchema = z.object({
+  empresa_id: z.string().uuid().optional(),
+});
 
 interface PlanoPreventivo {
   id: string;
@@ -53,8 +59,15 @@ Deno.serve(async (req) => {
     const auth = await requireUser(req);
     if ("error" in auth) return fail(auth.error ?? "Unauthorized", auth.status ?? 401, null, req);
 
-    const body = await req.json().catch(() => null) as { empresa_id?: string } | null;
-    const empresaId = body?.empresa_id ?? null;
+    // Rate limit: 10 calls per 60s per IP
+    const gpIp = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? req.headers.get("x-real-ip") ?? "unknown";
+    const rl = await enforceRateLimit(adminClient(), { scope: "generate_preventive_os", identifier: gpIp, maxRequests: 10, windowSeconds: 60 });
+    if (!rl.allowed) return fail("Too many requests", 429, null, req);
+
+    const rawBody = await req.json().catch(() => null);
+    const parsed = GenerateSchema.safeParse(rawBody ?? {});
+    if (!parsed.success) return fail("Invalid request body", 400, null, req);
+    const empresaId = parsed.data.empresa_id ?? null;
 
     const supabase = adminClient();
 

@@ -83,7 +83,8 @@ export function MasterEmpresaData() {
   const saveMutation = useMutation({
     mutationFn: async (formData: EmpresaFormData) => {
       if (empresa?.id) {
-        const { error } = await supabase.from('dados_empresa').update(formData).eq('id', empresa.id);
+        if (!tenantId) throw new Error('Tenant não resolvido para update.');
+        const { error } = await supabase.from('dados_empresa').update(formData).eq('id', empresa.id).eq('empresa_id', tenantId);
         if (error) throw error;
         await writeAuditLog({
           action: 'UPDATE_COMPANY',

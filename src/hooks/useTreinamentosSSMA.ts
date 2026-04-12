@@ -118,7 +118,8 @@ export function useTreinamentosSSMA() {
         .from('treinamentos_ssma')
         .select('*')
         .eq('empresa_id', tenantId!)
-        .order('data_validade', { ascending: true, nullsFirst: false });
+        .order('data_validade', { ascending: true, nullsFirst: false })
+        .limit(500);
 
       if (error) throw error;
 
@@ -143,7 +144,8 @@ export function useTreinamentosVencendo() {
         .select('*')
         .eq('empresa_id', tenantId!)
         .in('status', ['PROXIMO_VENCIMENTO', 'VENCIDO'])
-        .order('data_validade', { ascending: true });
+        .order('data_validade', { ascending: true })
+        .limit(500);
 
       if (error) throw error;
       return (data as TreinamentoSSMARow[]).map((t) => ({
@@ -192,7 +194,7 @@ export function useCreateTreinamentoSSMA() {
         description: 'O treinamento foi registrado com sucesso.',
       });
     },
-    onError: (error: any) => {
+    onError: (error: Error) => {
       toast({
         title: 'Erro ao registrar treinamento',
         description: error.message,
@@ -224,6 +226,7 @@ export function useUpdateTreinamentoSSMA() {
             .from('treinamentos_ssma')
             .update(p)
             .eq('id', id)
+            .eq('empresa_id', tenantId!)
             .select()
             .single(),
         payload,
@@ -242,7 +245,7 @@ export function useUpdateTreinamentoSSMA() {
         description: 'O treinamento foi atualizado com sucesso.',
       });
     },
-    onError: (error: any) => {
+    onError: (error: Error) => {
       toast({
         title: 'Erro ao atualizar treinamento',
         description: error.message,
@@ -259,10 +262,12 @@ export function useDeleteTreinamentoSSMA() {
 
   return useMutation({
     mutationFn: async (id: string) => {
+      if (!tenantId) throw new Error('Tenant não identificado.');
       const { error } = await supabase
         .from('treinamentos_ssma')
         .delete()
-        .eq('id', id);
+        .eq('id', id)
+        .eq('empresa_id', tenantId);
 
       if (error) throw error;
     },
@@ -279,7 +284,7 @@ export function useDeleteTreinamentoSSMA() {
         description: 'O treinamento foi removido com sucesso.',
       });
     },
-    onError: (error: any) => {
+    onError: (error: Error) => {
       toast({
         title: 'Erro ao remover treinamento',
         description: error.message,

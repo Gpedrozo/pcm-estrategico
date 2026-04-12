@@ -1,3 +1,5 @@
+import { logger } from '@/lib/logger';
+
 export function getSupabaseErrorMessage(error: unknown): string {
   if (!error || typeof error !== 'object') return '';
   if ('message' in error) return String((error as { message?: unknown }).message ?? '');
@@ -35,7 +37,7 @@ export function compactObject<T extends Record<string, unknown>>(obj: T): T {
 export async function insertWithColumnFallback<T>(
   runInsert: (payload: Record<string, unknown>) => Promise<{ data: T | null; error: any }>,
   payload: Record<string, unknown>,
-  maxAttempts = 8,
+  maxAttempts = 25,
 ): Promise<T> {
   const currentPayload = { ...compactObject(payload) };
 
@@ -48,6 +50,7 @@ export async function insertWithColumnFallback<T>(
       throw error;
     }
 
+    logger.warn('supabase_compat_column_dropped_insert', { column: missingColumn, attempt: attempt + 1 });
     delete currentPayload[missingColumn];
   }
 
@@ -57,7 +60,7 @@ export async function insertWithColumnFallback<T>(
 export async function updateWithColumnFallback<T>(
   runUpdate: (payload: Record<string, unknown>) => Promise<{ data: T | null; error: any }>,
   payload: Record<string, unknown>,
-  maxAttempts = 8,
+  maxAttempts = 25,
 ): Promise<T> {
   const currentPayload = { ...compactObject(payload) };
 
@@ -70,6 +73,7 @@ export async function updateWithColumnFallback<T>(
       throw error;
     }
 
+    logger.warn('supabase_compat_column_dropped_update', { column: missingColumn, attempt: attempt + 1 });
     delete currentPayload[missingColumn];
   }
 

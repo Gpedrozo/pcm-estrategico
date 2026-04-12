@@ -90,7 +90,6 @@ export interface Mecanico {
   especialidade?: string;
   custo_hora?: number;
   codigo_acesso?: string;
-  senha_acesso?: string;
   escala_trabalho?: string;
   ferias_inicio?: string;
   ferias_fim?: string;

@@ -69,7 +69,8 @@ export function useRCAs() {
         .from('analise_causa_raiz')
         .select('*')
         .eq('empresa_id', tenantId)
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: false })
+        .limit(500);
 
       if (error) throw error;
       return data as RCARow[];
@@ -127,7 +128,7 @@ export function useCreateRCA() {
         description: 'A análise de causa raiz foi criada com sucesso.',
       });
     },
-    onError: (error: any) => {
+    onError: (error: Error) => {
       toast({
         title: 'Erro ao criar RCA',
         description: error.message,
@@ -144,12 +145,14 @@ export function useUpdateRCA() {
 
   return useMutation({
     mutationFn: async ({ id, ...updates }: Partial<RCARow> & { id: string }) => {
+      if (!tenantId) throw new Error('Tenant não identificado.');
       return updateWithColumnFallback(
         async (payload) =>
           supabase
             .from('analise_causa_raiz')
             .update(payload)
             .eq('id', id)
+            .eq('empresa_id', tenantId)
             .select()
             .single(),
         updates as Record<string, unknown>,
@@ -163,7 +166,7 @@ export function useUpdateRCA() {
         description: 'A análise de causa raiz foi atualizada com sucesso.',
       });
     },
-    onError: (error: any) => {
+    onError: (error: Error) => {
       toast({
         title: 'Erro ao atualizar RCA',
         description: error.message,
@@ -184,6 +187,7 @@ export function useAcoesCorretivas(rcaId?: string) {
         .select('*')
         .eq('empresa_id', tenantId!)
         .eq('rca_id', rcaId!)
+        .limit(500)
         .order('prazo');
 
       if (error) throw error;
@@ -220,7 +224,7 @@ export function useCreateAcaoCorretiva() {
         description: 'A ação corretiva foi criada com sucesso.',
       });
     },
-    onError: (error: any) => {
+    onError: (error: Error) => {
       toast({
         title: 'Erro ao criar ação',
         description: error.message,
@@ -237,12 +241,14 @@ export function useUpdateAcaoCorretiva() {
 
   return useMutation({
     mutationFn: async ({ id, ...updates }: Partial<AcaoCorretivaRow> & { id: string }) => {
+      if (!tenantId) throw new Error('Tenant não identificado.');
       return updateWithColumnFallback(
         async (payload) =>
           supabase
             .from('acoes_corretivas')
             .update(payload)
             .eq('id', id)
+            .eq('empresa_id', tenantId)
             .select()
             .single(),
         updates as Record<string, unknown>,
@@ -256,7 +262,7 @@ export function useUpdateAcaoCorretiva() {
         description: 'A ação corretiva foi atualizada com sucesso.',
       });
     },
-    onError: (error: any) => {
+    onError: (error: Error) => {
       toast({
         title: 'Erro ao atualizar ação',
         description: error.message,

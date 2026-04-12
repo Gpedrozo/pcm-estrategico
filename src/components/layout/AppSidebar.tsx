@@ -6,8 +6,6 @@ import {
   FileCheck, 
   History, 
   Wrench, 
-  Users, 
-  ClipboardList,
   Tag,
   LogOut,
   Settings,
@@ -63,7 +61,7 @@ const osMenuItems = [
   { title: 'Backlog', url: '/backlog', icon: Inbox },
   { title: 'Emitir O.S', url: '/os/nova', icon: FilePlus },
   { title: 'Fechar O.S', url: '/os/fechar', icon: FileCheck },
-  { title: 'Painel Mecânico', url: '/painel-mecanico', icon: HardHat },
+  { title: 'Portal Mecânico', url: '/os/portal-mecanico', icon: HardHat },
   { title: 'Histórico', url: '/os/historico', icon: History },
 ];
 
@@ -73,7 +71,7 @@ const operadorMenuItems = [
 ];
 
 const mecanicoMenuItems = [
-  { title: 'Painel Mecânico', url: '/painel-mecanico', icon: HardHat },
+  { title: 'Portal Mecânico', url: '/os/portal-mecanico', icon: HardHat },
   { title: 'Solicitações', url: '/solicitacoes', icon: MessageSquare },
   { title: 'Emitir O.S', url: '/os/nova', icon: FilePlus },
   { title: 'Fechar O.S', url: '/os/fechar', icon: FileCheck },
@@ -179,7 +177,7 @@ export function AppSidebar() {
 
   const isSolicitanteOnly = effectiveRole === 'SOLICITANTE';
   const isTechnicianOnly = effectiveRole === 'TECHNICIAN';
-  const isUsuarioOrBelow = isSolicitanteOnly || effectiveRole === 'USUARIO';
+  const _isUsuarioOrBelow = isSolicitanteOnly || effectiveRole === 'USUARIO';
   const isAdminOrAbove = isAdmin || effectiveRole === 'MASTER_TI' || effectiveRole === 'SYSTEM_OWNER' || effectiveRole === 'SYSTEM_ADMIN';
   const isRestrictedRole = isSolicitanteOnly || isTechnicianOnly;
 

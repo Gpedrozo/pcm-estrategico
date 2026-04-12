@@ -1,5 +1,8 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "jsr:@supabase/supabase-js@2";
+import { adminClient } from "../_shared/auth.ts";
+import { enforceRateLimit } from "../_shared/rateLimit.ts";
+import { z } from "../_shared/validation.ts";
 
 declare const Deno: any;
 
@@ -9,18 +12,20 @@ function env(name: string) {
   return value;
 }
 
-function adminClient() {
-  return createClient(env("SUPABASE_URL"), env("SUPABASE_SERVICE_ROLE_KEY"));
-}
-
 function anonClient() {
   return createClient(env("SUPABASE_URL"), env("SUPABASE_ANON_KEY"));
 }
 
-function devicePassword(deviceToken: string) {
-  // SERVICE_ROLE_KEY está sempre disponível em Edge Functions; JWT_SECRET não
-  const secret = env("SUPABASE_SERVICE_ROLE_KEY").slice(-12);
-  return `pcm-da-${deviceToken}-${secret}`;
+async function devicePassword(deviceToken: string): Promise<string> {
+  const secret = Deno.env.get("DEVICE_AUTH_SECRET");
+  if (!secret) throw new Error("DEVICE_AUTH_SECRET is required — do NOT fall back to SERVICE_ROLE_KEY");
+  const encoder = new TextEncoder();
+  const keyData = await crypto.subtle.importKey(
+    "raw", encoder.encode(secret), { name: "HMAC", hash: "SHA-256" }, false, ["sign"],
+  );
+  const signature = await crypto.subtle.sign("HMAC", keyData, encoder.encode(`device:${deviceToken}`));
+  const hash = Array.from(new Uint8Array(signature)).map(b => b.toString(16).padStart(2, "0")).join("");
+  return `pcm-da-${hash.slice(0, 32)}`;
 }
 
 // CORS aberto — segurança via device_token, não via origin
@@ -41,13 +46,49 @@ function respond(body: Record<string, unknown>, req: Request) {
   });
 }
 
+// Timing-safe string comparison via HMAC-SHA256 to prevent timing attacks
+async function timingSafeCompare(a: string, b: string): Promise<boolean> {
+  const enc = new TextEncoder();
+  const key = await crypto.subtle.importKey(
+    "raw", enc.encode("pcm-compare-key"), { name: "HMAC", hash: "SHA-256" }, false, ["sign"],
+  );
+  const [sigA, sigB] = await Promise.all([
+    crypto.subtle.sign("HMAC", key, enc.encode(a)),
+    crypto.subtle.sign("HMAC", key, enc.encode(b)),
+  ]);
+  const vA = new Uint8Array(sigA), vB = new Uint8Array(sigB);
+  let diff = 0;
+  for (let i = 0; i < vA.length; i++) diff |= vA[i] ^ vB[i];
+  return diff === 0;
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: cors(req) });
   }
 
+  // Rate limit: 20 requests per 60 seconds per IP
+  const daIp = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? req.headers.get("x-real-ip") ?? "unknown";
+  const rl = await enforceRateLimit(adminClient(), { scope: "device_auth", identifier: daIp, maxRequests: 20, windowSeconds: 60 });
+  if (!rl.allowed) return respond({ ok: false, error: "Too many requests" }, req);
+
   try {
-    const body = await req.json().catch(() => ({}));
+    const rawBody = await req.json().catch(() => ({}));
+    const DeviceAuthSchema = z.object({
+      device_token: z.string().max(512).optional(),
+      qr_token: z.string().max(512).optional(),
+      device_id: z.string().max(255).optional(),
+      device_nome: z.string().max(255).optional(),
+      device_os: z.string().max(100).optional(),
+      action: z.string().max(50).optional(),
+      mecanico_id: z.string().uuid().optional(),
+      senha: z.string().max(128).optional(),
+      p_mecanico_id: z.string().uuid().optional(),
+      p_senha: z.string().max(128).optional(),
+    });
+    const parsed = DeviceAuthSchema.safeParse(rawBody);
+    if (!parsed.success) return respond({ ok: false, error: "Invalid request body" }, req);
+    const body = parsed.data;
     const deviceToken = String(body.device_token ?? "").trim();
     const qrToken = String(body.qr_token ?? "").trim();
     const deviceId = String(body.device_id ?? "").trim();
@@ -168,18 +209,16 @@ Deno.serve(async (req: Request) => {
         return respond({ ok: false, error: "mecanico_id e senha obrigat\u00f3rios" }, req);
       }
       try {
-        const { data: mec, error: mecErr } = await admin
-          .from("mecanicos")
-          .select("id, senha_acesso")
-          .eq("id", mecanicoId)
-          .eq("ativo", true)
-          .is("deleted_at", null)
-          .maybeSingle();
-        if (mecErr) return respond({ ok: false, error: "Erro ao buscar mec\u00e2nico" }, req);
-        if (!mec) return respond({ ok: false, error: "Mec\u00e2nico n\u00e3o encontrado" }, req);
-        if (!mec.senha_acesso) return respond({ ok: true, valid: true }, req);
-        const valid = mec.senha_acesso === senhaInput;
-        return respond({ ok: true, valid }, req);
+        // V8: Usar RPC verificar_senha_mecanico (bcrypt) em vez de comparação plaintext
+        const { data: valid, error: rpcErr } = await admin.rpc("verificar_senha_mecanico", {
+          p_mecanico_id: mecanicoId,
+          p_senha: senhaInput,
+        });
+        if (rpcErr) {
+          console.error("[device-auth] verificar_senha_mecanico RPC error:", rpcErr);
+          return respond({ ok: false, error: "Erro ao validar senha" }, req);
+        }
+        return respond({ ok: true, valid: !!valid }, req);
       } catch (e) {
         console.error("[device-auth] validar_senha error:", e);
         return respond({ ok: false, error: "Erro ao validar senha" }, req);
@@ -233,7 +272,7 @@ async function authenticateWithDevice(
   req: Request
 ): Promise<Response> {
     const email = `device-${device.device_id}@mecanico.pcm.local`;
-    const password = devicePassword(device.token);
+    const password = await devicePassword(device.token);
 
     // 3. Tenta sign-in
     const anon = anonClient();

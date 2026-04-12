@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { useMecanicosAtivos } from '@/hooks/useMecanicos';
 import { usePendingOrdensServico } from '@/hooks/useOrdensServico';
 import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
 import { Lock, Search, Wrench, ClipboardCheck } from 'lucide-react';
 
 export default function PortalMecanicoOS() {
@@ -45,7 +46,9 @@ export default function PortalMecanicoOS() {
     });
   }, [mecanicoLogado, ordens, search]);
 
-  const handleEntrar = () => {
+  const [validando, setValidando] = useState(false);
+
+  const handleEntrar = async () => {
     const code = codigo.trim().toUpperCase();
     if (!code || !senha.trim()) {
       toast({
@@ -66,13 +69,29 @@ export default function PortalMecanicoOS() {
       return;
     }
 
-    if ((mecanico.senha_acesso || '') !== senha) {
+    setValidando(true);
+    try {
+      const { data: senhaValida, error } = await supabase.rpc('verificar_senha_mecanico', {
+        p_mecanico_id: mecanico.id,
+        p_senha: senha,
+      });
+      if (error || !senhaValida) {
+        toast({
+          title: 'Acesso negado',
+          description: 'Senha inválida para este código.',
+          variant: 'destructive',
+        });
+        return;
+      }
+    } catch {
       toast({
-        title: 'Acesso negado',
-        description: 'Senha inválida para este código.',
+        title: 'Erro',
+        description: 'Falha ao validar credenciais.',
         variant: 'destructive',
       });
       return;
+    } finally {
+      setValidando(false);
     }
 
     setMecanicoIdLogado(mecanico.id);

@@ -51,6 +51,7 @@ type Payload = {
     | "cleanup_company_data"
     | "delete_company"
     | "purge_table_data"
+    | "purge_device_users"
     | "delete_support_ticket"
     | "delete_user"
     | "asaas_link_subscription"
@@ -287,6 +288,7 @@ const SUPPORTED_OWNER_ACTIONS: Payload["action"][] = [
   "cleanup_company_data",
   "delete_company",
   "purge_table_data",
+  "purge_device_users",
   "delete_user",
   "asaas_link_subscription",
   "asaas_sync_subscription",
@@ -316,6 +318,7 @@ function resolveRateLimitConfig(action: Payload["action"]) {
   const criticalWriteActions = new Set<Payload["action"]>([
     "cleanup_company_data",
     "purge_table_data",
+    "purge_device_users",
     "delete_company",
     "create_platform_owner",
     "create_system_admin",
@@ -379,6 +382,7 @@ function shouldEnforceRateLimit(action: Payload["action"]) {
     "cleanup_company_data",
     "delete_company",
     "purge_table_data",
+    "purge_device_users",
     "asaas_link_subscription",
     "asaas_sync_subscription",
     "enforce_subscription_expiry",
@@ -2014,6 +2018,7 @@ Deno.serve(async (req) => {
     "delete_company",
     "delete_user",
     "purge_table_data",
+    "purge_device_users",
     "delete_support_ticket",
     "asaas_link_subscription",
     "asaas_sync_subscription",
@@ -5080,6 +5085,111 @@ Deno.serve(async (req) => {
       affected_tables: [tableName],
       rows_deleted: Number(count ?? 0),
       table_errors: [],
+    }, operationId);
+  }
+
+  // ── Purge device users (QR code connections) ──
+  if (body.action === "purge_device_users") {
+    const operationId = crypto.randomUUID();
+
+    const passwordOk = await verifyActorPassword({
+      email: auth.user.email,
+      password: body.auth_password ?? null,
+      expectedUserId: auth.user.id,
+    });
+
+    if (!passwordOk) {
+      return fail("Senha inválida para confirmar a operação.", 401, null, req);
+    }
+
+    // Find device profiles (email pattern: device-*@mecanico.pcm.local)
+    let deviceQuery = admin
+      .from("profiles")
+      .select("id,email,nome,empresa_id")
+      .like("email", "device-%@mecanico.pcm.local");
+
+    if (body.empresa_id) {
+      deviceQuery = deviceQuery.eq("empresa_id", body.empresa_id);
+    }
+
+    const { data: deviceProfiles, error: deviceErr } = await deviceQuery;
+    if (deviceErr) return fail(`Erro ao buscar dispositivos: ${deviceErr.message}`, 400, null, req);
+
+    const devices = Array.isArray(deviceProfiles) ? deviceProfiles : [];
+    if (devices.length === 0) {
+      return okWithOperation(req, {
+        success: true,
+        message: "Nenhum dispositivo encontrado para purge.",
+        deleted_count: 0,
+      }, operationId);
+    }
+
+    const deviceIds = devices.map((d: any) => String(d.id));
+    let deletedProfiles = 0;
+    let deletedRoles = 0;
+    let deletedAuthUsers = 0;
+    const errors: string[] = [];
+
+    // 1. Delete user_roles
+    for (const uid of deviceIds) {
+      const { error: roleErr } = await admin
+        .from("user_roles")
+        .delete()
+        .eq("user_id", uid);
+      if (roleErr) {
+        errors.push(`user_roles ${uid}: ${roleErr.message}`);
+      } else {
+        deletedRoles++;
+      }
+    }
+
+    // 2. Delete profiles
+    for (const uid of deviceIds) {
+      const { error: profErr } = await admin
+        .from("profiles")
+        .delete()
+        .eq("id", uid);
+      if (profErr) {
+        errors.push(`profiles ${uid}: ${profErr.message}`);
+      } else {
+        deletedProfiles++;
+      }
+    }
+
+    // 3. Delete auth.users
+    for (const uid of deviceIds) {
+      const { error: authErr } = await admin.auth.admin.deleteUser(uid);
+      if (authErr) {
+        errors.push(`auth.users ${uid}: ${authErr.message}`);
+      } else {
+        deletedAuthUsers++;
+      }
+    }
+
+    await logOwnerMasterHiddenAudit(admin, {
+      actorId: auth.user.id,
+      actorEmail: auth.user.email,
+      empresaId: body.empresa_id ?? null,
+      actionType: "OWNER_MASTER_PURGE_DEVICE_USERS",
+      details: {
+        empresa_id: body.empresa_id ?? "all",
+        device_count: devices.length,
+        deleted_profiles: deletedProfiles,
+        deleted_roles: deletedRoles,
+        deleted_auth_users: deletedAuthUsers,
+        errors: errors.length > 0 ? errors : undefined,
+        operation_id: operationId,
+      },
+    });
+
+    return okWithOperation(req, {
+      success: true,
+      message: `${deletedAuthUsers} dispositivo(s) removido(s) com sucesso.`,
+      deleted_count: deletedAuthUsers,
+      deleted_profiles: deletedProfiles,
+      deleted_roles: deletedRoles,
+      deleted_auth_users: deletedAuthUsers,
+      errors: errors.length > 0 ? errors : undefined,
     }, operationId);
   }
 

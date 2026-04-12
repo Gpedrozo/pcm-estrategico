@@ -8,20 +8,22 @@ import { useAuth } from '@/contexts/AuthContext';
  * Fetch lubrication route points linked to a specific plan (plano_id).
  */
 export function usePontosPlano(planoId: string | null | undefined) {
+  const { tenantId } = useAuth();
   return useQuery({
-    queryKey: ['pontos_lubrificacao', 'plano', planoId],
+    queryKey: ['pontos_lubrificacao', 'plano', planoId, tenantId],
     queryFn: async () => {
-      if (!planoId) return [];
+      if (!planoId || !tenantId) return [];
       const { data, error } = await supabase
         .from('rotas_lubrificacao_pontos')
         .select('*')
         .eq('plano_id', planoId)
         .is('rota_id', null)
-        .order('ordem', { ascending: true });
+        .order('ordem', { ascending: true })
+        .limit(500);
       if (error) throw error;
       return (data || []) as RotaPonto[];
     },
-    enabled: !!planoId,
+    enabled: !!planoId && !!tenantId,
   });
 }
 
@@ -34,6 +36,7 @@ export function useSavePontosPlano() {
   const { tenantId } = useAuth();
   return useMutation({
     mutationFn: async ({ planoId, pontos }: { planoId: string; pontos: RotaPontoInsert[] }) => {
+      if (!tenantId) throw new Error('Tenant não resolvido.');
       // Delete existing points linked to this plan (only plan-linked, not route-linked)
       const { error: delErr } = await supabase
         .from('rotas_lubrificacao_pontos')
