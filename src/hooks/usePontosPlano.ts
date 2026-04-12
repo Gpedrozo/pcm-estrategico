@@ -16,7 +16,6 @@ export function usePontosPlano(planoId: string | null | undefined) {
       const { data, error } = await supabase
         .from('rotas_lubrificacao_pontos')
         .select('*')
-        .eq('empresa_id', tenantId)
         .eq('plano_id', planoId)
         .is('rota_id', null)
         .order('ordem', { ascending: true })
@@ -42,7 +41,6 @@ export function useSavePontosPlano() {
       const { error: delErr } = await supabase
         .from('rotas_lubrificacao_pontos')
         .delete()
-        .eq('empresa_id', tenantId)
         .eq('plano_id', planoId)
         .is('rota_id', null);
       if (delErr) throw delErr;
@@ -51,7 +49,6 @@ export function useSavePontosPlano() {
 
       const rows = pontos.map((p, i) => ({
         ...p,
-        empresa_id: tenantId,
         plano_id: planoId,
         rota_id: null,
         ordem: i,

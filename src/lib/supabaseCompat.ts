@@ -37,7 +37,7 @@ export function compactObject<T extends Record<string, unknown>>(obj: T): T {
 export async function insertWithColumnFallback<T>(
   runInsert: (payload: Record<string, unknown>) => Promise<{ data: T | null; error: any }>,
   payload: Record<string, unknown>,
-  maxAttempts = 8,
+  maxAttempts = 25,
 ): Promise<T> {
   const currentPayload = { ...compactObject(payload) };
 
@@ -60,7 +60,7 @@ export async function insertWithColumnFallback<T>(
 export async function updateWithColumnFallback<T>(
   runUpdate: (payload: Record<string, unknown>) => Promise<{ data: T | null; error: any }>,
   payload: Record<string, unknown>,
-  maxAttempts = 8,
+  maxAttempts = 25,
 ): Promise<T> {
   const currentPayload = { ...compactObject(payload) };
 

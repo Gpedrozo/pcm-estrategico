@@ -28,7 +28,7 @@ import { useReactToPrint } from 'react-to-print';
 import { PRINT_PAGE_STYLE } from '@/components/print/DocumentPrintBase';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { toast } from '@/hooks/use-toast';
+import { toast, useToast } from '@/hooks/use-toast';
 import { upsertMaintenanceSchedule } from '@/services/maintenanceSchedule';
 import { getSupabaseErrorMessage, insertWithColumnFallback, updateWithColumnFallback } from '@/lib/supabaseCompat';
 import { useCreateOrdemServico } from '@/hooks/useOrdensServico';
@@ -126,6 +126,8 @@ const useMedicoesPreditivas = (tenantId: string | null, allowedTags: string[], a
 
 const useCreateMedicao = () => {
   const queryClient = useQueryClient();
+  const { tenantId } = useAuth();
+  const { toast } = useToast();
   return useMutation({
     mutationFn: async (data: {
       empresa_id: string;

@@ -73,11 +73,11 @@ export default function Relatorios() {
   const { data: empresa } = useDadosEmpresa();
   const { toast } = useToast();
 
-  // Motor de inteligência
+  // Motor de inteligência — conectado aos filtros de período
   const {
     kpis, alertas, insights, backlogAging, topEquipamentosCusto,
     mecanicosDesempenho, aderenciaDetalhada, osPorDia, resumoExecutivo,
-  } = useRelatoriosInteligentes();
+  } = useRelatoriosInteligentes(dateFrom, dateTo);
 
   // Drill-down filtered OS
   const drillDownOS = useMemo(() => {
@@ -236,6 +236,27 @@ export default function Relatorios() {
 
       {/* ═══════════ MODO DASHBOARD INTERATIVO ═══════════ */}
       {viewMode === 'dashboard' && (
+        <>
+        {/* Filtros do Dashboard */}
+        <div className="flex flex-wrap items-end gap-3 bg-card border border-border rounded-lg p-4">
+          <div className="flex items-center gap-1.5 text-sm font-medium text-muted-foreground">
+            <Filter className="h-4 w-4" />
+            Período:
+          </div>
+          <div className="space-y-1">
+            <Label className="text-xs">De</Label>
+            <Input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} className="w-40 h-8 text-sm" />
+          </div>
+          <div className="space-y-1">
+            <Label className="text-xs">Até</Label>
+            <Input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} className="w-40 h-8 text-sm" />
+          </div>
+          <Button variant="outline" size="sm" onClick={() => { setDateFrom(format(subDays(new Date(), 7), 'yyyy-MM-dd')); setDateTo(format(new Date(), 'yyyy-MM-dd')); }}>7d</Button>
+          <Button variant="outline" size="sm" onClick={() => { setDateFrom(format(subDays(new Date(), 30), 'yyyy-MM-dd')); setDateTo(format(new Date(), 'yyyy-MM-dd')); }}>30d</Button>
+          <Button variant="outline" size="sm" onClick={() => { setDateFrom(format(subDays(new Date(), 90), 'yyyy-MM-dd')); setDateTo(format(new Date(), 'yyyy-MM-dd')); }}>90d</Button>
+          <Button variant="outline" size="sm" onClick={() => { setDateFrom(format(subDays(new Date(), 365), 'yyyy-MM-dd')); setDateTo(format(new Date(), 'yyyy-MM-dd')); }}>1 ano</Button>
+        </div>
+
         <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as CategoryTab)} className="space-y-4">
           <TabsList className="grid grid-cols-4 w-full max-w-2xl">
             <TabsTrigger value="executivo" className="gap-1.5">
@@ -324,6 +345,7 @@ export default function Relatorios() {
             <KPIMetaReal kpis={kpis} />
           </TabsContent>
         </Tabs>
+        </>
       )}
 
       {/* ═══════════ MODO EXPORTAÇÃO PDF/EXCEL ═══════════ */}

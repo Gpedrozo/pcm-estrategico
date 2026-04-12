@@ -182,7 +182,107 @@ CREATE INDEX IF NOT EXISTS idx_solicitacoes_manutencao_empresa_id
   ON public.solicitacoes_manutencao(empresa_id);
 
 -- ============================================================
--- DONE: 99 columns added across 9 tables + 1 table created
+-- 11. documentos_tecnicos — 5 missing columns (insert direto → trava sem feedback)
+-- ============================================================
+ALTER TABLE public.documentos_tecnicos ADD COLUMN IF NOT EXISTS codigo text;
+ALTER TABLE public.documentos_tecnicos ADD COLUMN IF NOT EXISTS tag text;
+ALTER TABLE public.documentos_tecnicos ADD COLUMN IF NOT EXISTS descricao text;
+ALTER TABLE public.documentos_tecnicos ADD COLUMN IF NOT EXISTS versao text;
+ALTER TABLE public.documentos_tecnicos ADD COLUMN IF NOT EXISTS arquivo_nome text;
+
+-- ============================================================
+-- 12. SSMA — EPIs (Controle de Equipamentos de Proteção Individual)
+-- ============================================================
+CREATE TABLE IF NOT EXISTS public.epis (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  empresa_id uuid NOT NULL REFERENCES public.empresas(id) ON DELETE CASCADE,
+  nome text NOT NULL,
+  categoria text NOT NULL DEFAULT 'OUTROS',
+  numero_ca text,
+  fabricante text,
+  validade_ca date,
+  estoque_atual integer NOT NULL DEFAULT 0,
+  estoque_minimo integer NOT NULL DEFAULT 0,
+  ativo boolean NOT NULL DEFAULT true,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now()
+);
+
+ALTER TABLE public.epis ENABLE ROW LEVEL SECURITY;
+
+DO $$ BEGIN
+  CREATE POLICY "tenant_isolation_epis"
+    ON public.epis FOR ALL
+    USING (empresa_id = (current_setting('app.current_tenant', true))::uuid)
+    WITH CHECK (empresa_id = (current_setting('app.current_tenant', true))::uuid);
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+
+CREATE INDEX IF NOT EXISTS idx_epis_empresa_id ON public.epis(empresa_id);
+
+CREATE TABLE IF NOT EXISTS public.entregas_epi (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  empresa_id uuid NOT NULL REFERENCES public.empresas(id) ON DELETE CASCADE,
+  epi_id uuid NOT NULL REFERENCES public.epis(id) ON DELETE CASCADE,
+  colaborador_nome text NOT NULL,
+  colaborador_id uuid,
+  quantidade integer NOT NULL DEFAULT 1,
+  data_entrega date NOT NULL DEFAULT CURRENT_DATE,
+  data_devolucao date,
+  motivo text,
+  observacoes text,
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+
+ALTER TABLE public.entregas_epi ENABLE ROW LEVEL SECURITY;
+
+DO $$ BEGIN
+  CREATE POLICY "tenant_isolation_entregas_epi"
+    ON public.entregas_epi FOR ALL
+    USING (empresa_id = (current_setting('app.current_tenant', true))::uuid)
+    WITH CHECK (empresa_id = (current_setting('app.current_tenant', true))::uuid);
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+
+CREATE INDEX IF NOT EXISTS idx_entregas_epi_empresa_id ON public.entregas_epi(empresa_id);
+CREATE INDEX IF NOT EXISTS idx_entregas_epi_epi_id ON public.entregas_epi(epi_id);
+
+-- ============================================================
+-- 13. SSMA — Fichas de Segurança (FISPQ / FDS)
+-- ============================================================
+CREATE TABLE IF NOT EXISTS public.fichas_seguranca (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  empresa_id uuid NOT NULL REFERENCES public.empresas(id) ON DELETE CASCADE,
+  codigo text,
+  nome_produto text NOT NULL,
+  fabricante text,
+  classificacao_ghs text,
+  perigos_principais text,
+  medidas_emergencia text,
+  primeiros_socorros text,
+  armazenamento text,
+  epi_recomendado text,
+  arquivo_url text,
+  data_validade date,
+  ativo boolean NOT NULL DEFAULT true,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now()
+);
+
+ALTER TABLE public.fichas_seguranca ENABLE ROW LEVEL SECURITY;
+
+DO $$ BEGIN
+  CREATE POLICY "tenant_isolation_fichas_seguranca"
+    ON public.fichas_seguranca FOR ALL
+    USING (empresa_id = (current_setting('app.current_tenant', true))::uuid)
+    WITH CHECK (empresa_id = (current_setting('app.current_tenant', true))::uuid);
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+
+CREATE INDEX IF NOT EXISTS idx_fichas_seguranca_empresa_id ON public.fichas_seguranca(empresa_id);
+
+-- ============================================================
+-- DONE: 104 columns added across 10 tables + 4 tables created
 -- All operations are idempotent (IF NOT EXISTS / IF NOT EXISTS)
 -- No columns dropped, no columns renamed
 -- ============================================================
