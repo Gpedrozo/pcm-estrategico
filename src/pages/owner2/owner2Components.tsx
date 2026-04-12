@@ -5,8 +5,8 @@ export function SurfaceCard({ title, subtitle, children }: { title: string; subt
   return (
     <section className="rounded-2xl border border-border bg-card/95 p-4 shadow-sm" aria-label={title}>
       <div className="mb-3">
-        <h3 className="text-sm font-semibold text-slate-900">{title}</h3>
-        {subtitle ? <p className="mt-1 text-xs text-slate-500">{subtitle}</p> : null}
+        <h3 className="text-sm font-semibold text-card-foreground">{title}</h3>
+        {subtitle ? <p className="mt-1 text-xs text-muted-foreground">{subtitle}</p> : null}
       </div>
       {children}
     </section>

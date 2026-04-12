@@ -52,9 +52,10 @@ function renderOwner2() {
 }
 
 describe('owner2 encoding regression', () => {
-  it('renders Usuário label with proper accent', () => {
+  it('renders accented label with proper encoding', () => {
     renderOwner2()
 
-    expect(screen.getByText(/Usuário:/i)).toBeInTheDocument()
+    // 'Usuários' (with accent) is always visible in the dashboard MetricTile
+    expect(screen.getByText(/Usuários/i)).toBeInTheDocument()
   })
 })

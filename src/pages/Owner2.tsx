@@ -14,9 +14,12 @@ import {
   LogIn,
   LogOut,
   Loader2,
+  Moon,
+  Pencil,
   RefreshCw,
   Settings2,
   ShieldCheck,
+  Sun,
   Users,
   XCircle,
 } from 'lucide-react'
@@ -70,7 +73,99 @@ export default function Owner() {
   const [companyId, setCompanyId] = useState('')
   const [authPassword, setAuthPassword] = useState('')
 
-  const [newCompanyName, setNewCompanyName] = useState('')
+  // Dark/light mode — sincronizado com a chave pcm-theme do sistema
+  const [isDark, setIsDark] = useState(() => {
+    try {
+      const stored = localStorage.getItem('pcm-theme')
+      if (stored) return stored === 'dark'
+      return document.documentElement.classList.contains('dark')
+    } catch {
+      return false
+    }
+  })
+  useEffect(() => {
+    try {
+      document.documentElement.classList.toggle('dark', isDark)
+      localStorage.setItem('pcm-theme', isDark ? 'dark' : 'light')
+    } catch { /* jsdom/SSR fallback */ }
+  }, [isDark])
+
+  // Estado do modal de edição de empresa
+  type EditEmpresaState = {
+    id: string
+    nome: string
+    slug: string
+    tipo_pessoa: 'PJ' | 'PF'
+    cpf_cnpj: string
+    razao_social: string
+    nome_fantasia: string
+    endereco: string
+    telefone: string
+    email: string
+    responsavel: string
+    segmento: string
+    status: string
+  }
+  const [editEmpresaOpen, setEditEmpresaOpen] = useState(false)
+  const [editEmpresa, setEditEmpresa] = useState<EditEmpresaState | null>(null)
+  const [editEmpresaBusy, setEditEmpresaBusy] = useState(false)
+
+  function openEditEmpresa(c: Record<string, unknown>) {
+    setEditEmpresa({
+      id: String(c.id ?? ''),
+      nome: String(c.nome ?? ''),
+      slug: String(c.slug ?? ''),
+      tipo_pessoa: (String(c.tipo_pessoa ?? 'PJ') as 'PJ' | 'PF'),
+      cpf_cnpj: String(c.cpf_cnpj ?? c.document ?? ''),
+      razao_social: String(c.razao_social ?? ''),
+      nome_fantasia: String(c.nome_fantasia ?? ''),
+      endereco: String(c.endereco ?? ''),
+      telefone: String(c.telefone ?? ''),
+      email: String(c.email ?? ''),
+      responsavel: String(c.responsavel ?? ''),
+      segmento: String(c.segmento ?? ''),
+      status: String(c.status ?? 'ativo'),
+    })
+    setEditEmpresaOpen(true)
+    setError(null)
+    setFeedback(null)
+  }
+
+  async function handleSaveEditEmpresa() {
+    if (!editEmpresa?.id) return
+    setEditEmpresaBusy(true)
+    setError(null)
+    setFeedback(null)
+    try {
+      await execute.mutateAsync({
+        action: 'update_company',
+        payload: {
+          empresa_id: editEmpresa.id,
+          company: {
+            nome: editEmpresa.nome,
+            slug: editEmpresa.slug || undefined,
+            tipo_pessoa: editEmpresa.tipo_pessoa,
+            cpf_cnpj: editEmpresa.cpf_cnpj || undefined,
+            razao_social: editEmpresa.razao_social || editEmpresa.nome,
+            nome_fantasia: editEmpresa.nome_fantasia || editEmpresa.nome,
+            endereco: editEmpresa.endereco || undefined,
+            telefone: editEmpresa.telefone || undefined,
+            email: editEmpresa.email || undefined,
+            responsavel: editEmpresa.responsavel || undefined,
+            segmento: editEmpresa.segmento || undefined,
+            status: editEmpresa.status,
+          },
+        },
+      })
+      setFeedback(`Empresa "${editEmpresa.nome}" atualizada com sucesso.`)
+      setEditEmpresaOpen(false)
+      setEditEmpresa(null)
+    } catch (err: any) {
+      setError(String(err?.message ?? err ?? 'Falha ao atualizar empresa.'))
+    } finally {
+      setEditEmpresaBusy(false)
+    }
+  }
   const [newCompanySlug, setNewCompanySlug] = useState('')
   const [newCompanyPersonType, setNewCompanyPersonType] = useState<'PF' | 'PJ'>('PJ')
   const [newCompanyDocument, setNewCompanyDocument] = useState('')
@@ -804,41 +899,53 @@ export default function Owner() {
 
   if (isLoading) {
     return (
-      <div className="flex h-[60vh] items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-sky-700" />
+      <div className="flex h-[60vh] items-center justify-center bg-background">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
       </div>
     )
   }
 
   if (!isSystemOwner) {
     return (
-      <div className="flex h-[60vh] items-center justify-center">
-        <div className="max-w-md rounded-xl border border-rose-200 bg-white p-6 text-center shadow-sm">
-          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-rose-100">
-            <ShieldCheck className="h-6 w-6 text-rose-600" />
+      <div className="flex h-[60vh] items-center justify-center bg-background">
+        <div className="max-w-md rounded-xl border border-destructive/30 bg-card p-6 text-center shadow-sm">
+          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-destructive/10">
+            <ShieldCheck className="h-6 w-6 text-destructive" />
           </div>
-          <h2 className="mt-4 text-lg font-semibold text-slate-900">Acesso negado</h2>
-          <p className="mt-2 text-sm text-slate-600">O Owner é exclusivo para SYSTEM_OWNER.</p>
+          <h2 className="mt-4 text-lg font-semibold text-card-foreground">Acesso negado</h2>
+          <p className="mt-2 text-sm text-muted-foreground">O Owner é exclusivo para SYSTEM_OWNER.</p>
         </div>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-[radial-gradient(circle_at_top,_#dbeafe,_#f8fafc_45%)] text-slate-900">
-      <header className="border-b border-slate-200/90 bg-white/90 backdrop-blur">
-        <div className="mx-auto flex w-full max-w-[1600px] items-center justify-between px-6 py-4">
-          <div>
-            <h1 className="text-xl font-semibold tracking-tight">Owner Portal</h1>
-            <p className="text-xs text-slate-600">Visao executiva do ecossistema multiempresa.</p>
+    <div className="min-h-screen bg-background text-foreground">
+      <header className="border-b border-border bg-card/90 backdrop-blur sticky top-0 z-40">
+        <div className="mx-auto flex w-full max-w-[1600px] items-center justify-between px-6 py-3">
+          <div className="flex items-center gap-3">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
+              <ShieldCheck className="h-4 w-4 text-primary-foreground" />
+            </div>
+            <div>
+              <h1 className="text-base font-semibold tracking-tight leading-none">Owner Portal</h1>
+              <p className="text-[11px] text-muted-foreground leading-none mt-0.5">Visão executiva · multiempresa</p>
+            </div>
           </div>
           <div className="flex items-center gap-2">
-            <div className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs text-slate-700 shadow-sm">
-              <p>Usuário: {user?.email}</p>
-              <p>Health: {healthStatus}</p>
+            <div className="hidden sm:flex rounded-lg border border-border bg-muted/50 px-3 py-1.5 text-xs text-muted-foreground gap-3">
+              <span>{user?.email}</span>
+              <span className={healthStatus.startsWith('erro') ? 'text-rose-500' : 'text-emerald-500'}>● {healthStatus}</span>
             </div>
             <button
-              className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-700 shadow-sm"
+              className="rounded-lg border border-border bg-card p-2 text-muted-foreground hover:text-foreground transition-colors"
+              onClick={() => setIsDark((d) => !d)}
+              title={isDark ? 'Tema claro' : 'Tema escuro'}
+            >
+              {isDark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+            </button>
+            <button
+              className="rounded-lg border border-border bg-card px-3 py-1.5 text-xs font-semibold text-foreground hover:bg-muted transition-colors"
               onClick={() => void logout({ reason: 'manual' })}
             >
               Logout
@@ -848,18 +955,18 @@ export default function Owner() {
       </header>
 
       <main className="mx-auto grid w-full max-w-[1600px] gap-4 p-4 lg:grid-cols-[230px,1fr]">
-        <aside className="rounded-2xl border border-slate-200 bg-white/95 p-3 shadow-sm">
-          <nav className="space-y-1">
+        <aside className="rounded-2xl border border-border bg-card/95 p-3 shadow-sm lg:sticky lg:top-[60px] lg:self-start lg:max-h-[calc(100vh-76px)] lg:overflow-y-auto">
+          <nav className="space-y-0.5">
             {visibleTabs.map((tab) => (
               <button
                 key={tab}
-                className={`w-full rounded-lg px-3 py-2 text-left text-sm transition ${activeTab === tab ? 'bg-sky-700 font-semibold text-white shadow-sm' : 'text-slate-700 hover:bg-slate-100'}`}
+                className={`w-full rounded-lg px-3 py-2 text-left text-sm transition-colors ${activeTab === tab ? 'bg-primary font-semibold text-primary-foreground shadow-sm' : 'text-foreground hover:bg-muted'}`}
                 onClick={() => setActiveTab(tab)}
               >
                 <span className="flex items-center justify-between">
                   {OWNER_TAB_LABELS[tab]}
                   {tab === 'suporte' && unreadOwnerCount > 0 && (
-                    <span className="inline-flex h-5 min-w-[20px] items-center justify-center rounded-full bg-red-500 px-1.5 text-[11px] font-bold leading-none text-white">
+                    <span className="inline-flex h-5 min-w-[20px] items-center justify-center rounded-full bg-destructive px-1.5 text-[11px] font-bold leading-none text-destructive-foreground">
                       {unreadOwnerCount > 99 ? '99+' : unreadOwnerCount}
                     </span>
                   )}
@@ -870,19 +977,19 @@ export default function Owner() {
         </aside>
 
         <section className="space-y-4">
-          <div className="rounded-2xl border border-sky-200 bg-sky-50/90 p-3 shadow-sm">
+          <div className="rounded-2xl border border-primary/20 bg-primary/5 p-3 shadow-sm">
             <div className="flex flex-wrap items-center justify-between gap-2">
-              <p className="text-sm text-sky-900">
+              <p className="text-sm text-foreground">
                 Contexto ativo: <span className="font-semibold">{selectedCompany ? String(selectedCompany.nome ?? selectedCompany.slug ?? selectedCompany.id) : 'Global (todas as empresas)'}</span>
               </p>
               <div className="flex flex-wrap gap-2">
                 {selectedCompanyLoginUrl && (
-                  <a className="inline-flex items-center gap-1 rounded-lg border border-sky-300 bg-white px-3 py-1.5 text-xs font-semibold text-sky-700" href={selectedCompanyLoginUrl} target="_blank" rel="noopener noreferrer">
+                  <a className="inline-flex items-center gap-1 rounded-lg border border-primary/30 bg-card px-3 py-1.5 text-xs font-semibold text-primary hover:bg-primary/10 transition-colors" href={selectedCompanyLoginUrl} target="_blank" rel="noopener noreferrer">
                     <LogIn className="h-3.5 w-3.5" /> Abrir login tenant
                   </a>
                 )}
                 <button
-                  className="inline-flex items-center gap-1 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700"
+                  className="inline-flex items-center gap-1 rounded-lg border border-border bg-card px-3 py-1.5 text-xs font-semibold text-foreground hover:bg-muted transition-colors"
                   disabled={!companyId}
                   onClick={() => {
                     setCompanyId('')
@@ -895,24 +1002,24 @@ export default function Owner() {
             </div>
           </div>
 
-          <div className="rounded-2xl border border-slate-200 bg-white/95 p-3 shadow-sm">
+          <div className="rounded-2xl border border-border bg-card/95 p-3 shadow-sm">
             <div className="grid gap-2 md:grid-cols-2">
-              <select className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" value={companyId} onChange={(e) => setCompanyId(e.target.value)}>
+              <select className="rounded-lg border border-border bg-background px-2 py-2 text-sm text-foreground" value={companyId} onChange={(e) => setCompanyId(e.target.value)}>
                 <option value="">Empresa (escopo)</option>
                 {companies.map((c) => (
                   <option key={String(c.id)} value={String(c.id)}>{String(c.nome ?? c.slug ?? c.id)}</option>
                 ))}
               </select>
-              <input className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" type="password" value={authPassword} onChange={(e) => setAuthPassword(e.target.value)} placeholder="Senha de confirmação para ações críticas" />
+              <input className="rounded-lg border border-border bg-background px-2 py-2 text-sm text-foreground" type="password" value={authPassword} onChange={(e) => setAuthPassword(e.target.value)} placeholder="Senha de confirmação para ações críticas" />
             </div>
           </div>
 
           {activeTab === 'dashboard' && (
             <div className="space-y-4">
-              <div className="rounded-2xl border border-sky-200 bg-gradient-to-r from-sky-600 to-cyan-600 p-5 text-white shadow-lg shadow-sky-200">
-                <p className="text-xs uppercase tracking-wider text-sky-100">Painel executivo</p>
+              <div className="rounded-2xl border border-primary/20 bg-gradient-to-r from-primary to-primary/70 p-5 text-primary-foreground shadow-lg">
+                <p className="text-xs uppercase tracking-wider opacity-80">Painel executivo</p>
                 <h2 className="mt-1 text-xl font-semibold">Visão geral da operação global</h2>
-                <p className="mt-1 text-sm text-sky-100">{String((dashboardQuery.data as any)?.message ?? 'Acompanhe indicadores e entre nas áreas operacionais com um clique.')}</p>
+                <p className="mt-1 text-sm opacity-80">{String((dashboardQuery.data as any)?.message ?? 'Acompanhe indicadores e entre nas áreas operacionais com um clique.')}</p>
               </div>
 
               <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
@@ -925,7 +1032,7 @@ export default function Owner() {
 
               <div className="grid gap-4 xl:grid-cols-2">
                 <SurfaceCard title="Empresas por status" subtitle="Distribuição operacional">
-                  <div className="h-64 rounded-xl border border-slate-200 bg-white p-2">
+                  <div className="h-64 rounded-xl border border-border bg-card p-2">
                     <ResponsiveContainer width="100%" height="100%">
                       <BarChart data={companyStatusChartData} margin={{ top: 16, right: 8, left: 0, bottom: 0 }}>
                         <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
@@ -939,7 +1046,7 @@ export default function Owner() {
                 </SurfaceCard>
 
                 <SurfaceCard title="Assinaturas por status" subtitle="Saúde de receita recorrente">
-                  <div className="h-64 rounded-xl border border-slate-200 bg-white p-2">
+                  <div className="h-64 rounded-xl border border-border bg-card p-2">
                     <ResponsiveContainer width="100%" height="100%">
                       <PieChart>
                         <Tooltip />
@@ -972,25 +1079,25 @@ export default function Owner() {
                   <MetricTile label="Alertas" value={tablesQuery.isError || healthQuery.isError ? 1 : 0} icon={AlertTriangle} tone={(tablesQuery.isError || healthQuery.isError) ? 'rose' : 'emerald'} />
                 </div>
 
-                <div className="mt-3 rounded-xl border border-slate-200 bg-slate-50 p-2.5">
-                  <div className="mb-2 flex items-center justify-between text-xs text-slate-600">
+                <div className="mt-3 rounded-xl border border-border bg-muted/40 p-2.5">
+                  <div className="mb-2 flex items-center justify-between text-xs text-muted-foreground">
                     <span>Disponibilidade</span>
-                    <span className="font-semibold text-slate-900">{monitorSummary.availabilityPercent}%</span>
+                    <span className="font-semibold text-foreground">{monitorSummary.availabilityPercent}%</span>
                   </div>
-                  <div className="h-2 rounded bg-slate-200">
-                    <div className="h-2 rounded bg-sky-500" style={{ width: `${monitorSummary.availabilityPercent}%` }} />
+                  <div className="h-2 rounded bg-muted">
+                    <div className="h-2 rounded bg-primary" style={{ width: `${monitorSummary.availabilityPercent}%` }} />
                   </div>
                 </div>
               </SurfaceCard>
 
               <SurfaceCard title="Disponibilidade por horário" subtitle="Picos e vales das últimas 24 horas">
-                <div className="rounded-xl border border-slate-200 bg-white p-2.5">
+                <div className="rounded-xl border border-border bg-card p-2.5">
                   <div className="mb-2 grid gap-2 sm:grid-cols-2">
-                    <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-800">
+                    <div className="rounded-lg border border-emerald-200 bg-emerald-50 dark:bg-emerald-950/30 dark:border-emerald-800/50 px-3 py-2 text-xs text-emerald-800 dark:text-emerald-400">
                       <p className="font-semibold">Pico</p>
                       <p>{availabilityTimeline.peak.hour} • {availabilityTimeline.peak.availability}%</p>
                     </div>
-                    <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+                    <div className="rounded-lg border border-amber-200 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-800/50 px-3 py-2 text-xs text-amber-800 dark:text-amber-400">
                       <p className="font-semibold">Vale</p>
                       <p>{availabilityTimeline.valley.hour} • {availabilityTimeline.valley.availability}%</p>
                     </div>
@@ -1048,28 +1155,28 @@ export default function Owner() {
             <div className="grid gap-4 xl:grid-cols-2">
               <SurfaceCard title="Cadastro de nova empresa" subtitle="Preencha dados, selecione plano e crie em um clique">
                 <div className="grid gap-2">
-                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Dados da empresa</p>
-                  <select className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" value={newCompanyPersonType} onChange={(e) => setNewCompanyPersonType(e.target.value as 'PF' | 'PJ')}>
+                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Dados da empresa</p>
+                  <select className="rounded-lg border border-border bg-background px-2 py-2 text-sm text-foreground" value={newCompanyPersonType} onChange={(e) => setNewCompanyPersonType(e.target.value as 'PF' | 'PJ')}>
                     <option value="PJ">Pessoa jurídica (PJ)</option>
                     <option value="PF">Pessoa física (PF)</option>
                   </select>
-                  <input className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" value={newCompanyName} onChange={(e) => setNewCompanyName(e.target.value)} placeholder="Nome da empresa *" />
-                  <input className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" value={newCompanySlug} onChange={(e) => setNewCompanySlug(e.target.value)} placeholder="Slug (opcional)" />
-                  <input className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" value={newCompanyDocument} onChange={(e) => setNewCompanyDocument(e.target.value)} placeholder={newCompanyPersonType === 'PF' ? 'CPF *' : 'CNPJ *'} />
-                  <input className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" value={newCompanyRazaoSocial} onChange={(e) => setNewCompanyRazaoSocial(e.target.value)} placeholder={newCompanyPersonType === 'PF' ? 'Nome completo' : 'Razão social'} />
-                  <input className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" value={newCompanyNomeFantasia} onChange={(e) => setNewCompanyNomeFantasia(e.target.value)} placeholder={newCompanyPersonType === 'PF' ? 'Nome de exibição' : 'Nome fantasia'} />
-                  <input className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" value={newCompanyAddress} onChange={(e) => setNewCompanyAddress(e.target.value)} placeholder="Endereço" />
-                  <input className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" value={newCompanyPhone} onChange={(e) => setNewCompanyPhone(e.target.value)} placeholder="Telefone" />
-                  <input className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" value={newCompanyEmail} onChange={(e) => setNewCompanyEmail(e.target.value)} placeholder="Email comercial" />
-                  <input className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" value={newCompanyResponsible} onChange={(e) => setNewCompanyResponsible(e.target.value)} placeholder="Responsável" />
-                  <input className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" value={newCompanySegment} onChange={(e) => setNewCompanySegment(e.target.value)} placeholder="Segmento" />
+                  <input className="rounded-lg border border-border bg-background px-2 py-2 text-sm text-foreground" value={newCompanyName} onChange={(e) => setNewCompanyName(e.target.value)} placeholder="Nome da empresa *" />
+                  <input className="rounded-lg border border-border bg-background px-2 py-2 text-sm text-foreground" value={newCompanySlug} onChange={(e) => setNewCompanySlug(e.target.value)} placeholder="Slug (opcional)" />
+                  <input className="rounded-lg border border-border bg-background px-2 py-2 text-sm text-foreground" value={newCompanyDocument} onChange={(e) => setNewCompanyDocument(e.target.value)} placeholder={newCompanyPersonType === 'PF' ? 'CPF *' : 'CNPJ *'} />
+                  <input className="rounded-lg border border-border bg-background px-2 py-2 text-sm text-foreground" value={newCompanyRazaoSocial} onChange={(e) => setNewCompanyRazaoSocial(e.target.value)} placeholder={newCompanyPersonType === 'PF' ? 'Nome completo' : 'Razão social'} />
+                  <input className="rounded-lg border border-border bg-background px-2 py-2 text-sm text-foreground" value={newCompanyNomeFantasia} onChange={(e) => setNewCompanyNomeFantasia(e.target.value)} placeholder={newCompanyPersonType === 'PF' ? 'Nome de exibição' : 'Nome fantasia'} />
+                  <input className="rounded-lg border border-border bg-background px-2 py-2 text-sm text-foreground" value={newCompanyAddress} onChange={(e) => setNewCompanyAddress(e.target.value)} placeholder="Endereço" />
+                  <input className="rounded-lg border border-border bg-background px-2 py-2 text-sm text-foreground" value={newCompanyPhone} onChange={(e) => setNewCompanyPhone(e.target.value)} placeholder="Telefone" />
+                  <input className="rounded-lg border border-border bg-background px-2 py-2 text-sm text-foreground" value={newCompanyEmail} onChange={(e) => setNewCompanyEmail(e.target.value)} placeholder="Email comercial" />
+                  <input className="rounded-lg border border-border bg-background px-2 py-2 text-sm text-foreground" value={newCompanyResponsible} onChange={(e) => setNewCompanyResponsible(e.target.value)} placeholder="Responsável" />
+                  <input className="rounded-lg border border-border bg-background px-2 py-2 text-sm text-foreground" value={newCompanySegment} onChange={(e) => setNewCompanySegment(e.target.value)} placeholder="Segmento" />
 
-                  <p className="mt-2 text-xs font-semibold uppercase tracking-wide text-slate-500">Administrador master</p>
-                  <input className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" value={newAdminName} onChange={(e) => setNewAdminName(e.target.value)} placeholder="Nome do administrador *" />
-                  <input className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" value={newAdminEmail} onChange={(e) => setNewAdminEmail(e.target.value)} placeholder="Email do administrador *" />
+                  <p className="mt-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Administrador master</p>
+                  <input className="rounded-lg border border-border bg-background px-2 py-2 text-sm text-foreground" value={newAdminName} onChange={(e) => setNewAdminName(e.target.value)} placeholder="Nome do administrador *" />
+                  <input className="rounded-lg border border-border bg-background px-2 py-2 text-sm text-foreground" value={newAdminEmail} onChange={(e) => setNewAdminEmail(e.target.value)} placeholder="Email do administrador *" />
 
-                  <p className="mt-2 text-xs font-semibold uppercase tracking-wide text-slate-500">Plano e cobrança</p>
-                  <select className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" value={cadastroPlanId} onChange={(e) => setCadastroPlanId(e.target.value)}>
+                  <p className="mt-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Plano e cobrança</p>
+                  <select className="rounded-lg border border-border bg-background px-2 py-2 text-sm text-foreground" value={cadastroPlanId} onChange={(e) => setCadastroPlanId(e.target.value)}>
                     <option value="">Selecione o plano *</option>
                     {plans.map((p) => (
                       <option key={String(p.id)} value={String(p.id)}>
@@ -1077,12 +1184,12 @@ export default function Owner() {
                       </option>
                     ))}
                   </select>
-                  <select className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" value={cadastroPeriod} onChange={(e) => setCadastroPeriod(e.target.value)}>
+                  <select className="rounded-lg border border-border bg-background px-2 py-2 text-sm text-foreground" value={cadastroPeriod} onChange={(e) => setCadastroPeriod(e.target.value)}>
                     <option value="monthly">Mensal</option>
                     <option value="quarterly">Trimestral</option>
                     <option value="yearly">Anual</option>
                   </select>
-                  <select className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" value={cadastroPaymentMethod} onChange={(e) => setCadastroPaymentMethod(e.target.value)}>
+                  <select className="rounded-lg border border-border bg-background px-2 py-2 text-sm text-foreground" value={cadastroPaymentMethod} onChange={(e) => setCadastroPaymentMethod(e.target.value)}>
                     <option value="">Forma de pagamento (ASAAS)</option>
                     <option value="PIX">PIX</option>
                     <option value="BOLETO">Boleto</option>
@@ -1090,17 +1197,17 @@ export default function Owner() {
                   </select>
                   <div className="grid grid-cols-2 gap-2">
                     <div>
-                      <label className="block text-xs text-slate-500 mb-1">Início</label>
-                      <input type="date" className="w-full rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" value={cadastroStartsAt} onChange={(e) => setCadastroStartsAt(e.target.value)} />
+                      <label className="block text-xs text-muted-foreground mb-1">Início</label>
+                      <input type="date" className="w-full rounded-lg border border-border bg-background px-2 py-2 text-sm text-foreground" value={cadastroStartsAt} onChange={(e) => setCadastroStartsAt(e.target.value)} />
                     </div>
                     <div>
-                      <label className="block text-xs text-slate-500 mb-1">Término (opcional)</label>
-                      <input type="date" className="w-full rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" value={cadastroEndsAt} onChange={(e) => setCadastroEndsAt(e.target.value)} />
+                      <label className="block text-xs text-muted-foreground mb-1">Término (opcional)</label>
+                      <input type="date" className="w-full rounded-lg border border-border bg-background px-2 py-2 text-sm text-foreground" value={cadastroEndsAt} onChange={(e) => setCadastroEndsAt(e.target.value)} />
                     </div>
                   </div>
 
                   <button
-                    className="mt-2 rounded-lg bg-sky-700 px-3 py-2.5 text-sm font-semibold text-white hover:bg-sky-800 disabled:opacity-50"
+                    className="mt-2 rounded-lg bg-primary px-3 py-2.5 text-sm font-semibold text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-50"
                     disabled={busy || !newCompanyName || !newCompanyDocument || !newAdminName || !newAdminEmail || !cadastroPlanId}
                     onClick={handleCreateCompanyFromCadastro}
                   >
@@ -1113,21 +1220,21 @@ export default function Owner() {
               <div className="space-y-4">
                 {plans.length > 0 && (
                   <SurfaceCard title="Planos disponíveis" subtitle="Referência rápida">
-                    <div className="max-h-[360px] overflow-auto rounded-xl border border-slate-200">
+                    <div className="max-h-[360px] overflow-auto rounded-xl border border-border">
                       <table className="w-full text-xs">
-                        <thead className="bg-slate-100">
+                        <thead className="bg-muted/70">
                           <tr>
-                            <th className="px-2 py-2 text-left">Plano</th>
-                            <th className="px-2 py-2 text-left">Preço/mês</th>
-                            <th className="px-2 py-2 text-left">Status</th>
+                            <th className="px-2 py-2 text-left text-muted-foreground">Plano</th>
+                            <th className="px-2 py-2 text-left text-muted-foreground">Preço/mês</th>
+                            <th className="px-2 py-2 text-left text-muted-foreground">Status</th>
                           </tr>
                         </thead>
                         <tbody>
                           {plans.map((p) => (
-                            <tr key={String(p.id)} className="border-t border-slate-200">
-                              <td className="px-2 py-2 font-medium">{String(p.name ?? p.code ?? '-')}</td>
-                              <td className="px-2 py-2">R$ {Number(p.price_month ?? 0).toFixed(2)}</td>
-                              <td className="px-2 py-2">{String(p.status ?? '-')}</td>
+                            <tr key={String(p.id)} className="border-t border-border">
+                              <td className="px-2 py-2 font-medium text-foreground">{String(p.name ?? p.code ?? '-')}</td>
+                              <td className="px-2 py-2 text-foreground">R$ {Number(p.price_month ?? 0).toFixed(2)}</td>
+                              <td className="px-2 py-2 text-muted-foreground">{String(p.status ?? '-')}</td>
                             </tr>
                           ))}
                         </tbody>
@@ -1138,10 +1245,10 @@ export default function Owner() {
 
                 <SurfaceCard title="Ações rápidas da empresa selecionada">
                   <div className="grid gap-2 sm:grid-cols-2">
-                    <button className="rounded-lg border border-slate-300 px-3 py-2 text-sm" disabled={busy || !companyId} onClick={() => runAction('set_company_status', { empresa_id: companyId, status: 'active' }, 'Empresa ativada.')}>Ativar</button>
-                    <button className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-700" disabled={busy || !companyId} onClick={() => runAction('set_company_status', { empresa_id: companyId, status: 'blocked' }, 'Empresa bloqueada.')}>Bloquear</button>
+                    <button className="rounded-lg border border-border px-3 py-2 text-sm text-foreground hover:bg-muted transition-colors" disabled={busy || !companyId} onClick={() => runAction('set_company_status', { empresa_id: companyId, status: 'active' }, 'Empresa ativada.')}>Ativar</button>
+                    <button className="rounded-lg border border-amber-300 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-800/50 px-3 py-2 text-sm text-amber-700 dark:text-amber-400 hover:bg-amber-100 dark:hover:bg-amber-950/50 transition-colors" disabled={busy || !companyId} onClick={() => runAction('set_company_status', { empresa_id: companyId, status: 'blocked' }, 'Empresa bloqueada.')}>Bloquear</button>
                     <button
-                      className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-700"
+                      className="rounded-lg border border-amber-300 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-800/50 px-3 py-2 text-sm text-amber-700 dark:text-amber-400 hover:bg-amber-100 dark:hover:bg-amber-950/50 transition-colors"
                       disabled={busy || !companyId}
                       onClick={() => openCriticalAction({
                         title: 'Limpeza completa de dados',
@@ -1155,7 +1262,7 @@ export default function Owner() {
                       Limpeza completa
                     </button>
                     <button
-                      className="rounded-lg border border-rose-300 bg-rose-50 px-3 py-2 text-sm text-rose-700"
+                      className="rounded-lg border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive hover:bg-destructive/20 transition-colors"
                       disabled={busy || !companyId || !isOwnerMaster}
                       onClick={() => openCriticalAction({
                         title: 'Exclusão definitiva da empresa',
@@ -1186,28 +1293,41 @@ export default function Owner() {
 
               <div className="xl:col-span-2">
                 <SurfaceCard title="Empresas cadastradas">
-                  <div className="max-h-[420px] overflow-auto rounded-xl border border-slate-200">
+                  <div className="max-h-[420px] overflow-auto rounded-xl border border-border">
                     <table className="w-full text-xs">
-                      <thead className="bg-slate-100">
+                      <thead className="bg-muted/70 sticky top-0">
                         <tr>
-                          <th className="px-2 py-2 text-left">ID</th>
-                          <th className="px-2 py-2 text-left">Nome</th>
-                          <th className="px-2 py-2 text-left">Slug</th>
-                          <th className="px-2 py-2 text-left">Status</th>
+                          <th className="px-2 py-2 text-left text-muted-foreground">ID</th>
+                          <th className="px-2 py-2 text-left text-muted-foreground">Nome</th>
+                          <th className="px-2 py-2 text-left text-muted-foreground">Slug</th>
+                          <th className="px-2 py-2 text-left text-muted-foreground">Status</th>
+                          <th className="px-2 py-2 text-left text-muted-foreground">Ações</th>
                         </tr>
                       </thead>
                       <tbody>
                         {companies.map((c) => {
                           const st = String(c.status ?? '-')
                           return (
-                            <tr key={String(c.id)} className="border-t border-slate-200 cursor-pointer hover:bg-slate-50" onClick={() => setCompanyId(String(c.id ?? ''))}>
-                              <td className="px-2 py-2">{String(c.id ?? '-')}</td>
-                              <td className="px-2 py-2">{String(c.nome ?? '-')}</td>
-                              <td className="px-2 py-2">{String(c.slug ?? '-')}</td>
+                            <tr key={String(c.id)} className="border-t border-border hover:bg-muted/40 cursor-pointer" onClick={() => setCompanyId(String(c.id ?? ''))}>
+                              <td className="px-2 py-2 text-muted-foreground font-mono text-[10px]">{String(c.id ?? '-').slice(0, 8)}…</td>
+                              <td className="px-2 py-2 font-medium text-foreground">{String(c.nome ?? '-')}</td>
+                              <td className="px-2 py-2 text-muted-foreground">{String(c.slug ?? '-')}</td>
                               <td className="px-2 py-2"><span className={`rounded border px-2 py-0.5 ${statusColor(st)}`}>{st}</span></td>
+                              <td className="px-2 py-2">
+                                <button
+                                  className="inline-flex items-center gap-1 rounded border border-border bg-background px-2 py-0.5 text-[11px] text-foreground hover:bg-muted transition-colors"
+                                  onClick={(e) => { e.stopPropagation(); openEditEmpresa(c) }}
+                                  title="Editar empresa"
+                                >
+                                  <Pencil className="h-3 w-3" /> Editar
+                                </button>
+                              </td>
                             </tr>
                           )
                         })}
+                        {companies.length === 0 && (
+                          <tr><td colSpan={5} className="px-2 py-4 text-center text-muted-foreground">Nenhuma empresa cadastrada.</td></tr>
+                        )}
                       </tbody>
                     </table>
                   </div>
@@ -2451,25 +2571,25 @@ export default function Owner() {
             </div>
           )}
 
-          {feedback && <p className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-700">{feedback}</p>}
-          {error && <p className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">{error}</p>}
+          {feedback && <p className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-700 dark:text-emerald-400">{feedback}</p>}
+          {error && <p className="rounded-xl border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">{error}</p>}
 
           {criticalRequest && (
             <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4">
-              <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-4 shadow-2xl">
-                <h3 className="text-base font-semibold text-slate-900">{criticalRequest.title}</h3>
-                <p className="mt-2 text-sm text-slate-600">{criticalRequest.description}</p>
-                <p className="mt-2 text-xs text-slate-500">Digite <span className="font-semibold text-slate-800">{criticalRequest.confirmText}</span> e informe a senha de confirmação para prosseguir.</p>
+              <div className="w-full max-w-md rounded-2xl border border-border bg-card p-4 shadow-2xl">
+                <h3 className="text-base font-semibold text-card-foreground">{criticalRequest.title}</h3>
+                <p className="mt-2 text-sm text-muted-foreground">{criticalRequest.description}</p>
+                <p className="mt-2 text-xs text-muted-foreground">Digite <span className="font-semibold text-foreground">{criticalRequest.confirmText}</span> e informe a senha de confirmação para prosseguir.</p>
 
                 <div className="mt-3 grid gap-2">
                   <input
-                    className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm"
+                    className="rounded-lg border border-border bg-background px-2 py-2 text-sm text-foreground"
                     value={criticalConfirmValue}
                     onChange={(e) => setCriticalConfirmValue(e.target.value)}
                     placeholder={`Digite ${criticalRequest.confirmText}`}
                   />
                   <input
-                    className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm"
+                    className="rounded-lg border border-border bg-background px-2 py-2 text-sm text-foreground"
                     type="password"
                     value={authPassword}
                     onChange={(e) => setAuthPassword(e.target.value)}
@@ -2478,8 +2598,104 @@ export default function Owner() {
                 </div>
 
                 <div className="mt-4 flex justify-end gap-2">
-                  <button className="rounded-lg border border-slate-300 px-3 py-2 text-sm" onClick={() => setCriticalRequest(null)}>Cancelar</button>
-                  <button className="rounded-lg border border-rose-300 bg-rose-50 px-3 py-2 text-sm font-semibold text-rose-700" disabled={busy} onClick={confirmCriticalAction}>Confirmar acao</button>
+                  <button className="rounded-lg border border-border bg-card px-3 py-2 text-sm text-foreground hover:bg-muted" onClick={() => setCriticalRequest(null)}>Cancelar</button>
+                  <button className="rounded-lg border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm font-semibold text-destructive hover:bg-destructive/20" disabled={busy} onClick={confirmCriticalAction}>Confirmar acao</button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {editEmpresaOpen && editEmpresa && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4">
+              <div className="w-full max-w-lg rounded-2xl border border-border bg-card shadow-2xl max-h-[90vh] overflow-y-auto">
+                <div className="flex items-center justify-between border-b border-border px-5 py-4">
+                  <div>
+                    <h3 className="text-base font-semibold text-card-foreground">Editar empresa</h3>
+                    <p className="text-xs text-muted-foreground mt-0.5">{editEmpresa.nome}</p>
+                  </div>
+                  <button className="rounded-lg border border-border p-1.5 text-muted-foreground hover:bg-muted transition-colors" onClick={() => { setEditEmpresaOpen(false); setEditEmpresa(null) }}>
+                    <XCircle className="h-4 w-4" />
+                  </button>
+                </div>
+                <div className="p-5 grid gap-3">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Dados da empresa</p>
+                  <div className="grid gap-2 sm:grid-cols-2">
+                    <div>
+                      <label className="block text-xs text-muted-foreground mb-1">Tipo pessoa</label>
+                      <select className="w-full rounded-lg border border-border bg-background px-2 py-2 text-sm text-foreground" value={editEmpresa.tipo_pessoa} onChange={(e) => setEditEmpresa({ ...editEmpresa, tipo_pessoa: e.target.value as 'PJ' | 'PF' })}>
+                        <option value="PJ">Pessoa jurídica (PJ)</option>
+                        <option value="PF">Pessoa física (PF)</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-xs text-muted-foreground mb-1">Status</label>
+                      <select className="w-full rounded-lg border border-border bg-background px-2 py-2 text-sm text-foreground" value={editEmpresa.status} onChange={(e) => setEditEmpresa({ ...editEmpresa, status: e.target.value })}>
+                        <option value="ativo">Ativo</option>
+                        <option value="bloqueado">Bloqueado</option>
+                        <option value="cancelado">Cancelado</option>
+                        <option value="teste">Teste</option>
+                      </select>
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-xs text-muted-foreground mb-1">Nome da empresa *</label>
+                    <input className="w-full rounded-lg border border-border bg-background px-2 py-2 text-sm text-foreground" value={editEmpresa.nome} onChange={(e) => setEditEmpresa({ ...editEmpresa, nome: e.target.value })} placeholder="Nome da empresa" />
+                  </div>
+                  <div className="grid gap-2 sm:grid-cols-2">
+                    <div>
+                      <label className="block text-xs text-muted-foreground mb-1">Slug</label>
+                      <input className="w-full rounded-lg border border-border bg-background px-2 py-2 text-sm text-foreground" value={editEmpresa.slug} onChange={(e) => setEditEmpresa({ ...editEmpresa, slug: e.target.value })} placeholder="Slug (subdomínio)" />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-muted-foreground mb-1">{editEmpresa.tipo_pessoa === 'PF' ? 'CPF' : 'CNPJ'}</label>
+                      <input className="w-full rounded-lg border border-border bg-background px-2 py-2 text-sm text-foreground" value={editEmpresa.cpf_cnpj} onChange={(e) => setEditEmpresa({ ...editEmpresa, cpf_cnpj: e.target.value })} placeholder={editEmpresa.tipo_pessoa === 'PF' ? 'CPF' : 'CNPJ'} />
+                    </div>
+                  </div>
+                  <div className="grid gap-2 sm:grid-cols-2">
+                    <div>
+                      <label className="block text-xs text-muted-foreground mb-1">{editEmpresa.tipo_pessoa === 'PF' ? 'Nome completo' : 'Razão social'}</label>
+                      <input className="w-full rounded-lg border border-border bg-background px-2 py-2 text-sm text-foreground" value={editEmpresa.razao_social} onChange={(e) => setEditEmpresa({ ...editEmpresa, razao_social: e.target.value })} placeholder={editEmpresa.tipo_pessoa === 'PF' ? 'Nome completo' : 'Razão social'} />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-muted-foreground mb-1">{editEmpresa.tipo_pessoa === 'PF' ? 'Nome de exibição' : 'Nome fantasia'}</label>
+                      <input className="w-full rounded-lg border border-border bg-background px-2 py-2 text-sm text-foreground" value={editEmpresa.nome_fantasia} onChange={(e) => setEditEmpresa({ ...editEmpresa, nome_fantasia: e.target.value })} placeholder={editEmpresa.tipo_pessoa === 'PF' ? 'Nome de exibição' : 'Nome fantasia'} />
+                    </div>
+                  </div>
+                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mt-1">Contato</p>
+                  <div className="grid gap-2 sm:grid-cols-2">
+                    <div>
+                      <label className="block text-xs text-muted-foreground mb-1">Telefone</label>
+                      <input className="w-full rounded-lg border border-border bg-background px-2 py-2 text-sm text-foreground" value={editEmpresa.telefone} onChange={(e) => setEditEmpresa({ ...editEmpresa, telefone: e.target.value })} placeholder="Telefone" />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-muted-foreground mb-1">Email comercial</label>
+                      <input className="w-full rounded-lg border border-border bg-background px-2 py-2 text-sm text-foreground" type="email" value={editEmpresa.email} onChange={(e) => setEditEmpresa({ ...editEmpresa, email: e.target.value })} placeholder="Email comercial" />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-xs text-muted-foreground mb-1">Endereço</label>
+                    <input className="w-full rounded-lg border border-border bg-background px-2 py-2 text-sm text-foreground" value={editEmpresa.endereco} onChange={(e) => setEditEmpresa({ ...editEmpresa, endereco: e.target.value })} placeholder="Endereço" />
+                  </div>
+                  <div className="grid gap-2 sm:grid-cols-2">
+                    <div>
+                      <label className="block text-xs text-muted-foreground mb-1">Responsável</label>
+                      <input className="w-full rounded-lg border border-border bg-background px-2 py-2 text-sm text-foreground" value={editEmpresa.responsavel} onChange={(e) => setEditEmpresa({ ...editEmpresa, responsavel: e.target.value })} placeholder="Responsável" />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-muted-foreground mb-1">Segmento</label>
+                      <input className="w-full rounded-lg border border-border bg-background px-2 py-2 text-sm text-foreground" value={editEmpresa.segmento} onChange={(e) => setEditEmpresa({ ...editEmpresa, segmento: e.target.value })} placeholder="Segmento" />
+                    </div>
+                  </div>
+                </div>
+                <div className="flex justify-end gap-2 border-t border-border px-5 py-4">
+                  <button className="rounded-lg border border-border bg-card px-4 py-2 text-sm text-foreground hover:bg-muted transition-colors" onClick={() => { setEditEmpresaOpen(false); setEditEmpresa(null) }}>Cancelar</button>
+                  <button
+                    className="rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-50"
+                    disabled={editEmpresaBusy || !editEmpresa.nome}
+                    onClick={handleSaveEditEmpresa}
+                  >
+                    {editEmpresaBusy ? 'Salvando…' : 'Salvar alterações'}
+                  </button>
                 </div>
               </div>
             </div>
