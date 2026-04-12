@@ -10,8 +10,7 @@ import {
   FileText, Download, Calendar, BarChart3, PieChart, TrendingUp,
   Wrench, Clock, DollarSign, AlertTriangle, FileSpreadsheet, Printer, Loader2,
   Brain, Eye, Filter, Zap, Package, ShieldAlert, Droplets, Search,
-  Users, FileSignature, HardHat, Headphones, ScrollText, PauseCircle,
-  Activity, ClipboardList
+  Users, FileSignature, HardHat, Activity, ClipboardList, Building2, MapPin, Phone
 } from 'lucide-react';
 import { useOrdensServico } from '@/hooks/useOrdensServico';
 import { useIndicadores } from '@/hooks/useIndicadores';
@@ -20,7 +19,9 @@ import { useRelatoriosInteligentes } from '@/hooks/useRelatoriosInteligentes';
 import { useRelatoriosExpandidos } from '@/hooks/useRelatoriosExpandidos';
 import { format, subDays, differenceInDays, parseISO } from 'date-fns';
 import { 
-  generateOSReportPDF, generateIndicadoresPDF, generateExcelReport 
+  generateOSReportPDF, generateIndicadoresPDF, generateExcelReport,
+  generateCustosPDF, generateBacklogPDF, generatePreventivasPDF,
+  generateEquipamentosPDF, generateMecanicosPDF, generateExecutivoPDF,
 } from '@/lib/reportGenerator';
 import { useToast } from '@/hooks/use-toast';
 import {
@@ -47,14 +48,12 @@ import {
   HistoricoMecanicosPanel,
   FornecedoresContratoPanel,
   SSMAConformidadePanel,
-  SLAChamadosPanel,
-  AuditoriaLogPanel,
   CorretivaVsPreventivaCurvaPanel,
 } from '@/components/relatorios';
 
 type ReportType = 'os_periodo' | 'indicadores' | 'custos' | 'backlog' | 'preventivas' | 'equipamentos' | 'mecanicos' | 'executivo';
 type ViewMode = 'dashboard' | 'export';
-type CategoryTab = 'executivo' | 'operacional' | 'gerencial' | 'inteligencia' | 'custos' | 'manutencao' | 'rh_ssma' | 'gestao' | 'auditoria';
+type CategoryTab = 'executivo' | 'operacional' | 'gerencial' | 'inteligencia' | 'custos' | 'manutencao' | 'rh_ssma' | 'gestao';
 
 interface ReportConfig {
   id: ReportType;
@@ -82,6 +81,7 @@ export default function Relatorios() {
   const [filterTag, setFilterTag] = useState('');
   const [filterTipo, setFilterTipo] = useState('');
   const [filterStatus, setFilterStatus] = useState('');
+  const [observacoes, setObservacoes] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>('dashboard');
   const [activeTab, setActiveTab] = useState<CategoryTab>('executivo');
@@ -139,21 +139,51 @@ export default function Relatorios() {
     });
   };
 
+  // Contagem de OS filtradas (preview antes de gerar)
+  const previewCount = useMemo(() => {
+    if (!selectedReport || !ordensServico) return 0;
+    return ordensServico.filter(os => {
+      const d = os.data_solicitacao?.slice(0, 10);
+      if (!d || d < dateFrom || d > dateTo) return false;
+      if (filterTag && !os.tag?.includes(filterTag.toUpperCase())) return false;
+      if (filterTipo && os.tipo !== filterTipo) return false;
+      if (filterStatus && os.status !== filterStatus) return false;
+      if (selectedReport === 'backlog') return os.status !== 'FECHADA' && os.status !== 'CANCELADA';
+      if (selectedReport === 'preventivas') return os.tipo === 'PREVENTIVA';
+      return true;
+    }).length;
+  }, [selectedReport, ordensServico, dateFrom, dateTo, filterTag, filterTipo, filterStatus]);
+
   const handleGenerateReport = async (fmt: 'pdf' | 'excel') => {
     if (!selectedReport) return;
     setIsGenerating(true);
     
     try {
+      const reportConfig = reports.find(r => r.id === selectedReport);
       const options = {
-        title: reports.find(r => r.id === selectedReport)?.title || '',
-        dateFrom, dateTo, filterTag,
-        empresaNome: empresa?.nome_fantasia || empresa?.razao_social || 'Manutenção Industrial',
+        title: reportConfig?.title || '',
+        dateFrom, dateTo,
+        filterTag: filterTag || undefined,
+        filterTipo: filterTipo || undefined,
+        filterStatus: filterStatus || undefined,
+        observacoes: observacoes || undefined,
+        // Dados completos do tenant
+        empresaNome: empresa?.nome_fantasia || empresa?.razao_social || '',
+        empresaRazaoSocial: empresa?.razao_social || '',
         empresaCnpj: empresa?.cnpj || '',
+        empresaIE: (empresa as any)?.inscricao_estadual || '',
         empresaTelefone: empresa?.telefone || '',
+        empresaWhatsapp: (empresa as any)?.whatsapp || '',
         empresaEmail: empresa?.email || '',
+        empresaSite: (empresa as any)?.site || '',
         empresaEndereco: empresa?.endereco || '',
+        empresaCidade: (empresa as any)?.cidade || '',
+        empresaEstado: (empresa as any)?.estado || '',
+        empresaCep: (empresa as any)?.cep || '',
+        empresaResponsavelNome: (empresa as any)?.responsavel_nome || '',
+        empresaResponsavelCargo: (empresa as any)?.responsavel_cargo || '',
         logoUrl: empresa?.logo_os_url || empresa?.logo_url || '',
-        layoutVersion: '2.0',
+        layoutVersion: '3.0',
       };
 
       if (fmt === 'pdf') {
@@ -161,38 +191,80 @@ export default function Relatorios() {
           case 'indicadores':
             await generateIndicadoresPDF(indicadores, options);
             break;
+          case 'custos':
+            await generateCustosPDF(ordensServico || [], expanded.execucoes, indicadores, options);
+            break;
+          case 'backlog':
+            await generateBacklogPDF(ordensServico || [], options);
+            break;
+          case 'preventivas':
+            await generatePreventivasPDF(ordensServico || [], aderenciaDetalhada, options);
+            break;
+          case 'equipamentos':
+            await generateEquipamentosPDF(ordensServico || [], options);
+            break;
+          case 'mecanicos':
+            await generateMecanicosPDF(expanded.execucoes, mecanicosDesempenho, options);
+            break;
+          case 'executivo':
+            await generateExecutivoPDF(indicadores, resumoExecutivo, kpis, alertas, ordensServico || [], options);
+            break;
           default:
             await generateOSReportPDF(ordensServico || [], options);
             break;
         }
       } else {
-        const osColumns = [
-          { header: 'Nº OS', key: 'numero_os' },
-          { header: 'TAG', key: 'tag' },
-          { header: 'Equipamento', key: 'equipamento' },
-          { header: 'Tipo', key: 'tipo' },
-          { header: 'Prioridade', key: 'prioridade' },
-          { header: 'Status', key: 'status' },
-          { header: 'Solicitante', key: 'solicitante' },
-          { header: 'Problema', key: 'problema' },
-          { header: 'Data', key: 'data_solicitacao' },
-        ];
-        
-        const filtered = (ordensServico || []).filter(os => {
-          const d = os.data_solicitacao?.slice(0, 10);
-          if (d && (d < dateFrom || d > dateTo)) return false;
-          if (filterTag && !os.tag.includes(filterTag)) return false;
-          if (filterTipo && os.tipo !== filterTipo) return false;
-          if (filterStatus && os.status !== filterStatus) return false;
-          return true;
-        }).slice(0, 5000);
-        
-        generateExcelReport(filtered, osColumns, `Relatorio_${selectedReport}_${dateFrom}`);
+        // Excel — colunas específicas por tipo
+        const excelColumns: Record<string, { header: string; key: string }[]> = {
+          os_periodo: [
+            { header: 'Nº OS', key: 'numero_os' }, { header: 'TAG', key: 'tag' },
+            { header: 'Equipamento', key: 'equipamento' }, { header: 'Tipo', key: 'tipo' },
+            { header: 'Prioridade', key: 'prioridade' }, { header: 'Status', key: 'status' },
+            { header: 'Solicitante', key: 'solicitante' }, { header: 'Problema', key: 'problema' },
+            { header: 'Data Abertura', key: 'data_solicitacao' }, { header: 'Custo Real (R$)', key: 'custo_real' },
+          ],
+          backlog: [
+            { header: 'Nº OS', key: 'numero_os' }, { header: 'TAG', key: 'tag' },
+            { header: 'Equipamento', key: 'equipamento' }, { header: 'Tipo', key: 'tipo' },
+            { header: 'Prioridade', key: 'prioridade' }, { header: 'Status', key: 'status' },
+            { header: 'Data Abertura', key: 'data_solicitacao' },
+          ],
+          equipamentos: [
+            { header: 'TAG', key: 'tag' }, { header: 'Equipamento', key: 'equipamento' },
+            { header: 'Tipo', key: 'tipo' }, { header: 'Status', key: 'status' },
+            { header: 'Custo Real (R$)', key: 'custo_real' }, { header: 'Data', key: 'data_solicitacao' },
+          ],
+          mecanicos: [
+            { header: 'Nome', key: 'nome' }, { header: 'OS Executadas', key: 'osExecutadas' },
+            { header: 'Horas Trabalhadas', key: 'horasTrabalhadas' }, { header: 'Eficiência (%)', key: 'eficiencia' },
+          ],
+        };
+
+        let data: any[] = [];
+        const cols = excelColumns[selectedReport] || excelColumns.os_periodo;
+
+        if (selectedReport === 'mecanicos') {
+          data = mecanicosDesempenho;
+        } else if (selectedReport === 'backlog') {
+          data = (ordensServico || []).filter(o => o.status !== 'FECHADA' && o.status !== 'CANCELADA');
+        } else {
+          data = (ordensServico || []).filter(os => {
+            const d = os.data_solicitacao?.slice(0, 10);
+            if (!d || d < dateFrom || d > dateTo) return false;
+            if (filterTag && !os.tag?.includes(filterTag.toUpperCase())) return false;
+            if (filterTipo && os.tipo !== filterTipo) return false;
+            if (filterStatus && os.status !== filterStatus) return false;
+            if (selectedReport === 'preventivas') return os.tipo === 'PREVENTIVA';
+            return true;
+          });
+        }
+
+        generateExcelReport(data.slice(0, 5000), cols, `${selectedReport}_${dateFrom}_${dateTo}`);
       }
       
       toast({ title: 'Relatório Gerado', description: `Arquivo ${fmt.toUpperCase()} baixado com sucesso.` });
     } catch (err: any) {
-      toast({ title: 'Erro', description: err.message || 'Erro ao gerar relatório.', variant: 'destructive' });
+      toast({ title: 'Erro ao Gerar', description: err.message || 'Erro desconhecido.', variant: 'destructive' });
     } finally {
       setIsGenerating(false);
     }
@@ -308,10 +380,6 @@ export default function Relatorios() {
             <TabsTrigger value="gestao" className="gap-1.5">
               <FileSignature className="h-4 w-4" />
               <span className="hidden sm:inline">Gestão</span>
-            </TabsTrigger>
-            <TabsTrigger value="auditoria" className="gap-1.5">
-              <ScrollText className="h-4 w-4" />
-              <span className="hidden sm:inline">Auditoria</span>
             </TabsTrigger>
             <TabsTrigger value="inteligencia" className="gap-1.5">
               <Zap className="h-4 w-4" />
@@ -456,20 +524,6 @@ export default function Relatorios() {
           {/* ── TAB GESTÃO ─────────────────────────────────────── */}
           <TabsContent value="gestao" className="space-y-4">
             <FornecedoresContratoPanel contratos={expanded.contratos as any[]} />
-            <SLAChamadosPanel
-              tickets={expanded.tickets as any[]}
-              dateFrom={dateFrom}
-              dateTo={dateTo}
-            />
-          </TabsContent>
-
-          {/* ── TAB AUDITORIA ──────────────────────────────────── */}
-          <TabsContent value="auditoria" className="space-y-4">
-            <AuditoriaLogPanel
-              logs={expanded.auditLogs as any[]}
-              dateFrom={dateFrom}
-              dateTo={dateTo}
-            />
           </TabsContent>
         </Tabs>
         </>
@@ -478,70 +532,150 @@ export default function Relatorios() {
       {/* ═══════════ MODO EXPORTAÇÃO PDF/EXCEL ═══════════ */}
       {viewMode === 'export' && (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="lg:col-span-2">
-            <h2 className="text-lg font-semibold mb-4">Selecione um Relatório</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+
+          {/* ── Coluna esquerda: seleção de relatório ── */}
+          <div className="lg:col-span-2 space-y-4">
+            {/* Dados da empresa (preview do cabeçalho) */}
+            {empresa && (
+              <Card className="bg-muted/30 border-dashed">
+                <CardContent className="p-4">
+                  <div className="flex items-center gap-3">
+                    {(empresa.logo_os_url || empresa.logo_url) && (
+                      <img src={empresa.logo_os_url || empresa.logo_url || ''} alt="Logo" className="h-10 w-auto object-contain rounded" />
+                    )}
+                    <div>
+                      <p className="font-semibold text-sm">{empresa.nome_fantasia || empresa.razao_social}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {empresa.cnpj && `CNPJ: ${empresa.cnpj}`}
+                        {empresa.cidade && ` • ${empresa.cidade}/${(empresa as any).estado || ''}`}
+                        {empresa.telefone && ` • Tel: ${empresa.telefone}`}
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        {(empresa as any).responsavel_nome && `Responsável: ${(empresa as any).responsavel_nome}`}
+                        {(empresa as any).responsavel_cargo && ` — ${(empresa as any).responsavel_cargo}`}
+                      </p>
+                    </div>
+                    <Badge variant="outline" className="ml-auto text-xs">Dados carregados do cadastro</Badge>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            <h2 className="text-lg font-semibold">Selecione o Tipo de Relatório</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               {reports.map((report) => {
                 const catConfig = getCategoryConfig(report.category);
+                const hasDedicatedGenerator = !['os_periodo'].includes(report.id);
+                const isSelected = selectedReport === report.id;
                 return (
-                  <Card 
+                  <Card
                     key={report.id}
-                    className={`cursor-pointer transition-all hover:shadow-lg ${selectedReport === report.id ? 'ring-2 ring-primary' : ''}`}
+                    className={`cursor-pointer transition-all hover:shadow-md ${isSelected ? 'ring-2 ring-primary shadow-md' : 'hover:border-primary/40'}`}
                     onClick={() => setSelectedReport(report.id)}
                   >
                     <CardContent className="p-4">
-                      <div className="flex items-start gap-4">
-                        <div className={`p-3 rounded-lg ${selectedReport === report.id ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}>
+                      <div className="flex items-start gap-3">
+                        <div className={`p-2.5 rounded-lg flex-shrink-0 ${isSelected ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}>
                           {report.icon}
                         </div>
-                        <div className="flex-1">
-                          <h3 className="font-semibold">{report.title}</h3>
-                          <p className="text-sm text-muted-foreground">{report.description}</p>
-                          <Badge className={`mt-2 ${catConfig.badge}`}>{catConfig.icon} {report.category}</Badge>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-0.5">
+                            <h3 className="font-semibold text-sm leading-tight">{report.title}</h3>
+                            {hasDedicatedGenerator && (
+                              <span title="Gerador dedicado" className="text-green-600 text-xs">✓</span>
+                            )}
+                          </div>
+                          <p className="text-xs text-muted-foreground leading-tight">{report.description}</p>
+                          <Badge className={`mt-2 text-xs ${catConfig.badge}`}>{catConfig.icon} {report.category}</Badge>
                         </div>
+                        {isSelected && (
+                          <div className="flex-shrink-0">
+                            <div className="w-2 h-2 rounded-full bg-primary mt-1" />
+                          </div>
+                        )}
                       </div>
                     </CardContent>
                   </Card>
                 );
               })}
             </div>
+            <p className="text-xs text-muted-foreground flex items-center gap-1">
+              <span className="text-green-600 font-bold">✓</span>
+              Gerador dedicado — relatório 100% condizente com o título e dados
+            </p>
           </div>
 
+          {/* ── Coluna direita: configuração e ação ── */}
           <div>
-            <Card className="sticky top-4">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Filter className="h-5 w-5" />
-                  Configurar Relatório
+            <Card className="sticky top-4 shadow-md">
+              <CardHeader className="pb-3">
+                <CardTitle className="flex items-center gap-2 text-base">
+                  <Filter className="h-4 w-4 text-primary" />
+                  Configuração do Relatório
                 </CardTitle>
-                <CardDescription>
-                  {selectedReport 
-                    ? `Configurando: ${reports.find(r => r.id === selectedReport)?.title}`
-                    : 'Selecione um relatório ao lado'
-                  }
-                </CardDescription>
+                {selectedReport ? (
+                  <CardDescription className="font-medium text-primary">
+                    {reports.find(r => r.id === selectedReport)?.title}
+                    {previewCount > 0 && (
+                      <span className="ml-2 text-muted-foreground font-normal">
+                        ({previewCount} {previewCount === 1 ? 'registro' : 'registros'})
+                      </span>
+                    )}
+                  </CardDescription>
+                ) : (
+                  <CardDescription>Selecione um relatório ao lado</CardDescription>
+                )}
               </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-2">
-                  <Label>Data Inicial</Label>
-                  <Input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} />
+              <CardContent className="space-y-3">
+
+                {/* Período */}
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="space-y-1">
+                    <Label className="text-xs">Data Inicial</Label>
+                    <Input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} className="h-8 text-sm" />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs">Data Final</Label>
+                    <Input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} className="h-8 text-sm" />
+                  </div>
                 </div>
-                <div className="space-y-2">
-                  <Label>Data Final</Label>
-                  <Input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} />
+
+                {/* Atalhos de período */}
+                <div className="flex gap-1.5 flex-wrap">
+                  {[
+                    { label: '7d', days: 7 }, { label: '30d', days: 30 },
+                    { label: '90d', days: 90 }, { label: '1 ano', days: 365 },
+                  ].map(({ label, days }) => (
+                    <Button
+                      key={label} variant="outline" size="sm"
+                      className="h-6 text-xs px-2"
+                      onClick={() => {
+                        setDateFrom(format(subDays(new Date(), days), 'yyyy-MM-dd'));
+                        setDateTo(format(new Date(), 'yyyy-MM-dd'));
+                      }}
+                    >{label}</Button>
+                  ))}
                 </div>
-                <div className="space-y-2">
-                  <Label>Filtrar por TAG (opcional)</Label>
-                  <Input placeholder="Ex: COMP-001" value={filterTag} onChange={(e) => setFilterTag(e.target.value.toUpperCase())} />
+
+                {/* Filtros opcionais */}
+                <div className="space-y-1">
+                  <Label className="text-xs">TAG (opcional)</Label>
+                  <Input
+                    placeholder="Ex: COMP-001"
+                    value={filterTag}
+                    onChange={(e) => setFilterTag(e.target.value.toUpperCase())}
+                    className="h-8 text-sm"
+                  />
                 </div>
-                <div className="space-y-2">
-                  <Label>Tipo de Manutenção</Label>
+
+                <div className="space-y-1">
+                  <Label className="text-xs">Tipo de Manutenção</Label>
                   <select
-                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                    className="flex h-8 w-full rounded-md border border-input bg-background px-2 text-sm"
                     value={filterTipo}
                     onChange={(e) => setFilterTipo(e.target.value)}
                   >
-                    <option value="">Todos</option>
+                    <option value="">Todos os tipos</option>
                     <option value="CORRETIVA">Corretiva</option>
                     <option value="PREVENTIVA">Preventiva</option>
                     <option value="PREDITIVA">Preditiva</option>
@@ -549,14 +683,15 @@ export default function Relatorios() {
                     <option value="MELHORIA">Melhoria</option>
                   </select>
                 </div>
-                <div className="space-y-2">
-                  <Label>Status</Label>
+
+                <div className="space-y-1">
+                  <Label className="text-xs">Status</Label>
                   <select
-                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                    className="flex h-8 w-full rounded-md border border-input bg-background px-2 text-sm"
                     value={filterStatus}
                     onChange={(e) => setFilterStatus(e.target.value)}
                   >
-                    <option value="">Todos</option>
+                    <option value="">Todos os status</option>
                     <option value="ABERTA">Aberta</option>
                     <option value="EM_ANDAMENTO">Em Andamento</option>
                     <option value="AGUARDANDO_MATERIAL">Aguardando Material</option>
@@ -564,23 +699,46 @@ export default function Relatorios() {
                     <option value="CANCELADA">Cancelada</option>
                   </select>
                 </div>
-                <div className="pt-4 space-y-2">
-                  <Button 
-                    className="w-full gap-2" 
+
+                {/* Campo de observações (impresso no cabeçalho) */}
+                <div className="space-y-1">
+                  <Label className="text-xs">Observações (exibidas no PDF)</Label>
+                  <Input
+                    placeholder="Ex: Relatório para reunião gerencial de abril..."
+                    value={observacoes}
+                    onChange={(e) => setObservacoes(e.target.value)}
+                    className="h-8 text-sm"
+                  />
+                </div>
+
+                {/* Preview de contagem */}
+                {selectedReport && previewCount > 0 && (
+                  <div className="rounded-md bg-primary/5 border border-primary/20 px-3 py-2">
+                    <p className="text-xs text-primary font-medium">
+                      📊 {previewCount} {previewCount === 1 ? 'registro encontrado' : 'registros encontrados'}
+                      {' '}para o período selecionado
+                    </p>
+                  </div>
+                )}
+
+                {/* Botões de ação */}
+                <div className="pt-2 space-y-2">
+                  <Button
+                    className="w-full gap-2 h-10"
                     onClick={() => handleGenerateReport('pdf')}
                     disabled={!selectedReport || isGenerating}
                   >
                     {isGenerating ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileText className="h-4 w-4" />}
-                    {isGenerating ? 'Gerando...' : 'Gerar PDF'}
+                    {isGenerating ? 'Gerando PDF...' : 'Gerar PDF Profissional'}
                   </Button>
-                  <Button 
-                    variant="outline" 
-                    className="w-full gap-2"
+                  <Button
+                    variant="outline"
+                    className="w-full gap-2 h-9"
                     onClick={() => handleGenerateReport('excel')}
                     disabled={!selectedReport || isGenerating}
                   >
                     <FileSpreadsheet className="h-4 w-4" />
-                    Exportar Excel
+                    Exportar para Excel
                   </Button>
                   <Button
                     variant="ghost"
@@ -589,9 +747,17 @@ export default function Relatorios() {
                     onClick={() => setViewMode('dashboard')}
                   >
                     <Eye className="h-4 w-4" />
-                    Visualizar online
+                    Ver Dashboard Interativo
                   </Button>
                 </div>
+
+                {/* Info do emissor */}
+                {empresa?.nome_fantasia && (
+                  <p className="text-[10px] text-muted-foreground text-center pt-1">
+                    Emitido por: {empresa.nome_fantasia}
+                    {(empresa as any)?.responsavel_nome && ` • ${(empresa as any).responsavel_nome}`}
+                  </p>
+                )}
               </CardContent>
             </Card>
           </div>
