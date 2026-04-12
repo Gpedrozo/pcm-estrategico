@@ -7,7 +7,8 @@ import { describe, expect, it } from 'vitest';
  */
 
 const HOOKS_WITH_EMPRESA_ID = [
-  'usePontosPlano.ts',
+  // usePontosPlano.ts is intentionally excluded: rotas_lubrificacao_pontos has no
+  // empresa_id column; tenant isolation is enforced via RLS join through planos_lubrificacao.
   'useRotasLubrificacao.ts',
   'useEstoqueLubrificantes.ts',
   'useDocumentosTecnicos.ts',
