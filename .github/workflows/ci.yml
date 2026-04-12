@@ -28,7 +28,7 @@ jobs:
         run: npx tsc --noEmit
 
       - name: Install coverage provider
-        run: npm install --no-save @vitest/coverage-v8
+        run: npm install --no-save @vitest/coverage-v8@$(node -p "require('./node_modules/vitest/package.json').version")
 
       - name: Test
         run: npx vitest run --coverage

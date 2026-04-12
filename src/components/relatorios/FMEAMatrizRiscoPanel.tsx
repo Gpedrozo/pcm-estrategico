@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { ShieldAlert, AlertTriangle } from 'lucide-react';
 import {
-  ScatterChart, Scatter, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
+  XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   BarChart, Bar, Cell,
 } from 'recharts';
 
@@ -59,33 +59,8 @@ export function FMEAMatrizRiscoPanel({ fmeas }: Props) {
     return Object.entries(faixas).map(([name, value]) => ({ name, value }));
   }, [fmeas]);
 
-  // Por tag
-  const porTag = useMemo(() => {
-    const map = new Map<string, { tag: string; total: number; maxRPN: number }>();
-    fmeas.forEach((f) => {
-      if (!map.has(f.tag)) map.set(f.tag, { tag: f.tag, total: 0, maxRPN: 0 });
-      const e = map.get(f.tag)!;
-      e.total++;
-      e.maxRPN = Math.max(e.maxRPN, f.rpn);
-    });
-    return Array.from(map.values()).sort((a, b) => b.maxRPN - a.maxRPN).slice(0, 10);
-  }, [fmeas]);
-
-  // Scatter data (severidade vs ocorrência, tamanho = detecção)
-  const scatterData = useMemo(() =>
-    fmeas.slice(0, 50).map((f) => ({
-      x: f.severidade,
-      y: f.ocorrencia,
-      z: f.deteccao * 5,
-      tag: f.tag,
-      modo: f.modo_falha,
-      rpn: f.rpn,
-    })),
-    [fmeas]);
-
   const criticos = fmeas.filter((f) => f.rpn >= 200).length;
   const pendentes = fmeas.filter((f) => f.status === 'PENDENTE').length;
-  const avgRPN = fmeas.length > 0 ? (fmeas.reduce((s, f) => s + f.rpn, 0) / fmeas.length).toFixed(0) : '0';
 
   if (fmeas.length === 0) {
     return (

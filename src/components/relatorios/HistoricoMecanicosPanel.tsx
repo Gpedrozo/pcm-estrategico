@@ -4,7 +4,6 @@ import { Badge } from '@/components/ui/badge';
 import { Users } from 'lucide-react';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
-  LineChart, Line,
 } from 'recharts';
 import { format, subMonths, startOfMonth, endOfMonth, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';

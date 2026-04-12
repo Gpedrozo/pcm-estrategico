@@ -60,6 +60,32 @@ export default function SSMA() {
   const fispqPrintRef = useRef<HTMLDivElement>(null);
   const handlePrintFISPQ = useReactToPrint({ contentRef: fispqPrintRef });
 
+  // Configuração de alerta de validade do CA (dias antes do vencimento)
+  const [diasAlertaCA, setDiasAlertaCA] = useState<number>(() => {
+    const saved = localStorage.getItem('ssma:diasAlertaCA');
+    return saved ? parseInt(saved, 10) : 30;
+  });
+  const [showCAConfig, setShowCAConfig] = useState(false);
+  const [diasAlertaCAInput, setDiasAlertaCAInput] = useState(diasAlertaCA);
+
+  const calcularStatusCA = (validade_ca: string | null): 'VALIDO' | 'PROXIMO' | 'VENCIDO' => {
+    if (!validade_ca) return 'VALIDO';
+    const hoje = new Date(); hoje.setHours(0, 0, 0, 0);
+    const val = new Date(validade_ca + 'T00:00:00');
+    if (val < hoje) return 'VENCIDO';
+    const diff = Math.ceil((val.getTime() - hoje.getTime()) / 86400000);
+    if (diff <= diasAlertaCA) return 'PROXIMO';
+    return 'VALIDO';
+  };
+
+  const handleSalvarAlertaCA = () => {
+    const v = Math.max(1, Math.min(365, diasAlertaCAInput));
+    setDiasAlertaCA(v);
+    setDiasAlertaCAInput(v);
+    localStorage.setItem('ssma:diasAlertaCA', String(v));
+    setShowCAConfig(false);
+  };
+
   const { data: empresa } = useDadosEmpresa();
 
   const [incidenteForm, setIncidenteForm] = useState({
@@ -575,6 +601,62 @@ export default function SSMA() {
 
         {/* ── TAB EPIs ────────────────────────────────── */}
         <TabsContent value="epis" className="mt-4">
+
+          {/* Legenda + configuração de alerta CA */}
+          <div className="flex flex-wrap items-center justify-between gap-3 mb-3 p-3 bg-card border border-border rounded-lg">
+            <div className="flex items-center gap-4 text-sm">
+              <span className="font-medium text-muted-foreground">Validade CA:</span>
+              <span className="flex items-center gap-1.5">
+                <span className="inline-block w-3 h-3 rounded-full bg-green-500" />
+                <span className="text-green-600 dark:text-green-400 font-medium">Em Dia</span>
+              </span>
+              <span className="flex items-center gap-1.5">
+                <span className="inline-block w-3 h-3 rounded-full bg-yellow-500" />
+                <span className="text-yellow-600 dark:text-yellow-400 font-medium">Próximo do Vcto (&le;{diasAlertaCA}d)</span>
+              </span>
+              <span className="flex items-center gap-1.5">
+                <span className="inline-block w-3 h-3 rounded-full bg-red-500" />
+                <span className="text-red-600 dark:text-red-400 font-medium">Vencido</span>
+              </span>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-8 gap-1.5"
+              onClick={() => { setDiasAlertaCAInput(diasAlertaCA); setShowCAConfig(!showCAConfig); }}
+            >
+              <AlertTriangle className="h-3.5 w-3.5" />
+              Configurar Alerta CA
+            </Button>
+          </div>
+
+          {/* Painel de configuração de alerta */}
+          {showCAConfig && (
+            <div className="mb-3 p-4 bg-warning/5 border border-warning/30 rounded-lg flex flex-wrap items-end gap-4">
+              <div>
+                <Label className="text-sm font-medium mb-1 block">Alertar quando CA vencer em:</Label>
+                <div className="flex items-center gap-2">
+                  <Input
+                    type="number"
+                    min={1}
+                    max={365}
+                    value={diasAlertaCAInput}
+                    onChange={e => setDiasAlertaCAInput(Number(e.target.value))}
+                    className="w-24 h-8 text-sm"
+                  />
+                  <span className="text-sm text-muted-foreground">dias antes do vencimento</span>
+                </div>
+                <p className="text-xs text-muted-foreground mt-1">
+                  CA com validade em até {diasAlertaCAInput} dias ficará amarelo; CA vencido ficará vermelho; demais ficam verde.
+                </p>
+              </div>
+              <div className="flex gap-2">
+                <Button size="sm" onClick={handleSalvarAlertaCA}>Salvar</Button>
+                <Button size="sm" variant="ghost" onClick={() => setShowCAConfig(false)}>Cancelar</Button>
+              </div>
+            </div>
+          )}
+
           <div className="bg-card border border-border rounded-lg overflow-hidden">
             <table className="table-industrial">
               <thead>
@@ -586,7 +668,7 @@ export default function SSMA() {
                   <th>Validade CA</th>
                   <th>Estoque</th>
                   <th>Mínimo</th>
-                  <th>Status</th>
+                  <th>Status Estoque</th>
                 </tr>
               </thead>
               <tbody>
@@ -599,13 +681,34 @@ export default function SSMA() {
                     return e.nome.toLowerCase().includes(s) || e.categoria.toLowerCase().includes(s) || (e.numero_ca || '').toLowerCase().includes(s);
                   }).map((epi) => {
                     const estoqueBaixo = epi.estoque_atual <= epi.estoque_minimo;
+                    const statusCA = calcularStatusCA(epi.validade_ca);
+                    const caColorClass = statusCA === 'VENCIDO'
+                      ? 'text-red-600 dark:text-red-400 font-bold bg-red-50 dark:bg-red-950/30'
+                      : statusCA === 'PROXIMO'
+                        ? 'text-yellow-600 dark:text-yellow-400 font-bold bg-yellow-50 dark:bg-yellow-950/30'
+                        : epi.validade_ca
+                          ? 'text-green-600 dark:text-green-400 font-medium'
+                          : '';
                     return (
                       <tr key={epi.id}>
                         <td className="font-medium">{epi.nome}</td>
                         <td><Badge variant="outline">{epi.categoria.replace(/_/g, ' ')}</Badge></td>
                         <td className="font-mono">{epi.numero_ca || '—'}</td>
                         <td>{epi.fabricante || '—'}</td>
-                        <td>{epi.validade_ca ? new Date(epi.validade_ca).toLocaleDateString('pt-BR') : '—'}</td>
+                        <td className={`${caColorClass} rounded px-1`}>
+                          <div className="flex items-center gap-1.5">
+                            {epi.validade_ca && (
+                              <span className={`inline-block w-2 h-2 rounded-full flex-shrink-0 ${
+                                statusCA === 'VENCIDO' ? 'bg-red-500' : statusCA === 'PROXIMO' ? 'bg-yellow-500' : 'bg-green-500'
+                              }`} />
+                            )}
+                            <span>
+                              {epi.validade_ca ? new Date(epi.validade_ca + 'T00:00:00').toLocaleDateString('pt-BR') : '—'}
+                            </span>
+                            {statusCA === 'VENCIDO' && <Badge variant="destructive" className="text-[10px] py-0 px-1 h-4 ml-1">VENCIDO</Badge>}
+                            {statusCA === 'PROXIMO' && <Badge className="text-[10px] py-0 px-1 h-4 ml-1 bg-yellow-500/20 text-yellow-700 dark:text-yellow-400">VCTO PRÓX.</Badge>}
+                          </div>
+                        </td>
                         <td className={`font-mono font-bold ${estoqueBaixo ? 'text-destructive' : 'text-success'}`}>{epi.estoque_atual}</td>
                         <td className="font-mono">{epi.estoque_minimo}</td>
                         <td>

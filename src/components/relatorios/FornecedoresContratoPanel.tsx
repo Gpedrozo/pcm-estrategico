@@ -36,7 +36,7 @@ function getStatusColor(status: string | null): string {
 }
 
 export function FornecedoresContratoPanel({ contratos }: Props) {
-  const hoje = new Date();
+  const hoje = useMemo(() => new Date(), []);
 
   const enriquecidos = useMemo(() => contratos.map((c) => {
     const diasParaVencer = c.data_fim
@@ -49,7 +49,7 @@ export function FornecedoresContratoPanel({ contratos }: Props) {
     }
     const nomeFornecedor = c.fornecedor?.nome_fantasia || c.fornecedor?.razao_social || c.fornecedor?.nome || '—';
     return { ...c, diasParaVencer, statusCalc, nomeFornecedor };
-  }), [contratos]);
+  }), [contratos, hoje]);
 
   const ativos = enriquecidos.filter((c) => c.statusCalc === 'ATIVO').length;
   const aVencer = enriquecidos.filter((c) => c.statusCalc === 'A_VENCER').length;
