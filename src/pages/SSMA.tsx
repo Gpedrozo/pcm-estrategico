@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -8,10 +8,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Plus, Search, ShieldAlert, AlertTriangle, FileWarning, Calendar, GraduationCap, Trash2, HardHat, FileSearch2 } from 'lucide-react';
+import { Plus, Search, ShieldAlert, AlertTriangle, FileWarning, Calendar, GraduationCap, Trash2, HardHat, FileSearch2, BarChart3, Printer, Download, FileSpreadsheet, FileText } from 'lucide-react';
+import { useReactToPrint } from 'react-to-print';
 import { useIncidentesSSMA, useCreateIncidenteSSMA, usePermissoesTrabalho, useCreatePermissaoTrabalho } from '@/hooks/useSSMA';
 import { useEPIs, useCreateEPI, useEntregasEPI, useCreateEntregaEPI } from '@/hooks/useEPIs';
-import { useFichasSeguranca, useCreateFichaSeguranca } from '@/hooks/useFichasSeguranca';
+import { useFichasSeguranca, useCreateFichaSeguranca, useUpdateFichaSeguranca } from '@/hooks/useFichasSeguranca';
 import {
   useTreinamentosSSMA,
   useCreateTreinamentoSSMA,
@@ -24,17 +25,42 @@ import {
 import { useEquipamentos } from '@/hooks/useEquipamentos';
 import { useAuth } from '@/contexts/AuthContext';
 import { useFormDraft } from '@/hooks/useFormDraft';
+import { useDadosEmpresa } from '@/hooks/useDadosEmpresa';
+import { SSMADashboard } from '@/components/ssma/SSMADashboard';
+import { FichaEPIPrintTemplate } from '@/components/ssma/FichaEPIPrintTemplate';
+import { FISPQDocumentos, type DocumentoAnexo } from '@/components/ssma/FISPQDocumentos';
+import { FISPQPrintTemplate } from '@/components/ssma/FISPQPrintTemplate';
+import {
+  exportIncidentesPDF, exportIncidentesXLSX,
+  exportTreinamentosPDF, exportTreinamentosXLSX,
+  exportEstoqueEPIPDF, exportEstoqueEPIXLSX,
+  exportFISPQsXLSX,
+} from '@/lib/ssmaExport';
+import type { FichaSegurancaRow } from '@/hooks/useFichasSeguranca';
 
 export default function SSMA() {
   const { user } = useAuth();
   const [search, setSearch] = useState('');
-  const [activeTab, setActiveTab] = useState('incidentes');
+  const [activeTab, setActiveTab] = useState('dashboard');
   const [isIncidenteModalOpen, setIsIncidenteModalOpen] = useState(false);
   const [isPTModalOpen, setIsPTModalOpen] = useState(false);
   const [isTreinamentoModalOpen, setIsTreinamentoModalOpen] = useState(false);
   const [isEPIModalOpen, setIsEPIModalOpen] = useState(false);
   const [isEntregaEPIModalOpen, setIsEntregaEPIModalOpen] = useState(false);
   const [isFichaModalOpen, setIsFichaModalOpen] = useState(false);
+
+  // Estados para impressão de Ficha EPI
+  const [fichaEPIColaborador, setFichaEPIColaborador] = useState('');
+  const [isFichaEPIPrintOpen, setIsFichaEPIPrintOpen] = useState(false);
+  const fichaEPIPrintRef = useRef<HTMLDivElement>(null);
+  const handlePrintFichaEPI = useReactToPrint({ contentRef: fichaEPIPrintRef });
+
+  // Estados para impressão de FISPQ
+  const [fichaParaImprimir, setFichaParaImprimir] = useState<FichaSegurancaRow | null>(null);
+  const fispqPrintRef = useRef<HTMLDivElement>(null);
+  const handlePrintFISPQ = useReactToPrint({ contentRef: fispqPrintRef });
+
+  const { data: empresa } = useDadosEmpresa();
 
   const [incidenteForm, setIncidenteForm] = useState({
     tipo: 'QUASE_ACIDENTE' as 'ACIDENTE' | 'QUASE_ACIDENTE' | 'INCIDENTE_AMBIENTAL' | 'DESVIO',
@@ -122,6 +148,12 @@ export default function SSMA() {
   const createEPI = useCreateEPI();
   const createEntregaEPI = useCreateEntregaEPI();
   const createFicha = useCreateFichaSeguranca();
+  const updateFicha = useUpdateFichaSeguranca();
+
+  // Callback para salvar arquivo/anexos na FISPQ
+  const handleFichaDocumentoSalvo = (fichaId: string, arquivo_url: string | null, documentos_anexos: DocumentoAnexo[]) => {
+    updateFicha.mutate({ id: fichaId, arquivo_url, documentos_anexos: documentos_anexos as unknown });
+  };
 
   const handleSubmitIncidente = async (e: React.FormEvent) => {
     e.preventDefault();

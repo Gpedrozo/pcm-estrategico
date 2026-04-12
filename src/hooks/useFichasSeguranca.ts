@@ -18,6 +18,7 @@ export interface FichaSegurancaRow {
   armazenamento: string | null;
   epi_recomendado: string | null;
   arquivo_url: string | null;
+  documentos_anexos: unknown; // DocumentoAnexo[]
   data_validade: string | null;
   ativo: boolean;
   created_at: string;
@@ -35,6 +36,7 @@ export interface FichaSegurancaInsert {
   armazenamento?: string | null;
   epi_recomendado?: string | null;
   arquivo_url?: string | null;
+  documentos_anexos?: unknown;
   data_validade?: string | null;
 }
 
@@ -84,6 +86,31 @@ export function useCreateFichaSeguranca() {
     },
     onError: (error: Error) => {
       toast({ title: 'Erro ao cadastrar FISPQ', description: error.message, variant: 'destructive' });
+    },
+  });
+}
+
+export function useUpdateFichaSeguranca() {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+  const { tenantId } = useAuth();
+
+  return useMutation({
+    mutationFn: async ({ id, ...updates }: Partial<FichaSegurancaInsert> & { id: string }) => {
+      if (!tenantId) throw new Error('Tenant não resolvido.');
+      const { error } = await supabase
+        .from('fichas_seguranca')
+        .update(updates as Record<string, unknown>)
+        .eq('id', id)
+        .eq('empresa_id', tenantId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['fichas-seguranca', tenantId] });
+      writeAuditLog({ action: 'UPDATE_FICHA_SEGURANCA', table: 'fichas_seguranca', empresaId: tenantId, source: 'useFichasSeguranca' });
+    },
+    onError: (error: Error) => {
+      toast({ title: 'Erro ao atualizar FISPQ', description: error.message, variant: 'destructive' });
     },
   });
 }

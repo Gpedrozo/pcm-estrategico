@@ -1,13 +1,19 @@
 -- ============================================================
--- Migration: Fix all missing columns causing silent data loss
--- Date: 2026-04-12
--- Description: Adds columns that the frontend forms send but
---   the database doesn't have (dropped by full_rebuild_reset).
---   Uses ADD COLUMN IF NOT EXISTS for idempotent safety.
+-- Migration: Fix all missing columns + production-grade hardening
+-- Date: 2026-04-12 (v2 — improved)
+-- Description:
+--   1. Adds 104 columns the frontend sends but DB doesn't have
+--      (dropped by full_rebuild_reset). Idempotent via IF NOT EXISTS.
+--   2. Creates 4 missing tables: solicitacoes_manutencao, epis,
+--      entregas_epi, fichas_seguranca.
+--   3. Applies correct RLS (4 separate policies per table using
+--      is_control_plane_operator + get_current_empresa_id).
+--   4. Adds updated_at triggers, auto-sequence triggers, CHECK
+--      constraints, performance indexes, and GRANT statements.
 -- ============================================================
 
 -- ============================================================
--- 1. contratos — 9 missing columns (service uses .insert() direto → INSERT FAILS)
+-- 1. contratos — 9 missing columns
 -- ============================================================
 ALTER TABLE public.contratos ADD COLUMN IF NOT EXISTS numero_contrato text;
 ALTER TABLE public.contratos ADD COLUMN IF NOT EXISTS titulo text;
@@ -20,7 +26,7 @@ ALTER TABLE public.contratos ADD COLUMN IF NOT EXISTS responsavel_nome text;
 ALTER TABLE public.contratos ADD COLUMN IF NOT EXISTS penalidade_descricao text;
 
 -- ============================================================
--- 2. fmea — 8 missing columns (insertWithColumnFallback → silent data loss)
+-- 2. fmea — 8 missing columns
 -- ============================================================
 ALTER TABLE public.fmea ADD COLUMN IF NOT EXISTS tag text;
 ALTER TABLE public.fmea ADD COLUMN IF NOT EXISTS funcao text;
@@ -32,7 +38,7 @@ ALTER TABLE public.fmea ADD COLUMN IF NOT EXISTS responsavel text;
 ALTER TABLE public.fmea ADD COLUMN IF NOT EXISTS prazo date;
 
 -- ============================================================
--- 3. analise_causa_raiz — 18 missing columns (insertWithColumnFallback → silent data loss)
+-- 3. analise_causa_raiz — 18 missing columns
 -- ============================================================
 ALTER TABLE public.analise_causa_raiz ADD COLUMN IF NOT EXISTS numero_rca text;
 ALTER TABLE public.analise_causa_raiz ADD COLUMN IF NOT EXISTS titulo text;
@@ -54,7 +60,7 @@ ALTER TABLE public.analise_causa_raiz ADD COLUMN IF NOT EXISTS data_conclusao da
 ALTER TABLE public.analise_causa_raiz ADD COLUMN IF NOT EXISTS eficacia_verificada boolean DEFAULT false;
 
 -- ============================================================
--- 4. melhorias — 17 missing columns (insertWithColumnFallback → silent data loss)
+-- 4. melhorias — 17 missing columns
 -- ============================================================
 ALTER TABLE public.melhorias ADD COLUMN IF NOT EXISTS numero_melhoria text;
 ALTER TABLE public.melhorias ADD COLUMN IF NOT EXISTS tipo text;
@@ -75,7 +81,7 @@ ALTER TABLE public.melhorias ADD COLUMN IF NOT EXISTS data_implementacao date;
 ALTER TABLE public.melhorias ADD COLUMN IF NOT EXISTS anexos jsonb;
 
 -- ============================================================
--- 5. incidentes_ssma — 16 missing columns (insertWithColumnFallback → silent data loss)
+-- 5. incidentes_ssma — 16 missing columns
 -- ============================================================
 ALTER TABLE public.incidentes_ssma ADD COLUMN IF NOT EXISTS numero_incidente text;
 ALTER TABLE public.incidentes_ssma ADD COLUMN IF NOT EXISTS tipo text;
@@ -95,7 +101,7 @@ ALTER TABLE public.incidentes_ssma ADD COLUMN IF NOT EXISTS responsavel_nome tex
 ALTER TABLE public.incidentes_ssma ADD COLUMN IF NOT EXISTS responsavel_id uuid;
 
 -- ============================================================
--- 6. permissoes_trabalho — 15 missing columns (insertWithColumnFallback → silent data loss)
+-- 6. permissoes_trabalho — 15 missing columns
 -- ============================================================
 ALTER TABLE public.permissoes_trabalho ADD COLUMN IF NOT EXISTS numero_pt text;
 ALTER TABLE public.permissoes_trabalho ADD COLUMN IF NOT EXISTS tipo text;
@@ -114,7 +120,7 @@ ALTER TABLE public.permissoes_trabalho ADD COLUMN IF NOT EXISTS checklist_segura
 ALTER TABLE public.permissoes_trabalho ADD COLUMN IF NOT EXISTS observacoes text;
 
 -- ============================================================
--- 7. dados_empresa — 11 missing columns (.insert() direto → INSERT FAILS)
+-- 7. dados_empresa — 11 missing columns
 -- ============================================================
 ALTER TABLE public.dados_empresa ADD COLUMN IF NOT EXISTS inscricao_estadual text;
 ALTER TABLE public.dados_empresa ADD COLUMN IF NOT EXISTS endereco text;
@@ -129,33 +135,34 @@ ALTER TABLE public.dados_empresa ADD COLUMN IF NOT EXISTS responsavel_nome text;
 ALTER TABLE public.dados_empresa ADD COLUMN IF NOT EXISTS responsavel_cargo text;
 
 -- ============================================================
--- 8. configuracoes_sistema — 3 missing columns (.insert() direto → INSERT FAILS)
+-- 8. configuracoes_sistema — 3 missing columns
 -- ============================================================
 ALTER TABLE public.configuracoes_sistema ADD COLUMN IF NOT EXISTS descricao text;
 ALTER TABLE public.configuracoes_sistema ADD COLUMN IF NOT EXISTS categoria text DEFAULT 'GERAL';
 ALTER TABLE public.configuracoes_sistema ADD COLUMN IF NOT EXISTS tipo text DEFAULT 'STRING';
 
 -- ============================================================
--- 9. inspecoes — 1 missing column (equipamento_id never added after full_rebuild)
+-- 9. inspecoes — 1 missing column
 -- ============================================================
 ALTER TABLE public.inspecoes ADD COLUMN IF NOT EXISTS equipamento_id uuid REFERENCES public.equipamentos(id);
 
 -- ============================================================
--- 10. solicitacoes_manutencao — TABLE DROPPED by full_rebuild, never recreated
+-- 10. solicitacoes_manutencao — TABLE DROPPED by full_rebuild
 --     Used by useSolicitacoes.ts and mecanico-app CriarSolicitacaoScreen
 -- ============================================================
 CREATE TABLE IF NOT EXISTS public.solicitacoes_manutencao (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  empresa_id uuid NOT NULL REFERENCES public.empresas(id),
+  empresa_id uuid NOT NULL REFERENCES public.empresas(id) ON DELETE CASCADE,
   numero_solicitacao text,
   equipamento_id uuid REFERENCES public.equipamentos(id),
   tag text,
   solicitante_nome text,
   solicitante_setor text,
   descricao_falha text,
-  impacto text,
+  impacto text CHECK (impacto IS NULL OR impacto IN ('ALTO', 'MEDIO', 'BAIXO')),
   classificacao text,
-  status text DEFAULT 'PENDENTE',
+  status text NOT NULL DEFAULT 'PENDENTE'
+    CHECK (status IN ('PENDENTE', 'APROVADA', 'CONVERTIDA', 'REJEITADA', 'CANCELADA')),
   os_id uuid REFERENCES public.ordens_servico(id),
   sla_horas numeric,
   data_limite timestamptz,
@@ -166,23 +173,53 @@ CREATE TABLE IF NOT EXISTS public.solicitacoes_manutencao (
   updated_at timestamptz NOT NULL DEFAULT now()
 );
 
--- RLS for solicitacoes_manutencao
+-- RLS: 4 separate policies (project standard pattern)
 ALTER TABLE public.solicitacoes_manutencao ENABLE ROW LEVEL SECURITY;
 
-DO $$ BEGIN
-  CREATE POLICY "tenant_isolation_solicitacoes_manutencao"
-    ON public.solicitacoes_manutencao
-    FOR ALL
-    USING (empresa_id = (SELECT public.get_current_empresa_id()));
-EXCEPTION WHEN duplicate_object THEN NULL;
-END $$;
+DROP POLICY IF EXISTS "tenant_isolation_solicitacoes_manutencao" ON public.solicitacoes_manutencao;
 
--- Index for tenant isolation
+CREATE POLICY tenant_select_solicitacoes_manutencao ON public.solicitacoes_manutencao
+  FOR SELECT
+  USING (public.is_control_plane_operator() OR empresa_id = public.get_current_empresa_id());
+
+CREATE POLICY tenant_insert_solicitacoes_manutencao ON public.solicitacoes_manutencao
+  FOR INSERT
+  WITH CHECK (public.is_control_plane_operator() OR empresa_id = public.get_current_empresa_id());
+
+CREATE POLICY tenant_update_solicitacoes_manutencao ON public.solicitacoes_manutencao
+  FOR UPDATE
+  USING (public.is_control_plane_operator() OR empresa_id = public.get_current_empresa_id())
+  WITH CHECK (public.is_control_plane_operator() OR empresa_id = public.get_current_empresa_id());
+
+CREATE POLICY tenant_delete_solicitacoes_manutencao ON public.solicitacoes_manutencao
+  FOR DELETE
+  USING (public.is_control_plane_operator() OR empresa_id = public.get_current_empresa_id());
+
+-- Indexes
 CREATE INDEX IF NOT EXISTS idx_solicitacoes_manutencao_empresa_id
   ON public.solicitacoes_manutencao(empresa_id);
+CREATE INDEX IF NOT EXISTS idx_solicitacoes_manutencao_empresa_status
+  ON public.solicitacoes_manutencao(empresa_id, status);
+CREATE INDEX IF NOT EXISTS idx_solicitacoes_manutencao_equipamento
+  ON public.solicitacoes_manutencao(equipamento_id);
+
+-- Trigger: updated_at
+CREATE TRIGGER update_solicitacoes_manutencao_updated_at
+  BEFORE UPDATE ON public.solicitacoes_manutencao
+  FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
+
+-- Trigger: auto-sequence (numero_solicitacao)
+-- Already mapped in trg_auto_tenant_sequence() CASE statement
+CREATE TRIGGER trg_auto_seq
+  BEFORE INSERT ON public.solicitacoes_manutencao
+  FOR EACH ROW EXECUTE FUNCTION public.trg_auto_tenant_sequence();
+
+-- Grants
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.solicitacoes_manutencao TO authenticated;
+GRANT ALL ON public.solicitacoes_manutencao TO service_role;
 
 -- ============================================================
--- 11. documentos_tecnicos — 5 missing columns (insert direto → trava sem feedback)
+-- 11. documentos_tecnicos — 5 missing columns
 -- ============================================================
 ALTER TABLE public.documentos_tecnicos ADD COLUMN IF NOT EXISTS codigo text;
 ALTER TABLE public.documentos_tecnicos ADD COLUMN IF NOT EXISTS tag text;
@@ -208,18 +245,44 @@ CREATE TABLE IF NOT EXISTS public.epis (
   updated_at timestamptz NOT NULL DEFAULT now()
 );
 
+-- RLS: 4 separate policies (correct pattern — NOT current_setting)
 ALTER TABLE public.epis ENABLE ROW LEVEL SECURITY;
 
-DO $$ BEGIN
-  CREATE POLICY "tenant_isolation_epis"
-    ON public.epis FOR ALL
-    USING (empresa_id = (current_setting('app.current_tenant', true))::uuid)
-    WITH CHECK (empresa_id = (current_setting('app.current_tenant', true))::uuid);
-EXCEPTION WHEN duplicate_object THEN NULL;
-END $$;
+DROP POLICY IF EXISTS "tenant_isolation_epis" ON public.epis;
 
+CREATE POLICY tenant_select_epis ON public.epis
+  FOR SELECT
+  USING (public.is_control_plane_operator() OR empresa_id = public.get_current_empresa_id());
+
+CREATE POLICY tenant_insert_epis ON public.epis
+  FOR INSERT
+  WITH CHECK (public.is_control_plane_operator() OR empresa_id = public.get_current_empresa_id());
+
+CREATE POLICY tenant_update_epis ON public.epis
+  FOR UPDATE
+  USING (public.is_control_plane_operator() OR empresa_id = public.get_current_empresa_id())
+  WITH CHECK (public.is_control_plane_operator() OR empresa_id = public.get_current_empresa_id());
+
+CREATE POLICY tenant_delete_epis ON public.epis
+  FOR DELETE
+  USING (public.is_control_plane_operator() OR empresa_id = public.get_current_empresa_id());
+
+-- Indexes
 CREATE INDEX IF NOT EXISTS idx_epis_empresa_id ON public.epis(empresa_id);
+CREATE INDEX IF NOT EXISTS idx_epis_empresa_ativo ON public.epis(empresa_id, ativo);
 
+-- Trigger: updated_at
+CREATE TRIGGER update_epis_updated_at
+  BEFORE UPDATE ON public.epis
+  FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
+
+-- Grants
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.epis TO authenticated;
+GRANT ALL ON public.epis TO service_role;
+
+-- ============================================================
+-- 13. SSMA — Entregas de EPI
+-- ============================================================
 CREATE TABLE IF NOT EXISTS public.entregas_epi (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   empresa_id uuid NOT NULL REFERENCES public.empresas(id) ON DELETE CASCADE,
@@ -234,21 +297,39 @@ CREATE TABLE IF NOT EXISTS public.entregas_epi (
   created_at timestamptz NOT NULL DEFAULT now()
 );
 
+-- RLS: 4 separate policies (correct pattern — NOT current_setting)
 ALTER TABLE public.entregas_epi ENABLE ROW LEVEL SECURITY;
 
-DO $$ BEGIN
-  CREATE POLICY "tenant_isolation_entregas_epi"
-    ON public.entregas_epi FOR ALL
-    USING (empresa_id = (current_setting('app.current_tenant', true))::uuid)
-    WITH CHECK (empresa_id = (current_setting('app.current_tenant', true))::uuid);
-EXCEPTION WHEN duplicate_object THEN NULL;
-END $$;
+DROP POLICY IF EXISTS "tenant_isolation_entregas_epi" ON public.entregas_epi;
 
+CREATE POLICY tenant_select_entregas_epi ON public.entregas_epi
+  FOR SELECT
+  USING (public.is_control_plane_operator() OR empresa_id = public.get_current_empresa_id());
+
+CREATE POLICY tenant_insert_entregas_epi ON public.entregas_epi
+  FOR INSERT
+  WITH CHECK (public.is_control_plane_operator() OR empresa_id = public.get_current_empresa_id());
+
+CREATE POLICY tenant_update_entregas_epi ON public.entregas_epi
+  FOR UPDATE
+  USING (public.is_control_plane_operator() OR empresa_id = public.get_current_empresa_id())
+  WITH CHECK (public.is_control_plane_operator() OR empresa_id = public.get_current_empresa_id());
+
+CREATE POLICY tenant_delete_entregas_epi ON public.entregas_epi
+  FOR DELETE
+  USING (public.is_control_plane_operator() OR empresa_id = public.get_current_empresa_id());
+
+-- Indexes
 CREATE INDEX IF NOT EXISTS idx_entregas_epi_empresa_id ON public.entregas_epi(empresa_id);
 CREATE INDEX IF NOT EXISTS idx_entregas_epi_epi_id ON public.entregas_epi(epi_id);
+CREATE INDEX IF NOT EXISTS idx_entregas_epi_empresa_data ON public.entregas_epi(empresa_id, data_entrega DESC);
+
+-- Grants
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.entregas_epi TO authenticated;
+GRANT ALL ON public.entregas_epi TO service_role;
 
 -- ============================================================
--- 13. SSMA — Fichas de Segurança (FISPQ / FDS)
+-- 14. SSMA — Fichas de Segurança (FISPQ / FDS)
 -- ============================================================
 CREATE TABLE IF NOT EXISTS public.fichas_seguranca (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -269,20 +350,51 @@ CREATE TABLE IF NOT EXISTS public.fichas_seguranca (
   updated_at timestamptz NOT NULL DEFAULT now()
 );
 
+-- RLS: 4 separate policies (correct pattern — NOT current_setting)
 ALTER TABLE public.fichas_seguranca ENABLE ROW LEVEL SECURITY;
 
-DO $$ BEGIN
-  CREATE POLICY "tenant_isolation_fichas_seguranca"
-    ON public.fichas_seguranca FOR ALL
-    USING (empresa_id = (current_setting('app.current_tenant', true))::uuid)
-    WITH CHECK (empresa_id = (current_setting('app.current_tenant', true))::uuid);
-EXCEPTION WHEN duplicate_object THEN NULL;
-END $$;
+DROP POLICY IF EXISTS "tenant_isolation_fichas_seguranca" ON public.fichas_seguranca;
 
+CREATE POLICY tenant_select_fichas_seguranca ON public.fichas_seguranca
+  FOR SELECT
+  USING (public.is_control_plane_operator() OR empresa_id = public.get_current_empresa_id());
+
+CREATE POLICY tenant_insert_fichas_seguranca ON public.fichas_seguranca
+  FOR INSERT
+  WITH CHECK (public.is_control_plane_operator() OR empresa_id = public.get_current_empresa_id());
+
+CREATE POLICY tenant_update_fichas_seguranca ON public.fichas_seguranca
+  FOR UPDATE
+  USING (public.is_control_plane_operator() OR empresa_id = public.get_current_empresa_id())
+  WITH CHECK (public.is_control_plane_operator() OR empresa_id = public.get_current_empresa_id());
+
+CREATE POLICY tenant_delete_fichas_seguranca ON public.fichas_seguranca
+  FOR DELETE
+  USING (public.is_control_plane_operator() OR empresa_id = public.get_current_empresa_id());
+
+-- Indexes
 CREATE INDEX IF NOT EXISTS idx_fichas_seguranca_empresa_id ON public.fichas_seguranca(empresa_id);
+CREATE INDEX IF NOT EXISTS idx_fichas_seguranca_empresa_ativo ON public.fichas_seguranca(empresa_id, ativo);
+
+-- Trigger: updated_at
+CREATE TRIGGER update_fichas_seguranca_updated_at
+  BEFORE UPDATE ON public.fichas_seguranca
+  FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
+
+-- Grants
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.fichas_seguranca TO authenticated;
+GRANT ALL ON public.fichas_seguranca TO service_role;
 
 -- ============================================================
 -- DONE: 104 columns added across 10 tables + 4 tables created
--- All operations are idempotent (IF NOT EXISTS / IF NOT EXISTS)
--- No columns dropped, no columns renamed
+-- Production-grade hardening applied:
+--   ✓ RLS: 4 policies per table (SELECT/INSERT/UPDATE/DELETE)
+--     using is_control_plane_operator() + get_current_empresa_id()
+--   ✓ Triggers: updated_at on all tables with updated_at column
+--   ✓ Triggers: trg_auto_seq on solicitacoes_manutencao
+--   ✓ CHECK constraints on status + impacto columns
+--   ✓ ON DELETE CASCADE on empresa_id FKs
+--   ✓ Performance indexes: (empresa_id, status), (empresa_id, ativo),
+--     (equipamento_id), (empresa_id, data DESC)
+--   ✓ GRANT to authenticated + service_role on all new tables
 -- ============================================================

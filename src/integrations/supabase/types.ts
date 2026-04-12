@@ -1109,6 +1109,116 @@ export type Database = {
           },
         ]
       }
+      entregas_epi: {
+        Row: {
+          colaborador_id: string | null
+          colaborador_nome: string
+          created_at: string
+          data_devolucao: string | null
+          data_entrega: string
+          empresa_id: string
+          epi_id: string
+          id: string
+          motivo: string | null
+          observacoes: string | null
+          quantidade: number
+        }
+        Insert: {
+          colaborador_id?: string | null
+          colaborador_nome: string
+          created_at?: string
+          data_devolucao?: string | null
+          data_entrega?: string
+          empresa_id: string
+          epi_id: string
+          id?: string
+          motivo?: string | null
+          observacoes?: string | null
+          quantidade?: number
+        }
+        Update: {
+          colaborador_id?: string | null
+          colaborador_nome?: string
+          created_at?: string
+          data_devolucao?: string | null
+          data_entrega?: string
+          empresa_id?: string
+          epi_id?: string
+          id?: string
+          motivo?: string | null
+          observacoes?: string | null
+          quantidade?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "entregas_epi_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "entregas_epi_epi_id_fkey"
+            columns: ["epi_id"]
+            isOneToOne: false
+            referencedRelation: "epis"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      epis: {
+        Row: {
+          ativo: boolean
+          categoria: string
+          created_at: string
+          empresa_id: string
+          estoque_atual: number
+          estoque_minimo: number
+          fabricante: string | null
+          id: string
+          nome: string
+          numero_ca: string | null
+          updated_at: string
+          validade_ca: string | null
+        }
+        Insert: {
+          ativo?: boolean
+          categoria?: string
+          created_at?: string
+          empresa_id: string
+          estoque_atual?: number
+          estoque_minimo?: number
+          fabricante?: string | null
+          id?: string
+          nome: string
+          numero_ca?: string | null
+          updated_at?: string
+          validade_ca?: string | null
+        }
+        Update: {
+          ativo?: boolean
+          categoria?: string
+          created_at?: string
+          empresa_id?: string
+          estoque_atual?: number
+          estoque_minimo?: number
+          fabricante?: string | null
+          id?: string
+          nome?: string
+          numero_ca?: string | null
+          updated_at?: string
+          validade_ca?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "epis_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       equipamentos: {
         Row: {
           ativo: boolean
@@ -1468,6 +1578,71 @@ export type Database = {
             columns: ["equipamento_id"]
             isOneToOne: false
             referencedRelation: "equipamentos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      fichas_seguranca: {
+        Row: {
+          arquivo_url: string | null
+          armazenamento: string | null
+          ativo: boolean
+          classificacao_ghs: string | null
+          codigo: string | null
+          created_at: string
+          data_validade: string | null
+          empresa_id: string
+          epi_recomendado: string | null
+          fabricante: string | null
+          id: string
+          medidas_emergencia: string | null
+          nome_produto: string
+          perigos_principais: string | null
+          primeiros_socorros: string | null
+          updated_at: string
+        }
+        Insert: {
+          arquivo_url?: string | null
+          armazenamento?: string | null
+          ativo?: boolean
+          classificacao_ghs?: string | null
+          codigo?: string | null
+          created_at?: string
+          data_validade?: string | null
+          empresa_id: string
+          epi_recomendado?: string | null
+          fabricante?: string | null
+          id?: string
+          medidas_emergencia?: string | null
+          nome_produto: string
+          perigos_principais?: string | null
+          primeiros_socorros?: string | null
+          updated_at?: string
+        }
+        Update: {
+          arquivo_url?: string | null
+          armazenamento?: string | null
+          ativo?: boolean
+          classificacao_ghs?: string | null
+          codigo?: string | null
+          created_at?: string
+          data_validade?: string | null
+          empresa_id?: string
+          epi_recomendado?: string | null
+          fabricante?: string | null
+          id?: string
+          medidas_emergencia?: string | null
+          nome_produto?: string
+          perigos_principais?: string | null
+          primeiros_socorros?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fichas_seguranca_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
             referencedColumns: ["id"]
           },
         ]

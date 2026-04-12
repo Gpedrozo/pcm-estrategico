@@ -9,12 +9,15 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { 
   FileText, Download, Calendar, BarChart3, PieChart, TrendingUp,
   Wrench, Clock, DollarSign, AlertTriangle, FileSpreadsheet, Printer, Loader2,
-  Brain, Eye, Filter, Zap
+  Brain, Eye, Filter, Zap, Package, ShieldAlert, Droplets, Search,
+  Users, FileContract, HardHat, Headphones, ScrollText, PauseCircle,
+  Activity, ClipboardList
 } from 'lucide-react';
 import { useOrdensServico } from '@/hooks/useOrdensServico';
 import { useIndicadores } from '@/hooks/useIndicadores';
 import { useDadosEmpresa } from '@/hooks/useDadosEmpresa';
 import { useRelatoriosInteligentes } from '@/hooks/useRelatoriosInteligentes';
+import { useRelatoriosExpandidos } from '@/hooks/useRelatoriosExpandidos';
 import { format, subDays, differenceInDays, parseISO } from 'date-fns';
 import { 
   generateOSReportPDF, generateIndicadoresPDF, generateExcelReport 
@@ -31,11 +34,27 @@ import {
   ProdutividadeMecanicosPanel,
   OSTendenciaDiaria,
   DrillDownModal,
+  // Novos
+  HistoricoKPIsTendencia,
+  CustosDetalhadosPanel,
+  EstoqueMaterialPanel,
+  AnaliseParadasPanel,
+  SolicitacoesAnalisePanel,
+  FMEAMatrizRiscoPanel,
+  ManutencaoPreditivaPanel,
+  LubrificacaoRelatorioPanel,
+  RCAAnalisePanel,
+  HistoricoMecanicosPanel,
+  FornecedoresContratoPanel,
+  SSMAConformidadePanel,
+  SLAChamadosPanel,
+  AuditoriaLogPanel,
+  CorretivaVsPreventivaCurvaPanel,
 } from '@/components/relatorios';
 
 type ReportType = 'os_periodo' | 'indicadores' | 'custos' | 'backlog' | 'preventivas' | 'equipamentos' | 'mecanicos' | 'executivo';
 type ViewMode = 'dashboard' | 'export';
-type CategoryTab = 'executivo' | 'operacional' | 'gerencial' | 'inteligencia';
+type CategoryTab = 'executivo' | 'operacional' | 'gerencial' | 'inteligencia' | 'custos' | 'manutencao' | 'rh_ssma' | 'gestao' | 'auditoria';
 
 interface ReportConfig {
   id: ReportType;
@@ -72,6 +91,9 @@ export default function Relatorios() {
   const { data: indicadores, isLoading: loadingIndicadores } = useIndicadores();
   const { data: empresa } = useDadosEmpresa();
   const { toast } = useToast();
+
+  // Dados expandidos para os novos 15 relatórios
+  const expanded = useRelatoriosExpandidos(dateFrom, dateTo);
 
   // Motor de inteligência — conectado aos filtros de período
   const {
@@ -185,7 +207,7 @@ export default function Relatorios() {
     }
   };
 
-  const isLoading = loadingOS || loadingIndicadores;
+  const isLoading = loadingOS || loadingIndicadores || expanded.isLoading;
 
   if (isLoading) {
     return (
@@ -258,7 +280,7 @@ export default function Relatorios() {
         </div>
 
         <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as CategoryTab)} className="space-y-4">
-          <TabsList className="grid grid-cols-4 w-full max-w-2xl">
+          <TabsList className="flex flex-wrap h-auto gap-1 w-full">
             <TabsTrigger value="executivo" className="gap-1.5">
               <PieChart className="h-4 w-4" />
               <span className="hidden sm:inline">Executivo</span>
@@ -270,6 +292,26 @@ export default function Relatorios() {
             <TabsTrigger value="gerencial" className="gap-1.5">
               <BarChart3 className="h-4 w-4" />
               <span className="hidden sm:inline">Gerencial</span>
+            </TabsTrigger>
+            <TabsTrigger value="custos" className="gap-1.5">
+              <DollarSign className="h-4 w-4" />
+              <span className="hidden sm:inline">Custos</span>
+            </TabsTrigger>
+            <TabsTrigger value="manutencao" className="gap-1.5">
+              <Activity className="h-4 w-4" />
+              <span className="hidden sm:inline">Manutenção</span>
+            </TabsTrigger>
+            <TabsTrigger value="rh_ssma" className="gap-1.5">
+              <Users className="h-4 w-4" />
+              <span className="hidden sm:inline">RH & SSMA</span>
+            </TabsTrigger>
+            <TabsTrigger value="gestao" className="gap-1.5">
+              <FileContract className="h-4 w-4" />
+              <span className="hidden sm:inline">Gestão</span>
+            </TabsTrigger>
+            <TabsTrigger value="auditoria" className="gap-1.5">
+              <ScrollText className="h-4 w-4" />
+              <span className="hidden sm:inline">Auditoria</span>
             </TabsTrigger>
             <TabsTrigger value="inteligencia" className="gap-1.5">
               <Zap className="h-4 w-4" />
@@ -343,6 +385,91 @@ export default function Relatorios() {
             </Card>
             <AlertasInteligentes alertas={alertas} insights={insights} />
             <KPIMetaReal kpis={kpis} />
+          </TabsContent>
+
+          {/* ── TAB CUSTOS ────────────────────────────────────── */}
+          <TabsContent value="custos" className="space-y-4">
+            <CustosDetalhadosPanel
+              execucoes={expanded.execucoes as any[]}
+              ordensServico={expanded.ordensServico as any[]}
+              movimentacoes={expanded.movimentacoesMat as any[]}
+              dateFrom={dateFrom}
+              dateTo={dateTo}
+            />
+            <EstoqueMaterialPanel
+              materiais={expanded.materiais as any[]}
+              movimentacoes={expanded.movimentacoesMat as any[]}
+              dateFrom={dateFrom}
+              dateTo={dateTo}
+            />
+            <CorretivaVsPreventivaCurvaPanel
+              ordensServico={expanded.ordensServico as any[]}
+              execucoes={expanded.execucoes as any[]}
+            />
+          </TabsContent>
+
+          {/* ── TAB MANUTENÇÃO ─────────────────────────────────── */}
+          <TabsContent value="manutencao" className="space-y-4">
+            <HistoricoKPIsTendencia
+              ordensServico={expanded.ordensServico as any[]}
+              execucoes={expanded.execucoes as any[]}
+            />
+            <AnaliseParadasPanel
+              ordensServico={expanded.ordensServico as any[]}
+              dateFrom={dateFrom}
+              dateTo={dateTo}
+            />
+            <SolicitacoesAnalisePanel
+              solicitacoes={expanded.solicitacoes as any[]}
+              dateFrom={dateFrom}
+              dateTo={dateTo}
+            />
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              <FMEAMatrizRiscoPanel fmeas={expanded.fmeas as any[]} />
+              <RCAAnalisePanel
+                rcas={expanded.rcas as any[]}
+                dateFrom={dateFrom}
+                dateTo={dateTo}
+              />
+            </div>
+            <ManutencaoPreditivaPanel
+              medicoes={expanded.medicoes as any[]}
+              dateFrom={dateFrom}
+              dateTo={dateTo}
+            />
+            <LubrificacaoRelatorioPanel
+              planos={expanded.planosLubrif as any[]}
+              execucoes={[]}
+              estoque={expanded.lubrificantes as any[]}
+              movimentacoes={[]}
+              dateFrom={dateFrom}
+              dateTo={dateTo}
+            />
+          </TabsContent>
+
+          {/* ── TAB RH & SSMA ──────────────────────────────────── */}
+          <TabsContent value="rh_ssma" className="space-y-4">
+            <HistoricoMecanicosPanel execucoes={expanded.execucoes as any[]} />
+            <SSMAConformidadePanel treinamentos={expanded.treinamentos as any[]} />
+          </TabsContent>
+
+          {/* ── TAB GESTÃO ─────────────────────────────────────── */}
+          <TabsContent value="gestao" className="space-y-4">
+            <FornecedoresContratoPanel contratos={expanded.contratos as any[]} />
+            <SLAChamadosPanel
+              tickets={expanded.tickets as any[]}
+              dateFrom={dateFrom}
+              dateTo={dateTo}
+            />
+          </TabsContent>
+
+          {/* ── TAB AUDITORIA ──────────────────────────────────── */}
+          <TabsContent value="auditoria" className="space-y-4">
+            <AuditoriaLogPanel
+              logs={expanded.auditLogs as any[]}
+              dateFrom={dateFrom}
+              dateTo={dateTo}
+            />
           </TabsContent>
         </Tabs>
         </>
