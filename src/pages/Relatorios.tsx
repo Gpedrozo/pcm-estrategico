@@ -10,7 +10,7 @@ import {
   FileText, Download, Calendar, BarChart3, PieChart, TrendingUp,
   Wrench, Clock, DollarSign, AlertTriangle, FileSpreadsheet, Printer, Loader2,
   Brain, Eye, Filter, Zap, Package, ShieldAlert, Droplets, Search,
-  Users, FileContract, HardHat, Headphones, ScrollText, PauseCircle,
+  Users, FileSignature, HardHat, Headphones, ScrollText, PauseCircle,
   Activity, ClipboardList
 } from 'lucide-react';
 import { useOrdensServico } from '@/hooks/useOrdensServico';
@@ -306,7 +306,7 @@ export default function Relatorios() {
               <span className="hidden sm:inline">RH & SSMA</span>
             </TabsTrigger>
             <TabsTrigger value="gestao" className="gap-1.5">
-              <FileContract className="h-4 w-4" />
+              <FileSignature className="h-4 w-4" />
               <span className="hidden sm:inline">Gestão</span>
             </TabsTrigger>
             <TabsTrigger value="auditoria" className="gap-1.5">

@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { FileContract, AlertTriangle } from 'lucide-react';
+import { FileSignature, AlertTriangle } from 'lucide-react';
 import { differenceInDays, parseISO, format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
@@ -62,7 +62,7 @@ export function FornecedoresContratoPanel({ contratos }: Props) {
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-base">
-          <FileContract className="h-4 w-4 text-primary" />
+          <FileSignature className="h-4 w-4 text-primary" />
           Contratos & Fornecedores
         </CardTitle>
         <CardDescription>Validade, SLA e valor dos contratos ativos</CardDescription>
