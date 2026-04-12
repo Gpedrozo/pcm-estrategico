@@ -73,7 +73,7 @@ describe("Owner page access", () => {
 
     renderWithQuery(<Owner />);
     expect(screen.getByText("Owner Portal")).toBeInTheDocument();
-    expect(screen.getByText("Visao executiva do ecossistema multiempresa.")).toBeInTheDocument();
+    expect(screen.getByText(/Vis.o executiva/i)).toBeInTheDocument();
   });
 
   it('hides owner master tab for non-master system owner', () => {

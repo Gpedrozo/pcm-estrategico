@@ -33,14 +33,21 @@ export function AppLayout() {
   const [companySearchInput, setCompanySearchInput] = useState('');
   const [isDomainRedirectRunning, setIsDomainRedirectRunning] = useState(false);
   const [isDark, setIsDark] = useState(() => {
-    if (typeof window === 'undefined') return false;
-    const stored = localStorage.getItem('pcm-theme');
-    if (stored) return stored === 'dark';
-    return document.documentElement.classList.contains('dark');
+    try {
+      const stored = localStorage.getItem('pcm-theme');
+      if (stored) return stored === 'dark';
+      return document.documentElement.classList.contains('dark');
+    } catch {
+      return false;
+    }
   });
   useEffect(() => {
-    document.documentElement.classList.toggle('dark', isDark);
-    localStorage.setItem('pcm-theme', isDark ? 'dark' : 'light');
+    try {
+      document.documentElement.classList.toggle('dark', isDark);
+      localStorage.setItem('pcm-theme', isDark ? 'dark' : 'light');
+    } catch {
+      // jsdom/SSR fallback
+    }
   }, [isDark]);
   const { data: tenantVisualIdentity } = useTenantVisualIdentity();
   const { data: subscriptionAlert } = useSubscriptionAlert();
