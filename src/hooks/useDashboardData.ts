@@ -69,6 +69,29 @@ export function useDashboardData() {
         throw new Error('Tenant não resolvido para KPIs do dashboard.');
       }
 
+      // Prefer RPC with built-in access check over the materialized view
+      const { data: rpcData, error: rpcError } = await supabase.rpc('dashboard_summary', {
+        empresa_id: tenantId,
+      });
+
+      if (!rpcError && rpcData?.[0]) {
+        const row = rpcData[0] as Record<string, unknown>;
+        return {
+          empresa_id: tenantId,
+          snapshot_at: new Date().toISOString(),
+          os_abertas: Number(row.os_abertas ?? 0),
+          os_fechadas_30d: Number(row.os_fechadas ?? 0),
+          urgentes_abertas: Number(row.os_abertas ?? 0),
+          backlog_atrasado: 0,
+          custo_30d: 0,
+          mttr_horas_30d: 0,
+          mtbf_horas_30d: 0,
+          disponibilidade_estim: 0,
+          aderencia_preventiva_90d: 0,
+        } satisfies DashboardKpiRow;
+      }
+
+      // Fallback: try materialized view
       const { data, error } = await supabase
         .from('v_dashboard_kpis' as never)
         .select('empresa_id,snapshot_at,os_abertas,os_fechadas_30d,urgentes_abertas,backlog_atrasado,custo_30d,mttr_horas_30d,mtbf_horas_30d,disponibilidade_estim,aderencia_preventiva_90d')

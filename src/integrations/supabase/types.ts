@@ -2611,6 +2611,158 @@ export type Database = {
           },
         ]
       }
+      plans: {
+        Row: {
+          id: string
+          code: string
+          name: string
+          description: string | null
+          user_limit: number
+          asset_limit: number
+          os_limit: number
+          storage_limit_mb: number
+          price_month: number
+          active: boolean
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          code: string
+          name: string
+          description?: string | null
+          user_limit?: number
+          asset_limit?: number
+          os_limit?: number
+          storage_limit_mb?: number
+          price_month?: number
+          active?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          code?: string
+          name?: string
+          description?: string | null
+          user_limit?: number
+          asset_limit?: number
+          os_limit?: number
+          storage_limit_mb?: number
+          price_month?: number
+          active?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      subscriptions: {
+        Row: {
+          id: string
+          empresa_id: string
+          plan_id: string
+          status: string
+          renewal_at: string | null
+          trial_ends_at: string | null
+          payment_status: string | null
+          stripe_customer_id: string | null
+          stripe_subscription_id: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          empresa_id: string
+          plan_id: string
+          status?: string
+          renewal_at?: string | null
+          trial_ends_at?: string | null
+          payment_status?: string | null
+          stripe_customer_id?: string | null
+          stripe_subscription_id?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          empresa_id?: string
+          plan_id?: string
+          status?: string
+          renewal_at?: string | null
+          trial_ends_at?: string | null
+          payment_status?: string | null
+          stripe_customer_id?: string | null
+          stripe_subscription_id?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "subscriptions_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: true
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "subscriptions_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "plans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      support_tickets: {
+        Row: {
+          id: string
+          empresa_id: string
+          requester_user_id: string | null
+          status: string
+          priority: string
+          subject: string
+          message: string
+          owner_notes: string | null
+          assigned_to: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          empresa_id: string
+          requester_user_id?: string | null
+          status?: string
+          priority?: string
+          subject: string
+          message: string
+          owner_notes?: string | null
+          assigned_to?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          empresa_id?: string
+          requester_user_id?: string | null
+          status?: string
+          priority?: string
+          subject?: string
+          message?: string
+          owner_notes?: string | null
+          assigned_to?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "support_tickets_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_roles: {
         Row: {
           created_at: string
