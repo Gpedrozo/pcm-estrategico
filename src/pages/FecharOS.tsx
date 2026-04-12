@@ -19,6 +19,7 @@ import { usePendingOrdensServico, useUpdateOrdemServico, type OrdemServicoRow } 
 import { useMecanicosAtivos } from '@/hooks/useMecanicos';
 import { useMateriaisAtivos, useAddMaterialOS, type MaterialRow } from '@/hooks/useMateriais';
 import { useCreateExecucaoOS, useCloseOSAtomic } from '@/hooks/useExecucoesOS';
+import { useUploadOSAnexo, useOSAnexos } from '@/hooks/useOSAnexos';
 import { useLogAuditoria } from '@/hooks/useAuditoria';
 import { useTenantAdminConfig } from '@/hooks/useTenantAdminConfig';
 import { useFormDraft, readDraft } from '@/hooks/useFormDraft';
@@ -39,6 +40,8 @@ import {
   Clock,
   Search,
   ClipboardList,
+  Upload,
+  FileText,
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { OSStatusBadge } from '@/components/os/OSStatusBadge';
@@ -75,6 +78,7 @@ export default function FecharOS() {
   const createExecucaoMutation = useCreateExecucaoOS();
   const closeOSAtomicMutation = useCloseOSAtomic();
   const addMaterialOSMutation = useAddMaterialOS();
+  const uploadAnexoMutation = useUploadOSAnexo();
   
   // ── Synchronous draft restoration (zero-flash) ──
   const _draft = readDraft<{
@@ -111,6 +115,7 @@ export default function FecharOS() {
   const [teveIntervalos, setTeveIntervalos] = useState(_draft?.teveIntervalos || false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [searchOS, setSearchOS] = useState('');
+  const [anexosPendentes, setAnexosPendentes] = useState<File[]>([]);
   const servicoMinLength = 20;
 
   const filteredPendingOS = useMemo(() => {
@@ -481,6 +486,26 @@ export default function FecharOS() {
 
       await log('FECHAR_OS', `Fechamento da O.S ${selectedOS.numero_os} - Custo total: ${formatCurrency(custoTotal)} - Tempo bruto: ${tempoExecucaoBruto} min - Pausas: ${tempoPausas} min - Tempo líquido: ${tempoExecucao} min`, selectedOS.tag);
 
+      // Upload de anexos (não-bloqueante)
+      if (anexosPendentes.length > 0) {
+        let uploadFails = 0;
+        for (const file of anexosPendentes) {
+          try {
+            await uploadAnexoMutation.mutateAsync({ osId: selectedOS.id, file });
+          } catch {
+            uploadFails++;
+          }
+        }
+        if (uploadFails > 0) {
+          toast({
+            title: 'Aviso: Anexos',
+            description: `${uploadFails} de ${anexosPendentes.length} arquivo(s) não foram enviados. Você pode anexá-los depois.`,
+            variant: 'default',
+          });
+        }
+        setAnexosPendentes([]);
+      }
+
       toast({
         title: 'O.S Fechada com Sucesso!',
         description: `Ordem de Serviço nº ${selectedOS.numero_os} foi encerrada.`,
@@ -523,6 +548,7 @@ export default function FecharOS() {
     setMateriaisUsados([]);
     setPausasExecucao([]);
     setTeveIntervalos(false);
+    setAnexosPendentes([]);
     setPausaDataInicio(new Date().toISOString().slice(0, 10));
     setPausaInicio('');
     setPausaDataFim(new Date().toISOString().slice(0, 10));
@@ -682,6 +708,14 @@ export default function FecharOS() {
                   </div>
                 </div>
               </div>
+
+              {/* Problema Apresentado */}
+              {selectedOS.problema && (
+                <div className="mt-3 p-3 bg-amber-500/5 border border-amber-500/20 rounded-lg">
+                  <Label className="text-xs text-muted-foreground font-semibold uppercase tracking-wide">Problema Apresentado</Label>
+                  <p className="mt-1 text-sm">{selectedOS.problema}</p>
+                </div>
+              )}
             </div>
 
             {/* Form Tabs */}
@@ -953,6 +987,50 @@ export default function FecharOS() {
                   </TabsContent>
 
                 </Tabs>
+
+                {/* Upload de Anexos (Preventiva / Preditiva / Inspeção) */}
+                {selectedOS.tipo && ['PREVENTIVA', 'PREDITIVA', 'INSPECAO', 'LUBRIFICACAO'].includes(selectedOS.tipo.toUpperCase()) && (
+                  <div className="space-y-2 rounded-lg border border-border/60 p-3 bg-background/50">
+                    <Label className="flex items-center gap-2">
+                      <Upload className="h-4 w-4" />
+                      Anexos (fotos, laudos, relatórios)
+                    </Label>
+                    <input
+                      type="file"
+                      multiple
+                      accept="image/*,.pdf,.doc,.docx,.xls,.xlsx"
+                      className="block w-full text-sm file:mr-3 file:py-1.5 file:px-3 file:rounded-md file:border-0 file:text-sm file:font-medium file:bg-primary/10 file:text-primary hover:file:bg-primary/20 cursor-pointer"
+                      onChange={(e) => {
+                        if (e.target.files) {
+                          setAnexosPendentes((prev) => [...prev, ...Array.from(e.target.files!)]);
+                          e.target.value = '';
+                        }
+                      }}
+                    />
+                    {anexosPendentes.length > 0 && (
+                      <ul className="space-y-1 mt-2">
+                        {anexosPendentes.map((file, idx) => (
+                          <li key={`${file.name}-${idx}`} className="flex items-center justify-between text-sm bg-muted/30 rounded px-2 py-1">
+                            <span className="flex items-center gap-1.5 truncate">
+                              <FileText className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
+                              <span className="truncate">{file.name}</span>
+                              <span className="text-xs text-muted-foreground flex-shrink-0">({(file.size / 1024).toFixed(0)} KB)</span>
+                            </span>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              className="h-6 w-6 text-destructive hover:text-destructive"
+                              onClick={() => setAnexosPendentes((prev) => prev.filter((_, i) => i !== idx))}
+                            >
+                              <Trash2 className="h-3 w-3" />
+                            </Button>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+                )}
 
                 <div className="p-3 bg-muted/40 rounded-lg text-sm border border-border/50">
                   <span className="text-muted-foreground">Usuário de fechamento: </span>

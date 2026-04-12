@@ -247,7 +247,7 @@ export function LubrificacaoForm({ open, onOpenChange, equipamentos, initialData
 
       // Save pontos after plano is persisted
       const planoId = initialData?.id || result?.id;
-      if (planoId) {
+      if (planoId && pontos.length > 0) {
         const pontosPayload: RotaPontoInsert[] = pontos.map((p, i) => ({
           plano_id: planoId,
           rota_id: null,
@@ -265,7 +265,11 @@ export function LubrificacaoForm({ open, onOpenChange, equipamentos, initialData
           requer_parada: p.requer_parada,
           imagem_url: p.imagem_url || null,
         }));
-        await savePontos.mutateAsync({ planoId, pontos: pontosPayload });
+        try {
+          await savePontos.mutateAsync({ planoId, pontos: pontosPayload });
+        } catch (pontoErr) {
+          throw new Error(`Plano salvo, mas falha ao salvar pontos: ${pontoErr instanceof Error ? pontoErr.message : String(pontoErr)}`);
+        }
       }
 
       clearLubDraft();

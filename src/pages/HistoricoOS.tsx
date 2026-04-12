@@ -164,7 +164,7 @@ function OSDetailsModal({
 
           <div>
             <Label className="text-xs text-muted-foreground">Problema Apresentado</Label>
-            <p className="mt-1 p-3 bg-muted/50 rounded-lg">{os.problema}</p>
+            <p className="mt-1 p-3 bg-muted/50 rounded-lg">{os.problema || <span className="italic text-muted-foreground">Não informado</span>}</p>
           </div>
 
           {/* RCA Fields */}
@@ -314,8 +314,8 @@ export default function HistoricoOS() {
           !os.numero_os.toString().includes(filters.search) &&
           !os.tag.toLowerCase().includes(searchLower) &&
           !os.equipamento.toLowerCase().includes(searchLower) &&
-          !os.problema.toLowerCase().includes(searchLower) &&
-          !os.solicitante.toLowerCase().includes(searchLower)
+          !(os.problema || '').toLowerCase().includes(searchLower) &&
+          !(os.solicitante || '').toLowerCase().includes(searchLower)
         ) {
           return false;
         }
@@ -837,6 +837,18 @@ export default function HistoricoOS() {
                           <p className="font-medium">{formatDateTime(execucaoByOsId.get(hoveredOS.id)?.data_fim, execucaoByOsId.get(hoveredOS.id)?.hora_fim)}</p>
                         </div>
                       </div>
+                      {hoveredOS.problema && (
+                        <div className="mt-2 pt-2 border-t border-emerald-500/20">
+                          <p className="text-muted-foreground font-medium">Problema:</p>
+                          <p className="mt-0.5 line-clamp-2">{hoveredOS.problema}</p>
+                        </div>
+                      )}
+                      {execucaoByOsId.get(hoveredOS.id)?.servico_executado && (
+                        <div className="mt-2 pt-2 border-t border-emerald-500/20">
+                          <p className="text-muted-foreground font-medium">Serviço Realizado:</p>
+                          <p className="mt-0.5 line-clamp-3">{execucaoByOsId.get(hoveredOS.id)?.servico_executado}</p>
+                        </div>
+                      )}
                     </div>
                   ) : hoveredOS.status === 'CANCELADA' ? (
                     <div className="rounded-md border border-rose-500/30 bg-rose-500/5 p-3 text-xs">
@@ -850,7 +862,12 @@ export default function HistoricoOS() {
                   ) : (
                     <div className="rounded-md border border-amber-500/30 bg-amber-500/5 p-3 text-xs">
                       <p className="font-semibold uppercase tracking-wide text-amber-700 dark:text-amber-300">O.S em aberto</p>
-                      <p className="mt-1 text-muted-foreground">Visualize detalhes completos para acompanhar execução.</p>
+                      {hoveredOS.problema && (
+                        <div className="mt-2">
+                          <p className="text-muted-foreground font-medium">Problema:</p>
+                          <p className="mt-0.5 line-clamp-3">{hoveredOS.problema}</p>
+                        </div>
+                      )}
                     </div>
                   )}
 

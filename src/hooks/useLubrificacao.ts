@@ -90,11 +90,15 @@ export function useCreatePlanoLubrificacao() {
       const planoId = (plano as Partial<PlanoLubrificacao>).id ?? crypto.randomUUID();
       const payload = { ...plano, id: planoId, empresa_id: tenantId };
 
-      const { error } = await supabase
+      const { data: inserted, error } = await supabase
         .from('planos_lubrificacao')
-        .insert(payload);
+        .insert(payload)
+        .select()
+        .single();
 
       if (error) throw toReadableError(error);
+
+      const result = (inserted ?? payload) as PlanoLubrificacao;
 
       try {
         await upsertMaintenanceSchedule({
@@ -116,7 +120,7 @@ export function useCreatePlanoLubrificacao() {
         });
       }
 
-      return payload as PlanoLubrificacao;
+      return result;
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['planos-lubrificacao', tenantId] });

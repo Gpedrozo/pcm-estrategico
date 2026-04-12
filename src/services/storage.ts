@@ -1,6 +1,6 @@
 import { supabase } from '@/integrations/supabase/client';
 
-const ALLOWED_BUCKETS = new Set(['public', 'support-attachments', 'logos', 'documentos', 'avatars']);
+const ALLOWED_BUCKETS = new Set(['public', 'support-attachments', 'logos', 'documentos', 'avatars', 'attachments']);
 
 export async function uploadToStorage(bucket: string, filePath: string, file: File) {
   if (!ALLOWED_BUCKETS.has(bucket)) throw new Error('Bucket não permitido');

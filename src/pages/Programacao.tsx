@@ -24,7 +24,7 @@ import {
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useEquipamentos } from '@/hooks/useEquipamentos';
-import { useMaintenanceSchedule, useUpdateMaintenanceStatus } from '@/hooks/useMaintenanceSchedule';
+import { useMaintenanceScheduleExpanded, useUpdateMaintenanceStatus, type ExpandedScheduleRow } from '@/hooks/useMaintenanceSchedule';
 import { usePontosPlano } from '@/hooks/usePontosPlano';
 import { useCreateOrdemServico } from '@/hooks/useOrdensServico';
 import { useDadosEmpresa } from '@/hooks/useDadosEmpresa';
@@ -52,6 +52,7 @@ export default function Programacao() {
   const [rescheduleDate, setRescheduleDate] = useState('');
   const [newActivityDate, setNewActivityDate] = useState<string | null>(null);
   const [calendarFilter, setCalendarFilter] = useState<CalendarFilter>('all');
+  const [emittedOSInfo, setEmittedOSInfo] = useState<{ numero_os: string; os_id: string } | null>(null);
 
   const { fromIso, toIso } = useMemo(() => {
     if (viewMode === 'day') {
@@ -64,7 +65,7 @@ export default function Programacao() {
     return { fromIso: ws.toISOString(), toIso: addDays(ws, 6).toISOString() };
   }, [viewMode, currentDate]);
 
-  const { data: eventos, isLoading } = useMaintenanceSchedule(fromIso, toIso);
+  const { data: eventos, isLoading } = useMaintenanceScheduleExpanded(fromIso, toIso);
   const { data: equipamentos } = useEquipamentos();
   const { data: empresa } = useDadosEmpresa();
   const updateSchedule = useUpdateMaintenanceStatus();
@@ -87,8 +88,9 @@ export default function Programacao() {
     const lower = (status || '').toLowerCase();
     if (['executado', 'concluido', 'concluida'].includes(lower)) return 'executado';
 
-    const today = new Date();
     const eventDate = new Date(dataProgramada);
+    if (isNaN(eventDate.getTime())) return 'futuro';
+    const today = new Date();
     const msPerDay = 1000 * 60 * 60 * 24;
     const diffDays = Math.ceil((eventDate.getTime() - today.getTime()) / msPerDay);
 
@@ -211,6 +213,10 @@ export default function Programacao() {
 
   const handleEmitirOS = async () => {
     if (!selectedEvent) return;
+    if (selectedEvent.virtual) {
+      toast({ title: 'Ação indisponível', description: 'Ações só são permitidas na próxima ocorrência real.', variant: 'destructive' });
+      return;
+    }
 
     const equipamento = resolveEquipamentoByEvent(selectedEvent);
     const tag = equipamento?.tag || '';
@@ -237,10 +243,18 @@ export default function Programacao() {
 
     await updateSchedule.mutateAsync({ id: selectedEvent.id, status: 'emitido' });
 
+    setEmittedOSInfo({ numero_os: novaOS.numero_os, os_id: novaOS.id });
+
     toast({
       title: 'O.S emitida com sucesso',
       description: `Ordem de Serviço nº ${novaOS.numero_os} gerada a partir da programação.`,
     });
+
+    // Auto-print after emission (capture current event id to avoid stale closure)
+    const emittedEventId = selectedEvent.id;
+    setTimeout(() => {
+      if (selectedEvent?.id === emittedEventId) handlePrintFicha();
+    }, 500);
   };
 
   const handlePrintFicha = () => {
@@ -477,9 +491,9 @@ export default function Programacao() {
       for (let i = 0; i < 4; i++) html += '<div class="blank-line"></div>';
       html += '</div></div>';
     } else {
-      /* Preventiva / Lubrificação: activity lines */
+      /* Preventiva / Lubrificação: checklist with real data */
       html += '<div class="section-block">';
-      html += `<div class="section-hdr">ATIVIDADES E SERVIÇOS${selectedEvent.tipo === 'lubrificacao' ? ' — LUBRIFICAÇÃO' : ''}</div>`;
+      html += `<div class="section-hdr">CHECKLIST DE ATIVIDADES${selectedEvent.tipo === 'lubrificacao' ? ' — LUBRIFICAÇÃO' : ' — PREVENTIVA'}</div>`;
       html += '<table class="tbl"><thead><tr>';
       html += '<th style="width:8mm" class="center">#</th>';
       html += '<th>SERVIÇO / ATIVIDADE</th>';
@@ -488,16 +502,23 @@ export default function Programacao() {
         html += '<th style="width:18mm" class="center">QTD.</th>';
       }
       html += '<th style="width:18mm" class="center">TEMPO</th>';
-      html += '<th style="width:14mm" class="center">OK</th>';
+      html += '<th style="width:14mm" class="center">✓</th>';
       html += '</tr></thead><tbody>';
-      for (let i = 1; i <= 8; i++) {
+
+      // Use real pontos data if available
+      const hasPontos = pontosLubrificacao && pontosLubrificacao.length > 0;
+      const rowCount = hasPontos ? Math.max(pontosLubrificacao!.length, 8) : 8;
+
+      for (let i = 0; i < rowCount; i++) {
+        const ponto = hasPontos && i < pontosLubrificacao!.length ? pontosLubrificacao![i] : null;
         html += '<tr>';
-        html += `<td class="center" style="color:#999">${i}</td>`;
-        html += '<td style="height:6mm"></td>';
+        html += `<td class="center" style="color:#999">${i + 1}</td>`;
+        html += `<td style="height:6mm">${ponto ? esc(ponto.descricao || '') : ''}</td>`;
         if (selectedEvent.tipo === 'lubrificacao') {
-          html += '<td></td><td></td>';
+          html += `<td class="center">${ponto?.lubrificante ? esc(ponto.lubrificante) : ''}</td>`;
+          html += `<td class="center">${ponto?.quantidade ? esc(String(ponto.quantidade)) : ''}</td>`;
         }
-        html += '<td></td>';
+        html += `<td class="center">${ponto?.tempo_estimado_min ? `${ponto.tempo_estimado_min}min` : ''}</td>`;
         html += '<td class="checkbox-cell"><span class="checkbox"></span></td>';
         html += '</tr>';
       }
@@ -837,7 +858,7 @@ export default function Programacao() {
       </div>
       )}
 
-      <Dialog open={!!selectedEvent} onOpenChange={(open) => !open && setSelectedEventId(null)}>
+      <Dialog open={!!selectedEvent} onOpenChange={(open) => { if (!open) { setSelectedEventId(null); setEmittedOSInfo(null); } }}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
             <DialogTitle>Programação de Manutenção</DialogTitle>
@@ -845,6 +866,23 @@ export default function Programacao() {
 
           {selectedEvent && (
             <div className="space-y-4">
+              {/* Virtual event notice */}
+              {selectedEvent.virtual && (
+                <div className="rounded-md border border-blue-500/30 bg-blue-500/5 p-3 text-sm text-blue-700 dark:text-blue-300">
+                  <strong>Projeção de recorrência</strong> — Esta é uma ocorrência futura calculada. Ações só estão disponíveis na próxima ocorrência real.
+                </div>
+              )}
+
+              {/* OS Emitida badge */}
+              {(selectedEvent.status === 'emitido' || emittedOSInfo) && (
+                <div className="rounded-md border border-green-500/30 bg-green-500/5 p-3 text-sm flex items-center gap-2">
+                  <CheckCircle2 className="h-4 w-4 text-green-600" />
+                  <span className="font-semibold text-green-700 dark:text-green-300">
+                    O.S Emitida {emittedOSInfo ? `— nº ${emittedOSInfo.numero_os}` : ''}
+                  </span>
+                </div>
+              )}
+
               <div className="space-y-2 text-sm">
                 <p><span className="text-muted-foreground">Tipo:</span> {selectedEvent.tipo}</p>
                 <p>
@@ -887,6 +925,7 @@ export default function Programacao() {
                   <Button
                     variant="destructive"
                     className="gap-2"
+                    disabled={!!selectedEvent.virtual}
                     onClick={() => updateSchedule.mutate({ id: selectedEvent.id, status: 'programado' })}
                   >
                     <XCircle className="h-4 w-4" /> Marcar como não executado
@@ -894,6 +933,7 @@ export default function Programacao() {
                 ) : (
                   <Button
                     className="gap-2"
+                    disabled={!!selectedEvent.virtual}
                     onClick={() => updateSchedule.mutate({ id: selectedEvent.id, status: 'executado' })}
                   >
                     <CheckCircle2 className="h-4 w-4" /> Marcar como executado
@@ -903,15 +943,27 @@ export default function Programacao() {
                 <Button
                   className="gap-2"
                   onClick={() => void handleEmitirOS()}
-                  disabled={createOSMutation.isPending || ['emitido', 'executado', 'concluido', 'concluida'].includes((selectedEvent.status || '').toLowerCase())}
+                  disabled={!!selectedEvent.virtual || createOSMutation.isPending || ['emitido', 'executado', 'concluido', 'concluida'].includes((selectedEvent.status || '').toLowerCase())}
                 >
                   {createOSMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Calendar className="h-4 w-4" />}
                   Emitir O.S
                 </Button>
 
+                {/* Reprint button - visible when OS already emitted */}
+                {(selectedEvent.status === 'emitido' || emittedOSInfo) && !selectedEvent.virtual && (
+                  <Button
+                    variant="outline"
+                    className="gap-2"
+                    onClick={handlePrintFicha}
+                  >
+                    <Printer className="h-4 w-4" /> Reimprimir O.S + Ficha
+                  </Button>
+                )}
+
                 <Button
                   variant="outline"
                   className="gap-2"
+                  disabled={!!selectedEvent.virtual}
                   onClick={() => {
                     if (!rescheduleDate) return;
                     updateSchedule.mutate({
@@ -943,6 +995,7 @@ export default function Programacao() {
                 <Button
                   variant="outline"
                   className="gap-2 sm:col-span-2"
+                  disabled={!!selectedEvent.virtual}
                   onClick={handlePrintFicha}
                 >
                   <Printer className="h-4 w-4" /> Imprimir ficha para execução
