@@ -201,7 +201,7 @@ export function useDeleteMaintenanceSchedule() {
       queryClient.invalidateQueries({ queryKey: ['maintenance-schedule'] });
       writeAuditLog({ action: 'DELETE_MAINTENANCE_SCHEDULE', table: 'maintenance_schedule', recordId: variables.origemId, empresaId: tenantId, source: 'useMaintenanceSchedule', severity: 'warning', metadata: { tipo: variables.tipo } });
     },
-    onError: (error: any) => {
+    onError: (error: Error) => {
       toast({
         title: 'Erro ao remover item da agenda',
         description: error.message,
@@ -239,7 +239,7 @@ export function useUpdateMaintenanceStatus() {
       queryClient.invalidateQueries({ queryKey: ['maintenance-schedule'] });
       writeAuditLog({ action: 'UPDATE_MAINTENANCE_STATUS', table: 'maintenance_schedule', recordId: data.id, empresaId: tenantId, source: 'useMaintenanceSchedule', metadata: { status: data.status } });
     },
-    onError: (error: any) => {
+    onError: (error: Error) => {
       toast({
         title: 'Erro ao atualizar agenda',
         description: error.message,

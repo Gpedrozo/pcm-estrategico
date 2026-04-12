@@ -194,7 +194,7 @@ export function useCreateTreinamentoSSMA() {
         description: 'O treinamento foi registrado com sucesso.',
       });
     },
-    onError: (error: any) => {
+    onError: (error: Error) => {
       toast({
         title: 'Erro ao registrar treinamento',
         description: error.message,
@@ -245,7 +245,7 @@ export function useUpdateTreinamentoSSMA() {
         description: 'O treinamento foi atualizado com sucesso.',
       });
     },
-    onError: (error: any) => {
+    onError: (error: Error) => {
       toast({
         title: 'Erro ao atualizar treinamento',
         description: error.message,
@@ -284,7 +284,7 @@ export function useDeleteTreinamentoSSMA() {
         description: 'O treinamento foi removido com sucesso.',
       });
     },
-    onError: (error: any) => {
+    onError: (error: Error) => {
       toast({
         title: 'Erro ao remover treinamento',
         description: error.message,

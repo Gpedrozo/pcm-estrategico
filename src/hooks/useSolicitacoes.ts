@@ -176,7 +176,7 @@ export function useCreateSolicitacao() {
         description: 'A solicitação foi registrada com sucesso.',
       });
     },
-    onError: (error: any) => {
+    onError: (error: Error) => {
       toast({
         title: 'Erro ao criar solicitação',
         description: error.message,
@@ -218,7 +218,7 @@ export function useUpdateSolicitacao() {
         description: 'A solicitação foi atualizada com sucesso.',
       });
     },
-    onError: (error: any) => {
+    onError: (error: Error) => {
       toast({
         title: 'Erro ao atualizar solicitação',
         description: error.message,

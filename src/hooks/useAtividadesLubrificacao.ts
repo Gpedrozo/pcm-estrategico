@@ -49,7 +49,7 @@ export function useCreateAtividade() {
       toast({ title: 'Atividade criada' });
       writeAuditLog({ action: 'CREATE_ATIVIDADE_LUBRIFICACAO', table: 'atividades_lubrificacao', recordId: data?.id, empresaId: tenantId, source: 'useAtividadesLubrificacao' });
     },
-    onError: (e: any) => toast({ title: 'Erro', description: e.message, variant: 'destructive' }),
+    onError: (e: Error) => toast({ title: 'Erro', description: e.message, variant: 'destructive' }),
   });
 }
 
@@ -78,7 +78,7 @@ export function useUpdateAtividade() {
       toast({ title: 'Atividade atualizada' });
       writeAuditLog({ action: 'UPDATE_ATIVIDADE_LUBRIFICACAO', table: 'atividades_lubrificacao', recordId: data?.id, empresaId: tenantId, source: 'useAtividadesLubrificacao' });
     },
-    onError: (e: any) => toast({ title: 'Erro', description: e.message, variant: 'destructive' }),
+    onError: (e: Error) => toast({ title: 'Erro', description: e.message, variant: 'destructive' }),
   });
 }
 
@@ -99,6 +99,6 @@ export function useDeleteAtividade() {
       toast({ title: 'Atividade excluída' });
       writeAuditLog({ action: 'DELETE_ATIVIDADE_LUBRIFICACAO', table: 'atividades_lubrificacao', recordId: d.id, empresaId: tenantId, source: 'useAtividadesLubrificacao', severity: 'warning' });
     },
-    onError: (e: any) => toast({ title: 'Erro', description: e.message, variant: 'destructive' }),
+    onError: (e: Error) => toast({ title: 'Erro', description: e.message, variant: 'destructive' }),
   });
 }

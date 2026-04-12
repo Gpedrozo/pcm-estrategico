@@ -54,7 +54,7 @@ export function useCreateTemplate() {
       toast({ title: 'Template salvo com sucesso' });
       writeAuditLog({ action: 'CREATE_TEMPLATE_PREVENTIVO', table: 'templates_preventivos', recordId: data?.id, empresaId: tenantId, source: 'useTemplatesPreventivos' });
     },
-    onError: (e: any) => toast({ title: 'Erro', description: e.message, variant: 'destructive' }),
+    onError: (e: Error) => toast({ title: 'Erro', description: e.message, variant: 'destructive' }),
   });
 }
 
@@ -75,6 +75,6 @@ export function useDeleteTemplate() {
       toast({ title: 'Template excluído' });
       writeAuditLog({ action: 'DELETE_TEMPLATE_PREVENTIVO', table: 'templates_preventivos', recordId: deletedId, empresaId: tenantId, source: 'useTemplatesPreventivos', severity: 'warning' });
     },
-    onError: (e: any) => toast({ title: 'Erro', description: e.message, variant: 'destructive' }),
+    onError: (e: Error) => toast({ title: 'Erro', description: e.message, variant: 'destructive' }),
   });
 }

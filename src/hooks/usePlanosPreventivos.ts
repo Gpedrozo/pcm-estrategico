@@ -144,7 +144,7 @@ export function useCreatePlanoPreventivo() {
         description: 'O plano preventivo foi criado com sucesso.',
       });
     },
-    onError: (error: any) => {
+    onError: (error: Error) => {
       toast({
         title: 'Erro ao criar plano',
         description: error.message,
@@ -200,7 +200,7 @@ export function useUpdatePlanoPreventivo() {
         description: 'O plano preventivo foi atualizado com sucesso.',
       });
     },
-    onError: (error: any) => {
+    onError: (error: Error) => {
       toast({
         title: 'Erro ao atualizar plano',
         description: error.message,
@@ -237,7 +237,7 @@ export function useDeletePlanoPreventivo() {
         description: 'O plano preventivo foi excluído com sucesso.',
       });
     },
-    onError: (error: any) => {
+    onError: (error: Error) => {
       toast({
         title: 'Erro ao excluir plano',
         description: error.message,

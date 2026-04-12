@@ -137,7 +137,7 @@ export function useCreateInspecao() {
         description: 'A inspeção foi registrada com sucesso.',
       });
     },
-    onError: (error: any) => {
+    onError: (error: Error) => {
       toast({
         title: 'Erro ao criar inspeção',
         description: error.message,
@@ -191,7 +191,7 @@ export function useUpdateInspecao() {
         description: 'A inspeção foi atualizada com sucesso.',
       });
     },
-    onError: (error: any) => {
+    onError: (error: Error) => {
       toast({
         title: 'Erro ao atualizar inspeção',
         description: error.message,
@@ -256,7 +256,7 @@ export function useCreateAnomalia() {
         description: 'A anomalia foi registrada com sucesso.',
       });
     },
-    onError: (error: any) => {
+    onError: (error: Error) => {
       toast({
         title: 'Erro ao registrar anomalia',
         description: error.message,

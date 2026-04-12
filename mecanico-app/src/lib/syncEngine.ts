@@ -5,6 +5,7 @@
 import * as Network from 'expo-network';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { supabase, SUPABASE_URL, SUPABASE_ANON_KEY, createAuthenticatedClient } from './supabase';
+import { logger } from './logger';
 import {
   getPendingSyncItems,
   markSyncItemDone,
@@ -137,11 +138,11 @@ function isTokenExpired(token: string): boolean {
 async function reauthViaEdgeFunction(): Promise<string | null> {
   const deviceToken = await getDeviceConfig('device_token');
   if (!deviceToken) {
-    console.warn('[sync] no device_token — cannot authenticate');
+    logger.warn('sync', 'no device_token — cannot authenticate');
     return null;
   }
 
-  console.log('[sync] re-authenticating via edge function...');
+  logger.info('sync', 're-authenticating via edge function...');
   try {
     const response = await fetch(`${SUPABASE_URL}/functions/v1/mecanico-device-auth`, {
       method: 'POST',
@@ -151,11 +152,11 @@ async function reauthViaEdgeFunction(): Promise<string | null> {
 
     const data = await response.json();
     if (!data?.ok || !data?.access_token) {
-      console.warn('[sync] edge function re-auth failed:', data?.error || 'unknown');
+      logger.warn('sync', 'edge function re-auth failed', { error: data?.error || 'unknown' });
       return null;
     }
 
-    console.log('[sync] got fresh access_token from edge function');
+    logger.info('sync', 'got fresh access_token from edge function');
     cachedAccessToken = data.access_token;
 
     // Persist token in SQLite
@@ -169,13 +170,13 @@ async function reauthViaEdgeFunction(): Promise<string | null> {
       access_token: data.access_token,
       refresh_token: data.refresh_token,
     }).then(({ error }) => {
-      if (error) console.warn('[sync] setSession failed (non-fatal):', error.message);
-      else console.log('[sync] setSession succeeded');
+      if (error) logger.warn('sync', 'setSession failed (non-fatal)', { error: error.message });
+      else logger.info('sync', 'setSession succeeded');
     }).catch(() => {});
 
     return data.access_token;
   } catch (err) {
-    console.warn('[sync] re-auth fetch error:', err);
+    logger.warn('sync', 're-auth fetch error', { error: err });
     return null;
   }
 }
@@ -199,14 +200,14 @@ export async function getAccessToken(): Promise<string | null> {
 
   // 2. Use module-level cached token if not expired
   if (cachedAccessToken && !isTokenExpired(cachedAccessToken)) {
-    console.log('[sync] using cached access_token');
+    logger.info('sync', 'using cached access_token');
     return cachedAccessToken;
   }
 
   // 3. Check persisted token in SQLite (if not expired)
   const persistedToken = await getDeviceConfig('access_token');
   if (persistedToken && !isTokenExpired(persistedToken)) {
-    console.log('[sync] using persisted access_token from device_config');
+    logger.info('sync', 'using persisted access_token from device_config');
     cachedAccessToken = persistedToken;
     return persistedToken;
   }
@@ -219,7 +220,7 @@ export async function getAccessToken(): Promise<string | null> {
         refresh_token: refreshToken,
       });
       if (!refreshError && refreshData?.session?.access_token) {
-        console.log('[sync] token refreshed successfully');
+        logger.info('sync', 'token refreshed successfully');
         cachedAccessToken = refreshData.session.access_token;
         await saveDeviceConfig('access_token', refreshData.session.access_token);
         if (refreshData.session.refresh_token) {
@@ -246,12 +247,12 @@ export async function pullData(empresaId: string, forceFullRefresh = false, db?:
   if (!db) {
     const accessToken = await getAccessToken();
     if (!accessToken) {
-      console.warn('[sync] pullData aborted — no access token');
+      logger.warn('sync', 'pullData aborted — no access token');
       return;
     }
     db = createAuthenticatedClient(accessToken);
   }
-  console.log('[sync] pullData starting with authenticated client...');
+  logger.info('sync', 'pullData starting with authenticated client...');
 
   // Helper: detect auth errors (401, JWT expired, etc.)
   function isAuthError(error: any): boolean {
@@ -288,7 +289,7 @@ export async function pullData(empresaId: string, forceFullRefresh = false, db?:
 
     // If auth error on first query, re-authenticate and retry entire pull
     if (isAuthError(osError) && !_isRetry) {
-      console.warn('[sync] auth error detected — clearing token and retrying...');
+      logger.warn('sync', 'auth error detected — clearing token and retrying...');
       clearCachedToken();
       await saveDeviceConfig('access_token', '');
       const freshToken = await getAccessToken();
@@ -305,9 +306,9 @@ export async function pullData(empresaId: string, forceFullRefresh = false, db?:
     for (const os of osList) {
       await upsertOrdemServico(os);
     }
-    console.log(`[sync] pulled ${osList.length} OS${lastSync ? ' (incremental)' : ' (full)'}`);
+    logger.info('sync', `pulled ${osList.length} OS${lastSync ? ' (incremental)' : ' (full)'}`);
   } else {
-    console.warn('[sync] ordens_servico returned null/empty');
+    logger.warn('sync', 'ordens_servico returned null/empty');
   }
 
   // Pull Execucoes
@@ -341,7 +342,7 @@ export async function pullData(empresaId: string, forceFullRefresh = false, db?:
       // Map Supabase 'tag' column to SQLite 'qr_code'
       await upsertEquipamento({ ...eq, qr_code: eq.qr_code || eq.tag });
     }
-    console.log(`[sync] pulled ${eqList.length} equipamentos`);
+    logger.info('sync', `pulled ${eqList.length} equipamentos`);
   }
 
   // Pull Mecanicos — tenta query direta, fallback para RPC SECURITY DEFINER
@@ -354,7 +355,7 @@ export async function pullData(empresaId: string, forceFullRefresh = false, db?:
     .limit(500);
 
   if (mecErr) {
-    console.warn('[sync] mecanicos direct error:', mecErr.message, mecErr.code);
+    logger.warn('sync', 'mecanicos direct error', { error: mecErr.message, code: mecErr.code });
   }
 
   if (!mecErr && mecDirect && mecDirect.length > 0) {
@@ -365,12 +366,12 @@ export async function pullData(empresaId: string, forceFullRefresh = false, db?:
       const { data: mecRpc, error: rpcErr } = await db.rpc('listar_mecanicos_empresa', {
         p_empresa_id: empresaId,
       });
-      if (rpcErr) console.warn('[sync] mecanicos RPC error:', rpcErr.message);
+      if (rpcErr) logger.warn('sync', 'mecanicos RPC error', { error: rpcErr.message });
       if (mecRpc && mecRpc.length > 0) {
         mecList = mecRpc;
       }
     } catch (e) {
-      console.warn('[sync] mecanicos RPC exception:', e);
+      logger.warn('sync', 'mecanicos RPC exception', { error: e });
     }
   }
 
@@ -393,7 +394,7 @@ export async function pullData(empresaId: string, forceFullRefresh = false, db?:
     for (const mat of matList) {
       await upsertMaterial({ ...mat, descricao: mat.nome });
     }
-    console.log(`[sync] pulled ${matList.length} materiais`);
+    logger.info('sync', `pulled ${matList.length} materiais`);
   }
 
   // Pull Documentos Técnicos
@@ -409,7 +410,7 @@ export async function pullData(empresaId: string, forceFullRefresh = false, db?:
     for (const doc of docList) {
       await upsertDocumento({ ...doc, nome: doc.titulo });
     }
-    console.log(`[sync] pulled ${docList.length} documentos`);
+    logger.info('sync', `pulled ${docList.length} documentos`);
   }
 
   // Pull Paradas
@@ -426,7 +427,7 @@ export async function pullData(empresaId: string, forceFullRefresh = false, db?:
     for (const p of paradaList) {
       await upsertParada({ ...p, sync_status: 'synced' });
     }
-    console.log(`[sync] pulled ${paradaList.length} paradas`);
+    logger.info('sync', `pulled ${paradaList.length} paradas`);
   }
 
   // Pull Requisicoes
@@ -443,7 +444,7 @@ export async function pullData(empresaId: string, forceFullRefresh = false, db?:
     for (const r of reqList) {
       await upsertRequisicao({ ...r, sync_status: 'synced' });
     }
-    console.log(`[sync] pulled ${reqList.length} requisições`);
+    logger.info('sync', `pulled ${reqList.length} requisições`);
   }
 
   // Pull Solicitações de Manutenção
@@ -460,7 +461,7 @@ export async function pullData(empresaId: string, forceFullRefresh = false, db?:
     for (const s of solicList) {
       await upsertSolicitacao({ ...s, sync_status: 'synced' });
     }
-    console.log(`[sync] pulled ${solicList.length} solicitações${lastSync ? ' (incremental)' : ' (full)'}`);
+    logger.info('sync', `pulled ${solicList.length} solicitações${lastSync ? ' (incremental)' : ' (full)'}`);
   }
 
   // Save sync timestamp for next incremental pull

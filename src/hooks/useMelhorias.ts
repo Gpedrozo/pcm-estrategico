@@ -128,7 +128,7 @@ export function useCreateMelhoria() {
         description: 'A proposta de melhoria foi registrada com sucesso.',
       });
     },
-    onError: (error: any) => {
+    onError: (error: Error) => {
       toast({
         title: 'Erro ao registrar melhoria',
         description: error.message,
@@ -167,7 +167,7 @@ export function useUpdateMelhoria() {
         description: 'A melhoria foi atualizada com sucesso.',
       });
     },
-    onError: (error: any) => {
+    onError: (error: Error) => {
       toast({
         title: 'Erro ao atualizar melhoria',
         description: error.message,

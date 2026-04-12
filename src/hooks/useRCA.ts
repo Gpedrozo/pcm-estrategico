@@ -128,7 +128,7 @@ export function useCreateRCA() {
         description: 'A análise de causa raiz foi criada com sucesso.',
       });
     },
-    onError: (error: any) => {
+    onError: (error: Error) => {
       toast({
         title: 'Erro ao criar RCA',
         description: error.message,
@@ -166,7 +166,7 @@ export function useUpdateRCA() {
         description: 'A análise de causa raiz foi atualizada com sucesso.',
       });
     },
-    onError: (error: any) => {
+    onError: (error: Error) => {
       toast({
         title: 'Erro ao atualizar RCA',
         description: error.message,
@@ -224,7 +224,7 @@ export function useCreateAcaoCorretiva() {
         description: 'A ação corretiva foi criada com sucesso.',
       });
     },
-    onError: (error: any) => {
+    onError: (error: Error) => {
       toast({
         title: 'Erro ao criar ação',
         description: error.message,
@@ -262,7 +262,7 @@ export function useUpdateAcaoCorretiva() {
         description: 'A ação corretiva foi atualizada com sucesso.',
       });
     },
-    onError: (error: any) => {
+    onError: (error: Error) => {
       toast({
         title: 'Erro ao atualizar ação',
         description: error.message,

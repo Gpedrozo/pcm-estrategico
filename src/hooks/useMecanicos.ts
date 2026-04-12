@@ -92,7 +92,7 @@ export function useCreateMecanico() {
         description: `${data.nome} foi cadastrado com sucesso.`,
       });
     },
-    onError: (error: any) => {
+    onError: (error: Error) => {
       toast({
         title: 'Erro ao cadastrar',
         description: error.message || 'Ocorreu um erro ao cadastrar o mecânico.',
@@ -121,7 +121,7 @@ export function useUpdateMecanico() {
         description: `${data.nome} foi atualizado com sucesso.`,
       });
     },
-    onError: (error: any) => {
+    onError: (error: Error) => {
       toast({
         title: 'Erro ao atualizar',
         description: error.message || 'Ocorreu um erro ao atualizar o mecânico.',
@@ -150,7 +150,7 @@ export function useDeleteMecanico() {
         description: 'O mecânico foi removido com sucesso.',
       });
     },
-    onError: (error: any) => {
+    onError: (error: Error) => {
       toast({
         title: 'Erro ao excluir',
         description: error.message || 'Ocorreu um erro ao excluir o mecânico.',

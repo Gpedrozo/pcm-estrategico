@@ -141,7 +141,7 @@ export function useCreateFornecedor() {
         description: 'O fornecedor foi cadastrado com sucesso.',
       });
     },
-    onError: (error: any) => {
+    onError: (error: Error) => {
       toast({
         title: 'Erro ao criar fornecedor',
         description: error.message,
@@ -179,7 +179,7 @@ export function useUpdateFornecedor() {
         description: 'O fornecedor foi atualizado com sucesso.',
       });
     },
-    onError: (error: any) => {
+    onError: (error: Error) => {
       toast({
         title: 'Erro ao atualizar fornecedor',
         description: error.message,

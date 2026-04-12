@@ -61,7 +61,7 @@ export function useCreateExecucao() {
       toast({ title: 'Execução registrada' });
       writeAuditLog({ action: 'CREATE_EXECUCAO_PREVENTIVA', table: 'execucoes_preventivas', recordId: d.id, empresaId: tenantId, source: 'useExecucoesPreventivas' });
     },
-    onError: (e: any) => toast({ title: 'Erro', description: e.message, variant: 'destructive' }),
+    onError: (e: Error) => toast({ title: 'Erro', description: e.message, variant: 'destructive' }),
   });
 }
 

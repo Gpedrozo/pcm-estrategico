@@ -94,7 +94,7 @@ export function useCreateEquipamento() {
         description: `TAG ${data.tag} foi cadastrado com sucesso.`,
       });
     },
-    onError: (error: any) => {
+    onError: (error: Error) => {
       toast({
         title: 'Erro ao cadastrar',
         description: error.message || 'Ocorreu um erro ao cadastrar o equipamento.',
@@ -122,7 +122,7 @@ export function useUpdateEquipamento() {
         description: `TAG ${data.tag} foi atualizado com sucesso.`,
       });
     },
-    onError: (error: any) => {
+    onError: (error: Error) => {
       toast({
         title: 'Erro ao atualizar',
         description: error.message || 'Ocorreu um erro ao atualizar o equipamento.',
@@ -151,7 +151,7 @@ export function useDeleteEquipamento() {
         description: 'O equipamento foi removido com sucesso.',
       });
     },
-    onError: (error: any) => {
+    onError: (error: Error) => {
       toast({
         title: 'Erro ao excluir',
         description: error.message || 'Ocorreu um erro ao excluir o equipamento.',

@@ -138,7 +138,7 @@ export function useCreatePermissaoTrabalho() {
         description: 'A permissão de trabalho foi criada com sucesso.',
       });
     },
-    onError: (error: any) => {
+    onError: (error: Error) => {
       toast({
         title: 'Erro ao criar PT',
         description: error.message,
@@ -176,7 +176,7 @@ export function useUpdatePermissaoTrabalho() {
         description: 'A permissão de trabalho foi atualizada com sucesso.',
       });
     },
-    onError: (error: any) => {
+    onError: (error: Error) => {
       toast({
         title: 'Erro ao atualizar PT',
         description: error.message,
@@ -233,7 +233,7 @@ export function useCreateIncidenteSSMA() {
         description: 'O incidente foi registrado com sucesso.',
       });
     },
-    onError: (error: any) => {
+    onError: (error: Error) => {
       toast({
         title: 'Erro ao registrar incidente',
         description: error.message,
@@ -271,7 +271,7 @@ export function useUpdateIncidenteSSMA() {
         description: 'O incidente foi atualizado com sucesso.',
       });
     },
-    onError: (error: any) => {
+    onError: (error: Error) => {
       toast({
         title: 'Erro ao atualizar incidente',
         description: error.message,

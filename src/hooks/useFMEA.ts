@@ -115,7 +115,7 @@ export function useCreateFMEA() {
         description: 'A análise FMEA foi criada com sucesso.',
       });
     },
-    onError: (error: any) => {
+    onError: (error: Error) => {
       toast({
         title: 'Erro ao criar FMEA',
         description: error.message,
@@ -153,7 +153,7 @@ export function useUpdateFMEA() {
         description: 'A análise FMEA foi atualizada com sucesso.',
       });
     },
-    onError: (error: any) => {
+    onError: (error: Error) => {
       toast({
         title: 'Erro ao atualizar FMEA',
         description: error.message,
@@ -187,7 +187,7 @@ export function useDeleteFMEA() {
         description: 'A análise FMEA foi excluída com sucesso.',
       });
     },
-    onError: (error: any) => {
+    onError: (error: Error) => {
       toast({
         title: 'Erro ao excluir FMEA',
         description: error.message,

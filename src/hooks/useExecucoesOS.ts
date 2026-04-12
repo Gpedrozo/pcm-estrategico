@@ -153,7 +153,7 @@ export function useCreateExecucaoOS() {
       queryClient.invalidateQueries({ queryKey: ['indicadores', tenantId] });
       writeAuditLog({ action: 'CREATE_EXECUCAO_OS', table: 'execucoes_os', recordId: data?.id, empresaId: tenantId, source: 'useExecucoesOS' });
     },
-    onError: (error: any) => {
+    onError: (error: Error) => {
       toast({
         title: 'Erro ao registrar execuÃ§Ã£o',
         description: error.message || 'Ocorreu um erro ao registrar a execuÃ§Ã£o.',
@@ -211,7 +211,7 @@ export function useCloseOSAtomic() {
       queryClient.invalidateQueries({ queryKey: ['materiais', tenantId] });
       writeAuditLog({ action: 'CLOSE_OS_ATOMIC', table: 'ordens_servico', recordId: variables.os_id, empresaId: tenantId, source: 'useCloseOSAtomic', severity: 'info', metadata: { mecanico_nome: variables.mecanico_nome, custo_total: variables.custo_total } });
     },
-    onError: (error: any) => {
+    onError: (error: Error) => {
       toast({
         title: 'Erro ao fechar O.S (modo atÃ´mico)',
         description: error?.message || 'Falha no fechamento atÃ´mico da O.S.',

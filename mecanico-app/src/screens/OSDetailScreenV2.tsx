@@ -10,6 +10,7 @@ import { useRoute, useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RouteProp } from '@react-navigation/native';
 import { supabase } from '../lib/supabase';
+import { useAuth } from '../contexts/AuthContext';
 import { COLORS, SIZES, SHADOWS } from '../theme';
 import type { OrdemServico, ExecucaoOS, RootStackParamList } from '../types';
 
@@ -27,6 +28,7 @@ const PRIO_COLORS: Record<string, string> = {
 export default function OSDetailScreen() {
   const route = useRoute<Route>();
   const nav = useNavigation<Nav>();
+  const { empresaId } = useAuth();
   const { osId } = route.params;
 
   const [os, setOS] = useState<OrdemServico | null>(null);
@@ -40,8 +42,8 @@ export default function OSDetailScreen() {
   const loadData = async () => {
     setLoading(true);
     const [osRes, execRes] = await Promise.all([
-      supabase.from('ordens_servico').select('*').eq('id', osId).single(),
-      supabase.from('execucoes_os').select('*').eq('os_id', osId).order('created_at', { ascending: false }),
+      supabase.from('ordens_servico').select('*').eq('id', osId).eq('empresa_id', empresaId!).single(),
+      supabase.from('execucoes_os').select('*').eq('os_id', osId).eq('empresa_id', empresaId!).order('created_at', { ascending: false }),
     ]);
     if (osRes.data) setOS(osRes.data);
     if (execRes.data) setExecucoes(execRes.data);
