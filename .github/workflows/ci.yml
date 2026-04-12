@@ -27,6 +27,9 @@ jobs:
       - name: Typecheck
         run: npx tsc --noEmit
 
+      - name: Install coverage provider
+        run: npm install --no-save @vitest/coverage-v8
+
       - name: Test
         run: npx vitest run --coverage
 
