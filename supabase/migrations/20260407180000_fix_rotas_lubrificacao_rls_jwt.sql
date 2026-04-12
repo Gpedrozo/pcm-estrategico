@@ -1,4 +1,4 @@
-﻿-- ============================================================================
+-- ============================================================================
 -- Migration: Corrige RLS de rotas_lubrificacao e rotas_lubrificacao_pontos
 -- Data: 2026-04-07
 -- Motivo: As policies usavam current_setting('app.current_tenant') que NUNCA
