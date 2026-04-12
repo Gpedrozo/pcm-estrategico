@@ -34,7 +34,8 @@ export const hierarquiaService = {
       .from('plantas')
       .select('*')
       .eq('empresa_id', empresaId)
-      .order('codigo');
+      .order('codigo')
+      .limit(500);
 
     if (error) {
       throwPlantasTableMissing(error);
@@ -116,7 +117,8 @@ export const hierarquiaService = {
       .from('areas')
       .select('*, planta:plantas(*)')
       .eq('empresa_id', empresaId)
-      .order('codigo');
+      .order('codigo')
+      .limit(500);
 
     if (error) throw new Error(`Falha ao carregar áreas: ${error.message}`);
     return data;
@@ -157,7 +159,8 @@ export const hierarquiaService = {
       .from('sistemas')
       .select('*, area:areas(*, planta:plantas(*))')
       .eq('empresa_id', empresaId)
-      .order('codigo');
+      .order('codigo')
+      .limit(500);
 
     if (error) throw new Error(`Falha ao carregar sistemas: ${error.message}`);
     return data;
