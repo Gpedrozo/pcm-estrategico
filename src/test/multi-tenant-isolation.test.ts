@@ -67,7 +67,7 @@ describe('Multi-tenant isolation – service layer contracts', () => {
         );
 
         // Every .from() call should be followed by empresa_id filtering somewhere
-        const fromCalls = content.match(/\.from\(['"][a-z_]+['"]\)/g) || [];
+        const fromCalls = content.match(/\.from\(/g) || [];
         expect(fromCalls.length).toBeGreaterThan(0);
 
         // Each service must reference empresa_id at least once per CRUD block

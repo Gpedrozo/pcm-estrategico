@@ -28,9 +28,7 @@ import {
   DEFAULT_INACTIVITY_TIMEOUT_MS,
   INACTIVITY_NOTICE_STORAGE_KEY,
   LOGIN_PROFILE_TIMEOUT_MS,
-  TENANT_HOST_RESOLVE_TIMEOUT_MS,
   HYDRATION_TIMEOUT_MS,
-  CROSS_DOMAIN_REDIRECT_MARKER_STORAGE_KEY,
   SESSION_TRANSFER_MAX_AGE_MS,
   SESSION_TRANSFER_PARAM,
 } from '@/lib/authConstants';
@@ -40,13 +38,11 @@ import {
   resetLoginRateLimit,
 } from '@/lib/authRateLimit';
 import {
-  type OwnerEdgeLoginResult,
   signInThroughOwnerEdge,
 } from '@/lib/authOwnerEdge';
 import {
   isTenantBaseDomain,
   stripAuthHandoffFromUrl,
-  getNavigationType,
   shouldForceLogoutByClosedWindowMarker,
   markSessionTransferRedirectInProgress,
   isSessionTransferRedirectInProgress,

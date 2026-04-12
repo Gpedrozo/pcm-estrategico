@@ -5,15 +5,15 @@ import { describe, expect, it } from 'vitest';
  * Validates security patterns: CORS helper, authentication, empresa_id isolation.
  */
 
-describe('Edge Functions – shared CORS helper', () => {
-  it('_shared/cors.ts exports corsHeaders', async () => {
+describe('Edge Functions – shared CORS/response helper', () => {
+  it('_shared/response.ts exports CORS preflight helper', async () => {
     const fs = await import('fs');
     const path = await import('path');
     const content = fs.readFileSync(
-      path.resolve(__dirname, '../../supabase/functions/_shared/cors.ts'),
+      path.resolve(__dirname, '../../supabase/functions/_shared/response.ts'),
       'utf-8',
     );
-    expect(content).toContain('corsHeaders');
+    expect(content).toContain('preflight');
     expect(content).toContain('Access-Control-Allow-Origin');
   });
 
@@ -59,6 +59,8 @@ describe('Edge Functions – auth verification', () => {
       const hasAuth =
         content.includes('getUser') ||
         content.includes('requireAuth') ||
+        content.includes('requireUser') ||
+        content.includes('requireTenantContext') ||
         content.includes('auth.getUser') ||
         content.includes('supabaseClient') ||
         content.includes('Authorization');

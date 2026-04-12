@@ -38,7 +38,7 @@ export function EquipConfiabilidadePanel({ equipamentos, onEquipClick }: EquipCo
             </thead>
             <tbody>
               {ranked.slice(0, 10).map((eq, i) => {
-                const ratioPrev = eq.totalOS > 0 ? ((eq.totalOS - eq.corretivas) / eq.totalOS) * 100 : 100;
+                const _ratioPrev = eq.totalOS > 0 ? ((eq.totalOS - eq.corretivas) / eq.totalOS) * 100 : 100;
                 const status: 'critico' | 'alerta' | 'ok' =
                   eq.corretivas >= 5 ? 'critico' : eq.corretivas >= 3 ? 'alerta' : 'ok';
 
