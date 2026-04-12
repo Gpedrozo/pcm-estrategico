@@ -83,7 +83,7 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
         return;
       }
 
-      const { data: domainConfig, error: domainError } = await supabase
+      const { data: domainConfig, error: _domainError } = await supabase
         .from('empresa_config')
         .select('empresa_id')
         .eq('dominio_custom', hostname)

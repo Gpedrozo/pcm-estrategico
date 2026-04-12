@@ -44,17 +44,12 @@ import {
   isTenantBaseDomain,
   stripAuthHandoffFromUrl,
   shouldForceLogoutByClosedWindowMarker,
-  markSessionTransferRedirectInProgress,
   isSessionTransferRedirectInProgress,
   clearSessionTransferRedirectInProgress,
   isCrossDomainRedirectInProgress,
   markConsumedSessionTransfer,
   wasSessionTransferAlreadyConsumed,
-  getRedirectRetryCount,
-  markRedirectRetryAttempt,
   clearRedirectRetryAttempts,
-  shouldBlockCrossDomainRedirect,
-  getRetryCountFromCurrentUrl,
   withTimeout,
 } from '@/lib/authSessionHelpers';
 
@@ -765,7 +760,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     userId: string,
     email?: string | null,
     metadata?: { app_metadata?: Record<string, unknown>; user_metadata?: Record<string, unknown> },
-    token?: string | null,
+    _token?: string | null,
   ) => {
     let domainEmpresaId = await resolveDomainEmpresaId();
 
@@ -774,7 +769,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const metadataEmpresaId = extractEmpresaIdFromMetadata(metadata);
       const metadataEmpresaSlug = extractEmpresaSlugFromMetadata(metadata);
       const hostname = window.location.hostname.toLowerCase();
-      const baseDomain = TENANT_BASE_DOMAIN.toLowerCase();
+      const _baseDomain = TENANT_BASE_DOMAIN.toLowerCase();
       const hostSlug = resolveTenantHostSlug(hostname);
 
       if (metadataEmpresaId && metadataEmpresaSlug && hostSlug && hostSlug === metadataEmpresaSlug) {
@@ -860,7 +855,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // whose token passed health_check, which is a privilege escalation vector.
 
     return profileData;
-  }, [elevateToSystemOwner, extractEmpresaSlugFromMetadata, fetchUserProfile, resolveDomainEmpresaId, verifyOwnerBackendAccess]);
+  }, [elevateToSystemOwner, extractEmpresaIdFromMetadata, extractEmpresaSlugFromMetadata, fetchUserProfile, resolveDomainEmpresaId, verifyOwnerBackendAccess]);
 
   const resolveUserProfileWithRetry = useCallback(async (
     userId: string,
@@ -1338,7 +1333,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     });
 
     return { error: null };
-  }, [extractEmpresaSlugFromMetadata, resolveDomainEmpresaId, resolveUserProfileWithRetry, transitionAuthStatus]);
+  }, [extractEmpresaIdFromMetadata, extractEmpresaSlugFromMetadata, resolveDomainEmpresaId, resolveUserProfile, resolveUserProfileWithRetry, transitionAuthStatus]);
 
   const changePassword = useCallback(async (newPassword: string): Promise<{ error: string | null }> => {
     const normalizedPassword = newPassword.trim();

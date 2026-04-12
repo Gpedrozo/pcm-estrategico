@@ -70,8 +70,8 @@ export function useMaintenanceScheduleExpanded(fromIso?: string, toIso?: string)
       const lubIds = schedules.filter(s => s.tipo === 'lubrificacao').map(s => s.origem_id);
       const prevIds = schedules.filter(s => s.tipo === 'preventiva').map(s => s.origem_id);
 
-      let lubPlans: Record<string, { periodicidade: number; tipo_periodicidade: string }> = {};
-      let prevPlans: Record<string, { frequencia_dias: number }> = {};
+      const lubPlans: Record<string, { periodicidade: number; tipo_periodicidade: string }> = {};
+      const prevPlans: Record<string, { frequencia_dias: number }> = {};
 
       if (lubIds.length > 0) {
         const { data: lubs } = await supabase
