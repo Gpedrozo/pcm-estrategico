@@ -33,7 +33,7 @@ export interface FilterState {
   [key: string]: string | string[] | undefined;
 }
 
-export interface UsePaginatedQueryOptions<T> {
+export interface UsePaginatedQueryOptions<_T> {
   queryKey: string[];
   tableName: string;
   select?: string;

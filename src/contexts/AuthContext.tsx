@@ -711,7 +711,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, [extractEmpresaIdFromMetadata, extractEmpresaSlugFromMetadata, extractForcePasswordChangeFromMetadata, extractRolesFromMetadata]);
 
-  const elevateToSystemOwner = useCallback((profileData: {
+  const _elevateToSystemOwner = useCallback((profileData: {
     nome: string;
     tipo: AppRole;
     roles: AppRole[];
@@ -732,7 +732,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
   }, []);
 
-  const verifyOwnerBackendAccess = useCallback(async (token?: string | null): Promise<boolean> => {
+  const _verifyOwnerBackendAccess = useCallback(async (token?: string | null): Promise<boolean> => {
     try {
       let accessToken = token ?? null;
       if (!accessToken) {

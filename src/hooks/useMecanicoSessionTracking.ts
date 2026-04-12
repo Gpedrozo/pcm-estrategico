@@ -26,7 +26,7 @@ export interface MecanicoValidacaoResult {
  */
 export function useMecanicoLogin() {
   const { toast } = useToast();
-  const qc = useQueryClient();
+  const _loginQc = useQueryClient();
 
   return useMutation({
     mutationFn: async (input: {
@@ -69,8 +69,8 @@ export function useMecanicoLogin() {
  * Hook para registrar logout do mecânico no servidor
  */
 export function useMecanicoLogout() {
-  const { toast } = useToast();
-  const qc = useQueryClient();
+  const _logoutToast = useToast();
+  const _logoutQc = useQueryClient();
 
   return useMutation({
     mutationFn: async (input: { session_id: string; motivo?: string }) => {
@@ -82,7 +82,7 @@ export function useMecanicoLogout() {
       if (error) throw error;
       return data;
     },
-    onSuccess: (_data, variables) => {
+    onSuccess: () => {
       writeAuditLog({ action: 'MECANICO_LOGOUT', table: 'mecanico_sessoes', source: 'useMecanicoSessionTracking' });
     },
     onError: (e: Error) => {

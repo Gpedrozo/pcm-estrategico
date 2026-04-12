@@ -3,7 +3,7 @@ import { useOrdensServico, type OrdemServicoRow } from './useOrdensServico';
 import { useExecucoesOS, type ExecucaoOSRow } from './useExecucoesOS';
 import { useIndicadores } from './useIndicadores';
 import { useAuth } from '@/contexts/AuthContext';
-import { differenceInDays, differenceInHours, subDays, parseISO, format, startOfMonth, subMonths } from 'date-fns';
+import { differenceInDays, differenceInHours, subDays, parseISO, format, subMonths } from 'date-fns';
 
 // ─── Tipos ──────────────────────────────────────────────────────
 export type AlertaSeveridade = 'critico' | 'alerta' | 'atencao' | 'ok';
