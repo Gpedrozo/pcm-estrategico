@@ -7,7 +7,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Card, CardContent, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { 
   Plus, 
@@ -18,7 +18,6 @@ import {
   Download, 
   Eye,
   Calendar,
-  User,
   Tag,
   Clock,
   CheckCircle2,
@@ -99,7 +98,6 @@ const useCreateDocumento = () => {
 };
 
 export default function DocumentosTecnicos() {
-  const { user } = useAuth();
   const [search, setSearch] = useState('');
   const [activeTab, setActiveTab] = useState('todos');
   const [isModalOpen, setIsModalOpen] = useState(false);

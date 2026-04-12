@@ -15,11 +15,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { usePendingOrdensServico, useUpdateOrdemServico, type OrdemServicoRow } from '@/hooks/useOrdensServico';
+import { usePendingOrdensServico, type OrdemServicoRow } from '@/hooks/useOrdensServico';
 import { useMecanicosAtivos } from '@/hooks/useMecanicos';
 import { useMateriaisAtivos, useAddMaterialOS, type MaterialRow } from '@/hooks/useMateriais';
 import { useCreateExecucaoOS, useCloseOSAtomic } from '@/hooks/useExecucoesOS';
-import { useUploadOSAnexo, useOSAnexos } from '@/hooks/useOSAnexos';
+import { useUploadOSAnexo } from '@/hooks/useOSAnexos';
 import { useLogAuditoria } from '@/hooks/useAuditoria';
 import { useTenantAdminConfig } from '@/hooks/useTenantAdminConfig';
 import { useFormDraft, readDraft } from '@/hooks/useFormDraft';
@@ -74,7 +74,6 @@ export default function FecharOS() {
   const { data: mecanicos, isLoading: loadingMecanicos } = useMecanicosAtivos();
   const { data: materiaisDisponiveis } = useMateriaisAtivos();
   const { data: processoConfig } = useTenantAdminConfig<{ bloquear_fechamento_futuro?: boolean }>('tenant.admin.processo', { bloquear_fechamento_futuro: true });
-  const updateOSMutation = useUpdateOrdemServico();
   const createExecucaoMutation = useCreateExecucaoOS();
   const closeOSAtomicMutation = useCloseOSAtomic();
   const addMaterialOSMutation = useAddMaterialOS();
@@ -174,6 +173,7 @@ export default function FecharOS() {
       }
       if (restored.length) setMateriaisUsados(restored);
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pendingOS, materiaisDisponiveis]);
 
   const selectedMecanico = mecanicos?.find(m => m.id === formData.mecanicoId);
