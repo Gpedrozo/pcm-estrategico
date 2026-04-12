@@ -25,7 +25,6 @@ interface Props {
 }
 
 const MOTIVO_COLORS = ['#ef4444', '#f59e0b', '#3b82f6', '#8b5cf6', '#22c55e', '#6b7280'];
-const MOTIVOS_CORRETIVA = ['Falha elétrica', 'Falha mecânica', 'Desgaste', 'Operação incorreta', 'Falta de lubrificação', 'Outro'];
 
 function calcDuracao(os: OSRow): number {
   if (!os.data_solicitacao || !os.data_conclusao) return 0;
@@ -133,7 +132,7 @@ export function AnaliseParadasPanel({ ordensServico, dateFrom, dateTo }: Props) 
               <ResponsiveContainer width="100%" height={220}>
                 <PieChart>
                   <Pie data={paretoCausas} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={80}
-                    label={({ name, percent }) => `${(percent * 100).toFixed(0)}%`} labelLine={false}>
+                    label={({ percent }) => `${(percent * 100).toFixed(0)}%`} labelLine={false}>
                     {paretoCausas.map((_, i) => <Cell key={i} fill={MOTIVO_COLORS[i % MOTIVO_COLORS.length]} />)}
                   </Pie>
                   <Tooltip />

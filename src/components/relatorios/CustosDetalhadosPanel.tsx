@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { DollarSign } from 'lucide-react';
 import {
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell,
 } from 'recharts';
 
@@ -41,7 +41,7 @@ interface Props {
 
 const COLORS = ['#3b82f6', '#f59e0b', '#ef4444', '#22c55e'];
 
-export function CustosDetalhadosPanel({ execucoes, ordensServico, movimentacoes = [], dateFrom, dateTo }: Props) {
+export function CustosDetalhadosPanel({ execucoes, ordensServico, movimentacoes: _movimentacoes = [], dateFrom, dateTo }: Props) {
   const execFiltered = useMemo(() =>
     execucoes.filter((e) => {
       const d = e.data_execucao?.slice(0, 10) ?? '';

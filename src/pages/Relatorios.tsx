@@ -241,7 +241,7 @@ export default function Relatorios() {
         };
 
         let data: any[] = [];
-        let cols = excelColumns[selectedReport] || excelColumns.os_periodo;
+        const cols = excelColumns[selectedReport] || excelColumns.os_periodo;
 
         if (selectedReport === 'mecanicos') {
           data = mecanicosDesempenho;
