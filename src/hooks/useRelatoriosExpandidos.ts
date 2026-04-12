@@ -11,9 +11,7 @@ import { useFMEA } from './useFMEA';
 import { useMedicoesPreditivas } from './useMedicoesPreditivas';
 import { useRCAs } from './useRCA';
 import { useTreinamentosSSMA } from './useTreinamentosSSMA';
-import { useSupportTickets } from './useSupportTickets';
 import { useContratos } from './useContratos';
-import { useAuditoria } from './useAuditoria';
 import { useLubrificantes } from './useEstoqueLubrificantes';
 import { usePlanosLubrificacao } from './useLubrificacao';
 
@@ -42,21 +40,8 @@ export function useRelatoriosExpandidos(dateFrom: string, dateTo: string) {
   // ── Treinamentos SSMA ─────────────────────────────────────────
   const { data: treinamentos = [], isLoading: loadingSSMA } = useTreinamentosSSMA();
 
-  // ── Support Tickets ───────────────────────────────────────────
-  const { data: ticketsRaw = [], isLoading: loadingTickets } = useSupportTickets();
-  const tickets = useMemo(() => (Array.isArray(ticketsRaw) ? ticketsRaw : []), [ticketsRaw]);
-
-  // ── Contratos ─────────────────────────────────────────────────
+  // ── Contratos ───────────────────────────────────────────────
   const { data: contratos = [], isLoading: loadingContratos } = useContratos();
-
-  // ── Auditoria (filtrada pelo período) ────────────────────────
-  const { data: auditoriaData, isLoading: loadingAudit } = useAuditoria({ limit: 500, dateFrom, dateTo });
-  const auditLogs = useMemo(() => {
-    if (!auditoriaData) return [];
-    if (Array.isArray(auditoriaData)) return auditoriaData;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    return (auditoriaData as any).logs ?? [];
-  }, [auditoriaData]);
 
   // ── Lubrificação ──────────────────────────────────────────────
   const { data: lubrificantes = [], isLoading: loadingLubr } = useLubrificantes();
@@ -66,8 +51,7 @@ export function useRelatoriosExpandidos(dateFrom: string, dateTo: string) {
     loadingOS || loadingExec || loadingSolic ||
     loadingMat || loadingMov || loadingFMEA ||
     loadingMedicoes || loadingRCA || loadingSSMA ||
-    loadingTickets || loadingContratos || loadingAudit ||
-    loadingLubr || loadingPlanos;
+    loadingContratos || loadingLubr || loadingPlanos;
 
   return {
     // Core
@@ -81,9 +65,7 @@ export function useRelatoriosExpandidos(dateFrom: string, dateTo: string) {
     medicoes,
     rcas,
     treinamentos,
-    tickets,
     contratos,
-    auditLogs,
     lubrificantes,
     planosLubrif,
     // Estado

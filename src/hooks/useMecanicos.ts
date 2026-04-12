@@ -2,7 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { mecanicosService } from '@/services/mecanicos.service';
-import { writeAuditLog } from '@/lib/audit';
+
 
 export interface MecanicoRow {
   id: string;
@@ -17,6 +17,7 @@ export interface MecanicoRow {
   folgas_planejadas?: string | null;
   ferias_inicio?: string | null;
   ferias_fim?: string | null;
+  ultimo_login_portal?: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -29,6 +30,7 @@ export interface MecanicoInsert {
   custo_hora?: number | null;
   ativo?: boolean;
   codigo_acesso?: string | null;
+  senha_hash?: string | null;
   escala_trabalho?: string | null;
   folgas_planejadas?: string | null;
   ferias_inicio?: string | null;
@@ -43,6 +45,7 @@ export interface MecanicoUpdate {
   custo_hora?: number | null;
   ativo?: boolean;
   codigo_acesso?: string | null;
+  senha_hash?: string | null;
   escala_trabalho?: string | null;
   folgas_planejadas?: string | null;
   ferias_inicio?: string | null;
@@ -86,7 +89,6 @@ export function useCreateMecanico() {
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['mecanicos', tenantId] });
       queryClient.invalidateQueries({ queryKey: ['mecanicos-ativos', tenantId] });
-      writeAuditLog({ action: 'CREATE_MECANICO', table: 'mecanicos', recordId: data?.id, empresaId: tenantId, dadosDepois: data as unknown as Record<string, unknown> });
       toast({
         title: 'Mecânico Cadastrado',
         description: `${data.nome} foi cadastrado com sucesso.`,
@@ -115,7 +117,6 @@ export function useUpdateMecanico() {
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['mecanicos', tenantId] });
       queryClient.invalidateQueries({ queryKey: ['mecanicos-ativos', tenantId] });
-      writeAuditLog({ action: 'UPDATE_MECANICO', table: 'mecanicos', recordId: data?.id, empresaId: tenantId, dadosDepois: data as unknown as Record<string, unknown> });
       toast({
         title: 'Mecânico Atualizado',
         description: `${data.nome} foi atualizado com sucesso.`,
@@ -144,7 +145,6 @@ export function useDeleteMecanico() {
     onSuccess: (_data, deletedId) => {
       queryClient.invalidateQueries({ queryKey: ['mecanicos', tenantId] });
       queryClient.invalidateQueries({ queryKey: ['mecanicos-ativos', tenantId] });
-      writeAuditLog({ action: 'DELETE_MECANICO', table: 'mecanicos', recordId: deletedId, empresaId: tenantId, source: 'useMecanicos', severity: 'warning' });
       toast({
         title: 'Mecânico Excluído',
         description: 'O mecânico foi removido com sucesso.',

@@ -27,6 +27,4 @@ export { HistoricoMecanicosPanel } from './HistoricoMecanicosPanel';
 // ── Novos relatórios — Complementares ────────────────────────
 export { FornecedoresContratoPanel } from './FornecedoresContratoPanel';
 export { SSMAConformidadePanel } from './SSMAConformidadePanel';
-export { SLAChamadosPanel } from './SLAChamadosPanel';
-export { AuditoriaLogPanel } from './AuditoriaLogPanel';
 export { CorretivaVsPreventivaCurvaPanel } from './CorretivaVsPreventivaCurvaPanel';
