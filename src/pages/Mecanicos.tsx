@@ -41,6 +41,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useFormDraft } from '@/hooks/useFormDraft';
 import { mecanicoSchema } from '@/schemas/mecanico.schema';
 import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
 
 type TipoMecanico = 'PROPRIO' | 'TERCEIRIZADO' | 'INTERNO';
 
@@ -103,7 +104,7 @@ const initialFormData: FormData = {
 };
 
 export default function Mecanicos() {
-  const { isAdmin } = useAuth();
+  const { isAdmin, tenantId, tenantSlug } = useAuth();
   const { toast } = useToast();
   const [search, setSearch] = useState('');
   const [filterTipo, setFilterTipo] = useState<TipoMecanico | ''>('');
@@ -280,11 +281,35 @@ export default function Mecanicos() {
     setFormData(initialFormData);
     setShowSenha(false);
     setIsModalOpen(true);
+    // Auto-generate code when opening the form
+    if (tenantId) {
+      supabase.rpc('sugerir_codigo_acesso_mecanico', { p_empresa_id: tenantId })
+        .then(({ data }) => {
+          if (data) setFormData(prev => ({ ...prev, codigo_acesso: data as string }));
+        })
+        .catch(() => { /* fallback: user clicks generate button */ });
+    }
   };
 
-  const generateCodigoAcesso = () => {
-    const nextNum = (mecanicos?.length || 0) + 1;
-    setFormData(prev => ({ ...prev, codigo_acesso: `MEC-${String(nextNum).padStart(3, '0')}` }));
+  const generateCodigoAcesso = async () => {
+    if (!tenantId) return;
+    try {
+      const { data, error } = await supabase.rpc('sugerir_codigo_acesso_mecanico', {
+        p_empresa_id: tenantId,
+      });
+      if (error || !data) {
+        // Fallback local: SLUG-NNN
+        const slug = (tenantSlug || 'MEC').toUpperCase();
+        const nextNum = (mecanicos?.length || 0) + 1;
+        setFormData(prev => ({ ...prev, codigo_acesso: `${slug}-${String(nextNum).padStart(3, '0')}` }));
+      } else {
+        setFormData(prev => ({ ...prev, codigo_acesso: data as string }));
+      }
+    } catch {
+      const slug = (tenantSlug || 'MEC').toUpperCase();
+      const nextNum = (mecanicos?.length || 0) + 1;
+      setFormData(prev => ({ ...prev, codigo_acesso: `${slug}-${String(nextNum).padStart(3, '0')}` }));
+    }
   };
 
   const handleExportCSV = () => {
