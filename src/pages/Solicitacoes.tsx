@@ -20,6 +20,7 @@ export default function Solicitacoes() {
   const navigate = useNavigate();
   const { user, tenantId } = useAuth();
   const [search, setSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState<string | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedSol, setSelectedSol] = useState<SolicitacaoRow | null>(null);
   const [rejectReason, setRejectReason] = useState('');
@@ -97,12 +98,25 @@ export default function Solicitacoes() {
   };
 
   const filteredSolicitacoes = solicitacoes?.filter(s => {
+    if (statusFilter) {
+      if (statusFilter === 'PENDENTE' && s.status !== 'PENDENTE') return false;
+      if (statusFilter === 'APROVADA' && !(s.status === 'APROVADA' && !s.os_id)) return false;
+      if (statusFilter === 'CONVERTIDA' && s.status !== 'CONVERTIDA') return false;
+      if (statusFilter === 'REJEITADA' && !['REJEITADA', 'CANCELADA'].includes(s.status)) return false;
+    }
     if (!search) return true;
     const searchLower = search.toLowerCase();
     return s.tag.toLowerCase().includes(searchLower) ||
            s.solicitante_nome.toLowerCase().includes(searchLower) ||
            s.descricao_falha.toLowerCase().includes(searchLower);
   }) || [];
+
+  const countByStatus = {
+    PENDENTE:   solicitacoes?.filter(s => s.status === 'PENDENTE').length ?? 0,
+    APROVADA:   solicitacoes?.filter(s => s.status === 'APROVADA' && !s.os_id).length ?? 0,
+    CONVERTIDA: solicitacoes?.filter(s => s.status === 'CONVERTIDA').length ?? 0,
+    REJEITADA:  solicitacoes?.filter(s => ['REJEITADA','CANCELADA'].includes(s.status)).length ?? 0,
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -183,13 +197,86 @@ export default function Solicitacoes() {
         </div>
       </div>
 
-      {/* Legenda de status */}
-      <div className="bg-card border border-border rounded-lg p-3 flex flex-wrap items-center gap-x-5 gap-y-2 text-xs">
-        <span className="font-semibold text-sm text-foreground">Legenda:</span>
-        <span className="inline-flex items-center gap-1.5"><span className="h-3 w-3 rounded-sm bg-amber-500 border border-amber-600 inline-block" /> <strong className="text-amber-700">Não lida</strong> — Pendente de aprovação ou rejeição</span>
-        <span className="inline-flex items-center gap-1.5"><span className="h-3 w-3 rounded-sm bg-sky-500 border border-sky-600 inline-block" /> <strong className="text-sky-700">Aprovada, sem O.S.</strong> — Aprovada mas sem O.S. emitida</span>
-        <span className="inline-flex items-center gap-1.5"><span className="h-3 w-3 rounded-sm bg-emerald-500 border border-emerald-600 inline-block" /> <strong className="text-emerald-700">Convertida</strong> — Já gerou Ordem de Serviço</span>
-        <span className="inline-flex items-center gap-1.5"><span className="h-3 w-3 rounded-sm bg-red-400 border border-red-500 inline-block" /> <span className="text-muted-foreground">Rejeitada / Cancelada</span></span>
+      {/* Legenda / Filtros rápidos de status */}
+      <div className="bg-card border border-border rounded-lg p-3 flex flex-wrap items-center gap-2 text-xs">
+        <span className="font-semibold text-sm text-foreground mr-1">Filtrar:</span>
+
+        <button
+          onClick={() => setStatusFilter(statusFilter === 'PENDENTE' ? null : 'PENDENTE')}
+          className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border font-medium transition-all ${
+            statusFilter === 'PENDENTE'
+              ? 'bg-amber-500 border-amber-600 text-white shadow-sm'
+              : 'bg-amber-500/10 border-amber-400/50 text-amber-700 hover:bg-amber-500/20'
+          }`}
+        >
+          <span className="h-2.5 w-2.5 rounded-sm bg-amber-500 border border-amber-600 inline-block" />
+          Não lida
+          {countByStatus.PENDENTE > 0 && (
+            <span className={`ml-0.5 px-1.5 py-0 rounded-full text-[10px] font-bold ${
+              statusFilter === 'PENDENTE' ? 'bg-white/30 text-white' : 'bg-amber-500 text-white'
+            }`}>{countByStatus.PENDENTE}</span>
+          )}
+        </button>
+
+        <button
+          onClick={() => setStatusFilter(statusFilter === 'APROVADA' ? null : 'APROVADA')}
+          className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border font-medium transition-all ${
+            statusFilter === 'APROVADA'
+              ? 'bg-sky-500 border-sky-600 text-white shadow-sm'
+              : 'bg-sky-500/10 border-sky-400/50 text-sky-700 hover:bg-sky-500/20'
+          }`}
+        >
+          <span className="h-2.5 w-2.5 rounded-sm bg-sky-500 border border-sky-600 inline-block" />
+          Aprovada s/ O.S.
+          {countByStatus.APROVADA > 0 && (
+            <span className={`ml-0.5 px-1.5 py-0 rounded-full text-[10px] font-bold ${
+              statusFilter === 'APROVADA' ? 'bg-white/30 text-white' : 'bg-sky-500 text-white'
+            }`}>{countByStatus.APROVADA}</span>
+          )}
+        </button>
+
+        <button
+          onClick={() => setStatusFilter(statusFilter === 'CONVERTIDA' ? null : 'CONVERTIDA')}
+          className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border font-medium transition-all ${
+            statusFilter === 'CONVERTIDA'
+              ? 'bg-emerald-600 border-emerald-700 text-white shadow-sm'
+              : 'bg-emerald-500/10 border-emerald-300/50 text-emerald-700 hover:bg-emerald-500/20'
+          }`}
+        >
+          <span className="h-2.5 w-2.5 rounded-sm bg-emerald-500 border border-emerald-600 inline-block" />
+          Convertida
+          {countByStatus.CONVERTIDA > 0 && (
+            <span className={`ml-0.5 px-1.5 py-0 rounded-full text-[10px] font-bold ${
+              statusFilter === 'CONVERTIDA' ? 'bg-white/30 text-white' : 'bg-emerald-500 text-white'
+            }`}>{countByStatus.CONVERTIDA}</span>
+          )}
+        </button>
+
+        <button
+          onClick={() => setStatusFilter(statusFilter === 'REJEITADA' ? null : 'REJEITADA')}
+          className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border font-medium transition-all ${
+            statusFilter === 'REJEITADA'
+              ? 'bg-red-500 border-red-600 text-white shadow-sm'
+              : 'bg-red-400/10 border-red-400/40 text-red-600 hover:bg-red-400/20'
+          }`}
+        >
+          <span className="h-2.5 w-2.5 rounded-sm bg-red-400 border border-red-500 inline-block" />
+          Rejeitada / Cancelada
+          {countByStatus.REJEITADA > 0 && (
+            <span className={`ml-0.5 px-1.5 py-0 rounded-full text-[10px] font-bold ${
+              statusFilter === 'REJEITADA' ? 'bg-white/30 text-white' : 'bg-red-500 text-white'
+            }`}>{countByStatus.REJEITADA}</span>
+          )}
+        </button>
+
+        {statusFilter && (
+          <button
+            onClick={() => setStatusFilter(null)}
+            className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-full border border-border text-muted-foreground hover:bg-muted transition-all text-[11px]"
+          >
+            ✕ Limpar filtro
+          </button>
+        )}
       </div>
 
       <div className="bg-card border border-border rounded-lg overflow-hidden">
