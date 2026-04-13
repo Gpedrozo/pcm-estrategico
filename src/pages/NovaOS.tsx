@@ -47,6 +47,7 @@ import { ArrowLeft, Check, Loader2, Printer, CheckCircle, AlertTriangle, FileTex
 import { Skeleton } from '@/components/ui/skeleton';
 import { OSPrintTemplate } from '@/components/os/OSPrintTemplate';
 import { useRecentOrdensServico } from '@/hooks/useOrdensServico';
+import { useRegistrarImpressao } from '@/hooks/useOSImpressoes';
 
 type TipoOS = 'CORRETIVA' | 'PREVENTIVA' | 'PREDITIVA' | 'INSPECAO' | 'MELHORIA';
 
@@ -91,6 +92,7 @@ export default function NovaOS() {
   });
 
   const [createdOS, setCreatedOS] = useState<{
+    id?: string;
     numero_os: number;
     data_solicitacao: string;
     tag: string;
@@ -101,6 +103,7 @@ export default function NovaOS() {
     prioridade: string;
     tempo_estimado?: number | null;
   } | null>(null);
+  const registrarImpressao = useRegistrarImpressao();
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [nomeEmpresa, setNomeEmpresa] = useState('MANUTENÇÃO INDUSTRIAL');
   const [showSolicitacoesModal, setShowSolicitacoesModal] = useState(false);
@@ -184,6 +187,11 @@ export default function NovaOS() {
   const handlePrint = useReactToPrint({
     contentRef: printRef,
     documentTitle: createdOS ? `OS_${String(createdOS.numero_os).padStart(4, '0')}` : 'OS',
+    onAfterPrint: () => {
+      if (createdOS?.id) {
+        registrarImpressao.mutate({ osId: createdOS.id });
+      }
+    },
     pageStyle: `
       @page {
         size: A4;
@@ -233,6 +241,7 @@ export default function NovaOS() {
     
     // Show success modal with print option
     setCreatedOS({
+      id: result.id,
       numero_os: result.numero_os,
       data_solicitacao: result.data_solicitacao,
       tag: formData.tag,
