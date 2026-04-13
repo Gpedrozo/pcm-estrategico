@@ -114,7 +114,12 @@ describe('auth-login — análise estática das constantes de rate-limit', () =>
     const src = readEdgeFunction();
     // Deve ter um bloco que verifica fetchError e retorna 429 sem tentar login
     expect(src).toContain('fetchError');
-    expect(src).toMatch(/fetchError[^}]*429/s);
+    // Verifica que após a checagem de fetchError existe um retorno 429
+    // (pode haver chaves de objeto intermediárias como no console.error({ ... }))
+    const fetchErrorIdx = src.indexOf('if (fetchError)');
+    expect(fetchErrorIdx).toBeGreaterThan(-1);
+    const blockAfterFetchError = src.slice(fetchErrorIdx, fetchErrorIdx + 400);
+    expect(blockAfterFetchError).toContain('429');
   });
 
   it('upsert de login_attempts usa onConflict "email,ip_address"', () => {

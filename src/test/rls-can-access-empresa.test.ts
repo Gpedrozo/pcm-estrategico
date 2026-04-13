@@ -19,7 +19,10 @@ function readMigration(name: string): string {
   return fs.readFileSync(path.join(MIGRATIONS_DIR, name), 'utf-8');
 }
 
-/** Retorna o conteúdo da última migration que REDEFINE a função */
+/**
+ * Retorna o conteúdo da migration mais recente que DEFINE can_access_empresa.
+ * Diferente de "mencionar" a função em uma policy, exigimos a linha CREATE.
+ */
 function latestCanAccessEmpresa(): string {
   const candidates = fs
     .readdirSync(MIGRATIONS_DIR)
@@ -29,10 +32,10 @@ function latestCanAccessEmpresa(): string {
 
   for (const file of candidates) {
     const content = fs.readFileSync(path.join(MIGRATIONS_DIR, file), 'utf-8');
+    // Só conta quando a linha CREATE define especificamente can_access_empresa
     if (
-      content.includes('can_access_empresa') &&
-      (content.includes('CREATE OR REPLACE FUNCTION') || content.includes('CREATE FUNCTION')) &&
-      content.includes('RETURNS boolean')
+      content.includes('CREATE OR REPLACE FUNCTION public.can_access_empresa') ||
+      content.includes('CREATE FUNCTION public.can_access_empresa')
     ) {
       return content;
     }
@@ -42,8 +45,10 @@ function latestCanAccessEmpresa(): string {
 
 /** Extrai o corpo da função can_access_empresa do conteúdo da migration */
 function extractFunctionBody(content: string): string {
-  const startIdx = content.indexOf('can_access_empresa');
-  if (startIdx === -1) throw new Error('can_access_empresa não encontrada no conteúdo');
+  // Localiza especificamente o CREATE da função, não apenas qualquer menção
+  let startIdx = content.indexOf('CREATE OR REPLACE FUNCTION public.can_access_empresa');
+  if (startIdx === -1) startIdx = content.indexOf('CREATE FUNCTION public.can_access_empresa');
+  if (startIdx === -1) throw new Error('can_access_empresa CREATE não encontrado no conteúdo');
 
   const bodyStart = content.indexOf('$$', startIdx);
   const bodyEnd = content.indexOf('$$;', bodyStart + 2);

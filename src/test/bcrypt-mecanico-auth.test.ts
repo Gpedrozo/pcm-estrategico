@@ -145,7 +145,12 @@ describe('useMecanicoSessionTracking — usa a RPC correta', () => {
     // Não deve ter comparação direta de senha no frontend
     expect(content).not.toMatch(/senha\s*===\s*|===\s*senha/i);
     expect(content).not.toMatch(/password\s*===\s*|===\s*password/i);
-    // Não deve ter acesso direto à coluna senha_acesso
-    expect(content).not.toContain('.senha_acesso');
+
+    // Não deve fazer SELECT direto na coluna senha_acesso do DB
+    // (usar .select('*senha_acesso*') seria acesso direto à coluna dropada)
+    expect(content).not.toMatch(/\.select\([^)]*senha_acesso/i);
+
+    // Nota: input.senha_acesso é permitido — é o nome do parâmetro passado ao RPC
+    // O que proibimos é acesso direto à coluna do banco, não o parâmetro de chamada
   });
 });
