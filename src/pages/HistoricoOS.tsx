@@ -1,5 +1,6 @@
 import { useState, useMemo, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
@@ -47,7 +48,12 @@ import {
   TrendingUp,
   Clock,
   DollarSign,
-  X
+  X,
+  ClipboardList,
+  CheckCircle2,
+  AlertCircle,
+  Tag,
+  SlidersHorizontal
 } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { format, subDays, subMonths, isWithinInterval, parseISO } from 'date-fns';
@@ -300,6 +306,7 @@ export default function HistoricoOS() {
   const [activeTab, setActiveTab] = useState('lista');
   const [hoveredOS, setHoveredOS] = useState<OrdemServicoRow | null>(null);
   const [hoverPoint, setHoverPoint] = useState<{ x: number; y: number } | null>(null);
+  const [activeQuickDays, setActiveQuickDays] = useState<number | null>(null);
 
   const { data: ordensServico, isLoading: loadingOS, error } = useOrdensServico();
   const { data: equipamentos } = useEquipamentos();
@@ -490,6 +497,7 @@ export default function HistoricoOS() {
 
   // Quick date filters
   const applyQuickDateFilter = (days: number) => {
+    setActiveQuickDays(days);
     setFilters(prev => ({
       ...prev,
       dateFrom: subDays(new Date(), days),
@@ -499,6 +507,7 @@ export default function HistoricoOS() {
 
   const clearFilters = () => {
     setFilters({ tag: '', status: '', tipo: '', prioridade: '', search: '', dateFrom: undefined, dateTo: undefined });
+    setActiveQuickDays(null);
     setPageIndex(0);
   };
 
@@ -535,11 +544,16 @@ export default function HistoricoOS() {
     <div className="module-page space-y-6">
       {/* Header */}
       <div className="module-page-header flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-foreground">Histórico de Ordens de Serviço</h1>
-          <p className="text-muted-foreground">Consulte, analise e exporte todas as O.S do sistema</p>
+        <div className="flex items-start gap-3">
+          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 shrink-0 mt-0.5">
+            <ClipboardList className="h-5 w-5 text-primary" />
+          </div>
+          <div>
+            <h1 className="text-2xl font-bold text-foreground">Histórico de Ordens de Serviço</h1>
+            <p className="text-muted-foreground text-sm">Consulte, analise e exporte todas as O.S do sistema</p>
+          </div>
         </div>
-        <Button onClick={handleExportCSV} variant="outline" className="gap-2">
+        <Button onClick={handleExportCSV} variant="outline" className="gap-2 shrink-0">
           <Download className="h-4 w-4" />
           Exportar CSV
         </Button>
@@ -563,19 +577,24 @@ export default function HistoricoOS() {
           <div className="bg-card border border-border rounded-lg p-4">
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-2">
-                <Filter className="h-4 w-4 text-muted-foreground" />
+                <SlidersHorizontal className="h-4 w-4 text-muted-foreground" />
                 <span className="text-sm font-medium">Filtros Avançados</span>
               </div>
-              <div className="flex gap-2">
-                <Button variant="ghost" size="sm" onClick={() => applyQuickDateFilter(7)}>
-                  7 dias
-                </Button>
-                <Button variant="ghost" size="sm" onClick={() => applyQuickDateFilter(30)}>
-                  30 dias
-                </Button>
-                <Button variant="ghost" size="sm" onClick={() => applyQuickDateFilter(90)}>
-                  90 dias
-                </Button>
+              <div className="flex gap-1.5">
+                {([7, 30, 90] as const).map((days) => (
+                  <button
+                    key={days}
+                    onClick={() => applyQuickDateFilter(days)}
+                    className={cn(
+                      'px-3 py-1 rounded-full text-xs font-medium transition-colors border',
+                      activeQuickDays === days
+                        ? 'bg-primary text-primary-foreground border-primary'
+                        : 'bg-transparent text-muted-foreground border-border hover:border-primary/50 hover:text-foreground',
+                    )}
+                  >
+                    {days} dias
+                  </button>
+                ))}
               </div>
             </div>
             
@@ -721,10 +740,48 @@ export default function HistoricoOS() {
             </div>
 
             {hasActiveFilters && (
-              <div className="mt-4 flex items-center gap-2">
-                <span className="text-sm text-muted-foreground">Filtros ativos:</span>
-                <Button variant="ghost" size="sm" onClick={clearFilters} className="gap-1 text-destructive hover:text-destructive">
-                  <X className="h-3 w-3" />
+              <div className="mt-4 pt-3 border-t border-border flex flex-wrap items-center gap-2">
+                <span className="text-xs text-muted-foreground font-medium">Filtros ativos:</span>
+                {filters.search && (
+                  <Badge variant="secondary" className="gap-1 pr-1 text-xs">
+                    <Search className="h-3 w-3" />
+                    {filters.search}
+                    <button onClick={() => setFilters(f => ({ ...f, search: '' }))} className="ml-0.5 hover:text-destructive"><X className="h-3 w-3" /></button>
+                  </Badge>
+                )}
+                {filters.tag && (
+                  <Badge variant="secondary" className="gap-1 pr-1 text-xs">
+                    <Tag className="h-3 w-3" />
+                    {filters.tag}
+                    <button onClick={() => setFilters(f => ({ ...f, tag: '' }))} className="ml-0.5 hover:text-destructive"><X className="h-3 w-3" /></button>
+                  </Badge>
+                )}
+                {filters.tipo && (
+                  <Badge variant="secondary" className="gap-1 pr-1 text-xs">
+                    Tipo: {filters.tipo}
+                    <button onClick={() => setFilters(f => ({ ...f, tipo: '' }))} className="ml-0.5 hover:text-destructive"><X className="h-3 w-3" /></button>
+                  </Badge>
+                )}
+                {filters.status && (
+                  <Badge variant="secondary" className="gap-1 pr-1 text-xs">
+                    Status: {filters.status}
+                    <button onClick={() => setFilters(f => ({ ...f, status: '' }))} className="ml-0.5 hover:text-destructive"><X className="h-3 w-3" /></button>
+                  </Badge>
+                )}
+                {filters.prioridade && (
+                  <Badge variant="secondary" className="gap-1 pr-1 text-xs">
+                    Prioridade: {filters.prioridade}
+                    <button onClick={() => setFilters(f => ({ ...f, prioridade: '' }))} className="ml-0.5 hover:text-destructive"><X className="h-3 w-3" /></button>
+                  </Badge>
+                )}
+                {(filters.dateFrom || filters.dateTo) && (
+                  <Badge variant="secondary" className="gap-1 pr-1 text-xs">
+                    <CalendarIcon className="h-3 w-3" />
+                    {filters.dateFrom ? format(filters.dateFrom, 'dd/MM/yy') : '...'} → {filters.dateTo ? format(filters.dateTo, 'dd/MM/yy') : '...'}
+                    <button onClick={() => { setFilters(f => ({ ...f, dateFrom: undefined, dateTo: undefined })); setActiveQuickDays(null); }} className="ml-0.5 hover:text-destructive"><X className="h-3 w-3" /></button>
+                  </Badge>
+                )}
+                <Button variant="ghost" size="sm" onClick={clearFilters} className="h-6 px-2 text-xs text-muted-foreground hover:text-destructive ml-1">
                   Limpar todos
                 </Button>
               </div>
@@ -732,8 +789,12 @@ export default function HistoricoOS() {
           </div>
 
           {/* Results Count */}
-          <div className="text-sm text-muted-foreground">
-            {filteredOS.length} registro{filteredOS.length !== 1 ? 's' : ''} encontrado{filteredOS.length !== 1 ? 's' : ''}
+          <div className="flex items-center gap-2">
+            <FileText className="h-4 w-4 text-muted-foreground" />
+            <span className="text-sm text-muted-foreground">
+              <span className="font-semibold text-foreground">{filteredOS.length}</span>{' '}
+              registro{filteredOS.length !== 1 ? 's' : ''} encontrado{filteredOS.length !== 1 ? 's' : ''}
+            </span>
           </div>
 
           {/* Table + Detail Panel */}
@@ -979,7 +1040,12 @@ export default function HistoricoOS() {
               <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                 <Card>
                   <CardHeader className="pb-2">
-                    <CardTitle className="text-sm font-medium text-muted-foreground">Total de O.S</CardTitle>
+                    <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+                      <div className="flex h-7 w-7 items-center justify-center rounded-md bg-muted">
+                        <FileText className="h-4 w-4 text-muted-foreground" />
+                      </div>
+                      Total de O.S
+                    </CardTitle>
                   </CardHeader>
                   <CardContent>
                     <div className="text-3xl font-bold">{stats.total}</div>
@@ -987,7 +1053,12 @@ export default function HistoricoOS() {
                 </Card>
                 <Card>
                   <CardHeader className="pb-2">
-                    <CardTitle className="text-sm font-medium text-muted-foreground">Fechadas</CardTitle>
+                    <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+                      <div className="flex h-7 w-7 items-center justify-center rounded-md bg-emerald-100 dark:bg-emerald-900/30">
+                        <CheckCircle2 className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+                      </div>
+                      Fechadas
+                    </CardTitle>
                   </CardHeader>
                   <CardContent>
                     <div className="text-3xl font-bold text-emerald-600">{stats.fechadas}</div>
@@ -995,7 +1066,12 @@ export default function HistoricoOS() {
                 </Card>
                 <Card>
                   <CardHeader className="pb-2">
-                    <CardTitle className="text-sm font-medium text-muted-foreground">Em Aberto</CardTitle>
+                    <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+                      <div className="flex h-7 w-7 items-center justify-center rounded-md bg-amber-100 dark:bg-amber-900/30">
+                        <AlertCircle className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+                      </div>
+                      Em Aberto
+                    </CardTitle>
                   </CardHeader>
                   <CardContent>
                     <div className="text-3xl font-bold text-amber-600">{stats.abertas}</div>
@@ -1003,10 +1079,21 @@ export default function HistoricoOS() {
                 </Card>
                 <Card>
                   <CardHeader className="pb-2">
-                    <CardTitle className="text-sm font-medium text-muted-foreground">Taxa de Fechamento</CardTitle>
+                    <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+                      <div className="flex h-7 w-7 items-center justify-center rounded-md bg-primary/10">
+                        <TrendingUp className="h-4 w-4 text-primary" />
+                      </div>
+                      Taxa de Fechamento
+                    </CardTitle>
                   </CardHeader>
                   <CardContent>
                     <div className="text-3xl font-bold">{stats.taxaFechamento}%</div>
+                    <div className="mt-2 h-1.5 w-full rounded-full bg-muted overflow-hidden">
+                      <div
+                        className="h-full rounded-full bg-primary transition-all"
+                        style={{ width: `${stats.taxaFechamento}%` }}
+                      />
+                    </div>
                   </CardContent>
                 </Card>
               </div>
