@@ -55,7 +55,8 @@ export function useColaboradoresSSMA() {
         .from('colaboradores_ssma')
         .select('*')
         .eq('empresa_id', tenantId!)
-        .order('nome', { ascending: true });
+        .order('nome', { ascending: true })
+        .limit(500);
 
       if (error) throw error;
       return (data ?? []) as ColaboradorSSMARow[];

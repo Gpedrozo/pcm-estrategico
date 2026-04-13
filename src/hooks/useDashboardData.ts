@@ -74,21 +74,24 @@ export function useDashboardData() {
         empresa_id: tenantId,
       });
 
-      if (!rpcError && rpcData?.[0]) {
-        const row = rpcData[0] as Record<string, unknown>;
-        return {
-          empresa_id: tenantId,
-          snapshot_at: new Date().toISOString(),
-          os_abertas: Number(row.os_abertas ?? 0),
-          os_fechadas_30d: Number(row.os_fechadas ?? 0),
-          urgentes_abertas: Number(row.os_abertas ?? 0),
-          backlog_atrasado: 0,
-          custo_30d: 0,
-          mttr_horas_30d: 0,
-          mtbf_horas_30d: 0,
-          disponibilidade_estim: 0,
-          aderencia_preventiva_90d: 0,
-        } satisfies DashboardKpiRow;
+      if (!rpcError && rpcData) {
+        // dashboard_summary pode retornar array (tabela) ou objeto (JSONB)
+        const row = (Array.isArray(rpcData) ? rpcData[0] : rpcData) as Record<string, unknown>;
+        if (row) {
+          return {
+            empresa_id: tenantId,
+            snapshot_at: String(row.refreshed_at ?? new Date().toISOString()),
+            os_abertas: Number(row.os_abertas ?? 0),
+            os_fechadas_30d: Number(row.os_fechadas ?? 0),
+            urgentes_abertas: Number(row.os_abertas ?? 0),
+            backlog_atrasado: Number(row.backlog ?? 0),
+            custo_30d: Number(row.custo_mes ?? 0),
+            mttr_horas_30d: Number(row.mttr_horas ?? 0),
+            mtbf_horas_30d: Number(row.mtbf_horas ?? 0),
+            disponibilidade_estim: Number(row.disponibilidade_pct ?? 0),
+            aderencia_preventiva_90d: 0,
+          } satisfies DashboardKpiRow;
+        }
       }
 
       // Fallback: try materialized view
