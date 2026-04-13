@@ -6,6 +6,7 @@ import { getSolicitacoesTable } from '@/hooks/useSolicitacoes';
 import { useAuth } from '@/contexts/AuthContext';
 import { OSPrintTemplate } from './OSPrintTemplate';
 import { PRINT_PAGE_STYLE } from '@/components/print/DocumentPrintBase';
+import { useRegistrarImpressao } from '@/hooks/useOSImpressoes';
 
 interface OSPrintDialogProps {
   os: {
@@ -32,11 +33,17 @@ export function OSPrintDialog({ os, trigger, solicitacaoNumero: solicitacaoNumer
   const [servicoExecutado, setServicoExecutado] = useState<string | null>(null);
   const docNum = `OS-${String(os.numero_os).padStart(6, '0')}`;
   const printRef = useRef<HTMLDivElement>(null);
+  const registrarImpressao = useRegistrarImpressao();
 
   const handlePrint = useReactToPrint({
     contentRef: printRef,
     documentTitle: docNum,
     pageStyle: PRINT_PAGE_STYLE,
+    onAfterPrint: () => {
+      if (os.id) {
+        registrarImpressao.mutate({ osId: os.id });
+      }
+    },
   });
 
   useEffect(() => {

@@ -33,6 +33,7 @@ import { OSStatusBadge } from '@/components/os/OSStatusBadge';
 import { OSTypeBadge } from '@/components/os/OSTypeBadge';
 import { OSPrintDialog } from '@/components/os/OSPrintDialog';
 import { DataTablePagination } from '@/components/ui/data-table-pagination';
+import { useOSImpressoesMap, useOSImpressoes } from '@/hooks/useOSImpressoes';
 import { 
   Search, 
   FileText, 
@@ -245,6 +246,43 @@ function OSDetailsModal({
   );
 }
 
+// ── Subcomponente: seção de impressão no painel lateral ──────────────────────
+function OSImpressaoInfo({ osId }: { osId: string }) {
+  const { data: impressoes, isLoading } = useOSImpressoes(osId);
+
+  if (isLoading) return null;
+
+  const foiImpressa = impressoes && impressoes.length > 0;
+  const ultima = foiImpressa ? impressoes[0] : null;
+
+  return (
+    <div className={`rounded-md border p-3 text-xs ${foiImpressa ? 'border-emerald-500/30 bg-emerald-500/5' : 'border-border/60 bg-muted/20'}`}>
+      <div className="flex items-center gap-1.5 mb-1">
+        <Printer className={`h-3.5 w-3.5 ${foiImpressa ? 'text-emerald-600' : 'text-muted-foreground'}`} />
+        <p className={`font-semibold uppercase tracking-wide ${foiImpressa ? 'text-emerald-700 dark:text-emerald-300' : 'text-muted-foreground'}`}>
+          {foiImpressa ? `Impressa ${impressoes!.length}x` : 'Não impressa'}
+        </p>
+      </div>
+      {ultima && (
+        <div className="space-y-0.5 text-muted-foreground">
+          <p>
+            <span className="font-medium">Última:</span>{' '}
+            {new Date(ultima.impresso_em).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })}
+          </p>
+          {ultima.impresso_por_nome && (
+            <p>
+              <span className="font-medium">Por:</span> {ultima.impresso_por_nome}
+            </p>
+          )}
+        </div>
+      )}
+      {!foiImpressa && (
+        <p className="text-muted-foreground">Esta O.S ainda não foi impressa.</p>
+      )}
+    </div>
+  );
+}
+
 export default function HistoricoOS() {
   const [filters, setFilters] = useState({
     tag: '',
@@ -329,6 +367,10 @@ export default function HistoricoOS() {
     const start = pageIndex * pageSize;
     return filteredOS.slice(start, start + pageSize);
   }, [filteredOS, pageIndex, pageSize]);
+
+  // Impressões: carrega para as OS visiveis na página
+  const osIdsPage = useMemo(() => paginatedOS.map(os => os.id), [paginatedOS]);
+  const { data: impressoesMap } = useOSImpressoesMap(osIdsPage);
 
   const execucaoByOsId = useMemo(() => {
     const map = new Map<string, (typeof execucoes)[number]>();
@@ -710,6 +752,9 @@ export default function HistoricoOS() {
                     <th>Status</th>
                     <th>Data</th>
                     <th>Solicitante</th>
+                    <th title="Impressão">
+                      <Printer className="h-3.5 w-3.5 mx-auto" />
+                    </th>
                     <th className="text-right">Ações</th>
                   </tr>
                 </thead>
@@ -748,6 +793,24 @@ export default function HistoricoOS() {
                         <td><OSStatusBadge status={normalizeOSStatus(os.status)} /></td>
                         <td className="text-muted-foreground">{formatDate(os.data_solicitacao)}</td>
                         <td>{os.solicitante}</td>
+                        {/* Coluna de impressão */}
+                        <td className="text-center">
+                          {impressoesMap?.has(os.id) ? (
+                            <span
+                              className="inline-flex flex-col items-center gap-0.5 cursor-default"
+                              title={`Última impressão: ${new Date(impressoesMap.get(os.id)!.impresso_em).toLocaleString('pt-BR')}${impressoesMap.get(os.id)?.impresso_por_nome ? ' por ' + impressoesMap.get(os.id)!.impresso_por_nome : ''}`}
+                            >
+                              <Printer className="h-3.5 w-3.5 text-emerald-600" />
+                              <span className="text-[9px] text-emerald-600 font-medium leading-tight">
+                                {new Date(impressoesMap.get(os.id)!.impresso_em).toLocaleDateString('pt-BR')}
+                              </span>
+                            </span>
+                          ) : (
+                            <span title="Não impressa">
+                              <Printer className="h-3.5 w-3.5 text-muted-foreground/40 mx-auto" />
+                            </span>
+                          )}
+                        </td>
                         <td>
                           <div className="flex items-center justify-end gap-1">
                             <Button
@@ -870,6 +933,9 @@ export default function HistoricoOS() {
                       )}
                     </div>
                   )}
+
+                  {/* Impressão */}
+                  <OSImpressaoInfo osId={hoveredOS.id} />
 
                   <div className="rounded-md border border-border/70 bg-muted/30 p-3 text-xs">
                     <p className="mb-2 font-semibold uppercase tracking-wide text-muted-foreground">Estatísticas do equipamento</p>
