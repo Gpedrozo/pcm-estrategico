@@ -204,9 +204,7 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
       }
 
       const { data, error: fetchError } = await supabase
-        .from('empresas')
-        .select('id, nome, status, slug')
-        .eq('id', empresaId)
+        .rpc('get_empresa_info_by_id', { p_empresa_id: empresaId })
         .maybeSingle();
 
       if (!isMounted) return;
