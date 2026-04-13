@@ -1153,3 +1153,222 @@ export function parseEquipmentFile(file: File): Promise<{ valid: any[]; componen
     reader.readAsBinaryString(file);
   });
 }
+
+// ─────────────────────────────────────────────────────────────
+// GERADOR: Relatório de Auditoria / Trilha de Conformidade
+// ─────────────────────────────────────────────────────────────
+interface AuditLogEntry {
+  created_at: string;
+  acao: string | null;
+  tabela: string | null;
+  usuario_email?: string | null;
+  usuario_nome?: string;
+  resultado: string | null;
+  ip_address?: string | null;
+  dados_antes?: unknown;
+  dados_depois?: unknown;
+  diferenca?: unknown;
+}
+
+export async function generateAuditoriaPDF(
+  logs: AuditLogEntry[],
+  options: ReportOptions
+) {
+  const doc = new jsPDF();
+  const startY = await addProfessionalHeader(doc, {
+    ...options,
+    title: options.title || 'Auditoria do Sistema',
+    subtitle: options.subtitle || 'Trilha de conformidade — rastreabilidade completa',
+  });
+  const LEFT = 14;
+  const pageWidth = doc.internal.pageSize.getWidth();
+
+  // ── Contadores para resumo ──
+  const total = logs.length;
+  const erros = logs.filter(l => String(l.resultado ?? '').toLowerCase() === 'erro').length;
+  const rejeitados = logs.filter(l => String(l.resultado ?? '').toLowerCase() === 'rejeitado').length;
+  const sucessos = total - erros - rejeitados;
+  const usuarios = new Set(logs.map(l => l.usuario_email ?? l.usuario_nome ?? 'SISTEMA')).size;
+
+  // Módulos (tabela) com mais atividade
+  const moduloCounts: Record<string, number> = {};
+  logs.forEach(l => {
+    const m = String(l.tabela ?? 'outros').trim();
+    moduloCounts[m] = (moduloCounts[m] || 0) + 1;
+  });
+  const topModulo = Object.entries(moduloCounts).sort((a, b) => b[1] - a[1])[0];
+
+  const summaryY = drawKPISummary(doc, 'RESUMO EXECUTIVO', [
+    `Total de eventos: ${total}`,
+    `Sucesso: ${sucessos}`,
+    `Erros: ${erros}`,
+    `Rejeitados: ${rejeitados}`,
+    `Usuários distintos: ${usuarios}`,
+    topModulo ? `Módulo mais ativo: ${topModulo[0]} (${topModulo[1]})` : '',
+  ].filter(Boolean), startY, LEFT, pageWidth);
+
+  // ── Tabela: atividade por módulo ──
+  const moduloRanking = Object.entries(moduloCounts)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 10);
+
+  if (moduloRanking.length > 0) {
+    doc.setFontSize(8.5); doc.setFont('helvetica', 'bold'); doc.setTextColor(...DARK);
+    doc.text('Eventos por Módulo (Top 10)', LEFT, summaryY + 3);
+
+    autoTable(doc, {
+      startY: summaryY + 6,
+      head: [['Módulo / Tabela', 'Eventos', '% do Total']],
+      body: moduloRanking.map(([modulo, count]) => [
+        modulo,
+        String(count),
+        total > 0 ? `${((count / total) * 100).toFixed(1)}%` : '0%',
+      ]),
+      styles: { fontSize: 7.5, cellPadding: 2.5 },
+      headStyles: { fillColor: BRAND, fontStyle: 'bold', textColor: [255, 255, 255] },
+      alternateRowStyles: { fillColor: [247, 249, 252] },
+      columnStyles: {
+        1: { halign: 'center', cellWidth: 20, fontStyle: 'bold' },
+        2: { halign: 'center', cellWidth: 24 },
+      },
+      margin: { left: LEFT, right: LEFT },
+    });
+  }
+
+  // ── Tabela: atividade por usuário ──
+  const userCounts: Record<string, { total: number; erros: number; ultimo: string }> = {};
+  logs.forEach(l => {
+    const u = l.usuario_email ?? l.usuario_nome ?? 'SISTEMA';
+    if (!userCounts[u]) userCounts[u] = { total: 0, erros: 0, ultimo: '' };
+    userCounts[u].total++;
+    if (String(l.resultado ?? '').toLowerCase() === 'erro') userCounts[u].erros++;
+    const dt = l.created_at ?? '';
+    if (dt > userCounts[u].ultimo) userCounts[u].ultimo = dt;
+  });
+  const userRanking = Object.entries(userCounts)
+    .sort((a, b) => b[1].total - a[1].total)
+    .slice(0, 10);
+
+  const afterModuloY = (doc as any).lastAutoTable?.finalY ?? summaryY + 10;
+
+  if (userRanking.length > 0) {
+    doc.setFontSize(8.5); doc.setFont('helvetica', 'bold'); doc.setTextColor(...DARK);
+    doc.text('Atividade por Usuário (Top 10)', LEFT, afterModuloY + 8);
+
+    autoTable(doc, {
+      startY: afterModuloY + 11,
+      head: [['Usuário', 'Ações', 'Erros', 'Último Acesso']],
+      body: userRanking.map(([user, stats]) => [
+        user.length > 35 ? user.substring(0, 32) + '...' : user,
+        String(stats.total),
+        String(stats.erros),
+        stats.ultimo ? format(new Date(stats.ultimo), 'dd/MM/yyyy HH:mm') : '-',
+      ]),
+      styles: { fontSize: 7.5, cellPadding: 2.5 },
+      headStyles: { fillColor: BRAND, fontStyle: 'bold', textColor: [255, 255, 255] },
+      alternateRowStyles: { fillColor: [247, 249, 252] },
+      columnStyles: {
+        1: { halign: 'center', cellWidth: 16, fontStyle: 'bold' },
+        2: { halign: 'center', cellWidth: 16 },
+        3: { halign: 'center', cellWidth: 32 },
+      },
+      didParseCell: (data) => {
+        if (data.section === 'body' && data.column.index === 2) {
+          const val = Number(data.cell.raw);
+          if (val > 0) {
+            data.cell.styles.textColor = [220, 38, 38];
+            data.cell.styles.fontStyle = 'bold';
+          }
+        }
+      },
+      margin: { left: LEFT, right: LEFT },
+    });
+  }
+
+  // ── Eventos críticos (erros + rejeitados) em destaque ──
+  const criticos = logs.filter(l => {
+    const r = String(l.resultado ?? '').toLowerCase();
+    return r === 'erro' || r === 'rejeitado';
+  }).slice(0, 30);
+
+  if (criticos.length > 0) {
+    doc.addPage();
+    let critY = 14;
+    doc.setFontSize(9); doc.setFont('helvetica', 'bold'); doc.setTextColor(220, 38, 38);
+    doc.text('EVENTOS CRÍTICOS (erros e rejeitados)', LEFT, critY);
+    critY += 5;
+
+    autoTable(doc, {
+      startY: critY,
+      head: [['Data/Hora', 'Ação', 'Módulo', 'Usuário', 'Resultado']],
+      body: criticos.map(l => [
+        format(new Date(l.created_at), 'dd/MM/yyyy HH:mm'),
+        String(l.acao ?? '-'),
+        String(l.tabela ?? '-'),
+        String(l.usuario_email ?? l.usuario_nome ?? 'SISTEMA').substring(0, 30),
+        String(l.resultado ?? '-'),
+      ]),
+      styles: { fontSize: 7, cellPadding: 2 },
+      headStyles: { fillColor: [180, 30, 30] as [number, number, number], fontStyle: 'bold', textColor: [255, 255, 255] },
+      alternateRowStyles: { fillColor: [255, 245, 245] },
+      columnStyles: {
+        0: { cellWidth: 30 },
+        4: { fontStyle: 'bold' },
+      },
+      didParseCell: (data) => {
+        if (data.section === 'body' && data.column.index === 4) {
+          const val = String(data.cell.raw).toLowerCase();
+          if (val === 'erro') data.cell.styles.textColor = [220, 38, 38];
+          else if (val === 'rejeitado') data.cell.styles.textColor = [202, 138, 4];
+        }
+      },
+      margin: { left: LEFT, right: LEFT },
+    });
+  }
+
+  // ── Trilha completa (paginada pelo autoTable) ──
+  doc.addPage();
+  doc.setFontSize(9); doc.setFont('helvetica', 'bold'); doc.setTextColor(...DARK);
+  doc.text('TRILHA COMPLETA DE AUDITORIA', LEFT, 14);
+
+  autoTable(doc, {
+    startY: 19,
+    head: [['Data/Hora', 'Ação', 'Módulo', 'Usuário', 'Resultado', 'IP']],
+    body: logs.slice(0, 2000).map(l => [
+      format(new Date(l.created_at), 'dd/MM/yyyy HH:mm'),
+      String(l.acao ?? '-'),
+      String(l.tabela ?? '-'),
+      String(l.usuario_email ?? l.usuario_nome ?? 'SISTEMA').substring(0, 28),
+      String(l.resultado ?? 'sucesso'),
+      String(l.ip_address ?? '-'),
+    ]),
+    styles: { fontSize: 6.5, cellPadding: 1.5 },
+    headStyles: { fillColor: BRAND, fontStyle: 'bold', fontSize: 6.5, textColor: [255, 255, 255] },
+    alternateRowStyles: { fillColor: [247, 249, 252] },
+    columnStyles: {
+      0: { cellWidth: 28 },
+      5: { cellWidth: 22, fontStyle: 'normal' },
+    },
+    didParseCell: (data) => {
+      if (data.section === 'body' && data.column.index === 4) {
+        const val = String(data.cell.raw).toLowerCase();
+        if (val === 'erro') data.cell.styles.textColor = [220, 38, 38];
+        else if (val === 'rejeitado') data.cell.styles.textColor = [202, 138, 4];
+        else data.cell.styles.textColor = [22, 163, 74];
+      }
+    },
+    margin: { left: LEFT, right: LEFT },
+  });
+
+  // ── Nota final ──
+  const trailFinalY = (doc as any).lastAutoTable?.finalY ?? 100;
+  doc.setFontSize(6.5); doc.setFont('helvetica', 'italic'); doc.setTextColor(100, 100, 100);
+  doc.text(
+    '⚠ Este relatório foi gerado automaticamente. Todas as consultas desta sessão estão registradas na trilha de auditoria.',
+    LEFT, trailFinalY + 8,
+  );
+  doc.text('PCM Estratégico — Sistema de Gestão de Manutenção Industrial', LEFT, trailFinalY + 12);
+
+  addProfessionalFooter(doc, options);
+  doc.save(`Auditoria_${options.dateFrom || format(new Date(), 'yyyyMMdd')}_${options.dateTo || format(new Date(), 'yyyyMMdd')}.pdf`);
+}

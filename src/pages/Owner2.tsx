@@ -647,6 +647,29 @@ export default function Owner() {
     setFeedback('Exportação de auditoria gerada em CSV.')
   }
 
+  const volumePorEmpresa = useMemo(() => {
+    const map: Record<string, { name: string; total: number; erros: number }> = {}
+    logs.forEach((log) => {
+      const eid = String(log.empresa_id ?? 'desconhecido')
+      if (!map[eid]) {
+        const empresa = companies.find((c) => String(c.id) === eid)
+        map[eid] = { name: empresa ? String(empresa.nome ?? eid.slice(0, 8)) : eid.slice(0, 8), total: 0, erros: 0 }
+      }
+      map[eid].total++
+      const res = String(log.resultado ?? '').toLowerCase()
+      if (res === 'erro' || res === 'rejeitado') map[eid].erros++
+    })
+    return Object.values(map).sort((a, b) => b.total - a.total).slice(0, 10)
+  }, [logs, companies])
+
+  const auditKpis = useMemo(() => {
+    const total = auditFiltered.length
+    const erros = auditFiltered.filter((l) => String(l.resultado ?? '').toLowerCase() === 'erro').length
+    const tenants = new Set(auditFiltered.map((l) => String(l.empresa_id ?? ''))).size
+    const usuarios = new Set(auditFiltered.map((l) => String(l.usuario_email ?? ''))).size
+    return { total, erros, tenants, usuarios }
+  }, [auditFiltered])
+
   const logsFiltered = useMemo(() => {
     const q = logSearch.trim().toLowerCase()
     const actorQ = logActorFilter.trim().toLowerCase()
@@ -2283,89 +2306,115 @@ export default function Owner() {
           )}
 
           {activeTab === 'auditoria' && (
-            <SurfaceCard title="Auditoria" subtitle={`${auditFiltered.length} registro(s) encontrado(s)`}>
-              <div className="mb-3 flex justify-end">
-                <button className="inline-flex items-center gap-1 rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-700" onClick={exportAuditCsv}>
-                  <Download className="h-3.5 w-3.5" /> Exportar CSV
-                </button>
+            <div className="space-y-4">
+              {/* KPI Cards */}
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                <MetricTile icon={Activity} label="Total Registros" value={auditKpis.total} color="#0ea5e9" />
+                <MetricTile icon={AlertTriangle} label="Erros / Rejeições" value={auditKpis.erros} color="#ef4444" />
+                <MetricTile icon={Building2} label="Empresas" value={auditKpis.tenants} color="#8b5cf6" />
+                <MetricTile icon={Filter} label="Usuários Distintos" value={auditKpis.usuarios} color="#22c55e" />
               </div>
 
-              <div className="mb-3 grid gap-2 sm:grid-cols-3">
-                <input className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" placeholder="Buscar ação, tabela, usuário..." value={auditSearch} onChange={(e) => setAuditSearch(e.target.value)} />
-                <select className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" value={auditResultadoFilter} onChange={(e) => setAuditResultadoFilter(e.target.value as any)}>
-                  <option value="todos">Resultado: Todos</option>
-                  <option value="sucesso">Sucesso</option>
-                  <option value="erro">Erro</option>
-                  <option value="rejeitado">Rejeitado</option>
-                </select>
-                <select className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" value={auditActionFilter} onChange={(e) => setAuditActionFilter(e.target.value)}>
-                  <option value="todos">Ação: Todas</option>
-                  {availableAuditActions.map((a) => (
-                    <option key={a} value={a}>{a}</option>
-                  ))}
-                </select>
-              </div>
+              {/* Volume por Empresa Chart */}
+              {volumePorEmpresa.length > 0 && (
+                <SurfaceCard title="Volume por Empresa" subtitle="Top 10 empresas com mais eventos">
+                  <ResponsiveContainer width="100%" height={260}>
+                    <BarChart data={volumePorEmpresa} margin={{ left: 5, right: 20 }}>
+                      <XAxis dataKey="name" tick={{ fontSize: 10 }} angle={-20} textAnchor="end" height={60} />
+                      <YAxis tick={{ fontSize: 10 }} />
+                      <Tooltip formatter={(v: number, name: string) => [v, name === 'total' ? 'Total' : 'Erros']} />
+                      <Bar dataKey="total" fill="#0ea5e9" radius={[4, 4, 0, 0]} name="total" />
+                      <Bar dataKey="erros" fill="#ef4444" radius={[4, 4, 0, 0]} name="erros" />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </SurfaceCard>
+              )}
 
-              <div className="mb-3 grid gap-2 sm:grid-cols-5">
-                <select className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" value={auditUsuarioFilter} onChange={(e) => setAuditUsuarioFilter(e.target.value)}>
-                  <option value="todos">Usuário: Todos</option>
-                  {availableAuditUsuarios.map((u) => (
-                    <option key={u} value={u}>{u}</option>
-                  ))}
-                </select>
-                <select className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" value={auditTableFilter} onChange={(e) => setAuditTableFilter(e.target.value)}>
-                  <option value="todos">Tabela: Todas</option>
-                  {availableAuditTables.map((t) => (
-                    <option key={t} value={t}>{t}</option>
-                  ))}
-                </select>
-                <input className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" type="date" value={auditDateFrom} onChange={(e) => setAuditDateFrom(e.target.value)} title="Data inicial" />
-                <input className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" type="date" value={auditDateTo} onChange={(e) => setAuditDateTo(e.target.value)} title="Data final" />
-                <button className="rounded-lg border border-slate-300 px-3 py-2 text-sm" onClick={() => { setAuditSearch(''); setAuditResultadoFilter('todos'); setAuditUsuarioFilter('todos'); setAuditTableFilter('todos'); setAuditActionFilter('todos'); setAuditDateFrom(''); setAuditDateTo('') }}>Limpar filtros</button>
-              </div>
+              {/* Tabela de Auditoria */}
+              <SurfaceCard title="Auditoria" subtitle={`${auditFiltered.length} registro(s) encontrado(s)`}>
+                <div className="mb-3 flex justify-end">
+                  <button className="inline-flex items-center gap-1 rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-700" onClick={exportAuditCsv}>
+                    <Download className="h-3.5 w-3.5" /> Exportar CSV
+                  </button>
+                </div>
 
-              <div className="max-h-[520px] overflow-auto rounded-xl border border-slate-200">
-                <table className="w-full text-xs">
-                  <thead className="bg-slate-100 sticky top-0">
-                    <tr>
-                      <th className="px-2 py-2 text-left">Ação</th>
-                      <th className="px-2 py-2 text-left">Tabela</th>
-                      <th className="px-2 py-2 text-left">Resultado</th>
-                      <th className="px-2 py-2 text-left">Usuário</th>
-                      <th className="px-2 py-2 text-left">Registro ID</th>
-                      <th className="px-2 py-2 text-left">Empresa</th>
-                      <th className="px-2 py-2 text-left">Data</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {auditFiltered.map((l, idx) => {
-                      const resultado = String(l.resultado ?? 'sucesso').toLowerCase()
-                      const resultadoColor = resultado === 'erro' ? 'text-red-600 bg-red-50' : resultado === 'rejeitado' ? 'text-amber-700 bg-amber-50' : 'text-emerald-600 bg-emerald-50'
-                      const empresaNome = companies.find((c) => String(c.id) === String(l.empresa_id))?.nome
-                      const createdAt = String(l.created_at ?? '')
-                      const formatted = createdAt ? new Date(createdAt).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'medium' }) : '-'
+                <div className="mb-3 grid gap-2 sm:grid-cols-3">
+                  <input className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" placeholder="Buscar ação, tabela, usuário..." value={auditSearch} onChange={(e) => setAuditSearch(e.target.value)} />
+                  <select className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" value={auditResultadoFilter} onChange={(e) => setAuditResultadoFilter(e.target.value as any)}>
+                    <option value="todos">Resultado: Todos</option>
+                    <option value="sucesso">Sucesso</option>
+                    <option value="erro">Erro</option>
+                    <option value="rejeitado">Rejeitado</option>
+                  </select>
+                  <select className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" value={auditActionFilter} onChange={(e) => setAuditActionFilter(e.target.value)}>
+                    <option value="todos">Ação: Todas</option>
+                    {availableAuditActions.map((a) => (
+                      <option key={a} value={a}>{a}</option>
+                    ))}
+                  </select>
+                </div>
 
-                      return (
-                        <tr key={`${String(l.id ?? 'audit')}-${idx}`} className="border-t border-slate-200 hover:bg-slate-50">
-                          <td className="px-2 py-2 font-medium">{String(l.acao ?? '-')}</td>
-                          <td className="px-2 py-2">{String(l.tabela ?? '-')}</td>
-                          <td className={`px-2 py-2 rounded ${resultadoColor}`}>{resultado}</td>
-                          <td className="px-2 py-2">{String(l.usuario_email ?? '-')}</td>
-                          <td className="px-2 py-2 font-mono text-[10px]">{String(l.registro_id ?? '-').slice(0, 8)}</td>
-                          <td className="px-2 py-2">{empresaNome ? String(empresaNome) : String(l.empresa_id ?? '-').slice(0, 8)}</td>
-                          <td className="px-2 py-2 whitespace-nowrap">{formatted}</td>
-                        </tr>
-                      )
-                    })}
-                    {auditFiltered.length === 0 && (
+                <div className="mb-3 grid gap-2 sm:grid-cols-5">
+                  <select className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" value={auditUsuarioFilter} onChange={(e) => setAuditUsuarioFilter(e.target.value)}>
+                    <option value="todos">Usuário: Todos</option>
+                    {availableAuditUsuarios.map((u) => (
+                      <option key={u} value={u}>{u}</option>
+                    ))}
+                  </select>
+                  <select className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" value={auditTableFilter} onChange={(e) => setAuditTableFilter(e.target.value)}>
+                    <option value="todos">Tabela: Todas</option>
+                    {availableAuditTables.map((t) => (
+                      <option key={t} value={t}>{t}</option>
+                    ))}
+                  </select>
+                  <input className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" type="date" value={auditDateFrom} onChange={(e) => setAuditDateFrom(e.target.value)} title="Data inicial" />
+                  <input className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" type="date" value={auditDateTo} onChange={(e) => setAuditDateTo(e.target.value)} title="Data final" />
+                  <button className="rounded-lg border border-slate-300 px-3 py-2 text-sm" onClick={() => { setAuditSearch(''); setAuditResultadoFilter('todos'); setAuditUsuarioFilter('todos'); setAuditTableFilter('todos'); setAuditActionFilter('todos'); setAuditDateFrom(''); setAuditDateTo('') }}>Limpar filtros</button>
+                </div>
+
+                <div className="max-h-[520px] overflow-auto rounded-xl border border-slate-200">
+                  <table className="w-full text-xs">
+                    <thead className="bg-slate-100 sticky top-0">
                       <tr>
-                        <td className="px-2 py-3 text-slate-500" colSpan={7}>Nenhum registro de auditoria encontrado com os filtros atuais.</td>
+                        <th className="px-2 py-2 text-left">Ação</th>
+                        <th className="px-2 py-2 text-left">Tabela</th>
+                        <th className="px-2 py-2 text-left">Resultado</th>
+                        <th className="px-2 py-2 text-left">Usuário</th>
+                        <th className="px-2 py-2 text-left">Registro ID</th>
+                        <th className="px-2 py-2 text-left">Empresa</th>
+                        <th className="px-2 py-2 text-left">Data</th>
                       </tr>
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            </SurfaceCard>
+                    </thead>
+                    <tbody>
+                      {auditFiltered.map((l, idx) => {
+                        const resultado = String(l.resultado ?? 'sucesso').toLowerCase()
+                        const resultadoColor = resultado === 'erro' ? 'text-red-600 bg-red-50' : resultado === 'rejeitado' ? 'text-amber-700 bg-amber-50' : 'text-emerald-600 bg-emerald-50'
+                        const empresaNome = companies.find((c) => String(c.id) === String(l.empresa_id))?.nome
+                        const createdAt = String(l.created_at ?? '')
+                        const formatted = createdAt ? new Date(createdAt).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'medium' }) : '-'
+
+                        return (
+                          <tr key={`${String(l.id ?? 'audit')}-${idx}`} className="border-t border-slate-200 hover:bg-slate-50">
+                            <td className="px-2 py-2 font-medium">{String(l.acao ?? '-')}</td>
+                            <td className="px-2 py-2">{String(l.tabela ?? '-')}</td>
+                            <td className={`px-2 py-2 rounded ${resultadoColor}`}>{resultado}</td>
+                            <td className="px-2 py-2">{String(l.usuario_email ?? '-')}</td>
+                            <td className="px-2 py-2 font-mono text-[10px]">{String(l.registro_id ?? '-').slice(0, 8)}</td>
+                            <td className="px-2 py-2">{empresaNome ? String(empresaNome) : String(l.empresa_id ?? '-').slice(0, 8)}</td>
+                            <td className="px-2 py-2 whitespace-nowrap">{formatted}</td>
+                          </tr>
+                        )
+                      })}
+                      {auditFiltered.length === 0 && (
+                        <tr>
+                          <td className="px-2 py-3 text-slate-500" colSpan={7}>Nenhum registro de auditoria encontrado com os filtros atuais.</td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </SurfaceCard>
+            </div>
           )}
 
           {activeTab === 'logs' && (
