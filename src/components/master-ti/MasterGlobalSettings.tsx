@@ -14,14 +14,22 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useLogAuditoria } from '@/hooks/useAuditoria';
 import { useAuth } from '@/contexts/AuthContext';
 
+type JsonValue = string | number | boolean | null | JsonValue[] | { [key: string]: JsonValue };
+
 interface ConfigItem {
   id: string;
   chave: string;
-  valor: string | null;
+  valor: JsonValue;
   descricao: string | null;
   categoria: string | null;
   tipo: string | null;
   editavel: boolean | null;
+}
+
+function valorToString(valor: JsonValue): string {
+  if (valor === null || valor === undefined) return '';
+  if (typeof valor === 'object') return JSON.stringify(valor);
+  return String(valor);
 }
 
 const CATEGORIAS = ['GERAL', 'SISTEMA', 'NOTIFICACOES', 'SEGURANCA', 'MANUTENCAO', 'INTEGRACAO'];
@@ -140,9 +148,9 @@ export function MasterGlobalSettings() {
                       </>
                     ) : (
                       <>
-                        <span className="text-sm font-mono text-muted-foreground">{config.valor || '—'}</span>
+                        <span className="text-sm font-mono text-muted-foreground">{valorToString(config.valor) || '—'}</span>
                         {config.editavel !== false && (
-                          <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => { setEditingId(config.id); setEditValue(config.valor || ''); }}>
+                          <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => { setEditingId(config.id); setEditValue(valorToString(config.valor)); }}>
                             <Edit2 className="h-3 w-3" />
                           </Button>
                         )}
