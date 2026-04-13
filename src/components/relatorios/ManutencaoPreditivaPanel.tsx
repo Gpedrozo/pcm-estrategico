@@ -1,9 +1,9 @@
 import { useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Activity, TrendingDown, AlertTriangle } from 'lucide-react';
+import { Activity, TrendingDown } from 'lucide-react';
 import {
-  LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
+  LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   ReferenceLine,
 } from 'recharts';
 import { format, parseISO } from 'date-fns';
@@ -68,7 +68,7 @@ export function ManutencaoPreditivaPanel({ medicoes, dateFrom, dateTo }: Props) 
   }, [filtradas]);
 
   const criticos = grupos.filter((g) => g.statusAtual === 'CRITICO' || g.statusAtual === 'ALERTA').length;
-  const emAlerta = grupos.filter((g) => g.statusAtual === 'ALERTA').length;
+  const _emAlerta = grupos.filter((g) => g.statusAtual === 'ALERTA').length;
 
   if (grupos.length === 0) {
     return (

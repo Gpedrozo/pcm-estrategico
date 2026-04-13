@@ -137,7 +137,7 @@ export function LubrificacaoRelatorioPanel({ planos, execucoes, estoque, movimen
               <ResponsiveContainer width="100%" height={200}>
                 <PieChart>
                   <Pie data={pieData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={80}
-                    label={({ name, percent }) => `${(percent * 100).toFixed(0)}%`} labelLine={false}>
+                    label={({ _name, percent }: { _name: string; percent: number }) => `${(percent * 100).toFixed(0)}%`} labelLine={false}>
                     {pieData.map((_, i) => <Cell key={i} fill={STATUS_COLORS[i]} />)}
                   </Pie>
                   <Tooltip />

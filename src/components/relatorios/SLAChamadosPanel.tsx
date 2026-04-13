@@ -1,9 +1,8 @@
 import { useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Headphones, Clock, CheckCircle2, AlertTriangle } from 'lucide-react';
-import { differenceInHours, parseISO, format } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
+import { Headphones, Clock, AlertTriangle } from 'lucide-react';
+import { differenceInHours, parseISO } from 'date-fns';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell,

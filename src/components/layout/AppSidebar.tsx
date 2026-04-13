@@ -30,7 +30,6 @@ import {
   UserCircle,
   Smartphone,
   Monitor,
-  ClipboardList,
 } from 'lucide-react';
 import { NavLink, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
@@ -179,7 +178,7 @@ export function AppSidebar() {
   const isSolicitanteOnly = effectiveRole === 'SOLICITANTE';
   const isTechnicianOnly = effectiveRole === 'TECHNICIAN';
   const _isUsuarioOrBelow = isSolicitanteOnly || effectiveRole === 'USUARIO';
-  const isAdminOrAbove = isAdmin || effectiveRole === 'MASTER_TI' || effectiveRole === 'SYSTEM_OWNER' || effectiveRole === 'SYSTEM_ADMIN';
+  const _isAdminOrAbove = isAdmin || effectiveRole === 'MASTER_TI' || effectiveRole === 'SYSTEM_OWNER' || effectiveRole === 'SYSTEM_ADMIN';
   const isRestrictedRole = isSolicitanteOnly || isTechnicianOnly;
 
   const renderMenuLink = (item: { title: string; url: string; icon: React.ElementType }) => (
