@@ -386,6 +386,37 @@ export function AppLayout() {
     );
   }
 
+  // Hidratação do perfil falhou (timeout de rede/DB). Mostrar tela de recuperação
+  // em vez de redirecionar silenciosamente para login, causando o efeito "travado".
+  if (authStatus === 'error' && !isAuthenticated) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="text-center space-y-4">
+          <AlertTriangle className="h-8 w-8 mx-auto text-destructive" />
+          <p className="text-foreground font-medium">Erro ao carregar sessão</p>
+          <p className="text-muted-foreground text-sm">Verifique sua conexão e tente novamente.</p>
+          <div className="flex gap-2 justify-center">
+            <button
+              onClick={() => window.location.reload()}
+              className="px-4 py-2 rounded-md bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90"
+            >
+              Tentar novamente
+            </button>
+            <button
+              onClick={() => {
+                const nextPath = encodeURIComponent(`${location.pathname}${location.search}` || '/dashboard');
+                window.location.assign(`/login?next=${nextPath}&reason=session_error`);
+              }}
+              className="px-4 py-2 rounded-md border border-border text-foreground text-sm font-medium hover:bg-muted"
+            >
+              Ir para o login
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   if (!isAuthenticated) {
     const nextPath = encodeURIComponent(`${location.pathname}${location.search}` || '/dashboard');
     return <Navigate to={`/login?next=${nextPath}`} replace />;

@@ -15,10 +15,26 @@ export function RoleGuard({
 }) {
   const { isLoading, isHydrating, authStatus, effectiveRole } = useAuth();
 
-  if (isLoading || isHydrating || authStatus === 'idle' || authStatus === 'loading' || authStatus === 'hydrating') {
+  if (isLoading || isHydrating || authStatus === 'loading' || authStatus === 'hydrating') {
     return (
       <div className="flex h-screen items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
+  if (authStatus === 'error') {
+    return (
+      <div className="flex h-screen items-center justify-center">
+        <div className="text-center space-y-3">
+          <p className="text-sm text-muted-foreground">Erro ao carregar sessão.</p>
+          <button
+            onClick={() => window.location.reload()}
+            className="px-4 py-2 rounded-md bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90"
+          >
+            Tentar novamente
+          </button>
+        </div>
       </div>
     );
   }

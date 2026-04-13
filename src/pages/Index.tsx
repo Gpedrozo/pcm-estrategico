@@ -9,7 +9,7 @@ const Index = () => {
   const [showSplash, setShowSplash] = useState(true);
 
   useEffect(() => {
-    if (isAuthenticated || isLoading || isHydrating || authStatus === 'idle' || authStatus === 'loading' || authStatus === 'hydrating') {
+    if (isAuthenticated || isLoading || isHydrating || authStatus === 'loading' || authStatus === 'hydrating') {
       setShowSplash(false);
       return;
     }
@@ -21,7 +21,7 @@ const Index = () => {
     return () => clearTimeout(timer);
   }, [authStatus, isAuthenticated, isHydrating, isLoading]);
 
-  if (showSplash || isLoading || isHydrating || authStatus === 'idle' || authStatus === 'loading' || authStatus === 'hydrating') {
+  if (showSplash || isLoading || isHydrating || authStatus === 'loading' || authStatus === 'hydrating') {
     return (
       <div
         className="
@@ -68,6 +68,10 @@ const Index = () => {
         </div>
       </div>
     );
+  }
+
+  if (authStatus === 'error') {
+    return <Navigate to="/login?reason=session_error" replace />;
   }
 
   if (authStatus === 'authenticated' && isAuthenticated && forcePasswordChange) {

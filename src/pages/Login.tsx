@@ -90,6 +90,7 @@ export default function Login() {
   const [loginPassword, setLoginPassword] = useState('');
   const [loginError, setLoginError] = useState('');
   const [logoutNotice, setLogoutNotice] = useState('');
+  const [sessionErrorNotice, setSessionErrorNotice] = useState(false);
   const [isLoginLoading, setIsLoginLoading] = useState(false);
   const [isRedirectingTenantDomain, setIsRedirectingTenantDomain] = useState(false);
   // Dynamic branding resolved by e-mail on the main domain (before login)
@@ -164,6 +165,24 @@ export default function Login() {
     const cleanedUrl = `${window.location.pathname}${nextQuery ? `?${nextQuery}` : ''}${window.location.hash}`;
     window.history.replaceState({}, document.title, cleanedUrl);
   }, []);
+
+  // Detectar redirecionamento por erro de sessão (hidratação de perfil com timeout)
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('reason') === 'session_error') {
+      setSessionErrorNotice(true);
+      params.delete('reason');
+      const nextQuery = params.toString();
+      const cleanedUrl = `${window.location.pathname}${nextQuery ? `?${nextQuery}` : ''}${window.location.hash}`;
+      window.history.replaceState({}, document.title, cleanedUrl);
+    }
+  }, []);
+
+  // Quando authStatus retornar a error enquanto na tela de login, exibir aviso
+  useEffect(() => {
+    if (authStatus === 'error') setSessionErrorNotice(true);
+    if (authStatus === 'authenticated') setSessionErrorNotice(false);
+  }, [authStatus]);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -560,6 +579,12 @@ export default function Login() {
             {logoutNotice && (
               <div className="rounded-md border border-warning/40 bg-warning/10 p-3 text-sm text-warning">
                 {logoutNotice}
+              </div>
+            )}
+
+            {sessionErrorNotice && !logoutNotice && (
+              <div className="rounded-md border border-amber-500/40 bg-amber-50 dark:bg-amber-950/30 p-3 text-sm text-amber-900 dark:text-amber-100">
+                Erro ao carregar a sessão (timeout). Faça login novamente para continuar.
               </div>
             )}
 

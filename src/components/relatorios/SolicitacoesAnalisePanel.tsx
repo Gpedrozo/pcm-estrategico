@@ -6,7 +6,6 @@ import {
   PieChart, Pie, Cell, Tooltip, ResponsiveContainer,
   BarChart, Bar, XAxis, YAxis, CartesianGrid,
 } from 'recharts';
-import { parseISO, differenceInHours } from 'date-fns';
 
 interface SolicitacaoRow {
   id: string;
@@ -126,7 +125,7 @@ export function SolicitacoesAnalisePanel({ solicitacoes, dateFrom, dateTo }: Pro
               <ResponsiveContainer width="100%" height={200}>
                 <PieChart>
                   <Pie data={dist} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={75}
-                    label={({ name, percent }) => `${(percent * 100).toFixed(0)}%`} labelLine={false}>
+                    label={({ percent }) => `${(percent * 100).toFixed(0)}%`} labelLine={false}>
                     {dist.map((d) => <Cell key={d.status} fill={STATUS_COLORS[d.status] || '#6b7280'} />)}
                   </Pie>
                   <Tooltip />

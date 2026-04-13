@@ -1,6 +1,6 @@
 import { Outlet, Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { Loader2 } from 'lucide-react';
+import { AlertTriangle, Loader2 } from 'lucide-react';
 import { MobileTopBar } from './MobileTopBar';
 import { MobileBottomNav } from './MobileBottomNav';
 import DeviceBindingGuard from '@/components/mobile/DeviceBindingGuard';
@@ -21,6 +21,22 @@ export function MobileLayout() {
   }
 
   // Not authenticated → login
+  if (authStatus === 'error' && !isAuthenticated) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center bg-background p-6 text-center gap-4">
+        <AlertTriangle className="h-8 w-8 text-destructive" />
+        <p className="font-medium text-foreground">Erro ao carregar sessão</p>
+        <p className="text-sm text-muted-foreground">Verifique sua conexão e tente novamente.</p>
+        <button
+          onClick={() => window.location.reload()}
+          className="px-4 py-2 rounded-md bg-primary text-primary-foreground text-sm font-medium"
+        >
+          Tentar novamente
+        </button>
+      </div>
+    );
+  }
+
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />;
   }

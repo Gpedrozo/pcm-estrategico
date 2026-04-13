@@ -142,7 +142,7 @@ export function useDeleteMecanico() {
       if (!tenantId) throw new Error('Tenant não resolvido.');
       await mecanicosService.excluir(id, tenantId);
     },
-    onSuccess: (_data, deletedId) => {
+    onSuccess: (_data, _deletedId) => {
       queryClient.invalidateQueries({ queryKey: ['mecanicos', tenantId] });
       queryClient.invalidateQueries({ queryKey: ['mecanicos-ativos', tenantId] });
       toast({

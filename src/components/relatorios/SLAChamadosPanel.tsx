@@ -75,7 +75,7 @@ export function SLAChamadosPanel({ tickets, dateFrom, dateTo }: Props) {
   }, [filtrados]);
 
   const abertos = filtrados.filter((t) => t.status === 'open' || t.status === 'in_progress').length;
-  const resolvidos = filtrados.filter((t) => t.status === 'resolved' || t.status === 'closed').length;
+  const _resolvidos = filtrados.filter((t) => t.status === 'resolved' || t.status === 'closed').length;
   const criticos = filtrados.filter((t) => t.priority === 'critical').length;
 
   return (
@@ -117,7 +117,7 @@ export function SLAChamadosPanel({ tickets, dateFrom, dateTo }: Props) {
               <ResponsiveContainer width="100%" height={180}>
                 <PieChart>
                   <Pie data={porStatus} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={70}
-                    label={({ name, percent }) => `${(percent * 100).toFixed(0)}%`} labelLine={false}>
+                    label={({ percent }) => `${(percent * 100).toFixed(0)}%`} labelLine={false}>
                     {porStatus.map((d) => <Cell key={d.name} fill={STATUS_COLORS[d.name] || '#6b7280'} />)}
                   </Pie>
                   <Tooltip />

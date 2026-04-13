@@ -2,8 +2,7 @@ import { useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { HardHat, AlertTriangle, CheckCircle } from 'lucide-react';
-import { differenceInDays, parseISO, format, isBefore } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
+import { differenceInDays, parseISO } from 'date-fns';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from 'recharts';
@@ -35,14 +34,15 @@ const STATUS_LABELS: Record<string, string> = {
 };
 
 export function SSMAConformidadePanel({ treinamentos }: Props) {
-  const hoje = new Date();
-
-  const enriquecidos = useMemo(() => treinamentos.map((t) => {
-    const diasVencimento = t.data_validade
-      ? differenceInDays(parseISO(t.data_validade), hoje)
-      : null;
-    return { ...t, diasVencimento };
-  }), [treinamentos]);
+  const enriquecidos = useMemo(() => {
+    const hoje = new Date();
+    return treinamentos.map((t) => {
+      const diasVencimento = t.data_validade
+        ? differenceInDays(parseISO(t.data_validade), hoje)
+        : null;
+      return { ...t, diasVencimento };
+    });
+  }, [treinamentos]);
 
   const validos = enriquecidos.filter((t) => t.status === 'VALIDO').length;
   const proxVenc = enriquecidos.filter((t) => t.status === 'PROXIMO_VENCIMENTO').length;
