@@ -63,15 +63,26 @@ export function useDadosEmpresa() {
 
       if (error) throw error;
 
-      // Fetch logo URLs stored in configuracoes_sistema (fallback for legacy tenants)
-      const { data: logosConfig } = await supabase
-        .from('configuracoes_sistema')
-        .select('valor')
-        .eq('empresa_id', tenantId)
-        .eq('chave', 'tenant.logos')
-        .maybeSingle();
+      // Fetch logo URLs and owner cadastro profile from configuracoes_sistema in parallel.
+      // The owner-portal-admin edge function stores endereco/telefone/email/responsavel/segmento
+      // under chave='owner.company_profile', while dados_empresa only stores razao_social/nome_fantasia/cnpj.
+      const [logosConfigResult, ownerProfileResult] = await Promise.all([
+        supabase
+          .from('configuracoes_sistema')
+          .select('valor')
+          .eq('empresa_id', tenantId)
+          .eq('chave', 'tenant.logos')
+          .maybeSingle(),
+        supabase
+          .from('configuracoes_sistema')
+          .select('valor')
+          .eq('empresa_id', tenantId)
+          .eq('chave', 'owner.company_profile')
+          .maybeSingle(),
+      ]);
 
-      const logos = (logosConfig?.valor ?? {}) as Record<string, string | null>;
+      const logos = (logosConfigResult.data?.valor ?? {}) as Record<string, string | null>;
+      const ownerProfile = (ownerProfileResult.data?.valor ?? {}) as Record<string, string | null>;
 
       if (data) {
         const row = data as Record<string, unknown>;
@@ -82,6 +93,17 @@ export function useDadosEmpresa() {
           ...row,
           id: empresaId,
           empresa_id: empresaId,
+          // Merge owner.company_profile fields that are not stored directly in dados_empresa
+          endereco:          (row.endereco          as string | null) ?? ownerProfile.endereco          ?? null,
+          cidade:            (row.cidade            as string | null) ?? null,
+          estado:            (row.estado            as string | null) ?? null,
+          cep:               (row.cep               as string | null) ?? null,
+          telefone:          (row.telefone          as string | null) ?? ownerProfile.telefone          ?? null,
+          whatsapp:          (row.whatsapp          as string | null) ?? null,
+          email:             (row.email             as string | null) ?? ownerProfile.email             ?? null,
+          site:              (row.site              as string | null) ?? null,
+          responsavel_nome:  (row.responsavel_nome  as string | null) ?? ownerProfile.responsavel       ?? null,
+          responsavel_cargo: (row.responsavel_cargo as string | null) ?? null,
           logo_url: logoUrlLegacy,
           logo_os_url: logoOsLegacy,
           logo_principal_url: (row.logo_principal_url as string | null) ?? logoUrlLegacy,
@@ -104,9 +126,13 @@ export function useDadosEmpresa() {
 
       const payload = {
         empresa_id: tenantId,
-        razao_social: empresaBase.nome,
-        nome_fantasia: empresaBase.nome,
+        razao_social: ownerProfile.razao_social ?? empresaBase.nome,
+        nome_fantasia: ownerProfile.nome_fantasia ?? empresaBase.nome,
         cnpj: null,
+        endereco: ownerProfile.endereco ?? null,
+        telefone: ownerProfile.telefone ?? null,
+        email: ownerProfile.email ?? null,
+        responsavel_nome: ownerProfile.responsavel ?? null,
       };
 
       const { data: inserted, error: insertError } = await supabase
@@ -126,6 +152,10 @@ export function useDadosEmpresa() {
           ...row,
           id: empresaId,
           empresa_id: empresaId,
+          endereco:          (row.endereco          as string | null) ?? ownerProfile.endereco          ?? null,
+          telefone:          (row.telefone          as string | null) ?? ownerProfile.telefone          ?? null,
+          email:             (row.email             as string | null) ?? ownerProfile.email             ?? null,
+          responsavel_nome:  (row.responsavel_nome  as string | null) ?? ownerProfile.responsavel       ?? null,
           logo_url: logoUrlLegacy,
           logo_os_url: logoOsLegacy,
           logo_principal_url: (row.logo_principal_url as string | null) ?? logoUrlLegacy,

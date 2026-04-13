@@ -115,7 +115,7 @@ export function MasterEmpresaData() {
     ].filter(Boolean).join('\n');
 
     try {
-      await createTicket.mutateAsync({ subject, message, priority: 'normal' });
+      await createTicket.mutateAsync({ subject, message, priority: 'normal', empresaId: empresa?.empresa_id });
       toast({
         title: 'Chamado enviado!',
         description: 'Sua solicitação foi enviada ao Owner para análise.',
@@ -125,7 +125,12 @@ export function MasterEmpresaData() {
       setCorrectValue('');
       setJustification('');
     } catch (err: unknown) {
-      const errorMsg = err instanceof Error ? err.message : 'Erro desconhecido';
+      const errorMsg =
+        err instanceof Error
+          ? err.message
+          : typeof err === 'object' && err !== null && 'message' in err
+          ? String((err as { message: unknown }).message)
+          : 'Erro ao processar a solicitação. Tente novamente.';
       toast({ title: 'Erro ao enviar chamado', description: errorMsg, variant: 'destructive' });
     }
   };

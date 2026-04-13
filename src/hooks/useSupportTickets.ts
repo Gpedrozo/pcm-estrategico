@@ -195,8 +195,10 @@ export function useCreateSupportTicket() {
       message: string
       priority: string
       attachments?: string[]
+      empresaId?: string
     }) => {
-      if (!tenantId || !user?.id) throw new Error('Sessão inválida para abrir chamado.')
+      const effectiveEmpresaId = payload.empresaId ?? tenantId
+      if (!effectiveEmpresaId || !user?.id) throw new Error('Sessão inválida para abrir chamado.')
 
       const attachments = (payload.attachments ?? []).map((s) => String(s).trim()).filter(Boolean)
       const messageWithAttachments =
@@ -207,7 +209,7 @@ export function useCreateSupportTicket() {
       const nowIso = new Date().toISOString()
 
       const threadedPayload = {
-        empresa_id: tenantId,
+        empresa_id: effectiveEmpresaId,
         user_id: user.id,
         subject: payload.subject,
         message: messageWithAttachments,
@@ -238,7 +240,7 @@ export function useCreateSupportTicket() {
         result = await supabase
           .from('support_tickets')
           .insert({
-            empresa_id: tenantId,
+            empresa_id: effectiveEmpresaId,
             user_id: user.id,
             subject: payload.subject,
             message: messageWithAttachments,
@@ -249,7 +251,7 @@ export function useCreateSupportTicket() {
           .single()
       }
 
-      if (result.error) throw result.error
+      if (result.error) throw new Error(result.error.message ?? 'Falha ao criar chamado no banco de dados.')
       return result.data
     },
     onSuccess: (data) => {
