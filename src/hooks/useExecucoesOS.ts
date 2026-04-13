@@ -200,7 +200,18 @@ export function useCloseOSAtomic() {
       });
 
       if (error) throw error;
-      return Array.isArray(data) ? data[0] : data;
+
+      const result = Array.isArray(data) ? data[0] : data;
+      if (!result || typeof result !== 'object') {
+        throw new Error('RPC close_os_with_execution_atomic retornou resultado vazio.');
+      }
+      const row = result as Record<string, unknown>;
+      if (row.os_status !== 'FECHADA') {
+        throw new Error(
+          `Fechamento da O.S. não confirmado pelo servidor (status: ${row.os_status ?? 'desconhecido'}).`
+        );
+      }
+      return row;
     },
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: ['ordens-servico', tenantId] });
