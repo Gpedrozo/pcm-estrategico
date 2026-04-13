@@ -12,6 +12,13 @@ export interface AuditoriaRow {
   descricao: string;
   tag: string | null;
   data_hora: string;
+  dados_antes: Record<string, unknown> | null;
+  dados_depois: Record<string, unknown> | null;
+  diferenca: Record<string, unknown> | null;
+  resultado: string;
+  registro_id: string | null;
+  ip_address: string | null;
+  mensagem_erro: string | null;
 }
 
 export interface AuditoriaInsert {
@@ -60,15 +67,64 @@ export function useAuditoria(filters?: AuditoriaFilters) {
       const { data, error } = await query;
 
       if (error) throw error;
-      return (data || []).map((row: any) => ({
-        id: row.id,
-        usuario_id: row.usuario_id ?? null,
-        usuario_nome: row.usuario_email ?? 'SISTEMA',
-        acao: row.acao ?? row.action ?? 'UPDATE',
-        descricao: row.diferenca ? `Alteração em ${row.tabela ?? 'registro'}` : (row.acao ?? row.action ?? 'Ação'),
-        tag: row.tabela ?? null,
-        data_hora: row.ocorreu_em ?? row.created_at,
-      })) as AuditoriaRow[];
+
+      return (data || []).map((row: any) => {
+        const acao = (row.acao ?? row.action ?? 'UPDATE').toUpperCase() as string;
+        const tabela = (row.tabela ?? row.table_name ?? '') as string;
+        const registroId = (row.registro_id ?? row.record_id ?? null) as string | null;
+        const idSuffix = registroId ? ` #${registroId.slice(0, 8)}` : '';
+        const dadosDepois = row.dados_depois as Record<string, unknown> | null;
+        const dadosAntes = row.dados_antes as Record<string, unknown> | null;
+        const diferenca = row.diferenca as Record<string, unknown> | null;
+
+        let descricao: string;
+        if (diferenca && Object.keys(diferenca).length > 0) {
+          const campos = Object.keys(diferenca).filter(c => !c.startsWith('_')).slice(0, 3).join(', ');
+          descricao = campos ? `Alterou ${tabela}${idSuffix}: ${campos}` : `Alterou ${tabela}${idSuffix}`;
+        } else if (acao === 'LOGIN' || acao === 'LOGOUT') {
+          const email = String(dadosDepois?.email ?? row.usuario_email ?? '');
+          const tentativas = dadosDepois?.tentativas;
+          const res = String(dadosDepois?.resultado ?? row.resultado ?? 'sucesso');
+          const verb = acao === 'LOGIN' ? 'Login' : 'Logout';
+          const base = email ? `${verb} (${email})` : verb;
+          if (tentativas && Number(tentativas) > 1) descricao = `${base} — ${tentativas} tentativas`;
+          else if (res === 'erro') descricao = `${base} — senha incorreta`;
+          else descricao = base;
+        } else if (acao === 'EXPORT' && dadosDepois) {
+          const fmt = String(dadosDepois.formato ?? 'csv').toUpperCase();
+          const total = Number(dadosDepois.total_registros ?? 0);
+          descricao = `Exportou ${tabela} (${fmt}, ${total} registros)`;
+        } else if (acao === 'CREATE') {
+          descricao = `Criou ${tabela}${idSuffix}`;
+        } else if (acao === 'DELETE') {
+          descricao = `Excluiu ${tabela}${idSuffix}`;
+        } else if (acao === 'CLOSE') {
+          descricao = `Fechou ${tabela}${idSuffix}`;
+        } else if (acao === 'APPROVE') {
+          descricao = `Aprovou ${tabela}${idSuffix}`;
+        } else if (acao === 'REJECT') {
+          descricao = `Rejeitou ${tabela}${idSuffix}`;
+        } else {
+          descricao = `Atualizou ${tabela}${idSuffix}`;
+        }
+
+        return {
+          id: row.id,
+          usuario_id: row.usuario_id ?? null,
+          usuario_nome: row.usuario_email ?? 'SISTEMA',
+          acao,
+          descricao,
+          tag: tabela || null,
+          data_hora: row.ocorreu_em ?? row.created_at,
+          dados_antes: dadosAntes,
+          dados_depois: dadosDepois,
+          diferenca,
+          resultado: String(row.resultado ?? 'sucesso'),
+          registro_id: registroId,
+          ip_address: row.ip_address ?? null,
+          mensagem_erro: row.mensagem_erro ?? null,
+        } as AuditoriaRow;
+      });
     },
     enabled: !!tenantId,
   });
@@ -101,6 +157,13 @@ export function useCreateAuditoria() {
         descricao: auditoria.descricao,
         tag: auditoria.tag ?? null,
         data_hora: new Date().toISOString(),
+        dados_antes: null,
+        dados_depois: null,
+        diferenca: null,
+        resultado: 'sucesso',
+        registro_id: null,
+        ip_address: null,
+        mensagem_erro: null,
       } satisfies AuditoriaRow;
     },
     onSuccess: () => {

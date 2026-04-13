@@ -40,11 +40,18 @@ export type Empresa = DadosEmpresa;
 
 export function useDadosEmpresa() {
   const { tenant } = useTenant();
+  const { tenantId: authTenantId } = useAuth();
+
+  // For MASTER_TI/SYSTEM_OWNER users on the base domain (e.g. gppis.com.br/master-ti),
+  // TenantContext resolves to null because hostname-based slug resolution returns 'default'.
+  // AuthContext.tenantId reads from profiles/user_roles and is always correct regardless
+  // of the hostname, so use it as fallback to prevent the "Cadastro pendente" false state.
+  const effectiveTenantId = tenant?.id ?? authTenantId ?? null;
 
   return useQuery({
-    queryKey: ['dados-empresa', tenant?.id],
+    queryKey: ['dados-empresa', effectiveTenantId],
     queryFn: async () => {
-      const tenantId = tenant?.id;
+      const tenantId = effectiveTenantId;
       if (!tenantId) return null;
 
       const { data, error } = await supabase
@@ -131,7 +138,7 @@ export function useDadosEmpresa() {
 
       return null;
     },
-    enabled: Boolean(tenant?.id),
+    enabled: Boolean(effectiveTenantId),
   });
 }
 

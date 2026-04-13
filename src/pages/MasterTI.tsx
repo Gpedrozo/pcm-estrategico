@@ -64,7 +64,9 @@ const MasterGlobalSettings = lazyWithRetry(() =>
 );
 
 const MasterAuditLogs = lazyWithRetry(() =>
-  import("@/pages/Auditoria")
+  import("@/components/master-ti/MasterAuditLogs").then((m) => ({
+    default: m.MasterAuditLogs,
+  }))
 );
 
 const MasterSecurity = lazyWithRetry(() =>

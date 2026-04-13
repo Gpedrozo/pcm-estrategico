@@ -2388,7 +2388,6 @@ export default function Owner() {
                     <tbody>
                       {auditFiltered.map((l, idx) => {
                         const resultado = String(l.resultado ?? 'sucesso').toLowerCase()
-                        const resultadoColor = resultado === 'erro' ? 'text-red-600 bg-red-50' : resultado === 'rejeitado' ? 'text-amber-700 bg-amber-50' : 'text-emerald-600 bg-emerald-50'
                         const empresaNome = companies.find((c) => String(c.id) === String(l.empresa_id))?.nome
                         const createdAt = String(l.created_at ?? '')
                         const formatted = createdAt ? new Date(createdAt).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'medium' }) : '-'
@@ -2397,7 +2396,13 @@ export default function Owner() {
                           <tr key={`${String(l.id ?? 'audit')}-${idx}`} className="border-t border-border hover:bg-muted/50">
                             <td className="px-2 py-2 font-medium">{String(l.acao ?? '-')}</td>
                             <td className="px-2 py-2">{String(l.tabela ?? '-')}</td>
-                            <td className={`px-2 py-2 rounded ${resultadoColor}`}>{resultado}</td>
+                            <td className="px-2 py-2">
+                              <span className={`text-xs font-semibold ${
+                                resultado === 'erro' ? 'text-red-600' :
+                                resultado === 'rejeitado' ? 'text-amber-700' :
+                                'text-emerald-600'
+                              }`}>{resultado}</span>
+                            </td>
                             <td className="px-2 py-2">{String(l.usuario_email ?? '-')}</td>
                             <td className="px-2 py-2 font-mono text-[10px]">{String(l.registro_id ?? '-').slice(0, 8)}</td>
                             <td className="px-2 py-2">{empresaNome ? String(empresaNome) : String(l.empresa_id ?? '-').slice(0, 8)}</td>

@@ -17,7 +17,7 @@ import { exportAuditLogsCSV, exportAuditLogsXLSX, exportAuditLogsJSON } from '@/
 import { generateAuditoriaPDF } from '@/lib/reportGenerator';
 import {
   Search, Filter, ClipboardList, User, Clock, Tag, AlertTriangle,
-  Download, FileText, FileSpreadsheet, FileJson, BarChart3, Users, Loader2,
+  Download, FileText, FileSpreadsheet, FileJson, BarChart3, Users, Loader2, ChevronDown,
 } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip } from 'recharts';
@@ -35,6 +35,29 @@ const acaoLabels: Record<string, { label: string; color: string }> = {
   EXPORT: { label: 'Exportar', color: 'bg-warning/10 text-warning' },
 };
 
+const FIELD_LABELS: Record<string, string> = {
+  status: 'Status', prioridade: 'Prioridade', problema: 'Problema', solicitante: 'Solicitante',
+  equipamento: 'Equipamento', tag: 'TAG', nome: 'Nome', email: 'E-mail', tipo: 'Tipo',
+  data_abertura: 'Data Abertura', data_fechamento: 'Data Fechamento',
+  usuario_abertura: 'Aberto por', usuario_fechamento: 'Fechado por',
+  mecanico_responsavel_id: 'Mecânico', modo_falha: 'Modo de Falha',
+  causa_raiz: 'Causa Raiz', acao_corretiva: 'Ação Corretiva',
+  licoes_aprendidas: 'Lições Aprendidas', tempo_estimado: 'Tempo Estimado (min)',
+  tentativas: 'Tentativas', resultado: 'Resultado', ip: 'IP de Origem',
+  mensagem_erro: 'Mensagem de Erro', formato: 'Formato', total_registros: 'Total de Registros',
+  filtros: 'Filtros', created_at: 'Criado em', updated_at: 'Atualizado em',
+};
+
+function fieldLabel(key: string) {
+  return FIELD_LABELS[key] ?? key.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+}
+
+function formatValue(v: unknown): string {
+  if (v === null || v === undefined) return '—';
+  if (typeof v === 'object') return JSON.stringify(v);
+  return String(v);
+}
+
 export default function Auditoria() {
   const [filters, setFilters] = useState({
     usuario: '',
@@ -44,6 +67,7 @@ export default function Auditoria() {
     dateTo: '',
   });
   const [exporting, setExporting] = useState(false);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
 
   const { tenantId } = useAuth();
   const { data: empresa } = useDadosEmpresa();
@@ -366,12 +390,27 @@ export default function Auditoria() {
               filteredAuditoria.slice(0, 200).map((log) => {
                 const acaoConfig = acaoLabels[log.acao] || { label: log.acao, color: 'bg-muted text-muted-foreground' };
                 const isCritical = log.acao === 'DELETE' || log.acao === 'REJECT';
+                const isExpanded = expandedId === log.id;
+
+                const diferenca = log.diferenca as Record<string, { antes: unknown; depois: unknown }> | null;
+                const hasDiff = !!diferenca && Object.keys(diferenca).length > 0;
+                const hasLoginDetail = (log.acao === 'LOGIN' || log.acao === 'LOGOUT') && !!log.dados_depois;
+                const hasCreateDetail = log.acao === 'CREATE' && !!log.dados_depois;
+                const hasDeleteDetail = log.acao === 'DELETE' && !!log.dados_antes;
+                const hasExportDetail = log.acao === 'EXPORT' && !!log.dados_depois;
+                const hasDetail = hasDiff || hasLoginDetail || hasCreateDetail || hasDeleteDetail || hasExportDetail;
+
                 return (
                   <div
                     key={log.id}
-                    className={`bg-card border rounded-lg p-4 hover:shadow-industrial transition-shadow ${isCritical ? 'border-destructive/40' : 'border-border'}`}
+                    className={`bg-card border rounded-lg transition-shadow ${
+                      isCritical ? 'border-destructive/40' : 'border-border'
+                    } ${hasDetail ? 'hover:shadow-industrial cursor-pointer' : ''}`}
                   >
-                    <div className="flex items-start gap-4">
+                    <div
+                      className="p-4 flex items-start gap-4"
+                      onClick={() => hasDetail && setExpandedId(isExpanded ? null : log.id)}
+                    >
                       <div className={`p-2 rounded-lg flex-shrink-0 ${isCritical ? 'bg-destructive/10' : 'bg-muted'}`}>
                         <ClipboardList className={`h-5 w-5 ${isCritical ? 'text-destructive' : 'text-muted-foreground'}`} />
                       </div>
@@ -386,6 +425,11 @@ export default function Auditoria() {
                               {log.tag}
                             </span>
                           )}
+                          {log.resultado && log.resultado !== 'sucesso' && (
+                            <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
+                              log.resultado === 'erro' ? 'bg-destructive/10 text-destructive' : 'bg-warning/10 text-warning'
+                            }`}>{log.resultado}</span>
+                          )}
                         </div>
                         <p className="mt-2 text-foreground">{log.descricao}</p>
                         <div className="flex items-center gap-4 mt-2 text-sm text-muted-foreground">
@@ -397,9 +441,143 @@ export default function Auditoria() {
                             <Clock className="h-3.5 w-3.5" />
                             {formatDateTime(log.data_hora)}
                           </span>
+                          {log.registro_id && (
+                            <span className="font-mono text-xs opacity-60">#{log.registro_id.slice(0, 8)}</span>
+                          )}
                         </div>
                       </div>
+                      {hasDetail && (
+                        <ChevronDown className={`h-4 w-4 text-muted-foreground flex-shrink-0 mt-1 transition-transform duration-200 ${
+                          isExpanded ? 'rotate-180' : ''
+                        }`} />
+                      )}
                     </div>
+
+                    {isExpanded && (
+                      <div className="border-t border-border px-4 py-3 bg-muted/20 rounded-b-lg">
+                        {/* UPDATE diff: field-by-field table */}
+                        {hasDiff && (
+                          <div>
+                            <p className="text-xs font-semibold text-muted-foreground mb-2">Campos alterados</p>
+                            <div className="overflow-x-auto rounded-lg border border-border">
+                              <table className="w-full text-xs">
+                                <thead className="bg-muted">
+                                  <tr>
+                                    <th className="px-3 py-2 text-left font-medium text-muted-foreground">Campo</th>
+                                    <th className="px-3 py-2 text-left font-medium text-rose-600">Antes</th>
+                                    <th className="px-3 py-2 text-left font-medium text-emerald-600">Depois</th>
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {Object.entries(diferenca!)
+                                    .filter(([k]) => !k.startsWith('_') && k !== 'updated_at')
+                                    .map(([campo, vals]) => (
+                                    <tr key={campo} className="border-t border-border">
+                                      <td className="px-3 py-2 font-medium">{fieldLabel(campo)}</td>
+                                      <td className="px-3 py-2 text-rose-600 font-mono max-w-[220px] truncate">
+                                        {formatValue(vals?.antes)}
+                                      </td>
+                                      <td className="px-3 py-2 text-emerald-700 font-mono max-w-[220px] truncate">
+                                        {formatValue(vals?.depois)}
+                                      </td>
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* CREATE: show all created fields */}
+                        {hasCreateDetail && !hasDiff && (
+                          <div>
+                            <p className="text-xs font-semibold text-muted-foreground mb-2">Dados do registro criado</p>
+                            <div className="overflow-x-auto rounded-lg border border-border">
+                              <table className="w-full text-xs">
+                                <thead className="bg-muted">
+                                  <tr>
+                                    <th className="px-3 py-2 text-left font-medium text-muted-foreground">Campo</th>
+                                    <th className="px-3 py-2 text-left font-medium text-muted-foreground">Valor</th>
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {Object.entries(log.dados_depois!)
+                                    .filter(([k]) => !k.startsWith('_') && k !== 'id' && k !== 'created_at' && k !== 'updated_at')
+                                    .map(([campo, val]) => (
+                                    <tr key={campo} className="border-t border-border">
+                                      <td className="px-3 py-2 font-medium">{fieldLabel(campo)}</td>
+                                      <td className="px-3 py-2 font-mono text-foreground max-w-[300px] truncate">{formatValue(val)}</td>
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* DELETE: show all deleted fields */}
+                        {hasDeleteDetail && (
+                          <div>
+                            <p className="text-xs font-semibold text-destructive mb-2">Dados do registro excluído</p>
+                            <div className="overflow-x-auto rounded-lg border border-destructive/30">
+                              <table className="w-full text-xs">
+                                <thead className="bg-destructive/5">
+                                  <tr>
+                                    <th className="px-3 py-2 text-left font-medium text-muted-foreground">Campo</th>
+                                    <th className="px-3 py-2 text-left font-medium text-muted-foreground">Valor excluído</th>
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {Object.entries(log.dados_antes!)
+                                    .filter(([k]) => !k.startsWith('_') && k !== 'id' && k !== 'created_at' && k !== 'updated_at')
+                                    .map(([campo, val]) => (
+                                    <tr key={campo} className="border-t border-border">
+                                      <td className="px-3 py-2 font-medium">{fieldLabel(campo)}</td>
+                                      <td className="px-3 py-2 font-mono text-rose-600 max-w-[300px] truncate">{formatValue(val)}</td>
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* LOGIN/LOGOUT detail */}
+                        {hasLoginDetail && (
+                          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                            {Object.entries(log.dados_depois!)
+                              .filter(([k]) => !['email'].includes(k) || log.acao === 'LOGIN')
+                              .map(([k, v]) => (
+                              <div key={k} className="rounded-lg border border-border bg-card p-2">
+                                <p className="text-[10px] text-muted-foreground">{fieldLabel(k)}</p>
+                                <p className={`text-xs font-medium mt-0.5 ${
+                                  k === 'resultado' && String(v) === 'erro' ? 'text-destructive' :
+                                  k === 'resultado' && String(v) === 'sucesso' ? 'text-emerald-600' : 'text-foreground'
+                                }`}>{formatValue(v)}</p>
+                              </div>
+                            ))}
+                            {log.ip_address && (
+                              <div className="rounded-lg border border-border bg-card p-2">
+                                <p className="text-[10px] text-muted-foreground">IP de Origem</p>
+                                <p className="text-xs font-medium mt-0.5 font-mono">{log.ip_address}</p>
+                              </div>
+                            )}
+                          </div>
+                        )}
+
+                        {/* EXPORT detail */}
+                        {hasExportDetail && (
+                          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                            {Object.entries(log.dados_depois!).map(([k, v]) => (
+                              <div key={k} className="rounded-lg border border-border bg-card p-2">
+                                <p className="text-[10px] text-muted-foreground">{fieldLabel(k)}</p>
+                                <p className="text-xs font-medium mt-0.5">{formatValue(v)}</p>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
                 );
               })
