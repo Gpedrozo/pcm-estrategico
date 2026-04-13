@@ -73,7 +73,7 @@ export default function SSMA() {
   });
   const [showCAConfig, setShowCAConfig] = useState(false);
   const [diasAlertaCAInput, setDiasAlertaCAInput] = useState(diasAlertaCA);
-  const [epiView, setEpiView] = useState<'estoque' | 'entregas' | 'movimentacoes' | 'colaboradores'>('estoque');
+  const [epiView, setEpiView] = useState<'estoque' | 'entregas' | 'movimentacoes' | 'colaboradores' | 'documentos'>('estoque');
   const [epiFiltroRapido, setEpiFiltroRapido] = useState<'TODOS' | 'CRITICOS' | 'ESTOQUE_BAIXO' | 'CA_VENCIDO'>('TODOS');
 
   const calcularStatusCA = (validade_ca: string | null): 'VALIDO' | 'PROXIMO' | 'VENCIDO' => {
@@ -974,12 +974,13 @@ export default function SSMA() {
             </div>
           )}
 
-          <Tabs value={epiView} onValueChange={(value) => setEpiView(value as 'estoque' | 'entregas' | 'movimentacoes' | 'colaboradores')}>
+          <Tabs value={epiView} onValueChange={(value) => setEpiView(value as 'estoque' | 'entregas' | 'movimentacoes' | 'colaboradores' | 'documentos')}>
             <TabsList>
               <TabsTrigger value="estoque">Estoque de EPIs</TabsTrigger>
               <TabsTrigger value="entregas">Entregas</TabsTrigger>
               <TabsTrigger value="movimentacoes">Movimentações</TabsTrigger>
               <TabsTrigger value="colaboradores" className="gap-1.5"><Users className="h-3.5 w-3.5" />Colaboradores</TabsTrigger>
+              <TabsTrigger value="documentos" className="gap-1.5"><FileText className="h-3.5 w-3.5" />Documentos</TabsTrigger>
             </TabsList>
 
             <TabsContent value="estoque" className="mt-4 space-y-4">
@@ -1076,12 +1077,11 @@ export default function SSMA() {
                       <th>Qtd</th>
                       <th>Data Entrega</th>
                       <th>Motivo</th>
-                      <th>Ações</th>
                     </tr>
                   </thead>
                   <tbody>
                     {entregasFiltradas.length === 0 ? (
-                      <tr><td colSpan={6} className="text-center py-8 text-muted-foreground">Nenhuma entrega encontrada</td></tr>
+                      <tr><td colSpan={5} className="text-center py-8 text-muted-foreground">Nenhuma entrega encontrada</td></tr>
                     ) : (
                       entregasFiltradas.slice(0, 40).map((ent) => {
                         const epiNome = episLista.find((item) => item.id === ent.epi_id)?.nome || ent.epi_id.slice(0, 8);
@@ -1092,24 +1092,6 @@ export default function SSMA() {
                             <td className="font-mono">{ent.quantidade}</td>
                             <td>{new Date(ent.data_entrega).toLocaleDateString('pt-BR')}</td>
                             <td className="max-w-[220px] truncate">{ent.motivo || '—'}</td>
-                            <td>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-7 w-7"
-                                title="Imprimir Ficha de Entrega"
-                                onClick={() => {
-                                  setFichaEPIColaborador(ent.colaborador_nome);
-                                  setIsFichaEPIPrintOpen(true);
-                                  setTimeout(() => {
-                                    handlePrintFichaEPI();
-                                    setIsFichaEPIPrintOpen(false);
-                                  }, 200);
-                                }}
-                              >
-                                <Printer className="h-3.5 w-3.5" />
-                              </Button>
-                            </td>
                           </tr>
                         );
                       })
@@ -1235,6 +1217,113 @@ export default function SSMA() {
                         </tr>
                       ))
                     )}
+                  </tbody>
+                </table>
+              </div>
+            </TabsContent>
+
+            {/* ── SUBTAB DOCUMENTOS EPI ─────────────────── */}
+            <TabsContent value="documentos" className="mt-4">
+              <div className="bg-card border border-border rounded-lg overflow-hidden">
+                <div className="p-4 border-b border-border">
+                  <div className="flex items-center gap-2 mb-1">
+                    <FileText className="h-4 w-4" />
+                    <h3 className="font-semibold">Fichas de EPI por Colaborador</h3>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Selecione um colaborador para gerar e imprimir sua Ficha de Controle e Responsabilidade de EPI (NR-06).
+                    A ficha é gerada em A4 com todas as entregas registradas e espaço para assinatura.
+                  </p>
+                </div>
+                <table className="table-industrial">
+                  <thead>
+                    <tr>
+                      <th>Colaborador</th>
+                      <th>Função</th>
+                      <th>Setor</th>
+                      <th>Matrícula</th>
+                      <th>Entregas</th>
+                      <th>Ações</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {(() => {
+                      // Listar colaboradores com entregas (do cadastro + nomes avulsos)
+                      const colabMap = new Map<string, { nome: string; funcao: string; setor: string; matricula: string; totalEntregas: number; fromCadastro: boolean }>();
+                      // Primeiro: colaboradores do cadastro
+                      colaboradoresLista.forEach(c => {
+                        const entregasCol = entregasLista.filter(e => e.colaborador_nome === c.nome);
+                        colabMap.set(c.nome.toLowerCase(), {
+                          nome: c.nome,
+                          funcao: c.funcao || '',
+                          setor: c.setor || '',
+                          matricula: c.matricula || '',
+                          totalEntregas: entregasCol.length,
+                          fromCadastro: true,
+                        });
+                      });
+                      // Segundo: nomes avulsos que não estão no cadastro
+                      entregasLista.forEach(e => {
+                        const key = e.colaborador_nome.toLowerCase();
+                        if (!colabMap.has(key)) {
+                          colabMap.set(key, {
+                            nome: e.colaborador_nome,
+                            funcao: '',
+                            setor: '',
+                            matricula: '',
+                            totalEntregas: entregasLista.filter(x => x.colaborador_nome === e.colaborador_nome).length,
+                            fromCadastro: false,
+                          });
+                        }
+                      });
+
+                      const lista = Array.from(colabMap.values())
+                        .filter(c => {
+                          if (!search) return true;
+                          const s = search.trim().toLowerCase();
+                          return c.nome.toLowerCase().includes(s) || c.funcao.toLowerCase().includes(s) || c.setor.toLowerCase().includes(s);
+                        })
+                        .sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
+
+                      if (lista.length === 0) {
+                        return (
+                          <tr><td colSpan={6} className="text-center py-8 text-muted-foreground">Nenhum colaborador com entregas registradas</td></tr>
+                        );
+                      }
+
+                      return lista.map((c) => (
+                        <tr key={c.nome}>
+                          <td className="font-medium">{c.nome}</td>
+                          <td>{c.funcao || '—'}</td>
+                          <td>{c.setor || '—'}</td>
+                          <td className="font-mono">{c.matricula || '—'}</td>
+                          <td>
+                            <Badge variant={c.totalEntregas > 0 ? 'default' : 'secondary'}>
+                              {c.totalEntregas} {c.totalEntregas === 1 ? 'entrega' : 'entregas'}
+                            </Badge>
+                          </td>
+                          <td>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="gap-1.5 h-7"
+                              disabled={c.totalEntregas === 0}
+                              onClick={() => {
+                                setFichaEPIColaborador(c.nome);
+                                setIsFichaEPIPrintOpen(true);
+                                setTimeout(() => {
+                                  handlePrintFichaEPI();
+                                  setIsFichaEPIPrintOpen(false);
+                                }, 300);
+                              }}
+                            >
+                              <Printer className="h-3.5 w-3.5" />
+                              Imprimir Ficha
+                            </Button>
+                          </td>
+                        </tr>
+                      ));
+                    })()}
                   </tbody>
                 </table>
               </div>
@@ -1960,15 +2049,24 @@ export default function SSMA() {
         {fichaParaImprimir && (
           <FISPQPrintTemplate ref={fispqPrintRef} ficha={fichaParaImprimir} empresa={empresa} />
         )}
-        {isFichaEPIPrintOpen && entregasEPI && (
-          <FichaEPIPrintTemplate
-            ref={fichaEPIPrintRef}
-            colaboradorNome={fichaEPIColaborador}
-            entregas={entregasEPI.filter((e) => e.colaborador_nome === fichaEPIColaborador)}
-            epis={epis || []}
-            empresa={empresa}
-          />
-        )}
+        {isFichaEPIPrintOpen && entregasEPI && (() => {
+          const colCadastro = colaboradoresLista.find(c => c.nome === fichaEPIColaborador);
+          const entregasComEPI = entregasEPI
+            .filter((e) => e.colaborador_nome === fichaEPIColaborador)
+            .map(e => ({ ...e, epi: episLista.find(ep => ep.id === e.epi_id) }));
+          return (
+            <FichaEPIPrintTemplate
+              ref={fichaEPIPrintRef}
+              colaboradorNome={fichaEPIColaborador}
+              colaboradorFuncao={colCadastro?.funcao || ''}
+              colaboradorSetor={colCadastro?.setor || ''}
+              colaboradorMatricula={colCadastro?.matricula || ''}
+              entregas={entregasComEPI}
+              empresa={empresa}
+              primeiraEntrega
+            />
+          );
+        })()}
       </div>
     </div>
   );
