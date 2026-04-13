@@ -109,7 +109,7 @@ export default function Auditoria() {
   }, [auditoria]);
 
   // ── Handlers de exportação ──
-  const empresaNome = empresa?.nome ?? 'PCM Estratégico';
+  const empresaNome = empresa?.nome_fantasia ?? empresa?.razao_social ?? 'PCM Estratégico';
 
   const handleExportPDF = useCallback(async () => {
     if (!tenantId || !auditoria?.length) return;

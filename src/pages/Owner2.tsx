@@ -2312,7 +2312,7 @@ export default function Owner() {
                 <MetricTile icon={Activity} label="Total Registros" value={auditKpis.total} color="#0ea5e9" />
                 <MetricTile icon={AlertTriangle} label="Erros / Rejeições" value={auditKpis.erros} color="#ef4444" />
                 <MetricTile icon={Building2} label="Empresas" value={auditKpis.tenants} color="#8b5cf6" />
-                <MetricTile icon={Filter} label="Usuários Distintos" value={auditKpis.usuarios} color="#22c55e" />
+                <MetricTile icon={Users} label="Usuários Distintos" value={auditKpis.usuarios} color="#22c55e" />
               </div>
 
               {/* Volume por Empresa Chart */}
