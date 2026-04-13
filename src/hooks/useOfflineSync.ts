@@ -7,6 +7,8 @@ import {
   addPendingAction,
   cacheOrdens,
   getOrdensCache,
+  getFotosOffline,
+  removeFotoOffline,
 } from '@/lib/offlineSync';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -50,7 +52,29 @@ export function useOfflineSync() {
         return !error;
       }
       case 'UPLOAD_FOTO': {
-        // Fotos offline são tratadas separadamente (blob storage)
+        const { foto_id, os_id, bucket, path: storagePath } = action.payload as {
+          foto_id?: string;
+          os_id?: string;
+          bucket?: string;
+          path?: string;
+        };
+        if (!foto_id || !bucket || !storagePath) return false;
+
+        const fotos = await getFotosOffline(os_id);
+        const foto = fotos.find((f) => f.id === foto_id);
+        if (!foto?.blob) {
+          // Blob não encontrado no IDB — remover da fila para não bloquear sync
+          return true;
+        }
+
+        const { error } = await supabase.storage
+          .from(bucket)
+          .upload(storagePath, foto.blob, { upsert: true });
+
+        if (error) return false;
+
+        // Upload bem-sucedido — limpar blob do IDB
+        await removeFotoOffline(foto_id);
         return true;
       }
       default:
