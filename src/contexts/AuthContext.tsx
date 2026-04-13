@@ -1122,17 +1122,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     let providerErrorMessage = '';
     let providerPayload: any = null;
 
-    if (ownerDomain) {
-      const ownerSignIn = await signInThroughOwnerEdge(email, password);
-      providerStatus = ownerSignIn.status;
-      providerPayload = ownerSignIn.payload;
+    // All logins go through the auth-login Edge Function for server-side rate limiting.
+    // Fallback to direct signInWithPassword only when the Edge Function is unreachable (status 0).
+    const edgeSignIn = await signInThroughOwnerEdge(email, password);
+    const edgeUnavailable = edgeSignIn.status === 0;
 
-      if (!ownerSignIn.ok) {
-        providerErrorMessage = ownerSignIn.message || 'Owner login failed';
+    if (!edgeUnavailable) {
+      providerStatus = edgeSignIn.status;
+      providerPayload = edgeSignIn.payload;
+
+      if (!edgeSignIn.ok) {
+        providerErrorMessage = edgeSignIn.message || (ownerDomain ? 'Owner login failed' : 'Login failed');
       } else {
-        accessToken = ownerSignIn.accessToken;
-        refreshToken = ownerSignIn.refreshToken;
-        signInUser = ownerSignIn.user;
+        accessToken = edgeSignIn.accessToken;
+        refreshToken = edgeSignIn.refreshToken;
+        signInUser = edgeSignIn.user;
 
         if (accessToken && refreshToken) {
           const { data: setSessionData, error: setSessionError } = await supabase.auth.setSession({
@@ -1141,7 +1145,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           });
 
           if (setSessionError) {
-            providerErrorMessage = String(setSessionError.message || 'Owner session setup failed');
+            providerErrorMessage = String(setSessionError.message || 'Session setup failed');
           } else {
             signInSession = setSessionData.session ?? null;
             signInUser = setSessionData.user ?? signInUser;
@@ -1149,6 +1153,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
       }
     } else {
+      // Edge Function unreachable — fallback to direct auth (no server-side rate limit)
+      logger.warn('auth_login_edge_unavailable_fallback', { email: email.trim().toLowerCase() });
       const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
         email,
         password,
