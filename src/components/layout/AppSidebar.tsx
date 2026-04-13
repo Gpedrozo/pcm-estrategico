@@ -111,7 +111,6 @@ const relatoriosMenuItems = [
 
 const ssmaMenuItems = [
   { title: 'SSMA', url: '/ssma', icon: Shield },
-  { title: 'Auditoria', url: '/auditoria', icon: ClipboardList },
 ];
 
 const ajudaMenuItems = [

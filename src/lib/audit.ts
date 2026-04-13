@@ -88,12 +88,16 @@ export async function writeAuditLog(input: AuditInput) {
     // Resolve current user id for the RPC
     const { data: { user } } = await supabase.auth.getUser()
 
+    // p_registro_id expects UUID — pass null if value is not a valid UUID
+    const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
+    const safeRecordId = recordId && UUID_REGEX.test(recordId) ? recordId : null
+
     const { error } = await callRpc<null>('app_write_audit_log', {
       p_empresa_id: empresaId,
       p_usuario_id: user?.id ?? null,
       p_acao: normalizeAction(action),
       p_tabela: table,
-      p_registro_id: recordId,
+      p_registro_id: safeRecordId,
       p_dados_antes: dadosAntes,
       p_dados_depois: dadosDepois,
       p_ip_address: null,
