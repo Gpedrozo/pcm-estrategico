@@ -15,10 +15,10 @@ export function SurfaceCard({ title, subtitle, children }: { title: string; subt
 
 export function MetricTile({ label, value, icon: Icon, tone = 'sky' }: { label: string; value: string | number; icon: LucideIcon; tone?: 'sky' | 'emerald' | 'amber' | 'rose' }) {
   const toneClass = {
-    sky: 'from-sky-50 to-cyan-50 border-sky-200 text-sky-800',
-    emerald: 'from-emerald-50 to-teal-50 border-emerald-200 text-emerald-800',
-    amber: 'from-amber-50 to-orange-50 border-amber-200 text-amber-800',
-    rose: 'from-rose-50 to-pink-50 border-rose-200 text-rose-800',
+    sky:     'from-sky-50 to-cyan-50 dark:from-sky-950 dark:to-cyan-950 border-sky-200 dark:border-sky-800 text-sky-800 dark:text-sky-300',
+    emerald: 'from-emerald-50 to-teal-50 dark:from-emerald-950 dark:to-teal-950 border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300',
+    amber:   'from-amber-50 to-orange-50 dark:from-amber-950 dark:to-orange-950 border-amber-200 dark:border-amber-800 text-amber-800 dark:text-amber-300',
+    rose:    'from-rose-50 to-pink-50 dark:from-rose-950 dark:to-pink-950 border-rose-200 dark:border-rose-800 text-rose-800 dark:text-rose-300',
   }[tone]
 
   return (

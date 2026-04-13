@@ -83,9 +83,9 @@ export default function OwnerDispositivosTab({ selectedEmpresaId, empresas: _emp
 
   if (!selectedEmpresaId) {
     return (
-      <div className="rounded-xl border border-slate-200 bg-white p-8 text-center">
-        <Building2 className="h-10 w-10 mx-auto mb-3 text-slate-300" />
-        <p className="text-sm text-slate-500">Selecione uma empresa no topo para gerenciar dispositivos.</p>
+      <div className="rounded-xl border border-border bg-card p-8 text-center">
+        <Building2 className="h-10 w-10 mx-auto mb-3 text-muted-foreground/40" />
+        <p className="text-sm text-muted-foreground">Selecione uma empresa no topo para gerenciar dispositivos.</p>
       </div>
     );
   }
@@ -93,15 +93,15 @@ export default function OwnerDispositivosTab({ selectedEmpresaId, empresas: _emp
   return (
     <div className="grid gap-4">
       {/* Configurações da Empresa */}
-      <div className="rounded-xl border border-slate-200 bg-white p-4 space-y-4">
-        <h3 className="text-sm font-semibold text-slate-900 flex items-center gap-2">
+      <div className="rounded-xl border border-border bg-card p-4 space-y-4">
+        <h3 className="text-sm font-semibold text-card-foreground flex items-center gap-2">
           <Settings className="h-4 w-4" /> Configurações de Dispositivos Móveis
         </h3>
 
         <div className="flex items-center justify-between gap-4">
           <div>
             <p className="text-sm font-medium">Dispositivos Móveis Ativos</p>
-            <p className="text-xs text-slate-500">Desativar bloqueia TODOS os dispositivos desta empresa</p>
+            <p className="text-xs text-muted-foreground">Desativar bloqueia TODOS os dispositivos desta empresa</p>
           </div>
           <Switch
             defaultChecked={true}
@@ -129,8 +129,8 @@ export default function OwnerDispositivosTab({ selectedEmpresaId, empresas: _emp
             </div>
           </div>
           <div className="text-right">
-            <p className="text-2xl font-bold text-slate-900">{ativos.length}</p>
-            <p className="text-xs text-slate-500">ativos agora</p>
+            <p className="text-2xl font-bold text-card-foreground">{ativos.length}</p>
+            <p className="text-xs text-muted-foreground">ativos agora</p>
           </div>
         </div>
 
@@ -159,21 +159,21 @@ export default function OwnerDispositivosTab({ selectedEmpresaId, empresas: _emp
       </div>
 
       {/* Lista de Dispositivos */}
-      <div className="rounded-xl border border-slate-200 bg-white p-4">
-        <h3 className="text-sm font-semibold text-slate-900 flex items-center gap-2 mb-4">
+      <div className="rounded-xl border border-border bg-card p-4">
+        <h3 className="text-sm font-semibold text-card-foreground flex items-center gap-2 mb-4">
           <Smartphone className="h-4 w-4" /> Dispositivos ({(dispositivos || []).length})
         </h3>
 
         {isLoading ? (
-          <p className="text-sm text-slate-400 text-center py-4">Carregando...</p>
+          <p className="text-sm text-muted-foreground/60 text-center py-4">Carregando...</p>
         ) : (dispositivos || []).length === 0 ? (
-          <p className="text-sm text-slate-400 text-center py-8">
+          <p className="text-sm text-muted-foreground/60 text-center py-8">
             Nenhum dispositivo vinculado a esta empresa.
           </p>
         ) : (
           <div className="overflow-auto max-h-[600px]">
             <table className="w-full text-xs">
-              <thead className="bg-slate-50 sticky top-0">
+              <thead className="bg-muted/50 sticky top-0">
                 <tr>
                   <th className="px-2 py-2 text-left">Dispositivo</th>
                   <th className="px-2 py-2 text-left">SO</th>
@@ -185,16 +185,16 @@ export default function OwnerDispositivosTab({ selectedEmpresaId, empresas: _emp
               </thead>
               <tbody>
                 {(dispositivos || []).map(d => (
-                  <tr key={d.id} className={`border-t border-slate-100 ${!d.ativo ? 'opacity-50' : ''}`}>
+                  <tr key={d.id} className={`border-t border-border/50 ${!d.ativo ? 'opacity-50' : ''}`}>
                     <td className="px-2 py-2 font-medium">{d.device_nome || 'Desconhecido'}</td>
                     <td className="px-2 py-2 max-w-[120px] truncate">{(d.device_os || '').slice(0, 30)}</td>
                     <td className="px-2 py-2">
                       {d.ativo ? (
-                        <span className="inline-flex items-center gap-1 text-green-700">
+                        <span className="inline-flex items-center gap-1 text-green-700 dark:text-green-400">
                           <Wifi className="h-3 w-3" /> Ativo
                         </span>
                       ) : (
-                        <span className="inline-flex items-center gap-1 text-red-600">
+                        <span className="inline-flex items-center gap-1 text-red-600 dark:text-red-400">
                           <WifiOff className="h-3 w-3" /> Desativado
                         </span>
                       )}
@@ -208,7 +208,7 @@ export default function OwnerDispositivosTab({ selectedEmpresaId, empresas: _emp
                     <td className="px-2 py-2 text-right space-x-1">
                       {d.ativo ? (
                         <button
-                          className="rounded px-2 py-1 text-xs border border-red-200 text-red-600 hover:bg-red-50"
+                          className="rounded px-2 py-1 text-xs border border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30"
                           onClick={() => toggleDevice.mutate({ id: d.id, ativo: false })}
                           disabled={toggleDevice.isPending}
                         >
@@ -216,7 +216,7 @@ export default function OwnerDispositivosTab({ selectedEmpresaId, empresas: _emp
                         </button>
                       ) : (
                         <button
-                          className="rounded px-2 py-1 text-xs border border-green-200 text-green-600 hover:bg-green-50"
+                          className="rounded px-2 py-1 text-xs border border-green-200 dark:border-green-800 text-green-600 dark:text-green-400 hover:bg-green-50 dark:hover:bg-green-950/30"
                           onClick={() => toggleDevice.mutate({ id: d.id, ativo: true })}
                           disabled={toggleDevice.isPending}
                         >
@@ -224,7 +224,7 @@ export default function OwnerDispositivosTab({ selectedEmpresaId, empresas: _emp
                         </button>
                       )}
                       <button
-                        className="rounded px-2 py-1 text-xs border border-slate-200 text-slate-500 hover:bg-slate-50"
+                        className="rounded px-2 py-1 text-xs border border-border text-muted-foreground hover:bg-muted/50"
                         onClick={() => {
                           confirm({
                             title: 'Remover dispositivo',
