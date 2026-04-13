@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import DOMPurify from 'dompurify';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -598,7 +599,7 @@ export default function Programacao() {
     if (empresa?.cidade) footerParts.push(`${empresa.cidade}/${empresa?.estado || ''}`);
     html += `<div class="footer"><span>${esc(footerParts.join(' • '))}</span><span>Página 1/1 • Emitido em ${esc(dataEmissao)}</span></div>`;
 
-    body.innerHTML = html;
+    body.innerHTML = DOMPurify.sanitize(html, { FORCE_BODY: true });
 
     setTimeout(() => { printWindow.print(); }, 300);
   };

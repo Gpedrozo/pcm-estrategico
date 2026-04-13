@@ -15,7 +15,7 @@ import { useContratos } from './useContratos';
 import { useLubrificantes } from './useEstoqueLubrificantes';
 import { usePlanosLubrificacao } from './useLubrificacao';
 
-export function useRelatoriosExpandidos(dateFrom: string, dateTo: string) {
+export function useRelatoriosExpandidos(_dateFrom: string, _dateTo: string) {
   // ── Core OS & Execuções ──────────────────────────────────────
   const { data: ordensServico = [], isLoading: loadingOS } = useOrdensServico();
   const { data: execucoes = [], isLoading: loadingExec } = useExecucoesOS();

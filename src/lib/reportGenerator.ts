@@ -320,7 +320,6 @@ export async function generateIndicadoresPDF(
   const doc = new jsPDF();
   const startY = await addProfessionalHeader(doc, { ...options, dateFrom: '', dateTo: '' });
   const LEFT = 14;
-  const pageWidth = doc.internal.pageSize.getWidth();
 
   type KPIRow = { label: string; value: string; unit: string; meta: string; status: 'ok' | 'alerta' | 'critico' };
   const rows: KPIRow[] = [

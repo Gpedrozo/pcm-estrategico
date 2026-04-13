@@ -61,11 +61,8 @@ import {
   useCreateSistema,
   useUpdateSistema,
   useDeleteSistema,
-  PlantaRow,
   PlantaInsert,
-  AreaRow,
   AreaInsert,
-  SistemaRow,
   SistemaInsert,
 } from '@/hooks/useHierarquia';
 
@@ -170,7 +167,7 @@ export default function Hierarquia() {
         }
       }
       setIsModalOpen(false);
-    } catch (error) {
+    } catch (_error) {
       // Error handled by mutation
     }
   };
@@ -188,7 +185,7 @@ export default function Hierarquia() {
       }
       setIsDeleteDialogOpen(false);
       setDeletingItem(null);
-    } catch (error) {
+    } catch (_error) {
       // Error handled by mutation
     }
   };
