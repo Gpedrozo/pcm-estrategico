@@ -1083,8 +1083,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         void resolveUserProfileWithRetry(session.user.id, session.user.email, {
           app_metadata: session.user.app_metadata,
           user_metadata: session.user.user_metadata,
-        }, session.access_token).then(profileData => {
+        }, session.access_token).then(async (profileData) => {
           if (!isActive) return;
+
+          // Etapa 1.3: mesmo guard do caminho onAuthStateChange.
+          // Usuário sem tenant resolvido e sem role global → logout de segurança.
+          const isGlobalRoleBs =
+            profileData.tipo === 'SYSTEM_OWNER' ||
+            profileData.tipo === 'SYSTEM_ADMIN' ||
+            profileData.tipo === 'MASTER_TI';
+
+          if (!isGlobalRoleBs && !profileData.tenantId) {
+            await supabase.auth.signOut();
+            setUser(null);
+            setSession(null);
+            logger.warn('bootstrap_profile_without_tenant_abort', { userId: session.user.id });
+            transitionAuthStatus('unauthenticated', 'bootstrap_profile_without_tenant', {
+              userId: session.user.id,
+            });
+            return;
+          }
 
           setUser({
             id: session.user.id,
