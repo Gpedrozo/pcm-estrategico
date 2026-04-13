@@ -151,6 +151,23 @@ const AdminOnlyRoute = ({ children }: { children: React.ReactNode }) => {
   return <>{children}</>;
 };
 
+/** Verifica se há um token de sessão Supabase no localStorage sem fazer I/O de rede. */
+function hasStoredSession(): boolean {
+  try {
+    for (let i = 0; i < window.localStorage.length; i++) {
+      const key = window.localStorage.key(i);
+      if (!key) continue;
+      // Supabase v2 guarda a sessão em 'sb-{projectRef}-auth-token'
+      if (!key.includes('auth-token')) continue;
+      const value = window.localStorage.getItem(key);
+      if (value && value.includes('"access_token"')) return true;
+    }
+    return false;
+  } catch {
+    return false;
+  }
+}
+
 const OwnerOnlyRoute = ({ children }: { children: React.ReactNode }) => {
   const location = useLocation();
   const { isAuthenticated, isLoading, isHydrating, authStatus, isSystemOwner, forcePasswordChange, session } = useAuth();
@@ -184,7 +201,16 @@ const OwnerOnlyRoute = ({ children }: { children: React.ReactNode }) => {
     });
   }, [authStatus, forcePasswordChange, isAuthenticated, isHydrating, isLoading, isSystemOwner, location.hash, location.pathname, location.search]);
 
-  if (isLoading || isHydrating || authStatus === 'loading' || authStatus === 'hydrating') return <RouteLoading />;
+  if (isLoading || isHydrating || authStatus === 'loading' || authStatus === 'hydrating') {
+    // Otimização: se não há token no localStorage, o usuário certamente não está autenticado.
+    // Redireciona para /login imediatamente sem esperar a hidratação completa do Supabase.
+    if (!hasStoredSession()) {
+      const nextPath = `${location.pathname}${location.search}${location.hash}`;
+      const nextParam = encodeURIComponent(nextPath || '/');
+      return <Navigate to={`/login?next=${nextParam}`} replace state={{ from: location }} />;
+    }
+    return <OwnerRouteLoading />;
+  }
 
   if (!isAuthenticated || !isSystemOwner) {
     const nextPath = `${location.pathname}${location.search}${location.hash}`;
@@ -210,6 +236,15 @@ function RouteLoading() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-background">
       <Loader2 className="h-8 w-8 animate-spin text-primary" />
+    </div>
+  )
+}
+
+/** Loading screen do módulo owner — fundo escuro idêntico ao da tela de login. */
+function OwnerRouteLoading() {
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-slate-950">
+      <Loader2 className="h-8 w-8 animate-spin text-slate-400" />
     </div>
   )
 }
