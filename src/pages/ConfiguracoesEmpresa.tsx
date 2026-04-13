@@ -5,7 +5,9 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Skeleton } from '@/components/ui/skeleton'
-import { Building2, Lock, Save, Upload, Trash2, Image } from 'lucide-react'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { Building2, Lock, Save, Upload, Trash2, Image, FileText } from 'lucide-react'
+import { MeuContratoTab } from '@/components/empresa/MeuContratoTab'
 import { useDadosEmpresa, uploadLogo } from '@/hooks/useDadosEmpresa'
 import {
   useConfiguracoesOperacionaisEmpresa,
@@ -181,6 +183,20 @@ export default function ConfiguracoesEmpresa() {
         <p className="text-muted-foreground">Dados legais são somente leitura no tenant. Ajuste aqui apenas dados operacionais.</p>
       </div>
 
+      <Tabs defaultValue="empresa">
+        <TabsList>
+          <TabsTrigger value="empresa" className="gap-2">
+            <Building2 className="h-4 w-4" />
+            Empresa
+          </TabsTrigger>
+          <TabsTrigger value="contrato" className="gap-2">
+            <FileText className="h-4 w-4" />
+            Meu Contrato
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="empresa" className="mt-4 space-y-6">
+
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-base">
@@ -338,6 +354,12 @@ export default function ConfiguracoesEmpresa() {
           </form>
         </CardContent>
       </Card>
+        </TabsContent>
+
+        <TabsContent value="contrato" className="mt-4">
+          <MeuContratoTab />
+        </TabsContent>
+      </Tabs>
     </div>
   )
 }
