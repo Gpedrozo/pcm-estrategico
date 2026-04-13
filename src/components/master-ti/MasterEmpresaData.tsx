@@ -81,7 +81,6 @@ function FieldRow({ label, value }: { label: string; value: string | null | unde
 }
 
 // --- Main component ----------------------------------------------------------
-
 export function MasterEmpresaData() {
   const { data: empresa, isLoading } = useDadosEmpresa();
   const createTicket = useCreateSupportTicket();
@@ -130,6 +129,7 @@ export function MasterEmpresaData() {
       toast({ title: 'Erro ao enviar chamado', description: errorMsg, variant: 'destructive' });
     }
   };
+
 
   if (isLoading) {
     return (
@@ -289,3 +289,4 @@ export function MasterEmpresaData() {
     </div>
   );
 }
+

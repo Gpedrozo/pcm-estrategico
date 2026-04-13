@@ -112,6 +112,7 @@ export function BrandingProvider({ children }: { children: React.ReactNode }) {
         logo_relatorio_url: r?.logo_relatorio_url  ?? logoOS ?? logoP,
       });
 
+
       setIsLoading(false);
     }
 

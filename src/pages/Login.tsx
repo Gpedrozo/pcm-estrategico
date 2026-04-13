@@ -92,6 +92,12 @@ export default function Login() {
   const [logoutNotice, setLogoutNotice] = useState('');
   const [isLoginLoading, setIsLoginLoading] = useState(false);
   const [isRedirectingTenantDomain, setIsRedirectingTenantDomain] = useState(false);
+  // Dynamic branding resolved by e-mail on the main domain (before login)
+  const [emailBranding, setEmailBranding] = useState<{
+    razao_social: string | null;
+    nome_fantasia: string | null;
+    logo_login_url: string | null;
+  } | null>(null);
 
   const { login, isAuthenticated, isLoading, isHydrating, authStatus, effectiveRole, tenantId, forcePasswordChange } = useAuth();
   const navigate = useNavigate();
@@ -432,7 +438,24 @@ export default function Login() {
     currentHost,
   ]);
 
-  // Função de login
+  // Resolve tenant branding from e-mail when on the main domain (no tenant in context yet).
+  const handleEmailBlur = async () => {
+    // Already resolved via subdomain — skip
+    if (branding?.logo_login_url || branding?.logo_principal_url) return;
+    const email = loginEmail.trim().toLowerCase();
+    if (!email.includes('@')) return;
+    try {
+      type BrandingRow = { razao_social: string | null; nome_fantasia: string | null; logo_login_url: string | null };
+      const { data } = await supabase.rpc('get_login_branding_by_email', { p_email: email }) as unknown as { data: BrandingRow[] | null };
+      if (data && data.length > 0) {
+        setEmailBranding(data[0]);
+      }
+    } catch {
+      // Non-critical — logo simply won't show before login
+    }
+  };
+
+  // Funcão de login
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoginError('');
@@ -498,6 +521,7 @@ export default function Login() {
                 placeholder="seu@email.com"
                 value={loginEmail}
                 onChange={(e) => setLoginEmail(e.target.value)}
+                onBlur={handleEmailBlur}
                 required
                 className="h-11"
                 autoComplete="off"

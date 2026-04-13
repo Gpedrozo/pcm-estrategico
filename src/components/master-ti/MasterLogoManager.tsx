@@ -17,12 +17,12 @@ interface LogoSlot {
 }
 
 const LOGO_SLOTS: LogoSlot[] = [
-  { key: 'logo_principal_url', label: 'Logo Principal', description: 'Logo padrão usado em todo o sistema', dimensions: '200×60px' },
-  { key: 'logo_menu_url', label: 'Logo Menu Lateral', description: 'Exibida no menu de navegação lateral', dimensions: '160×40px' },
-  { key: 'logo_login_url', label: 'Logo Tela de Login', description: 'Exibida na tela de autenticação', dimensions: '300×100px' },
-  { key: 'logo_os_url', label: 'Logo Ordens de Serviço', description: 'Cabeçalho na impressão de OS', dimensions: '200×60px' },
-  { key: 'logo_pdf_url', label: 'Logo Documentos PDF', description: 'Cabeçalho de documentos PDF', dimensions: '200×60px' },
-  { key: 'logo_relatorio_url', label: 'Logo Relatórios', description: 'Cabeçalho de relatórios gerenciais', dimensions: '200×60px' },
+  { key: 'logo_principal_url', label: 'Logo Principal',       description: 'Logo padrão usada em todo o sistema',         dimensions: '200×60px'  },
+  { key: 'logo_menu_url',      label: 'Logo Menu Lateral',    description: 'Exibida no menu de navegação lateral',         dimensions: '160×40px'  },
+  { key: 'logo_login_url',     label: 'Logo Tela de Login',   description: 'Exibida na tela de autenticação',              dimensions: '300×100px' },
+  { key: 'logo_os_url',        label: 'Logo Ordens de Serviço', description: 'Cabeçalho na impressão de OS',               dimensions: '200×60px'  },
+  { key: 'logo_pdf_url',       label: 'Logo Documentos PDF',  description: 'Cabeçalho de documentos PDF',                  dimensions: '200×60px'  },
+  { key: 'logo_relatorio_url', label: 'Logo Relatórios',      description: 'Cabeçalho de relatórios gerenciais',           dimensions: '200×60px'  },
 ];
 
 export function MasterLogoManager() {
