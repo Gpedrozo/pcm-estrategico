@@ -603,7 +603,13 @@ export default function SSMA() {
         </div>
 
         <TabsContent value="dashboard" className="mt-4">
-          <SSMADashboard />
+          <SSMADashboard
+            incidentes={incidentes || []}
+            permissoes={permissoes || []}
+            treinamentos={treinamentos || []}
+            epis={epis || []}
+            fichas={fichas || []}
+          />
         </TabsContent>
 
         <TabsContent value="incidentes" className="mt-4">

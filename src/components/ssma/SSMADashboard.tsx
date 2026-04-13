@@ -12,14 +12,14 @@ const CHART_COLORS = ['#ef4444', '#f97316', '#3b82f6', '#6b7280'];
 const CHART_STATUS_COLORS = ['#16a34a', '#ca8a04', '#ef4444', '#a855f7', '#6b7280'];
 
 interface Props {
-  incidentes: IncidenteSSMARow[];
-  permissoes: PermissaoTrabalhoRow[];
-  treinamentos: TreinamentoSSMARow[];
-  epis: EPIRow[];
-  fichas: FichaSegurancaRow[];
+  incidentes?: IncidenteSSMARow[];
+  permissoes?: PermissaoTrabalhoRow[];
+  treinamentos?: TreinamentoSSMARow[];
+  epis?: EPIRow[];
+  fichas?: FichaSegurancaRow[];
 }
 
-export function SSMADashboard({ incidentes, permissoes, treinamentos, epis, fichas }: Props) {
+export function SSMADashboard({ incidentes = [], permissoes = [], treinamentos = [], epis = [], fichas = [] }: Props) {
   // ── Dias sem acidentes ──────────────────────────────────────────────────────
   const diasSemAcidente = useMemo(() => {
     const acidentes = incidentes.filter(i => i.tipo === 'ACIDENTE');
