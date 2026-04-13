@@ -115,7 +115,7 @@ export function MasterEmpresaData() {
     ].filter(Boolean).join('\n');
 
     try {
-      await createTicket.mutateAsync({ subject, message, priority: 'normal', empresaId: empresa?.empresa_id });
+      await createTicket.mutateAsync({ subject, message, priority: 'media', empresaId: empresa?.empresa_id });
       toast({
         title: 'Chamado enviado!',
         description: 'Sua solicitação foi enviada ao Owner para análise.',
