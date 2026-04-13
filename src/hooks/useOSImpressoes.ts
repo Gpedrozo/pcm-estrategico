@@ -18,7 +18,7 @@ export function useOSImpressoesMap(osIds: string[]) {
   return useQuery({
     queryKey: ['os_impressoes_map', tenantId, osIds.join(',')],
     enabled: !!tenantId && osIds.length > 0,
-    staleTime: 30_000,
+    staleTime: 0,
     queryFn: async () => {
       const { data, error } = await supabase
         .from('os_impressoes' as any)
