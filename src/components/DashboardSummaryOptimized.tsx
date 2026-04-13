@@ -43,7 +43,7 @@ export function DashboardSummaryOptimized() {
           ) : (
             <>
               <div className="text-2xl font-bold">{data?.online_count || 0}</div>
-              <p className="text-xs text-gray-500">em tempo real</p>
+              <p className="text-xs text-muted-foreground">em tempo real</p>
             </>
           )}
         </CardContent>
@@ -61,7 +61,7 @@ export function DashboardSummaryOptimized() {
           ) : (
             <>
               <div className="text-2xl font-bold">{data?.executing_count || 0}</div>
-              <p className="text-xs text-gray-500">ordens serviço</p>
+              <p className="text-xs text-muted-foreground">ordens serviço</p>
             </>
           )}
         </CardContent>
@@ -79,7 +79,7 @@ export function DashboardSummaryOptimized() {
           ) : (
             <>
               <div className="text-2xl font-bold">{data?.gt_2h_count || 0}</div>
-              <p className="text-xs text-gray-500">sessões longas</p>
+              <p className="text-xs text-muted-foreground">sessões longas</p>
             </>
           )}
         </CardContent>
@@ -99,7 +99,7 @@ export function DashboardSummaryOptimized() {
               <div className="text-2xl font-bold">
                 R$ {(data?.cost_last_7_days || 0).toLocaleString('pt-BR', { maximumFractionDigits: 0 })}
               </div>
-              <p className="text-xs text-gray-500">últimos 7 dias</p>
+              <p className="text-xs text-muted-foreground">últimos 7 dias</p>
             </>
           )}
         </CardContent>
@@ -127,7 +127,7 @@ export function OSStatusDistribution() {
     { label: 'Emitida', key: 'emitida', color: 'bg-cyan-100 text-cyan-800' },
     { label: 'Em Execução', key: 'em_execucao', color: 'bg-yellow-100 text-yellow-800' },
     { label: 'Concluída', key: 'concluida', color: 'bg-green-100 text-green-800' },
-    { label: 'Cancelada', key: 'cancelada', color: 'bg-gray-100 text-gray-800' },
+    { label: 'Cancelada', key: 'cancelada', color: 'bg-muted text-foreground' },
   ];
 
   return (
@@ -146,7 +146,7 @@ export function OSStatusDistribution() {
                   {statusMap[key] || 0}
                 </span>
               </div>
-              <div className="w-full bg-gray-200 rounded-full h-2">
+              <div className="w-full bg-muted rounded-full h-2">
                 <div
                   className={`h-2 rounded-full transition-all ${color}`}
                   style={{ width: total > 0 ? `${((statusMap[key] || 0) / total) * 100}%` : '0%' }}
@@ -180,7 +180,7 @@ export function TopEquipamentosCard() {
           <CardTitle>Top Equipamentos</CardTitle>
         </CardHeader>
         <CardContent>
-          <p className="text-sm text-gray-500">Nenhum equipamento com ordens abertas</p>
+          <p className="text-sm text-muted-foreground">Nenhum equipamento com ordens abertas</p>
         </CardContent>
       </Card>
     );
@@ -196,10 +196,10 @@ export function TopEquipamentosCard() {
         <div className="space-y-3">
           {topEquip.map((eq, idx) => (
             <div key={eq.id} className="flex items-center gap-3">
-              <div className="text-xs font-bold text-gray-500 w-4">#{idx + 1}</div>
+              <div className="text-xs font-bold text-muted-foreground w-4">#{idx + 1}</div>
               <div className="flex-1">
                 <p className="text-sm font-medium">{eq.nome}</p>
-                <div className="text-xs text-gray-500">{eq.os_count} ordens abertas</div>
+                <div className="text-xs text-muted-foreground">{eq.os_count} ordens abertas</div>
               </div>
             </div>
           ))}

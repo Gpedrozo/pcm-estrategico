@@ -194,7 +194,7 @@ export default function DispositivosMoveis() {
                   </div>
 
                   {showQR === qr.id && (
-                    <div className="flex justify-center py-4 bg-white rounded-lg">
+                    <div className="flex justify-center py-4 bg-card rounded-lg">
                       <QRCodeDisplay value={`${window.location.origin}/app/vincular?token=${qr.token}`} size={200} />
                     </div>
                   )}

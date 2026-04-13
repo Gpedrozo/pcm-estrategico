@@ -69,7 +69,7 @@ export function EquipamentosAsyncSearch({ onSelect, disabled }: EquipamentosSear
       />
 
       {isLoading && (
-        <div className="flex items-center gap-2 text-sm text-gray-500">
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
           <Loader2 className="w-4 h-4 animate-spin" />
           Buscando...
         </div>
@@ -88,10 +88,10 @@ export function EquipamentosAsyncSearch({ onSelect, disabled }: EquipamentosSear
               <li key={item.id}>
                 <button
                   onClick={() => handleSelect(item)}
-                  className="w-full text-left px-3 py-2 hover:bg-gray-100 focus:outline-none focus:bg-gray-100 transition"
+                  className="w-full text-left px-3 py-2 hover:bg-muted focus:outline-none focus:bg-muted transition"
                 >
                   <div className="font-medium text-sm">{item.nome}</div>
-                  <div className="text-xs text-gray-500">
+                  <div className="text-xs text-muted-foreground">
                     {item.tipo && `${item.tipo} • `}
                     {item.localizacao && `Loc: ${item.localizacao}`}
                   </div>
@@ -102,8 +102,8 @@ export function EquipamentosAsyncSearch({ onSelect, disabled }: EquipamentosSear
 
           {/* Pagination controls */}
           {data.total > 50 && (
-            <div className="flex items-center justify-between border-t px-3 py-2 bg-gray-50">
-              <span className="text-xs text-gray-600">
+            <div className="flex items-center justify-between border-t px-3 py-2 bg-muted/50">
+              <span className="text-xs text-muted-foreground">
                 Página {page + 1} de {Math.ceil(data.total / 50)} ({data.total} total)
               </span>
               <div className="flex gap-1">
@@ -130,7 +130,7 @@ export function EquipamentosAsyncSearch({ onSelect, disabled }: EquipamentosSear
       )}
 
       {!isLoading && debouncedSearch && !hasResults && (
-        <p className="text-sm text-gray-500">Nenhum equipamento encontrado para "{debouncedSearch}"</p>
+        <p className="text-sm text-muted-foreground">Nenhum equipamento encontrado para "{debouncedSearch}"</p>
       )}
 
       {!searchTerm && !isLoading && (

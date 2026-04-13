@@ -1089,7 +1089,7 @@ export default function Owner() {
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <div className="flex items-center gap-3">
                     <div className={`h-3 w-3 rounded-full ${monitorSummary.healthy ? 'bg-emerald-500' : 'bg-rose-500'} animate-pulse`} />
-                    <p className="text-sm text-slate-700">{monitorSummary.healthy ? 'Operacional' : 'Atenção'} • atualização contínua</p>
+                    <p className="text-sm text-foreground">{monitorSummary.healthy ? 'Operacional' : 'Atenção'} • atualização contínua</p>
                   </div>
                   <span className={`rounded-full border px-3 py-1 text-xs font-semibold ${monitorSummary.healthy ? 'border-emerald-200 bg-emerald-50 text-emerald-700' : 'border-rose-200 bg-rose-50 text-rose-700'}`}>
                     {monitorSummary.availabilityPercent}% disponibilidade
@@ -1148,9 +1148,9 @@ export default function Owner() {
               </SurfaceCard>
 
               <SurfaceCard title="Tabelas conectadas" subtitle="Somente leitura, sem SQL na tela">
-                <div className="max-h-[240px] overflow-auto rounded-xl border border-slate-200">
+                <div className="max-h-[240px] overflow-auto rounded-xl border border-border">
                   <table className="w-full text-xs">
-                    <thead className="bg-slate-100">
+                    <thead className="bg-muted">
                       <tr>
                         <th className="px-2 py-2 text-left">Tabela</th>
                         <th className="px-2 py-2 text-left">Registros</th>
@@ -1158,14 +1158,14 @@ export default function Owner() {
                     </thead>
                     <tbody>
                       {tables.map((table, idx) => (
-                        <tr key={`${String(table.table_name ?? table.name ?? 'tb')}-${idx}`} className="border-t border-slate-200">
+                        <tr key={`${String(table.table_name ?? table.name ?? 'tb')}-${idx}`} className="border-t border-border">
                           <td className="px-2 py-2">{String(table.table_name ?? table.name ?? '-')}</td>
                           <td className="px-2 py-2">{asNumber(table.total_rows, 0).toLocaleString('pt-BR')}</td>
                         </tr>
                       ))}
                       {tables.length === 0 && (
                         <tr>
-                          <td className="px-2 py-3 text-slate-500" colSpan={2}>Sem tabelas para o escopo selecionado.</td>
+                          <td className="px-2 py-3 text-muted-foreground" colSpan={2}>Sem tabelas para o escopo selecionado.</td>
                         </tr>
                       )}
                     </tbody>
@@ -1306,10 +1306,10 @@ export default function Owner() {
                 {companyCredentialNote && (
                   <SurfaceCard title="Credenciais iniciais do cliente">
                     <p className="text-xs text-sky-700">Informação exibida somente agora. Compartilhe com segurança.</p>
-                    <pre className="mt-3 whitespace-pre-wrap rounded-lg border border-sky-200 bg-sky-50 p-3 text-xs leading-relaxed text-slate-800">{companyCredentialNote.noteText}</pre>
+                    <pre className="mt-3 whitespace-pre-wrap rounded-lg border border-sky-200 bg-sky-50 p-3 text-xs leading-relaxed text-foreground">{companyCredentialNote.noteText}</pre>
                     <div className="mt-3 flex flex-wrap gap-2">
-                      <button className="rounded-lg border border-sky-300 bg-white px-3 py-2 text-xs font-semibold text-sky-700 hover:bg-sky-100" onClick={copyCompanyCredentialNote}>Copiar nota</button>
-                      <a className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-100" href={companyCredentialNote.loginUrl} target="_blank" rel="noopener noreferrer">Abrir login do cliente</a>
+                      <button className="rounded-lg border border-sky-300 bg-background px-3 py-2 text-xs font-semibold text-sky-700 hover:bg-sky-100" onClick={copyCompanyCredentialNote}>Copiar nota</button>
+                      <a className="rounded-lg border border-input bg-background px-3 py-2 text-xs font-semibold text-foreground hover:bg-muted" href={companyCredentialNote.loginUrl} target="_blank" rel="noopener noreferrer">Abrir login do cliente</a>
                     </div>
                   </SurfaceCard>
                 )}
@@ -1380,15 +1380,15 @@ export default function Owner() {
                   <button className="rounded-lg bg-sky-700 px-3 py-2 text-sm font-semibold text-white" onClick={() => { setShowPlanForm(!showPlanForm); setEditingPlanId(''); setPlanCode(''); setPlanName(''); setPlanPrice('0'); setPlanDefaultPeriod('monthly'); }}>{showPlanForm && !editingPlanId ? 'Cancelar' : '+ Cadastrar Novo Plano'}</button>
                 </div>
                 {(showPlanForm || editingPlanId) && (
-                  <div className="mb-4 grid gap-2 rounded-lg border border-slate-200 bg-slate-50 p-3">
-                    <p className="text-xs font-semibold text-slate-600">{editingPlanId ? 'Editar Plano' : 'Novo Plano'}</p>
+                  <div className="mb-4 grid gap-2 rounded-lg border border-border bg-muted/50 p-3">
+                    <p className="text-xs font-semibold text-muted-foreground">{editingPlanId ? 'Editar Plano' : 'Novo Plano'}</p>
                     <div className="grid gap-2 sm:grid-cols-2">
-                      <input className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" value={planCode} onChange={(e) => setPlanCode(e.target.value)} placeholder="Código" />
-                      <input className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" value={planName} onChange={(e) => setPlanName(e.target.value)} placeholder="Nome" />
+                      <input className="rounded-lg border border-input bg-background px-2 py-2 text-sm" value={planCode} onChange={(e) => setPlanCode(e.target.value)} placeholder="Código" />
+                      <input className="rounded-lg border border-input bg-background px-2 py-2 text-sm" value={planName} onChange={(e) => setPlanName(e.target.value)} placeholder="Nome" />
                     </div>
                     <div className="grid gap-2 sm:grid-cols-2">
-                      <input className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" value={planPrice} onChange={(e) => setPlanPrice(e.target.value)} placeholder="Preço mensal" />
-                      <select className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" value={planDefaultPeriod} onChange={(e) => setPlanDefaultPeriod(e.target.value as 'monthly' | 'quarterly' | 'yearly')}>
+                      <input className="rounded-lg border border-input bg-background px-2 py-2 text-sm" value={planPrice} onChange={(e) => setPlanPrice(e.target.value)} placeholder="Preço mensal" />
+                      <select className="rounded-lg border border-input bg-background px-2 py-2 text-sm" value={planDefaultPeriod} onChange={(e) => setPlanDefaultPeriod(e.target.value as 'monthly' | 'quarterly' | 'yearly')}>
                         <option value="monthly">Mensal</option>
                         <option value="quarterly">Trimestral</option>
                         <option value="yearly">Anual</option>
@@ -1397,16 +1397,16 @@ export default function Owner() {
                     {editingPlanId ? (
                       <div className="flex gap-2">
                         <button className="rounded-lg bg-amber-600 px-3 py-2 text-sm font-semibold text-white" disabled={busy || !planCode || !planName} onClick={() => { runAction('update_plan', { plan: { id: editingPlanId, code: planCode.toUpperCase(), name: planName, description: `Periodicidade padrão: ${planDefaultPeriod}`, price_month: Number(planPrice || 0), module_flags: { default_periodicity: planDefaultPeriod } } }, 'Plano atualizado com sucesso.'); setEditingPlanId(''); setPlanCode(''); setPlanName(''); setPlanPrice('0'); setPlanDefaultPeriod('monthly'); }}>Alterar plano</button>
-                        <button className="rounded-lg border border-slate-300 px-3 py-2 text-sm" onClick={() => { setEditingPlanId(''); setPlanCode(''); setPlanName(''); setPlanPrice('0'); setPlanDefaultPeriod('monthly'); }}>Cancelar edição</button>
+                        <button className="rounded-lg border border-input px-3 py-2 text-sm" onClick={() => { setEditingPlanId(''); setPlanCode(''); setPlanName(''); setPlanPrice('0'); setPlanDefaultPeriod('monthly'); }}>Cancelar edição</button>
                       </div>
                     ) : (
                       <button className="rounded-lg bg-sky-700 px-3 py-2 text-sm font-semibold text-white" disabled={busy || !planCode || !planName} onClick={() => { runAction('create_plan', { plan: { code: planCode.toUpperCase(), name: planName, description: `Periodicidade padrão: ${planDefaultPeriod}`, price_month: Number(planPrice || 0), user_limit: 10, data_limit_mb: 2048, module_flags: { default_periodicity: planDefaultPeriod }, active: true } }, 'Plano criado com sucesso.'); setShowPlanForm(false); }}>Criar plano</button>
                     )}
                   </div>
                 )}
-                <div className="max-h-[420px] overflow-auto rounded-xl border border-slate-200">
+                <div className="max-h-[420px] overflow-auto rounded-xl border border-border">
                   <table className="w-full text-xs">
-                    <thead className="bg-slate-100">
+                    <thead className="bg-muted">
                       <tr>
                         <th className="px-2 py-2 text-left">Código</th>
                         <th className="px-2 py-2 text-left">Nome</th>
@@ -1420,7 +1420,7 @@ export default function Owner() {
                         const flags = (p as Record<string, unknown>).module_flags as Record<string, unknown> | undefined
                         const periodLabel = flags?.default_periodicity === 'yearly' ? 'Anual' : flags?.default_periodicity === 'quarterly' ? 'Trimestral' : 'Mensal'
                         return (
-                          <tr key={String(p.id)} className={`border-t border-slate-200 ${editingPlanId === String(p.id) ? 'bg-amber-50' : ''}`}>
+                          <tr key={String(p.id)} className={`border-t border-border ${editingPlanId === String(p.id) ? 'bg-amber-50' : ''}`}>
                             <td className="px-2 py-2">{String(p.code ?? '-')}</td>
                             <td className="px-2 py-2">{String(p.name ?? '-')}</td>
                             <td className="px-2 py-2">R$ {Number(p.price_month ?? 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
@@ -1431,7 +1431,7 @@ export default function Owner() {
                           </tr>
                         )
                       })}
-                      {plans.length === 0 && <tr><td colSpan={5} className="px-2 py-3 text-slate-500">Nenhum plano cadastrado.</td></tr>}
+                      {plans.length === 0 && <tr><td colSpan={5} className="px-2 py-3 text-muted-foreground">Nenhum plano cadastrado.</td></tr>}
                     </tbody>
                   </table>
                 </div>
@@ -1439,15 +1439,15 @@ export default function Owner() {
 
               {/* Assinaturas */}
               <SurfaceCard title="Assinaturas" subtitle="Cada empresa com plano, valor e periodicidade próprios">
-                <div className="mb-4 grid gap-2 rounded-lg border border-slate-200 bg-slate-50 p-3">
-                  <p className="text-xs font-semibold text-slate-600">Nova assinatura (empresa selecionada: {companyId || 'nenhuma'})</p>
+                <div className="mb-4 grid gap-2 rounded-lg border border-border bg-muted/50 p-3">
+                  <p className="text-xs font-semibold text-muted-foreground">Nova assinatura (empresa selecionada: {companyId || 'nenhuma'})</p>
                   <div className="grid gap-2 sm:grid-cols-3">
-                    <select className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" value={subscriptionPlanId} onChange={(e) => setSubscriptionPlanId(e.target.value)}>
+                    <select className="rounded-lg border border-input bg-background px-2 py-2 text-sm" value={subscriptionPlanId} onChange={(e) => setSubscriptionPlanId(e.target.value)}>
                       <option value="">Plano</option>
                       {plans.map((p) => <option key={String(p.id)} value={String(p.id)}>{String(p.name ?? p.code ?? p.id)}</option>)}
                     </select>
-                    <input className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" value={subscriptionAmount} onChange={(e) => setSubscriptionAmount(e.target.value)} placeholder="Valor" />
-                    <select className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" value={subscriptionPeriod} onChange={(e) => setSubscriptionPeriod(e.target.value as 'monthly' | 'quarterly' | 'yearly' | 'custom')}>
+                    <input className="rounded-lg border border-input bg-background px-2 py-2 text-sm" value={subscriptionAmount} onChange={(e) => setSubscriptionAmount(e.target.value)} placeholder="Valor" />
+                    <select className="rounded-lg border border-input bg-background px-2 py-2 text-sm" value={subscriptionPeriod} onChange={(e) => setSubscriptionPeriod(e.target.value as 'monthly' | 'quarterly' | 'yearly' | 'custom')}>
                       <option value="monthly">Mensal</option>
                       <option value="quarterly">Trimestral</option>
                       <option value="yearly">Anual</option>
@@ -1455,32 +1455,32 @@ export default function Owner() {
                     </select>
                   </div>
                   <div className="grid gap-2 sm:grid-cols-5">
-                    <select className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" value={subscriptionStatus} onChange={(e) => setSubscriptionStatus(e.target.value as 'ativa' | 'atrasada' | 'cancelada' | 'teste')}>
+                    <select className="rounded-lg border border-input bg-background px-2 py-2 text-sm" value={subscriptionStatus} onChange={(e) => setSubscriptionStatus(e.target.value as 'ativa' | 'atrasada' | 'cancelada' | 'teste')}>
                       <option value="teste">TESTE</option>
                       <option value="ativa">Ativa</option>
                       <option value="atrasada">Atrasada</option>
                       <option value="cancelada">Cancelada</option>
                     </select>
-                    <select className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" value={subscriptionPaymentMethod} onChange={(e) => setSubscriptionPaymentMethod(e.target.value)}>
+                    <select className="rounded-lg border border-input bg-background px-2 py-2 text-sm" value={subscriptionPaymentMethod} onChange={(e) => setSubscriptionPaymentMethod(e.target.value)}>
                       <option value="pix">PIX</option>
                       <option value="boleto">Boleto</option>
                       <option value="credit_card">Cartao de credito</option>
                     </select>
-                    <input className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" type="date" value={subscriptionStartsAt} onChange={(e) => setSubscriptionStartsAt(e.target.value)} title="Inicio" />
-                    <input className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" type="date" value={subscriptionRenewalAt} onChange={(e) => setSubscriptionRenewalAt(e.target.value)} title="Proximo vencimento" />
-                    <input className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" type="date" value={subscriptionEndsAt} onChange={(e) => setSubscriptionEndsAt(e.target.value)} title="Fim (opcional)" />
+                    <input className="rounded-lg border border-input bg-background px-2 py-2 text-sm" type="date" value={subscriptionStartsAt} onChange={(e) => setSubscriptionStartsAt(e.target.value)} title="Inicio" />
+                    <input className="rounded-lg border border-input bg-background px-2 py-2 text-sm" type="date" value={subscriptionRenewalAt} onChange={(e) => setSubscriptionRenewalAt(e.target.value)} title="Proximo vencimento" />
+                    <input className="rounded-lg border border-input bg-background px-2 py-2 text-sm" type="date" value={subscriptionEndsAt} onChange={(e) => setSubscriptionEndsAt(e.target.value)} title="Fim (opcional)" />
                   </div>
                   <div className="flex flex-wrap gap-2">
                     <button className="rounded-lg bg-sky-700 px-3 py-2 text-sm font-semibold text-white" disabled={busy || !companyId || !subscriptionPlanId} onClick={() => runAction('create_subscription', { subscription: { empresa_id: companyId, plan_id: subscriptionPlanId, amount: Number(subscriptionAmount || 0), period: subscriptionPeriod, payment_method: subscriptionPaymentMethod, starts_at: subscriptionStartsAt || undefined, renewal_at: subscriptionRenewalAt || undefined, ends_at: subscriptionEndsAt || undefined, status: subscriptionStatus } }, 'Assinatura criada com sucesso.')}>Criar assinatura</button>
-                    <button className="rounded-lg border border-slate-300 px-3 py-2 text-sm" disabled={busy || !companyId} onClick={() => runAction('set_subscription_status', { empresa_id: companyId, status: 'ativa' }, 'Assinatura ativada.')}>Ativar assinatura</button>
+                    <button className="rounded-lg border border-input px-3 py-2 text-sm" disabled={busy || !companyId} onClick={() => runAction('set_subscription_status', { empresa_id: companyId, status: 'ativa' }, 'Assinatura ativada.')}>Ativar assinatura</button>
                     <button className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-700" disabled={busy || !isOwnerMaster} onClick={() => runAction('enforce_subscription_expiry', {}, 'Vencimentos processados.')}>Processar vencimentos</button>
-                    <input className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" value={planCodeToChange} onChange={(e) => setPlanCodeToChange(e.target.value)} placeholder="Código novo plano" />
+                    <input className="rounded-lg border border-input bg-background px-2 py-2 text-sm" value={planCodeToChange} onChange={(e) => setPlanCodeToChange(e.target.value)} placeholder="Código novo plano" />
                     <button className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-700" disabled={busy || !companyId || !planCodeToChange} onClick={() => runAction('change_plan', { empresa_id: companyId, plano_codigo: planCodeToChange.toUpperCase() }, 'Plano alterado.')}>Trocar plano</button>
                   </div>
                 </div>
-                <div className="max-h-[420px] overflow-auto rounded-xl border border-slate-200">
+                <div className="max-h-[420px] overflow-auto rounded-xl border border-border">
                   <table className="w-full text-xs">
-                    <thead className="bg-slate-100">
+                    <thead className="bg-muted">
                       <tr>
                         <th className="px-2 py-2 text-left">Empresa</th>
                         <th className="px-2 py-2 text-left">Plano</th>
@@ -1497,7 +1497,7 @@ export default function Owner() {
                         const fmtDate = (d: string | null) => d ? new Date(d).toLocaleDateString('pt-BR') : '–'
                         const planObj = plans.find((p) => String(p.id) === String(s.plan_id ?? (s as Record<string, unknown>).plano_id))
                         return (
-                          <tr key={`${String(s.id ?? 'sub')}-${idx}`} className="border-t border-slate-200">
+                          <tr key={`${String(s.id ?? 'sub')}-${idx}`} className="border-t border-border">
                             <td className="px-2 py-2">{String(s.empresa_id ?? '-')}</td>
                             <td className="px-2 py-2">{planObj ? String(planObj.name ?? planObj.code) : String(s.plan_id ?? (s as Record<string, unknown>).plano_id ?? '-')}</td>
                             <td className="px-2 py-2"><span className={`rounded border px-2 py-0.5 ${statusColor(st)}`}>{st}</span></td>
@@ -1508,7 +1508,7 @@ export default function Owner() {
                           </tr>
                         )
                       })}
-                      {subscriptions.length === 0 && <tr><td colSpan={5} className="px-2 py-3 text-slate-500">Nenhuma assinatura.</td></tr>}
+                      {subscriptions.length === 0 && <tr><td colSpan={5} className="px-2 py-3 text-muted-foreground">Nenhuma assinatura.</td></tr>}
                     </tbody>
                   </table>
                 </div>
@@ -1527,10 +1527,10 @@ export default function Owner() {
                     <MetricTile label="Assinaturas atrasadas" value={financeSummary.late} icon={AlertTriangle} tone="amber" />
                     <MetricTile label="ARPA" value={`R$ ${financeSummary.arpa.toLocaleString('pt-BR', { maximumFractionDigits: 2 })}`} icon={Database} tone="rose" />
                   </div>
-                  <div className="mt-3 rounded-xl border border-slate-200 bg-white p-2">
+                  <div className="mt-3 rounded-xl border border-border bg-card p-2">
                     <div className="mb-2 flex items-center justify-between">
-                      <p className="text-xs text-slate-500">Status de pagamento</p>
-                      <button className="inline-flex items-center gap-1 rounded-lg border border-slate-300 bg-white px-2 py-1 text-[11px] font-semibold text-slate-700" onClick={exportFinanceCsv}>
+                      <p className="text-xs text-muted-foreground">Status de pagamento</p>
+                      <button className="inline-flex items-center gap-1 rounded-lg border border-input bg-background px-2 py-1 text-[11px] font-semibold text-foreground" onClick={exportFinanceCsv}>
                         <Download className="h-3 w-3" /> Exportar CSV
                       </button>
                     </div>
@@ -1551,22 +1551,22 @@ export default function Owner() {
                 <div className="grid gap-4">
                   {/* ASAAS Status Indicator */}
                   <SurfaceCard title="Status ASAAS" subtitle="Integracao com gateway de pagamento">
-                    <div className="flex items-center gap-3 rounded-xl border p-3 ${asaasHealthOk ? 'border-emerald-200 bg-emerald-50' : asaasHealthOk === false ? 'border-rose-200 bg-rose-50' : 'border-slate-200 bg-slate-50'}">
+                    <div className="flex items-center gap-3 rounded-xl border p-3 ${asaasHealthOk ? 'border-emerald-200 bg-emerald-50' : asaasHealthOk === false ? 'border-rose-200 bg-rose-50' : 'border-border bg-muted/50'}">
                       {asaasHealthOk === null ? (
-                        <><Loader2 className="h-5 w-5 animate-spin text-slate-400" /><div><p className="text-sm font-semibold text-slate-700">Verificando...</p><p className="text-xs text-slate-500">Checando API key do ASAAS</p></div></>
+                        <><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /><div><p className="text-sm font-semibold text-foreground">Verificando...</p><p className="text-xs text-muted-foreground">Checando API key do ASAAS</p></div></>
                       ) : asaasHealthOk ? (
                         <><CheckCircle2 className="h-5 w-5 text-emerald-600" /><div><p className="text-sm font-semibold text-emerald-700">ASAAS conectado</p><p className="text-xs text-emerald-600">API key configurada. Webhooks e sync prontos.</p></div></>
                       ) : (
                         <><XCircle className="h-5 w-5 text-rose-600" /><div><p className="text-sm font-semibold text-rose-700">ASAAS nao configurado</p><p className="text-xs text-rose-600">Defina ASAAS_API_KEY nos secrets do Supabase.</p></div></>
                       )}
                     </div>
-                    <p className="mt-2 text-[11px] text-slate-400">Para configurar: <code className="rounded bg-slate-100 px-1">supabase secrets set ASAAS_API_KEY=seu_token</code></p>
+                    <p className="mt-2 text-[11px] text-muted-foreground">Para configurar: <code className="rounded bg-muted px-1">supabase secrets set ASAAS_API_KEY=seu_token</code></p>
                   </SurfaceCard>
 
                   {/* Atualizar cobranca */}
                   <SurfaceCard title="Atualizar cobranca" subtitle="Alterar valor ou status de pagamento">
                     <div className="grid gap-2">
-                      <select className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" value={billingSubscriptionId} onChange={(e) => setBillingSubscriptionId(e.target.value)}>
+                      <select className="rounded-lg border border-input bg-background px-2 py-2 text-sm" value={billingSubscriptionId} onChange={(e) => setBillingSubscriptionId(e.target.value)}>
                         <option value="">Selecione a assinatura</option>
                         {subscriptions.map((s, idx) => {
                           const provider = String(s.billing_provider ?? 'manual')
@@ -1580,8 +1580,8 @@ export default function Owner() {
                           )
                         })}
                       </select>
-                      <input className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" placeholder="Novo valor (opcional)" value={billingAmount} onChange={(e) => setBillingAmount(e.target.value)} />
-                      <select className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" value={billingPaymentStatus} onChange={(e) => setBillingPaymentStatus(e.target.value)}>
+                      <input className="rounded-lg border border-input bg-background px-2 py-2 text-sm" placeholder="Novo valor (opcional)" value={billingAmount} onChange={(e) => setBillingAmount(e.target.value)} />
+                      <select className="rounded-lg border border-input bg-background px-2 py-2 text-sm" value={billingPaymentStatus} onChange={(e) => setBillingPaymentStatus(e.target.value)}>
                         <option value="paid">Pago</option>
                         <option value="late">Atrasado</option>
                         <option value="pending">Pendente</option>
@@ -1605,9 +1605,9 @@ export default function Owner() {
 
               {/* Row 2: Assinaturas com badges de provider */}
               <SurfaceCard title="Assinaturas" subtitle="Todas as assinaturas com status do provider">
-                <div className="max-h-[350px] overflow-auto rounded-xl border border-slate-200">
+                <div className="max-h-[350px] overflow-auto rounded-xl border border-border">
                   <table className="w-full text-xs">
-                    <thead className="sticky top-0 bg-slate-100">
+                    <thead className="sticky top-0 bg-muted">
                       <tr>
                         <th className="px-2 py-2 text-left">Empresa</th>
                         <th className="px-2 py-2 text-left">Provider</th>
@@ -1625,11 +1625,11 @@ export default function Owner() {
                           ? 'bg-violet-100 text-violet-700 border-violet-200'
                           : provider === 'stripe'
                             ? 'bg-indigo-100 text-indigo-700 border-indigo-200'
-                            : 'bg-slate-100 text-slate-600 border-slate-200'
+                            : 'bg-muted text-muted-foreground border-border'
                         const empresa = companies.find((c) => String(c.id) === String(s.empresa_id))
                         const empresaLabel = empresa ? String(empresa.nome ?? empresa.slug ?? '') : String(s.empresa_id ?? '-').slice(0, 8)
                         return (
-                          <tr key={`fs-${String(s.id ?? idx)}`} className="border-t border-slate-200 hover:bg-slate-50">
+                          <tr key={`fs-${String(s.id ?? idx)}`} className="border-t border-border hover:bg-muted/50">
                             <td className="px-2 py-2 font-medium">{empresaLabel}</td>
                             <td className="px-2 py-2">
                               <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-semibold ${providerBadge}`}>
@@ -1639,7 +1639,7 @@ export default function Owner() {
                             <td className="px-2 py-2">R$ {asNumber(s.amount, 0).toLocaleString('pt-BR')}</td>
                             <td className="px-2 py-2"><span className={`inline-block rounded-full border px-2 py-0.5 text-[10px] font-semibold ${statusColor(String(s.status ?? ''))}`}>{String(s.status ?? '-')}</span></td>
                             <td className="px-2 py-2"><span className={`inline-block rounded-full border px-2 py-0.5 text-[10px] font-semibold ${statusColor(String(s.payment_status ?? ''))}`}>{String(s.payment_status ?? '-')}</span></td>
-                            <td className="px-2 py-2 text-slate-500">{s.renewal_at ? new Date(String(s.renewal_at)).toLocaleDateString('pt-BR') : '-'}</td>
+                            <td className="px-2 py-2 text-muted-foreground">{s.renewal_at ? new Date(String(s.renewal_at)).toLocaleDateString('pt-BR') : '-'}</td>
                             <td className="px-2 py-2">
                               <div className="flex gap-1">
                                 {isOwnerMaster && provider === 'asaas' && (
@@ -1667,7 +1667,7 @@ export default function Owner() {
                           </tr>
                         )
                       })}
-                      {subscriptions.length === 0 && <tr><td colSpan={7} className="px-2 py-4 text-center text-slate-500">Nenhuma assinatura.</td></tr>}
+                      {subscriptions.length === 0 && <tr><td colSpan={7} className="px-2 py-4 text-center text-muted-foreground">Nenhuma assinatura.</td></tr>}
                     </tbody>
                   </table>
                 </div>
@@ -1679,7 +1679,7 @@ export default function Owner() {
                 {isOwnerMaster ? (
                   <SurfaceCard title="Vincular ASAAS" subtitle="Conectar assinatura local ao ASAAS">
                     <div className="grid gap-2">
-                      <select className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" value={billingSubscriptionId} onChange={(e) => setBillingSubscriptionId(e.target.value)}>
+                      <select className="rounded-lg border border-input bg-background px-2 py-2 text-sm" value={billingSubscriptionId} onChange={(e) => setBillingSubscriptionId(e.target.value)}>
                         <option value="">Selecione a assinatura</option>
                         {subscriptions.map((s, idx) => {
                           const empresa = companies.find((c) => String(c.id) === String(s.empresa_id))
@@ -1691,8 +1691,8 @@ export default function Owner() {
                           )
                         })}
                       </select>
-                      <input className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" placeholder="Asaas customer ID (cus_xxx)" value={asaasCustomerId} onChange={(e) => setAsaasCustomerId(e.target.value)} />
-                      <input className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" placeholder="Asaas subscription ID (sub_xxx)" value={asaasSubscriptionId} onChange={(e) => setAsaasSubscriptionId(e.target.value)} />
+                      <input className="rounded-lg border border-input bg-background px-2 py-2 text-sm" placeholder="Asaas customer ID (cus_xxx)" value={asaasCustomerId} onChange={(e) => setAsaasCustomerId(e.target.value)} />
+                      <input className="rounded-lg border border-input bg-background px-2 py-2 text-sm" placeholder="Asaas subscription ID (sub_xxx)" value={asaasSubscriptionId} onChange={(e) => setAsaasSubscriptionId(e.target.value)} />
                       <div className="grid gap-2 sm:grid-cols-2">
                         <button
                           className="inline-flex items-center justify-center gap-1 rounded-lg border border-violet-300 bg-violet-50 px-3 py-2 text-sm font-semibold text-violet-700 hover:bg-violet-100"
@@ -1720,13 +1720,13 @@ export default function Owner() {
                           <RefreshCw className="h-4 w-4" /> Sincronizar agora
                         </button>
                       </div>
-                      <p className="text-[11px] text-slate-400">Ao vincular, o webhook do ASAAS vai atualizar status e pagamentos automaticamente.</p>
+                      <p className="text-[11px] text-muted-foreground">Ao vincular, o webhook do ASAAS vai atualizar status e pagamentos automaticamente.</p>
                     </div>
                   </SurfaceCard>
                 ) : (
                   <SurfaceCard title="Integracao ASAAS" subtitle="Area restrita">
-                    <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 text-center">
-                      <p className="text-sm text-slate-500">Vinculacao e sincronizacao ASAAS disponivel apenas para OWNER_MASTER.</p>
+                    <div className="rounded-xl border border-border bg-muted/50 p-4 text-center">
+                      <p className="text-sm text-muted-foreground">Vinculacao e sincronizacao ASAAS disponivel apenas para OWNER_MASTER.</p>
                     </div>
                   </SurfaceCard>
                 )}
@@ -1735,13 +1735,13 @@ export default function Owner() {
                 <SurfaceCard title="Historico de pagamentos" subtitle={`${payments.length} pagamento(s) registrado(s)`}>
                   {paymentsLoading ? (
                     <div className="flex items-center justify-center py-8">
-                      <Loader2 className="h-5 w-5 animate-spin text-slate-400" />
-                      <span className="ml-2 text-sm text-slate-500">Carregando pagamentos...</span>
+                      <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                      <span className="ml-2 text-sm text-muted-foreground">Carregando pagamentos...</span>
                     </div>
                   ) : (
-                    <div className="max-h-[320px] overflow-auto rounded-xl border border-slate-200">
+                    <div className="max-h-[320px] overflow-auto rounded-xl border border-border">
                       <table className="w-full text-xs">
-                        <thead className="sticky top-0 bg-slate-100">
+                        <thead className="sticky top-0 bg-muted">
                           <tr>
                             <th className="px-2 py-2 text-left">Data</th>
                             <th className="px-2 py-2 text-left">Valor</th>
@@ -1759,32 +1759,32 @@ export default function Owner() {
                                 ? 'bg-amber-100 text-amber-700 border-amber-200'
                                 : pStatus === 'failed' || pStatus === 'falhou'
                                   ? 'bg-rose-100 text-rose-700 border-rose-200'
-                                  : 'bg-slate-100 text-slate-600 border-slate-200'
+                                  : 'bg-muted text-muted-foreground border-border'
                             const pProvider = String(p.provider ?? 'manual')
                             const pProviderBadge = pProvider === 'asaas'
                               ? 'bg-violet-100 text-violet-700 border-violet-200'
                               : pProvider === 'stripe'
                                 ? 'bg-indigo-100 text-indigo-700 border-indigo-200'
-                                : 'bg-slate-100 text-slate-600 border-slate-200'
+                                : 'bg-muted text-muted-foreground border-border'
                             return (
-                              <tr key={`pay-${String(p.id ?? idx)}`} className="border-t border-slate-200 hover:bg-slate-50">
-                                <td className="px-2 py-2 text-slate-600">
+                              <tr key={`pay-${String(p.id ?? idx)}`} className="border-t border-border hover:bg-muted/50">
+                                <td className="px-2 py-2 text-muted-foreground">
                                   {p.paid_at ? new Date(String(p.paid_at)).toLocaleDateString('pt-BR') : p.due_at ? new Date(String(p.due_at)).toLocaleDateString('pt-BR') : '-'}
                                 </td>
                                 <td className="px-2 py-2 font-medium">R$ {asNumber(p.amount, 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
                                 <td className="px-2 py-2"><span className={`inline-block rounded-full border px-2 py-0.5 text-[10px] font-semibold ${pStatusBadge}`}>{String(p.status ?? '-')}</span></td>
                                 <td className="px-2 py-2"><span className={`inline-block rounded-full border px-2 py-0.5 text-[10px] font-semibold ${pProviderBadge}`}>{pProvider.toUpperCase()}</span></td>
-                                <td className="px-2 py-2 text-slate-500">{String(p.method ?? '-')}</td>
+                                <td className="px-2 py-2 text-muted-foreground">{String(p.method ?? '-')}</td>
                               </tr>
                             )
                           })}
-                          {payments.length === 0 && <tr><td colSpan={5} className="px-2 py-4 text-center text-slate-500">Nenhum pagamento registrado.</td></tr>}
+                          {payments.length === 0 && <tr><td colSpan={5} className="px-2 py-4 text-center text-muted-foreground">Nenhum pagamento registrado.</td></tr>}
                         </tbody>
                       </table>
                     </div>
                   )}
                   <button
-                    className="mt-2 inline-flex items-center gap-1 rounded-lg border border-slate-300 bg-white px-2 py-1 text-[11px] font-semibold text-slate-700 hover:bg-slate-50"
+                    className="mt-2 inline-flex items-center gap-1 rounded-lg border border-input bg-background px-2 py-1 text-[11px] font-semibold text-foreground hover:bg-muted/50"
                     disabled={paymentsLoading}
                     onClick={() => { setPaymentsLoaded(false) }}
                   >
@@ -1799,7 +1799,7 @@ export default function Owner() {
             <div className="grid gap-4 xl:grid-cols-2">
               <SurfaceCard title="Gerenciar contrato">
                 <div className="grid gap-2">
-                  <select className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" value={selectedContractId} onChange={(e) => setSelectedContractId(e.target.value)}>
+                  <select className="rounded-lg border border-input bg-background px-2 py-2 text-sm" value={selectedContractId} onChange={(e) => setSelectedContractId(e.target.value)}>
                     <option value="">Selecione o contrato</option>
                     {contracts.map((c) => {
                       const empNome = String((c.empresas as any)?.nome ?? c.empresa_id ?? '-')
@@ -1808,8 +1808,8 @@ export default function Owner() {
                       return <option key={String(c.id)} value={String(c.id)}>{empNome} — v{ver} ({st})</option>
                     })}
                   </select>
-                  <textarea className="min-h-[300px] rounded-lg border border-slate-300 bg-white px-3 py-3 text-xs font-mono leading-relaxed" value={contractContent} onChange={(e) => setContractContent(e.target.value)} placeholder="Conteúdo do contrato" />
-                  <input className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" value={contractSummary} onChange={(e) => setContractSummary(e.target.value)} placeholder="Resumo da alteração" />
+                  <textarea className="min-h-[300px] rounded-lg border border-input bg-background px-3 py-3 text-xs font-mono leading-relaxed" value={contractContent} onChange={(e) => setContractContent(e.target.value)} placeholder="Conteúdo do contrato" />
+                  <input className="rounded-lg border border-input bg-background px-2 py-2 text-sm" value={contractSummary} onChange={(e) => setContractSummary(e.target.value)} placeholder="Resumo da alteração" />
                   <div className="grid gap-2 sm:grid-cols-3">
                     <button className="rounded-lg bg-sky-700 px-3 py-2 text-sm font-semibold text-white hover:bg-sky-800" disabled={busy || !selectedContractId} onClick={() => { runAction('update_contract', { contract_id: selectedContractId, content: contractContent, summary: contractSummary }, 'Contrato atualizado.'); contractsQuery.refetch() }}>Salvar alterações</button>
                     <button className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-700" disabled={busy || !selectedContractId} onClick={() => { runAction('regenerate_contract', { contract_id: selectedContractId }, 'Contrato regenerado.'); contractsQuery.refetch() }}>Regenerar contrato</button>
@@ -1819,9 +1819,9 @@ export default function Owner() {
               </SurfaceCard>
 
               <SurfaceCard title="Contratos cadastrados">
-                <div className="max-h-[520px] overflow-auto rounded-xl border border-slate-200">
+                <div className="max-h-[520px] overflow-auto rounded-xl border border-border">
                   <table className="w-full text-xs">
-                    <thead className="bg-slate-100 sticky top-0">
+                    <thead className="bg-muted sticky top-0">
                       <tr>
                         <th className="px-2 py-2 text-left">Empresa</th>
                         <th className="px-2 py-2 text-left">Versão</th>
@@ -1832,14 +1832,14 @@ export default function Owner() {
                     </thead>
                     <tbody>
                       {contracts.length === 0 && (
-                        <tr><td colSpan={5} className="px-2 py-4 text-center text-slate-400">Nenhum contrato encontrado</td></tr>
+                        <tr><td colSpan={5} className="px-2 py-4 text-center text-muted-foreground">Nenhum contrato encontrado</td></tr>
                       )}
                       {contracts.map((c) => {
                         const empNome = String((c.empresas as any)?.nome ?? c.empresa_id ?? '-')
                         const st = String(c.status ?? '-')
                         const isSelected = String(c.id) === selectedContractId
                         return (
-                          <tr key={String(c.id)} className={`border-t border-slate-200 cursor-pointer hover:bg-slate-50 ${isSelected ? 'bg-sky-50' : ''}`} onClick={() => setSelectedContractId(String(c.id ?? ''))}>
+                          <tr key={String(c.id)} className={`border-t border-border cursor-pointer hover:bg-muted/50 ${isSelected ? 'bg-sky-50' : ''}`} onClick={() => setSelectedContractId(String(c.id ?? ''))}>
                             <td className="px-2 py-2 font-medium">{empNome}</td>
                             <td className="px-2 py-2">v{String(c.version ?? '1')}</td>
                             <td className="px-2 py-2"><span className={`rounded border px-2 py-0.5 ${statusColor(st)}`}>{st}</span></td>
@@ -1895,7 +1895,7 @@ export default function Owner() {
               if (pl === 'critica' || pl === 'critical') return 'bg-purple-100 text-purple-700 border-purple-200'
               if (pl === 'alta' || pl === 'high' || pl === 'urgente') return 'bg-red-100 text-red-700 border-red-200'
               if (pl === 'media' || pl === 'medium' || pl === 'média') return 'bg-amber-100 text-amber-700 border-amber-200'
-              return 'bg-slate-100 text-slate-600 border-slate-200'
+              return 'bg-muted text-muted-foreground border-border'
             }
 
             const handleOwnerUploadAndRespond = async () => {
@@ -1938,7 +1938,7 @@ export default function Owner() {
                   <div className="xl:col-span-2">
                     <SurfaceCard title={`Tickets (${tickets.length})`}>
                       <div className="max-h-[520px] overflow-auto space-y-1">
-                        {tickets.length === 0 && <p className="text-sm text-slate-400 py-4 text-center">Nenhum ticket</p>}
+                        {tickets.length === 0 && <p className="text-sm text-muted-foreground py-4 text-center">Nenhum ticket</p>}
                         {tickets.map((t) => {
                           const tid = String(t.id)
                           const st = String(t.status ?? 'aberto')
@@ -1950,19 +1950,19 @@ export default function Owner() {
                           const empNome = emp ? String(emp.nome ?? emp.slug ?? '') : ''
                           const req = getRequesterInfo(t)
                           return (
-                            <button key={tid} type="button" onClick={() => void handleSelectTicket(tid)} className={`w-full text-left p-3 rounded-lg border transition-all ${isSel ? 'border-sky-400 bg-sky-50' : 'border-slate-200 hover:border-slate-300 hover:bg-slate-50'}`}>
+                            <button key={tid} type="button" onClick={() => void handleSelectTicket(tid)} className={`w-full text-left p-3 rounded-lg border transition-all ${isSel ? 'border-sky-400 bg-sky-50' : 'border-border hover:border-input hover:bg-muted/50'}`}>
                               <div className="flex items-start justify-between gap-2">
                                 <div className="min-w-0 flex-1">
                                   <p className={`text-sm font-medium truncate ${isSel ? 'text-sky-800' : ''}`}>{String(t.subject ?? 'Sem assunto')}</p>
-                                  <p className="text-xs text-slate-500 mt-0.5 truncate">{req.nome}</p>
-                                  {empNome && <p className="text-[10px] text-slate-400">{empNome}</p>}
+                                  <p className="text-xs text-muted-foreground mt-0.5 truncate">{req.nome}</p>
+                                  {empNome && <p className="text-[10px] text-muted-foreground">{empNome}</p>}
                                 </div>
                                 {unread > 0 && <span className="shrink-0 rounded-full bg-sky-600 text-white text-[10px] font-bold px-1.5 py-0.5">{unread}</span>}
                               </div>
                               <div className="flex items-center gap-2 mt-2">
                                 <span className={`rounded border px-1.5 py-0.5 text-[10px] font-medium ${statusColor(st)}`}>{st}</span>
                                 <span className={`rounded border px-1.5 py-0.5 text-[10px] font-medium ${priBadge(pri)}`}>{pri}</span>
-                                <span className="text-[10px] text-slate-400 ml-auto">{created}</span>
+                                <span className="text-[10px] text-muted-foreground ml-auto">{created}</span>
                               </div>
                             </button>
                           )
@@ -1976,15 +1976,15 @@ export default function Owner() {
                       <>
                         <SurfaceCard title={String(selectedTicket.subject ?? 'Ticket')}>
                           <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs mb-3">
-                            <div><span className="text-slate-400">Status:</span> <span className={`rounded border px-1.5 py-0.5 font-medium ${statusColor(String(selectedTicket.status ?? ''))}`}>{String(selectedTicket.status ?? '—')}</span></div>
-                            <div><span className="text-slate-400">Prioridade:</span> <span className={`rounded border px-1.5 py-0.5 font-medium ${priBadge(String(selectedTicket.priority ?? 'baixa'))}`}>{String(selectedTicket.priority ?? '—')}</span></div>
-                            <div><span className="text-slate-400">Criado:</span> {selectedTicket.created_at ? new Date(String(selectedTicket.created_at)).toLocaleString('pt-BR') : '—'}</div>
-                            <div><span className="text-slate-400">Empresa:</span> {(() => { const emp = selectedTicket.empresas as Record<string, unknown> | null; return emp ? String(emp.nome ?? emp.slug ?? String(selectedTicket.empresa_id ?? '—').slice(0, 8)) : String(selectedTicket.empresa_id ?? '—').slice(0, 8) })()}</div>
+                            <div><span className="text-muted-foreground">Status:</span> <span className={`rounded border px-1.5 py-0.5 font-medium ${statusColor(String(selectedTicket.status ?? ''))}`}>{String(selectedTicket.status ?? '—')}</span></div>
+                            <div><span className="text-muted-foreground">Prioridade:</span> <span className={`rounded border px-1.5 py-0.5 font-medium ${priBadge(String(selectedTicket.priority ?? 'baixa'))}`}>{String(selectedTicket.priority ?? '—')}</span></div>
+                            <div><span className="text-muted-foreground">Criado:</span> {selectedTicket.created_at ? new Date(String(selectedTicket.created_at)).toLocaleString('pt-BR') : '—'}</div>
+                            <div><span className="text-muted-foreground">Empresa:</span> {(() => { const emp = selectedTicket.empresas as Record<string, unknown> | null; return emp ? String(emp.nome ?? emp.slug ?? String(selectedTicket.empresa_id ?? '—').slice(0, 8)) : String(selectedTicket.empresa_id ?? '—').slice(0, 8) })()}</div>
                           </div>
-                          <div className="flex items-center gap-3 text-xs mb-3 p-2 rounded-lg bg-slate-50 border border-slate-200">
-                            <span className="text-slate-400">Solicitante:</span>
+                          <div className="flex items-center gap-3 text-xs mb-3 p-2 rounded-lg bg-muted/50 border border-border">
+                            <span className="text-muted-foreground">Solicitante:</span>
                             <span className="font-medium">{getRequesterInfo(selectedTicket).nome}</span>
-                            {getRequesterInfo(selectedTicket).email && <span className="text-slate-400">({getRequesterInfo(selectedTicket).email})</span>}
+                            {getRequesterInfo(selectedTicket).email && <span className="text-muted-foreground">({getRequesterInfo(selectedTicket).email})</span>}
                           </div>
                           {isOwnerMaster && (
                             <div className="flex justify-end">
@@ -1997,7 +1997,7 @@ export default function Owner() {
 
                         <SurfaceCard title={`Conversa (${ticketMessages.length} mensagens)`}>
                           <div className="max-h-[420px] overflow-auto space-y-2 pr-1">
-                            {ticketMessages.length === 0 && <p className="text-sm text-slate-400 py-4 text-center">Nenhuma mensagem ainda</p>}
+                            {ticketMessages.length === 0 && <p className="text-sm text-muted-foreground py-4 text-center">Nenhuma mensagem ainda</p>}
                             {ticketMessages.map((msg, idx) => {
                               const sender = String((msg as any).sender ?? 'client')
                               const isOwnerMsg = sender === 'owner' || sender === 'system'
@@ -2005,10 +2005,10 @@ export default function Owner() {
                               const time = (msg as any).created_at ? new Date(String((msg as any).created_at)).toLocaleString('pt-BR') : ''
                               const atts = Array.isArray((msg as any).attachments) ? (msg as any).attachments as string[] : []
                               return (
-                                <div key={(msg as any).id ?? idx} className={`p-3 rounded-lg text-sm ${isOwnerMsg ? 'bg-sky-50 border border-sky-200 ml-8' : 'bg-slate-50 border border-slate-200 mr-8'}`}>
+                                <div key={(msg as any).id ?? idx} className={`p-3 rounded-lg text-sm ${isOwnerMsg ? 'bg-sky-50 border border-sky-200 ml-8' : 'bg-muted/50 border border-border mr-8'}`}>
                                   <div className="flex items-center gap-2 mb-1">
-                                    <span className={`text-[10px] font-bold uppercase ${isOwnerMsg ? 'text-sky-600' : 'text-slate-500'}`}>{isOwnerMsg ? 'Suporte (Owner)' : 'Cliente'}</span>
-                                    {time && <span className="text-[10px] text-slate-400">{time}</span>}
+                                    <span className={`text-[10px] font-bold uppercase ${isOwnerMsg ? 'text-sky-600' : 'text-muted-foreground'}`}>{isOwnerMsg ? 'Suporte (Owner)' : 'Cliente'}</span>
+                                    {time && <span className="text-[10px] text-muted-foreground">{time}</span>}
                                   </div>
                                   <p className="whitespace-pre-wrap">{content}</p>
                                   {isOwnerMsg && idx === ticketMessages.length - 1 && Number(selectedTicket?.unread_client_messages ?? 1) === 0 && (
@@ -2022,7 +2022,7 @@ export default function Owner() {
                                       {atts.map((url, ai) => (
                                         <div key={ai}>
                                           {isImageUrl(url) ? (
-                                            <a href={url} target="_blank" rel="noopener noreferrer" className="block"><img src={url} alt="Anexo" loading="lazy" className="max-h-40 rounded-md border border-slate-200 object-contain hover:opacity-90 transition-opacity" /></a>
+                                            <a href={url} target="_blank" rel="noopener noreferrer" className="block"><img src={url} alt="Anexo" loading="lazy" className="max-h-40 rounded-md border border-border object-contain hover:opacity-90 transition-opacity" /></a>
                                           ) : (
                                             <a href={url} target="_blank" rel="noopener noreferrer" className="text-xs text-sky-600 underline">Ver anexo</a>
                                           )}
@@ -2039,14 +2039,14 @@ export default function Owner() {
 
                         <SurfaceCard title="Responder">
                           <div className="grid gap-3">
-                            <textarea className="min-h-[100px] rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm focus:border-sky-400 focus:ring-1 focus:ring-sky-200 outline-none" value={ticketResponse} onChange={(e) => setTicketResponse(e.target.value)} placeholder="Digite sua resposta ao cliente..." />
+                            <textarea className="min-h-[100px] rounded-lg border border-input bg-background px-3 py-2 text-sm focus:border-sky-400 focus:ring-1 focus:ring-sky-200 outline-none" value={ticketResponse} onChange={(e) => setTicketResponse(e.target.value)} placeholder="Digite sua resposta ao cliente..." />
                             <div className="space-y-2">
-                              <label className="block text-xs text-slate-500">Anexar imagens (opcional)</label>
-                              <input type="file" accept="image/*" multiple className="block w-full text-sm text-slate-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border file:border-slate-300 file:text-sm file:bg-white file:text-slate-700 hover:file:bg-slate-50" onChange={(e) => setTicketAttachments(Array.from(e.target.files ?? []))} />
-                              {ticketAttachments.length > 0 && <p className="text-xs text-slate-400">{ticketAttachments.length} arquivo(s) selecionado(s)</p>}
+                              <label className="block text-xs text-muted-foreground">Anexar imagens (opcional)</label>
+                              <input type="file" accept="image/*" multiple className="block w-full text-sm text-muted-foreground file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border file:border-input file:text-sm file:bg-background file:text-foreground hover:file:bg-muted/50" onChange={(e) => setTicketAttachments(Array.from(e.target.files ?? []))} />
+                              {ticketAttachments.length > 0 && <p className="text-xs text-muted-foreground">{ticketAttachments.length} arquivo(s) selecionado(s)</p>}
                             </div>
                             <div className="flex items-center gap-3">
-                              <select className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" value={ticketResponseStatus} onChange={(e) => setTicketResponseStatus(e.target.value)}>
+                              <select className="rounded-lg border border-input bg-background px-2 py-2 text-sm" value={ticketResponseStatus} onChange={(e) => setTicketResponseStatus(e.target.value)}>
                                 <option value="em_analise">Em análise</option>
                                 <option value="resolvido">Resolvido</option>
                                 <option value="aberto">Reabrir</option>
@@ -2060,7 +2060,7 @@ export default function Owner() {
                       </>
                     ) : (
                       <SurfaceCard title="Detalhes">
-                        <p className="text-sm text-slate-400 py-8 text-center">Selecione um ticket na lista para visualizar</p>
+                        <p className="text-sm text-muted-foreground py-8 text-center">Selecione um ticket na lista para visualizar</p>
                       </SurfaceCard>
                     )}
                   </div>
@@ -2082,9 +2082,9 @@ export default function Owner() {
                 </div>
 
                 <div className="mt-3 grid gap-2 sm:grid-cols-3">
-                  <input className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" value={limitUsers} onChange={(e) => setLimitUsers(e.target.value)} placeholder="Limite usuários" />
-                  <input className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" value={limitAssets} onChange={(e) => setLimitAssets(e.target.value)} placeholder="Limite equipamentos" />
-                  <input className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" value={limitStorageMb} onChange={(e) => setLimitStorageMb(e.target.value)} placeholder="Armazenamento MB" />
+                  <input className="rounded-lg border border-input bg-background px-2 py-2 text-sm" value={limitUsers} onChange={(e) => setLimitUsers(e.target.value)} placeholder="Limite usuários" />
+                  <input className="rounded-lg border border-input bg-background px-2 py-2 text-sm" value={limitAssets} onChange={(e) => setLimitAssets(e.target.value)} placeholder="Limite equipamentos" />
+                  <input className="rounded-lg border border-input bg-background px-2 py-2 text-sm" value={limitStorageMb} onChange={(e) => setLimitStorageMb(e.target.value)} placeholder="Armazenamento MB" />
                 </div>
 
                 <div className="mt-3 space-y-2">
@@ -2161,29 +2161,29 @@ export default function Owner() {
               <SurfaceCard title="Contato comercial (plataforma)" subtitle="Dados exibidos nos alertas de vencimento e tela de bloqueio.">
                 <div className="space-y-3">
                   <div>
-                    <label className="text-xs font-medium text-slate-600">Nome do contato</label>
-                    <input className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" value={platformContactName} onChange={(e) => setPlatformContactName(e.target.value)} placeholder="Ex: Suporte PCM" />
+                    <label className="text-xs font-medium text-muted-foreground">Nome do contato</label>
+                    <input className="mt-1 w-full rounded-lg border border-input bg-background px-2 py-2 text-sm" value={platformContactName} onChange={(e) => setPlatformContactName(e.target.value)} placeholder="Ex: Suporte PCM" />
                   </div>
                   <div>
-                    <label className="text-xs font-medium text-slate-600">E-mail comercial</label>
-                    <input className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" type="email" value={platformContactEmail} onChange={(e) => setPlatformContactEmail(e.target.value)} placeholder="comercial@empresa.com" />
+                    <label className="text-xs font-medium text-muted-foreground">E-mail comercial</label>
+                    <input className="mt-1 w-full rounded-lg border border-input bg-background px-2 py-2 text-sm" type="email" value={platformContactEmail} onChange={(e) => setPlatformContactEmail(e.target.value)} placeholder="comercial@empresa.com" />
                   </div>
                   <div>
-                    <label className="text-xs font-medium text-slate-600">WhatsApp</label>
-                    <input className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" value={platformContactWhatsapp} onChange={(e) => setPlatformContactWhatsapp(e.target.value)} placeholder="+55 11 99999-9999" />
+                    <label className="text-xs font-medium text-muted-foreground">WhatsApp</label>
+                    <input className="mt-1 w-full rounded-lg border border-input bg-background px-2 py-2 text-sm" value={platformContactWhatsapp} onChange={(e) => setPlatformContactWhatsapp(e.target.value)} placeholder="+55 11 99999-9999" />
                   </div>
                   <div>
-                    <label className="text-xs font-medium text-slate-600">Mensagem personalizada (vencimento)</label>
-                    <textarea className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" rows={2} value={platformExpiryMessage} onChange={(e) => setPlatformExpiryMessage(e.target.value)} placeholder="Exibida no banner de carência" />
+                    <label className="text-xs font-medium text-muted-foreground">Mensagem personalizada (vencimento)</label>
+                    <textarea className="mt-1 w-full rounded-lg border border-input bg-background px-2 py-2 text-sm" rows={2} value={platformExpiryMessage} onChange={(e) => setPlatformExpiryMessage(e.target.value)} placeholder="Exibida no banner de carência" />
                   </div>
                   <div className="grid gap-2 sm:grid-cols-2">
                     <div>
-                      <label className="text-xs font-medium text-slate-600">Dias de alerta antes do vencimento</label>
-                      <input className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" type="number" min="1" max="30" value={platformAlertDays} onChange={(e) => setPlatformAlertDays(e.target.value)} />
+                      <label className="text-xs font-medium text-muted-foreground">Dias de alerta antes do vencimento</label>
+                      <input className="mt-1 w-full rounded-lg border border-input bg-background px-2 py-2 text-sm" type="number" min="1" max="30" value={platformAlertDays} onChange={(e) => setPlatformAlertDays(e.target.value)} />
                     </div>
                     <div>
-                      <label className="text-xs font-medium text-slate-600">Dias de carência após vencimento</label>
-                      <input className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" type="number" min="0" max="90" value={platformGraceDays} onChange={(e) => setPlatformGraceDays(e.target.value)} />
+                      <label className="text-xs font-medium text-muted-foreground">Dias de carência após vencimento</label>
+                      <input className="mt-1 w-full rounded-lg border border-input bg-background px-2 py-2 text-sm" type="number" min="0" max="90" value={platformGraceDays} onChange={(e) => setPlatformGraceDays(e.target.value)} />
                     </div>
                   </div>
                 </div>
@@ -2206,9 +2206,9 @@ export default function Owner() {
               {isOwnerMaster && (
                 <SurfaceCard title="Integracao ASAAS" subtitle="Cole sua chave API e clique salvar. Pronto.">
                   <div className="space-y-3">
-                    <div className={`flex items-center gap-3 rounded-xl border p-3 ${asaasHealthOk ? 'border-emerald-200 bg-emerald-50' : asaasHealthOk === false ? 'border-amber-200 bg-amber-50' : 'border-slate-200 bg-slate-50'}`}>
+                    <div className={`flex items-center gap-3 rounded-xl border p-3 ${asaasHealthOk ? 'border-emerald-200 bg-emerald-50' : asaasHealthOk === false ? 'border-amber-200 bg-amber-50' : 'border-border bg-muted/50'}`}>
                       {asaasHealthOk === null ? (
-                        <><Loader2 className="h-5 w-5 animate-spin text-slate-400" /><div><p className="text-sm font-semibold text-slate-700">Verificando...</p></div></>
+                        <><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /><div><p className="text-sm font-semibold text-foreground">Verificando...</p></div></>
                       ) : asaasHealthOk ? (
                         <><CheckCircle2 className="h-5 w-5 text-emerald-600" /><div><p className="text-sm font-semibold text-emerald-700">ASAAS conectado</p><p className="text-xs text-emerald-600">{asaasBaseUrl?.includes('sandbox') ? 'Ambiente: SANDBOX (testes)' : 'Ambiente: PRODUCAO'}</p></div></>
                       ) : (
@@ -2217,15 +2217,15 @@ export default function Owner() {
                     </div>
 
                     <div>
-                      <label className="text-xs font-medium text-slate-600">Chave API do ASAAS</label>
+                      <label className="text-xs font-medium text-muted-foreground">Chave API do ASAAS</label>
                       <input
-                        className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-2 py-2 font-mono text-sm"
+                        className="mt-1 w-full rounded-lg border border-input bg-background px-2 py-2 font-mono text-sm"
                         type="password"
                         value={asaasApiKeyInput}
                         onChange={(e) => { setAsaasApiKeyInput(e.target.value); setAsaasApiKeySaved(false) }}
                         placeholder="$aact_YTU5YTE0M2M2MWM2..."
                       />
-                      <p className="mt-1 text-[11px] text-slate-400">ASAAS &gt; Minha Conta &gt; Integracao &gt; Gerar nova chave API</p>
+                      <p className="mt-1 text-[11px] text-muted-foreground">ASAAS &gt; Minha Conta &gt; Integracao &gt; Gerar nova chave API</p>
                     </div>
 
                     <button
@@ -2297,7 +2297,7 @@ export default function Owner() {
               </SurfaceCard>
 
               <SurfaceCard title="Estado atual" subtitle="Configuração carregada da empresa selecionada">
-                <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs text-slate-700">
+                <div className="rounded-xl border border-border bg-muted/50 p-3 text-xs text-foreground">
                   <p>Empresa selecionada: {companyId || 'Nenhuma'}</p>
                   <p className="mt-1">Recursos atuais: AI {featureAi ? 'ON' : 'OFF'} • API {featureApi ? 'ON' : 'OFF'} • SSO {featureSso ? 'ON' : 'OFF'}</p>
                 </div>
@@ -2333,20 +2333,20 @@ export default function Owner() {
               {/* Tabela de Auditoria */}
               <SurfaceCard title="Auditoria" subtitle={`${auditFiltered.length} registro(s) encontrado(s)`}>
                 <div className="mb-3 flex justify-end">
-                  <button className="inline-flex items-center gap-1 rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-700" onClick={exportAuditCsv}>
+                  <button className="inline-flex items-center gap-1 rounded-lg border border-input bg-background px-3 py-2 text-xs font-semibold text-foreground" onClick={exportAuditCsv}>
                     <Download className="h-3.5 w-3.5" /> Exportar CSV
                   </button>
                 </div>
 
                 <div className="mb-3 grid gap-2 sm:grid-cols-3">
-                  <input className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" placeholder="Buscar ação, tabela, usuário..." value={auditSearch} onChange={(e) => setAuditSearch(e.target.value)} />
-                  <select className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" value={auditResultadoFilter} onChange={(e) => setAuditResultadoFilter(e.target.value as any)}>
+                  <input className="rounded-lg border border-input bg-background px-2 py-2 text-sm" placeholder="Buscar ação, tabela, usuário..." value={auditSearch} onChange={(e) => setAuditSearch(e.target.value)} />
+                  <select className="rounded-lg border border-input bg-background px-2 py-2 text-sm" value={auditResultadoFilter} onChange={(e) => setAuditResultadoFilter(e.target.value as any)}>
                     <option value="todos">Resultado: Todos</option>
                     <option value="sucesso">Sucesso</option>
                     <option value="erro">Erro</option>
                     <option value="rejeitado">Rejeitado</option>
                   </select>
-                  <select className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" value={auditActionFilter} onChange={(e) => setAuditActionFilter(e.target.value)}>
+                  <select className="rounded-lg border border-input bg-background px-2 py-2 text-sm" value={auditActionFilter} onChange={(e) => setAuditActionFilter(e.target.value)}>
                     <option value="todos">Ação: Todas</option>
                     {availableAuditActions.map((a) => (
                       <option key={a} value={a}>{a}</option>
@@ -2355,26 +2355,26 @@ export default function Owner() {
                 </div>
 
                 <div className="mb-3 grid gap-2 sm:grid-cols-5">
-                  <select className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" value={auditUsuarioFilter} onChange={(e) => setAuditUsuarioFilter(e.target.value)}>
+                  <select className="rounded-lg border border-input bg-background px-2 py-2 text-sm" value={auditUsuarioFilter} onChange={(e) => setAuditUsuarioFilter(e.target.value)}>
                     <option value="todos">Usuário: Todos</option>
                     {availableAuditUsuarios.map((u) => (
                       <option key={u} value={u}>{u}</option>
                     ))}
                   </select>
-                  <select className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" value={auditTableFilter} onChange={(e) => setAuditTableFilter(e.target.value)}>
+                  <select className="rounded-lg border border-input bg-background px-2 py-2 text-sm" value={auditTableFilter} onChange={(e) => setAuditTableFilter(e.target.value)}>
                     <option value="todos">Tabela: Todas</option>
                     {availableAuditTables.map((t) => (
                       <option key={t} value={t}>{t}</option>
                     ))}
                   </select>
-                  <input className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" type="date" value={auditDateFrom} onChange={(e) => setAuditDateFrom(e.target.value)} title="Data inicial" />
-                  <input className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" type="date" value={auditDateTo} onChange={(e) => setAuditDateTo(e.target.value)} title="Data final" />
-                  <button className="rounded-lg border border-slate-300 px-3 py-2 text-sm" onClick={() => { setAuditSearch(''); setAuditResultadoFilter('todos'); setAuditUsuarioFilter('todos'); setAuditTableFilter('todos'); setAuditActionFilter('todos'); setAuditDateFrom(''); setAuditDateTo('') }}>Limpar filtros</button>
+                  <input className="rounded-lg border border-input bg-background px-2 py-2 text-sm" type="date" value={auditDateFrom} onChange={(e) => setAuditDateFrom(e.target.value)} title="Data inicial" />
+                  <input className="rounded-lg border border-input bg-background px-2 py-2 text-sm" type="date" value={auditDateTo} onChange={(e) => setAuditDateTo(e.target.value)} title="Data final" />
+                  <button className="rounded-lg border border-input px-3 py-2 text-sm" onClick={() => { setAuditSearch(''); setAuditResultadoFilter('todos'); setAuditUsuarioFilter('todos'); setAuditTableFilter('todos'); setAuditActionFilter('todos'); setAuditDateFrom(''); setAuditDateTo('') }}>Limpar filtros</button>
                 </div>
 
-                <div className="max-h-[520px] overflow-auto rounded-xl border border-slate-200">
+                <div className="max-h-[520px] overflow-auto rounded-xl border border-border">
                   <table className="w-full text-xs">
-                    <thead className="bg-slate-100 sticky top-0">
+                    <thead className="bg-muted sticky top-0">
                       <tr>
                         <th className="px-2 py-2 text-left">Ação</th>
                         <th className="px-2 py-2 text-left">Tabela</th>
@@ -2394,7 +2394,7 @@ export default function Owner() {
                         const formatted = createdAt ? new Date(createdAt).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'medium' }) : '-'
 
                         return (
-                          <tr key={`${String(l.id ?? 'audit')}-${idx}`} className="border-t border-slate-200 hover:bg-slate-50">
+                          <tr key={`${String(l.id ?? 'audit')}-${idx}`} className="border-t border-border hover:bg-muted/50">
                             <td className="px-2 py-2 font-medium">{String(l.acao ?? '-')}</td>
                             <td className="px-2 py-2">{String(l.tabela ?? '-')}</td>
                             <td className={`px-2 py-2 rounded ${resultadoColor}`}>{resultado}</td>
@@ -2407,7 +2407,7 @@ export default function Owner() {
                       })}
                       {auditFiltered.length === 0 && (
                         <tr>
-                          <td className="px-2 py-3 text-slate-500" colSpan={7}>Nenhum registro de auditoria encontrado com os filtros atuais.</td>
+                          <td className="px-2 py-3 text-muted-foreground" colSpan={7}>Nenhum registro de auditoria encontrado com os filtros atuais.</td>
                         </tr>
                       )}
                     </tbody>
@@ -2420,37 +2420,37 @@ export default function Owner() {
           {activeTab === 'logs' && (
             <SurfaceCard title="Logs" subtitle="Busca por ação/usuário e filtro de resultado">
               <div className="mb-3 flex justify-end">
-                <button className="inline-flex items-center gap-1 rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-700" onClick={exportLogsCsv}>
+                <button className="inline-flex items-center gap-1 rounded-lg border border-input bg-background px-3 py-2 text-xs font-semibold text-foreground" onClick={exportLogsCsv}>
                   <Download className="h-3.5 w-3.5" /> Exportar CSV
                 </button>
               </div>
 
               <div className="mb-3 grid gap-2 sm:grid-cols-3">
-                <input className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" placeholder="Buscar ação ou usuário" value={logSearch} onChange={(e) => setLogSearch(e.target.value)} />
-                <select className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" value={logSeverityFilter} onChange={(e) => setLogSeverityFilter(e.target.value as any)}>
+                <input className="rounded-lg border border-input bg-background px-2 py-2 text-sm" placeholder="Buscar ação ou usuário" value={logSearch} onChange={(e) => setLogSearch(e.target.value)} />
+                <select className="rounded-lg border border-input bg-background px-2 py-2 text-sm" value={logSeverityFilter} onChange={(e) => setLogSeverityFilter(e.target.value as any)}>
                   <option value="todos">Resultado: Todos</option>
                   <option value="sucesso">Sucesso</option>
                   <option value="erro">Erro</option>
                   <option value="rejeitado">Rejeitado</option>
                 </select>
-                <input className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" placeholder="Filtrar por usuário (email)" value={logActorFilter} onChange={(e) => setLogActorFilter(e.target.value)} />
+                <input className="rounded-lg border border-input bg-background px-2 py-2 text-sm" placeholder="Filtrar por usuário (email)" value={logActorFilter} onChange={(e) => setLogActorFilter(e.target.value)} />
               </div>
 
               <div className="mb-3 grid gap-2 sm:grid-cols-4">
-                <select className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" value={logModuleFilter} onChange={(e) => setLogModuleFilter(e.target.value)}>
+                <select className="rounded-lg border border-input bg-background px-2 py-2 text-sm" value={logModuleFilter} onChange={(e) => setLogModuleFilter(e.target.value)}>
                   <option value="todos">Tabela: Todas</option>
                   {availableLogModules.map((moduleName) => (
                     <option key={moduleName} value={moduleName}>{moduleName}</option>
                   ))}
                 </select>
-                <input className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" type="date" value={logDateFrom} onChange={(e) => setLogDateFrom(e.target.value)} />
-                <input className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" type="date" value={logDateTo} onChange={(e) => setLogDateTo(e.target.value)} />
-                <button className="rounded-lg border border-slate-300 px-3 py-2 text-sm" onClick={() => { setLogSearch(''); setLogSeverityFilter('todos'); setLogActorFilter(''); setLogModuleFilter('todos'); setLogDateFrom(''); setLogDateTo('') }}>Limpar filtros</button>
+                <input className="rounded-lg border border-input bg-background px-2 py-2 text-sm" type="date" value={logDateFrom} onChange={(e) => setLogDateFrom(e.target.value)} />
+                <input className="rounded-lg border border-input bg-background px-2 py-2 text-sm" type="date" value={logDateTo} onChange={(e) => setLogDateTo(e.target.value)} />
+                <button className="rounded-lg border border-input px-3 py-2 text-sm" onClick={() => { setLogSearch(''); setLogSeverityFilter('todos'); setLogActorFilter(''); setLogModuleFilter('todos'); setLogDateFrom(''); setLogDateTo('') }}>Limpar filtros</button>
               </div>
 
-              <div className="max-h-[520px] overflow-auto rounded-xl border border-slate-200">
+              <div className="max-h-[520px] overflow-auto rounded-xl border border-border">
                 <table className="w-full text-xs">
-                  <thead className="bg-slate-100">
+                  <thead className="bg-muted">
                     <tr>
                       <th className="px-2 py-2 text-left">Ação</th>
                       <th className="px-2 py-2 text-left">Tabela</th>
@@ -2464,7 +2464,7 @@ export default function Owner() {
                       const createdAt = String(l.created_at ?? '')
                       const formatted = createdAt ? new Date(createdAt).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'medium' }) : '-'
                       return (
-                        <tr key={`${String(l.id ?? 'log')}-${idx}`} className="border-t border-slate-200">
+                        <tr key={`${String(l.id ?? 'log')}-${idx}`} className="border-t border-border">
                           <td className="px-2 py-2 font-medium">{String(l.acao ?? '-')}</td>
                           <td className="px-2 py-2">{String(l.tabela ?? '-')}</td>
                           <td className="px-2 py-2">{String(l.resultado ?? 'sucesso')}</td>
@@ -2475,7 +2475,7 @@ export default function Owner() {
                     })}
                     {logsFiltered.length === 0 && (
                       <tr>
-                        <td className="px-2 py-3 text-slate-500" colSpan={5}>Nenhum log encontrado com os filtros atuais.</td>
+                        <td className="px-2 py-3 text-muted-foreground" colSpan={5}>Nenhum log encontrado com os filtros atuais.</td>
                       </tr>
                     )}
                   </tbody>
@@ -2492,7 +2492,7 @@ export default function Owner() {
             <div className="grid gap-4 xl:grid-cols-2">
               <SurfaceCard title="Ações de sistema" subtitle="Operações avançadas com segurança">
                 <div className="grid gap-2">
-                  <select className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" value={systemUserId} onChange={(e) => setSystemUserId(e.target.value)}>
+                  <select className="rounded-lg border border-input bg-background px-2 py-2 text-sm" value={systemUserId} onChange={(e) => setSystemUserId(e.target.value)}>
                     <option value="">Usuário para promoção/timeout</option>
                     {humanUsers.map((u) => (
                       <option key={String(u.id)} value={String(u.id)}>{String(u.nome ?? u.email ?? u.id)}</option>
@@ -2500,7 +2500,7 @@ export default function Owner() {
                   </select>
 
                   <button
-                    className="rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                    className="rounded-lg border border-input px-3 py-2 text-sm"
                     disabled={busy || !systemUserId}
                     onClick={() => openCriticalAction({
                       title: 'Conceder SYSTEM_ADMIN',
@@ -2514,9 +2514,9 @@ export default function Owner() {
                     Conceder SYSTEM_ADMIN
                   </button>
 
-                  <p className="text-xs text-slate-500">Timeout de inatividade ocultado do Owner para simplificar a operação.</p>
+                  <p className="text-xs text-muted-foreground">Timeout de inatividade ocultado do Owner para simplificar a operação.</p>
 
-                  <select className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" value={selectedTableName} onChange={(e) => setSelectedTableName(e.target.value)}>
+                  <select className="rounded-lg border border-input bg-background px-2 py-2 text-sm" value={selectedTableName} onChange={(e) => setSelectedTableName(e.target.value)}>
                     <option value="">Tabela para purge</option>
                     {tables.map((t, idx) => (
                       <option key={`${String(t.table_name ?? t.name ?? 'tb')}-${idx}`} value={String(t.table_name ?? t.name ?? '')}>
@@ -2540,9 +2540,9 @@ export default function Owner() {
                     Executar purge da tabela
                   </button>
 
-                  <div className="mt-3 border-t border-slate-200 pt-3">
-                    <p className="mb-2 text-xs font-semibold text-slate-600">Dispositivos (conexões QR Code)</p>
-                    <p className="mb-2 text-xs text-slate-500">{deviceUsers.length} dispositivo(s) registrado(s) no banco.</p>
+                  <div className="mt-3 border-t border-border pt-3">
+                    <p className="mb-2 text-xs font-semibold text-muted-foreground">Dispositivos (conexões QR Code)</p>
+                    <p className="mb-2 text-xs text-muted-foreground">{deviceUsers.length} dispositivo(s) registrado(s) no banco.</p>
                     <button
                       className="rounded-lg border border-rose-300 bg-rose-50 px-3 py-2 text-sm text-rose-700"
                       disabled={busy || deviceUsers.length === 0}
@@ -2569,7 +2569,7 @@ export default function Owner() {
                   <MetricTile label="Empresa em escopo" value={companyId ? 'Selecionada' : 'Global'} icon={Building2} tone="amber" />
                 </div>
 
-                <div className="mt-3 rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs text-slate-700">
+                <div className="mt-3 rounded-xl border border-border bg-muted/50 p-3 text-xs text-foreground">
                   <p>Status backend: <span className="font-semibold">{healthQuery.isError ? 'Com erro' : 'Operacional'}</span></p>
                   <p className="mt-1">Monitoramento de tabelas: <span className="font-semibold">{tablesQuery.isLoading ? 'Carregando' : tablesQuery.isError ? 'Falha ao consultar' : `${tables.length} tabelas`}</span></p>
                   {tablesQuery.isError && (
@@ -2584,17 +2584,17 @@ export default function Owner() {
             <div className="grid gap-4">
               <SurfaceCard title="Novo owner da plataforma">
                 <div className="grid gap-2">
-                  <input className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" value={ownerName} onChange={(e) => setOwnerName(e.target.value)} placeholder="Nome" />
-                  <input className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" value={ownerEmail} onChange={(e) => setOwnerEmail(e.target.value)} placeholder="Email" />
-                  <input className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm" type="password" value={ownerPassword} onChange={(e) => setOwnerPassword(e.target.value)} placeholder="Senha (opcional)" />
+                  <input className="rounded-lg border border-input bg-background px-2 py-2 text-sm" value={ownerName} onChange={(e) => setOwnerName(e.target.value)} placeholder="Nome" />
+                  <input className="rounded-lg border border-input bg-background px-2 py-2 text-sm" value={ownerEmail} onChange={(e) => setOwnerEmail(e.target.value)} placeholder="Email" />
+                  <input className="rounded-lg border border-input bg-background px-2 py-2 text-sm" type="password" value={ownerPassword} onChange={(e) => setOwnerPassword(e.target.value)} placeholder="Senha (opcional)" />
                   <button className="rounded-lg bg-sky-700 px-3 py-2 text-sm font-semibold text-white" disabled={busy || !isOwnerMaster || !ownerName || !ownerEmail} onClick={() => runAction('create_platform_owner', { owner_user: { nome: ownerName, email: ownerEmail, password: ownerPassword || undefined, role: 'SYSTEM_ADMIN' } }, 'Owner de plataforma criado com sucesso.')}>Criar owner</button>
                 </div>
               </SurfaceCard>
 
               <SurfaceCard title="Owners da plataforma">
-                <div className="max-h-[420px] overflow-auto rounded-xl border border-slate-200">
+                <div className="max-h-[420px] overflow-auto rounded-xl border border-border">
                   <table className="w-full text-xs">
-                    <thead className="bg-slate-100">
+                    <thead className="bg-muted">
                       <tr>
                         <th className="px-2 py-2 text-left">Nome</th>
                         <th className="px-2 py-2 text-left">Email</th>
@@ -2605,7 +2605,7 @@ export default function Owner() {
                       {owners.map((o, idx) => {
                         const profile = o.profile as Record<string, unknown> | null | undefined;
                         return (
-                          <tr key={`${String(o.user_id ?? o.id ?? 'owner')}-${idx}`} className="border-t border-slate-200">
+                          <tr key={`${String(o.user_id ?? o.id ?? 'owner')}-${idx}`} className="border-t border-border">
                             <td className="px-2 py-2">{String(profile?.nome ?? o.nome ?? '-')}</td>
                             <td className="px-2 py-2">{String(profile?.email ?? o.email ?? '-')}</td>
                             <td className="px-2 py-2">{String(o.role ?? '-')}</td>

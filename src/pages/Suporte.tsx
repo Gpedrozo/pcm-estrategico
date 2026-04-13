@@ -43,7 +43,7 @@ const priorityBadge = (priority: string) => {
   if (p === 'critica' || p === 'critical') return 'bg-purple-100 text-purple-700 border-purple-200'
   if (p === 'alta' || p === 'high' || p === 'urgente') return 'bg-red-100 text-red-700 border-red-200'
   if (p === 'media' || p === 'medium') return 'bg-amber-100 text-amber-700 border-amber-200'
-  return 'bg-slate-100 text-slate-600 border-slate-200'
+  return 'bg-muted text-muted-foreground border-border'
 }
 
 // ---------------------------------------------------------------------------

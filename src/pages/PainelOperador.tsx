@@ -28,7 +28,7 @@ const STATUS_CONFIG: Record<string, { label: string; color: string; icon: React.
   APROVADA:   { label: 'Aprovada',   color: 'bg-blue-100 text-blue-800 border-blue-300',     icon: CheckCircle2 },
   CONVERTIDA: { label: 'Convertida', color: 'bg-green-100 text-green-800 border-green-300',  icon: ArrowRight },
   REJEITADA:  { label: 'Rejeitada',  color: 'bg-red-100 text-red-800 border-red-300',        icon: XCircle },
-  CANCELADA:  { label: 'Cancelada',  color: 'bg-gray-100 text-gray-600 border-gray-300',     icon: XCircle },
+  CANCELADA:  { label: 'Cancelada',  color: 'bg-muted text-muted-foreground border-border',     icon: XCircle },
 };
 
 export default function PainelOperador() {

@@ -219,16 +219,16 @@ export default function OwnerUsuariosTab({
         {/* Toolbar */}
         <div className="mb-3 flex flex-wrap items-center gap-2">
           <div className="relative flex-1 min-w-[180px]">
-            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
             <input
-              className="w-full rounded-lg border border-slate-300 bg-white pl-8 pr-3 py-2 text-sm"
+              className="w-full rounded-lg border border-input bg-background pl-8 pr-3 py-2 text-sm"
               placeholder="Buscar por nome, email ou empresa..."
               value={userSearch}
               onChange={(e) => setUserSearch(e.target.value)}
             />
           </div>
           <select
-            className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
+            className="rounded-lg border border-input bg-background px-3 py-2 text-sm"
             value={userStatusFilter}
             onChange={(e) => setUserStatusFilter(e.target.value as typeof userStatusFilter)}
           >
@@ -239,7 +239,7 @@ export default function OwnerUsuariosTab({
             ))}
           </select>
           <button
-            className="rounded-lg border border-slate-300 px-3 py-2 text-sm"
+            className="rounded-lg border border-input px-3 py-2 text-sm"
             onClick={() => {
               setUserSearch('')
               setUserStatusFilter('todos')
@@ -248,18 +248,18 @@ export default function OwnerUsuariosTab({
             Limpar
           </button>
           <button
-            className="inline-flex items-center gap-1 rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-700"
+            className="inline-flex items-center gap-1 rounded-lg border border-input bg-background px-3 py-2 text-xs font-semibold text-foreground"
             onClick={exportUsersCsv}
           >
             <Download className="h-3.5 w-3.5" /> CSV
           </button>
-          <span className="ml-auto text-xs text-slate-500">
+          <span className="ml-auto text-xs text-muted-foreground">
             {usersFiltered.length} usuário{usersFiltered.length !== 1 ? 's' : ''}
           </span>
         </div>
 
         {/* Tabela */}
-        <div className="overflow-x-auto rounded-xl border border-slate-200">
+        <div className="overflow-x-auto rounded-xl border border-border">
           <table className="w-full table-fixed text-xs">
             <colgroup>
               <col className="w-[18%]" />
@@ -269,14 +269,14 @@ export default function OwnerUsuariosTab({
               <col className="w-[10%]" />
               <col className="w-[16%]" />
             </colgroup>
-            <thead className="bg-slate-100">
+            <thead className="bg-muted">
               <tr>
-                <th className="px-3 py-2 text-left font-semibold text-slate-700">Nome</th>
-                <th className="px-3 py-2 text-left font-semibold text-slate-700">Email</th>
-                <th className="px-3 py-2 text-left font-semibold text-slate-700">Role</th>
-                <th className="px-3 py-2 text-left font-semibold text-slate-700">Empresa</th>
-                <th className="px-3 py-2 text-left font-semibold text-slate-700">Status</th>
-                <th className="px-3 py-2 text-right font-semibold text-slate-700">Ações</th>
+                <th className="px-3 py-2 text-left font-semibold text-foreground">Nome</th>
+                <th className="px-3 py-2 text-left font-semibold text-foreground">Email</th>
+                <th className="px-3 py-2 text-left font-semibold text-foreground">Role</th>
+                <th className="px-3 py-2 text-left font-semibold text-foreground">Empresa</th>
+                <th className="px-3 py-2 text-left font-semibold text-foreground">Status</th>
+                <th className="px-3 py-2 text-right font-semibold text-foreground">Ações</th>
               </tr>
             </thead>
             <tbody>
@@ -295,8 +295,8 @@ export default function OwnerUsuariosTab({
                   <tr
                     key={String(u.id)}
                     className={[
-                      'border-t border-slate-200 transition-colors',
-                      isDeleted ? 'opacity-50 bg-slate-50' : '',
+                      'border-t border-border transition-colors',
+                      isDeleted ? 'opacity-50 bg-muted/50' : '',
                       isSelected && !isDeleted ? 'bg-sky-50 border-l-2 border-l-sky-500' : '',
                     ]
                       .filter(Boolean)
@@ -305,16 +305,16 @@ export default function OwnerUsuariosTab({
                     <td className="px-3 py-2 font-medium">
                       <span className="block truncate" title={nome}>{nome}</span>
                     </td>
-                    <td className="px-3 py-2 text-slate-600">
+                    <td className="px-3 py-2 text-muted-foreground">
                       <span className="block truncate" title={email}>{email}</span>
                     </td>
                     <td className="px-3 py-2">
-                      <span className="inline-flex items-center rounded border px-1.5 py-0.5 text-[10px] font-semibold bg-slate-100 text-slate-700 border-slate-200 max-w-full truncate">
+                      <span className="inline-flex items-center rounded border px-1.5 py-0.5 text-[10px] font-semibold bg-muted text-foreground border-border max-w-full truncate">
                         {(ROLE_LABELS[role] ?? role) || '-'}
                       </span>
                     </td>
                     <td className="px-3 py-2">
-                      <span className="inline-flex items-center gap-1 max-w-full text-slate-600" title={empresa}>
+                      <span className="inline-flex items-center gap-1 max-w-full text-muted-foreground" title={empresa}>
                         <Building2 className="h-3 w-3 shrink-0" />
                         <span className="truncate">{empresa}</span>
                       </span>
@@ -348,7 +348,7 @@ export default function OwnerUsuariosTab({
                               </button>
                             )}
                             <button
-                              className="rounded p-1 text-slate-500 hover:bg-slate-100"
+                              className="rounded p-1 text-muted-foreground hover:bg-muted"
                               title="Selecionar para edição"
                               onClick={() => setSelectedUserId(String(u.id))}
                             >
@@ -367,7 +367,7 @@ export default function OwnerUsuariosTab({
                           </>
                         )}
                         {isDeleted && isOwnerMaster && (
-                          <span className="text-[10px] text-slate-400 italic">excluído</span>
+                          <span className="text-[10px] text-muted-foreground italic">excluído</span>
                         )}
                       </div>
                     </td>
@@ -376,7 +376,7 @@ export default function OwnerUsuariosTab({
               })}
               {paginatedUsers.length === 0 && (
                 <tr>
-                  <td className="px-3 py-4 text-center text-slate-500" colSpan={6}>
+                  <td className="px-3 py-4 text-center text-muted-foreground" colSpan={6}>
                     Nenhum usuário encontrado com os filtros atuais.
                   </td>
                 </tr>
@@ -387,20 +387,20 @@ export default function OwnerUsuariosTab({
 
         {/* Paginação */}
         {totalPages > 1 && (
-          <div className="mt-3 flex items-center justify-between text-xs text-slate-600">
+          <div className="mt-3 flex items-center justify-between text-xs text-muted-foreground">
             <span>
               Página {currentPage} de {totalPages}
             </span>
             <div className="flex items-center gap-1">
               <button
-                className="rounded border border-slate-300 p-1 disabled:opacity-30"
+                className="rounded border border-input p-1 disabled:opacity-30"
                 disabled={currentPage <= 1}
                 onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
               >
                 <ChevronLeft className="h-4 w-4" />
               </button>
               <button
-                className="rounded border border-slate-300 p-1 disabled:opacity-30"
+                className="rounded border border-input p-1 disabled:opacity-30"
                 disabled={currentPage >= totalPages}
                 onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
               >
@@ -417,20 +417,20 @@ export default function OwnerUsuariosTab({
         <SurfaceCard title="Novo usuário">
           <div className="grid gap-2">
             <input
-              className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
+              className="rounded-lg border border-input bg-background px-3 py-2 text-sm"
               value={newUserName}
               onChange={(e) => setNewUserName(e.target.value)}
               placeholder="Nome completo"
             />
             <input
-              className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
+              className="rounded-lg border border-input bg-background px-3 py-2 text-sm"
               value={newUserEmail}
               onChange={(e) => setNewUserEmail(e.target.value)}
               placeholder="Email"
               type="email"
             />
             <select
-              className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
+              className="rounded-lg border border-input bg-background px-3 py-2 text-sm"
               value={newUserRole}
               onChange={(e) => setNewUserRole(e.target.value)}
             >
@@ -460,9 +460,9 @@ export default function OwnerUsuariosTab({
         {/* Gerenciar Usuário */}
         <SurfaceCard title="Gerenciar usuário">
           <div className="grid gap-2">
-            <label className="text-xs font-semibold text-slate-600">Selecionar usuário</label>
+            <label className="text-xs font-semibold text-muted-foreground">Selecionar usuário</label>
             <select
-              className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
+              className="rounded-lg border border-input bg-background px-3 py-2 text-sm"
               value={selectedUserId}
               onChange={(e) => setSelectedUserId(e.target.value)}
             >
@@ -477,7 +477,7 @@ export default function OwnerUsuariosTab({
             </select>
 
             {selectedUser && (
-              <div className="mt-1 rounded-lg border border-slate-200 bg-slate-50 p-2 text-xs text-slate-600">
+              <div className="mt-1 rounded-lg border border-border bg-muted/50 p-2 text-xs text-muted-foreground">
                 <p><strong>Email:</strong> {String(selectedUser.email ?? '-')}</p>
                 <p><strong>Role:</strong> {ROLE_LABELS[String(selectedUser.role ?? '')] ?? String(selectedUser.role ?? '-')}</p>
                 <p><strong>Empresa:</strong> {String(selectedUser.empresa_nome ?? selectedUser.empresa_id ?? '-')}</p>
@@ -486,9 +486,9 @@ export default function OwnerUsuariosTab({
             )}
 
             <div className="mt-2 grid gap-2">
-              <label className="text-xs font-semibold text-slate-600">Mover para outra empresa</label>
+              <label className="text-xs font-semibold text-muted-foreground">Mover para outra empresa</label>
               <select
-                className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
+                className="rounded-lg border border-input bg-background px-3 py-2 text-sm"
                 value={userTargetCompanyId}
                 onChange={(e) => setUserTargetCompanyId(e.target.value)}
               >
@@ -500,7 +500,7 @@ export default function OwnerUsuariosTab({
                 ))}
               </select>
               <select
-                className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
+                className="rounded-lg border border-input bg-background px-3 py-2 text-sm"
                 value={userTargetRole}
                 onChange={(e) => setUserTargetRole(e.target.value)}
               >
@@ -510,7 +510,7 @@ export default function OwnerUsuariosTab({
                 <option value="MASTER_TI">Master TI</option>
               </select>
               <button
-                className="rounded-lg border border-slate-300 px-3 py-2 text-sm disabled:opacity-50"
+                className="rounded-lg border border-input px-3 py-2 text-sm disabled:opacity-50"
                 disabled={busy || !selectedUserId || !userTargetCompanyId}
                 onClick={() =>
                   runAction(
@@ -525,9 +525,9 @@ export default function OwnerUsuariosTab({
             </div>
 
             <div className="mt-2 grid gap-2">
-              <label className="text-xs font-semibold text-slate-600">Redefinir senha</label>
+              <label className="text-xs font-semibold text-muted-foreground">Redefinir senha</label>
               <input
-                className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
+                className="rounded-lg border border-input bg-background px-3 py-2 text-sm"
                 type="password"
                 value={userNewPassword}
                 onChange={(e) => setUserNewPassword(e.target.value)}
@@ -554,17 +554,17 @@ export default function OwnerUsuariosTab({
       {/* ── Dialog de Confirmação ── */}
       {confirmAction && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-          <div className="w-full max-w-sm rounded-2xl border border-slate-200 bg-white p-6 shadow-xl">
-            <h3 className="text-sm font-bold text-slate-900">
+          <div className="w-full max-w-sm rounded-2xl border border-border bg-card p-6 shadow-xl">
+            <h3 className="text-sm font-bold text-foreground">
               {confirmAction.type === 'excluir' ? 'Confirmar exclusão' : 'Confirmar inativação'}
             </h3>
-            <p className="mt-2 text-sm text-slate-600">
+            <p className="mt-2 text-sm text-muted-foreground">
               {confirmAction.type === 'excluir' ? (
                 <>
                   Tem certeza que deseja <span className="font-semibold text-rose-600">excluir</span> o
                   usuário <strong>{confirmAction.userName}</strong>?
                   <br />
-                  <span className="text-xs text-slate-500">
+                  <span className="text-xs text-muted-foreground">
                     O usuário perderá acesso e ficará oculto para outros operadores. O histórico será preservado.
                   </span>
                 </>
@@ -573,7 +573,7 @@ export default function OwnerUsuariosTab({
                   Tem certeza que deseja <span className="font-semibold text-amber-600">inativar</span> o
                   usuário <strong>{confirmAction.userName}</strong>?
                   <br />
-                  <span className="text-xs text-slate-500">O usuário perderá acesso ao sistema temporariamente.</span>
+                  <span className="text-xs text-muted-foreground">O usuário perderá acesso ao sistema temporariamente.</span>
                 </>
               )}
             </p>
@@ -588,7 +588,7 @@ export default function OwnerUsuariosTab({
                 {confirmAction.type === 'excluir' ? 'Sim, excluir' : 'Sim, inativar'}
               </button>
               <button
-                className="flex-1 rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                className="flex-1 rounded-lg border border-input px-3 py-2 text-sm"
                 onClick={() => setConfirmAction(null)}
               >
                 Cancelar
