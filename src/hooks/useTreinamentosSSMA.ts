@@ -162,6 +162,20 @@ export function useCreateTreinamentoSSMA() {
   const { toast } = useToast();
   const { tenantId } = useAuth();
 
+  const ordenarPorValidade = (lista: TreinamentoSSMARow[]) => {
+    return [...lista].sort((a, b) => {
+      const aTime = a.data_validade
+        ? new Date(`${a.data_validade}T00:00:00`).getTime()
+        : Number.POSITIVE_INFINITY;
+      const bTime = b.data_validade
+        ? new Date(`${b.data_validade}T00:00:00`).getTime()
+        : Number.POSITIVE_INFINITY;
+
+      if (aTime !== bTime) return aTime - bTime;
+      return a.created_at.localeCompare(b.created_at);
+    });
+  };
+
   return useMutation({
     mutationFn: async (treinamento: TreinamentoInsert) => {
       if (!tenantId) throw new Error('Tenant não resolvido.');
@@ -181,8 +195,24 @@ export function useCreateTreinamentoSSMA() {
         { ...treinamento, empresa_id: tenantId, status } as Record<string, unknown>,
       ) as Promise<TreinamentoSSMARow>;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['treinamentos-ssma', tenantId] });
+    onSuccess: (novoTreinamento) => {
+      const treinamentoAjustado: TreinamentoSSMARow = {
+        ...novoTreinamento,
+        status: calcularStatusTreinamento(
+          novoTreinamento.data_validade,
+          novoTreinamento.dias_alerta_antes,
+        ),
+      };
+
+      queryClient.setQueryData<TreinamentoSSMARow[]>(
+        ['treinamentos-ssma', tenantId],
+        (atual = []) => {
+          const semDuplicado = atual.filter((item) => item.id !== treinamentoAjustado.id);
+          return ordenarPorValidade([...semDuplicado, treinamentoAjustado]);
+        },
+      );
+
+      queryClient.invalidateQueries({ queryKey: ['treinamentos-ssma'] });
       writeAuditLog({
         action: 'CREATE_TREINAMENTO_SSMA',
         table: 'treinamentos_ssma',

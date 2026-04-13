@@ -522,6 +522,16 @@ export default function SSMA() {
       || (item.colaborador_nome || '').toLowerCase().includes(s);
   });
 
+  const treinamentosLista = treinamentos || [];
+  const treinamentosFiltrados = treinamentosLista.filter((item) => {
+    const s = search.trim().toLowerCase();
+    if (!s) return true;
+
+    return item.colaborador_nome.toLowerCase().includes(s)
+      || item.nome_curso.toLowerCase().includes(s)
+      || item.tipo_curso.toLowerCase().includes(s);
+  });
+
   const isLoading = loadingIncidentes || loadingPT || loadingTreinamentos || loadingEPIs || loadingFichas || loadingAPR;
 
   if (isLoading) {
@@ -776,18 +786,12 @@ export default function SSMA() {
                 </tr>
               </thead>
               <tbody>
-                {treinamentos?.length === 0 ? (
+                {treinamentosLista.length === 0 ? (
                   <tr><td colSpan={8} className="text-center py-8 text-muted-foreground">Nenhum treinamento registrado</td></tr>
+                ) : treinamentosFiltrados.length === 0 ? (
+                  <tr><td colSpan={8} className="text-center py-8 text-muted-foreground">Nenhum treinamento encontrado para o filtro atual</td></tr>
                 ) : (
-                  treinamentos
-                    ?.filter(t => {
-                      if (!search) return true;
-                      const s = search.toLowerCase();
-                      return t.colaborador_nome.toLowerCase().includes(s)
-                        || t.nome_curso.toLowerCase().includes(s)
-                        || t.tipo_curso.toLowerCase().includes(s);
-                    })
-                    .map((tr) => {
+                  treinamentosFiltrados.map((tr) => {
                       const dias = diasParaVencer(tr.data_validade);
                       return (
                         <tr key={tr.id}>
