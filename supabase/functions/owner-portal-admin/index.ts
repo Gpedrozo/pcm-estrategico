@@ -5221,226 +5221,59 @@ Deno.serve(async (req) => {
     if (!body.empresa_id) return fail("empresa_id is required", 400, null, req);
     const operationId = crypto.randomUUID();
 
+    // ── Confirmação de senha do operador ────────────────────────
     const passwordOk = await verifyActorPassword({
       email: auth.user.email,
       password: body.auth_password ?? null,
       expectedUserId: auth.user.id,
     });
-
     if (!passwordOk) {
       return fail("Senha inválida para confirmar a operação.", 401, null, req);
     }
 
+    // ── Confirmação de nome da empresa ───────────────────────────
     const { data: company, error: companyError } = await admin
       .from("empresas")
-      .select("id,nome,slug")
+      .select("id,nome,slug,deleted_at")
       .eq("id", body.empresa_id)
       .maybeSingle();
 
     if (companyError) return fail(companyError.message, 400, null, req);
     if (!company?.id) return fail("Empresa não encontrada", 404, null, req);
 
-    const expectedName = company.nome ?? company.slug ?? "";
-
-    if (body.include_auth_users === false) {
-      return fail("Exclusão definitiva exige include_auth_users=true para remoção total do tenant.", 400, null, req);
-    }
-    const includeAuthUsers = true;
-
-    const { data: beforeDeleteContracts } = await admin
-      .from("contracts")
-      .select("id")
-      .eq("empresa_id", body.empresa_id)
-      .limit(5000);
-
-    const { data: beforeDeleteSubscriptions } = await admin
-      .from("subscriptions")
-      .select("id")
-      .eq("empresa_id", body.empresa_id)
-      .limit(5000);
-
-    const contractIds = (beforeDeleteContracts ?? []).map((row: any) => row?.id).filter(Boolean);
-    const subscriptionIds = (beforeDeleteSubscriptions ?? []).map((row: any) => row?.id).filter(Boolean);
-
-    const cleanupResult = await cleanupCompanyTenantRows(admin, body.empresa_id, {
-      keepCompanyCore: false,
-      keepBillingData: false,
-    });
-
-    if (cleanupResult.error) {
-      return fail(cleanupResult.error, 400, {
-        operation_id: operationId,
-        table_errors: cleanupResult.tableErrors,
-      }, req);
-    }
-
-    const authMetadataUserIds = includeAuthUsers
-      ? await collectAuthUsersByCompanyMetadata(admin, {
-        empresaId: body.empresa_id,
-        empresaSlug: company.slug ?? null,
-      })
-      : [];
-
-    const userIds = Array.from(new Set([
-      ...(cleanupResult.userIds ?? []),
-      ...authMetadataUserIds,
-    ]));
-    const tableErrors = cleanupResult.tableErrors ?? [];
-    const cleanupDeletedByTable = cleanupResult.deletedByTable ?? {};
-    let deletedAuthUsers = 0;
-    if (includeAuthUsers && userIds.length > 0) {
-      const authDelete = await deleteAuthUsers(admin, userIds);
-      deletedAuthUsers = authDelete.removed;
-      if (authDelete.failed.length > 0) {
-        return fail(
-          "Falha ao excluir todos os usuários do Auth vinculados à empresa. Exclusão abortada para evitar resíduos.",
-          400,
-          {
-            operation_id: operationId,
-            failed_auth_users: authDelete.failed,
-          },
-          req,
-        );
-      }
-    }
-
-    if (contractIds.length > 0) {
-      await admin.from("contract_versions").delete().in("contract_id", contractIds);
-    }
-
-    if (subscriptionIds.length > 0) {
-      await admin.from("subscription_payments").delete().in("subscription_id", subscriptionIds);
-    }
-
-    await admin.from("configuracoes_sistema").delete().eq("empresa_id", body.empresa_id);
-    await admin.from("dados_empresa").delete().eq("empresa_id", body.empresa_id);
-    await admin.from("company_subscriptions").delete().eq("empresa_id", body.empresa_id);
-    await admin.from("enterprise_impersonation_sessions").delete().eq("empresa_id", body.empresa_id);
-    await admin.from("enterprise_subscriptions").delete().eq("empresa_id", body.empresa_id);
-    await admin.from("enterprise_audit_logs").delete().eq("empresa_id", body.empresa_id);
-    await admin.from("contracts").delete().eq("empresa_id", body.empresa_id);
-    await admin.from("subscriptions").delete().eq("empresa_id", body.empresa_id);
-    await admin.from("operational_logs").delete().eq("empresa_id", body.empresa_id);
-
-    const { count: remainingOperationalLogs, error: remainingOperationalLogsError } = await admin
-      .from("operational_logs")
-      .select("id", { count: "exact", head: true })
-      .eq("empresa_id", body.empresa_id);
-
-    if (remainingOperationalLogsError) {
+    if (company.deleted_at) {
       return fail(
-        `Falha ao validar limpeza de operational_logs antes da exclusão da empresa. Detalhe: ${remainingOperationalLogsError.message}`,
-        400,
-        {
-          operation_id: operationId,
-          fk_table: "operational_logs",
-          reason: remainingOperationalLogsError.message,
-        },
+        `Empresa já está marcada para exclusão desde ${company.deleted_at}. Aguarde o período de 30 dias para hard-delete automático ou use a ação restore_empresa para desfazer.`,
+        409,
+        null,
         req,
       );
     }
 
-    if (Number(remainingOperationalLogs ?? 0) > 0) {
-      await bestEffortDeleteByEq(admin, "operational_logs", "empresa_id", body.empresa_id);
+    // ── Soft-delete via RPC SECURITY DEFINER ────────────────────
+    const { data: softDeleteResult, error: softDeleteError } = await admin
+      .rpc("soft_delete_empresa", {
+        p_empresa_id: body.empresa_id,
+        p_actor_id: auth.user.id,
+      });
+
+    if (softDeleteError) {
+      return fail(`Falha no soft-delete: ${softDeleteError.message}`, 400, null, req);
     }
 
-    let lastDeleteCompanyError: { message?: string; code?: string } | null = null;
-    for (let attempt = 0; attempt < 8; attempt += 1) {
-      await bestEffortDeleteByEq(admin, "operational_logs", "empresa_id", body.empresa_id);
-
-      const { error: deleteCompanyError } = await admin
-        .from("empresas")
-        .delete()
-        .eq("id", body.empresa_id);
-
-      if (!deleteCompanyError) {
-        lastDeleteCompanyError = null;
-        break;
-      }
-
-      lastDeleteCompanyError = deleteCompanyError;
-      const isFkError = isForeignKeyError(deleteCompanyError);
-
-      if (!isFkError) {
-        break;
-      }
-
-      const referencedTable = extractReferencedTableFromFkError(deleteCompanyError.message);
-      if (!referencedTable) {
-        break;
-      }
-
-      const fallbackResults = await Promise.all([
-        bestEffortDeleteByEq(admin, referencedTable, "empresa_id", body.empresa_id),
-        bestEffortDeleteByIn(admin, referencedTable, "subscription_id", subscriptionIds),
-        bestEffortDeleteByIn(admin, referencedTable, "contract_id", contractIds),
-        bestEffortDeleteByIn(admin, referencedTable, "user_id", userIds),
-      ]);
-
-      const hasSomeFallbackSuccess = fallbackResults.some(Boolean);
-      if (!hasSomeFallbackSuccess) {
-        break;
-      }
-    }
-
-    if (lastDeleteCompanyError) {
-      const referencedTable = extractReferencedTableFromFkError(lastDeleteCompanyError.message);
-      return fail(
-        `Falha ao excluir empresa por dependências de FK (${referencedTable ?? "empresa_id"}). A exclusão definitiva exige remoção total dos vínculos. Detalhe: ${lastDeleteCompanyError.message}`,
-        400,
-        {
-          fk_table: referencedTable,
-          reason: lastDeleteCompanyError.message,
-        },
-        req,
-      );
-    }
-
-    const residueTables = (await listDatabaseTables(admin, body.empresa_id))
-      .filter((table) => table.has_empresa_id && Number(table.total_rows ?? 0) > 0)
-      .map((table) => ({ table_name: table.table_name, total_rows: Number(table.total_rows ?? 0) }));
-
-    if (residueTables.length > 0) {
-      return fail(
-        "Exclusão incompleta detectada: ainda existem registros vinculados à empresa em tabelas tenant.",
-        400,
-        {
-          operation_id: operationId,
-          residue_tables: residueTables,
-        },
-        req,
-      );
-    }
-
-    const residualAuthMetadataUsers = await collectAuthUsersByCompanyMetadata(admin, {
-      empresaId: body.empresa_id,
-      empresaSlug: company.slug ?? null,
-    });
-
-    if (residualAuthMetadataUsers.length > 0) {
-      return fail(
-        "Exclusão incompleta detectada: ainda existem usuários Auth com metadata da empresa removida.",
-        400,
-        {
-          operation_id: operationId,
-          residual_auth_user_ids: residualAuthMetadataUsers,
-        },
-        req,
-      );
-    }
+    const result = (Array.isArray(softDeleteResult) ? softDeleteResult[0] : softDeleteResult) as Record<string, unknown>;
 
     await logOwnerMasterHiddenAudit(admin, {
       actorId: auth.user.id,
       actorEmail: auth.user.email,
       empresaId: body.empresa_id,
-      actionType: "OWNER_MASTER_DELETE_COMPANY",
+      actionType: "OWNER_MASTER_SOFT_DELETE_COMPANY",
       details: {
         empresa_id: body.empresa_id,
-        company_name: expectedName,
-        include_auth_users: includeAuthUsers,
-        deleted_auth_users: deletedAuthUsers,
+        company_name: company.nome,
+        deleted_at: result?.deleted_at,
+        purge_after: result?.purge_after,
         operation_id: operationId,
-        table_errors: tableErrors,
       },
     });
 
@@ -5451,9 +5284,9 @@ Deno.serve(async (req) => {
       empresaId: body.empresa_id,
       userId: auth.user.id,
       payload: {
-        company_name: expectedName,
-        include_auth_users: includeAuthUsers,
-        deleted_auth_users: deletedAuthUsers,
+        company_name: company.nome,
+        soft_deleted_at: result?.deleted_at,
+        purge_after: result?.purge_after,
         operation_id: operationId,
       },
       severity: "critical",
@@ -5469,31 +5302,27 @@ Deno.serve(async (req) => {
       endpoint: trace.endpoint,
       statusCode: 200,
       durationMs: traceDurationMs(trace),
-      empresaId: null,
+      empresaId: body.empresa_id,
       userId: auth.user.id,
       metadata: {
         empresa_id: body.empresa_id,
-        company_name: expectedName,
-        deleted_auth_users: deletedAuthUsers,
+        company_name: company.nome,
+        soft_deleted_at: result?.deleted_at,
+        purge_after: result?.purge_after,
+        operation_id: operationId,
       },
     });
-
-    const affectedTables = Object.keys(cleanupDeletedByTable);
-    const rowsDeleted = Object.values(cleanupDeletedByTable).reduce((acc: number, value) => acc + Number(value ?? 0), 0);
 
     return okWithOperation(req, {
       success: true,
       summary: {
         empresa_id: body.empresa_id,
-        company_name: expectedName,
-        deleted_auth_users: deletedAuthUsers,
-        affected_tables: affectedTables,
-        rows_deleted: rowsDeleted,
-        table_errors: tableErrors,
+        company_name: company.nome,
+        action: "soft_deleted",
+        deleted_at: result?.deleted_at,
+        purge_after: result?.purge_after,
+        message: "Empresa marcada para exclusão. Hard-delete automático ocorrerá após 30 dias. Use restore_empresa para desfazer.",
       },
-      affected_tables: affectedTables,
-      rows_deleted: rowsDeleted,
-      table_errors: tableErrors,
     }, operationId);
   }
 
