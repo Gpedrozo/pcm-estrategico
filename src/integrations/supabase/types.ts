@@ -1124,6 +1124,53 @@ export type Database = {
           },
         ]
       }
+      colaboradores_ssma: {
+        Row: {
+          id: string
+          empresa_id: string
+          nome: string
+          funcao: string | null
+          setor: string | null
+          matricula: string | null
+          data_admissao: string | null
+          status: string
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          empresa_id: string
+          nome: string
+          funcao?: string | null
+          setor?: string | null
+          matricula?: string | null
+          data_admissao?: string | null
+          status?: string
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          empresa_id?: string
+          nome?: string
+          funcao?: string | null
+          setor?: string | null
+          matricula?: string | null
+          data_admissao?: string | null
+          status?: string
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "colaboradores_ssma_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       entregas_epi: {
         Row: {
           colaborador_id: string | null

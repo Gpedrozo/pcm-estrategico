@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Plus, Search, ShieldAlert, AlertTriangle, FileWarning, Calendar, GraduationCap, Trash2, HardHat, FileSearch2, BarChart3, Printer, FileSpreadsheet, FileText, PackagePlus, PackageMinus, ArrowDown, ArrowUp, RotateCcw } from 'lucide-react';
+import { Plus, Search, ShieldAlert, AlertTriangle, FileWarning, Calendar, GraduationCap, Trash2, HardHat, FileSearch2, BarChart3, Printer, FileSpreadsheet, FileText, PackagePlus, PackageMinus, ArrowDown, ArrowUp, RotateCcw, Users, Edit2 } from 'lucide-react';
 import { useReactToPrint } from 'react-to-print';
 import { useIncidentesSSMA, useCreateIncidenteSSMA, usePermissoesTrabalho, useCreatePermissaoTrabalho } from '@/hooks/useSSMA';
 import { useEPIs, useCreateEPI, useEntregasEPI, useCreateEntregaEPI, useMovimentacoesEPI, useCreateMovimentacaoEPI, calcularSaldoMovimentacao, type TipoMovimentacaoEPI } from '@/hooks/useEPIs';
@@ -23,6 +23,7 @@ import {
   type TreinamentoSSMARow,
 } from '@/hooks/useTreinamentosSSMA';
 import { useAPR, useCreateAPR, useDeleteAPR, CLASSIFICACAO_LABELS } from '@/hooks/useAPR';
+import { useColaboradoresSSMA, useCreateColaboradorSSMA, useUpdateColaboradorSSMA, useDeleteColaboradorSSMA, STATUS_COLABORADOR_LABELS, type ColaboradorSSMARow, type StatusColaborador } from '@/hooks/useColaboradoresSSMA';
 import { useEquipamentos } from '@/hooks/useEquipamentos';
 import { useAuth } from '@/contexts/AuthContext';
 import { useFormDraft } from '@/hooks/useFormDraft';
@@ -51,6 +52,8 @@ export default function SSMA() {
   const [isFichaModalOpen, setIsFichaModalOpen] = useState(false);
   const [isAPRModalOpen, setIsAPRModalOpen] = useState(false);
   const [isMovimentacaoEPIModalOpen, setIsMovimentacaoEPIModalOpen] = useState(false);
+  const [isColaboradorModalOpen, setIsColaboradorModalOpen] = useState(false);
+  const [editingColaborador, setEditingColaborador] = useState<ColaboradorSSMARow | null>(null);
 
   // Estados para impressão de Ficha EPI
   const [fichaEPIColaborador, setFichaEPIColaborador] = useState('');
@@ -70,7 +73,7 @@ export default function SSMA() {
   });
   const [showCAConfig, setShowCAConfig] = useState(false);
   const [diasAlertaCAInput, setDiasAlertaCAInput] = useState(diasAlertaCA);
-  const [epiView, setEpiView] = useState<'estoque' | 'entregas' | 'movimentacoes'>('estoque');
+  const [epiView, setEpiView] = useState<'estoque' | 'entregas' | 'movimentacoes' | 'colaboradores'>('estoque');
   const [epiFiltroRapido, setEpiFiltroRapido] = useState<'TODOS' | 'CRITICOS' | 'ESTOQUE_BAIXO' | 'CA_VENCIDO'>('TODOS');
 
   const calcularStatusCA = (validade_ca: string | null): 'VALIDO' | 'PROXIMO' | 'VENCIDO' => {
@@ -146,10 +149,20 @@ export default function SSMA() {
   const [entregaForm, setEntregaForm] = useState({
     epi_id: '',
     colaborador_nome: '',
+    colaborador_id: '',
     quantidade: 1,
     data_entrega: new Date().toISOString().split('T')[0],
     motivo: '',
     observacoes: '',
+  });
+
+  const [colaboradorForm, setColaboradorForm] = useState({
+    nome: '',
+    funcao: '',
+    setor: '',
+    matricula: '',
+    data_admissao: '',
+    status: 'ATIVO' as StatusColaborador,
   });
 
   const [movimentacaoEPIForm, setMovimentacaoEPIForm] = useState({
@@ -195,6 +208,7 @@ export default function SSMA() {
   const { data: epis, isLoading: loadingEPIs } = useEPIs();
   const { data: entregasEPI } = useEntregasEPI();
   const { data: movimentacoesEPI } = useMovimentacoesEPI();
+  const { data: colaboradoresSSMA, isLoading: loadingColaboradores } = useColaboradoresSSMA();
   const { data: fichas, isLoading: loadingFichas } = useFichasSeguranca();
   const { data: aprs, isLoading: loadingAPR } = useAPR();
   const { data: equipamentos } = useEquipamentos();
@@ -205,6 +219,9 @@ export default function SSMA() {
   const createEPI = useCreateEPI();
   const createEntregaEPI = useCreateEntregaEPI();
   const createMovimentacaoEPI = useCreateMovimentacaoEPI();
+  const createColaborador = useCreateColaboradorSSMA();
+  const updateColaborador = useUpdateColaboradorSSMA();
+  const deleteColaborador = useDeleteColaboradorSSMA();
   const createFicha = useCreateFichaSeguranca();
   const updateFicha = useUpdateFichaSeguranca();
   const createAPR = useCreateAPR();
@@ -293,16 +310,59 @@ export default function SSMA() {
 
   const handleSubmitEntregaEPI = async (e: React.FormEvent) => {
     e.preventDefault();
+    // Se colaborador selecionado do cadastro, usa nome dele; senão mantém texto livre
+    const colaboradorSelecionado = colaboradoresLista.find(c => c.id === entregaForm.colaborador_id);
+    const nomeColaborador = colaboradorSelecionado?.nome || entregaForm.colaborador_nome;
     await createEntregaEPI.mutateAsync({
       epi_id: entregaForm.epi_id,
-      colaborador_nome: entregaForm.colaborador_nome,
+      colaborador_nome: nomeColaborador,
       quantidade: entregaForm.quantidade,
       data_entrega: entregaForm.data_entrega,
       motivo: entregaForm.motivo || null,
       observacoes: entregaForm.observacoes || null,
     });
     setIsEntregaEPIModalOpen(false);
-    setEntregaForm({ epi_id: '', colaborador_nome: '', quantidade: 1, data_entrega: new Date().toISOString().split('T')[0], motivo: '', observacoes: '' });
+    setEntregaForm({ epi_id: '', colaborador_nome: '', colaborador_id: '', quantidade: 1, data_entrega: new Date().toISOString().split('T')[0], motivo: '', observacoes: '' });
+  };
+
+  const handleSubmitColaborador = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (editingColaborador) {
+      await updateColaborador.mutateAsync({
+        id: editingColaborador.id,
+        nome: colaboradorForm.nome,
+        funcao: colaboradorForm.funcao || null,
+        setor: colaboradorForm.setor || null,
+        matricula: colaboradorForm.matricula || null,
+        data_admissao: colaboradorForm.data_admissao || null,
+        status: colaboradorForm.status,
+      });
+    } else {
+      await createColaborador.mutateAsync({
+        nome: colaboradorForm.nome,
+        funcao: colaboradorForm.funcao || null,
+        setor: colaboradorForm.setor || null,
+        matricula: colaboradorForm.matricula || null,
+        data_admissao: colaboradorForm.data_admissao || null,
+        status: colaboradorForm.status,
+      });
+    }
+    setIsColaboradorModalOpen(false);
+    setEditingColaborador(null);
+    setColaboradorForm({ nome: '', funcao: '', setor: '', matricula: '', data_admissao: '', status: 'ATIVO' });
+  };
+
+  const handleEditColaborador = (c: ColaboradorSSMARow) => {
+    setEditingColaborador(c);
+    setColaboradorForm({
+      nome: c.nome,
+      funcao: c.funcao || '',
+      setor: c.setor || '',
+      matricula: c.matricula || '',
+      data_admissao: c.data_admissao || '',
+      status: c.status,
+    });
+    setIsColaboradorModalOpen(true);
   };
 
   const handleSubmitMovimentacaoEPI = async (e: React.FormEvent) => {
@@ -447,6 +507,8 @@ export default function SSMA() {
   const episLista = epis || [];
   const entregasLista = entregasEPI || [];
   const movimentacoesLista = movimentacoesEPI || [];
+  const colaboradoresLista = colaboradoresSSMA || [];
+  const colaboradoresAtivos = colaboradoresLista.filter(c => c.status === 'ATIVO');
 
   const episAtivos = episLista.filter((item) => item.ativo);
   const episEstoqueBaixo = episAtivos.filter((item) => item.estoque_atual <= item.estoque_minimo);
@@ -912,11 +974,12 @@ export default function SSMA() {
             </div>
           )}
 
-          <Tabs value={epiView} onValueChange={(value) => setEpiView(value as 'estoque' | 'entregas' | 'movimentacoes')}>
+          <Tabs value={epiView} onValueChange={(value) => setEpiView(value as 'estoque' | 'entregas' | 'movimentacoes' | 'colaboradores')}>
             <TabsList>
               <TabsTrigger value="estoque">Estoque de EPIs</TabsTrigger>
               <TabsTrigger value="entregas">Entregas</TabsTrigger>
               <TabsTrigger value="movimentacoes">Movimentações</TabsTrigger>
+              <TabsTrigger value="colaboradores" className="gap-1.5"><Users className="h-3.5 w-3.5" />Colaboradores</TabsTrigger>
             </TabsList>
 
             <TabsContent value="estoque" className="mt-4 space-y-4">
@@ -1103,6 +1166,74 @@ export default function SSMA() {
                           </tr>
                         );
                       })
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </TabsContent>
+
+            {/* ── SUBTAB COLABORADORES ──────────────────── */}
+            <TabsContent value="colaboradores" className="mt-4">
+              <div className="bg-card border border-border rounded-lg overflow-hidden">
+                <div className="p-4 border-b border-border flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Users className="h-4 w-4" />
+                    <h3 className="font-semibold">Cadastro de Colaboradores</h3>
+                    <Badge variant="secondary">{colaboradoresLista.length}</Badge>
+                  </div>
+                  <Button size="sm" className="gap-1.5" onClick={() => { setEditingColaborador(null); setColaboradorForm({ nome: '', funcao: '', setor: '', matricula: '', data_admissao: '', status: 'ATIVO' }); setIsColaboradorModalOpen(true); }}>
+                    <Plus className="h-3.5 w-3.5" />Novo Colaborador
+                  </Button>
+                </div>
+                <table className="table-industrial">
+                  <thead>
+                    <tr>
+                      <th>Nome</th>
+                      <th>Função</th>
+                      <th>Setor</th>
+                      <th>Matrícula</th>
+                      <th>Admissão</th>
+                      <th>Status</th>
+                      <th>Ações</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {loadingColaboradores ? (
+                      <tr><td colSpan={7} className="py-8"><Skeleton className="h-6 w-48 mx-auto" /></td></tr>
+                    ) : colaboradoresLista.length === 0 ? (
+                      <tr><td colSpan={7} className="text-center py-8 text-muted-foreground">Nenhum colaborador cadastrado. Use o botão acima para cadastrar.</td></tr>
+                    ) : (
+                      colaboradoresLista
+                        .filter(c => {
+                          if (!search) return true;
+                          const s = search.trim().toLowerCase();
+                          return c.nome.toLowerCase().includes(s)
+                            || (c.funcao || '').toLowerCase().includes(s)
+                            || (c.setor || '').toLowerCase().includes(s)
+                            || (c.matricula || '').toLowerCase().includes(s);
+                        })
+                        .map((c) => (
+                        <tr key={c.id}>
+                          <td className="font-medium">{c.nome}</td>
+                          <td>{c.funcao || '—'}</td>
+                          <td>{c.setor || '—'}</td>
+                          <td className="font-mono">{c.matricula || '—'}</td>
+                          <td>{c.data_admissao ? new Date(c.data_admissao + 'T00:00:00').toLocaleDateString('pt-BR') : '—'}</td>
+                          <td>
+                            <Badge variant={c.status === 'ATIVO' ? 'default' : c.status === 'AFASTADO' ? 'secondary' : 'destructive'}>
+                              {STATUS_COLABORADOR_LABELS[c.status]}
+                            </Badge>
+                          </td>
+                          <td className="flex items-center gap-1">
+                            <Button variant="ghost" size="icon" className="h-7 w-7" title="Editar" onClick={() => handleEditColaborador(c)}>
+                              <Edit2 className="h-3.5 w-3.5" />
+                            </Button>
+                            <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive" title="Remover" onClick={() => deleteColaborador.mutate(c.id)} disabled={deleteColaborador.isPending}>
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </Button>
+                          </td>
+                        </tr>
+                      ))
                     )}
                   </tbody>
                 </table>
@@ -1536,7 +1667,30 @@ export default function SSMA() {
             </div>
             <div className="space-y-2">
               <Label>Colaborador *</Label>
-              <Input value={entregaForm.colaborador_nome} onChange={(e) => setEntregaForm({...entregaForm, colaborador_nome: e.target.value})} required placeholder="Nome completo do colaborador" />
+              {colaboradoresAtivos.length > 0 ? (
+                <Select value={entregaForm.colaborador_id} onValueChange={(v) => {
+                  if (v === '__manual__') {
+                    setEntregaForm({...entregaForm, colaborador_id: '', colaborador_nome: ''});
+                  } else {
+                    const col = colaboradoresLista.find(c => c.id === v);
+                    setEntregaForm({...entregaForm, colaborador_id: v, colaborador_nome: col?.nome || ''});
+                  }
+                }}>
+                  <SelectTrigger><SelectValue placeholder="Selecione o colaborador" /></SelectTrigger>
+                  <SelectContent>
+                    {colaboradoresAtivos.map(c => (
+                      <SelectItem key={c.id} value={c.id}>{c.nome}{c.funcao ? ` — ${c.funcao}` : ''}{c.matricula ? ` (${c.matricula})` : ''}</SelectItem>
+                    ))}
+                    <SelectItem value="__manual__">✏️ Digitar manualmente</SelectItem>
+                  </SelectContent>
+                </Select>
+              ) : null}
+              {(colaboradoresAtivos.length === 0 || entregaForm.colaborador_id === '') && !entregaForm.colaborador_id && (
+                <Input value={entregaForm.colaborador_nome} onChange={(e) => setEntregaForm({...entregaForm, colaborador_nome: e.target.value})} required={!entregaForm.colaborador_id} placeholder="Nome completo do colaborador" />
+              )}
+              {colaboradoresAtivos.length === 0 && (
+                <p className="text-xs text-muted-foreground">Cadastre colaboradores na aba "Colaboradores" para usar a seleção rápida.</p>
+              )}
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
@@ -1559,6 +1713,57 @@ export default function SSMA() {
             <div className="flex gap-3 pt-4">
               <Button type="submit" className="flex-1" disabled={createEntregaEPI.isPending}>Registrar Entrega</Button>
               <Button type="button" variant="outline" onClick={() => setIsEntregaEPIModalOpen(false)}>Cancelar</Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Colaborador SSMA Modal */}
+      <Dialog open={isColaboradorModalOpen} onOpenChange={(open) => { setIsColaboradorModalOpen(open); if (!open) setEditingColaborador(null); }}>
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+          <DialogHeader><DialogTitle>{editingColaborador ? 'Editar Colaborador' : 'Cadastrar Colaborador'}</DialogTitle></DialogHeader>
+          <form onSubmit={handleSubmitColaborador} className="space-y-4">
+            <div className="space-y-2">
+              <Label>Nome Completo *</Label>
+              <Input value={colaboradorForm.nome} onChange={(e) => setColaboradorForm({...colaboradorForm, nome: e.target.value})} required placeholder="Nome completo" />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Função / Cargo</Label>
+                <Input value={colaboradorForm.funcao} onChange={(e) => setColaboradorForm({...colaboradorForm, funcao: e.target.value})} placeholder="Ex: Mecânico Industrial" />
+              </div>
+              <div className="space-y-2">
+                <Label>Setor</Label>
+                <Input value={colaboradorForm.setor} onChange={(e) => setColaboradorForm({...colaboradorForm, setor: e.target.value})} placeholder="Ex: Manutenção" />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Matrícula</Label>
+                <Input value={colaboradorForm.matricula} onChange={(e) => setColaboradorForm({...colaboradorForm, matricula: e.target.value})} placeholder="Ex: MAT-0001" />
+              </div>
+              <div className="space-y-2">
+                <Label>Data de Admissão</Label>
+                <Input type="date" value={colaboradorForm.data_admissao} onChange={(e) => setColaboradorForm({...colaboradorForm, data_admissao: e.target.value})} />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label>Status</Label>
+              <Select value={colaboradorForm.status} onValueChange={(v) => setColaboradorForm({...colaboradorForm, status: v as StatusColaborador})}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="ATIVO">Ativo</SelectItem>
+                  <SelectItem value="INATIVO">Inativo</SelectItem>
+                  <SelectItem value="AFASTADO">Afastado</SelectItem>
+                  <SelectItem value="DESLIGADO">Desligado</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex gap-3 pt-4">
+              <Button type="submit" className="flex-1" disabled={createColaborador.isPending || updateColaborador.isPending}>
+                {editingColaborador ? 'Salvar Alterações' : 'Cadastrar'}
+              </Button>
+              <Button type="button" variant="outline" onClick={() => { setIsColaboradorModalOpen(false); setEditingColaborador(null); }}>Cancelar</Button>
             </div>
           </form>
         </DialogContent>
