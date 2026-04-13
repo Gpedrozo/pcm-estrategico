@@ -1824,25 +1824,38 @@ export default function Owner() {
                     <thead className="bg-muted sticky top-0">
                       <tr>
                         <th className="px-2 py-2 text-left">Empresa</th>
+                        <th className="px-2 py-2 text-left">Plano</th>
+                        <th className="px-2 py-2 text-left">Valor</th>
                         <th className="px-2 py-2 text-left">Versão</th>
                         <th className="px-2 py-2 text-left">Status</th>
+                        <th className="px-2 py-2 text-left">Assinado em</th>
                         <th className="px-2 py-2 text-left">Gerado em</th>
                         <th className="px-2 py-2 text-left">Ações</th>
                       </tr>
                     </thead>
                     <tbody>
                       {contracts.length === 0 && (
-                        <tr><td colSpan={5} className="px-2 py-4 text-center text-muted-foreground">Nenhum contrato encontrado</td></tr>
+                        <tr><td colSpan={8} className="px-2 py-4 text-center text-muted-foreground">Nenhum contrato encontrado</td></tr>
                       )}
                       {contracts.map((c) => {
                         const empNome = String((c.empresas as any)?.nome ?? c.empresa_id ?? '-')
+                        const planName = String((c.plans as any)?.name ?? (c.plans as any)?.code ?? '-')
+                        const valor = c.amount != null ? new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(Number(c.amount)) : '-'
                         const st = String(c.status ?? '-')
+                        const signedAt = (c as any).signed_at ? new Date(String((c as any).signed_at)).toLocaleDateString('pt-BR') : null
                         const isSelected = String(c.id) === selectedContractId
                         return (
-                          <tr key={String(c.id)} className={`border-t border-border cursor-pointer hover:bg-muted/50 ${isSelected ? 'bg-sky-50' : ''}`} onClick={() => setSelectedContractId(String(c.id ?? ''))}>
+                          <tr key={String(c.id)} className={`border-t border-border cursor-pointer hover:bg-muted/50 ${isSelected ? 'bg-sky-50 dark:bg-sky-900/20' : ''}`} onClick={() => setSelectedContractId(String(c.id ?? ''))}>
                             <td className="px-2 py-2 font-medium">{empNome}</td>
+                            <td className="px-2 py-2 text-muted-foreground">{planName}</td>
+                            <td className="px-2 py-2">{valor}</td>
                             <td className="px-2 py-2">v{String(c.version ?? '1')}</td>
                             <td className="px-2 py-2"><span className={`rounded border px-2 py-0.5 ${statusColor(st)}`}>{st}</span></td>
+                            <td className="px-2 py-2">
+                              {signedAt
+                                ? <span className="text-green-700 dark:text-green-400">✓ {signedAt}</span>
+                                : <span className="text-amber-600 dark:text-amber-400">Pendente</span>}
+                            </td>
                             <td className="px-2 py-2">{c.generated_at ? new Date(String(c.generated_at)).toLocaleDateString('pt-BR') : '-'}</td>
                             <td className="px-2 py-2">
                               <button className="rounded border border-sky-300 bg-sky-50 px-2 py-0.5 text-[11px] text-sky-700" onClick={(e) => { e.stopPropagation(); setSelectedContractId(String(c.id ?? '')) }}>Editar</button>
