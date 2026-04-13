@@ -1295,7 +1295,9 @@ async function createContractFromSubscription(
     .maybeSingle();
 
   // subscription.plan_id references planos (PT-BR table), try both tables
+  // planEnId tracks the plans (EN) UUID — safe to use as FK in contracts.plan_id
   let plan: any = null;
+  let planEnId: string | null = null;
   const { data: planoPtBr } = await admin
     .from("planos")
     .select("id,nome,codigo")
@@ -1303,20 +1305,32 @@ async function createContractFromSubscription(
     .maybeSingle();
   if (planoPtBr) {
     // Map to plans (EN) to get user_limit and module_flags
+    // Tenta lookup case-insensitive: planos.codigo pode ser 'FREE'/'STARTER' mas plans.code pode ser 'free'/'STARTER'
+    const codigoLower = (planoPtBr.codigo ?? "").toLowerCase();
+    const codigoUpper = (planoPtBr.codigo ?? "").toUpperCase();
     const { data: planEn } = await admin
       .from("plans")
       .select("id,name,user_limit,module_flags")
-      .eq("code", planoPtBr.codigo)
+      .or(`code.eq.${codigoLower},code.eq.${codigoUpper},code.eq.${planoPtBr.codigo}`)
       .maybeSingle();
-    plan = planEn ?? { id: planoPtBr.id, name: planoPtBr.nome, user_limit: null, module_flags: null };
+    if (planEn) {
+      plan = planEn;
+      planEnId = planEn.id;
+    } else {
+      // plano PT-BR sem correspondente EN: usa nome para o contrato mas planEnId fica null
+      // (não podemos passar planos.id como FK de plans.id — são tabelas diferentes)
+      plan = { name: planoPtBr.nome, user_limit: null, module_flags: null };
+      planEnId = null;
+    }
   } else {
-    // Fallback: maybe plan_id directly references plans
+    // Fallback: plan_id talvez já referencie plans (EN) diretamente
     const { data: planDirect } = await admin
       .from("plans")
       .select("id,name,user_limit,module_flags")
       .eq("id", subscription.plan_id)
       .maybeSingle();
-    plan = planDirect;
+    plan = planDirect ?? null;
+    planEnId = planDirect?.id ?? null;
   }
 
   const content = contractTemplate({
@@ -1375,7 +1389,7 @@ async function createContractFromSubscription(
     .insert({
       empresa_id: subscription.empresa_id,
       subscription_id: subscription.id,
-      plan_id: subscription.plan_id,
+      plan_id: planEnId,  // planEnId = plans(EN).id ou null — nunca planos(PT).id
       content,
       generated_at: new Date().toISOString(),
       starts_at: subscription.starts_at,

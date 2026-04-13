@@ -213,6 +213,11 @@ const OwnerOnlyRoute = ({ children }: { children: React.ReactNode }) => {
   }
 
   if (!isAuthenticated || !isSystemOwner) {
+    // authStatus === 'error': hidratação falhou (ex: rede lenta, timeout de perfil).
+    // Mostrar tela de recuperação em vez de redirect silencioso para evitar o efeito "travado".
+    if (authStatus === 'error') {
+      return <OwnerAuthError />;
+    }
     const nextPath = `${location.pathname}${location.search}${location.hash}`;
     const nextParam = encodeURIComponent(nextPath || '/');
     return <Navigate to={`/login?next=${nextParam}`} replace state={{ from: location }} />;
@@ -240,8 +245,34 @@ function RouteLoading() {
   )
 }
 
-/** Loading screen do módulo owner — fundo escuro idêntico ao da tela de login. */
-function OwnerRouteLoading() {
+/** Tela mostrada quando a hidratação do Owner falhou — evita redirect silencioso confuso. */
+function OwnerAuthError() {
+  const { logout } = useAuth();
+
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-slate-950">
+      <div className="text-center space-y-4">
+        <p className="text-slate-300 text-sm">Erro ao carregar sessão. Tente novamente.</p>
+        <div className="flex gap-2 justify-center">
+          <button
+            onClick={() => window.location.reload()}
+            className="px-4 py-2 rounded-md bg-emerald-500 text-slate-900 text-sm font-medium hover:bg-emerald-400"
+          >
+            Tentar novamente
+          </button>
+          <button
+            onClick={() => void logout({ reason: 'security' })}
+            className="px-4 py-2 rounded-md border border-slate-600 text-slate-300 text-sm font-medium hover:bg-slate-800"
+          >
+            Ir para o login
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-slate-950">
       <Loader2 className="h-8 w-8 animate-spin text-slate-400" />

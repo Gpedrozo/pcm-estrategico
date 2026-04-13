@@ -1676,8 +1676,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     let isMounted = true;
 
     const loadInactivityPolicy = async () => {
-      if (!session || !user || !currentTenantId) {
+      if (!session || !user) {
         if (isMounted) setInactivityTimeoutMs(null);
+        return;
+      }
+
+      // SYSTEM_OWNER / global roles sem tenant vinculado ainda precisam do timeout padrão.
+      if (!currentTenantId) {
+        if (isMounted) setInactivityTimeoutMs(DEFAULT_INACTIVITY_TIMEOUT_MS);
         return;
       }
 

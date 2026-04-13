@@ -28,6 +28,7 @@ export default function OwnerLogin() {
   const [loginPassword, setLoginPassword] = useState('');
   const [loginError, setLoginError] = useState('');
   const [logoutNotice, setLogoutNotice] = useState('');
+  const [sessionErrorNotice, setSessionErrorNotice] = useState(false);
   const [isLoginLoading, setIsLoginLoading] = useState(false);
   const [showAccessChooser, setShowAccessChooser] = useState(false);
   const [isChooserLoading, setIsChooserLoading] = useState(false);
@@ -86,6 +87,16 @@ export default function OwnerLogin() {
     const cleanedUrl = `${window.location.pathname}${nextQuery ? `?${nextQuery}` : ''}${window.location.hash}`;
     window.history.replaceState({}, document.title, cleanedUrl);
   }, []);
+
+  // Detectar authStatus 'error' (timeout de hidratação de perfil) e mostrar aviso amigável
+  useEffect(() => {
+    if (authStatus === 'error') {
+      setSessionErrorNotice(true);
+    }
+    if (authStatus === 'authenticated' || authStatus === 'unauthenticated') {
+      setSessionErrorNotice(false);
+    }
+  }, [authStatus]);
 
   const tenantBaseDomain = (import.meta.env.VITE_TENANT_BASE_DOMAIN || '').trim().toLowerCase();
 
@@ -308,6 +319,12 @@ export default function OwnerLogin() {
             {logoutNotice && (
               <div className="rounded-md border border-amber-500/40 bg-amber-950/30 p-3 text-sm text-amber-100">
                 {logoutNotice}
+              </div>
+            )}
+
+            {sessionErrorNotice && !logoutNotice && (
+              <div className="rounded-md border border-amber-500/40 bg-amber-950/30 p-3 text-sm text-amber-100">
+                Erro ao carregar a sessão (timeout). Faça login novamente para continuar.
               </div>
             )}
 
