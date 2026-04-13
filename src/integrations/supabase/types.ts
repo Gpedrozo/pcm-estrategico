@@ -180,6 +180,80 @@ export type Database = {
           },
         ]
       }
+      analises_risco: {
+        Row: {
+          classificacao: string
+          created_at: string
+          empresa_id: string
+          grau_risco: number
+          id: string
+          local_setor: string | null
+          medidas_controle: string | null
+          observacoes: string | null
+          perigo: string
+          prazo_acao: string | null
+          probabilidade: number
+          responsavel: string
+          responsavel_acao: string | null
+          risco: string
+          severidade: number
+          status: string
+          updated_at: string
+          atividade: string
+          data_analise: string
+        }
+        Insert: {
+          classificacao?: string
+          created_at?: string
+          empresa_id: string
+          grau_risco?: number
+          id?: string
+          local_setor?: string | null
+          medidas_controle?: string | null
+          observacoes?: string | null
+          perigo: string
+          prazo_acao?: string | null
+          probabilidade?: number
+          responsavel: string
+          responsavel_acao?: string | null
+          risco: string
+          severidade?: number
+          status?: string
+          updated_at?: string
+          atividade: string
+          data_analise?: string
+        }
+        Update: {
+          classificacao?: string
+          created_at?: string
+          empresa_id?: string
+          grau_risco?: number
+          id?: string
+          local_setor?: string | null
+          medidas_controle?: string | null
+          observacoes?: string | null
+          perigo?: string
+          prazo_acao?: string | null
+          probabilidade?: number
+          responsavel?: string
+          responsavel_acao?: string | null
+          risco?: string
+          severidade?: number
+          status?: string
+          updated_at?: string
+          atividade?: string
+          data_analise?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "analises_risco_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       anomalias_inspecao: {
         Row: {
           created_at: string
@@ -190,6 +264,12 @@ export type Database = {
           inspecao_id: string
           status: string | null
           updated_at: string
+          // Columns added in migration 20260412210000
+          equipamento_id: string | null
+          tag: string | null
+          severidade: string | null
+          foto_url: string | null
+          os_gerada_id: string | null
         }
         Insert: {
           created_at?: string
@@ -200,6 +280,11 @@ export type Database = {
           inspecao_id: string
           status?: string | null
           updated_at?: string
+          equipamento_id?: string | null
+          tag?: string | null
+          severidade?: string | null
+          foto_url?: string | null
+          os_gerada_id?: string | null
         }
         Update: {
           created_at?: string
@@ -210,6 +295,11 @@ export type Database = {
           inspecao_id?: string
           status?: string | null
           updated_at?: string
+          equipamento_id?: string | null
+          tag?: string | null
+          severidade?: string | null
+          foto_url?: string | null
+          os_gerada_id?: string | null
         }
         Relationships: [
           {
@@ -1070,6 +1160,7 @@ export type Database = {
       }
       enterprise_audit_logs: {
         Row: {
+          // English columns (original schema)
           action_type: string | null
           actor_id: string | null
           created_at: string
@@ -1083,6 +1174,21 @@ export type Database = {
           severity: string
           source: string
           table_name: string | null
+          // Portuguese columns (added in migration 20260406100000)
+          acao: string | null
+          tabela: string | null
+          registro_id: string | null
+          usuario_id: string | null
+          usuario_email: string | null
+          dados_antes: Json | null
+          dados_depois: Json | null
+          diferenca: Json | null
+          ip_address: string | null
+          user_agent: string | null
+          ocorreu_em: string | null
+          correlacao_id: string | null
+          resultado: string | null
+          mensagem_erro: string | null
         }
         Insert: {
           action_type?: string | null
@@ -1098,6 +1204,20 @@ export type Database = {
           severity?: string
           source?: string
           table_name?: string | null
+          acao?: string | null
+          tabela?: string | null
+          registro_id?: string | null
+          usuario_id?: string | null
+          usuario_email?: string | null
+          dados_antes?: Json | null
+          dados_depois?: Json | null
+          diferenca?: Json | null
+          ip_address?: string | null
+          user_agent?: string | null
+          ocorreu_em?: string | null
+          correlacao_id?: string | null
+          resultado?: string | null
+          mensagem_erro?: string | null
         }
         Update: {
           action_type?: string | null
@@ -1113,6 +1233,20 @@ export type Database = {
           severity?: string
           source?: string
           table_name?: string | null
+          acao?: string | null
+          tabela?: string | null
+          registro_id?: string | null
+          usuario_id?: string | null
+          usuario_email?: string | null
+          dados_antes?: Json | null
+          dados_depois?: Json | null
+          diferenca?: Json | null
+          ip_address?: string | null
+          user_agent?: string | null
+          ocorreu_em?: string | null
+          correlacao_id?: string | null
+          resultado?: string | null
+          mensagem_erro?: string | null
         }
         Relationships: [
           {
@@ -1870,6 +2004,13 @@ export type Database = {
           rota_nome: string | null
           status: string | null
           updated_at: string
+          // Columns added in migration 20260412210000
+          turno: string | null
+          hora_inicio: string | null
+          hora_fim: string | null
+          itens_inspecionados: Json | null
+          anomalias_encontradas: number
+          observacoes: string | null
         }
         Insert: {
           created_at?: string
@@ -1884,6 +2025,12 @@ export type Database = {
           rota_nome?: string | null
           status?: string | null
           updated_at?: string
+          turno?: string | null
+          hora_inicio?: string | null
+          hora_fim?: string | null
+          itens_inspecionados?: Json | null
+          anomalias_encontradas?: number
+          observacoes?: string | null
         }
         Update: {
           created_at?: string
@@ -1898,6 +2045,12 @@ export type Database = {
           rota_nome?: string | null
           status?: string | null
           updated_at?: string
+          turno?: string | null
+          hora_inicio?: string | null
+          hora_fim?: string | null
+          itens_inspecionados?: Json | null
+          anomalias_encontradas?: number
+          observacoes?: string | null
         }
         Relationships: [
           {
