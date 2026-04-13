@@ -15,6 +15,8 @@ interface AuditInput {
   correlacaoId?: string | null
   resultado?: 'sucesso' | 'erro' | 'rejeitado'
   mensagemErro?: string | null
+  impersonadoPorId?: string | null
+  impersonadoPorEmail?: string | null
 }
 
 // RPC-allowed action values
@@ -84,6 +86,8 @@ export async function writeAuditLog(input: AuditInput) {
       correlacaoId = null,
       resultado = 'sucesso',
       mensagemErro = null,
+      impersonadoPorId = null,
+      impersonadoPorEmail = null,
     } = input
 
     // Resolve current user id for the RPC
@@ -105,6 +109,8 @@ export async function writeAuditLog(input: AuditInput) {
       p_correlacao_id: correlacaoId,
       p_resultado: resultado,
       p_mensagem_erro: mensagemErro,
+      p_impersonado_por_id: impersonadoPorId,
+      p_impersonado_por_email: impersonadoPorEmail,
     })
 
     if (error) {

@@ -16,6 +16,7 @@ import {
   listSupportTickets,
 } from '@/services/ownerPortal.service'
 import { writeAuditLog } from '@/lib/audit'
+import { supabase } from '@/integrations/supabase/client'
 
 const owner2Keys = {
   health: ['owner2', 'health'] as const,
@@ -207,12 +208,29 @@ export function useOwner2Actions() {
     return { action, ...source }
   }
 
+  const IMPERSONATION_ACTIONS: Owner2Action[] = ['impersonate_company', 'stop_impersonation']
+
   const execute = useMutation({
     mutationFn: ({ action, payload }: { action: Owner2Action; payload?: Record<string, unknown> }) =>
       callOwnerAdmin(normalizePayload(action, payload) as any),
-    onSuccess: (_data, variables) => {
+    onSuccess: async (_data, variables) => {
       invalidateOwner2(qc)
-      writeAuditLog({ action: `OWNER2_${variables.action}`, table: 'owner_admin', source: 'useOwner2Portal' })
+      const isImpersonationAction = IMPERSONATION_ACTIONS.includes(variables.action)
+      let impersonadoPorId: string | null = null
+      let impersonadoPorEmail: string | null = null
+      if (isImpersonationAction) {
+        try {
+          const { data: { user: ownerUser } } = await supabase.auth.getUser()
+          impersonadoPorId = ownerUser?.id ?? null
+          impersonadoPorEmail = ownerUser?.email ?? null
+        } catch { /* fire-and-forget */ }
+      }
+      writeAuditLog({
+        action: `OWNER2_${variables.action}`,
+        table: 'owner_admin',
+        source: 'useOwner2Portal',
+        ...(isImpersonationAction && { impersonadoPorId, impersonadoPorEmail }),
+      })
     },
   })
 
