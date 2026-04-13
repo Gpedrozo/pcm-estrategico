@@ -86,6 +86,7 @@ BEGIN
     acao,
     tabela,
     table_name,
+    operation,
     registro_id,
     dados_antes,
     dados_depois,
@@ -103,6 +104,7 @@ BEGIN
     v_acao,
     COALESCE(p_tabela, 'unknown'),
     COALESCE(p_tabela, 'unknown'),
+    v_acao,
     p_registro_id,
     p_dados_antes,
     p_dados_depois,
@@ -215,9 +217,9 @@ BEGIN
 
   IF v_empresa_id IS NOT NULL THEN
     INSERT INTO public.enterprise_audit_logs (
-      empresa_id, acao, tabela, table_name, registro_id, resultado, usuario_email, ocorreu_em
+      empresa_id, acao, tabela, table_name, operation, registro_id, resultado, usuario_email, ocorreu_em
     ) VALUES (
-      v_empresa_id, 'UPDATE', 'migration_test', 'migration_test', '20260413000000', 'sucesso',
+      v_empresa_id, 'UPDATE', 'migration_test', 'migration_test', 'UPDATE', '20260413000000', 'sucesso',
       'sistema@pcm-estrategico', now()
     );
     RAISE NOTICE '[AUDIT-TEST] Registro de teste inserido para empresa_id=%', v_empresa_id;
