@@ -30,6 +30,7 @@ import {
   UserCircle,
   Smartphone,
   Monitor,
+  ClipboardList,
 } from 'lucide-react';
 import { NavLink, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
@@ -110,6 +111,7 @@ const relatoriosMenuItems = [
 
 const ssmaMenuItems = [
   { title: 'SSMA', url: '/ssma', icon: Shield },
+  { title: 'Auditoria', url: '/auditoria', icon: ClipboardList },
 ];
 
 const ajudaMenuItems = [
@@ -270,7 +272,7 @@ export function AppSidebar() {
           </SidebarGroup>
         )}
 
-        {isAdminOrAbove && (
+        {!isRestrictedRole && (
           <SidebarGroup className="mt-4">
             <SidebarGroupLabel className="text-sidebar-foreground/50 uppercase text-xs font-semibold px-3 mb-2">
               Análises
@@ -296,7 +298,7 @@ export function AppSidebar() {
           </SidebarGroup>
         )}
 
-        {isAdminOrAbove && (
+        {!isRestrictedRole && (
           <>
             <SidebarGroup className="mt-4">
               <SidebarGroupLabel className="text-sidebar-foreground/50 uppercase text-xs font-semibold px-3 mb-2">
