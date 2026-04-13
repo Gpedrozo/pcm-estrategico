@@ -52,6 +52,8 @@ describe('app_write_audit_log integration', () => {
       p_correlacao_id: null,
       p_resultado: 'sucesso',
       p_mensagem_erro: null,
+      p_impersonado_por_id: null,
+      p_impersonado_por_email: null,
     });
     expect(mockedLoggerError).not.toHaveBeenCalled();
   });
