@@ -70,6 +70,8 @@ export default function SSMA() {
   });
   const [showCAConfig, setShowCAConfig] = useState(false);
   const [diasAlertaCAInput, setDiasAlertaCAInput] = useState(diasAlertaCA);
+  const [epiView, setEpiView] = useState<'estoque' | 'entregas' | 'movimentacoes'>('estoque');
+  const [epiFiltroRapido, setEpiFiltroRapido] = useState<'TODOS' | 'CRITICOS' | 'ESTOQUE_BAIXO' | 'CA_VENCIDO'>('TODOS');
 
   const calcularStatusCA = (validade_ca: string | null): 'VALIDO' | 'PROXIMO' | 'VENCIDO' => {
     if (!validade_ca) return 'VALIDO';
@@ -442,6 +444,84 @@ export default function SSMA() {
     return styles[status] || '';
   };
 
+  const episLista = epis || [];
+  const entregasLista = entregasEPI || [];
+  const movimentacoesLista = movimentacoesEPI || [];
+
+  const episAtivos = episLista.filter((item) => item.ativo);
+  const episEstoqueBaixo = episAtivos.filter((item) => item.estoque_atual <= item.estoque_minimo);
+  const episCAVencido = episAtivos.filter((item) => calcularStatusCA(item.validade_ca) === 'VENCIDO');
+  const episCAProximo = episAtivos.filter((item) => calcularStatusCA(item.validade_ca) === 'PROXIMO');
+  const episCriticos = episAtivos.filter((item) => {
+    const statusCA = calcularStatusCA(item.validade_ca);
+    return item.estoque_atual <= item.estoque_minimo || statusCA === 'VENCIDO';
+  });
+
+  const entregasUltimos30Dias = entregasLista.filter((item) => {
+    const data = new Date(`${item.data_entrega}T00:00:00`);
+    const diffDias = (Date.now() - data.getTime()) / 86400000;
+    return diffDias >= 0 && diffDias <= 30;
+  }).length;
+
+  const episFiltrados = episLista.filter((item) => {
+    const s = search.trim().toLowerCase();
+    const passouBusca = !s
+      || item.nome.toLowerCase().includes(s)
+      || item.categoria.toLowerCase().includes(s)
+      || (item.numero_ca || '').toLowerCase().includes(s);
+
+    if (!passouBusca) return false;
+
+    const statusCA = calcularStatusCA(item.validade_ca);
+
+    if (epiFiltroRapido === 'ESTOQUE_BAIXO') {
+      return item.estoque_atual <= item.estoque_minimo;
+    }
+
+    if (epiFiltroRapido === 'CA_VENCIDO') {
+      return statusCA === 'VENCIDO';
+    }
+
+    if (epiFiltroRapido === 'CRITICOS') {
+      return item.estoque_atual <= item.estoque_minimo || statusCA === 'VENCIDO';
+    }
+
+    return true;
+  });
+
+  const episFiltradosOrdenados = [...episFiltrados].sort((a, b) => {
+    const statusA = calcularStatusCA(a.validade_ca);
+    const statusB = calcularStatusCA(b.validade_ca);
+
+    const pesoA = (a.estoque_atual <= a.estoque_minimo ? 2 : 0) + (statusA === 'VENCIDO' ? 2 : statusA === 'PROXIMO' ? 1 : 0);
+    const pesoB = (b.estoque_atual <= b.estoque_minimo ? 2 : 0) + (statusB === 'VENCIDO' ? 2 : statusB === 'PROXIMO' ? 1 : 0);
+
+    if (pesoA !== pesoB) return pesoB - pesoA;
+    return a.nome.localeCompare(b.nome, 'pt-BR');
+  });
+
+  const entregasFiltradas = entregasLista.filter((item) => {
+    const epiNome = episLista.find((epi) => epi.id === item.epi_id)?.nome || '';
+    const s = search.trim().toLowerCase();
+    if (!s) return true;
+
+    return item.colaborador_nome.toLowerCase().includes(s)
+      || epiNome.toLowerCase().includes(s)
+      || (item.motivo || '').toLowerCase().includes(s);
+  });
+
+  const movimentacoesFiltradas = movimentacoesLista.filter((item) => {
+    const epiNome = episLista.find((epi) => epi.id === item.epi_id)?.nome || '';
+    const s = search.trim().toLowerCase();
+    if (!s) return true;
+
+    return item.tipo.toLowerCase().includes(s)
+      || epiNome.toLowerCase().includes(s)
+      || (item.motivo || '').toLowerCase().includes(s)
+      || (item.documento_ref || '').toLowerCase().includes(s)
+      || (item.colaborador_nome || '').toLowerCase().includes(s);
+  });
+
   const isLoading = loadingIncidentes || loadingPT || loadingTreinamentos || loadingEPIs || loadingFichas || loadingAPR;
 
   if (isLoading) {
@@ -745,39 +825,65 @@ export default function SSMA() {
         </TabsContent>
 
         {/* ── TAB EPIs ────────────────────────────────── */}
-        <TabsContent value="epis" className="mt-4">
-
-          {/* Legenda + configuração de alerta CA */}
-          <div className="flex flex-wrap items-center justify-between gap-3 mb-3 p-3 bg-card border border-border rounded-lg">
-            <div className="flex items-center gap-4 text-sm">
-              <span className="font-medium text-muted-foreground">Validade CA:</span>
-              <span className="flex items-center gap-1.5">
-                <span className="inline-block w-3 h-3 rounded-full bg-green-500" />
-                <span className="text-green-600 dark:text-green-400 font-medium">Em Dia</span>
-              </span>
-              <span className="flex items-center gap-1.5">
-                <span className="inline-block w-3 h-3 rounded-full bg-yellow-500" />
-                <span className="text-yellow-600 dark:text-yellow-400 font-medium">Próximo do Vcto (&le;{diasAlertaCA}d)</span>
-              </span>
-              <span className="flex items-center gap-1.5">
-                <span className="inline-block w-3 h-3 rounded-full bg-red-500" />
-                <span className="text-red-600 dark:text-red-400 font-medium">Vencido</span>
-              </span>
+        <TabsContent value="epis" className="mt-4 space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-3">
+            <div className="bg-card border border-border rounded-lg p-4">
+              <p className="text-xs uppercase tracking-wide text-muted-foreground">EPIs Ativos</p>
+              <p className="text-2xl font-bold mt-1">{episAtivos.length}</p>
             </div>
-            <Button
-              variant="outline"
-              size="sm"
-              className="h-8 gap-1.5"
-              onClick={() => { setDiasAlertaCAInput(diasAlertaCA); setShowCAConfig(!showCAConfig); }}
-            >
-              <AlertTriangle className="h-3.5 w-3.5" />
-              Configurar Alerta CA
-            </Button>
+            <div className="bg-card border border-border rounded-lg p-4">
+              <p className="text-xs uppercase tracking-wide text-muted-foreground">Estoque Baixo</p>
+              <p className="text-2xl font-bold mt-1 text-destructive">{episEstoqueBaixo.length}</p>
+            </div>
+            <div className="bg-card border border-border rounded-lg p-4">
+              <p className="text-xs uppercase tracking-wide text-muted-foreground">CA Vencido</p>
+              <p className="text-2xl font-bold mt-1 text-destructive">{episCAVencido.length}</p>
+            </div>
+            <div className="bg-card border border-border rounded-lg p-4">
+              <p className="text-xs uppercase tracking-wide text-muted-foreground">CA Próximo ({diasAlertaCA}d)</p>
+              <p className="text-2xl font-bold mt-1 text-warning">{episCAProximo.length}</p>
+            </div>
+            <div className="bg-card border border-border rounded-lg p-4">
+              <p className="text-xs uppercase tracking-wide text-muted-foreground">Entregas (30 dias)</p>
+              <p className="text-2xl font-bold mt-1 text-primary">{entregasUltimos30Dias}</p>
+            </div>
           </div>
 
-          {/* Painel de configuração de alerta */}
+          <div className="flex flex-wrap items-center justify-between gap-3 p-3 bg-card border border-border rounded-lg">
+            <div className="flex flex-wrap items-center gap-2">
+              <Button variant={epiFiltroRapido === 'TODOS' ? 'default' : 'outline'} size="sm" onClick={() => setEpiFiltroRapido('TODOS')}>
+                Todos
+              </Button>
+              <Button variant={epiFiltroRapido === 'CRITICOS' ? 'destructive' : 'outline'} size="sm" onClick={() => setEpiFiltroRapido('CRITICOS')}>
+                Críticos ({episCriticos.length})
+              </Button>
+              <Button variant={epiFiltroRapido === 'ESTOQUE_BAIXO' ? 'destructive' : 'outline'} size="sm" onClick={() => setEpiFiltroRapido('ESTOQUE_BAIXO')}>
+                Estoque Baixo ({episEstoqueBaixo.length})
+              </Button>
+              <Button variant={epiFiltroRapido === 'CA_VENCIDO' ? 'destructive' : 'outline'} size="sm" onClick={() => setEpiFiltroRapido('CA_VENCIDO')}>
+                CA Vencido ({episCAVencido.length})
+              </Button>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-3 text-sm">
+              <span className="font-medium text-muted-foreground">Validade CA:</span>
+              <span className="flex items-center gap-1.5"><span className="inline-block w-2.5 h-2.5 rounded-full bg-green-500" />Em Dia</span>
+              <span className="flex items-center gap-1.5"><span className="inline-block w-2.5 h-2.5 rounded-full bg-yellow-500" />Próximo</span>
+              <span className="flex items-center gap-1.5"><span className="inline-block w-2.5 h-2.5 rounded-full bg-red-500" />Vencido</span>
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-8 gap-1.5"
+                onClick={() => { setDiasAlertaCAInput(diasAlertaCA); setShowCAConfig(!showCAConfig); }}
+              >
+                <AlertTriangle className="h-3.5 w-3.5" />
+                Configurar Alerta CA
+              </Button>
+            </div>
+          </div>
+
           {showCAConfig && (
-            <div className="mb-3 p-4 bg-warning/5 border border-warning/30 rounded-lg flex flex-wrap items-end gap-4">
+            <div className="p-4 bg-warning/5 border border-warning/30 rounded-lg flex flex-wrap items-end gap-4">
               <div>
                 <Label className="text-sm font-medium mb-1 block">Alertar quando CA vencer em:</Label>
                 <div className="flex items-center gap-2">
@@ -786,7 +892,7 @@ export default function SSMA() {
                     min={1}
                     max={365}
                     value={diasAlertaCAInput}
-                    onChange={e => setDiasAlertaCAInput(Number(e.target.value))}
+                    onChange={(e) => setDiasAlertaCAInput(Number(e.target.value))}
                     className="w-24 h-8 text-sm"
                   />
                   <span className="text-sm text-muted-foreground">dias antes do vencimento</span>
@@ -802,171 +908,203 @@ export default function SSMA() {
             </div>
           )}
 
-          <div className="bg-card border border-border rounded-lg overflow-hidden">
-            <table className="table-industrial">
-              <thead>
-                <tr>
-                  <th>Nome</th>
-                  <th>Categoria</th>
-                  <th>CA</th>
-                  <th>Fabricante</th>
-                  <th>Validade CA</th>
-                  <th>Estoque</th>
-                  <th>Mínimo</th>
-                  <th>Status Estoque</th>
-                </tr>
-              </thead>
-              <tbody>
-                {epis?.length === 0 ? (
-                  <tr><td colSpan={8} className="text-center py-8 text-muted-foreground">Nenhum EPI cadastrado</td></tr>
-                ) : (
-                  epis?.filter(e => {
-                    if (!search) return true;
-                    const s = search.toLowerCase();
-                    return e.nome.toLowerCase().includes(s) || e.categoria.toLowerCase().includes(s) || (e.numero_ca || '').toLowerCase().includes(s);
-                  }).map((epi) => {
-                    const estoqueBaixo = epi.estoque_atual <= epi.estoque_minimo;
-                    const statusCA = calcularStatusCA(epi.validade_ca);
-                    const caColorClass = statusCA === 'VENCIDO'
-                      ? 'text-red-600 dark:text-red-400 font-bold bg-red-50 dark:bg-red-950/30'
-                      : statusCA === 'PROXIMO'
-                        ? 'text-yellow-600 dark:text-yellow-400 font-bold bg-yellow-50 dark:bg-yellow-950/30'
-                        : epi.validade_ca
-                          ? 'text-green-600 dark:text-green-400 font-medium'
-                          : '';
-                    return (
-                      <tr key={epi.id}>
-                        <td className="font-medium">{epi.nome}</td>
-                        <td><Badge variant="outline">{epi.categoria.replace(/_/g, ' ')}</Badge></td>
-                        <td className="font-mono">{epi.numero_ca || '—'}</td>
-                        <td>{epi.fabricante || '—'}</td>
-                        <td className={`${caColorClass} rounded px-1`}>
-                          <div className="flex items-center gap-1.5">
-                            {epi.validade_ca && (
-                              <span className={`inline-block w-2 h-2 rounded-full flex-shrink-0 ${
-                                statusCA === 'VENCIDO' ? 'bg-red-500' : statusCA === 'PROXIMO' ? 'bg-yellow-500' : 'bg-green-500'
-                              }`} />
-                            )}
-                            <span>
-                              {epi.validade_ca ? new Date(epi.validade_ca + 'T00:00:00').toLocaleDateString('pt-BR') : '—'}
-                            </span>
-                            {statusCA === 'VENCIDO' && <Badge variant="destructive" className="text-[10px] py-0 px-1 h-4 ml-1">VENCIDO</Badge>}
-                            {statusCA === 'PROXIMO' && <Badge className="text-[10px] py-0 px-1 h-4 ml-1 bg-yellow-500/20 text-yellow-700 dark:text-yellow-400">VCTO PRÓX.</Badge>}
-                          </div>
-                        </td>
-                        <td className={`font-mono font-bold ${estoqueBaixo ? 'text-destructive' : 'text-success'}`}>{epi.estoque_atual}</td>
-                        <td className="font-mono">{epi.estoque_minimo}</td>
-                        <td>
-                          {estoqueBaixo ? (
-                            <Badge variant="destructive">Estoque Baixo</Badge>
-                          ) : (
-                            <Badge className="bg-success/10 text-success">OK</Badge>
-                          )}
-                        </td>
-                      </tr>
-                    );
-                  })
-                )}
-              </tbody>
-            </table>
-          </div>
-          {/* Últimas Entregas */}
-          {(entregasEPI?.length ?? 0) > 0 && (
-            <div className="bg-card border border-border rounded-lg overflow-hidden mt-4">
-              <div className="p-4 border-b border-border">
-                <h3 className="font-semibold">Últimas Entregas de EPI</h3>
-              </div>
-              <table className="table-industrial">
-                <thead>
-                  <tr>
-                    <th>EPI</th>
-                    <th>Colaborador</th>
-                    <th>Qtd</th>
-                    <th>Data Entrega</th>
-                    <th>Motivo</th>
-                    <th>Ações</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {entregasEPI?.slice(0, 20).map((ent) => {
-                    const epiNome = epis?.find(e => e.id === ent.epi_id)?.nome || ent.epi_id.slice(0, 8);
-                    return (
-                      <tr key={ent.id}>
-                        <td className="font-medium">{epiNome}</td>
-                        <td>{ent.colaborador_nome}</td>
-                        <td className="font-mono">{ent.quantidade}</td>
-                        <td>{new Date(ent.data_entrega).toLocaleDateString('pt-BR')}</td>
-                        <td className="max-w-[200px] truncate">{ent.motivo || '—'}</td>
-                        <td>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-7 w-7"
-                            title="Imprimir Ficha de Entrega"
-                            onClick={() => {
-                              setFichaEPIColaborador(ent.colaborador_nome);
-                              setIsFichaEPIPrintOpen(true);
-                              setTimeout(() => {
-                                handlePrintFichaEPI();
-                                setIsFichaEPIPrintOpen(false);
-                              }, 200);
-                            }}
-                          >
-                            <Printer className="h-3.5 w-3.5" />
-                          </Button>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          )}
+          <Tabs value={epiView} onValueChange={(value) => setEpiView(value as 'estoque' | 'entregas' | 'movimentacoes')}>
+            <TabsList>
+              <TabsTrigger value="estoque">Estoque de EPIs</TabsTrigger>
+              <TabsTrigger value="entregas">Entregas</TabsTrigger>
+              <TabsTrigger value="movimentacoes">Movimentações</TabsTrigger>
+            </TabsList>
 
-          <div className="bg-card border border-border rounded-lg overflow-hidden mt-4">
-            <div className="p-4 border-b border-border flex items-center gap-2">
-              <RotateCcw className="h-4 w-4" />
-              <h3 className="font-semibold">Movimentações de Estoque (Entrada/Saída)</h3>
-            </div>
-            <table className="table-industrial">
-              <thead>
-                <tr>
-                  <th>Data</th>
-                  <th>EPI</th>
-                  <th>Tipo</th>
-                  <th>Qtd</th>
-                  <th>Saldo Antes</th>
-                  <th>Saldo Depois</th>
-                  <th>Motivo</th>
-                </tr>
-              </thead>
-              <tbody>
-                {(movimentacoesEPI?.length ?? 0) === 0 ? (
-                  <tr><td colSpan={7} className="text-center py-8 text-muted-foreground">Nenhuma movimentação registrada</td></tr>
-                ) : (
-                  movimentacoesEPI?.slice(0, 30).map((mov) => {
-                    const epiNome = epis?.find((e) => e.id === mov.epi_id)?.nome || mov.epi_id.slice(0, 8);
-                    return (
-                      <tr key={mov.id}>
-                        <td>{new Date(mov.created_at).toLocaleDateString('pt-BR')}</td>
-                        <td className="font-medium">{epiNome}</td>
-                        <td>
-                          <Badge variant="outline" className="gap-1">
-                            {mov.tipo === 'ENTRADA' ? <ArrowDown className="h-3 w-3 text-success" /> : <ArrowUp className="h-3 w-3 text-destructive" />}
-                            {mov.tipo}
-                          </Badge>
-                        </td>
-                        <td className="font-mono">{mov.quantidade}</td>
-                        <td className="font-mono">{mov.saldo_antes}</td>
-                        <td className="font-mono font-bold">{mov.saldo_depois}</td>
-                        <td className="max-w-[220px] truncate">{mov.motivo || '—'}</td>
-                      </tr>
-                    );
-                  })
-                )}
-              </tbody>
-            </table>
-          </div>
+            <TabsContent value="estoque" className="mt-4 space-y-4">
+              {episCriticos.length > 0 && (
+                <div className="bg-destructive/5 border border-destructive/30 rounded-lg p-4">
+                  <div className="flex items-start gap-2">
+                    <AlertTriangle className="h-4 w-4 text-destructive mt-0.5" />
+                    <div>
+                      <p className="font-semibold text-destructive">Itens críticos exigem ação imediata</p>
+                      <p className="text-sm text-muted-foreground">
+                        {episCriticos.slice(0, 4).map((item) => item.nome).join(', ')}
+                        {episCriticos.length > 4 ? ` e mais ${episCriticos.length - 4}` : ''}.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              <div className="bg-card border border-border rounded-lg overflow-hidden">
+                <table className="table-industrial">
+                  <thead>
+                    <tr>
+                      <th>Nome</th>
+                      <th>Categoria</th>
+                      <th>CA</th>
+                      <th>Fabricante</th>
+                      <th>Validade CA</th>
+                      <th>Status CA</th>
+                      <th>Estoque</th>
+                      <th>Mínimo</th>
+                      <th>Status Estoque</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {episFiltradosOrdenados.length === 0 ? (
+                      <tr><td colSpan={9} className="text-center py-8 text-muted-foreground">Nenhum EPI encontrado para os filtros atuais</td></tr>
+                    ) : (
+                      episFiltradosOrdenados.map((epi) => {
+                        const estoqueBaixo = epi.estoque_atual <= epi.estoque_minimo;
+                        const estoqueAlerta = !estoqueBaixo && epi.estoque_atual <= epi.estoque_minimo + 2;
+                        const statusCA = calcularStatusCA(epi.validade_ca);
+
+                        return (
+                          <tr key={epi.id}>
+                            <td className="font-medium">{epi.nome}</td>
+                            <td><Badge variant="outline">{epi.categoria.replace(/_/g, ' ')}</Badge></td>
+                            <td className="font-mono">{epi.numero_ca || '—'}</td>
+                            <td>{epi.fabricante || '—'}</td>
+                            <td>
+                              {epi.validade_ca ? new Date(`${epi.validade_ca}T00:00:00`).toLocaleDateString('pt-BR') : '—'}
+                            </td>
+                            <td>
+                              {statusCA === 'VENCIDO' ? (
+                                <Badge variant="destructive">Vencido</Badge>
+                              ) : statusCA === 'PROXIMO' ? (
+                                <Badge className="bg-yellow-500/20 text-yellow-700 dark:text-yellow-400">Próximo</Badge>
+                              ) : (
+                                <Badge className="bg-success/10 text-success">Em dia</Badge>
+                              )}
+                            </td>
+                            <td className={`font-mono font-bold ${estoqueBaixo ? 'text-destructive' : estoqueAlerta ? 'text-warning' : 'text-success'}`}>
+                              {epi.estoque_atual}
+                            </td>
+                            <td className="font-mono">{epi.estoque_minimo}</td>
+                            <td>
+                              {estoqueBaixo ? (
+                                <Badge variant="destructive">Estoque Baixo</Badge>
+                              ) : estoqueAlerta ? (
+                                <Badge className="bg-warning/10 text-warning">Reposição Próxima</Badge>
+                              ) : (
+                                <Badge className="bg-success/10 text-success">OK</Badge>
+                              )}
+                            </td>
+                          </tr>
+                        );
+                      })
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </TabsContent>
+
+            <TabsContent value="entregas" className="mt-4">
+              <div className="bg-card border border-border rounded-lg overflow-hidden">
+                <div className="p-4 border-b border-border flex items-center justify-between">
+                  <h3 className="font-semibold">Últimas Entregas de EPI</h3>
+                  <span className="text-xs text-muted-foreground">Exibindo até 40 registros mais recentes</span>
+                </div>
+                <table className="table-industrial">
+                  <thead>
+                    <tr>
+                      <th>EPI</th>
+                      <th>Colaborador</th>
+                      <th>Qtd</th>
+                      <th>Data Entrega</th>
+                      <th>Motivo</th>
+                      <th>Ações</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {entregasFiltradas.length === 0 ? (
+                      <tr><td colSpan={6} className="text-center py-8 text-muted-foreground">Nenhuma entrega encontrada</td></tr>
+                    ) : (
+                      entregasFiltradas.slice(0, 40).map((ent) => {
+                        const epiNome = episLista.find((item) => item.id === ent.epi_id)?.nome || ent.epi_id.slice(0, 8);
+                        return (
+                          <tr key={ent.id}>
+                            <td className="font-medium">{epiNome}</td>
+                            <td>{ent.colaborador_nome}</td>
+                            <td className="font-mono">{ent.quantidade}</td>
+                            <td>{new Date(ent.data_entrega).toLocaleDateString('pt-BR')}</td>
+                            <td className="max-w-[220px] truncate">{ent.motivo || '—'}</td>
+                            <td>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-7 w-7"
+                                title="Imprimir Ficha de Entrega"
+                                onClick={() => {
+                                  setFichaEPIColaborador(ent.colaborador_nome);
+                                  setIsFichaEPIPrintOpen(true);
+                                  setTimeout(() => {
+                                    handlePrintFichaEPI();
+                                    setIsFichaEPIPrintOpen(false);
+                                  }, 200);
+                                }}
+                              >
+                                <Printer className="h-3.5 w-3.5" />
+                              </Button>
+                            </td>
+                          </tr>
+                        );
+                      })
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </TabsContent>
+
+            <TabsContent value="movimentacoes" className="mt-4">
+              <div className="bg-card border border-border rounded-lg overflow-hidden">
+                <div className="p-4 border-b border-border flex items-center gap-2">
+                  <RotateCcw className="h-4 w-4" />
+                  <h3 className="font-semibold">Movimentações de Estoque (Entrada, Saída e Ajuste)</h3>
+                </div>
+                <table className="table-industrial">
+                  <thead>
+                    <tr>
+                      <th>Data</th>
+                      <th>EPI</th>
+                      <th>Tipo</th>
+                      <th>Qtd</th>
+                      <th>Saldo Antes</th>
+                      <th>Saldo Depois</th>
+                      <th>Motivo</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {movimentacoesFiltradas.length === 0 ? (
+                      <tr><td colSpan={7} className="text-center py-8 text-muted-foreground">Nenhuma movimentação encontrada</td></tr>
+                    ) : (
+                      movimentacoesFiltradas.slice(0, 50).map((mov) => {
+                        const epiNome = episLista.find((item) => item.id === mov.epi_id)?.nome || mov.epi_id.slice(0, 8);
+                        return (
+                          <tr key={mov.id}>
+                            <td>{new Date(mov.created_at).toLocaleDateString('pt-BR')}</td>
+                            <td className="font-medium">{epiNome}</td>
+                            <td>
+                              <Badge variant="outline" className="gap-1">
+                                {mov.tipo === 'ENTRADA' ? (
+                                  <ArrowDown className="h-3 w-3 text-success" />
+                                ) : mov.tipo === 'SAIDA' ? (
+                                  <ArrowUp className="h-3 w-3 text-destructive" />
+                                ) : (
+                                  <RotateCcw className="h-3 w-3 text-warning" />
+                                )}
+                                {mov.tipo}
+                              </Badge>
+                            </td>
+                            <td className="font-mono">{mov.quantidade}</td>
+                            <td className="font-mono">{mov.saldo_antes}</td>
+                            <td className="font-mono font-bold">{mov.saldo_depois}</td>
+                            <td className="max-w-[260px] truncate">{mov.motivo || '—'}</td>
+                          </tr>
+                        );
+                      })
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </TabsContent>
+          </Tabs>
         </TabsContent>
 
         {/* ── TAB FISPQs ──────────────────────────────── */}
