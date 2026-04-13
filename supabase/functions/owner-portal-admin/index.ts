@@ -4103,7 +4103,17 @@ Deno.serve(async (req) => {
       .select("*, empresas(id,nome), plans(id,name,code), subscriptions(id,status)")
       .order("generated_at", { ascending: false })
       .limit(1000);
-    if (error) return fail(error.message, 400, null, req);
+    // Tabela pode não existir se a migration ainda não foi aplicada — retorna lista vazia
+    // em vez de 400 para não quebrar a UI do painel.
+    if (error) {
+      const errMsg = String(error.message ?? "").toLowerCase();
+      const tableNotFound = errMsg.includes("does not exist") || errMsg.includes("42p01") || errMsg.includes("relation");
+      if (tableNotFound) {
+        console.warn("[owner-portal-admin] contracts table not found – migration pending:", error.message);
+        return ok({ contracts: [], _warning: "contracts_table_missing" }, 200, req);
+      }
+      return fail(error.message, 400, null, req);
+    }
     return ok({ contracts: data ?? [] }, 200, req);
   }
 

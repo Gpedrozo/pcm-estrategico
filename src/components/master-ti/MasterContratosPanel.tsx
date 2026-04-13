@@ -1,8 +1,9 @@
 import { useOwner2Contracts } from '@/hooks/useOwner2Portal'
+import { useAuth } from '@/contexts/AuthContext'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
-import { AlertTriangle, RefreshCw } from 'lucide-react'
+import { AlertTriangle, RefreshCw, Lock } from 'lucide-react'
 
 function fmt(val: string | null | undefined) {
   if (!val) return '—'
@@ -25,10 +26,22 @@ function StatusBadge({ status }: { status: string }) {
 }
 
 export function MasterContratosPanel() {
-  const query = useOwner2Contracts(true)
+  const { isSystemOwner } = useAuth()
+  const query = useOwner2Contracts(isSystemOwner) // só carrega se o usuário tiver acesso
   const contracts: Record<string, unknown>[] = Array.isArray((query.data as any)?.contracts)
     ? (query.data as any).contracts
     : []
+
+  if (!isSystemOwner) {
+    return (
+      <div className="flex items-center gap-3 rounded-lg border border-border bg-muted/40 p-4">
+        <Lock className="h-5 w-5 shrink-0 text-muted-foreground" />
+        <p className="text-sm text-muted-foreground">
+          Contratos de serviço são exclusivos para perfil <strong>SYSTEM_OWNER</strong>.
+        </p>
+      </div>
+    )
+  }
 
   if (query.isLoading) {
     return (
@@ -40,10 +53,18 @@ export function MasterContratosPanel() {
   }
 
   if (query.isError) {
+    const errMsg = String((query.error as Error)?.message ?? '').toLowerCase()
+    const isForbidden = errMsg.includes('forbidden') || errMsg.includes('403') || errMsg.includes('unauthorized') || errMsg.includes('sem permiss')
+    const isMissingTable = errMsg.includes('does not exist') || errMsg.includes('relation') || errMsg.includes('42p01') || errMsg.includes('contracts_table_missing')
+    const errorLabel = isForbidden
+      ? 'Sem permissão para carregar contratos. Requer perfil SYSTEM_OWNER no banco de dados.'
+      : isMissingTable
+        ? 'Tabela de contratos não encontrada. Execute as migrações pendentes no Supabase (20260405235000).'
+        : 'Falha ao carregar contratos. Verifique se o edge function owner-portal-admin está ativo e republicado.'
     return (
       <div className="flex items-center gap-3 rounded-lg border border-destructive/30 bg-destructive/10 p-4 text-destructive">
         <AlertTriangle className="h-5 w-5 shrink-0" />
-        <p className="text-sm">Falha ao carregar contratos. Verifique se o edge function está ativo.</p>
+        <p className="text-sm">{errorLabel}</p>
         <Button size="sm" variant="outline" onClick={() => query.refetch()} className="ml-auto gap-1">
           <RefreshCw className="h-3.5 w-3.5" /> Tentar novamente
         </Button>
