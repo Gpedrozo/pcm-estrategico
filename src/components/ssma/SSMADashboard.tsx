@@ -2,11 +2,12 @@ import { useMemo } from 'react';
 import {
   PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
 } from 'recharts';
-import { ShieldAlert, AlertTriangle, CheckCircle2, Clock, GraduationCap, HardHat, FileText, CalendarDays } from 'lucide-react';
+import { ShieldAlert, AlertTriangle, CheckCircle2, Clock, GraduationCap, HardHat, FileText, CalendarDays, Users, ClipboardCheck } from 'lucide-react';
 import type { IncidenteSSMARow, PermissaoTrabalhoRow } from '@/hooks/useSSMA';
 import type { TreinamentoSSMARow } from '@/hooks/useTreinamentosSSMA';
-import type { EPIRow } from '@/hooks/useEPIs';
+import type { EPIRow, EntregaEPIRow } from '@/hooks/useEPIs';
 import type { FichaSegurancaRow } from '@/hooks/useFichasSeguranca';
+import type { ColaboradorSSMARow } from '@/hooks/useColaboradoresSSMA';
 
 const CHART_COLORS = ['#ef4444', '#f97316', '#3b82f6', '#6b7280'];
 const CHART_STATUS_COLORS = ['#16a34a', '#ca8a04', '#ef4444', '#a855f7', '#6b7280'];
@@ -17,9 +18,11 @@ interface Props {
   treinamentos?: TreinamentoSSMARow[];
   epis?: EPIRow[];
   fichas?: FichaSegurancaRow[];
+  entregasEPI?: EntregaEPIRow[];
+  colaboradores?: ColaboradorSSMARow[];
 }
 
-export function SSMADashboard({ incidentes = [], permissoes = [], treinamentos = [], epis = [], fichas = [] }: Props) {
+export function SSMADashboard({ incidentes = [], permissoes = [], treinamentos = [], epis = [], fichas = [], entregasEPI = [], colaboradores = [] }: Props) {
   // ── Dias sem acidentes ──────────────────────────────────────────────────────
   const diasSemAcidente = useMemo(() => {
     const acidentes = incidentes.filter(i => i.tipo === 'ACIDENTE');
@@ -91,6 +94,24 @@ export function SSMADashboard({ incidentes = [], permissoes = [], treinamentos =
   // ── FISPQs sem arquivo ──────────────────────────────────────────────────────
   const fichasSemArquivo = fichas.filter(f => f.ativo && !f.arquivo_url).length;
 
+  // ── Governança Documental EPI ───────────────────────────────────────────────
+  const governancaEPI = useMemo(() => {
+    const colabAtivos = colaboradores.filter(c => c.status === 'ATIVO');
+    const totalAtivos = colabAtivos.length;
+    // Nomes únicos de colaboradores que possuem ao menos 1 entrega
+    const nomesComEntrega = new Set(entregasEPI.map(e => e.colaborador_nome.toLowerCase()));
+    const colabComEntrega = colabAtivos.filter(c => nomesComEntrega.has(c.nome.toLowerCase())).length;
+    const colabSemEntrega = totalAtivos - colabComEntrega;
+    const pctCobertura = totalAtivos > 0 ? Math.round((colabComEntrega / totalAtivos) * 100) : 0;
+    // Entregas nos últimos 30 dias
+    const agora = Date.now();
+    const entregasRecentes = entregasEPI.filter(e => {
+      const dt = new Date(`${e.data_entrega}T00:00:00`).getTime();
+      return (agora - dt) / 86400000 <= 30;
+    }).length;
+    return { totalAtivos, colabComEntrega, colabSemEntrega, pctCobertura, entregasRecentes };
+  }, [colaboradores, entregasEPI]);
+
   return (
     <div className="space-y-6">
       {/* ── Card Dias Sem Acidentes ── */}
@@ -156,6 +177,67 @@ export function SSMADashboard({ incidentes = [], permissoes = [], treinamentos =
           <p className="text-xs text-muted-foreground">{fichas.filter(f => f.ativo && f.arquivo_url).length} com documento anexo</p>
         </div>
       </div>
+
+      {/* ── Governança Documental EPI ── */}
+      {governancaEPI.totalAtivos > 0 && (
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div className={`rounded-xl border-2 p-4 flex flex-col gap-1 ${
+            governancaEPI.pctCobertura >= 80 ? 'border-success bg-success/5' : governancaEPI.pctCobertura >= 50 ? 'border-warning bg-warning/5' : 'border-destructive bg-destructive/5'
+          }`}>
+            <div className="flex items-center gap-2">
+              <ClipboardCheck className={`h-5 w-5 ${
+                governancaEPI.pctCobertura >= 80 ? 'text-success' : governancaEPI.pctCobertura >= 50 ? 'text-warning' : 'text-destructive'
+              }`} />
+              <span className="text-sm text-muted-foreground">Cobertura EPI</span>
+            </div>
+            <p className={`text-3xl font-bold ${
+              governancaEPI.pctCobertura >= 80 ? 'text-success' : governancaEPI.pctCobertura >= 50 ? 'text-warning' : 'text-destructive'
+            }`}>{governancaEPI.pctCobertura}%</p>
+            <div className="w-full bg-muted rounded-full h-2 mt-1">
+              <div
+                className={`h-2 rounded-full transition-all ${
+                  governancaEPI.pctCobertura >= 80 ? 'bg-success' : governancaEPI.pctCobertura >= 50 ? 'bg-warning' : 'bg-destructive'
+                }`}
+                style={{ width: `${governancaEPI.pctCobertura}%` }}
+              />
+            </div>
+            <p className="text-xs text-muted-foreground">
+              {governancaEPI.colabComEntrega}/{governancaEPI.totalAtivos} colaboradores com EPI
+            </p>
+          </div>
+
+          <div className={`rounded-xl border p-4 flex flex-col gap-1 ${governancaEPI.colabSemEntrega > 0 ? 'border-destructive bg-destructive/5' : 'border-border bg-card'}`}>
+            <div className="flex items-center gap-2">
+              <Users className={`h-5 w-5 ${governancaEPI.colabSemEntrega > 0 ? 'text-destructive' : 'text-success'}`} />
+              <span className="text-sm text-muted-foreground">Sem Entrega de EPI</span>
+            </div>
+            <p className={`text-3xl font-bold ${governancaEPI.colabSemEntrega > 0 ? 'text-destructive' : 'text-success'}`}>
+              {governancaEPI.colabSemEntrega}
+            </p>
+            <p className="text-xs text-muted-foreground">
+              {governancaEPI.colabSemEntrega > 0 ? 'colaboradores ativos sem nenhuma entrega registrada' : 'todos os colaboradores possuem EPI'}
+            </p>
+          </div>
+
+          <div className="rounded-xl border border-border bg-card p-4 flex flex-col gap-1">
+            <div className="flex items-center gap-2">
+              <HardHat className="h-5 w-5 text-primary" />
+              <span className="text-sm text-muted-foreground">Entregas (30 dias)</span>
+            </div>
+            <p className="text-3xl font-bold">{governancaEPI.entregasRecentes}</p>
+            <p className="text-xs text-muted-foreground">entregas realizadas no último mês</p>
+          </div>
+
+          <div className="rounded-xl border border-border bg-card p-4 flex flex-col gap-1">
+            <div className="flex items-center gap-2">
+              <Users className="h-5 w-5 text-muted-foreground" />
+              <span className="text-sm text-muted-foreground">Colaboradores Ativos</span>
+            </div>
+            <p className="text-3xl font-bold">{governancaEPI.totalAtivos}</p>
+            <p className="text-xs text-muted-foreground">cadastrados no módulo SSMA</p>
+          </div>
+        </div>
+      )}
 
       {/* ── Gráficos ── */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">

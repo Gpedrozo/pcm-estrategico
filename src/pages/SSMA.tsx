@@ -761,6 +761,8 @@ export default function SSMA() {
             treinamentos={treinamentos || []}
             epis={epis || []}
             fichas={fichas || []}
+            entregasEPI={entregasLista}
+            colaboradores={colaboradoresLista}
           />
         </TabsContent>
 
@@ -892,7 +894,7 @@ export default function SSMA() {
 
         {/* ── TAB EPIs ────────────────────────────────── */}
         <TabsContent value="epis" className="mt-4 space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-3">
+          <div className="grid grid-cols-1 md:grid-cols-3 xl:grid-cols-6 gap-3">
             <div className="bg-card border border-border rounded-lg p-4">
               <p className="text-xs uppercase tracking-wide text-muted-foreground">EPIs Ativos</p>
               <p className="text-2xl font-bold mt-1">{episAtivos.length}</p>
@@ -913,6 +915,19 @@ export default function SSMA() {
               <p className="text-xs uppercase tracking-wide text-muted-foreground">Entregas (30 dias)</p>
               <p className="text-2xl font-bold mt-1 text-primary">{entregasUltimos30Dias}</p>
             </div>
+            {(() => {
+              const ativos = colaboradoresLista.filter((c: any) => c.ativo !== false);
+              const comEntrega = new Set(entregasLista.map((e: any) => (e.colaborador_id || e.nome_colaborador || '').toString().toLowerCase()));
+              const ativosComEntrega = ativos.filter((c: any) => comEntrega.has(c.id) || comEntrega.has((c.nome || '').toLowerCase()));
+              const pct = ativos.length > 0 ? Math.round((ativosComEntrega.length / ativos.length) * 100) : 0;
+              return (
+                <div className="bg-card border border-border rounded-lg p-4">
+                  <p className="text-xs uppercase tracking-wide text-muted-foreground">Cobertura EPI</p>
+                  <p className={`text-2xl font-bold mt-1 ${pct >= 80 ? 'text-green-600' : pct >= 50 ? 'text-yellow-600' : 'text-destructive'}`}>{pct}%</p>
+                  <p className="text-[10px] text-muted-foreground mt-0.5">{ativosComEntrega.length}/{ativos.length} colab.</p>
+                </div>
+              );
+            })()}
           </div>
 
           <div className="flex flex-wrap items-center justify-between gap-3 p-3 bg-card border border-border rounded-lg">
@@ -1226,9 +1241,22 @@ export default function SSMA() {
             <TabsContent value="documentos" className="mt-4">
               <div className="bg-card border border-border rounded-lg overflow-hidden">
                 <div className="p-4 border-b border-border">
-                  <div className="flex items-center gap-2 mb-1">
-                    <FileText className="h-4 w-4" />
-                    <h3 className="font-semibold">Fichas de EPI por Colaborador</h3>
+                  <div className="flex items-center justify-between mb-1">
+                    <div className="flex items-center gap-2">
+                      <FileText className="h-4 w-4" />
+                      <h3 className="font-semibold">Fichas de EPI por Colaborador</h3>
+                    </div>
+                    {colaboradoresAtivos.length > 0 && (() => {
+                      const nomesComEntrega = new Set(entregasLista.map(e => e.colaborador_nome.toLowerCase()));
+                      const comEPI = colaboradoresAtivos.filter(c => nomesComEntrega.has(c.nome.toLowerCase())).length;
+                      const semEPI = colaboradoresAtivos.length - comEPI;
+                      return (
+                        <div className="flex items-center gap-2 text-xs">
+                          <Badge className="bg-success/10 text-success">{comEPI} documentados</Badge>
+                          {semEPI > 0 && <Badge variant="destructive">{semEPI} pendentes</Badge>}
+                        </div>
+                      );
+                    })()}
                   </div>
                   <p className="text-xs text-muted-foreground">
                     Selecione um colaborador para gerar e imprimir sua Ficha de Controle e Responsabilidade de EPI (NR-06).
@@ -1242,6 +1270,7 @@ export default function SSMA() {
                       <th>Função</th>
                       <th>Setor</th>
                       <th>Matrícula</th>
+                      <th>Status</th>
                       <th>Entregas</th>
                       <th>Ações</th>
                     </tr>
@@ -1250,8 +1279,8 @@ export default function SSMA() {
                     {(() => {
                       // Listar colaboradores com entregas (do cadastro + nomes avulsos)
                       const colabMap = new Map<string, { nome: string; funcao: string; setor: string; matricula: string; totalEntregas: number; fromCadastro: boolean }>();
-                      // Primeiro: colaboradores do cadastro
-                      colaboradoresLista.forEach(c => {
+                      // Primeiro: colaboradores do cadastro (incluindo os SEM entrega)
+                      colaboradoresLista.filter(c => c.status === 'ATIVO').forEach(c => {
                         const entregasCol = entregasLista.filter(e => e.colaborador_nome === c.nome);
                         colabMap.set(c.nome.toLowerCase(), {
                           nome: c.nome,
@@ -1283,20 +1312,35 @@ export default function SSMA() {
                           const s = search.trim().toLowerCase();
                           return c.nome.toLowerCase().includes(s) || c.funcao.toLowerCase().includes(s) || c.setor.toLowerCase().includes(s);
                         })
-                        .sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
+                        .sort((a, b) => {
+                          // Pendentes primeiro, depois por nome
+                          if (a.totalEntregas === 0 && b.totalEntregas > 0) return -1;
+                          if (a.totalEntregas > 0 && b.totalEntregas === 0) return 1;
+                          return a.nome.localeCompare(b.nome, 'pt-BR');
+                        });
 
                       if (lista.length === 0) {
                         return (
-                          <tr><td colSpan={6} className="text-center py-8 text-muted-foreground">Nenhum colaborador com entregas registradas</td></tr>
+                          <tr><td colSpan={7} className="text-center py-8 text-muted-foreground">Nenhum colaborador encontrado. Cadastre colaboradores na aba "Colaboradores".</td></tr>
                         );
                       }
 
                       return lista.map((c) => (
                         <tr key={c.nome}>
-                          <td className="font-medium">{c.nome}</td>
+                          <td className="font-medium">
+                            {c.nome}
+                            {!c.fromCadastro && <span className="text-[10px] text-muted-foreground ml-1">(avulso)</span>}
+                          </td>
                           <td>{c.funcao || '—'}</td>
                           <td>{c.setor || '—'}</td>
                           <td className="font-mono">{c.matricula || '—'}</td>
+                          <td>
+                            {c.totalEntregas > 0 ? (
+                              <Badge className="bg-success/10 text-success">Documentado</Badge>
+                            ) : (
+                              <Badge variant="destructive">Pendente</Badge>
+                            )}
+                          </td>
                           <td>
                             <Badge variant={c.totalEntregas > 0 ? 'default' : 'secondary'}>
                               {c.totalEntregas} {c.totalEntregas === 1 ? 'entrega' : 'entregas'}
