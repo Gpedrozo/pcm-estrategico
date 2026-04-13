@@ -1,15 +1,15 @@
-export const KNOWN_OWNER_MASTER_EMAILS = ['pedrozo@gppis.com.br', 'pedrozo@gppis.cm.br'] as const
-
 export const TENANT_BASE_DOMAIN = (import.meta.env.VITE_TENANT_BASE_DOMAIN || 'gppis.com.br').toLowerCase()
 
 export function normalizeEmail(value: string): string {
   return String(value || '').trim().toLowerCase()
 }
 
+/**
+ * Retorna o e-mail do owner master configurado via env var VITE_OWNER_MASTER_EMAIL.
+ * Se não configurado, retorna string vazia (sem fallback hardcoded por segurança).
+ */
 export function resolveOwnerMasterEmail(): string {
-  const configured = normalizeEmail(String(import.meta.env.VITE_OWNER_MASTER_EMAIL ?? ''))
-  if (configured) return configured
-  return KNOWN_OWNER_MASTER_EMAILS[0]
+  return normalizeEmail(String(import.meta.env.VITE_OWNER_MASTER_EMAIL ?? ''))
 }
 
 export function safeArray<T>(value: unknown): T[] {

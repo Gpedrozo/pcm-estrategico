@@ -7,7 +7,6 @@ import {
   asBool,
   asNumber,
   statusColor,
-  KNOWN_OWNER_MASTER_EMAILS,
   TENANT_BASE_DOMAIN,
 } from '@/pages/owner2/owner2Helpers'
 
@@ -22,9 +21,9 @@ describe('normalizeEmail', () => {
 })
 
 describe('resolveOwnerMasterEmail', () => {
-  it('returns a known owner master email', () => {
+  it('returns a string (configured via env var or empty)', () => {
     const result = resolveOwnerMasterEmail()
-    expect(KNOWN_OWNER_MASTER_EMAILS).toContain(result)
+    expect(typeof result).toBe('string')
   })
 })
 
@@ -121,10 +120,8 @@ describe('constants', () => {
     expect(typeof TENANT_BASE_DOMAIN).toBe('string')
     expect(TENANT_BASE_DOMAIN.length).toBeGreaterThan(0)
   })
-  it('KNOWN_OWNER_MASTER_EMAILS has expected entries', () => {
-    expect(KNOWN_OWNER_MASTER_EMAILS.length).toBeGreaterThanOrEqual(1)
-    for (const email of KNOWN_OWNER_MASTER_EMAILS) {
-      expect(email).toContain('@')
-    }
+  it('TENANT_BASE_DOMAIN is a non-empty lowercase string', () => {
+    expect(TENANT_BASE_DOMAIN).toBe(TENANT_BASE_DOMAIN.toLowerCase())
+    expect(TENANT_BASE_DOMAIN.length).toBeGreaterThan(0)
   })
 })

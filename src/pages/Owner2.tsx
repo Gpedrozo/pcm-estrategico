@@ -44,7 +44,7 @@ import {
   useOwner2Users,
 } from '@/hooks/useOwner2Portal'
 import { OWNER_TABS, OWNER_TAB_LABELS, type OwnerTab, type CompanyCredentialNote, type CriticalActionRequest } from './owner2/owner2Types'
-import { normalizeEmail, resolveOwnerMasterEmail, safeArray, asObject, asBool, asNumber, statusColor, downloadCsv, TENANT_BASE_DOMAIN, KNOWN_OWNER_MASTER_EMAILS } from './owner2/owner2Helpers'
+import { normalizeEmail, resolveOwnerMasterEmail, safeArray, asObject, asBool, asNumber, statusColor, downloadCsv, TENANT_BASE_DOMAIN } from './owner2/owner2Helpers'
 import { SurfaceCard, MetricTile } from './owner2/owner2Components'
 import OwnerDispositivosTab from '@/components/owner/OwnerDispositivosTab'
 import OwnerShadowAudit from '@/components/owner/OwnerShadowAudit'
@@ -275,10 +275,12 @@ export default function Owner() {
 
   const ownerMasterEmail = resolveOwnerMasterEmail()
   const isOwnerMaster = (() => {
+    // Se env var VITE_OWNER_MASTER_EMAIL não configurada → todos os SYSTEM_OWNER têm acesso ao tab.
+    // Se configurada → apenas o e-mail exato tem acesso.
+    if (!ownerMasterEmail) return isSystemOwner
     const currentEmail = normalizeEmail(String(user?.email ?? ''))
     if (!currentEmail) return false
-    if (currentEmail === ownerMasterEmail) return true
-    return KNOWN_OWNER_MASTER_EMAILS.includes(currentEmail as (typeof KNOWN_OWNER_MASTER_EMAILS)[number])
+    return currentEmail === ownerMasterEmail
   })()
 
   const visibleTabs = useMemo(
