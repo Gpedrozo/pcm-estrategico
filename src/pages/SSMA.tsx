@@ -1417,10 +1417,8 @@ export default function SSMA() {
                       </td>
                       <td>
                         <FISPQDocumentos
-                          fichaId={ficha.id}
-                          arquivoUrl={(ficha as any).arquivo_url || null}
-                          documentosAnexos={((ficha as any).documentos_anexos as DocumentoAnexo[]) || []}
-                          onSalvar={handleFichaDocumentoSalvo}
+                          ficha={ficha}
+                          onArquivoSalvo={handleFichaDocumentoSalvo}
                         />
                       </td>
                       <td>
