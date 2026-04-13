@@ -102,6 +102,67 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 type LogoutReason = 'manual' | 'inactivity' | 'window_closed' | 'security';
 
+// ---------------------------------------------------------------------------
+// Profile sessionStorage cache — TTL 45 s por usuário+hostname
+// ---------------------------------------------------------------------------
+const PROFILE_CACHE_PREFIX = 'pcm.profile.v1.';
+const PROFILE_CACHE_TTL_MS = 45_000;
+
+interface CachedProfile {
+  nome: string;
+  tipo: string;
+  roles: string[];
+  tenantId: string | null;
+  tenantSlug: string | null;
+  forcePasswordChange: boolean;
+  cachedAt: number;
+}
+
+function _buildProfileCacheKey(userId: string): string {
+  const host = (typeof window !== 'undefined' ? window.location.hostname : '').toLowerCase();
+  return `${PROFILE_CACHE_PREFIX}${userId}.${host}`;
+}
+
+function _readProfileCache(userId: string): CachedProfile | null {
+  try {
+    const raw = window.sessionStorage.getItem(_buildProfileCacheKey(userId));
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as CachedProfile;
+    if (!parsed?.cachedAt || Date.now() - parsed.cachedAt > PROFILE_CACHE_TTL_MS) return null;
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
+function _writeProfileCache(userId: string, data: Omit<CachedProfile, 'cachedAt'>): void {
+  try {
+    window.sessionStorage.setItem(
+      _buildProfileCacheKey(userId),
+      JSON.stringify({ ...data, cachedAt: Date.now() }),
+    );
+  } catch {
+    // sessionStorage pode estar indisponível (Safari private, quota, etc.)
+  }
+}
+
+function clearAuthProfileCache(userId?: string): void {
+  try {
+    if (userId) {
+      window.sessionStorage.removeItem(_buildProfileCacheKey(userId));
+      return;
+    }
+    const keysToRemove: string[] = [];
+    for (let i = 0; i < window.sessionStorage.length; i += 1) {
+      const k = window.sessionStorage.key(i);
+      if (k && k.startsWith(PROFILE_CACHE_PREFIX)) keysToRemove.push(k);
+    }
+    keysToRemove.forEach((k) => window.sessionStorage.removeItem(k));
+  } catch {
+    // noop
+  }
+}
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [session, setSession] = useState<Session | null>(null);
@@ -112,6 +173,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const isAutoLogoutRunningRef = useRef(false);
   const isIntentionalLogoutNavigationRef = useRef(false);
   const hydrationRetryCountRef = useRef(0);
+  const domainEmpresaIdCacheRef = useRef<{ hostname: string; value: string | null; cachedAt: number } | null>(null);
 
   const transitionAuthStatus = useCallback((nextStatus: AuthStatus, reason: string, metadata?: Record<string, unknown>) => {
     setAuthStatus((currentStatus) => {
@@ -395,6 +457,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (isOwnerDomain(window.location.hostname)) return null;
 
     const hostname = window.location.hostname.toLowerCase();
+
+    // Cache in-memory por 5 minutos — o domínio não muda durante a sessão.
+    const cached = domainEmpresaIdCacheRef.current;
+    if (cached && cached.hostname === hostname && Date.now() - cached.cachedAt < 5 * 60 * 1000) {
+      return cached.value;
+    }
+
+    const _cache = (value: string | null): string | null => {
+      domainEmpresaIdCacheRef.current = { hostname, value, cachedAt: Date.now() };
+      return value;
+    };
+
     const { data: domainConfig, error } = await supabase
       .from('empresa_config')
       .select('empresa_id')
@@ -402,7 +476,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       .maybeSingle();
 
     if (!error && domainConfig?.empresa_id) {
-      return domainConfig.empresa_id as string;
+      return _cache(domainConfig.empresa_id as string);
     }
 
     if (error) {
@@ -415,11 +489,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const baseDomain = TENANT_BASE_DOMAIN.toLowerCase();
     const isBaseDomainHost = hostname === baseDomain || hostname === `www.${baseDomain}`;
 
-    if (isBaseDomainHost) return null;
-    if (!hostname.endsWith(`.${baseDomain}`)) return null;
+    if (isBaseDomainHost) return _cache(null);
+    if (!hostname.endsWith(`.${baseDomain}`)) return _cache(null);
 
     const slug = hostname.replace(`.${baseDomain}`, '').split('.')[0]?.trim().toLowerCase();
-    if (!slug || slug === 'www') return null;
+    if (!slug || slug === 'www') return _cache(null);
 
     const { data: companyBySlug, error: slugError } = await supabase
       .from('empresas')
@@ -433,10 +507,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         slug,
         error: slugError.message,
       });
-      return null;
+      return _cache(null);
     }
 
-    return companyBySlug?.id ?? null;
+    return _cache(companyBySlug?.id ?? null);
   }, []);
 
   useEffect(() => {
@@ -605,16 +679,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     expectedEmpresaId?: string | null,
   ) => {
     try {
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('nome,empresa_id,force_password_change')
-        .eq('id', userId)
-        .maybeSingle();
+      // Paraleliza profiles + user_roles para reduzir round-trips ao Supabase
+      const [profileResult, roleQuery] = await Promise.all([
+        supabase
+          .from('profiles')
+          .select('nome,empresa_id,force_password_change')
+          .eq('id', userId)
+          .maybeSingle(),
+        supabase
+          .from('user_roles')
+          .select('role, empresa_id')
+          .eq('user_id', userId),
+      ]);
 
-      const roleQuery = await supabase
-        .from('user_roles')
-        .select('role, empresa_id')
-        .eq('user_id', userId);
+      const { data: profile } = profileResult;
 
       let roleData = roleQuery.data || [];
 
@@ -863,15 +941,40 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     metadata?: { app_metadata?: Record<string, unknown>; user_metadata?: Record<string, unknown> },
     token?: string | null,
   ) => {
+    // Fast path: retorna perfil em cache (sessionStorage, TTL 45 s) para evitar
+    // round-trips ao Supabase em re-hidratações dentro da mesma sessão de aba.
+    const cachedProfile = _readProfileCache(userId);
+    if (cachedProfile) {
+      logger.info('auth_profile_served_from_cache', { userId });
+      return {
+        nome: cachedProfile.nome,
+        tipo: cachedProfile.tipo as import('@/lib/security').AppRole,
+        roles: cachedProfile.roles as import('@/lib/security').AppRole[],
+        tenantId: cachedProfile.tenantId,
+        tenantSlug: cachedProfile.tenantSlug,
+        forcePasswordChange: cachedProfile.forcePasswordChange,
+      };
+    }
+
     let lastError: unknown = null;
 
     for (let attempt = 1; attempt <= 2; attempt += 1) {
       try {
-        return await withTimeout(
+        const profileData = await withTimeout(
           resolveUserProfile(userId, email, metadata, token),
           LOGIN_PROFILE_TIMEOUT_MS,
           `timeout_resolving_user_profile_attempt_${attempt}`,
         );
+        // Grava em cache após resolução bem-sucedida
+        _writeProfileCache(userId, {
+          nome: profileData.nome,
+          tipo: profileData.tipo,
+          roles: profileData.roles,
+          tenantId: profileData.tenantId,
+          tenantSlug: (profileData as any).tenantSlug ?? null,
+          forcePasswordChange: (profileData as any).forcePasswordChange ?? false,
+        });
+        return profileData;
       } catch (error) {
         lastError = error;
         logger.warn('auth_profile_hydration_attempt_failed', {
@@ -1526,6 +1629,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     setImpersonation(null);
     window.localStorage.removeItem(IMPERSONATION_STORAGE_KEY);
+    if (user?.id) clearAuthProfileCache(user.id);
     setUser(null);
     setSession(null);
     clearRedirectRetryAttempts();
