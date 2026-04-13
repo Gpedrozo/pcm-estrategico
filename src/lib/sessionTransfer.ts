@@ -3,9 +3,6 @@ import { supabase } from '@/integrations/supabase/client';
 import { logger } from '@/lib/logger';
 
 const SESSION_TRANSFER_PARAM = 'session_transfer';
-const DIRECT_TRANSFER_ACCESS_PARAM = 'st_access';
-const DIRECT_TRANSFER_REFRESH_PARAM = 'st_refresh';
-const DIRECT_TRANSFER_ISSUED_PARAM = 'st_issued';
 const SESSION_LOOKUP_RETRIES = 5;
 const SESSION_LOOKUP_DELAY_MS = 220;
 const SESSION_TRANSFER_CREATE_RETRIES = 3;
@@ -189,21 +186,6 @@ export async function createSessionTransferHash(sessionData: Session | null, tar
   return null;
 }
 
-export function createDirectSessionTransferHash(sessionData: Session | null): string | null {
-  const accessToken = String(sessionData?.access_token ?? '').trim();
-  const refreshToken = String(sessionData?.refresh_token ?? '').trim();
-
-  if (!accessToken || !refreshToken) {
-    return null;
-  }
-
-  const params = new URLSearchParams();
-  params.set(DIRECT_TRANSFER_ACCESS_PARAM, accessToken);
-  params.set(DIRECT_TRANSFER_REFRESH_PARAM, refreshToken);
-  params.set(DIRECT_TRANSFER_ISSUED_PARAM, String(Date.now()));
-  return params.toString();
-}
-
 export function getSessionTransferFromUrl() {
   const searchParams = new URLSearchParams(window.location.search);
   const queryValue = String(searchParams.get(SESSION_TRANSFER_PARAM) ?? '').trim();
@@ -220,42 +202,6 @@ export function getSessionTransferFromUrl() {
   }
 
   return { token: null, source: null as const };
-}
-
-export function getDirectSessionTransferFromUrl() {
-  const searchParams = new URLSearchParams(window.location.search);
-  const queryAccess = String(searchParams.get(DIRECT_TRANSFER_ACCESS_PARAM) ?? '').trim();
-  const queryRefresh = String(searchParams.get(DIRECT_TRANSFER_REFRESH_PARAM) ?? '').trim();
-  const queryIssued = Number(searchParams.get(DIRECT_TRANSFER_ISSUED_PARAM) ?? 0);
-  if (queryAccess && queryRefresh && Number.isFinite(queryIssued) && queryIssued > 0) {
-    return {
-      access_token: queryAccess,
-      refresh_token: queryRefresh,
-      issued_at: queryIssued,
-      source: 'query' as const,
-    };
-  }
-
-  const rawHash = window.location.hash.startsWith('#') ? window.location.hash.slice(1) : '';
-  if (!rawHash) {
-    return null;
-  }
-
-  const hashParams = new URLSearchParams(rawHash);
-  const hashAccess = String(hashParams.get(DIRECT_TRANSFER_ACCESS_PARAM) ?? '').trim();
-  const hashRefresh = String(hashParams.get(DIRECT_TRANSFER_REFRESH_PARAM) ?? '').trim();
-  const hashIssued = Number(hashParams.get(DIRECT_TRANSFER_ISSUED_PARAM) ?? 0);
-
-  if (!hashAccess || !hashRefresh || !Number.isFinite(hashIssued) || hashIssued <= 0) {
-    return null;
-  }
-
-  return {
-    access_token: hashAccess,
-    refresh_token: hashRefresh,
-    issued_at: hashIssued,
-    source: 'hash' as const,
-  };
 }
 
 export async function consumeSessionTransferCode(code: string, targetHost: string): Promise<{ access_token: string; refresh_token: string; issued_at: number } | null> {

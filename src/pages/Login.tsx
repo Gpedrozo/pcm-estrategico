@@ -6,7 +6,6 @@ import { consumePreferredPostLoginPath } from '@/lib/navigationState';
 import { supabase } from '@/integrations/supabase/client';
 import { resolveOrRepairTenantHost } from '@/lib/tenantDomain';
 import {
-  createDirectSessionTransferHash,
   createSessionTransferHash,
   getSessionTransferFromUrl,
   resolveSessionForCrossDomainRedirect,
@@ -343,32 +342,6 @@ export default function Login() {
 
         const { data: sessionData } = await supabase.auth.getSession();
         const activeSession = await resolveSessionForCrossDomainRedirect(sessionData?.session ?? null);
-
-        const directTransferHash = createDirectSessionTransferHash(activeSession ?? null);
-        if (directTransferHash) {
-          const appTargetPath = nextPath || resolvePreferredPath();
-          const normalizedAppPath = appTargetPath.startsWith('/') ? appTargetPath : `/${appTargetPath}`;
-          const directTargetUrl = `${window.location.protocol}//${targetHost}${normalizedAppPath}#${directTransferHash}`;
-
-          logger.info('tenant_base_redirect_using_direct_session_handoff', {
-            currentHost,
-            targetHost,
-            tenantId,
-            appTargetPath: normalizedAppPath,
-          });
-
-          try {
-            window.localStorage.setItem(
-              CROSS_DOMAIN_REDIRECT_MARKER_STORAGE_KEY,
-              JSON.stringify({ at: Date.now() }),
-            );
-          } catch {
-            // noop
-          }
-
-          window.location.assign(directTargetUrl);
-          return;
-        }
 
         let transferHash = '';
         const transferTokenHash = await createSessionTransferHash(activeSession ?? null, targetHost);

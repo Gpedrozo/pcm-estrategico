@@ -14,7 +14,6 @@ import { writeAuditLog } from '@/lib/audit';
 import { setMonitoringUser, setMonitoringTag } from '@/lib/monitoring';
 import {
   consumeSessionTransferCode,
-  getDirectSessionTransferFromUrl,
   getSessionTransferFromUrl,
 } from '@/lib/sessionTransfer';
 import { HANDOFF_FAILED_PARAM, resolveTenantHostSlug } from '@/lib/tenantLoginFlow';
@@ -305,9 +304,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       const transfer = getSessionTransferFromUrl();
       const encodedTransfer = transfer.token;
-      const directTransfer = getDirectSessionTransferFromUrl();
 
-      if (!encodedTransfer && !directTransfer) {
+      if (!encodedTransfer) {
         if (hasLogoutMarker) {
           await supabase.auth.signOut({ scope: 'local' });
           stripAuthHandoffFromUrl();
@@ -316,48 +314,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
 
       transitionAuthStatus('hydrating', 'session_transfer_consume_started', {
-        source: directTransfer ? directTransfer.source : transfer.source,
+        source: transfer.source,
       });
       const transferStartedAt = performance.now();
-
-      if (directTransfer) {
-        const isFreshDirectTransfer = (Date.now() - directTransfer.issued_at) <= SESSION_TRANSFER_MAX_AGE_MS;
-        if (!isFreshDirectTransfer) {
-          transitionAuthStatus('error', 'session_transfer_direct_expired_or_invalid', {
-            hydrationMs: Math.trunc(performance.now() - transferStartedAt),
-          });
-          stripAuthHandoffFromUrl();
-          return;
-        }
-
-        const { error } = await supabase.auth.setSession({
-          access_token: directTransfer.access_token,
-          refresh_token: directTransfer.refresh_token,
-        });
-
-        if (error) {
-          logger.warn('session_transfer_direct_set_session_failed', {
-            error: error.message,
-          });
-          transitionAuthStatus('error', 'session_transfer_direct_set_session_failed', {
-            hydrationMs: Math.trunc(performance.now() - transferStartedAt),
-          });
-          clearSessionTransferRedirectInProgress();
-          stripAuthHandoffFromUrl();
-          return;
-        }
-
-        clearSessionTransferRedirectInProgress();
-        stripAuthHandoffFromUrl();
-        transitionAuthStatus('loading', 'session_transfer_direct_consumed_success', {
-          hydrationMs: Math.trunc(performance.now() - transferStartedAt),
-        });
-        return;
-      }
-
-      if (!encodedTransfer) {
-        return;
-      }
 
       if (wasSessionTransferAlreadyConsumed(encodedTransfer)) {
         const url = new URL(window.location.href);
