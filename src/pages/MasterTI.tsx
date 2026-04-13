@@ -17,7 +17,7 @@ import {
   Smartphone,
   ScrollText,
 } from "lucide-react";
-import { MeuContratoTab } from "@/components/empresa/MeuContratoTab";
+import { MasterContratosPanel } from "@/components/master-ti/MasterContratosPanel";
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { lazyWithRetry } from "@/lib/lazyWithRetry";
@@ -229,7 +229,7 @@ export default function MasterTI() {
           </TabsContent>
 
           <TabsContent value="contrato">
-            <MeuContratoTab />
+            <MasterContratosPanel />
           </TabsContent>
         </Suspense>
       </Tabs>
