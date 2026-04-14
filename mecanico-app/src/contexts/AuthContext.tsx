@@ -105,7 +105,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           await Promise.all([
             AsyncStorage.getItem(STORAGE_KEYS.EMPRESA_ID),
             AsyncStorage.getItem(STORAGE_KEYS.EMPRESA_NOME),
-            AsyncStorage.getItem(STORAGE_KEYS.DEVICE_TOKEN),
+            getSecureItem(STORAGE_KEYS.DEVICE_TOKEN),
             AsyncStorage.getItem(STORAGE_KEYS.MECANICO_ID),
             AsyncStorage.getItem(STORAGE_KEYS.MECANICO_NOME),
             AsyncStorage.getItem(STORAGE_KEYS.MECANICO_CODIGO),
@@ -168,7 +168,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       await AsyncStorage.setItem(STORAGE_KEYS.EMPRESA_ID, empresaId);
       await AsyncStorage.setItem(STORAGE_KEYS.EMPRESA_NOME, empresaNome);
-      if (deviceToken) await AsyncStorage.setItem(STORAGE_KEYS.DEVICE_TOKEN, deviceToken);
+      if (deviceToken) await setSecureItem(STORAGE_KEYS.DEVICE_TOKEN, deviceToken);
 
       // Obtain JWT so all subsequent queries use authenticated role
       if (deviceToken) {
@@ -193,7 +193,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     await clearGlobalAuth();
     await deleteSecureItem(STORAGE_KEYS.ACCESS_TOKEN);
     await deleteSecureItem(STORAGE_KEYS.REFRESH_TOKEN);
-    await AsyncStorage.multiRemove(Object.values(STORAGE_KEYS).filter(k => !k.startsWith('pcm_')));
+    await deleteSecureItem(STORAGE_KEYS.DEVICE_TOKEN);
+    await AsyncStorage.multiRemove(
+      Object.values(STORAGE_KEYS).filter(
+        (k) => !k.startsWith('pcm_') && k !== STORAGE_KEYS.DEVICE_TOKEN,
+      ),
+    );
     setState({
       isLoading: false,
       isDeviceBound: false,
