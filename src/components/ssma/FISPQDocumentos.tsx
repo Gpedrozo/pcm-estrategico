@@ -39,7 +39,7 @@ export function FISPQDocumentos({ ficha, onArquivoSalvo }: Props) {
   const mainInputRef = useRef<HTMLInputElement>(null);
   const anexoInputRef = useRef<HTMLInputElement>(null);
 
-  const documentos = parseDocumentosAnexos((ficha as any).documentos_anexos);
+  const documentos = parseDocumentosAnexos(ficha.documentos_anexos);
 
   async function uploadFile(file: File, prefix: string): Promise<string> {
     const ext = file.name.split('.').pop();

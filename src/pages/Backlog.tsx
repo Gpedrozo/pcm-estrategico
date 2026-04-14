@@ -297,8 +297,8 @@ export default function Backlog() {
                         <td>{os.equipamento}</td>
                         <td className="max-w-[200px] truncate">
                           {os.problema}
-                          {os.status === 'CANCELADA' && (os as any).motivo_cancelamento && (
-                            <p className="text-xs text-rose-600 mt-0.5 truncate" title={(os as any).motivo_cancelamento}>Motivo: {(os as any).motivo_cancelamento}</p>
+                          {os.status === 'CANCELADA' && os.motivo_cancelamento && (
+                            <p className="text-xs text-rose-600 mt-0.5 truncate" title={os.motivo_cancelamento}>Motivo: {os.motivo_cancelamento}</p>
                           )}
                         </td>
                         <td><OSTypeBadge tipo={normalizeOSType(os.tipo)} /></td>

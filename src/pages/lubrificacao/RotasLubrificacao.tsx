@@ -244,7 +244,7 @@ export default function RotasLubrificacao() {
     setPontos(newPontos);
   };
 
-  const updatePonto = (index: number, field: keyof PontoForm, value: string | number) => {
+  const updatePonto = (index: number, field: keyof PontoForm, value: string | number | boolean) => {
     setPontos((prev) => prev.map((p, i) => i === index ? { ...p, [field]: value } : p));
   };
 
@@ -481,7 +481,7 @@ export default function RotasLubrificacao() {
                         <Checkbox
                           id={`rota-parada-${index}`}
                           checked={ponto.requer_parada}
-                          onCheckedChange={(v) => updatePonto(index, 'requer_parada' as any, !!v as any)}
+                          onCheckedChange={(v) => updatePonto(index, 'requer_parada', !!v)}
                         />
                         <label htmlFor={`rota-parada-${index}`} className="text-xs flex items-center gap-1 cursor-pointer">
                           <Lock className="h-3 w-3" /> Requer parada de máquina

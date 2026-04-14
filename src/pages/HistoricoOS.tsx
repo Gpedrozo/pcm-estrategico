@@ -99,13 +99,14 @@ function OSDetailsModal({
     const osId = os.id;
     void (async () => {
       const table = await getSolicitacoesTable();
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- 'solicitacoes' table name not in generated types
       const { data } = await (supabase
         .from(table as any)
         .select('numero_solicitacao')
         .eq('os_id', osId)
         .eq('empresa_id', tenantId)
         .limit(1)
-        .maybeSingle() as any);
+        .maybeSingle()) as { data: { numero_solicitacao?: number } | null; error: unknown };
       if (data) {
         const num = Number(data.numero_solicitacao ?? 0);
         if (num > 0) setSolicitacaoOrigem({ numero_solicitacao: num });
@@ -975,8 +976,8 @@ export default function HistoricoOS() {
                   ) : hoveredOS.status === 'CANCELADA' ? (
                     <div className="rounded-md border border-rose-500/30 bg-rose-500/5 p-3 text-xs">
                       <p className="font-semibold uppercase tracking-wide text-rose-700 dark:text-rose-300">O.S cancelada</p>
-                      {(hoveredOS as any).motivo_cancelamento ? (
-                        <p className="mt-1 text-muted-foreground">Motivo: {(hoveredOS as any).motivo_cancelamento}</p>
+                      {hoveredOS.motivo_cancelamento ? (
+                        <p className="mt-1 text-muted-foreground">Motivo: {hoveredOS.motivo_cancelamento}</p>
                       ) : (
                         <p className="mt-1 text-muted-foreground">Sem motivo registrado.</p>
                       )}

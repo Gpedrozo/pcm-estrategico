@@ -141,7 +141,7 @@ function normalizeAuditRow(raw: Record<string, unknown>): OwnerAuditLog {
     id: String(raw.id ?? ''),
     empresa_id: (raw.empresa_id as string) ?? null,
     usuario_id: String(raw.usuario_id ?? raw.executor_id ?? raw.actor_id ?? '') || null,
-    usuario_email: String(raw.usuario_email ?? raw.actor_email ?? (afterData as any)?.actor_email ?? '') || null,
+    usuario_email: String(raw.usuario_email ?? raw.actor_email ?? (afterData as Record<string, unknown> | null)?.actor_email ?? '') || null,
     acao: String(raw.acao ?? raw.action ?? raw.action_type ?? '') || null,
     tabela: String(raw.tabela ?? raw.target_entity ?? raw.table_name ?? '') || null,
     registro_id: String(raw.registro_id ?? raw.target_id ?? raw.record_id ?? '') || null,
@@ -411,10 +411,10 @@ const tryRecoverCreateCompanyByLookup = async (payload: OwnerActionPayload, erro
 const parseErrorMessage = async (error: unknown) => {
   const unsafeError = error as { context?: unknown; message?: unknown } | null
   if (!unsafeError) return 'Falha desconhecida ao executar operaÃ§Ã£o Owner.'
-  const context = unsafeError?.context
+  const context = unsafeError?.context as { status?: number; statusText?: string } | undefined
 
-  const status = Number((context as any)?.status)
-  const statusText = String((context as any)?.statusText ?? '').trim()
+  const status = Number(context?.status)
+  const statusText = String(context?.statusText ?? '').trim()
   const withStatus = (message: string) => {
     if (!Number.isFinite(status) || status <= 0) return message
     const prefix = statusText ? `HTTP ${status} ${statusText}` : `HTTP ${status}`
@@ -510,7 +510,7 @@ export async function callOwnerAdmin<T = unknown>(payload: OwnerActionPayload) {
 
       return data as T
     } catch (err) {
-      const errMsg = String((err as any)?.message ?? '').toLowerCase();
+      const errMsg = String(err instanceof Error ? err.message : (err as Record<string, unknown>)?.message ?? '').toLowerCase();
       if ((errMsg.includes('failed to send') || errMsg.includes('network')) && retryCount < maxRetries) {
         const delay = baseDelay * Math.pow(2, retryCount);
         console.warn(`[Owner API] Retry after connection error (attempt ${retryCount + 1}/${maxRetries})`);

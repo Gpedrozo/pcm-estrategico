@@ -206,7 +206,7 @@ export default function HomeScreen() {
                 </TouchableOpacity>
                 <TouchableOpacity
                   style={styles.secondaryButton}
-                  onPress={() => navigation.navigate('QRScan' as any)}
+                  onPress={() => navigation.navigate('QRScan')}
                   activeOpacity={0.7}
                 >
                   <Text style={styles.secondaryIcon}>📷</Text>

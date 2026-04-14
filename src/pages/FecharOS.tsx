@@ -131,7 +131,7 @@ export default function FecharOS() {
   }, [pendingOS, searchOS]);
 
   const getDiasAberto = (os: OrdemServicoRow) => {
-    const criacao = (os as any).created_at || (os as any).data_abertura;
+    const criacao = os.created_at;
     if (!criacao) return null;
     const diff = Math.floor((Date.now() - new Date(criacao).getTime()) / 86400000);
     return diff;
@@ -334,13 +334,13 @@ export default function FecharOS() {
       !dataFimBloqueada &&
       servicoValido,
   );
-  const checklist = [
+  const checklist: Array<{ label: string; ok: boolean; optional?: boolean }> = [
     { label: 'Mecânico selecionado', ok: Boolean(formData.mecanicoId), optional: true },
     { label: 'Horário de execução válido', ok: janelaExecucaoPreenchida && janelaExecucaoValida },
     ...(bloquearFuturo ? [{ label: 'Data/hora de fim não é futura', ok: !dataFimFutura }] : []),
     { label: `Serviço com mínimo de ${servicoMinLength} caracteres`, ok: servicoValido },
   ];
-  const requiredChecklist = checklist.filter((item) => !(item as any).optional);
+  const requiredChecklist = checklist.filter((item) => !item.optional);
   const progressoChecklist = requiredChecklist.length > 0 ? Math.round((requiredChecklist.filter((item) => item.ok).length / requiredChecklist.length) * 100) : 0;
 
   const handleAddMaterial = () => {
@@ -1084,8 +1084,8 @@ export default function FecharOS() {
                   </div>
                   {checklist.map((item) => (
                     <div key={item.label} className="flex items-center gap-2 text-sm">
-                      {item.ok ? <Check className="h-4 w-4 text-success" /> : (item as any).optional ? <span className="h-4 w-4 text-muted-foreground text-xs text-center">—</span> : <AlertTriangle className="h-4 w-4 text-warning" />}
-                      <span>{item.label}{(item as any).optional ? ' (opcional)' : ''}</span>
+                      {item.ok ? <Check className="h-4 w-4 text-success" /> : item.optional ? <span className="h-4 w-4 text-muted-foreground text-xs text-center">—</span> : <AlertTriangle className="h-4 w-4 text-warning" />}
+                      <span>{item.label}{item.optional ? ' (opcional)' : ''}</span>
                     </div>
                   ))}
                 </div>

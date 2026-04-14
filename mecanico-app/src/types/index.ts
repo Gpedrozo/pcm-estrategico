@@ -164,6 +164,7 @@ export type RootStackParamList = {
   CriarOS: { solicitacao?: SolicitacaoManutencao };
   CriarSolicitacao: undefined;
   SolicitacaoDetalhe: { solicitacao: SolicitacaoManutencao };
+  QRScan: undefined;
 };
 
 export type MainTabParamList = {
