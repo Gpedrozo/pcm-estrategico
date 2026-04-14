@@ -11,7 +11,6 @@ import * as SecureStore from 'expo-secure-store';
 import { Platform } from 'react-native';
 import { supabase, setGlobalAuth, clearGlobalAuth } from '../lib/supabase';
 import { logger } from '../lib/logger';
-import { logger } from '../lib/logger';
 import type { Mecanico } from '../types';
 
 // Sensitive tokens use SecureStore; non-sensitive data uses AsyncStorage
