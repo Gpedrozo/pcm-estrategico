@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import { logger } from '@/lib/logger';
 import {
   Activity,
   MapPin,
@@ -58,7 +59,7 @@ export default function MecanicosMonitoramento() {
       if (error) throw error;
       setMecanicos((data as MecanicoOnline[]) || []);
     } catch (e) {
-      console.error('Erro ao carregar mec├ónicos:', e);
+      logger.error('Erro ao carregar mecânicos:', { error: (e as Error).message });
       toast({
         title: 'Erro',
         description: (e as Error).message,

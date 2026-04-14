@@ -11,6 +11,7 @@ import * as SecureStore from 'expo-secure-store';
 import { Platform } from 'react-native';
 import { supabase, setGlobalAuth, clearGlobalAuth } from '../lib/supabase';
 import { logger } from '../lib/logger';
+import { logger } from '../lib/logger';
 import type { Mecanico } from '../types';
 
 // Sensitive tokens use SecureStore; non-sensitive data uses AsyncStorage
@@ -155,7 +156,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       });
 
       if (error) {
-        console.error('[bindDevice] RPC error:', error.code, error.message, error.hint);
+        logger.error('bindDevice', { code: error.code, message: error.message, hint: error.hint });
         return { ok: false, error: error.message };
       }
 

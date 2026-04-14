@@ -22,6 +22,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { getMecanicos, upsertMecanico } from '../lib/database';
 import { createAuthenticatedClient, SUPABASE_URL, SUPABASE_ANON_KEY } from '../lib/supabase';
 import { runSyncCycle, getAccessToken } from '../lib/syncEngine';
+import { logger } from '../lib/logger';
 import { COLORS, SIZES } from '../theme';
 
 interface MecanicoItem {
@@ -61,7 +62,7 @@ export default function MecanicoSelectScreen() {
         { p_empresa_id: empresaId }
       );
       if (!rpcError && rpcData && rpcData.length > 0) {
-        console.log(`[MecanicoSelect] RPC retornou ${rpcData.length} mecânicos`);
+        logger.info('MecanicoSelect', { message: `RPC retornou ${rpcData.length} mecânicos` });
         for (const mec of rpcData) {
           await upsertMecanico({ ...mec, empresa_id: empresaId, ativo: true });
         }
@@ -86,7 +87,7 @@ export default function MecanicoSelectScreen() {
         .limit(200);
 
       if (!error && data && data.length > 0) {
-        console.log(`[MecanicoSelect] Query direta retornou ${data.length} mecânicos`);
+        logger.info('MecanicoSelect', { message: `Query direta retornou ${data.length} mecânicos` });
         for (const mec of data) {
           await upsertMecanico({ ...mec, empresa_id: empresaId, ativo: true });
         }
@@ -110,7 +111,7 @@ export default function MecanicoSelectScreen() {
 
       // 2. Se local vazio, busca do Supabase via RPC (SECURITY DEFINER)
       if (list.length === 0) {
-        console.log('[MecanicoSelect] SQLite vazio, buscando do Supabase...');
+        logger.info('MecanicoSelect', { message: 'SQLite vazio, buscando do Supabase...' });
         list = await fetchFromSupabase();
       }
 
@@ -134,7 +135,7 @@ export default function MecanicoSelectScreen() {
         if (mounted && localList.length > 0) {
           setMecanicos(localList);
           setLoading(false);
-          console.log(`[MecanicoSelect] ${localList.length} mecânicos carregados do SQLite`);
+          logger.info('MecanicoSelect', { message: `${localList.length} mecânicos carregados do SQLite` });
         }
       } catch { /* ignore */ }
 
