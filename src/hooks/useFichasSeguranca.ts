@@ -5,6 +5,14 @@ import { insertWithColumnFallback } from '@/lib/supabaseCompat';
 import { useAuth } from '@/contexts/AuthContext';
 import { writeAuditLog } from '@/lib/audit';
 
+export interface DocumentoAnexo {
+  nome: string;
+  tipo: string;
+  url: string;
+  data_upload: string;
+  observacao?: string;
+}
+
 export interface FichaSegurancaRow {
   id: string;
   empresa_id: string;
@@ -18,7 +26,7 @@ export interface FichaSegurancaRow {
   armazenamento: string | null;
   epi_recomendado: string | null;
   arquivo_url: string | null;
-  documentos_anexos: unknown; // DocumentoAnexo[]
+  documentos_anexos: DocumentoAnexo[];
   data_validade: string | null;
   ativo: boolean;
   created_at: string;
@@ -36,7 +44,7 @@ export interface FichaSegurancaInsert {
   armazenamento?: string | null;
   epi_recomendado?: string | null;
   arquivo_url?: string | null;
-  documentos_anexos?: unknown;
+  documentos_anexos?: DocumentoAnexo[];
   data_validade?: string | null;
 }
 

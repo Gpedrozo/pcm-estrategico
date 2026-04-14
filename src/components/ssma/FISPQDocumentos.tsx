@@ -7,15 +7,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Paperclip, Upload, ExternalLink, FileText, Trash2, Eye, Loader2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import type { FichaSegurancaRow } from '@/hooks/useFichasSeguranca';
-
-export interface DocumentoAnexo {
-  nome: string;
-  tipo: string;
-  url: string;
-  data_upload: string;
-  observacao?: string;
-}
+import type { FichaSegurancaRow, DocumentoAnexo } from '@/hooks/useFichasSeguranca';
 
 interface Props {
   ficha: FichaSegurancaRow;

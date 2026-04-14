@@ -33,6 +33,7 @@ import { upsertMaintenanceSchedule } from '@/services/maintenanceSchedule';
 import { getSupabaseErrorMessage, insertWithColumnFallback, updateWithColumnFallback } from '@/lib/supabaseCompat';
 import { useCreateOrdemServico } from '@/hooks/useOrdensServico';
 import { useHistoricoAlteracoesMedicao } from '@/hooks/useMedicoesPreditivas';
+import type { MedicaoPreditivaRow } from '@/hooks/useMedicoesPreditivas';
 import { writeAuditLog } from '@/lib/audit';
 import { useFormDraft } from '@/hooks/useFormDraft';
 import { useLocation } from 'react-router-dom';
@@ -599,7 +600,7 @@ export default function Preditiva() {
               <div style={{ display: 'none' }}>
                 <PreditivaPrintTemplate
                   ref={preditivaPrintRef}
-                  medicoes={filteredMedicoes as any}
+                  medicoes={filteredMedicoes as MedicaoPreditivaRow[]}
                   tag={filteredMedicoes.length > 0 ? filteredMedicoes[0].tag : '—'}
                   empresa={empresa}
                 />

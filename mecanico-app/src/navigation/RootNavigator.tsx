@@ -20,6 +20,7 @@ import SolicitacoesListScreenV2 from '../screens/SolicitacoesListScreenV2';
 import SolicitacaoDetalheScreen from '../screens/SolicitacaoDetalheScreen';
 import HistoricoScreenV2 from '../screens/HistoricoScreenV2';
 import AgendaScreen from '../screens/AgendaScreen';
+import QRScanScreen from '../screens/QRScanScreen';
 
 import { COLORS, SIZES } from '../theme';
 import type { RootStackParamList, MainTabParamList } from '../types';
@@ -114,6 +115,7 @@ export default function RootNavigator() {
       <Stack.Screen name="CriarOS" component={CriarOSScreenV2} options={{ title: 'Emitir O.S.' }} />
       <Stack.Screen name="CriarSolicitacao" component={CriarSolicitacaoScreen} options={{ title: 'Nova Solicitação' }} />
       <Stack.Screen name="SolicitacaoDetalhe" component={SolicitacaoDetalheScreen} options={{ title: 'Solicitação' }} />
+      <Stack.Screen name="QRScan" component={QRScanScreen} options={{ title: 'Escanear QR Code', headerShown: true }} />
     </Stack.Navigator>
   );
 }
