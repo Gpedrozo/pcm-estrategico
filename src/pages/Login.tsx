@@ -292,8 +292,7 @@ export default function Login() {
         if (!targetHost) {
           const { data: userResult } = await supabase.auth.getUser();
           const rawMetadataSlug =
-            userResult?.user?.app_metadata?.empresa_slug ??
-            userResult?.user?.user_metadata?.empresa_slug;
+            userResult?.user?.app_metadata?.empresa_slug;
 
           const metadataSlug = typeof rawMetadataSlug === 'string'
             ? rawMetadataSlug.trim().toLowerCase()

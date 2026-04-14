@@ -175,9 +175,7 @@ export default function OwnerLogin() {
           const { data: { session: activeSession } } = await supabase.auth.getSession();
           const metadataSlug = String(
             activeSession?.user?.app_metadata?.empresa_slug
-            ?? activeSession?.user?.user_metadata?.empresa_slug
             ?? response?.session?.user?.app_metadata?.empresa_slug
-            ?? response?.session?.user?.user_metadata?.empresa_slug
             ?? selected.slug
             ?? '',
           ).trim().toLowerCase();

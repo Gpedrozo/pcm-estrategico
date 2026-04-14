@@ -303,7 +303,6 @@ export function AppLayout() {
       if (!targetHost) {
         const metadataSlug = String(
           session.user.app_metadata?.empresa_slug
-          ?? session.user.user_metadata?.empresa_slug
           ?? '',
         ).trim().toLowerCase();
 
