@@ -116,7 +116,8 @@ export default function Inspecoes() {
   const calendarModalAppliedRef = useRef(false);
   useEffect(() => {
     if (calendarModalAppliedRef.current) return;
-    if ((location.state as any)?.dataProgramada) {
+    type CalendarNavState = { dataProgramada?: string };
+    if ((location.state as CalendarNavState | null)?.dataProgramada) {
       calendarModalAppliedRef.current = true;
       setIsModalOpen(true);
     }

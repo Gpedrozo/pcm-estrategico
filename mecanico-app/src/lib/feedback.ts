@@ -14,7 +14,11 @@ function parseError(error: unknown): string {
   const msg =
     typeof error === 'string'
       ? error
-      : (error as any)?.message || (error as any)?.error_description || '';
+      : error instanceof Error
+        ? error.message
+        : typeof error === 'object' && error !== null
+          ? String((error as Record<string, unknown>).message ?? (error as Record<string, unknown>).error_description ?? '')
+          : '';
 
   const lower = msg.toLowerCase();
 

@@ -26,7 +26,8 @@ export default function Lubrificacao() {
   const [formOpen, setFormOpen] = useState(false);
   const [editingPlano, setEditingPlano] = useState<PlanoLubrificacao | null>(null);
 
-  const dataProgramadaFromCalendar = (location.state as any)?.dataProgramada as string | undefined;
+  type CalendarNavState = { dataProgramada?: string };
+  const dataProgramadaFromCalendar = (location.state as CalendarNavState | null)?.dataProgramada;
 
   const calendarFormAppliedRef = useRef(false);
   useEffect(() => {

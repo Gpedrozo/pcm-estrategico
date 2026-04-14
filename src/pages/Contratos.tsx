@@ -383,7 +383,7 @@ export default function Contratos() {
                   <SelectContent>
                     {fornecedores?.map((f) => (
                       <SelectItem key={f.id} value={f.id}>
-                        {f.razao_social || f.nome_fantasia || (f as any).nome || f.id}
+                        {f.razao_social || f.nome_fantasia || f.id}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -393,7 +393,7 @@ export default function Contratos() {
                 <Label>Tipo *</Label>
                 <Select
                   value={formData.tipo}
-                  onValueChange={(v) => setFormData({ ...formData, tipo: v as any })}
+                  onValueChange={(v) => setFormData({ ...formData, tipo: v })}
                 >
                   <SelectTrigger>
                     <SelectValue />
@@ -415,7 +415,7 @@ export default function Contratos() {
                 <Label>Status</Label>
                 <Select
                   value={formData.status}
-                  onValueChange={(v) => setFormData({ ...formData, status: v as any })}
+                  onValueChange={(v) => setFormData({ ...formData, status: v })}
                 >
                   <SelectTrigger>
                     <SelectValue />

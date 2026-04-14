@@ -52,13 +52,14 @@ export function OSPrintDialog({ os, trigger, solicitacaoNumero: solicitacaoNumer
     const osId = os.id;
     void (async () => {
       const table = await getSolicitacoesTable();
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- table name is a union of known names; 'solicitacoes' not yet in generated types
       const { data } = await (supabase
         .from(table as any)
         .select('numero_solicitacao')
         .eq('os_id', osId)
         .eq('empresa_id', tenantId)
         .limit(1)
-        .maybeSingle() as any) as { data: { numero_solicitacao?: number } | null };
+        .maybeSingle()) as { data: { numero_solicitacao?: number } | null; error: unknown };
       setResolvedSolNum(data ? Number(data.numero_solicitacao ?? 0) || null : null);
     })();
   }, [os.id, solicitacaoNumeroProp, tenantId]);
