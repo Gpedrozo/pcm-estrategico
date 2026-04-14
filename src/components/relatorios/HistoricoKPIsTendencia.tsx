@@ -10,7 +10,7 @@ import { ptBR } from 'date-fns/locale';
 
 interface OSRow {
   data_solicitacao: string | null;
-  data_conclusao: string | null;
+  data_fechamento: string | null;
   status: string;
   tipo: string;
 }

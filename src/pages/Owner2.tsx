@@ -382,8 +382,8 @@ export default function Owner() {
     return String(healthQuery.data?.status ?? 'n/a')
   }, [healthQuery.data, healthQuery.error, healthQuery.isError])
 
-  const companies = useMemo(() => safeArray<Record<string, unknown>>((companiesQuery.data as any)?.companies), [companiesQuery.data])
-  const users = useMemo(() => safeArray<Record<string, unknown>>((usersQuery.data as any)?.users), [usersQuery.data])
+  const companies = useMemo(() => safeArray<Record<string, unknown>>(companiesQuery.data?.companies), [companiesQuery.data])
+  const users = useMemo(() => safeArray<Record<string, unknown>>(usersQuery.data?.users), [usersQuery.data])
   const isDeviceUser = (u: Record<string, unknown>) => {
     const nome = String(u.nome ?? '').toLowerCase()
     const email = String(u.email ?? '').toLowerCase()
@@ -394,18 +394,18 @@ export default function Owner() {
   const activeHumanUsers = useMemo(() => humanUsers.filter((u) => {
     return String(u.status ?? '').toLowerCase() === 'ativo'
   }), [humanUsers])
-  const plans = useMemo(() => safeArray<Record<string, unknown>>((plansQuery.data as any)?.plans), [plansQuery.data])
-  const subscriptions = useMemo(() => safeArray<Record<string, unknown>>((subscriptionsQuery.data as any)?.subscriptions), [subscriptionsQuery.data])
-  const contracts = useMemo(() => safeArray<Record<string, unknown>>((contractsQuery.data as any)?.contracts), [contractsQuery.data])
-  const tickets = useMemo(() => safeArray<Record<string, unknown>>((ticketsQuery.data as any)?.tickets), [ticketsQuery.data])
+  const plans = useMemo(() => safeArray<Record<string, unknown>>(plansQuery.data?.plans), [plansQuery.data])
+  const subscriptions = useMemo(() => safeArray<Record<string, unknown>>(subscriptionsQuery.data?.subscriptions), [subscriptionsQuery.data])
+  const contracts = useMemo(() => safeArray<Record<string, unknown>>(contractsQuery.data?.contracts), [contractsQuery.data])
+  const tickets = useMemo(() => safeArray<Record<string, unknown>>(ticketsQuery.data?.tickets), [ticketsQuery.data])
   const unreadOwnerCount = useMemo(
     () => tickets.reduce((sum, t) => sum + Number(t.unread_owner_messages ?? 0), 0),
     [tickets],
   )
-  const logs = useMemo(() => safeArray<Record<string, unknown>>((auditsQuery.data as any)?.logs), [auditsQuery.data])
-  const owners = useMemo(() => safeArray<Record<string, unknown>>((ownersQuery.data as any)?.owners), [ownersQuery.data])
-  const tables = useMemo(() => safeArray<Record<string, unknown>>((tablesQuery.data as any)?.tables), [tablesQuery.data])
-  const settings = useMemo(() => safeArray<Record<string, unknown>>((settingsQuery.data as any)?.settings), [settingsQuery.data])
+  const logs = useMemo(() => safeArray<Record<string, unknown>>(auditsQuery.data?.logs), [auditsQuery.data])
+  const owners = useMemo(() => safeArray<Record<string, unknown>>(ownersQuery.data?.owners), [ownersQuery.data])
+  const tables = useMemo(() => safeArray<Record<string, unknown>>(tablesQuery.data?.tables), [tablesQuery.data])
+  const settings = useMemo(() => safeArray<Record<string, unknown>>(settingsQuery.data?.settings), [settingsQuery.data])
 
   const selectedCompany = useMemo(
     () => companies.find((company) => String(company.id) === companyId) ?? null,

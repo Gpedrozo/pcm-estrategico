@@ -13,7 +13,7 @@ interface OSRow {
   tipo: string;
   status: string;
   data_solicitacao: string | null;
-  data_conclusao: string | null;
+  data_fechamento: string | null;
 }
 
 interface ExecucaoRow {

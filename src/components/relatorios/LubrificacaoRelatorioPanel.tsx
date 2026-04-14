@@ -8,9 +8,7 @@ import {
 
 interface PlanoLubrificacao {
   id: string;
-  tag: string;
-  equipamento?: string | null;
-  frequencia?: string | null;
+  nome?: string | null;
   lubrificante?: string | null;
   ativo?: boolean;
 }
@@ -26,9 +24,9 @@ interface ExecLubrificacao {
 interface EstoqueRow {
   id: string;
   nome: string;
-  unidade?: string;
-  quantidade_atual?: number;
-  quantidade_minima?: number;
+  unidade_medida?: string;
+  estoque_atual?: number;
+  estoque_minimo?: number;
 }
 
 interface MovLubrificante {
@@ -90,7 +88,7 @@ export function LubrificacaoRelatorioPanel({ planos, execucoes, estoque, movimen
 
   // Estoque baixo
   const estoqueBaixo = useMemo(() =>
-    estoque.filter((e) => (e.quantidade_atual ?? 0) <= (e.quantidade_minima ?? 0)),
+    estoque.filter((e) => (e.estoque_atual ?? 0) <= (e.estoque_minimo ?? 0)),
     [estoque]);
 
   const pieData = [
@@ -177,7 +175,7 @@ export function LubrificacaoRelatorioPanel({ planos, execucoes, estoque, movimen
               {estoqueBaixo.map((e) => (
                 <div key={e.id} className="rounded border px-3 py-1.5 bg-amber-50 dark:bg-amber-950/20 text-xs">
                   <span className="font-medium">{e.nome}</span>
-                  <span className="text-muted-foreground ml-1">{e.quantidade_atual ?? 0}/{e.quantidade_minima ?? 0} {e.unidade}</span>
+                  <span className="text-muted-foreground ml-1">{e.estoque_atual ?? 0}/{e.estoque_minimo ?? 0} {e.unidade_medida}</span>
                 </div>
               ))}
             </div>

@@ -14,7 +14,7 @@ interface OSRow {
   tipo: string;
   status: string;
   data_solicitacao: string | null;
-  data_conclusao: string | null;
+  data_fechamento: string | null;
   problema?: string | null;
 }
 
@@ -27,9 +27,9 @@ interface Props {
 const MOTIVO_COLORS = ['#ef4444', '#f59e0b', '#3b82f6', '#8b5cf6', '#22c55e', '#6b7280'];
 
 function calcDuracao(os: OSRow): number {
-  if (!os.data_solicitacao || !os.data_conclusao) return 0;
+  if (!os.data_solicitacao || !os.data_fechamento) return 0;
   const start = new Date(os.data_solicitacao).getTime();
-  const end = new Date(os.data_conclusao).getTime();
+  const end = new Date(os.data_fechamento).getTime();
   return Math.max((end - start) / (1000 * 60 * 60), 0);
 }
 

@@ -22,7 +22,7 @@ interface OSRow {
   equipamento: string;
   tipo: string;
   data_solicitacao: string | null;
-  data_conclusao: string | null;
+  data_fechamento: string | null;
 }
 
 interface MaterialMovRow {

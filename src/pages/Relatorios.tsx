@@ -458,57 +458,57 @@ export default function Relatorios() {
           {/* ── TAB CUSTOS ────────────────────────────────────── */}
           <TabsContent value="custos" className="space-y-4">
             <CustosDetalhadosPanel
-              execucoes={expanded.execucoes as any[]}
-              ordensServico={expanded.ordensServico as any[]}
-              movimentacoes={expanded.movimentacoesMat as any[]}
+              execucoes={expanded.execucoes}
+              ordensServico={expanded.ordensServico}
+              movimentacoes={expanded.movimentacoesMat}
               dateFrom={dateFrom}
               dateTo={dateTo}
             />
             <EstoqueMaterialPanel
-              materiais={expanded.materiais as any[]}
-              movimentacoes={expanded.movimentacoesMat as any[]}
+              materiais={expanded.materiais}
+              movimentacoes={expanded.movimentacoesMat}
               dateFrom={dateFrom}
               dateTo={dateTo}
             />
             <CorretivaVsPreventivaCurvaPanel
-              ordensServico={expanded.ordensServico as any[]}
-              execucoes={expanded.execucoes as any[]}
+              ordensServico={expanded.ordensServico}
+              execucoes={expanded.execucoes}
             />
           </TabsContent>
 
           {/* ── TAB MANUTENÇÃO ─────────────────────────────────── */}
           <TabsContent value="manutencao" className="space-y-4">
             <HistoricoKPIsTendencia
-              ordensServico={expanded.ordensServico as any[]}
-              execucoes={expanded.execucoes as any[]}
+              ordensServico={expanded.ordensServico}
+              execucoes={expanded.execucoes}
             />
             <AnaliseParadasPanel
-              ordensServico={expanded.ordensServico as any[]}
+              ordensServico={expanded.ordensServico}
               dateFrom={dateFrom}
               dateTo={dateTo}
             />
             <SolicitacoesAnalisePanel
-              solicitacoes={expanded.solicitacoes as any[]}
+              solicitacoes={expanded.solicitacoes}
               dateFrom={dateFrom}
               dateTo={dateTo}
             />
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-              <FMEAMatrizRiscoPanel fmeas={expanded.fmeas as any[]} />
+              <FMEAMatrizRiscoPanel fmeas={expanded.fmeas} />
               <RCAAnalisePanel
-                rcas={expanded.rcas as any[]}
+                rcas={expanded.rcas}
                 dateFrom={dateFrom}
                 dateTo={dateTo}
               />
             </div>
             <ManutencaoPreditivaPanel
-              medicoes={expanded.medicoes as any[]}
+              medicoes={expanded.medicoes}
               dateFrom={dateFrom}
               dateTo={dateTo}
             />
             <LubrificacaoRelatorioPanel
-              planos={expanded.planosLubrif as any[]}
+              planos={expanded.planosLubrif}
               execucoes={[]}
-              estoque={expanded.lubrificantes as any[]}
+              estoque={expanded.lubrificantes}
               movimentacoes={[]}
               dateFrom={dateFrom}
               dateTo={dateTo}
@@ -517,13 +517,13 @@ export default function Relatorios() {
 
           {/* ── TAB RH & SSMA ──────────────────────────────────── */}
           <TabsContent value="rh_ssma" className="space-y-4">
-            <HistoricoMecanicosPanel execucoes={expanded.execucoes as any[]} />
-            <SSMAConformidadePanel treinamentos={expanded.treinamentos as any[]} />
+            <HistoricoMecanicosPanel execucoes={expanded.execucoes} />
+            <SSMAConformidadePanel treinamentos={expanded.treinamentos} />
           </TabsContent>
 
           {/* ── TAB GESTÃO ─────────────────────────────────────── */}
           <TabsContent value="gestao" className="space-y-4">
-            <FornecedoresContratoPanel contratos={expanded.contratos as any[]} />
+            <FornecedoresContratoPanel contratos={expanded.contratos} />
           </TabsContent>
         </Tabs>
         </>
