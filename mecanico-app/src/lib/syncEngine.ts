@@ -41,7 +41,7 @@ export function onSyncComplete(fn: SyncListener): () => void {
 }
 
 function notifySyncListeners() {
-  syncListeners.forEach((fn) => { try { fn(); } catch {} });
+  syncListeners.forEach((fn) => { try { fn(); } catch (err) { logger.warn('sync', 'listener error', { error: err }); } });
 }
 
 export async function isOnline(): Promise<boolean> {
@@ -196,7 +196,7 @@ export async function getAccessToken(): Promise<string | null> {
       cachedAccessToken = session.access_token;
       return session.access_token;
     }
-  } catch { /* ignore */ }
+  } catch { /* ignore — supabase.auth.getSession unavailable at startup */ }
 
   // 2. Use module-level cached token if not expired
   if (cachedAccessToken && !isTokenExpired(cachedAccessToken)) {
@@ -228,7 +228,7 @@ export async function getAccessToken(): Promise<string | null> {
         }
         return refreshData.session.access_token;
       }
-    } catch { /* fallback to re-auth */ }
+    } catch { /* fallback to edge function re-auth when refresh fails */ }
   }
 
   // 5. Last resort: re-auth via edge function
@@ -537,7 +537,8 @@ export function startSyncTimer() {
       if (result.pushed > 0 || result.pulled) {
         backoffMs = NORMAL_INTERVAL; // Reset on success
       }
-    } catch {
+    } catch (err) {
+      logger.warn('sync', 'sync cycle error — applying backoff', { error: err });
       backoffMs = Math.min(backoffMs * 2, MAX_BACKOFF);
     }
     syncTimer = setTimeout(tick, backoffMs);
