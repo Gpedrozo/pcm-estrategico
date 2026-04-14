@@ -790,6 +790,7 @@ export async function listDatabaseTables(empresaId?: string | null): Promise<Own
     }
 
     // Fallback para ambientes com edge function legada sem a action list_database_tables.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- TODO: remove after supabase gen types --linked (RPC owner_list_database_tables absent from types.ts)
     const { data: rows, error } = await supabase.rpc('owner_list_database_tables' as any, {
       p_empresa_id: empresaId ?? null,
     })
