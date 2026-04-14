@@ -188,7 +188,7 @@ export function useCreateComponente() {
       if (!tenantId) throw new Error('Tenant não resolvido.');
       const { data, error } = await supabase
         .from('componentes_equipamento')
-        .insert({ ...componente, empresa_id: tenantId } as any)
+        .insert({ ...componente, empresa_id: tenantId } as Record<string, unknown>)
         .select()
         .single();
 
@@ -299,7 +299,7 @@ export function useDuplicateComponente() {
       const { id: _id, created_at: _created_at, updated_at: _updated_at, children: _children, ...rest } = componente;
       const { data, error } = await supabase
         .from('componentes_equipamento')
-        .insert({ ...rest, codigo: newCodigo, empresa_id: tenantId } as any)
+        .insert({ ...rest, codigo: newCodigo, empresa_id: tenantId } as Record<string, unknown>)
         .select()
         .single();
 

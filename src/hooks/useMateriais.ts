@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { materiaisService } from '@/services/materiais.service';
+import { type MaterialFormData } from '@/schemas/material.schema';
 import { writeAuditLog } from '@/lib/audit';
 
 // ==================== INTERFACES ====================
@@ -134,7 +135,7 @@ export function useCreateMaterial() {
   return useMutation({
     mutationFn: async (material: MaterialInsert) => {
       if (!tenantId) throw new Error('Tenant não resolvido.');
-      return materiaisService.criar(material as any, tenantId);
+      return materiaisService.criar(material as MaterialFormData, tenantId);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['materiais', tenantId] });
@@ -162,7 +163,7 @@ export function useUpdateMaterial() {
   return useMutation({
     mutationFn: async ({ id, ...data }: MaterialUpdate & { id: string }) => {
       if (!tenantId) throw new Error('Tenant não resolvido.');
-      return materiaisService.atualizar(id, data as any, tenantId);
+      return materiaisService.atualizar(id, data as Partial<MaterialFormData>, tenantId);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['materiais', tenantId] });

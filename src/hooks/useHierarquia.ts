@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { hierarquiaService } from '@/services/hierarquia.service';
+import { type PlantaFormData, type AreaFormData, type SistemaFormData } from '@/schemas/hierarquia.schema';
 import { writeAuditLog } from '@/lib/audit';
 
 // ==================== INTERFACES ====================
@@ -139,7 +140,7 @@ export function useCreatePlanta() {
   return useMutation({
     mutationFn: async (planta: PlantaInsert) => {
       if (!tenantId) throw new Error('Tenant não resolvido.');
-      return hierarquiaService.criarPlanta(planta as any, tenantId);
+      return hierarquiaService.criarPlanta(planta as PlantaFormData, tenantId);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['plantas', tenantId] });
@@ -167,7 +168,7 @@ export function useUpdatePlanta() {
   return useMutation({
     mutationFn: async ({ id, ...data }: PlantaUpdate & { id: string }) => {
       if (!tenantId) throw new Error('Tenant não resolvido.');
-      return hierarquiaService.atualizarPlanta(id, data as any, tenantId);
+      return hierarquiaService.atualizarPlanta(id, data as Partial<PlantaFormData>, tenantId);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['plantas', tenantId] });
@@ -263,7 +264,7 @@ export function useCreateArea() {
   return useMutation({
     mutationFn: async (area: AreaInsert) => {
       if (!tenantId) throw new Error('Tenant não resolvido.');
-      return hierarquiaService.criarArea(area as any, tenantId);
+      return hierarquiaService.criarArea(area as AreaFormData, tenantId);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['areas', tenantId] });
@@ -291,7 +292,7 @@ export function useUpdateArea() {
   return useMutation({
     mutationFn: async ({ id, ...data }: AreaUpdate & { id: string }) => {
       if (!tenantId) throw new Error('Tenant não resolvido.');
-      return hierarquiaService.atualizarArea(id, data as any, tenantId);
+      return hierarquiaService.atualizarArea(id, data as Partial<AreaFormData>, tenantId);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['areas', tenantId] });
@@ -386,7 +387,7 @@ export function useCreateSistema() {
   return useMutation({
     mutationFn: async (sistema: SistemaInsert) => {
       if (!tenantId) throw new Error('Tenant não resolvido.');
-      return hierarquiaService.criarSistema(sistema as any, tenantId);
+      return hierarquiaService.criarSistema(sistema as SistemaFormData, tenantId);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['sistemas', tenantId] });
@@ -414,7 +415,7 @@ export function useUpdateSistema() {
   return useMutation({
     mutationFn: async ({ id, ...data }: SistemaUpdate & { id: string }) => {
       if (!tenantId) throw new Error('Tenant não resolvido.');
-      return hierarquiaService.atualizarSistema(id, data as any, tenantId);
+      return hierarquiaService.atualizarSistema(id, data as Partial<SistemaFormData>, tenantId);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['sistemas', tenantId] });

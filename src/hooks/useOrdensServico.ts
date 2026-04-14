@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { ordensServicoService } from '@/services/ordensServico.service';
+import { type OrdemServicoFormData, type OrdemServicoUpdateData } from '@/schemas/ordemServico.schema';
 import { writeAuditLog } from '@/lib/audit';
 
 function getCreateOrdemServicoErrorMessage(error: unknown) {
@@ -125,7 +126,7 @@ export function useCreateOrdemServico() {
   return useMutation({
     mutationFn: async (os: OrdemServicoInsert) => {
       if (!tenantId) throw new Error('Tenant não resolvido.');
-      return ordensServicoService.criar(os as any, tenantId) as Promise<OrdemServicoRow>;
+      return ordensServicoService.criar(os as OrdemServicoFormData, tenantId) as Promise<OrdemServicoRow>;
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['ordens-servico', tenantId] });
@@ -157,7 +158,7 @@ export function useUpdateOrdemServico() {
   return useMutation({
     mutationFn: async ({ id, ...updates }: OrdemServicoUpdate & { id: string }) => {
       if (!tenantId) throw new Error('Tenant não resolvido.');
-      return ordensServicoService.atualizar(id, updates as any, tenantId) as Promise<OrdemServicoRow>;
+      return ordensServicoService.atualizar(id, updates as OrdemServicoUpdateData, tenantId) as Promise<OrdemServicoRow>;
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['ordens-servico', tenantId] });

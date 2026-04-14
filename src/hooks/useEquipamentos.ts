@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { equipamentosService } from '@/services/equipamentos.service';
+import { type EquipamentoFormData } from '@/schemas/equipamento.schema';
 import { writeAuditLog } from '@/lib/audit';
 
 export interface EquipamentoRow {
@@ -84,7 +85,7 @@ export function useCreateEquipamento() {
   return useMutation({
     mutationFn: async (equipamento: EquipamentoInsert) => {
       if (!tenantId) throw new Error('Tenant não resolvido.');
-      return equipamentosService.criar(equipamento as any, tenantId);
+      return equipamentosService.criar(equipamento as EquipamentoFormData, tenantId);
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['equipamentos', tenantId] });
@@ -112,7 +113,7 @@ export function useUpdateEquipamento() {
   return useMutation({
     mutationFn: async ({ id, ...updates }: EquipamentoUpdate & { id: string }) => {
       if (!tenantId) throw new Error('Tenant não resolvido.');
-      return equipamentosService.atualizar(id, updates as any, tenantId);
+      return equipamentosService.atualizar(id, updates as Partial<EquipamentoFormData>, tenantId);
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['equipamentos', tenantId] });

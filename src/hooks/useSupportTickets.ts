@@ -293,7 +293,7 @@ export function useAddSupportTicketMessage() {
           .eq('id', payload.ticketId)
           .eq('empresa_id', tenantId)
           .single()
-        current = legacy.data as any
+        current = legacy.data as typeof current
         fetchErr = legacy.error
       }
 

@@ -61,7 +61,7 @@ export function useOwner2Companies(enabled = true) {
     queryFn: async () => {
       try {
         const data = await listPlatformCompanies()
-        const companies = Array.isArray((data as any)?.companies) ? (data as any).companies : []
+        const companies = Array.isArray(data?.companies) ? data.companies : []
         if (companies.length > 0) return { companies }
       } catch { /* edge function failed, try direct fallback */ }
 
@@ -212,7 +212,7 @@ export function useOwner2Actions() {
 
   const execute = useMutation({
     mutationFn: ({ action, payload }: { action: Owner2Action; payload?: Record<string, unknown> }) =>
-      callOwnerAdmin(normalizePayload(action, payload) as any),
+      callOwnerAdmin(normalizePayload(action, payload)),
     onSuccess: async (_data, variables) => {
       invalidateOwner2(qc)
       const isImpersonationAction = IMPERSONATION_ACTIONS.includes(variables.action)

@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { mecanicosService } from '@/services/mecanicos.service';
+import { type MecanicoFormData } from '@/schemas/mecanico.schema';
 
 
 export interface MecanicoRow {
@@ -84,7 +85,7 @@ export function useCreateMecanico() {
   return useMutation({
     mutationFn: async (mecanico: MecanicoInsert) => {
       if (!tenantId) throw new Error('Tenant não resolvido.');
-      return mecanicosService.criar(mecanico as any, tenantId);
+      return mecanicosService.criar(mecanico as MecanicoFormData, tenantId);
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['mecanicos', tenantId] });
@@ -112,7 +113,7 @@ export function useUpdateMecanico() {
   return useMutation({
     mutationFn: async ({ id, ...updates }: MecanicoUpdate & { id: string }) => {
       if (!tenantId) throw new Error('Tenant não resolvido.');
-      return mecanicosService.atualizar(id, updates as any, tenantId);
+      return mecanicosService.atualizar(id, updates as Partial<MecanicoFormData>, tenantId);
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['mecanicos', tenantId] });

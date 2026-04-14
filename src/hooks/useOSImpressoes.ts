@@ -11,6 +11,11 @@ export interface OSImpressaoRow {
   impresso_em: string;
 }
 
+// Helper: encapsula o cast necessário até 'os_impressoes' entrar em types.ts
+// (a tabela existe no banco mas ainda não foi incluída no gen types)
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const fromOSImpressoes = () => supabase.from('os_impressoes' as any);
+
 // Busca todas as impressões de um conjunto de OS ids (para a tabela do histórico)
 export function useOSImpressoesMap(osIds: string[]) {
   const { tenantId } = useAuth();
@@ -20,12 +25,11 @@ export function useOSImpressoesMap(osIds: string[]) {
     enabled: !!tenantId && osIds.length > 0,
     staleTime: 0,
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('os_impressoes' as any)
+      const { data, error } = await fromOSImpressoes()
         .select('id, os_id, impresso_por_nome, impresso_em')
         .eq('empresa_id', tenantId!)
         .in('os_id', osIds)
-        .order('impresso_em', { ascending: false }) as any;
+        .order('impresso_em', { ascending: false });
 
       if (error) throw error;
 
@@ -50,12 +54,11 @@ export function useOSImpressoes(osId: string | undefined) {
     enabled: !!tenantId && !!osId,
     staleTime: 15_000,
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('os_impressoes' as any)
+      const { data, error } = await fromOSImpressoes()
         .select('id, os_id, impresso_por, impresso_por_nome, impresso_em')
         .eq('empresa_id', tenantId!)
         .eq('os_id', osId!)
-        .order('impresso_em', { ascending: false }) as any;
+        .order('impresso_em', { ascending: false });
 
       if (error) throw error;
       return (data ?? []) as OSImpressaoRow[];
@@ -75,15 +78,13 @@ export function useRegistrarImpressao() {
       // Busca nome do usuário para desnormalizar
       const nome = user.email ?? 'Desconhecido';
 
-      const { error } = await supabase
-        .from('os_impressoes' as any)
-        .insert({
-          os_id: osId,
-          empresa_id: tenantId,
-          impresso_por: user.id,
-          impresso_por_nome: nome,
-          impresso_em: new Date().toISOString(),
-        }) as any;
+      const { error } = await fromOSImpressoes().insert({
+        os_id: osId,
+        empresa_id: tenantId,
+        impresso_por: user.id,
+        impresso_por_nome: nome,
+        impresso_em: new Date().toISOString(),
+      });
 
       if (error) {
         // Falha silenciosa — não interrompe o fluxo de impressão
