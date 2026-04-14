@@ -1,4 +1,5 @@
 import { useOwner2Contracts } from '@/hooks/useOwner2Portal'
+import type { OwnerContract } from '@/services/ownerPortal.service'
 import { useAuth } from '@/contexts/AuthContext'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -28,8 +29,8 @@ function StatusBadge({ status }: { status: string }) {
 export function MasterContratosPanel() {
   const { isSystemOwner } = useAuth()
   const query = useOwner2Contracts(isSystemOwner) // só carrega se o usuário tiver acesso
-  const contracts: Record<string, unknown>[] = Array.isArray((query.data as any)?.contracts)
-    ? (query.data as any).contracts
+  const contracts: OwnerContract[] = Array.isArray(query.data?.contracts)
+    ? query.data.contracts
     : []
 
   if (!isSystemOwner) {
@@ -108,8 +109,8 @@ export function MasterContratosPanel() {
               </tr>
             )}
             {contracts.map((c) => {
-              const empNome = String((c.empresas as any)?.nome ?? c.empresa_id ?? '—')
-              const planName = String((c.plans as any)?.name ?? (c.plans as any)?.code ?? '—')
+              const empNome = String(c.empresas?.nome ?? c.empresa_id ?? '—')
+              const planName = String(c.plans?.name ?? c.plans?.code ?? '—')
               const signedAt = c.signed_at ? fmt(String(c.signed_at)) : null
               const starts = fmt(String(c.starts_at ?? ''))
               const ends = fmt(String(c.ends_at ?? ''))

@@ -930,8 +930,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           tipo: profileData.tipo,
           roles: profileData.roles,
           tenantId: profileData.tenantId,
-          tenantSlug: (profileData as any).tenantSlug ?? null,
-          forcePasswordChange: (profileData as any).forcePasswordChange ?? false,
+          tenantSlug: profileData.tenantSlug ?? null,
+          forcePasswordChange: profileData.forcePasswordChange ?? false,
         });
         return profileData;
       } catch (error) {
@@ -1000,8 +1000,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 tipo: profileData.tipo as AppRole,
                 roles: profileData.roles,
                 tenantId: profileData.tenantId,
-                tenantSlug: (profileData as any).tenantSlug ?? null,
-                forcePasswordChange: (profileData as any).forcePasswordChange ?? false,
+                tenantSlug: profileData.tenantSlug ?? null,
+                forcePasswordChange: profileData.forcePasswordChange ?? false,
               });
               setMonitoringUser(nextSession.user.id, nextSession.user.email || '');
               if (profileData.tenantId) setMonitoringTag('tenant', profileData.tenantId);
@@ -1070,8 +1070,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             tipo: profileData.tipo as AppRole,
             roles: profileData.roles,
             tenantId: profileData.tenantId,
-            tenantSlug: (profileData as any).tenantSlug ?? null,
-            forcePasswordChange: (profileData as any).forcePasswordChange ?? false,
+            tenantSlug: profileData.tenantSlug ?? null,
+            forcePasswordChange: profileData.forcePasswordChange ?? false,
           });
 
           clearRedirectRetryAttempts();
@@ -1268,8 +1268,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           tipo: rawProfile.tipo as AppRole,
           roles: rawProfile.roles,
           tenantId: rawProfile.tenantId,
-          tenantSlug: (rawProfile as any).tenantSlug ?? null,
-          forcePasswordChange: (rawProfile as any).forcePasswordChange ?? false,
+          tenantSlug: rawProfile.tenantSlug ?? null,
+          forcePasswordChange: rawProfile.forcePasswordChange ?? false,
         };
       } catch {
         await supabase.auth.signOut();
@@ -1505,7 +1505,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         tipo: refreshedProfile.tipo as AppRole,
         roles: refreshedProfile.roles,
         tenantId: refreshedProfile.tenantId,
-        tenantSlug: (refreshedProfile as any).tenantSlug ?? previous.tenantSlug,
+        tenantSlug: refreshedProfile.tenantSlug ?? previous.tenantSlug,
         forcePasswordChange: false,
       };
     });

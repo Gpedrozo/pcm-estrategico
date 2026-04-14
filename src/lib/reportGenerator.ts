@@ -1,5 +1,8 @@
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+
+// jspdf-autotable augments jsPDF with lastAutoTable; declare locally for TS compatibility
+type JsPDFWithAutoTable = jsPDF & { lastAutoTable?: { finalY: number } };
 import * as XLSX from 'xlsx';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -298,7 +301,7 @@ export async function generateOSReportPDF(
   });
 
   // Linha de totais
-  const finalY = (doc as any).lastAutoTable?.finalY || tableY + 10;
+  const finalY = (doc as JsPDFWithAutoTable).lastAutoTable?.finalY || tableY + 10;
   const custoTotal = filtered.reduce((s, o) => s + (Number(o.custo_real) || 0), 0);
   if (custoTotal > 0) {
     doc.setFontSize(8); doc.setFont('helvetica', 'bold');
@@ -393,7 +396,7 @@ export async function generateIndicadoresPDF(
   });
 
   // Nota de referência
-  const finalY = (doc as any).lastAutoTable?.finalY || startY + 60;
+  const finalY = (doc as JsPDFWithAutoTable).lastAutoTable?.finalY || startY + 60;
   doc.setFontSize(7); doc.setFont('helvetica', 'italic'); doc.setTextColor(100, 100, 100);
   doc.text('Referência: metas baseadas em benchmarks de manutenção industrial (NBR 5462 / JIPM).', LEFT, finalY + 7);
 
@@ -485,7 +488,7 @@ export async function generateCustosPDF(
   });
 
   // Tabela: custo por tipo
-  const t1Y = (doc as any).lastAutoTable?.finalY || startY + 80;
+  const t1Y = (doc as JsPDFWithAutoTable).lastAutoTable?.finalY || startY + 80;
   doc.setFontSize(8.5); doc.setFont('helvetica', 'bold'); doc.setTextColor(...DARK);
   doc.text('Custo por Tipo de Manutenção', LEFT, t1Y + 8);
 
@@ -788,7 +791,7 @@ export async function generateMecanicosPDF(
   });
 
   // Rodapé com totais
-  const finalY = (doc as any).lastAutoTable?.finalY || startY + 60;
+  const finalY = (doc as JsPDFWithAutoTable).lastAutoTable?.finalY || startY + 60;
   doc.setFontSize(8); doc.setFont('helvetica', 'bold'); doc.setTextColor(...DARK);
   doc.text(
     `Total: ${ranking.length} técnicos | ${totalOS} OS executadas | ${totalH.toFixed(1)}h trabalhadas`,
@@ -1248,7 +1251,7 @@ export async function generateAuditoriaPDF(
     .sort((a, b) => b[1].total - a[1].total)
     .slice(0, 10);
 
-  const afterModuloY = (doc as any).lastAutoTable?.finalY ?? summaryY + 10;
+  const afterModuloY = (doc as JsPDFWithAutoTable).lastAutoTable?.finalY ?? summaryY + 10;
 
   if (userRanking.length > 0) {
     doc.setFontSize(8.5); doc.setFont('helvetica', 'bold'); doc.setTextColor(...DARK);
@@ -1360,7 +1363,7 @@ export async function generateAuditoriaPDF(
   });
 
   // ── Nota final ──
-  const trailFinalY = (doc as any).lastAutoTable?.finalY ?? 100;
+  const trailFinalY = (doc as JsPDFWithAutoTable).lastAutoTable?.finalY ?? 100;
   doc.setFontSize(6.5); doc.setFont('helvetica', 'italic'); doc.setTextColor(100, 100, 100);
   doc.text(
     '⚠ Este relatório foi gerado automaticamente. Todas as consultas desta sessão estão registradas na trilha de auditoria.',

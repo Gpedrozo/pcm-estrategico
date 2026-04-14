@@ -1,5 +1,8 @@
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
+
+// jspdf-autotable augments jsPDF with lastAutoTable; declare locally for TS compatibility
+type JsPDFWithAutoTable = jsPDF & { lastAutoTable?: { finalY: number } };
 import * as XLSX from 'xlsx';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -59,7 +62,7 @@ export function exportIncidentesPDF(incidentes: IncidenteSSMARow[], empresa?: Da
   });
 
   // Totalizadores
-  const finalY = (doc as any).lastAutoTable?.finalY || 60;
+  const finalY = (doc as JsPDFWithAutoTable).lastAutoTable?.finalY || 60;
   doc.setFontSize(8);
   doc.setTextColor(60);
   const acidentes = incidentes.filter(i => i.tipo === 'ACIDENTE').length;
@@ -197,7 +200,7 @@ export function exportEstoqueEPIPDF(epis: EPIRow[], entregas: EntregaEPIRow[], e
     },
   });
 
-  const finalY = (doc as any).lastAutoTable?.finalY || 60;
+  const finalY = (doc as JsPDFWithAutoTable).lastAutoTable?.finalY || 60;
   const baixo = epis.filter(e => e.ativo && e.estoque_atual <= e.estoque_minimo).length;
   doc.setFontSize(8);
   doc.setTextColor(60);

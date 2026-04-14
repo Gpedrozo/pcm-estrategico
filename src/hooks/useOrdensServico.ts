@@ -52,6 +52,7 @@ export interface OrdemServicoRow {
   usuario_fechamento: string | null;
   mecanico_responsavel_id?: string | null;
   mecanico_responsavel_codigo?: string | null;
+  motivo_cancelamento?: string | null;
   created_at: string;
   updated_at: string;
 }
