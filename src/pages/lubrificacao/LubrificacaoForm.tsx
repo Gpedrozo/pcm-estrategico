@@ -216,7 +216,7 @@ export function LubrificacaoForm({ open, onOpenChange, equipamentos, initialData
     setForm((prev) => ({ ...prev, [key]: value }));
   };
 
-  const updatePonto = (index: number, field: keyof PontoForm, value: string | number) => {
+  const updatePonto = (index: number, field: keyof PontoForm, value: string | number | boolean) => {
     setPontos((prev) => prev.map((p, i) => i === index ? { ...p, [field]: value } : p));
   };
 
@@ -478,7 +478,7 @@ export function LubrificacaoForm({ open, onOpenChange, equipamentos, initialData
                   <Input placeholder="Descrição do componente / ponto *" value={ponto.descricao} onChange={(e) => updatePonto(index, 'descricao', e.target.value)} className={!form.equipamento_id ? 'md:col-span-2' : ''} />
                   {/* R2: TAG e Localização só aparecem quando plano NÃO tem equipamento */}
                   {!form.equipamento_id && (
-                    <Popover open={ponto.tagComboOpen} onOpenChange={(o) => updatePonto(index, 'tagComboOpen' as any, o as any)}>
+                    <Popover open={ponto.tagComboOpen} onOpenChange={(o) => updatePonto(index, 'tagComboOpen', o)}>
                       <PopoverTrigger asChild>
                         <Button type="button" variant="outline" className="w-full justify-between font-normal text-xs h-9 px-2">
                           {ponto.equipamento_tag || 'TAG do ativo...'}
@@ -486,7 +486,7 @@ export function LubrificacaoForm({ open, onOpenChange, equipamentos, initialData
                       </PopoverTrigger>
                       <PopoverContent className="w-[260px] p-0" align="start">
                         <Command shouldFilter={false}>
-                          <CommandInput placeholder="Buscar TAG..." value={ponto.tagSearch || ''} onValueChange={(v) => updatePonto(index, 'tagSearch' as any, v as any)} />
+                          <CommandInput placeholder="Buscar TAG..." value={ponto.tagSearch || ''} onValueChange={(v) => updatePonto(index, 'tagSearch', v)} />
                           <CommandList>
                             <CommandEmpty>Nenhum equipamento.</CommandEmpty>
                             <CommandGroup>
@@ -497,8 +497,8 @@ export function LubrificacaoForm({ open, onOpenChange, equipamentos, initialData
                                   <CommandItem key={eq.id} value={eq.tag} onSelect={() => {
                                     updatePonto(index, 'equipamento_tag', eq.tag);
                                     updatePonto(index, 'localizacao', eq.localizacao || '');
-                                    updatePonto(index, 'tagComboOpen' as any, false as any);
-                                    updatePonto(index, 'tagSearch' as any, '' as any);
+                                    updatePonto(index, 'tagComboOpen', false);
+                                    updatePonto(index, 'tagSearch', '');
                                   }}>
                                     <Check className={`mr-2 h-3 w-3 ${ponto.equipamento_tag === eq.tag ? 'opacity-100' : 'opacity-0'}`} />
                                     <span className="font-mono text-xs">{eq.tag}</span>
@@ -526,7 +526,7 @@ export function LubrificacaoForm({ open, onOpenChange, equipamentos, initialData
                   {!ponto.lubOverride ? (
                     <>
                       <span className="text-muted-foreground">Lubrificante: <strong>{form.lubrificante || '(não definido no plano)'}</strong> (herdado do plano)</span>
-                      <Button type="button" variant="link" size="sm" className="h-auto p-0 text-xs" onClick={() => updatePonto(index, 'lubOverride' as any, true as any)}>
+                      <Button type="button" variant="link" size="sm" className="h-auto p-0 text-xs" onClick={() => updatePonto(index, 'lubOverride', true)}>
                         Lubrificante diferente?
                       </Button>
                     </>
@@ -534,7 +534,7 @@ export function LubrificacaoForm({ open, onOpenChange, equipamentos, initialData
                     <div className="flex gap-2 items-center w-full">
                       <Input placeholder="Lubrificante específico" value={ponto.lubrificante} onChange={(e) => updatePonto(index, 'lubrificante', e.target.value)} className="flex-1" />
                       <Button type="button" variant="link" size="sm" className="h-auto p-0 text-xs whitespace-nowrap" onClick={() => {
-                        updatePonto(index, 'lubOverride' as any, false as any);
+                        updatePonto(index, 'lubOverride', false);
                         updatePonto(index, 'lubrificante', form.lubrificante || '');
                       }}>
                         Usar padrão
@@ -555,7 +555,7 @@ export function LubrificacaoForm({ open, onOpenChange, equipamentos, initialData
                         <Checkbox
                           id={`parada-${index}`}
                           checked={ponto.requer_parada}
-                          onCheckedChange={(v) => updatePonto(index, 'requer_parada' as any, !!v as any)}
+                          onCheckedChange={(v) => updatePonto(index, 'requer_parada', !!v)}
                         />
                         <label htmlFor={`parada-${index}`} className="text-xs flex items-center gap-1 cursor-pointer">
                           <Lock className="h-3 w-3" /> Requer parada de máquina
@@ -572,7 +572,7 @@ export function LubrificacaoForm({ open, onOpenChange, equipamentos, initialData
                   </div>
                 )}
                 {!ponto.expanded && !ponto.referencia_manual && (
-                  <Button type="button" variant="link" size="sm" className="h-auto p-0 text-xs text-muted-foreground" onClick={() => updatePonto(index, 'expanded' as any, true as any)}>
+                  <Button type="button" variant="link" size="sm" className="h-auto p-0 text-xs text-muted-foreground" onClick={() => updatePonto(index, 'expanded', true)}>
                     <ChevronDown className="h-3 w-3 mr-1" /> Mais campos
                   </Button>
                 )}

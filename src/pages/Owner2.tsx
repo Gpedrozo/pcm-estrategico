@@ -341,8 +341,8 @@ export default function Owner() {
   useEffect(() => {
     if (activeTab === 'financeiro' && !paymentsLoaded && !paymentsLoading) {
       setPaymentsLoading(true)
-      execute.mutateAsync({ action: 'list_subscription_payments' as any, payload: {} })
-        .then((res: any) => {
+      execute.mutateAsync({ action: 'list_subscription_payments', payload: {} })
+        .then((res: Record<string, unknown>) => {
           setPayments(safeArray(res?.payments ?? res?.data ?? []))
           setPaymentsLoaded(true)
         })
@@ -355,8 +355,8 @@ export default function Owner() {
   // Check ASAAS health via health_check
   useEffect(() => {
     if (activeTab === 'financeiro' && asaasHealthOk === null) {
-      execute.mutateAsync({ action: 'health_check' as any, payload: {} })
-        .then((res: any) => {
+      execute.mutateAsync({ action: 'health_check', payload: {} })
+        .then((res: Record<string, unknown>) => {
           const hasKey = Boolean(res?.asaas_configured ?? res?.integrations?.asaas)
           setAsaasHealthOk(hasKey)
           if (res?.asaas_base_url) setAsaasBaseUrl(String(res.asaas_base_url))
@@ -379,7 +379,7 @@ export default function Owner() {
       const message = healthQuery.error instanceof Error ? healthQuery.error.message : 'erro'
       return `erro: ${message}`
     }
-    return String((healthQuery.data as any)?.status ?? 'n/a')
+    return String(healthQuery.data?.status ?? 'n/a')
   }, [healthQuery.data, healthQuery.error, healthQuery.isError])
 
   const companies = useMemo(() => safeArray<Record<string, unknown>>((companiesQuery.data as any)?.companies), [companiesQuery.data])
@@ -492,7 +492,7 @@ export default function Owner() {
     const totalTables = tables.length
     const activeTables = tables.filter((table) => asNumber(table.total_rows, 0) > 0).length
     const totalRecords = tables.reduce((acc, table) => acc + asNumber(table.total_rows, 0), 0)
-    const responseMs = asNumber((healthQuery.data as any)?.duration_ms, 0)
+    const responseMs = asNumber(healthQuery.data?.duration_ms, 0)
     const availabilityPercent = totalTables > 0 ? Math.round((activeTables / totalTables) * 100) : 0
 
     return {
@@ -1045,7 +1045,7 @@ export default function Owner() {
               <div className="rounded-2xl border border-primary/20 bg-gradient-to-r from-primary to-primary/70 p-5 text-primary-foreground shadow-lg">
                 <p className="text-xs uppercase tracking-wider opacity-80">Painel executivo</p>
                 <h2 className="mt-1 text-xl font-semibold">Visão geral da operação global</h2>
-                <p className="mt-1 text-sm opacity-80">{String((dashboardQuery.data as any)?.message ?? 'Acompanhe indicadores e entre nas áreas operacionais com um clique.')}</p>
+                <p className="mt-1 text-sm opacity-80">{String(dashboardQuery.data?.message ?? 'Acompanhe indicadores e entre nas áreas operacionais com um clique.')}</p>
               </div>
 
               <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
@@ -1804,7 +1804,7 @@ export default function Owner() {
                   <select className="rounded-lg border border-input bg-background px-2 py-2 text-sm" value={selectedContractId} onChange={(e) => setSelectedContractId(e.target.value)}>
                     <option value="">Selecione o contrato</option>
                     {contracts.map((c) => {
-                      const empNome = String((c.empresas as any)?.nome ?? c.empresa_id ?? '-')
+                      const empNome = String(c.empresas?.nome ?? c.empresa_id ?? '-')
                       const ver = String(c.version ?? '1')
                       const st = String(c.status ?? '-')
                       return <option key={String(c.id)} value={String(c.id)}>{empNome} — v{ver} ({st})</option>
@@ -1840,11 +1840,11 @@ export default function Owner() {
                         <tr><td colSpan={8} className="px-2 py-4 text-center text-muted-foreground">Nenhum contrato encontrado</td></tr>
                       )}
                       {contracts.map((c) => {
-                        const empNome = String((c.empresas as any)?.nome ?? c.empresa_id ?? '-')
-                        const planName = String((c.plans as any)?.name ?? (c.plans as any)?.code ?? '-')
+                        const empNome = String(c.empresas?.nome ?? c.empresa_id ?? '-')
+                        const planName = String(c.plans?.name ?? c.plans?.code ?? '-')
                         const valor = c.amount != null ? new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(Number(c.amount)) : '-'
                         const st = String(c.status ?? '-')
-                        const signedAt = (c as any).signed_at ? new Date(String((c as any).signed_at)).toLocaleDateString('pt-BR') : null
+                        const signedAt = c.signed_at ? new Date(String(c.signed_at)).toLocaleDateString('pt-BR') : null
                         const isSelected = String(c.id) === selectedContractId
                         return (
                           <tr key={String(c.id)} className={`border-t border-border cursor-pointer hover:bg-muted/50 ${isSelected ? 'bg-sky-50 dark:bg-sky-900/20' : ''}`} onClick={() => setSelectedContractId(String(c.id ?? ''))}>
@@ -1935,7 +1935,7 @@ export default function Owner() {
               setSelectedTicketId(tid)
               const ticket = tickets.find((t) => String(t.id) === tid)
               if (ticket && Number(ticket.unread_owner_messages ?? 0) > 0) {
-                try { await execute.mutateAsync({ action: 'mark_ticket_read_owner' as any, payload: { ticket_id: tid } }) } catch { /* non-critical */ }
+                try { await execute.mutateAsync({ action: 'mark_ticket_read_owner', payload: { ticket_id: tid } }) } catch { /* non-critical */ }
               }
               setTimeout(() => ownerThreadEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 100)
             }
@@ -2014,13 +2014,13 @@ export default function Owner() {
                           <div className="max-h-[420px] overflow-auto space-y-2 pr-1">
                             {ticketMessages.length === 0 && <p className="text-sm text-muted-foreground py-4 text-center">Nenhuma mensagem ainda</p>}
                             {ticketMessages.map((msg, idx) => {
-                              const sender = String((msg as any).sender ?? 'client')
+                              const sender = String(msg.sender ?? 'client')
                               const isOwnerMsg = sender === 'owner' || sender === 'system'
-                              const content = String((msg as any).message ?? (msg as any).content ?? '')
-                              const time = (msg as any).created_at ? new Date(String((msg as any).created_at)).toLocaleString('pt-BR') : ''
-                              const atts = Array.isArray((msg as any).attachments) ? (msg as any).attachments as string[] : []
+                              const content = String(msg.message ?? msg.content ?? '')
+                              const time = msg.created_at ? new Date(String(msg.created_at)).toLocaleString('pt-BR') : ''
+                              const atts = Array.isArray(msg.attachments) ? msg.attachments as string[] : []
                               return (
-                                <div key={(msg as any).id ?? idx} className={`p-3 rounded-lg text-sm ${isOwnerMsg ? 'bg-sky-50 border border-sky-200 ml-8' : 'bg-muted/50 border border-border mr-8'}`}>
+                                <div key={String(msg.id ?? idx)} className={`p-3 rounded-lg text-sm ${isOwnerMsg ? 'bg-sky-50 border border-sky-200 ml-8' : 'bg-muted/50 border border-border mr-8'}`}>
                                   <div className="flex items-center gap-2 mb-1">
                                     <span className={`text-[10px] font-bold uppercase ${isOwnerMsg ? 'text-sky-600' : 'text-muted-foreground'}`}>{isOwnerMsg ? 'Suporte (Owner)' : 'Cliente'}</span>
                                     {time && <span className="text-[10px] text-muted-foreground">{time}</span>}
@@ -2250,7 +2250,7 @@ export default function Owner() {
                         setError(null)
                         setFeedback(null)
                         try {
-                          const res: any = await execute.mutateAsync({ action: 'set_asaas_api_key' as any, payload: { asaas_api_key: asaasApiKeyInput.trim() } })
+                          const res = await execute.mutateAsync({ action: 'set_asaas_api_key', payload: { asaas_api_key: asaasApiKeyInput.trim() } }) as Record<string, unknown>
                           if (res?.success) {
                             setAsaasHealthOk(true)
                             setAsaasApiKeySaved(true)
@@ -2355,7 +2355,7 @@ export default function Owner() {
 
                 <div className="mb-3 grid gap-2 sm:grid-cols-3">
                   <input className="rounded-lg border border-input bg-background px-2 py-2 text-sm" placeholder="Buscar ação, tabela, usuário..." value={auditSearch} onChange={(e) => setAuditSearch(e.target.value)} />
-                  <select className="rounded-lg border border-input bg-background px-2 py-2 text-sm" value={auditResultadoFilter} onChange={(e) => setAuditResultadoFilter(e.target.value as any)}>
+                  <select className="rounded-lg border border-input bg-background px-2 py-2 text-sm" value={auditResultadoFilter} onChange={(e) => setAuditResultadoFilter(e.target.value as typeof auditResultadoFilter)}>
                     <option value="todos">Resultado: Todos</option>
                     <option value="sucesso">Sucesso</option>
                     <option value="erro">Erro</option>
@@ -2447,7 +2447,7 @@ export default function Owner() {
 
               <div className="mb-3 grid gap-2 sm:grid-cols-3">
                 <input className="rounded-lg border border-input bg-background px-2 py-2 text-sm" placeholder="Buscar ação ou usuário" value={logSearch} onChange={(e) => setLogSearch(e.target.value)} />
-                <select className="rounded-lg border border-input bg-background px-2 py-2 text-sm" value={logSeverityFilter} onChange={(e) => setLogSeverityFilter(e.target.value as any)}>
+                <select className="rounded-lg border border-input bg-background px-2 py-2 text-sm" value={logSeverityFilter} onChange={(e) => setLogSeverityFilter(e.target.value as typeof logSeverityFilter)}>
                   <option value="todos">Resultado: Todos</option>
                   <option value="sucesso">Sucesso</option>
                   <option value="erro">Erro</option>

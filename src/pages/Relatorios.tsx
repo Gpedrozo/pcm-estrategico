@@ -171,17 +171,17 @@ export default function Relatorios() {
         empresaNome: empresa?.nome_fantasia || empresa?.razao_social || '',
         empresaRazaoSocial: empresa?.razao_social || '',
         empresaCnpj: empresa?.cnpj || '',
-        empresaIE: (empresa as any)?.inscricao_estadual || '',
+        empresaIE: empresa?.inscricao_estadual || '',
         empresaTelefone: empresa?.telefone || '',
-        empresaWhatsapp: (empresa as any)?.whatsapp || '',
+        empresaWhatsapp: empresa?.whatsapp || '',
         empresaEmail: empresa?.email || '',
-        empresaSite: (empresa as any)?.site || '',
+        empresaSite: empresa?.site || '',
         empresaEndereco: empresa?.endereco || '',
-        empresaCidade: (empresa as any)?.cidade || '',
-        empresaEstado: (empresa as any)?.estado || '',
-        empresaCep: (empresa as any)?.cep || '',
-        empresaResponsavelNome: (empresa as any)?.responsavel_nome || '',
-        empresaResponsavelCargo: (empresa as any)?.responsavel_cargo || '',
+        empresaCidade: empresa?.cidade || '',
+        empresaEstado: empresa?.estado || '',
+        empresaCep: empresa?.cep || '',
+        empresaResponsavelNome: empresa?.responsavel_nome || '',
+        empresaResponsavelCargo: empresa?.responsavel_cargo || '',
         logoUrl: empresa?.logo_os_url || empresa?.logo_url || '',
         layoutVersion: '3.0',
       };
@@ -547,12 +547,12 @@ export default function Relatorios() {
                       <p className="font-semibold text-sm">{empresa.nome_fantasia || empresa.razao_social}</p>
                       <p className="text-xs text-muted-foreground">
                         {empresa.cnpj && `CNPJ: ${empresa.cnpj}`}
-                        {empresa.cidade && ` • ${empresa.cidade}/${(empresa as any).estado || ''}`}
+                        {empresa.cidade && ` • ${empresa.cidade}/${empresa.estado || ''}`}
                         {empresa.telefone && ` • Tel: ${empresa.telefone}`}
                       </p>
                       <p className="text-xs text-muted-foreground mt-0.5">
-                        {(empresa as any).responsavel_nome && `Responsável: ${(empresa as any).responsavel_nome}`}
-                        {(empresa as any).responsavel_cargo && ` — ${(empresa as any).responsavel_cargo}`}
+                        {empresa.responsavel_nome && `Responsável: ${empresa.responsavel_nome}`}
+                        {empresa.responsavel_cargo && ` — ${empresa.responsavel_cargo}`}
                       </p>
                     </div>
                     <Badge variant="outline" className="ml-auto text-xs">Dados carregados do cadastro</Badge>
@@ -755,7 +755,7 @@ export default function Relatorios() {
                 {empresa?.nome_fantasia && (
                   <p className="text-[10px] text-muted-foreground text-center pt-1">
                     Emitido por: {empresa.nome_fantasia}
-                    {(empresa as any)?.responsavel_nome && ` • ${(empresa as any).responsavel_nome}`}
+                    {empresa?.responsavel_nome && ` • ${empresa.responsavel_nome}`}
                   </p>
                 )}
               </CardContent>

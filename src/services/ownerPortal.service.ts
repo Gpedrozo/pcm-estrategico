@@ -51,6 +51,7 @@ export type OwnerAction =
   | 'enforce_subscription_expiry'
   | 'set_asaas_api_key'
   | 'get_asaas_config'
+  | 'mark_ticket_read_owner'
 
 export interface OwnerCompany {
   id: string
@@ -217,6 +218,7 @@ export interface OwnerBackendHealth {
   version: string
   supported_actions: OwnerAction[]
   timestamp: string
+  duration_ms?: number
 }
 
 export interface OwnerActionPayload {
