@@ -436,7 +436,7 @@ export function LubrificacaoDetalhe({ plano, equipamentos, onEdit }: Lubrificaca
                     <div>
                       <p className="font-medium text-sm">{exec.executor_nome || 'Não informado'}</p>
                       <p className="text-xs text-muted-foreground">
-                        {new Date(exec.data_execucao).toLocaleDateString('pt-BR')} às {new Date(exec.data_execucao).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                        {new Date(exec.data_execucao).toLocaleDateString('pt-BR')}{' '}às{' '}{new Date(exec.data_execucao).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
                       </p>
                     </div>
                     <Badge variant={exec.status === 'CONCLUIDO' ? 'default' : 'outline'}>
