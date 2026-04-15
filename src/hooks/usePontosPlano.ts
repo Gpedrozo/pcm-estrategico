@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import type { RotaPonto, RotaPontoInsert } from '@/types/lubrificacao';
 import { writeAuditLog } from '@/lib/audit';
 import { useAuth } from '@/contexts/AuthContext';
+import { useToast } from '@/hooks/use-toast';
 
 /**
  * Fetch lubrication route points linked to a specific plan (plano_id).
@@ -37,7 +38,6 @@ export function useSavePontosPlano() {
   return useMutation({
     mutationFn: async ({ planoId, pontos }: { planoId: string; pontos: RotaPontoInsert[] }) => {
       if (!tenantId) throw new Error('Tenant não resolvido.');
-      // Delete existing points linked to this plan (only plan-linked, not route-linked)
       const { error: delErr } = await supabase
         .from('rotas_lubrificacao_pontos')
         .delete()
@@ -65,5 +65,118 @@ export function useSavePontosPlano() {
       qc.invalidateQueries({ queryKey: ['pontos_lubrificacao', 'plano', vars.planoId] });
       writeAuditLog({ action: 'SAVE_PONTOS_PLANO', table: 'rotas_lubrificacao_pontos', recordId: vars.planoId, empresaId: tenantId, source: 'usePontosPlano' });
     },
+  });
+}
+
+// ╔══════════════════════════════════════════════════════════════╗
+// ║  Individual CRUD mutations (used in detail panel)            ║
+// ╚══════════════════════════════════════════════════════════════╝
+
+export function useCreatePontoPlano() {
+  const qc = useQueryClient();
+  const { tenantId } = useAuth();
+  const { toast } = useToast();
+  return useMutation({
+    mutationFn: async (input: {
+      plano_id: string;
+      descricao: string;
+      codigo_ponto?: string;
+      lubrificante?: string | null;
+      quantidade?: string | null;
+      ferramenta?: string | null;
+      tempo_estimado_min?: number;
+      instrucoes?: string | null;
+      localizacao?: string | null;
+      equipamento_tag?: string | null;
+      requer_parada?: boolean;
+      ordem?: number;
+    }) => {
+      const { data, error } = await supabase
+        .from('rotas_lubrificacao_pontos')
+        .insert({
+          plano_id: input.plano_id,
+          rota_id: null,
+          descricao: input.descricao,
+          codigo_ponto: input.codigo_ponto || `P${Date.now().toString(36).toUpperCase()}`,
+          lubrificante: input.lubrificante ?? null,
+          quantidade: input.quantidade ?? null,
+          ferramenta: input.ferramenta ?? null,
+          tempo_estimado_min: input.tempo_estimado_min ?? 5,
+          instrucoes: input.instrucoes ?? null,
+          localizacao: input.localizacao ?? null,
+          equipamento_tag: input.equipamento_tag ?? null,
+          requer_parada: input.requer_parada ?? false,
+          ordem: input.ordem ?? 0,
+        })
+        .select()
+        .maybeSingle();
+      if (error) throw error;
+      return data as RotaPonto;
+    },
+    onSuccess: (d, vars) => {
+      qc.invalidateQueries({ queryKey: ['pontos_lubrificacao', 'plano', vars.plano_id] });
+      writeAuditLog({ action: 'CREATE_PONTO_PLANO', table: 'rotas_lubrificacao_pontos', recordId: d?.id, empresaId: tenantId, source: 'usePontosPlano' });
+    },
+    onError: (e: unknown) =>
+      toast({ title: 'Erro', description: e instanceof Error ? e.message : 'Falha ao criar ponto', variant: 'destructive' }),
+  });
+}
+
+export function useUpdatePontoPlano() {
+  const qc = useQueryClient();
+  const { tenantId } = useAuth();
+  const { toast } = useToast();
+  return useMutation({
+    mutationFn: async (input: {
+      id: string;
+      plano_id: string;
+      descricao?: string;
+      lubrificante?: string | null;
+      quantidade?: string | null;
+      ferramenta?: string | null;
+      tempo_estimado_min?: number;
+      instrucoes?: string | null;
+      localizacao?: string | null;
+      equipamento_tag?: string | null;
+      requer_parada?: boolean;
+      ordem?: number;
+    }) => {
+      const { id, plano_id, ...updates } = input;
+      const { data, error } = await supabase
+        .from('rotas_lubrificacao_pontos')
+        .update(updates as any)
+        .eq('id', id)
+        .select()
+        .maybeSingle();
+      if (error) throw error;
+      return data as RotaPonto;
+    },
+    onSuccess: (_d, vars) => {
+      qc.invalidateQueries({ queryKey: ['pontos_lubrificacao', 'plano', vars.plano_id] });
+    },
+    onError: (e: unknown) =>
+      toast({ title: 'Erro', description: e instanceof Error ? e.message : 'Falha ao atualizar ponto', variant: 'destructive' }),
+  });
+}
+
+export function useDeletePontoPlano() {
+  const qc = useQueryClient();
+  const { tenantId } = useAuth();
+  const { toast } = useToast();
+  return useMutation({
+    mutationFn: async (input: { id: string; plano_id: string }) => {
+      const { error } = await supabase
+        .from('rotas_lubrificacao_pontos')
+        .delete()
+        .eq('id', input.id);
+      if (error) throw error;
+    },
+    onSuccess: (_d, vars) => {
+      qc.invalidateQueries({ queryKey: ['pontos_lubrificacao', 'plano', vars.plano_id] });
+      qc.invalidateQueries({ queryKey: ['etapas_ponto_lubrificacao'] });
+      writeAuditLog({ action: 'DELETE_PONTO_PLANO', table: 'rotas_lubrificacao_pontos', recordId: vars.id, empresaId: tenantId, source: 'usePontosPlano', severity: 'warning' });
+    },
+    onError: (e: unknown) =>
+      toast({ title: 'Erro', description: e instanceof Error ? e.message : 'Falha ao excluir ponto', variant: 'destructive' }),
   });
 }
