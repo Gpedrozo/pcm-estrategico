@@ -36,8 +36,8 @@ CREATE POLICY audit_archive_empresa_isolation
   USING (
     empresa_id = public.current_empresa_id()
     OR EXISTS (
-      SELECT 1 FROM public.profiles
-      WHERE id = auth.uid()
+      SELECT 1 FROM public.user_roles
+      WHERE user_id = auth.uid()
         AND role IN ('SYSTEM_ADMIN', 'SYSTEM_OWNER', 'MASTER_TI')
     )
   );
