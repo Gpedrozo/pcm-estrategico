@@ -152,6 +152,7 @@ GRANT EXECUTE ON FUNCTION public.refresh_all_dashboard_summaries() TO service_ro
 -- 5. Atualizar dashboard_summary RPC: lê do cache se fresco
 --    (< 6 min), recalcula e atualiza cache se estale.
 -- ─────────────────────────────────────────────────────────────
+DROP FUNCTION IF EXISTS public.dashboard_summary(uuid);
 CREATE OR REPLACE FUNCTION public.dashboard_summary(empresa_id UUID)
 RETURNS JSONB
 LANGUAGE plpgsql
