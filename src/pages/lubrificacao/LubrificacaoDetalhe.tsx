@@ -131,7 +131,7 @@ export function LubrificacaoDetalhe({ plano, equipamentos, onEdit }: Lubrificaca
           <p className="text-sm mt-1">{plano.descricao || 'Sem descrição.'}</p>
         </div>
 
-        {/* Pontos de Lubrificação — cards expansíveis */}
+        {/* Pontos de Lubrificação — cards expandíveis */}
         {pontosPlano && pontosPlano.length > 0 && (
           <div className="mt-4 border-t pt-3">
             <div className="flex items-center justify-between mb-3">
