@@ -88,23 +88,29 @@ export interface CloseOSAtomicParams {
 export function useExecucoesOS() {
   const { tenantId } = useAuth();
 
-  return useQuery({
+  const query = useQuery({
     queryKey: ['execucoes-os', tenantId],
     queryFn: async () => {
-      if (!tenantId) throw new Error('Tenant nÃ£o resolvido.');
+      if (!tenantId) throw new Error('Tenant não resolvido.');
 
-      const { data, error } = await supabase
+      const { data, error, count } = await supabase
         .from('execucoes_os')
-        .select('*')
+        .select('*', { count: 'exact' })
         .eq('empresa_id', tenantId)
         .order('created_at', { ascending: false })
         .limit(500);
 
       if (error) throw error;
-      return data as ExecucaoOSRow[];
+      return { rows: (data ?? []) as ExecucaoOSRow[], total: count ?? 0 };
     },
     enabled: !!tenantId,
   });
+
+  return {
+    ...query,
+    data: query.data?.rows,
+    isTruncated: (query.data?.total ?? 0) > 500,
+  };
 }
 
 export function useExecucaoByOSId(osId: string | undefined) {

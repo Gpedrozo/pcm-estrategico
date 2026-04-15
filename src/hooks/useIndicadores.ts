@@ -14,11 +14,17 @@ export function useIndicadores() {
       }
 
       // Fetch only required fields from the current tenant.
+      // Filter to last 12 months to avoid silently truncated KPIs in large tenants.
+      const windowStart = new Date();
+      windowStart.setFullYear(windowStart.getFullYear() - 1);
+      const windowStartIso = windowStart.toISOString();
+
       const { data: ordensData, error: ordensError } = await supabase
         .from('ordens_servico')
         .select('status,data_fechamento,tipo,tempo_estimado,created_at,empresa_id')
         .eq('empresa_id', tenantId)
-        .limit(2000);
+        .gte('created_at', windowStartIso)
+        .limit(5000);
 
       if (ordensError) throw ordensError;
 
@@ -27,7 +33,8 @@ export function useIndicadores() {
         .from('execucoes_os')
         .select('tempo_execucao,custo_mao_obra,custo_materiais,custo_terceiros,data_execucao,empresa_id')
         .eq('empresa_id', tenantId)
-        .limit(2000);
+        .gte('data_execucao', windowStartIso)
+        .limit(5000);
 
       if (execucoesError) throw execucoesError;
 

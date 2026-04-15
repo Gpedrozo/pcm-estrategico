@@ -12,12 +12,12 @@ export function useAtividadesByPlano(planoId: string | null) {
     queryKey: ['atividades-lubrificacao', planoId, tenantId],
     enabled: !!planoId && !!tenantId,
     queryFn: async () => {
-      let query = supabase
+      if (!tenantId) throw new Error('Tenant não resolvido.');
+      const { data, error } = await supabase
         .from('atividades_lubrificacao')
         .select('*')
-        .eq('plano_id', planoId!);
-      if (tenantId) query = query.eq('empresa_id', tenantId);
-      const { data, error } = await query
+        .eq('plano_id', planoId!)
+        .eq('empresa_id', tenantId)
         .order('ordem', { ascending: true })
         .limit(500);
       if (error) throw error;

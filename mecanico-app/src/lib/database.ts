@@ -57,12 +57,18 @@ async function initSchema(database: SQLite.SQLiteDatabase) {
       hora_inicio TEXT,
       hora_fim TEXT,
       tempo_execucao INTEGER,
+      tempo_execucao_bruto INTEGER,
+      tempo_pausas INTEGER DEFAULT 0,
+      tempo_execucao_liquido INTEGER,
       servico_executado TEXT,
       causa TEXT,
       observacoes TEXT,
       data_execucao TEXT,
+      data_inicio TEXT,
+      data_fim TEXT,
       custo_mao_obra REAL DEFAULT 0,
       custo_materiais REAL DEFAULT 0,
+      custo_terceiros REAL DEFAULT 0,
       custo_total REAL DEFAULT 0,
       fotos TEXT,
       created_at TEXT,
@@ -199,6 +205,34 @@ async function initSchema(database: SQLite.SQLiteDatabase) {
     CREATE INDEX IF NOT EXISTS idx_solic_empresa ON solicitacoes_manutencao(empresa_id);
     CREATE INDEX IF NOT EXISTS idx_solic_status ON solicitacoes_manutencao(status);
   `);
+
+  // Migrations for existing devices (ALTER TABLE is idempotent via try/catch)
+  await applyColumnMigrations(database);
+}
+
+// ============================================================
+// Column Migrations (for existing devices with old schema)
+// Each ALTER TABLE is wrapped in try/catch — SQLite throws
+// "duplicate column name" if column already exists, which is safe to ignore.
+// ============================================================
+
+async function applyColumnMigrations(database: SQLite.SQLiteDatabase) {
+  const alterations = [
+    'ALTER TABLE execucoes_os ADD COLUMN tempo_execucao_bruto INTEGER',
+    'ALTER TABLE execucoes_os ADD COLUMN tempo_pausas INTEGER DEFAULT 0',
+    'ALTER TABLE execucoes_os ADD COLUMN tempo_execucao_liquido INTEGER',
+    'ALTER TABLE execucoes_os ADD COLUMN custo_terceiros REAL DEFAULT 0',
+    'ALTER TABLE execucoes_os ADD COLUMN data_inicio TEXT',
+    'ALTER TABLE execucoes_os ADD COLUMN data_fim TEXT',
+  ];
+
+  for (const sql of alterations) {
+    try {
+      await database.runAsync(sql);
+    } catch {
+      // Column already exists — safe to ignore
+    }
+  }
 }
 
 // ============================================================

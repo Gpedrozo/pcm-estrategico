@@ -4,6 +4,7 @@ import { useToast } from '@/hooks/use-toast';
 import { insertWithColumnFallback, updateWithColumnFallback } from '@/lib/supabaseCompat';
 import { writeAuditLog } from '@/lib/audit';
 import { useAuth } from '@/contexts/AuthContext';
+import type { Checklist } from '@/schemas/checklist.schema';
 
 export interface ExecucaoPreventiva {
   id: string;
@@ -13,7 +14,7 @@ export interface ExecucaoPreventiva {
   data_execucao: string;
   tempo_real_min: number | null;
   status: string;
-  checklist: any;
+  checklist: Checklist;
   observacoes: string | null;
   os_gerada_id: string | null;
   created_at: string;

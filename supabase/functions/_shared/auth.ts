@@ -35,12 +35,6 @@ export function tokenFromRequest(req: Request): string | null {
   return auth.slice(7).trim();
 }
 
-function maskToken(token: string) {
-  if (!token) return "";
-  if (token.length <= 16) return "***";
-  return `${token.slice(0, 8)}...${token.slice(-8)}`;
-}
-
 export function unauthorizedPayload() {
   return {
     success: false,
@@ -58,20 +52,14 @@ export function unauthorizedResponse(req: Request) {
 export async function requireUser(req: Request, options?: { allowPasswordChangeFlow?: boolean }) {
   const token = tokenFromRequest(req);
   if (!token) {
-    console.log("JWT RECEIVED:", "missing");
     return { error: "unauthorized", status: 401 } as const;
   }
-
-  console.log("JWT RECEIVED:", maskToken(token));
 
   const admin = adminClient();
   const { data, error } = await admin.auth.getUser(token);
   if (error || !data?.user) {
-    console.log("USER AUTH:", "null");
     return { error: "unauthorized", status: 401 } as const;
   }
-
-  console.log("USER AUTH:", data.user.email ?? null);
 
   const profileCheck = await admin
     .from("profiles")

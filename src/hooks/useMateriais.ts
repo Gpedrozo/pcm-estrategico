@@ -93,13 +93,15 @@ export interface MaterialOSInsert {
 export function useMateriais() {
   const { tenantId } = useAuth();
 
-  return useQuery({
+  const query = useQuery({
     queryKey: ['materiais', tenantId],
     queryFn: async () => {
       return materiaisService.listar(tenantId!) as Promise<MaterialRow[]>;
     },
     enabled: !!tenantId,
   });
+
+  return { ...query, isTruncated: (query.data?.length ?? 0) >= 500 };
 }
 
 export function useMateriaisAtivos() {

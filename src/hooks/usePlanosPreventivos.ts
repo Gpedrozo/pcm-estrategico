@@ -6,6 +6,7 @@ import { insertWithColumnFallback, updateWithColumnFallback } from '@/lib/supaba
 import { useAuth } from '@/contexts/AuthContext';
 import { writeAuditLog } from '@/lib/audit';
 import { logger } from '@/lib/logger';
+import type { Checklist } from '@/schemas/checklist.schema';
 
 export interface PlanoPreventivo {
   id: string;
@@ -23,8 +24,8 @@ export interface PlanoPreventivo {
   tempo_estimado_min: number;
   especialidade: string | null;
   instrucoes: string | null;
-  checklist: any;
-  materiais_previstos: any;
+  checklist: Checklist;
+  materiais_previstos: Checklist;
   tolerancia_antes_dias?: number | null;
   tolerancia_depois_dias?: number | null;
   ativo: boolean;
@@ -43,7 +44,7 @@ export interface PlanoInsert {
   tempo_estimado_min?: number;
   especialidade?: string | null;
   instrucoes?: string | null;
-  checklist?: any;
+  checklist?: Checklist;
   tolerancia_antes_dias?: number | null;
   tolerancia_depois_dias?: number | null;
 }

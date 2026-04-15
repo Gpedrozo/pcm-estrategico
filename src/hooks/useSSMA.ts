@@ -4,6 +4,7 @@ import { useToast } from '@/hooks/use-toast';
 import { insertWithColumnFallback, updateWithColumnFallback } from '@/lib/supabaseCompat';
 import { useAuth } from '@/contexts/AuthContext';
 import { writeAuditLog } from '@/lib/audit';
+import type { Checklist } from '@/schemas/checklist.schema';
 
 export interface PermissaoTrabalhoRow {
   id: string;
@@ -24,7 +25,7 @@ export interface PermissaoTrabalhoRow {
   aprovador_nome: string | null;
   aprovador_id: string | null;
   status: 'PENDENTE' | 'APROVADA' | 'EM_EXECUCAO' | 'CONCLUIDA' | 'CANCELADA';
-  checklist_seguranca: any;
+  checklist_seguranca: Checklist;
   observacoes: string | null;
   created_at: string;
   updated_at: string;

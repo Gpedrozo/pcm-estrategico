@@ -67,7 +67,7 @@ export interface EquipamentoUpdate {
 export function useEquipamentos() {
   const { tenantId } = useAuth();
 
-  return useQuery({
+  const query = useQuery({
     queryKey: ['equipamentos', tenantId],
     enabled: Boolean(tenantId),
     queryFn: async () => {
@@ -75,6 +75,8 @@ export function useEquipamentos() {
       return equipamentosService.listar(tenantId) as Promise<EquipamentoRow[]>;
     },
   });
+
+  return { ...query, isTruncated: (query.data?.length ?? 0) >= 500 };
 }
 
 export function useCreateEquipamento() {

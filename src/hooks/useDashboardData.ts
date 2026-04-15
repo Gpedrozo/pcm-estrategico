@@ -3,7 +3,6 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useIndicadores } from './useIndicadores';
 import { useOrdensServico } from './useOrdensServico';
-import { useExecucoesOS } from './useExecucoesOS';
 import { useSolicitacoes } from './useSolicitacoes';
 import { format, subMonths, startOfMonth, parseISO, differenceInDays, differenceInHours } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -55,8 +54,27 @@ export function useDashboardData() {
   const { tenantId } = useAuth();
   const { data: indicadores, isLoading: loadingIndicadores } = useIndicadores();
   const { data: ordensServico, isLoading: loadingOS } = useOrdensServico();
-  const { data: execucoes, isLoading: loadingExec } = useExecucoesOS();
   const { data: solicitacoes } = useSolicitacoes();
+
+  // Query targetada para custos mensais — apenas 4 campos, janela 6 meses.
+  // Substitui useExecucoesOS() (SELECT * limit 500) evitando fetch desnecessário.
+  const { data: execucoes, isLoading: loadingExec } = useQuery({
+    queryKey: ['execucoes-custo-dashboard', tenantId],
+    queryFn: async () => {
+      if (!tenantId) throw new Error('Tenant não resolvido.');
+      const sixMonthsAgo = subMonths(new Date(), 6);
+      const { data, error } = await supabase
+        .from('execucoes_os')
+        .select('data_execucao,custo_mao_obra,custo_materiais,custo_terceiros')
+        .eq('empresa_id', tenantId)
+        .gte('data_execucao', sixMonthsAgo.toISOString())
+        .limit(2000);
+      if (error) throw error;
+      return (data ?? []) as { data_execucao: string | null; custo_mao_obra: number | null; custo_materiais: number | null; custo_terceiros: number | null }[];
+    },
+    enabled: !!tenantId,
+    staleTime: 60_000,
+  });
 
   const solicitacoesNaoAtendidas = useMemo(() => {
     if (!solicitacoes) return 0;

@@ -31,7 +31,7 @@ export interface MecanicoInsert {
   custo_hora?: number | null;
   ativo?: boolean;
   codigo_acesso?: string | null;
-  senha_hash?: string | null;
+  // senha_hash omitido intencionalmente — use o RPC login_mecanico para definir senha
   escala_trabalho?: string | null;
   folgas_planejadas?: string | null;
   ferias_inicio?: string | null;
@@ -46,7 +46,7 @@ export interface MecanicoUpdate {
   custo_hora?: number | null;
   ativo?: boolean;
   codigo_acesso?: string | null;
-  senha_hash?: string | null;
+  // senha_hash omitido intencionalmente — use o RPC login_mecanico para definir senha
   escala_trabalho?: string | null;
   folgas_planejadas?: string | null;
   ferias_inicio?: string | null;
@@ -56,13 +56,15 @@ export interface MecanicoUpdate {
 export function useMecanicos() {
   const { tenantId } = useAuth();
 
-  return useQuery({
+  const query = useQuery({
     queryKey: ['mecanicos', tenantId],
     enabled: Boolean(tenantId),
     queryFn: async () => {
       return mecanicosService.listar(tenantId!) as Promise<MecanicoRow[]>;
     },
   });
+
+  return { ...query, isTruncated: (query.data?.length ?? 0) >= 500 };
 }
 
 export function useMecanicosAtivos() {

@@ -28,10 +28,18 @@ async function devicePassword(deviceToken: string): Promise<string> {
   return `pcm-da-${hash.slice(0, 32)}`;
 }
 
-// CORS aberto — segurança via device_token, não via origin
+// Origens permitidas: app Expo (sem Origin) e website web se necessário.
+// Requisições sem Origin (Expo nativo / curl) retornam "null" em vez de "*".
+const ALLOWED_ORIGINS = new Set([
+  Deno.env.get("ALLOWED_ORIGIN_WEB") ?? "https://gppis.com.br",
+  Deno.env.get("ALLOWED_ORIGIN_APP") ?? "",
+]);
+
 function cors(req: Request) {
+  const origin = req.headers.get("origin") ?? "";
+  const allowedOrigin = ALLOWED_ORIGINS.has(origin) ? origin : "null";
   return {
-    "Access-Control-Allow-Origin": req.headers.get("origin") || "*",
+    "Access-Control-Allow-Origin": allowedOrigin,
     "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
     "Access-Control-Allow-Methods": "POST, OPTIONS",
     "Vary": "Origin",
