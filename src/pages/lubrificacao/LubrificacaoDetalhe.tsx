@@ -1,9 +1,9 @@
-import { useRef } from 'react';
+import { useRef, useState } from 'react';
 import { useReactToPrint } from 'react-to-print';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Printer, AlertTriangle, CheckCircle2, Clock } from 'lucide-react';
+import { Printer, AlertTriangle, CheckCircle2, Clock, ChevronDown, ChevronRight, GripVertical, Droplets } from 'lucide-react';
 import type { EquipamentoRow } from '@/hooks/useEquipamentos';
 import type { PlanoLubrificacao } from '@/types/lubrificacao';
 import { LubrificacaoPrintTemplate } from '@/components/lubrificacao/LubrificacaoPrintTemplate';
@@ -34,6 +34,16 @@ interface LubrificacaoDetalheProps {
 }
 
 export function LubrificacaoDetalhe({ plano, equipamentos, onEdit }: LubrificacaoDetalheProps) {
+  const [expandedPontos, setExpandedPontos] = useState<Set<string>>(new Set());
+
+  const togglePonto = (id: string) => {
+    setExpandedPontos(prev => {
+      const n = new Set(prev);
+      n.has(id) ? n.delete(id) : n.add(id);
+      return n;
+    });
+  };
+
   const printRef = useRef<HTMLDivElement>(null);
   const { data: empresa } = useDadosEmpresa();
   const { data: pontosPlano } = usePontosPlano(plano?.id);
@@ -121,37 +131,81 @@ export function LubrificacaoDetalhe({ plano, equipamentos, onEdit }: Lubrificaca
           <p className="text-sm mt-1">{plano.descricao || 'Sem descrição.'}</p>
         </div>
 
-        {/* Pontos da Rota */}
+        {/* Pontos de Lubrificação — cards expansíveis */}
         {pontosPlano && pontosPlano.length > 0 && (
           <div className="mt-4 border-t pt-3">
-            <p className="text-sm font-semibold mb-2">Pontos de Lubrificação ({pontosPlano.length}) — Tempo total: {pontosPlano.reduce((s, p) => s + (p.tempo_estimado_min || 0), 0)} min</p>
-            <div className="border border-border rounded-lg overflow-hidden max-h-[350px] overflow-auto">
-              <table className="w-full text-xs" style={{ tableLayout: 'fixed' }}>
-                <thead className="bg-muted/60 sticky top-0">
-                  <tr>
-                    <th className="text-left px-2 py-1.5 font-semibold w-10">Item</th>
-                    <th className="text-left px-2 py-1.5 font-semibold">Descrição</th>
-                    <th className="text-left px-2 py-1.5 font-semibold w-24">Lubrificante</th>
-                    <th className="text-left px-2 py-1.5 font-semibold w-14">Qtd</th>
-                    <th className="text-right px-2 py-1.5 font-semibold w-12">Min</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {pontosPlano.map((p, i) => (
-                    <tr key={p.id} className="border-t border-border hover:bg-muted/30">
-                      <td className="px-2 py-1.5 font-mono font-bold text-primary">{i + 1}</td>
-                      <td className="px-2 py-1.5 min-w-0">
-                        <span className="block truncate">{p.descricao}</span>
-                        {/* R2: TAG badge só se plano NÃO tem equipamento */}
-                        {!plano.equipamento_id && p.equipamento_tag && <Badge variant="secondary" className="mt-0.5 text-[10px]">{p.equipamento_tag}</Badge>}
-                      </td>
-                      <td className="px-2 py-1.5 text-muted-foreground truncate">{p.lubrificante && p.lubrificante !== plano.lubrificante ? p.lubrificante : '—'}</td>
-                      <td className="px-2 py-1.5 text-muted-foreground truncate">{p.quantidade || '—'}</td>
-                      <td className="px-2 py-1.5 text-right font-mono">{p.tempo_estimado_min}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+            <div className="flex items-center justify-between mb-3">
+              <p className="text-sm font-semibold">
+                Pontos de Lubrificação ({pontosPlano.length}) — Tempo total: {pontosPlano.reduce((s, p) => s + (p.tempo_estimado_min || 0), 0)} min
+              </p>
+              <button
+                type="button"
+                className="text-xs text-muted-foreground hover:text-foreground underline underline-offset-2"
+                onClick={() => {
+                  const allIds = new Set(pontosPlano.map(p => p.id));
+                  const allExpanded = pontosPlano.every(p => expandedPontos.has(p.id));
+                  setExpandedPontos(allExpanded ? new Set() : allIds);
+                }}
+              >
+                {pontosPlano.every(p => expandedPontos.has(p.id)) ? 'Recolher todos' : 'Expandir todos'}
+              </button>
+            </div>
+            <div className="space-y-2">
+              {pontosPlano.map((p, i) => {
+                const isExpanded = expandedPontos.has(p.id);
+                const lubDiferente = p.lubrificante && p.lubrificante !== plano.lubrificante;
+                return (
+                  <div key={p.id} className="border border-border rounded-lg overflow-hidden">
+                    {/* Header do ponto */}
+                    <div
+                      className="flex items-center gap-2 p-3 bg-muted/30 cursor-pointer hover:bg-muted/50"
+                      onClick={() => togglePonto(p.id)}
+                    >
+                      <GripVertical className="h-4 w-4 text-muted-foreground/50 flex-shrink-0" />
+                      {isExpanded
+                        ? <ChevronDown className="h-4 w-4 flex-shrink-0" />
+                        : <ChevronRight className="h-4 w-4 flex-shrink-0" />}
+                      <span className="bg-primary text-primary-foreground rounded-full w-6 h-6 flex items-center justify-center text-xs font-bold flex-shrink-0">
+                        {i + 1}
+                      </span>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium text-sm truncate">{p.descricao}</p>
+                        {!plano.equipamento_id && p.equipamento_tag && (
+                          <p className="text-xs text-muted-foreground font-mono">TAG: {p.equipamento_tag}</p>
+                        )}
+                      </div>
+                      {lubDiferente && (
+                        <span className="flex items-center gap-1 text-xs text-muted-foreground flex-shrink-0">
+                          <Droplets className="h-3 w-3" /> {p.lubrificante}
+                        </span>
+                      )}
+                      <span className="text-xs text-muted-foreground flex-shrink-0 font-mono">
+                        {p.tempo_estimado_min} min
+                      </span>
+                    </div>
+
+                    {/* Detalhes expandidos */}
+                    {isExpanded && (
+                      <div className="border-t border-border px-4 py-3 space-y-2 text-sm bg-background">
+                        <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
+                          <div><span className="text-muted-foreground">Lubrificante:</span> {p.lubrificante || plano.lubrificante || '—'}</div>
+                          <div><span className="text-muted-foreground">Quantidade:</span> {p.quantidade || '—'}</div>
+                          <div><span className="text-muted-foreground">Ferramenta:</span> {p.ferramenta || '—'}</div>
+                          <div><span className="text-muted-foreground">Requer parada:</span> {p.requer_parada ? 'Sim' : 'Não'}</div>
+                          {p.localizacao && <div className="col-span-2"><span className="text-muted-foreground">Localização:</span> {p.localizacao}</div>}
+                          {p.referencia_manual && <div className="col-span-2"><span className="text-muted-foreground">Ref. manual:</span> {p.referencia_manual}</div>}
+                        </div>
+                        {p.instrucoes && (
+                          <div className="text-xs text-muted-foreground bg-muted/30 rounded p-2">{p.instrucoes}</div>
+                        )}
+                        {p.imagem_url && (
+                          <img src={p.imagem_url} alt="Ponto" className="max-h-32 rounded border border-border object-contain" />
+                        )}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           </div>
         )}
