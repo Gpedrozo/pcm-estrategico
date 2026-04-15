@@ -15,6 +15,7 @@ import { writeAuditLog } from '../lib/audit';
 import { COLORS, SIZES, SHADOWS } from '../theme';
 import { showSuccess, showError, showWarning } from '../lib/feedback';
 import type { OrdemServico, Material, Mecanico, PausaExecucao, MaterialOS, RootStackParamList } from '../types';
+import { logger } from '../lib/logger';
 
 type Route = RouteProp<RootStackParamList, 'FecharOS'>;
 
@@ -159,7 +160,7 @@ export default function FecharOSScreen() {
       });
 
       if (rpcError) {
-        console.warn('RPC fallback:', rpcError.message);
+        logger.warn('fecharOS', 'RPC fallback', { error: rpcError.message });
         // Fallback: manual insert + update
         await supabase.from('execucoes_os').insert({
           os_id: osId, empresa_id: empresaId,

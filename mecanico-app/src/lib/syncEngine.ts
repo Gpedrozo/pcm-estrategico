@@ -81,7 +81,7 @@ async function pushPendingChanges(db: SupabaseClient): Promise<number> {
             try {
               await uploadPhoto(db, payload.id, fotoUri, payload.empresa_id);
             } catch (photoErr) {
-              console.warn('[sync] photo upload failed:', photoErr);
+              logger.warn('sync', 'photo upload failed', { error: photoErr });
             }
           }
         }
@@ -285,7 +285,7 @@ export async function pullData(empresaId: string, forceFullRefresh = false, db?:
   ).limit(1000);
 
   if (osError) {
-    console.error('[sync] ordens_servico error:', osError.message, osError.code, osError.details);
+    logger.error('sync', 'ordens_servico error', { message: osError.message, code: osError.code, details: osError.details });
 
     // If auth error on first query, re-authenticate and retry entire pull
     if (isAuthError(osError) && !_isRetry) {
@@ -297,7 +297,7 @@ export async function pullData(empresaId: string, forceFullRefresh = false, db?:
         const freshDb = createAuthenticatedClient(freshToken);
         return pullData(empresaId, forceFullRefresh, freshDb, true);
       }
-      console.error('[sync] re-auth failed — aborting pull');
+      logger.error('sync', 're-auth failed — aborting pull');
       return;
     }
   }
@@ -335,7 +335,7 @@ export async function pullData(empresaId: string, forceFullRefresh = false, db?:
   ).limit(1000);
 
   if (eqError) {
-    console.error('[sync] equipamentos error:', eqError.message, eqError.code);
+    logger.error('sync', 'equipamentos error', { message: eqError.message, code: eqError.code });
   }
   if (eqList) {
     for (const eq of eqList) {
@@ -389,7 +389,7 @@ export async function pullData(empresaId: string, forceFullRefresh = false, db?:
     .eq('empresa_id', empresaId)
   ).limit(1000);
 
-  if (matError) console.error('[sync] materiais error:', matError.message, matError.code);
+  if (matError) logger.error('sync', 'materiais error', { message: matError.message, code: matError.code });
   if (matList) {
     for (const mat of matList) {
       await upsertMaterial({ ...mat, descricao: mat.nome });
@@ -405,7 +405,7 @@ export async function pullData(empresaId: string, forceFullRefresh = false, db?:
     .eq('empresa_id', empresaId)
   ).limit(500);
 
-  if (docError) console.error('[sync] documentos error:', docError.message, docError.code);
+  if (docError) logger.error('sync', 'documentos error', { message: docError.message, code: docError.code });
   if (docList) {
     for (const doc of docList) {
       await upsertDocumento({ ...doc, nome: doc.titulo });
@@ -422,7 +422,7 @@ export async function pullData(empresaId: string, forceFullRefresh = false, db?:
     .order('inicio', { ascending: false })
   ).limit(500);
 
-  if (paradaError) console.error('[sync] paradas error:', paradaError.message, paradaError.code);
+  if (paradaError) logger.error('sync', 'paradas error', { message: paradaError.message, code: paradaError.code });
   if (paradaList) {
     for (const p of paradaList) {
       await upsertParada({ ...p, sync_status: 'synced' });
@@ -439,7 +439,7 @@ export async function pullData(empresaId: string, forceFullRefresh = false, db?:
     .order('created_at', { ascending: false })
   ).limit(500);
 
-  if (reqError) console.error('[sync] requisicoes error:', reqError.message, reqError.code);
+  if (reqError) logger.error('sync', 'requisicoes error', { message: reqError.message, code: reqError.code });
   if (reqList) {
     for (const r of reqList) {
       await upsertRequisicao({ ...r, sync_status: 'synced' });
@@ -456,7 +456,7 @@ export async function pullData(empresaId: string, forceFullRefresh = false, db?:
     .order('created_at', { ascending: false })
   ).limit(500);
 
-  if (solicError) console.error('[sync] solicitacoes error:', solicError.message, solicError.code);
+  if (solicError) logger.error('sync', 'solicitacoes error', { message: solicError.message, code: solicError.code });
   if (solicList) {
     for (const s of solicList) {
       await upsertSolicitacao({ ...s, sync_status: 'synced' });
@@ -488,7 +488,7 @@ export async function runSyncCycle(forceFullRefresh = false): Promise<{ pushed: 
       // Get access token once for the entire sync cycle
       const accessToken = await getAccessToken();
       if (!accessToken) {
-        console.warn('[sync] cycle aborted — no access token');
+        logger.warn('sync', 'cycle aborted — no access token');
         return { pushed: 0, pulled: false };
       }
       const db = createAuthenticatedClient(accessToken);
@@ -507,7 +507,7 @@ export async function runSyncCycle(forceFullRefresh = false): Promise<{ pushed: 
 
       return { pushed, pulled: !!empresaId };
     } catch (err) {
-      console.error('[sync] cycle error:', err);
+      logger.error('sync', 'cycle error', { error: err });
       return { pushed: 0, pulled: false };
     }
   };

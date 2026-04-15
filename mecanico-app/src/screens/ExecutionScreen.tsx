@@ -133,10 +133,10 @@ export default function ExecutionScreen() {
               await upsertOrdemServico({ ...os, status: 'FECHADA', data_fechamento: now, updated_at: now });
               logger.info('exec', 'OS fechada via RPC atômica', { rpcResult });
             } else {
-              console.warn('[exec] RPC falhou, usando fallback local:', rpcError?.message);
+              logger.warn('exec', 'RPC falhou, usando fallback local', { error: rpcError?.message });
             }
           } catch (rpcErr) {
-            console.warn('[exec] RPC exception, usando fallback local:', rpcErr);
+            logger.warn('exec', 'RPC exception, usando fallback local', { error: rpcErr });
           }
         }
 
