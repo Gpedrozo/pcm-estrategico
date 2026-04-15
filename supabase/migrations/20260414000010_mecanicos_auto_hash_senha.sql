@@ -30,6 +30,16 @@ BEGIN
 END;
 $$;
 
+-- Garantir que coluna senha_hash existe
+DO $ BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'mecanicos' AND column_name = 'senha_hash'
+  ) THEN
+    ALTER TABLE public.mecanicos ADD COLUMN senha_hash text;
+  END IF;
+END $;
+
 -- Aplicar nas duas tabelas de mecânicos (sistema legacy + padrão)
 DO $$
 DECLARE
