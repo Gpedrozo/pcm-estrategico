@@ -109,7 +109,7 @@ export function useCreateEtapa() {
       await recalcPontoTempo(input.ponto_id);
       return data;
     },
-    onSuccess: (d, vars) => {
+    onSuccess: (d) => {
       qc.invalidateQueries({ queryKey: ['etapas_ponto_lubrificacao'] });
       qc.invalidateQueries({ queryKey: ['pontos_lubrificacao'] });
       writeAuditLog({ action: 'CREATE_ETAPA_LUBRIFICACAO', table: 'etapas_ponto_lubrificacao', recordId: d?.id, empresaId: tenantId, source: 'useEtapasPontoLubrificacao' });
@@ -122,7 +122,6 @@ export function useCreateEtapa() {
 export function useUpdateEtapa() {
   const qc = useQueryClient();
   const { toast } = useToast();
-  const { tenantId } = useAuth();
 
   return useMutation({
     mutationFn: async (input: {

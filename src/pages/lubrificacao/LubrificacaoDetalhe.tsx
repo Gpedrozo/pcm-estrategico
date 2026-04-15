@@ -10,7 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 import { useConfirmDialog } from '@/components/ui/confirm-dialog';
 import {
   Printer, Edit, Play, Clock, Calendar, ChevronDown, ChevronRight,
-  GripVertical, Droplets, History, Timer, ListChecks, Settings, AlertTriangle,
+  GripVertical, Droplets, History, Timer, ListChecks, Settings,
   Plus, Trash2, ArrowUp, ArrowDown,
 } from 'lucide-react';
 import type { EquipamentoRow } from '@/hooks/useEquipamentos';
@@ -436,7 +436,7 @@ export function LubrificacaoDetalhe({ plano, equipamentos, onEdit }: Lubrificaca
                     <div>
                       <p className="font-medium text-sm">{exec.executor_nome || 'NÃ£o informado'}</p>
                       <p className="text-xs text-muted-foreground">
-                        {new Date(exec.data_execucao).toLocaleDateString('pt-BR')} Ã s {new Date(exec.data_execucao).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                        {new Date(exec.data_execucao).toLocaleDateString('pt-BR')} Ã s {new Date(exec.data_execucao).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
                       </p>
                     </div>
                     <Badge variant={exec.status === 'CONCLUIDO' ? 'default' : 'outline'}>

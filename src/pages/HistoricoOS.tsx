@@ -54,7 +54,7 @@ import {
   SlidersHorizontal
 } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
-import { format, subDays, subMonths, isWithinInterval, parseISO } from 'date-fns';
+import { format, subDays, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import { normalizeOSStatus, normalizeOSType } from '@/lib/osBadges';
@@ -112,7 +112,7 @@ function OSDetailsModal({
         if (num > 0) setSolicitacaoOrigem({ numero_solicitacao: num });
       }
     })();
-  }, [os?.id]);
+  }, [os?.id, tenantId]);
 
   if (!os) return null;
 
@@ -304,7 +304,7 @@ export default function HistoricoOS() {
   const [pageSize, setPageSize] = useState(20);
   const [activeTab, setActiveTab] = useState('lista');
   const [hoveredOS, setHoveredOS] = useState<OrdemServicoRow | null>(null);
-  const [hoverPoint, setHoverPoint] = useState<{ x: number; y: number } | null>(null);
+  const [, setHoverPoint] = useState<{ x: number; y: number } | null>(null);
   const [activeQuickDays, setActiveQuickDays] = useState<number | null>(null);
 
   const { data: ordensServico, isLoading: loadingOS, error } = useOrdensServico();
@@ -315,13 +315,13 @@ export default function HistoricoOS() {
   const prioridadesOS = padronizacoes?.prioridades_os?.length
     ? padronizacoes.prioridades_os
     : ['URGENTE', 'ALTA', 'MEDIA', 'BAIXA'];
-  const statusPadrao = padronizacoes?.status_os?.length
-    ? padronizacoes.status_os
-    : ['ABERTA', 'EM_ANDAMENTO', 'AGUARDANDO_MATERIAL', 'FECHADA', 'CANCELADA'];
   const statusOS = useMemo(() => {
+    const statusPadrao = padronizacoes?.status_os?.length
+      ? padronizacoes.status_os
+      : ['ABERTA', 'EM_ANDAMENTO', 'AGUARDANDO_MATERIAL', 'FECHADA', 'CANCELADA'];
     const observed = Array.from(new Set((ordensServico || []).map((os) => os.status).filter(Boolean)));
     return Array.from(new Set([...statusPadrao, ...observed]));
-  }, [ordensServico, statusPadrao]);
+  }, [ordensServico, padronizacoes?.status_os]);
 
   const formatDate = (date: string) => new Date(date).toLocaleDateString('pt-BR');
   const formatDateTime = (date?: string | null, hour?: string | null) => {

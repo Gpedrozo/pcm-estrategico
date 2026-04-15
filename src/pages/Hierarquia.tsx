@@ -167,7 +167,7 @@ export default function Hierarquia() {
         }
       }
       setIsModalOpen(false);
-    } catch (_error) {
+    } catch {
       // Error handled by mutation
     }
   };
@@ -185,7 +185,7 @@ export default function Hierarquia() {
       }
       setIsDeleteDialogOpen(false);
       setDeletingItem(null);
-    } catch (_error) {
+    } catch {
       // Error handled by mutation
     }
   };

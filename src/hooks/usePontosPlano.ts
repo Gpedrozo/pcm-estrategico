@@ -124,7 +124,6 @@ export function useCreatePontoPlano() {
 
 export function useUpdatePontoPlano() {
   const qc = useQueryClient();
-  const { tenantId } = useAuth();
   const { toast } = useToast();
   return useMutation({
     mutationFn: async (input: {
@@ -141,7 +140,7 @@ export function useUpdatePontoPlano() {
       requer_parada?: boolean;
       ordem?: number;
     }) => {
-      const { id, plano_id, ...updates } = input;
+      const { id, plano_id: _plano_id, ...updates } = input;
       const { data, error } = await supabase
         .from('rotas_lubrificacao_pontos')
         .update(updates as any)
