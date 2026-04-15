@@ -102,45 +102,26 @@ GRANT EXECUTE ON FUNCTION public.cleanup_login_attempts()         TO service_rol
 -- ─────────────────────────────────────────────────────────────
 -- 3. pg_cron schedule (respeita ambientes sem pg_cron)
 -- ─────────────────────────────────────────────────────────────
-DO $$
+DO $pgcron$
 BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'pg_cron') THEN
     RAISE NOTICE '[migration] pg_cron não disponível — funções criadas mas não agendadas.';
     RETURN;
   END IF;
 
-  -- rate_limits: diário às 02:00 UTC
-  IF EXISTS (SELECT 1 FROM cron.job WHERE jobname = 'cleanup-rate-limits') THEN
-    PERFORM cron.unschedule('cleanup-rate-limits');
-  END IF;
-  PERFORM cron.schedule(
-    'cleanup-rate-limits',
-    '0 2 * * *',
-    $$SELECT public.cleanup_rate_limits()$$
-  );
+  EXECUTE 'SELECT cron.unschedule(jobname) FROM cron.job WHERE jobname = ''cleanup-rate-limits''';
+  EXECUTE 'SELECT cron.schedule(''cleanup-rate-limits'', ''0 2 * * *'', ''SELECT public.cleanup_rate_limits()'')';
 
-  -- log_validacoes_senha: diário às 02:15 UTC
-  IF EXISTS (SELECT 1 FROM cron.job WHERE jobname = 'cleanup-log-validacoes-senha') THEN
-    PERFORM cron.unschedule('cleanup-log-validacoes-senha');
-  END IF;
-  PERFORM cron.schedule(
-    'cleanup-log-validacoes-senha',
-    '15 2 * * *',
-    $$SELECT public.cleanup_log_validacoes_senha()$$
-  );
+  EXECUTE 'SELECT cron.unschedule(jobname) FROM cron.job WHERE jobname = ''cleanup-log-validacoes-senha''';
+  EXECUTE 'SELECT cron.schedule(''cleanup-log-validacoes-senha'', ''15 2 * * *'', ''SELECT public.cleanup_log_validacoes_senha()'')';
 
-  -- login_attempts: diário às 02:30 UTC
-  IF EXISTS (SELECT 1 FROM cron.job WHERE jobname = 'cleanup-login-attempts') THEN
-    PERFORM cron.unschedule('cleanup-login-attempts');
-  END IF;
-  PERFORM cron.schedule(
-    'cleanup-login-attempts',
-    '30 2 * * *',
-    $$SELECT public.cleanup_login_attempts()$$
-  );
+  EXECUTE 'SELECT cron.unschedule(jobname) FROM cron.job WHERE jobname = ''cleanup-login-attempts''';
+  EXECUTE 'SELECT cron.schedule(''cleanup-login-attempts'', ''30 2 * * *'', ''SELECT public.cleanup_login_attempts()'')';
 
   RAISE NOTICE '[migration] 3 cron jobs de TTL agendados (rate_limits, log_validacoes_senha, login_attempts).';
-END $$;
+EXCEPTION WHEN OTHERS THEN
+  RAISE NOTICE '[migration] pg_cron não disponível: %', SQLERRM;
+END $pgcron$;
 
 -- ─────────────────────────────────────────────────────────────
 -- 4. Smoke test

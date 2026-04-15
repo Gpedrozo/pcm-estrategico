@@ -78,19 +78,11 @@ GRANT EXECUTE ON FUNCTION public.archive_old_audit_logs(integer) TO service_role
 -- 3. pg_cron: rodar toda segunda-feira às 03h00
 --    (job idempotente — cron.schedule substitui job existente)
 -- ─────────────────────────────────────────────────────────────
-DO $$
+DO $pgcron$
 BEGIN
-  -- Verificar se pg_cron está disponível
-  IF EXISTS (
-    SELECT 1 FROM pg_extension WHERE extname = 'pg_cron'
-  ) THEN
-    PERFORM cron.schedule(
-      'archive-audit-logs-weekly',
-      '0 3 * * 1',   -- toda segunda-feira às 03:00
-      'SELECT public.archive_old_audit_logs(90)'
-    );
-  END IF;
-END;
-$$;
+  EXECUTE 'SELECT cron.schedule(''archive-audit-logs-weekly'', ''0 3 * * 1'', ''SELECT public.archive_old_audit_logs(90)'')';
+EXCEPTION WHEN OTHERS THEN
+  RAISE NOTICE '[cron] archive-audit-logs-weekly não agendado: %', SQLERRM;
+END $pgcron$;
 
 COMMIT;

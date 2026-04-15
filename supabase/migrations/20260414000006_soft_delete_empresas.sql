@@ -206,20 +206,13 @@ GRANT EXECUTE ON FUNCTION public.purge_soft_deleted_empresas() TO service_role;
 -- ─────────────────────────────────────────────────────────────
 -- 6. pg_cron: hard-delete diário às 03:00 UTC
 -- ─────────────────────────────────────────────────────────────
-DO $$
+DO $pgcron$
 BEGIN
-  IF EXISTS (SELECT 1 FROM cron.job WHERE jobname = 'purge_soft_deleted_empresas') THEN
-    PERFORM cron.unschedule('purge_soft_deleted_empresas');
-  END IF;
-
-  PERFORM cron.schedule(
-    'purge_soft_deleted_empresas',
-    '0 3 * * *',
-    $$SELECT public.purge_soft_deleted_empresas()$$
-  );
+  EXECUTE 'SELECT cron.unschedule(jobname) FROM cron.job WHERE jobname = ''purge_soft_deleted_empresas''';
+  EXECUTE 'SELECT cron.schedule(''purge_soft_deleted_empresas'', ''0 3 * * *'', ''SELECT public.purge_soft_deleted_empresas()'')';
 EXCEPTION WHEN OTHERS THEN
   RAISE NOTICE '[cron] purge_soft_deleted_empresas não agendado: %', SQLERRM;
-END $$;
+END $pgcron$;
 
 -- ─────────────────────────────────────────────────────────────
 -- 7. Smoke test
