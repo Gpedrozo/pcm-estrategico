@@ -238,9 +238,13 @@ export function LubrificacaoForm({ open, onOpenChange, equipamentos, initialData
       return;
     }
 
+    const isValidUuid = (v: unknown): v is string =>
+      typeof v === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(v);
+
     try {
       const result = await onSubmit({
         ...form,
+        equipamento_id: isValidUuid(form.equipamento_id) ? form.equipamento_id : null,
         responsavel_nome: form.responsavel_nome || null,
         proxima_execucao: form.proxima_execucao,
       });
