@@ -20,7 +20,6 @@ import { useLocation } from 'react-router-dom';
 export default function Lubrificacao() {
   const location = useLocation();
   const [search, setSearch] = useState('');
-  const [equipamentoFilter, setEquipamentoFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
   const [selectedPlano, setSelectedPlano] = useState<PlanoLubrificacao | null>(null);
   const [formOpen, setFormOpen] = useState(false);
@@ -55,13 +54,19 @@ export default function Lubrificacao() {
         || item.nome.toLowerCase().includes(s)
         || (item.lubrificante || '').toLowerCase().includes(s);
 
-      const matchesEquipamento = equipamentoFilter === 'all' || item.equipamento_id === equipamentoFilter;
-      const currentStatus = item.status || (item.ativo ? 'programado' : 'inativo');
-      const matchesStatus = statusFilter === 'all' || currentStatus === statusFilter;
+      let matchesStatus = true;
+      if (statusFilter === 'vencido') {
+        matchesStatus = !!item.proxima_execucao && new Date(item.proxima_execucao).getTime() < Date.now();
+      } else if (statusFilter === 'programado') {
+        matchesStatus = item.ativo === true && !(!!item.proxima_execucao && new Date(item.proxima_execucao).getTime() < Date.now());
+      } else if (statusFilter !== 'all') {
+        const currentStatus = item.status || (item.ativo ? 'programado' : 'inativo');
+        matchesStatus = currentStatus === statusFilter;
+      }
 
-      return matchesSearch && matchesEquipamento && matchesStatus;
+      return matchesSearch && matchesStatus;
     });
-  }, [planos, search, equipamentoFilter, statusFilter]);
+  }, [planos, search, statusFilter]);
 
   const errorMessage = error instanceof Error
     ? error.message
@@ -130,21 +135,21 @@ export default function Lubrificacao() {
     });
   };
 
+  const vencidosCount = planos?.filter(p => !!p.proxima_execucao && new Date(p.proxima_execucao).getTime() < Date.now()).length || 0;
+
   return (
-    <div className="module-page space-y-4">
-      <div className="module-page-header flex items-center justify-between">
+    <div className="module-page flex flex-col h-[calc(100vh-4rem)] overflow-hidden">
+      {/* Header */}
+      <div className="module-page-header flex items-center justify-between px-1 py-3 flex-shrink-0">
         <div>
           <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
             <Droplet className="h-6 w-6 text-primary" />
             Lubrificação
           </h1>
           <p className="text-muted-foreground text-sm">
-            Planos de Lubrificação
+            {planos?.length || 0} planos • {vencidosCount} vencidos
           </p>
         </div>
-      </div>
-
-      <div className="flex justify-end">
         <Button
           onClick={() => {
             setEditingPlano(null);
@@ -156,31 +161,41 @@ export default function Lubrificacao() {
         </Button>
       </div>
 
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
-        <div className="xl:col-span-2">
+      <div className="flex flex-1 gap-4 overflow-hidden">
+        {/* Left panel - Plan list */}
+        <div className="w-80 flex-shrink-0 flex flex-col bg-card border border-border rounded-lg overflow-hidden">
           <LubrificacaoList
             planos={filteredPlanos}
             equipamentos={equipamentos || []}
             search={search}
-            equipamentoFilter={equipamentoFilter}
             statusFilter={statusFilter}
+            selectedPlanoId={selectedPlano?.id}
             onSearchChange={setSearch}
-            onEquipamentoFilterChange={setEquipamentoFilter}
             onStatusFilterChange={setStatusFilter}
             onSelect={setSelectedPlano}
-            onEdit={(plano) => {
-              setEditingPlano(plano);
-              setFormOpen(true);
-            }}
-            onDelete={handleDelete}
           />
         </div>
 
-        <div>
-          <LubrificacaoDetalhe plano={selectedPlano} equipamentos={equipamentos || []} onEdit={(plano) => {
-            setEditingPlano(plano);
-            setFormOpen(true);
-          }} />
+        {/* Right panel - Detail */}
+        <div className="flex-1 overflow-hidden">
+          {selectedPlano ? (
+            <LubrificacaoDetalhe
+              plano={selectedPlano}
+              equipamentos={equipamentos || []}
+              onEdit={(plano) => {
+                setEditingPlano(plano);
+                setFormOpen(true);
+              }}
+            />
+          ) : (
+            <div className="h-full flex items-center justify-center bg-card border border-border rounded-lg">
+              <div className="text-center text-muted-foreground">
+                <Droplet className="h-12 w-12 mx-auto mb-3 opacity-30" />
+                <p className="font-medium">Selecione um plano</p>
+                <p className="text-sm">Escolha um plano na lista à esquerda para ver detalhes</p>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
