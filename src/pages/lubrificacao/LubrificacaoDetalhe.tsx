@@ -29,7 +29,7 @@ const prioridadeCores: Record<string, string> = {
 };
 
 const prioridadeLabels: Record<string, string> = {
-  baixa: 'Baixa', media: 'Média', alta: 'Alta', critica: 'Crítica',
+  baixa: 'Baixa', media: 'MÃ©dia', alta: 'Alta', critica: 'CrÃ­tica',
 };
 
 const formatMin = (min: number) => {
@@ -51,13 +51,13 @@ export function LubrificacaoDetalhe({ plano, equipamentos, onEdit }: Lubrificaca
   const [execNome, setExecNome] = useState('');
   const [execObs, setExecObs] = useState('');
 
-  // CRUD state — Pontos
+  // CRUD state â€” Pontos
   const [addPontoOpen, setAddPontoOpen] = useState(false);
   const [newPonto, setNewPonto] = useState({ descricao: '', lubrificante: '', quantidade: '', ferramenta: '', tempo_estimado_min: 5 });
   const [editingPonto, setEditingPonto] = useState<RotaPonto | null>(null);
   const [editingPontoData, setEditingPontoData] = useState({ descricao: '', lubrificante: '', quantidade: '', ferramenta: '', tempo_estimado_min: 5 });
 
-  // CRUD state — Etapas
+  // CRUD state â€” Etapas
   const [addEtapaFor, setAddEtapaFor] = useState<string | null>(null);
   const [newEtapa, setNewEtapa] = useState({ descricao: '', tempo_estimado_min: 5 });
   const [editingEtapa, setEditingEtapa] = useState<{ etapa: EtapaPontoLubrificacao; pontoId: string } | null>(null);
@@ -91,7 +91,7 @@ export function LubrificacaoDetalhe({ plano, equipamentos, onEdit }: Lubrificaca
   const updateEtapa = useUpdateEtapa();
   const deleteEtapa = useDeleteEtapa();
 
-  // ── Handlers: Pontos ──────────────────────────────────────
+  // â”€â”€ Handlers: Pontos â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   const handleAddPonto = async () => {
     if (!plano || !newPonto.descricao.trim()) return;
@@ -146,7 +146,7 @@ export function LubrificacaoDetalhe({ plano, equipamentos, onEdit }: Lubrificaca
     setEditingPonto(null);
   };
 
-  // ── Handlers: Etapas ──────────────────────────────────────
+  // â”€â”€ Handlers: Etapas â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   const handleAddEtapa = async () => {
     if (!addEtapaFor || !newEtapa.descricao.trim()) return;
@@ -214,7 +214,7 @@ export function LubrificacaoDetalhe({ plano, equipamentos, onEdit }: Lubrificaca
 
   return (
     <div className="flex flex-col h-full bg-card border border-border rounded-lg overflow-hidden">
-      {/* Header — mesmo padrão de Preventivas */}
+      {/* Header â€” mesmo padrÃ£o de Preventivas */}
       <div className="p-4 border-b border-border bg-muted/30">
         <div className="flex items-center justify-between">
           <div>
@@ -228,7 +228,7 @@ export function LubrificacaoDetalhe({ plano, equipamentos, onEdit }: Lubrificaca
               </span>
             </div>
             <h2 className="text-lg font-semibold">{plano.nome}</h2>
-            {equipamento && <p className="text-sm text-muted-foreground">TAG: {equipamento.tag} — {equipamento.nome}</p>}
+            {equipamento && <p className="text-sm text-muted-foreground">TAG: {equipamento.tag} â€” {equipamento.nome}</p>}
           </div>
           <div className="flex items-center gap-2">
             <Button size="sm" variant="outline" onClick={() => onEdit(plano)}>
@@ -257,26 +257,26 @@ export function LubrificacaoDetalhe({ plano, equipamentos, onEdit }: Lubrificaca
           </div>
           <div className="flex items-center gap-1.5 text-sm">
             <Calendar className="h-4 w-4 text-primary" />
-            <span className="font-semibold">{plano.periodicidade || '—'}{plano.tipo_periodicidade ? ` ${plano.tipo_periodicidade}` : ''}</span>
+            <span className="font-semibold">{plano.periodicidade || 'â€”'}{plano.tipo_periodicidade ? ` ${plano.tipo_periodicidade}` : ''}</span>
             <span className="text-muted-foreground">periodicidade</span>
           </div>
           <div className="flex items-center gap-1.5 text-sm">
             <History className="h-4 w-4 text-primary" />
             <span className="font-semibold">{execucoes?.length || 0}</span>
-            <span className="text-muted-foreground">execuções</span>
+            <span className="text-muted-foreground">execuÃ§Ãµes</span>
           </div>
         </div>
       </div>
 
-      {/* Tabs — mesmo padrão de Preventivas */}
+      {/* Tabs â€” mesmo padrÃ£o de Preventivas */}
       <Tabs value={tab} onValueChange={setTab} className="flex-1 flex flex-col overflow-hidden">
         <TabsList className="mx-4 mt-2 justify-start bg-muted/50">
           <TabsTrigger value="pontos" className="gap-1"><ListChecks className="h-3.5 w-3.5" />Pontos</TabsTrigger>
-          <TabsTrigger value="historico" className="gap-1"><History className="h-3.5 w-3.5" />Histórico</TabsTrigger>
-          <TabsTrigger value="config" className="gap-1"><Settings className="h-3.5 w-3.5" />Configuração</TabsTrigger>
+          <TabsTrigger value="historico" className="gap-1"><History className="h-3.5 w-3.5" />HistÃ³rico</TabsTrigger>
+          <TabsTrigger value="config" className="gap-1"><Settings className="h-3.5 w-3.5" />ConfiguraÃ§Ã£o</TabsTrigger>
         </TabsList>
 
-        {/* Tab: Pontos de Lubrificação — CRUD hierárquico */}
+        {/* Tab: Pontos de LubrificaÃ§Ã£o â€” CRUD hierÃ¡rquico */}
         <TabsContent value="pontos" className="flex-1 overflow-y-auto px-4 pb-4 mt-0">
           <div className="flex items-center justify-between py-3">
             <h3 className="font-semibold text-sm text-muted-foreground uppercase tracking-wider">Pontos & Etapas</h3>
@@ -303,7 +303,7 @@ export function LubrificacaoDetalhe({ plano, equipamentos, onEdit }: Lubrificaca
           {!pontosPlano || pontosPlano.length === 0 ? (
             <div className="border-2 border-dashed border-border rounded-lg p-8 text-center">
               <Droplets className="h-10 w-10 mx-auto mb-2 text-muted-foreground/40" />
-              <p className="text-muted-foreground">Nenhum ponto de lubrificação cadastrado</p>
+              <p className="text-muted-foreground">Nenhum ponto de lubrificaÃ§Ã£o cadastrado</p>
               <Button size="sm" className="mt-3" onClick={() => setAddPontoOpen(true)}>
                 <Plus className="h-3.5 w-3.5 mr-1" /> Adicionar Ponto
               </Button>
@@ -368,7 +368,7 @@ export function LubrificacaoDetalhe({ plano, equipamentos, onEdit }: Lubrificaca
                           <span>Etapa</span>
                           <span>Tempo</span>
                           <span>Status</span>
-                          <span>Ações</span>
+                          <span>AÃ§Ãµes</span>
                         </div>
 
                         {etapas.length === 0 ? (
@@ -406,9 +406,9 @@ export function LubrificacaoDetalhe({ plano, equipamentos, onEdit }: Lubrificaca
                         {/* Info compacta do ponto */}
                         <div className="border-t border-border/50 px-3 py-2 bg-muted/10">
                           <div className="grid grid-cols-3 gap-x-4 gap-y-1 text-xs text-muted-foreground">
-                            <span>Lubrificante: {p.lubrificante || plano.lubrificante || '—'}</span>
-                            <span>Qtd: {p.quantidade || '—'}</span>
-                            <span>Ferramenta: {p.ferramenta || '—'}</span>
+                            <span>Lubrificante: {p.lubrificante || plano.lubrificante || 'â€”'}</span>
+                            <span>Qtd: {p.quantidade || 'â€”'}</span>
+                            <span>Ferramenta: {p.ferramenta || 'â€”'}</span>
                           </div>
                         </div>
                       </div>
@@ -420,13 +420,13 @@ export function LubrificacaoDetalhe({ plano, equipamentos, onEdit }: Lubrificaca
           )}
         </TabsContent>
 
-        {/* Tab: Histórico */}
+        {/* Tab: HistÃ³rico */}
         <TabsContent value="historico" className="flex-1 overflow-y-auto px-4 pb-4 mt-0">
-          <h3 className="font-semibold text-sm text-muted-foreground uppercase tracking-wider py-3">Histórico de Execuções</h3>
+          <h3 className="font-semibold text-sm text-muted-foreground uppercase tracking-wider py-3">HistÃ³rico de ExecuÃ§Ãµes</h3>
           {!execucoes || execucoes.length === 0 ? (
             <div className="border-2 border-dashed border-border rounded-lg p-8 text-center">
               <History className="h-10 w-10 mx-auto mb-2 text-muted-foreground/40" />
-              <p className="text-muted-foreground">Nenhuma execução registrada</p>
+              <p className="text-muted-foreground">Nenhuma execuÃ§Ã£o registrada</p>
             </div>
           ) : (
             <div className="space-y-2">
@@ -434,9 +434,9 @@ export function LubrificacaoDetalhe({ plano, equipamentos, onEdit }: Lubrificaca
                 <div key={exec.id} className="border border-border rounded-lg p-3">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="font-medium text-sm">{exec.executor_nome || 'Não informado'}</p>
+                      <p className="font-medium text-sm">{exec.executor_nome || 'NÃ£o informado'}</p>
                       <p className="text-xs text-muted-foreground">
-                        {new Date(exec.data_execucao).toLocaleDateString('pt-BR')} às {new Date(exec.data_execucao).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                        {new Date(exec.data_execucao).toLocaleDateString('pt-BR')} Ã s {new Date(exec.data_execucao).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
                       </p>
                     </div>
                     <Badge variant={exec.status === 'CONCLUIDO' ? 'default' : 'outline'}>
@@ -453,40 +453,40 @@ export function LubrificacaoDetalhe({ plano, equipamentos, onEdit }: Lubrificaca
           )}
         </TabsContent>
 
-        {/* Tab: Configuração */}
+        {/* Tab: ConfiguraÃ§Ã£o */}
         <TabsContent value="config" className="flex-1 overflow-y-auto px-4 pb-4 mt-0">
-          <h3 className="font-semibold text-sm text-muted-foreground uppercase tracking-wider py-3">Configuração do Plano</h3>
+          <h3 className="font-semibold text-sm text-muted-foreground uppercase tracking-wider py-3">ConfiguraÃ§Ã£o do Plano</h3>
           <div className="space-y-4 max-w-lg">
             <div className="p-3 border border-border rounded-lg space-y-2">
-              <p className="font-medium text-sm">Informações</p>
+              <p className="font-medium text-sm">InformaÃ§Ãµes</p>
               <div className="grid grid-cols-2 gap-2 text-xs">
                 <span className="text-muted-foreground">Equipamento</span>
-                <span>{equipamento ? `${equipamento.tag} — ${equipamento.nome}` : '—'}</span>
+                <span>{equipamento ? `${equipamento.tag} â€” ${equipamento.nome}` : 'â€”'}</span>
                 <span className="text-muted-foreground">Lubrificante</span>
-                <span>{plano.lubrificante || '—'}</span>
+                <span>{plano.lubrificante || 'â€”'}</span>
                 <span className="text-muted-foreground">Periodicidade</span>
-                <span>{plano.periodicidade || '—'} {plano.tipo_periodicidade || ''}</span>
+                <span>{plano.periodicidade || 'â€”'} {plano.tipo_periodicidade || ''}</span>
                 <span className="text-muted-foreground">Tempo Estimado</span>
                 <span>{formatMin(tempoTotal)}</span>
-                <span className="text-muted-foreground">Responsável</span>
-                <span>{plano.responsavel_nome || '—'}</span>
+                <span className="text-muted-foreground">ResponsÃ¡vel</span>
+                <span>{plano.responsavel_nome || 'â€”'}</span>
                 <span className="text-muted-foreground">Prioridade</span>
                 <span>{prioridadeLabels[prioridade]}</span>
                 <span className="text-muted-foreground">Status</span>
                 <span>{plano.status || 'programado'}</span>
                 {plano.ultima_execucao && (
-                  <><span className="text-muted-foreground">Última execução</span><span>{new Date(plano.ultima_execucao).toLocaleDateString('pt-BR')}</span></>
+                  <><span className="text-muted-foreground">Ãšltima execuÃ§Ã£o</span><span>{new Date(plano.ultima_execucao).toLocaleDateString('pt-BR')}</span></>
                 )}
                 {plano.proxima_execucao && (
-                  <><span className="text-muted-foreground">Próxima execução</span><span>{new Date(plano.proxima_execucao).toLocaleDateString('pt-BR')}</span></>
+                  <><span className="text-muted-foreground">PrÃ³xima execuÃ§Ã£o</span><span>{new Date(plano.proxima_execucao).toLocaleDateString('pt-BR')}</span></>
                 )}
                 <span className="text-muted-foreground">Criado em</span>
-                <span>{plano.created_at ? new Date(plano.created_at).toLocaleDateString('pt-BR') : '—'}</span>
+                <span>{plano.created_at ? new Date(plano.created_at).toLocaleDateString('pt-BR') : 'â€”'}</span>
               </div>
             </div>
             {plano.descricao && (
               <div className="p-3 border border-border rounded-lg">
-                <p className="font-medium text-sm mb-1">Escopo / Instruções</p>
+                <p className="font-medium text-sm mb-1">Escopo / InstruÃ§Ãµes</p>
                 <p className="text-xs text-muted-foreground whitespace-pre-wrap">{plano.descricao}</p>
               </div>
             )}
@@ -494,17 +494,17 @@ export function LubrificacaoDetalhe({ plano, equipamentos, onEdit }: Lubrificaca
         </TabsContent>
       </Tabs>
 
-      {/* Dialog: Registrar Execução */}
+      {/* Dialog: Registrar ExecuÃ§Ã£o */}
       <Dialog open={execFormOpen} onOpenChange={setExecFormOpen}>
         <DialogContent className="max-w-sm">
-          <DialogHeader><DialogTitle>Registrar Execução</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>Registrar ExecuÃ§Ã£o</DialogTitle></DialogHeader>
           <div className="space-y-3">
             <div className="space-y-1">
               <Label className="text-xs">Executor *</Label>
-              <Input value={execNome} onChange={e => setExecNome(e.target.value)} placeholder="Nome do técnico" />
+              <Input value={execNome} onChange={e => setExecNome(e.target.value)} placeholder="Nome do tÃ©cnico" />
             </div>
             <div className="space-y-1">
-              <Label className="text-xs">Observações</Label>
+              <Label className="text-xs">ObservaÃ§Ãµes</Label>
               <Textarea value={execObs} onChange={e => setExecObs(e.target.value)} rows={2} />
             </div>
           </div>
@@ -517,10 +517,10 @@ export function LubrificacaoDetalhe({ plano, equipamentos, onEdit }: Lubrificaca
       {/* Dialog: Novo Ponto */}
       <Dialog open={addPontoOpen} onOpenChange={setAddPontoOpen}>
         <DialogContent className="max-w-sm">
-          <DialogHeader><DialogTitle>Novo Ponto de Lubrificação</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>Novo Ponto de LubrificaÃ§Ã£o</DialogTitle></DialogHeader>
           <div className="space-y-3">
             <div className="space-y-1">
-              <Label className="text-xs">Descrição *</Label>
+              <Label className="text-xs">DescriÃ§Ã£o *</Label>
               <Input value={newPonto.descricao} onChange={e => setNewPonto(p => ({ ...p, descricao: e.target.value }))} placeholder="Ex: Mancal lado acoplamento" />
             </div>
             <div className="space-y-1">
@@ -551,11 +551,11 @@ export function LubrificacaoDetalhe({ plano, equipamentos, onEdit }: Lubrificaca
       {/* Dialog: Editar Ponto */}
       <Dialog open={!!editingPonto} onOpenChange={() => setEditingPonto(null)}>
         <DialogContent className="max-w-sm">
-          <DialogHeader><DialogTitle>Editar Ponto</DialogTitle><DialogDescription>Altere os dados do ponto de lubrificação</DialogDescription></DialogHeader>
+          <DialogHeader><DialogTitle>Editar Ponto</DialogTitle><DialogDescription>Altere os dados do ponto de lubrificaÃ§Ã£o</DialogDescription></DialogHeader>
           <div className="space-y-3">
             <div className="space-y-1">
-              <Label className="text-xs">Descrição *</Label>
-              <Input value={editingPontoData.descricao} onChange={e => setEditingPontoData(p => ({ ...p, descricao: e.target.value }))} placeholder="Descrição do ponto" />
+              <Label className="text-xs">DescriÃ§Ã£o *</Label>
+              <Input value={editingPontoData.descricao} onChange={e => setEditingPontoData(p => ({ ...p, descricao: e.target.value }))} placeholder="DescriÃ§Ã£o do ponto" />
             </div>
             <div className="space-y-1">
               <Label className="text-xs">Lubrificante</Label>
@@ -589,7 +589,7 @@ export function LubrificacaoDetalhe({ plano, equipamentos, onEdit }: Lubrificaca
           <DialogHeader><DialogTitle>Nova Etapa</DialogTitle></DialogHeader>
           <div className="space-y-3">
             <div className="space-y-1">
-              <Label className="text-xs">Descrição *</Label>
+              <Label className="text-xs">DescriÃ§Ã£o *</Label>
               <Input value={newEtapa.descricao} onChange={e => setNewEtapa(p => ({ ...p, descricao: e.target.value }))} placeholder="Ex: Limpar ponto de graxa" />
             </div>
             <div className="space-y-1">
@@ -609,15 +609,15 @@ export function LubrificacaoDetalhe({ plano, equipamentos, onEdit }: Lubrificaca
           <DialogHeader><DialogTitle>Editar Etapa</DialogTitle><DialogDescription>Altere os dados da etapa</DialogDescription></DialogHeader>
           <div className="space-y-3">
             <div className="space-y-1">
-              <Label className="text-xs">Descrição *</Label>
-              <Input value={editingEtapaData.descricao} onChange={e => setEditingEtapaData(p => ({ ...p, descricao: e.target.value }))} placeholder="Descrição da etapa" />
+              <Label className="text-xs">DescriÃ§Ã£o *</Label>
+              <Input value={editingEtapaData.descricao} onChange={e => setEditingEtapaData(p => ({ ...p, descricao: e.target.value }))} placeholder="DescriÃ§Ã£o da etapa" />
             </div>
             <div className="space-y-1">
               <Label className="text-xs">Tempo Estimado (min)</Label>
               <Input type="number" value={editingEtapaData.tempo_estimado_min} onChange={e => setEditingEtapaData(p => ({ ...p, tempo_estimado_min: parseInt(e.target.value) || 0 }))} />
             </div>
             <div className="space-y-1">
-              <Label className="text-xs">Observações</Label>
+              <Label className="text-xs">ObservaÃ§Ãµes</Label>
               <Textarea value={editingEtapaData.observacoes} onChange={e => setEditingEtapaData(p => ({ ...p, observacoes: e.target.value }))} rows={2} placeholder="Opcional" />
             </div>
           </div>
@@ -629,354 +629,6 @@ export function LubrificacaoDetalhe({ plano, equipamentos, onEdit }: Lubrificaca
       </Dialog>
 
       {ConfirmDialogElement}
-
-      {/* Hidden print template */}
-      <div style={{ display: 'none' }}>
-        <LubrificacaoPrintTemplate ref={printRef} plano={plano} pontos={pontosPlano || []} empresa={empresa} equipamentoNome={equipamento ? `${equipamento.tag} - ${equipamento.nome}` : undefined} />
-      </div>
-    </div>
-  );
-}
-import { useRef, useState } from 'react';
-import { useReactToPrint } from 'react-to-print';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
-import {
-  Printer, Edit, Play, Clock, Calendar, ChevronDown, ChevronRight,
-  GripVertical, Droplets, History, Timer, ListChecks, Settings, AlertTriangle,
-} from 'lucide-react';
-import type { EquipamentoRow } from '@/hooks/useEquipamentos';
-import type { PlanoLubrificacao } from '@/types/lubrificacao';
-import { LubrificacaoPrintTemplate } from '@/components/lubrificacao/LubrificacaoPrintTemplate';
-import { useDadosEmpresa } from '@/hooks/useDadosEmpresa';
-import { usePontosPlano } from '@/hooks/usePontosPlano';
-import { useExecucoesByPlanoLubrificacao, useCreateExecucaoLubrificacao } from '@/hooks/useLubrificacao';
-
-const prioridadeCores: Record<string, string> = {
-  baixa: 'bg-green-100 text-green-800 border-green-300',
-  media: 'bg-yellow-100 text-yellow-800 border-yellow-300',
-  alta: 'bg-orange-100 text-orange-800 border-orange-300',
-  critica: 'bg-red-100 text-red-800 border-red-300',
-};
-
-const prioridadeLabels: Record<string, string> = {
-  baixa: 'Baixa', media: 'Média', alta: 'Alta', critica: 'Crítica',
-};
-
-const formatMin = (min: number) => {
-  const h = Math.floor(min / 60);
-  const m = min % 60;
-  return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
-};
-
-interface LubrificacaoDetalheProps {
-  plano: PlanoLubrificacao | null;
-  equipamentos: EquipamentoRow[];
-  onEdit: (plano: PlanoLubrificacao) => void;
-}
-
-export function LubrificacaoDetalhe({ plano, equipamentos, onEdit }: LubrificacaoDetalheProps) {
-  const [tab, setTab] = useState('pontos');
-  const [expandedPontos, setExpandedPontos] = useState<Set<string>>(new Set());
-  const [execFormOpen, setExecFormOpen] = useState(false);
-  const [execNome, setExecNome] = useState('');
-  const [execObs, setExecObs] = useState('');
-
-  const togglePonto = (id: string) => {
-    setExpandedPontos(prev => {
-      const n = new Set(prev);
-      n.has(id) ? n.delete(id) : n.add(id);
-      return n;
-    });
-  };
-
-  const printRef = useRef<HTMLDivElement>(null);
-  const { data: empresa } = useDadosEmpresa();
-  const { data: pontosPlano } = usePontosPlano(plano?.id);
-  const { data: execucoes } = useExecucoesByPlanoLubrificacao(plano?.id ?? null);
-  const createExecucao = useCreateExecucaoLubrificacao();
-
-  const handlePrint = useReactToPrint({
-    contentRef: printRef,
-    documentTitle: plano ? `Lubrificacao-${plano.codigo}` : 'Lubrificacao',
-    pageStyle: `@page { size: A4; margin: 10mm; } @media print { body { -webkit-print-color-adjust: exact; } }`,
-  });
-
-  const handleRegisterExecucao = async () => {
-    if (!plano || !execNome.trim()) return;
-    await createExecucao.mutateAsync({
-      plano_id: plano.id,
-      executor_nome: execNome,
-      observacoes: execObs || undefined,
-    });
-    setExecNome('');
-    setExecObs('');
-    setExecFormOpen(false);
-  };
-
-  if (!plano) {
-    return (
-      <div className="flex flex-col h-full bg-card border border-border rounded-lg overflow-hidden items-center justify-center">
-        <Droplets className="h-10 w-10 text-muted-foreground/40 mb-2" />
-        <p className="text-muted-foreground">Selecione um plano para visualizar os detalhes.</p>
-      </div>
-    );
-  }
-
-  const equipamento = equipamentos.find((item) => item.id === plano.equipamento_id);
-  const prioridade = plano.prioridade || 'media';
-  const tempoTotal = pontosPlano && pontosPlano.length > 0
-    ? pontosPlano.reduce((s, p) => s + (p.tempo_estimado_min || 0), 0)
-    : (plano.tempo_estimado || 0);
-
-  return (
-    <div className="flex flex-col h-full bg-card border border-border rounded-lg overflow-hidden">
-      {/* Header — mesmo padrão de Preventivas */}
-      <div className="p-4 border-b border-border bg-muted/30">
-        <div className="flex items-center justify-between">
-          <div>
-            <div className="flex items-center gap-2">
-              <span className="font-mono font-bold text-primary text-lg">{plano.codigo}</span>
-              <Badge variant={plano.ativo !== false ? 'default' : 'secondary'}>
-                {plano.ativo !== false ? 'Ativo' : 'Inativo'}
-              </Badge>
-              <span className={`text-xs font-semibold px-2 py-0.5 rounded border ${prioridadeCores[prioridade]}`}>
-                {prioridadeLabels[prioridade]}
-              </span>
-            </div>
-            <h2 className="text-lg font-semibold">{plano.nome}</h2>
-            {equipamento && <p className="text-sm text-muted-foreground">TAG: {equipamento.tag} — {equipamento.nome}</p>}
-          </div>
-          <div className="flex items-center gap-2">
-            <Button size="sm" variant="outline" onClick={() => onEdit(plano)}>
-              <Edit className="h-4 w-4 mr-1" /> Editar
-            </Button>
-            <Button size="sm" variant="outline" onClick={() => handlePrint()}>
-              <Printer className="h-4 w-4 mr-1" /> Imprimir
-            </Button>
-            <Button size="sm" onClick={() => setExecFormOpen(true)}>
-              <Play className="h-4 w-4 mr-1" /> Executar
-            </Button>
-          </div>
-        </div>
-
-        {/* Stats row */}
-        <div className="flex gap-6 mt-3">
-          <div className="flex items-center gap-1.5 text-sm">
-            <Timer className="h-4 w-4 text-primary" />
-            <span className="font-semibold">{formatMin(tempoTotal)}</span>
-            <span className="text-muted-foreground">tempo total</span>
-          </div>
-          <div className="flex items-center gap-1.5 text-sm">
-            <ListChecks className="h-4 w-4 text-primary" />
-            <span className="font-semibold">{pontosPlano?.length || 0}</span>
-            <span className="text-muted-foreground">pontos</span>
-          </div>
-          <div className="flex items-center gap-1.5 text-sm">
-            <Calendar className="h-4 w-4 text-primary" />
-            <span className="font-semibold">{plano.periodicidade || '—'}{plano.tipo_periodicidade ? ` ${plano.tipo_periodicidade}` : ''}</span>
-            <span className="text-muted-foreground">periodicidade</span>
-          </div>
-          <div className="flex items-center gap-1.5 text-sm">
-            <History className="h-4 w-4 text-primary" />
-            <span className="font-semibold">{execucoes?.length || 0}</span>
-            <span className="text-muted-foreground">execuções</span>
-          </div>
-        </div>
-      </div>
-
-      {/* Tabs — mesmo padrão de Preventivas */}
-      <Tabs value={tab} onValueChange={setTab} className="flex-1 flex flex-col overflow-hidden">
-        <TabsList className="mx-4 mt-2 justify-start bg-muted/50">
-          <TabsTrigger value="pontos" className="gap-1"><ListChecks className="h-3.5 w-3.5" />Pontos</TabsTrigger>
-          <TabsTrigger value="historico" className="gap-1"><History className="h-3.5 w-3.5" />Histórico</TabsTrigger>
-          <TabsTrigger value="config" className="gap-1"><Settings className="h-3.5 w-3.5" />Configuração</TabsTrigger>
-        </TabsList>
-
-        {/* Tab: Pontos de Lubrificação */}
-        <TabsContent value="pontos" className="flex-1 overflow-y-auto px-4 pb-4 mt-0">
-          <div className="flex items-center justify-between py-3">
-            <h3 className="font-semibold text-sm text-muted-foreground uppercase tracking-wider">Pontos de Lubrificação</h3>
-            {pontosPlano && pontosPlano.length > 0 && (
-              <button
-                type="button"
-                className="text-xs text-muted-foreground hover:text-foreground underline underline-offset-2"
-                onClick={() => {
-                  const allIds = new Set(pontosPlano.map(p => p.id));
-                  const allExpanded = pontosPlano.every(p => expandedPontos.has(p.id));
-                  setExpandedPontos(allExpanded ? new Set() : allIds);
-                }}
-              >
-                {pontosPlano.every(p => expandedPontos.has(p.id)) ? 'Recolher todos' : 'Expandir todos'}
-              </button>
-            )}
-          </div>
-
-          {!pontosPlano || pontosPlano.length === 0 ? (
-            <div className="border-2 border-dashed border-border rounded-lg p-8 text-center">
-              <Droplets className="h-10 w-10 mx-auto mb-2 text-muted-foreground/40" />
-              <p className="text-muted-foreground">Nenhum ponto de lubrificação cadastrado</p>
-              <p className="text-xs text-muted-foreground mt-1">Edite o plano para adicionar pontos</p>
-            </div>
-          ) : (
-            <div className="space-y-2">
-              {pontosPlano.map((p, i) => {
-                const isExpanded = expandedPontos.has(p.id);
-                const lubDiferente = p.lubrificante && p.lubrificante !== plano.lubrificante;
-                return (
-                  <div key={p.id} className="border border-border rounded-lg overflow-hidden">
-                    {/* Header do ponto */}
-                    <div
-                      className="flex items-center gap-2 p-3 bg-muted/30 cursor-pointer hover:bg-muted/50"
-                      onClick={() => togglePonto(p.id)}
-                    >
-                      <GripVertical className="h-4 w-4 text-muted-foreground/50 flex-shrink-0" />
-                      {isExpanded
-                        ? <ChevronDown className="h-4 w-4 flex-shrink-0" />
-                        : <ChevronRight className="h-4 w-4 flex-shrink-0" />}
-                      <span className="bg-primary text-primary-foreground rounded-full w-6 h-6 flex items-center justify-center text-xs font-bold flex-shrink-0">
-                        {i + 1}
-                      </span>
-                      <div className="flex-1 min-w-0">
-                        <p className="font-medium text-sm truncate">{p.descricao}</p>
-                        {!plano.equipamento_id && p.equipamento_tag && (
-                          <p className="text-xs text-muted-foreground font-mono">TAG: {p.equipamento_tag}</p>
-                        )}
-                      </div>
-                      {lubDiferente && (
-                        <span className="flex items-center gap-1 text-xs text-muted-foreground flex-shrink-0">
-                          <Droplets className="h-3 w-3" /> {p.lubrificante}
-                        </span>
-                      )}
-                      <Badge variant="outline" className="gap-1 flex-shrink-0">
-                        <Clock className="h-3 w-3" /> {p.tempo_estimado_min} min
-                      </Badge>
-                    </div>
-
-                    {/* Detalhes expandidos */}
-                    {isExpanded && (
-                      <div className="border-t border-border px-4 py-3 space-y-2 text-sm bg-background">
-                        <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
-                          <div><span className="text-muted-foreground">Lubrificante:</span> {p.lubrificante || plano.lubrificante || '—'}</div>
-                          <div><span className="text-muted-foreground">Quantidade:</span> {p.quantidade || '—'}</div>
-                          <div><span className="text-muted-foreground">Ferramenta:</span> {p.ferramenta || '—'}</div>
-                          <div><span className="text-muted-foreground">Requer parada:</span> {p.requer_parada ? 'Sim' : 'Não'}</div>
-                          {p.localizacao && <div className="col-span-2"><span className="text-muted-foreground">Localização:</span> {p.localizacao}</div>}
-                          {p.referencia_manual && <div className="col-span-2"><span className="text-muted-foreground">Ref. manual:</span> {p.referencia_manual}</div>}
-                        </div>
-                        {p.instrucoes && (
-                          <div className="text-xs text-muted-foreground bg-muted/30 rounded p-2">{p.instrucoes}</div>
-                        )}
-                        {p.imagem_url && (
-                          <img src={p.imagem_url} alt="Ponto" className="max-h-32 rounded border border-border object-contain" />
-                        )}
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </TabsContent>
-
-        {/* Tab: Histórico */}
-        <TabsContent value="historico" className="flex-1 overflow-y-auto px-4 pb-4 mt-0">
-          <h3 className="font-semibold text-sm text-muted-foreground uppercase tracking-wider py-3">Histórico de Execuções</h3>
-          {!execucoes || execucoes.length === 0 ? (
-            <div className="border-2 border-dashed border-border rounded-lg p-8 text-center">
-              <History className="h-10 w-10 mx-auto mb-2 text-muted-foreground/40" />
-              <p className="text-muted-foreground">Nenhuma execução registrada</p>
-            </div>
-          ) : (
-            <div className="space-y-2">
-              {execucoes.map((exec: any) => (
-                <div key={exec.id} className="border border-border rounded-lg p-3">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="font-medium text-sm">{exec.executor_nome || 'Não informado'}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {new Date(exec.data_execucao).toLocaleDateString('pt-BR')} às {new Date(exec.data_execucao).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
-                      </p>
-                    </div>
-                    <Badge variant={exec.status === 'CONCLUIDO' ? 'default' : 'outline'}>
-                      {exec.status}
-                    </Badge>
-                  </div>
-                  {exec.quantidade_utilizada && (
-                    <p className="text-xs mt-1 text-muted-foreground">Quantidade utilizada: {exec.quantidade_utilizada}</p>
-                  )}
-                  {exec.observacoes && <p className="text-xs mt-1 text-muted-foreground">{exec.observacoes}</p>}
-                </div>
-              ))}
-            </div>
-          )}
-        </TabsContent>
-
-        {/* Tab: Configuração */}
-        <TabsContent value="config" className="flex-1 overflow-y-auto px-4 pb-4 mt-0">
-          <h3 className="font-semibold text-sm text-muted-foreground uppercase tracking-wider py-3">Configuração do Plano</h3>
-          <div className="space-y-4 max-w-lg">
-            <div className="p-3 border border-border rounded-lg space-y-2">
-              <p className="font-medium text-sm">Informações</p>
-              <div className="grid grid-cols-2 gap-2 text-xs">
-                <span className="text-muted-foreground">Equipamento</span>
-                <span>{equipamento ? `${equipamento.tag} — ${equipamento.nome}` : '—'}</span>
-                <span className="text-muted-foreground">Lubrificante</span>
-                <span>{plano.lubrificante || '—'}</span>
-                <span className="text-muted-foreground">Periodicidade</span>
-                <span>{plano.periodicidade || '—'} {plano.tipo_periodicidade || ''}</span>
-                <span className="text-muted-foreground">Tempo Estimado</span>
-                <span>{formatMin(tempoTotal)}</span>
-                <span className="text-muted-foreground">Responsável</span>
-                <span>{plano.responsavel_nome || '—'}</span>
-                <span className="text-muted-foreground">Prioridade</span>
-                <span>{prioridadeLabels[prioridade]}</span>
-                <span className="text-muted-foreground">Status</span>
-                <span>{plano.status || 'programado'}</span>
-                {plano.ultima_execucao && (
-                  <><span className="text-muted-foreground">Última execução</span><span>{new Date(plano.ultima_execucao).toLocaleDateString('pt-BR')}</span></>
-                )}
-                {plano.proxima_execucao && (
-                  <><span className="text-muted-foreground">Próxima execução</span><span>{new Date(plano.proxima_execucao).toLocaleDateString('pt-BR')}</span></>
-                )}
-                <span className="text-muted-foreground">Criado em</span>
-                <span>{plano.created_at ? new Date(plano.created_at).toLocaleDateString('pt-BR') : '—'}</span>
-              </div>
-            </div>
-            {plano.descricao && (
-              <div className="p-3 border border-border rounded-lg">
-                <p className="font-medium text-sm mb-1">Escopo / Instruções</p>
-                <p className="text-xs text-muted-foreground whitespace-pre-wrap">{plano.descricao}</p>
-              </div>
-            )}
-          </div>
-        </TabsContent>
-      </Tabs>
-
-      {/* Dialog: Registrar Execução */}
-      <Dialog open={execFormOpen} onOpenChange={setExecFormOpen}>
-        <DialogContent className="max-w-sm">
-          <DialogHeader><DialogTitle>Registrar Execução</DialogTitle></DialogHeader>
-          <div className="space-y-3">
-            <div className="space-y-1">
-              <Label className="text-xs">Executor *</Label>
-              <Input value={execNome} onChange={e => setExecNome(e.target.value)} placeholder="Nome do técnico" />
-            </div>
-            <div className="space-y-1">
-              <Label className="text-xs">Observações</Label>
-              <Textarea value={execObs} onChange={e => setExecObs(e.target.value)} rows={2} />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button onClick={handleRegisterExecucao} disabled={createExecucao.isPending}>Registrar</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
 
       {/* Hidden print template */}
       <div style={{ display: 'none' }}>
