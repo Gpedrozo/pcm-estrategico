@@ -42,7 +42,7 @@ export interface Equipamento {
 }
 
 // Tipos expandidos de O.S.
-export type TipoOS = 'CORRETIVA' | 'PREVENTIVA' | 'PREDITIVA' | 'INSPECAO' | 'MELHORIA';
+export type TipoOS = 'CORRETIVA' | 'PREVENTIVA' | 'PREDITIVA' | 'INSPECAO' | 'MELHORIA' | 'LUBRIFICACAO';
 export type StatusOS = 'ABERTA' | 'EM_ANDAMENTO' | 'AGUARDANDO_MATERIAL' | 'AGUARDANDO_APROVACAO' | 'FECHADA' | 'CANCELADA';
 export type PrioridadeOS = 'URGENTE' | 'ALTA' | 'MEDIA' | 'BAIXA';
 

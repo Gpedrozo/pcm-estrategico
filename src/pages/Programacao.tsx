@@ -38,7 +38,7 @@ type ViewMode = 'day' | 'week' | 'month';
 
 function mapMaintenanceTipoToOsTipo(tipo: string) {
   if (tipo === 'preventiva') return 'PREVENTIVA';
-  if (tipo === 'lubrificacao') return 'PREVENTIVA';
+  if (tipo === 'lubrificacao') return 'LUBRIFICACAO';
   if (tipo === 'inspecao') return 'INSPECAO';
   if (tipo === 'preditiva') return 'PREDITIVA';
   return 'PREVENTIVA';
@@ -240,6 +240,7 @@ export default function Programacao() {
       problema: selectedEvent.descricao || `Execução programada: ${selectedEvent.titulo}`,
       tempo_estimado: null,
       usuario_abertura: null,
+      maintenance_schedule_id: selectedEvent.id,
     });
 
     await updateSchedule.mutateAsync({ id: selectedEvent.id, status: 'emitido' });
@@ -922,23 +923,11 @@ export default function Programacao() {
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                {['executado', 'concluido', 'concluida'].includes((selectedEvent.status || '').toLowerCase()) ? (
-                  <Button
-                    variant="destructive"
-                    className="gap-2"
-                    disabled={!!selectedEvent.virtual}
-                    onClick={() => updateSchedule.mutate({ id: selectedEvent.id, status: 'programado' })}
-                  >
-                    <XCircle className="h-4 w-4" /> Marcar como não executado
-                  </Button>
-                ) : (
-                  <Button
-                    className="gap-2"
-                    disabled={!!selectedEvent.virtual}
-                    onClick={() => updateSchedule.mutate({ id: selectedEvent.id, status: 'executado' })}
-                  >
-                    <CheckCircle2 className="h-4 w-4" /> Marcar como executado
-                  </Button>
+                {['executado', 'concluido', 'concluida'].includes((selectedEvent.status || '').toLowerCase()) && (
+                  <div className="flex items-center gap-2 px-3 py-2 rounded-md bg-green-50 dark:bg-green-950 text-green-700 dark:text-green-300 text-sm sm:col-span-2">
+                    <CheckCircle2 className="h-4 w-4 shrink-0" />
+                    <span>Executado — marcado automaticamente ao fechar a O.S.</span>
+                  </div>
                 )}
 
                 <Button

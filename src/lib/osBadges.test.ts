@@ -8,6 +8,7 @@ describe('normalizeOSType', () => {
     expect(normalizeOSType('PREDITIVA')).toBe('PREDITIVA')
     expect(normalizeOSType('INSPECAO')).toBe('INSPECAO')
     expect(normalizeOSType('MELHORIA')).toBe('MELHORIA')
+    expect(normalizeOSType('LUBRIFICACAO')).toBe('LUBRIFICACAO')
   })
   it('returns CORRETIVA for invalid input', () => {
     expect(normalizeOSType('INVALIDO')).toBe('CORRETIVA')

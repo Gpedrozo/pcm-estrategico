@@ -42,6 +42,7 @@ import {
   ClipboardList,
   Upload,
   FileText,
+  CalendarClock,
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { OSStatusBadge } from '@/components/os/OSStatusBadge';
@@ -714,6 +715,19 @@ export default function FecharOS() {
                 <div className="mt-3 p-3 bg-amber-500/5 border border-amber-500/20 rounded-lg">
                   <Label className="text-xs text-muted-foreground font-semibold uppercase tracking-wide">Problema Apresentado</Label>
                   <p className="mt-1 text-sm">{selectedOS.problema}</p>
+                </div>
+              )}
+
+              {/* Origem: Programação de Manutenção */}
+              {(selectedOS as Record<string, unknown>).maintenance_schedule_id && (
+                <div className="mt-3 p-3 bg-blue-500/5 border border-blue-500/20 rounded-lg flex items-center gap-2">
+                  <CalendarClock className="h-4 w-4 text-blue-500 shrink-0" />
+                  <div>
+                    <Label className="text-xs text-blue-600 dark:text-blue-400 font-semibold uppercase tracking-wide">Origem: Programação de Manutenção</Label>
+                    <p className="mt-0.5 text-xs text-muted-foreground">
+                      Ao fechar esta O.S., o ciclo de manutenção será atualizado automaticamente (agenda, execução e próxima data).
+                    </p>
+                  </div>
                 </div>
               )}
             </div>

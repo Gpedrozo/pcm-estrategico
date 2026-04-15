@@ -37,6 +37,7 @@ import { useBranding } from '@/contexts/BrandingContext';
 import { useOptionalTenant } from '@/contexts/TenantContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useSupportTickets } from '@/hooks/useSupportTickets';
+import { useMaintenanceAlertCount } from '@/hooks/useMaintenanceAlertCount';
 import {
   Sidebar,
   SidebarContent,
@@ -139,6 +140,7 @@ export function AppSidebar() {
     (sum, t) => sum + (t.unread_client_messages ?? 0),
     0,
   );
+  const { data: overdueMaintenanceCount } = useMaintenanceAlertCount();
 
   useEffect(() => {
     let isMounted = true;
@@ -198,6 +200,11 @@ export function AppSidebar() {
           {item.url === '/suporte' && unreadClientCount > 0 && (
             <span className="ml-auto inline-flex h-5 min-w-[20px] items-center justify-center rounded-full bg-red-500 px-1.5 text-[11px] font-bold leading-none text-white">
               {unreadClientCount > 99 ? '99+' : unreadClientCount}
+            </span>
+          )}
+          {item.url === '/programacao' && (overdueMaintenanceCount ?? 0) > 0 && (
+            <span className="ml-auto inline-flex h-5 min-w-[20px] items-center justify-center rounded-full bg-amber-500 px-1.5 text-[11px] font-bold leading-none text-white" title="Manutenções vencidas">
+              {(overdueMaintenanceCount ?? 0) > 99 ? '99+' : overdueMaintenanceCount}
             </span>
           )}
         </NavLink>

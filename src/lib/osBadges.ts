@@ -1,6 +1,6 @@
 import type { StatusOS, TipoOS } from '@/types'
 
-const TIPO_OS_VALUES: TipoOS[] = ['CORRETIVA', 'PREVENTIVA', 'PREDITIVA', 'INSPECAO', 'MELHORIA']
+const TIPO_OS_VALUES: TipoOS[] = ['CORRETIVA', 'PREVENTIVA', 'PREDITIVA', 'INSPECAO', 'MELHORIA', 'LUBRIFICACAO']
 const STATUS_OS_VALUES: StatusOS[] = ['ABERTA', 'EM_ANDAMENTO', 'AGUARDANDO_MATERIAL', 'AGUARDANDO_APROVACAO', 'FECHADA', 'CANCELADA']
 
 export function normalizeOSType(value: string): TipoOS {

@@ -53,6 +53,7 @@ export interface OrdemServicoRow {
   mecanico_responsavel_id?: string | null;
   mecanico_responsavel_codigo?: string | null;
   motivo_cancelamento?: string | null;
+  maintenance_schedule_id?: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -68,6 +69,7 @@ export interface OrdemServicoInsert {
   usuario_abertura?: string | null;
   mecanico_responsavel_id?: string | null;
   mecanico_responsavel_codigo?: string | null;
+  maintenance_schedule_id?: string | null;
 }
 
 export interface OrdemServicoUpdate {

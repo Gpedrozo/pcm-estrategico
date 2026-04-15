@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
 export const ordemServicoSchema = z.object({
-  tipo: z.enum(['CORRETIVA', 'PREVENTIVA', 'PREDITIVA', 'INSPECAO', 'MELHORIA']),
+  tipo: z.enum(['CORRETIVA', 'PREVENTIVA', 'PREDITIVA', 'INSPECAO', 'MELHORIA', 'LUBRIFICACAO']),
   prioridade: z.enum(['URGENTE', 'ALTA', 'MEDIA', 'BAIXA']).default('MEDIA'),
   tag: z.string().min(1, 'TAG do equipamento é obrigatória'),
   equipamento: z.string().min(1, 'Nome do equipamento é obrigatório'),
@@ -11,6 +11,7 @@ export const ordemServicoSchema = z.object({
   usuario_abertura: z.string().optional().nullable(),
   mecanico_responsavel_id: z.string().uuid().optional().nullable(),
   mecanico_responsavel_codigo: z.string().optional().nullable(),
+  maintenance_schedule_id: z.string().uuid().optional().nullable(),
 });
 
 export const ordemServicoUpdateSchema = z.object({
