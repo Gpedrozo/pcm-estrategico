@@ -2,13 +2,21 @@ import { useRef, useState } from 'react';
 import { useReactToPrint } from 'react-to-print';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Printer, AlertTriangle, CheckCircle2, Clock, ChevronDown, ChevronRight, GripVertical, Droplets } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import {
+  Printer, Edit, Play, Clock, Calendar, ChevronDown, ChevronRight,
+  GripVertical, Droplets, History, Timer, ListChecks, Settings, AlertTriangle,
+} from 'lucide-react';
 import type { EquipamentoRow } from '@/hooks/useEquipamentos';
 import type { PlanoLubrificacao } from '@/types/lubrificacao';
 import { LubrificacaoPrintTemplate } from '@/components/lubrificacao/LubrificacaoPrintTemplate';
 import { useDadosEmpresa } from '@/hooks/useDadosEmpresa';
 import { usePontosPlano } from '@/hooks/usePontosPlano';
+import { useExecucoesByPlanoLubrificacao, useCreateExecucaoLubrificacao } from '@/hooks/useLubrificacao';
 
 const prioridadeCores: Record<string, string> = {
   baixa: 'bg-green-100 text-green-800 border-green-300',
@@ -21,11 +29,11 @@ const prioridadeLabels: Record<string, string> = {
   baixa: 'Baixa', media: 'Média', alta: 'Alta', critica: 'Crítica',
 };
 
-function getDaysUntil(dateStr: string | null | undefined) {
-  if (!dateStr) return null;
-  const diff = Math.ceil((new Date(dateStr).getTime() - Date.now()) / (1000 * 60 * 60 * 24));
-  return diff;
-}
+const formatMin = (min: number) => {
+  const h = Math.floor(min / 60);
+  const m = min % 60;
+  return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
+};
 
 interface LubrificacaoDetalheProps {
   plano: PlanoLubrificacao | null;
@@ -34,7 +42,11 @@ interface LubrificacaoDetalheProps {
 }
 
 export function LubrificacaoDetalhe({ plano, equipamentos, onEdit }: LubrificacaoDetalheProps) {
+  const [tab, setTab] = useState('pontos');
   const [expandedPontos, setExpandedPontos] = useState<Set<string>>(new Set());
+  const [execFormOpen, setExecFormOpen] = useState(false);
+  const [execNome, setExecNome] = useState('');
+  const [execObs, setExecObs] = useState('');
 
   const togglePonto = (id: string) => {
     setExpandedPontos(prev => {
@@ -47,6 +59,8 @@ export function LubrificacaoDetalhe({ plano, equipamentos, onEdit }: Lubrificaca
   const printRef = useRef<HTMLDivElement>(null);
   const { data: empresa } = useDadosEmpresa();
   const { data: pontosPlano } = usePontosPlano(plano?.id);
+  const { data: execucoes } = useExecucoesByPlanoLubrificacao(plano?.id ?? null);
+  const createExecucao = useCreateExecucaoLubrificacao();
 
   const handlePrint = useReactToPrint({
     contentRef: printRef,
@@ -54,90 +68,102 @@ export function LubrificacaoDetalhe({ plano, equipamentos, onEdit }: Lubrificaca
     pageStyle: `@page { size: A4; margin: 10mm; } @media print { body { -webkit-print-color-adjust: exact; } }`,
   });
 
+  const handleRegisterExecucao = async () => {
+    if (!plano || !execNome.trim()) return;
+    await createExecucao.mutateAsync({
+      plano_id: plano.id,
+      executor_nome: execNome,
+      observacoes: execObs || undefined,
+    });
+    setExecNome('');
+    setExecObs('');
+    setExecFormOpen(false);
+  };
+
   if (!plano) {
     return (
-      <Card>
-        <CardContent className="py-10 text-center text-muted-foreground">
-          Selecione um plano para visualizar os detalhes.
-        </CardContent>
-      </Card>
+      <div className="flex flex-col h-full bg-card border border-border rounded-lg overflow-hidden items-center justify-center">
+        <Droplets className="h-10 w-10 text-muted-foreground/40 mb-2" />
+        <p className="text-muted-foreground">Selecione um plano para visualizar os detalhes.</p>
+      </div>
     );
   }
 
   const equipamento = equipamentos.find((item) => item.id === plano.equipamento_id);
-  const daysUntil = getDaysUntil(plano.proxima_execucao);
   const prioridade = plano.prioridade || 'media';
+  const tempoTotal = pontosPlano && pontosPlano.length > 0
+    ? pontosPlano.reduce((s, p) => s + (p.tempo_estimado_min || 0), 0)
+    : (plano.tempo_estimado || 0);
 
   return (
-    <Card>
-      <CardHeader className="space-y-3">
-        <div className="flex items-center justify-end gap-2 flex-wrap">
-          <Badge variant="outline">{plano.status || 'programado'}</Badge>
-          <Button size="sm" variant="outline" className="gap-1" onClick={() => handlePrint()}>
-            <Printer className="h-3.5 w-3.5" />
-            Imprimir
-          </Button>
-          <Button size="sm" variant="outline" onClick={() => onEdit(plano)}>Editar plano</Button>
-        </div>
-        <div className="space-y-1">
-          <div className="flex items-center gap-2 flex-wrap">
-            <CardTitle className="text-xl">{plano.nome}</CardTitle>
-            <span className={`text-xs font-semibold px-2 py-0.5 rounded border ${prioridadeCores[prioridade]}`}>
-              {prioridadeLabels[prioridade]}
-            </span>
-          </div>
-          <p className="text-sm text-muted-foreground font-mono">{plano.codigo}</p>
-          {/* Indicador de vencimento */}
-          {daysUntil !== null && (
-            <div className="flex items-center gap-1.5 mt-1">
-              {daysUntil < 0 ? (
-                <>
-                  <AlertTriangle className="h-4 w-4 text-red-500" />
-                  <span className="text-xs font-semibold text-red-600">VENCIDO há {Math.abs(daysUntil)} dia(s)</span>
-                </>
-              ) : daysUntil <= 7 ? (
-                <>
-                  <Clock className="h-4 w-4 text-orange-500" />
-                  <span className="text-xs font-semibold text-orange-600">Vence em {daysUntil} dia(s)</span>
-                </>
-              ) : (
-                <>
-                  <CheckCircle2 className="h-4 w-4 text-green-500" />
-                  <span className="text-xs text-green-600">Em dia — vence em {daysUntil} dias</span>
-                </>
-              )}
+    <div className="flex flex-col h-full bg-card border border-border rounded-lg overflow-hidden">
+      {/* Header — mesmo padrão de Preventivas */}
+      <div className="p-4 border-b border-border bg-muted/30">
+        <div className="flex items-center justify-between">
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="font-mono font-bold text-primary text-lg">{plano.codigo}</span>
+              <Badge variant={plano.ativo !== false ? 'default' : 'secondary'}>
+                {plano.ativo !== false ? 'Ativo' : 'Inativo'}
+              </Badge>
+              <span className={`text-xs font-semibold px-2 py-0.5 rounded border ${prioridadeCores[prioridade]}`}>
+                {prioridadeLabels[prioridade]}
+              </span>
             </div>
-          )}
-        </div>
-      </CardHeader>
-      <CardContent>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-          <div><span className="text-muted-foreground">Equipamento:</span> {equipamento ? `${equipamento.tag} - ${equipamento.nome}` : '—'}</div>
-          {/* R4: ponto_lubrificacao só aparece quando NÃO há pontos detalhados */}
-          {(!pontosPlano || pontosPlano.length === 0) && plano.ponto_lubrificacao && (
-            <div><span className="text-muted-foreground">Ponto:</span> {plano.ponto_lubrificacao}</div>
-          )}
-          <div><span className="text-muted-foreground">Lubrificante:</span> {plano.lubrificante || '—'}</div>
-          <div><span className="text-muted-foreground">Periodicidade:</span> {plano.periodicidade || '—'} {plano.tipo_periodicidade || ''}</div>
-          <div><span className="text-muted-foreground">Tempo Estimado:</span> {plano.tempo_estimado || 0} min</div>
-          <div><span className="text-muted-foreground">Responsável:</span> {plano.responsavel_nome || '—'}</div>
-          {/* R6: Prioridade removida daqui — já exibida como badge no header */}
-          <div><span className="text-muted-foreground">Última Execução:</span> {plano.ultima_execucao ? new Date(plano.ultima_execucao).toLocaleString('pt-BR') : '—'}</div>
-          <div><span className="text-muted-foreground">Próxima Execução:</span> {plano.proxima_execucao ? new Date(plano.proxima_execucao).toLocaleString('pt-BR') : '—'}</div>
+            <h2 className="text-lg font-semibold">{plano.nome}</h2>
+            {equipamento && <p className="text-sm text-muted-foreground">TAG: {equipamento.tag} — {equipamento.nome}</p>}
+          </div>
+          <div className="flex items-center gap-2">
+            <Button size="sm" variant="outline" onClick={() => onEdit(plano)}>
+              <Edit className="h-4 w-4 mr-1" /> Editar
+            </Button>
+            <Button size="sm" variant="outline" onClick={() => handlePrint()}>
+              <Printer className="h-4 w-4 mr-1" /> Imprimir
+            </Button>
+            <Button size="sm" onClick={() => setExecFormOpen(true)}>
+              <Play className="h-4 w-4 mr-1" /> Executar
+            </Button>
+          </div>
         </div>
 
-        <div className="mt-4">
-          <p className="text-sm text-muted-foreground">Escopo / Instruções</p>
-          <p className="text-sm mt-1">{plano.descricao || 'Sem descrição.'}</p>
+        {/* Stats row */}
+        <div className="flex gap-6 mt-3">
+          <div className="flex items-center gap-1.5 text-sm">
+            <Timer className="h-4 w-4 text-primary" />
+            <span className="font-semibold">{formatMin(tempoTotal)}</span>
+            <span className="text-muted-foreground">tempo total</span>
+          </div>
+          <div className="flex items-center gap-1.5 text-sm">
+            <ListChecks className="h-4 w-4 text-primary" />
+            <span className="font-semibold">{pontosPlano?.length || 0}</span>
+            <span className="text-muted-foreground">pontos</span>
+          </div>
+          <div className="flex items-center gap-1.5 text-sm">
+            <Calendar className="h-4 w-4 text-primary" />
+            <span className="font-semibold">{plano.periodicidade || '—'}{plano.tipo_periodicidade ? ` ${plano.tipo_periodicidade}` : ''}</span>
+            <span className="text-muted-foreground">periodicidade</span>
+          </div>
+          <div className="flex items-center gap-1.5 text-sm">
+            <History className="h-4 w-4 text-primary" />
+            <span className="font-semibold">{execucoes?.length || 0}</span>
+            <span className="text-muted-foreground">execuções</span>
+          </div>
         </div>
+      </div>
 
-        {/* Pontos de Lubrificação — cards expandíveis */}
-        {pontosPlano && pontosPlano.length > 0 && (
-          <div className="mt-4 border-t pt-3">
-            <div className="flex items-center justify-between mb-3">
-              <p className="text-sm font-semibold">
-                Pontos de Lubrificação ({pontosPlano.length}) — Tempo total: {pontosPlano.reduce((s, p) => s + (p.tempo_estimado_min || 0), 0)} min
-              </p>
+      {/* Tabs — mesmo padrão de Preventivas */}
+      <Tabs value={tab} onValueChange={setTab} className="flex-1 flex flex-col overflow-hidden">
+        <TabsList className="mx-4 mt-2 justify-start bg-muted/50">
+          <TabsTrigger value="pontos" className="gap-1"><ListChecks className="h-3.5 w-3.5" />Pontos</TabsTrigger>
+          <TabsTrigger value="historico" className="gap-1"><History className="h-3.5 w-3.5" />Histórico</TabsTrigger>
+          <TabsTrigger value="config" className="gap-1"><Settings className="h-3.5 w-3.5" />Configuração</TabsTrigger>
+        </TabsList>
+
+        {/* Tab: Pontos de Lubrificação */}
+        <TabsContent value="pontos" className="flex-1 overflow-y-auto px-4 pb-4 mt-0">
+          <div className="flex items-center justify-between py-3">
+            <h3 className="font-semibold text-sm text-muted-foreground uppercase tracking-wider">Pontos de Lubrificação</h3>
+            {pontosPlano && pontosPlano.length > 0 && (
               <button
                 type="button"
                 className="text-xs text-muted-foreground hover:text-foreground underline underline-offset-2"
@@ -149,7 +175,16 @@ export function LubrificacaoDetalhe({ plano, equipamentos, onEdit }: Lubrificaca
               >
                 {pontosPlano.every(p => expandedPontos.has(p.id)) ? 'Recolher todos' : 'Expandir todos'}
               </button>
+            )}
+          </div>
+
+          {!pontosPlano || pontosPlano.length === 0 ? (
+            <div className="border-2 border-dashed border-border rounded-lg p-8 text-center">
+              <Droplets className="h-10 w-10 mx-auto mb-2 text-muted-foreground/40" />
+              <p className="text-muted-foreground">Nenhum ponto de lubrificação cadastrado</p>
+              <p className="text-xs text-muted-foreground mt-1">Edite o plano para adicionar pontos</p>
             </div>
+          ) : (
             <div className="space-y-2">
               {pontosPlano.map((p, i) => {
                 const isExpanded = expandedPontos.has(p.id);
@@ -179,9 +214,9 @@ export function LubrificacaoDetalhe({ plano, equipamentos, onEdit }: Lubrificaca
                           <Droplets className="h-3 w-3" /> {p.lubrificante}
                         </span>
                       )}
-                      <span className="text-xs text-muted-foreground flex-shrink-0 font-mono">
-                        {p.tempo_estimado_min} min
-                      </span>
+                      <Badge variant="outline" className="gap-1 flex-shrink-0">
+                        <Clock className="h-3 w-3" /> {p.tempo_estimado_min} min
+                      </Badge>
                     </div>
 
                     {/* Detalhes expandidos */}
@@ -207,14 +242,107 @@ export function LubrificacaoDetalhe({ plano, equipamentos, onEdit }: Lubrificaca
                 );
               })}
             </div>
+          )}
+        </TabsContent>
+
+        {/* Tab: Histórico */}
+        <TabsContent value="historico" className="flex-1 overflow-y-auto px-4 pb-4 mt-0">
+          <h3 className="font-semibold text-sm text-muted-foreground uppercase tracking-wider py-3">Histórico de Execuções</h3>
+          {!execucoes || execucoes.length === 0 ? (
+            <div className="border-2 border-dashed border-border rounded-lg p-8 text-center">
+              <History className="h-10 w-10 mx-auto mb-2 text-muted-foreground/40" />
+              <p className="text-muted-foreground">Nenhuma execução registrada</p>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {execucoes.map((exec: any) => (
+                <div key={exec.id} className="border border-border rounded-lg p-3">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="font-medium text-sm">{exec.executor_nome || 'Não informado'}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {new Date(exec.data_execucao).toLocaleDateString('pt-BR')} às {new Date(exec.data_execucao).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                      </p>
+                    </div>
+                    <Badge variant={exec.status === 'CONCLUIDO' ? 'default' : 'outline'}>
+                      {exec.status}
+                    </Badge>
+                  </div>
+                  {exec.quantidade_utilizada && (
+                    <p className="text-xs mt-1 text-muted-foreground">Quantidade utilizada: {exec.quantidade_utilizada}</p>
+                  )}
+                  {exec.observacoes && <p className="text-xs mt-1 text-muted-foreground">{exec.observacoes}</p>}
+                </div>
+              ))}
+            </div>
+          )}
+        </TabsContent>
+
+        {/* Tab: Configuração */}
+        <TabsContent value="config" className="flex-1 overflow-y-auto px-4 pb-4 mt-0">
+          <h3 className="font-semibold text-sm text-muted-foreground uppercase tracking-wider py-3">Configuração do Plano</h3>
+          <div className="space-y-4 max-w-lg">
+            <div className="p-3 border border-border rounded-lg space-y-2">
+              <p className="font-medium text-sm">Informações</p>
+              <div className="grid grid-cols-2 gap-2 text-xs">
+                <span className="text-muted-foreground">Equipamento</span>
+                <span>{equipamento ? `${equipamento.tag} — ${equipamento.nome}` : '—'}</span>
+                <span className="text-muted-foreground">Lubrificante</span>
+                <span>{plano.lubrificante || '—'}</span>
+                <span className="text-muted-foreground">Periodicidade</span>
+                <span>{plano.periodicidade || '—'} {plano.tipo_periodicidade || ''}</span>
+                <span className="text-muted-foreground">Tempo Estimado</span>
+                <span>{formatMin(tempoTotal)}</span>
+                <span className="text-muted-foreground">Responsável</span>
+                <span>{plano.responsavel_nome || '—'}</span>
+                <span className="text-muted-foreground">Prioridade</span>
+                <span>{prioridadeLabels[prioridade]}</span>
+                <span className="text-muted-foreground">Status</span>
+                <span>{plano.status || 'programado'}</span>
+                {plano.ultima_execucao && (
+                  <><span className="text-muted-foreground">Última execução</span><span>{new Date(plano.ultima_execucao).toLocaleDateString('pt-BR')}</span></>
+                )}
+                {plano.proxima_execucao && (
+                  <><span className="text-muted-foreground">Próxima execução</span><span>{new Date(plano.proxima_execucao).toLocaleDateString('pt-BR')}</span></>
+                )}
+                <span className="text-muted-foreground">Criado em</span>
+                <span>{plano.created_at ? new Date(plano.created_at).toLocaleDateString('pt-BR') : '—'}</span>
+              </div>
+            </div>
+            {plano.descricao && (
+              <div className="p-3 border border-border rounded-lg">
+                <p className="font-medium text-sm mb-1">Escopo / Instruções</p>
+                <p className="text-xs text-muted-foreground whitespace-pre-wrap">{plano.descricao}</p>
+              </div>
+            )}
           </div>
-        )}
-      </CardContent>
+        </TabsContent>
+      </Tabs>
+
+      {/* Dialog: Registrar Execução */}
+      <Dialog open={execFormOpen} onOpenChange={setExecFormOpen}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader><DialogTitle>Registrar Execução</DialogTitle></DialogHeader>
+          <div className="space-y-3">
+            <div className="space-y-1">
+              <Label className="text-xs">Executor *</Label>
+              <Input value={execNome} onChange={e => setExecNome(e.target.value)} placeholder="Nome do técnico" />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs">Observações</Label>
+              <Textarea value={execObs} onChange={e => setExecObs(e.target.value)} rows={2} />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button onClick={handleRegisterExecucao} disabled={createExecucao.isPending}>Registrar</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Hidden print template */}
-      <div className="hidden">
+      <div style={{ display: 'none' }}>
         <LubrificacaoPrintTemplate ref={printRef} plano={plano} pontos={pontosPlano || []} empresa={empresa} equipamentoNome={equipamento ? `${equipamento.tag} - ${equipamento.nome}` : undefined} />
       </div>
-    </Card>
+    </div>
   );
 }
