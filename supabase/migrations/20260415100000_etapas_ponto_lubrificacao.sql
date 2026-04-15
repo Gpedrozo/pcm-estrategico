@@ -28,6 +28,7 @@ CREATE INDEX IF NOT EXISTS idx_etapas_ponto_lub_ponto_id
 ALTER TABLE public.etapas_ponto_lubrificacao ENABLE ROW LEVEL SECURITY;
 
 -- SELECT: Autenticados que podem ver o ponto-pai
+DROP POLICY IF EXISTS etapas_ponto_lub_select ON public.etapas_ponto_lubrificacao;
 CREATE POLICY etapas_ponto_lub_select ON public.etapas_ponto_lubrificacao
   FOR SELECT TO authenticated
   USING (
@@ -40,6 +41,7 @@ CREATE POLICY etapas_ponto_lub_select ON public.etapas_ponto_lubrificacao
   );
 
 -- INSERT
+DROP POLICY IF EXISTS etapas_ponto_lub_insert ON public.etapas_ponto_lubrificacao;
 CREATE POLICY etapas_ponto_lub_insert ON public.etapas_ponto_lubrificacao
   FOR INSERT TO authenticated
   WITH CHECK (
@@ -52,6 +54,7 @@ CREATE POLICY etapas_ponto_lub_insert ON public.etapas_ponto_lubrificacao
   );
 
 -- UPDATE
+DROP POLICY IF EXISTS etapas_ponto_lub_update ON public.etapas_ponto_lubrificacao;
 CREATE POLICY etapas_ponto_lub_update ON public.etapas_ponto_lubrificacao
   FOR UPDATE TO authenticated
   USING (
@@ -64,6 +67,7 @@ CREATE POLICY etapas_ponto_lub_update ON public.etapas_ponto_lubrificacao
   );
 
 -- DELETE
+DROP POLICY IF EXISTS etapas_ponto_lub_delete ON public.etapas_ponto_lubrificacao;
 CREATE POLICY etapas_ponto_lub_delete ON public.etapas_ponto_lubrificacao
   FOR DELETE TO authenticated
   USING (
