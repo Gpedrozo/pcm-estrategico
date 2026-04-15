@@ -637,3 +637,4 @@ export function LubrificacaoDetalhe({ plano, equipamentos, onEdit }: Lubrificaca
     </div>
   );
 }
+
