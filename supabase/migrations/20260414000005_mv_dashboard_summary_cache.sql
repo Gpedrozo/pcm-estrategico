@@ -278,21 +278,16 @@ GRANT EXECUTE ON FUNCTION public.dashboard_summary(UUID) TO authenticated;
 -- ─────────────────────────────────────────────────────────────
 -- 6. pg_cron: refresh a cada 5 minutos
 -- ─────────────────────────────────────────────────────────────
-DO $$
+DO $
 BEGIN
-  -- Remove job antigo se existir
-  IF EXISTS (
-    SELECT 1 FROM cron.job
-    WHERE jobname = 'refresh_all_dashboard_summaries'
-  ) THEN
-    PERFORM cron.unschedule('refresh_all_dashboard_summaries');
-  END IF;
+  -- Remove job antigo se existir (usa EXECUTE para evitar parse error quando cron schema nao existe)
+  EXECUTE 'SELECT cron.unschedule(jobname) FROM cron.job WHERE jobname = ''refresh_all_dashboard_summaries''';
 
-  PERFORM cron.schedule(
+  EXECUTE $cron$SELECT cron.schedule(
     'refresh_all_dashboard_summaries',
     '*/5 * * * *',
-    $$SELECT public.refresh_all_dashboard_summaries()$$
-  );
+    'SELECT public.refresh_all_dashboard_summaries()'
+  )$cron$;
 EXCEPTION WHEN OTHERS THEN
   -- pg_cron pode não estar disponível no plano free
   RAISE NOTICE '[cron] refresh_all_dashboard_summaries não agendado: %', SQLERRM;
