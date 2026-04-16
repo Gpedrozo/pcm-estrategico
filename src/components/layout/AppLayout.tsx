@@ -11,6 +11,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { getImpersonationExpiresAt, getImpersonationPayload, impersonateCompany, listPlatformCompanies, stopImpersonation } from '@/services/ownerPortal.service';
 import { resolveOrRepairTenantHost } from '@/lib/tenantDomain';
 import { useSubscriptionAlert } from '@/hooks/useSubscriptionAlert';
+import { useSubscriptionEnforcement } from '@/hooks/useSubscriptionEnforcement';
 import { createSessionTransferHash } from '@/lib/sessionTransfer';
 import { logger } from '@/lib/logger';
 import { isPersistableAppPath, persistLastAppRoute } from '@/lib/navigationState';
@@ -51,6 +52,7 @@ export function AppLayout() {
   }, [isDark]);
   const { data: tenantVisualIdentity } = useTenantVisualIdentity();
   const { data: subscriptionAlert } = useSubscriptionAlert();
+  useSubscriptionEnforcement();
   const [subscriptionAlertDismissed, setSubscriptionAlertDismissed] = useState(false);
 
   const subscriptionAlertInfo = useMemo((): { message: string; severity: 'warning' | 'danger'; dismissable: boolean; blocked: boolean } | null => {
