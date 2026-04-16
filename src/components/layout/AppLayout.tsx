@@ -53,7 +53,7 @@ export function AppLayout() {
   const { data: subscriptionAlert } = useSubscriptionAlert();
   const [subscriptionAlertDismissed, setSubscriptionAlertDismissed] = useState(false);
 
-  const subscriptionAlertInfo = useMemo((): { message: string; severity: 'warning' | 'danger'; dismissable: boolean } | null => {
+  const subscriptionAlertInfo = useMemo((): { message: string; severity: 'warning' | 'danger'; dismissable: boolean; blocked: boolean } | null => {
     if (!subscriptionAlert) return null;
     const { status, renewal_at, ends_at, plan_name, contact_email, contact_whatsapp, contact_name, custom_message, grace_period_days, alert_days_before } = subscriptionAlert;
 
@@ -80,15 +80,15 @@ export function AppLayout() {
           const msg = custom_message
             ? `${custom_message} (${remaining} dias restantes de carência).${contactLabel}`
             : `Seu plano${plan_name ? ` ${plan_name}` : ''} venceu há ${daysPast} dia(s). Restam ${remaining} dia(s) de carência antes do bloqueio.${contactLabel}`;
-          return { message: msg, severity: 'danger', dismissable: false };
+          return { message: msg, severity: 'danger', dismissable: false, blocked: false };
         }
-        // Past grace — empresa should be blocked by cron, but show anyway
-        return { message: `Seu plano está vencido e a carência expirou. Acesso será bloqueado em breve.${contactLabel}`, severity: 'danger', dismissable: false };
+        // Past grace — block access
+        return { message: `Seu plano está vencido e a carência expirou. O acesso ao sistema foi bloqueado.${contactLabel}`, severity: 'danger', dismissable: false, blocked: true };
       }
 
       if (daysUntil <= alert_days_before) {
         const msg = `Seu plano${plan_name ? ` ${plan_name}` : ''} vence em ${daysUntil} dia(s) (${endsAtDate.toLocaleDateString('pt-BR')}). Renove para evitar interrupção.${contactLabel}`;
-        return { message: msg, severity: 'warning', dismissable: true };
+        return { message: msg, severity: 'warning', dismissable: true, blocked: false };
       }
     }
 
@@ -96,16 +96,16 @@ export function AppLayout() {
     if (subscriptionAlertDismissed) return null;
 
     if (status === 'cancelled' || status === 'suspended') {
-      return { message: `Sua assinatura ${plan_name ? `(${plan_name}) ` : ''}está ${status === 'cancelled' ? 'cancelada' : 'suspensa'}. Entre em contato com o suporte para reativar.${contactLabel}`, severity: 'danger', dismissable: true };
+      return { message: `Sua assinatura ${plan_name ? `(${plan_name}) ` : ''}está ${status === 'cancelled' ? 'cancelada' : 'suspensa'}. Entre em contato com o suporte para reativar.${contactLabel}`, severity: 'danger', dismissable: true, blocked: false };
     }
     if (status === 'past_due') {
-      return { message: `Sua assinatura ${plan_name ? `(${plan_name}) ` : ''}está com pagamento atrasado. Regularize para evitar bloqueio.${contactLabel}`, severity: 'warning', dismissable: true };
+      return { message: `Sua assinatura ${plan_name ? `(${plan_name}) ` : ''}está com pagamento atrasado. Regularize para evitar bloqueio.${contactLabel}`, severity: 'warning', dismissable: true, blocked: false };
     }
     if (status === 'trial' || status === 'teste') {
       const expiresLabel = renewal_at
         ? ` até ${new Date(renewal_at).toLocaleDateString('pt-BR')}`
         : '';
-      return { message: `Você está no período de teste${plan_name ? ` do plano ${plan_name}` : ''}${expiresLabel}. Contrate um plano para garantir a continuidade.`, severity: 'warning', dismissable: true };
+      return { message: `Você está no período de teste${plan_name ? ` do plano ${plan_name}` : ''}${expiresLabel}. Contrate um plano para garantir a continuidade.`, severity: 'warning', dismissable: true, blocked: false };
     }
     return null;
   }, [subscriptionAlert, subscriptionAlertDismissed]);
@@ -529,11 +529,22 @@ export function AppLayout() {
             </div>
           )}
           <main className="pcm-module-main flex-1 overflow-auto bg-gradient-to-b from-background via-background to-muted/20">
-            <div className="pcm-module-shell mx-auto w-full max-w-[1400px] px-4 py-6 md:px-6 md:py-7">
-              <div className="module-page">
-                <Outlet />
+            {subscriptionAlertInfo?.blocked ? (
+              <div className="flex flex-1 items-center justify-center p-8">
+                <div className="mx-auto max-w-md rounded-lg border border-red-300 bg-red-50 p-8 text-center shadow-lg">
+                  <AlertTriangle className="mx-auto h-12 w-12 text-red-500" />
+                  <h2 className="mt-4 text-lg font-bold text-red-900">Acesso Bloqueado</h2>
+                  <p className="mt-2 text-sm text-red-800">{subscriptionAlertInfo.message}</p>
+                  <p className="mt-4 text-xs text-red-700">Entre em contato com o suporte comercial para regularizar sua assinatura e restaurar o acesso ao sistema.</p>
+                </div>
               </div>
-            </div>
+            ) : (
+              <div className="pcm-module-shell mx-auto w-full max-w-[1400px] px-4 py-6 md:px-6 md:py-7">
+                <div className="module-page">
+                  <Outlet />
+                </div>
+              </div>
+            )}
           </main>
           <AssistentePCM />
 
