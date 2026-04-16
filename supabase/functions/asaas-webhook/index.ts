@@ -307,6 +307,35 @@ Deno.serve(async (req: Request) => {
       })
       .eq("id", localSubscription.id);
 
+    // ── Auto-reactivate empresa if payment confirmed and empresa was blocked ──
+    if (
+      (normalizedPaymentStatus === "paid" || normalizedSubscriptionStatus === "ativa") &&
+      localSubscription.empresa_id
+    ) {
+      const { data: empresa } = await admin
+        .from("empresas")
+        .select("status")
+        .eq("id", localSubscription.empresa_id)
+        .maybeSingle();
+      if (empresa && String((empresa as Record<string, unknown>).status) === "blocked") {
+        await admin
+          .from("empresas")
+          .update({ status: "active" })
+          .eq("id", localSubscription.empresa_id);
+        await admin.from("enterprise_audit_logs").insert({
+          empresa_id: localSubscription.empresa_id,
+          action_type: "ASAAS_AUTO_REACTIVATE",
+          severity: "info",
+          source: "asaas-webhook",
+          details: {
+            event: eventName,
+            reason: "payment_confirmed_auto_unblock",
+            previous_status: "blocked",
+            new_status: "active",
+          },
+        });
+      }
+    }
     if (payment?.id) {
       await upsertPayment(admin, {
         subscriptionId: String(localSubscription.id),
