@@ -191,6 +191,8 @@ export default function Owner() {
   const [planName, setPlanName] = useState('')
   const [planPrice, setPlanPrice] = useState('0')
   const [planDefaultPeriod, setPlanDefaultPeriod] = useState<'monthly' | 'quarterly' | 'yearly'>('monthly')
+  const [planUserLimit, setPlanUserLimit] = useState('10')
+  const [planDataLimitMb, setPlanDataLimitMb] = useState('2048')
 
   const [subscriptionPlanId, setSubscriptionPlanId] = useState('')
   const [subscriptionAmount, setSubscriptionAmount] = useState('0')
@@ -1380,7 +1382,7 @@ export default function Owner() {
               {/* Catálogo de Planos */}
               <SurfaceCard title="Catálogo de Planos" subtitle="Gerencie os planos disponíveis para as empresas">
                 <div className="mb-3 flex flex-wrap gap-2">
-                  <button className="rounded-lg bg-sky-700 px-3 py-2 text-sm font-semibold text-white" onClick={() => { setShowPlanForm(!showPlanForm); setEditingPlanId(''); setPlanCode(''); setPlanName(''); setPlanPrice('0'); setPlanDefaultPeriod('monthly'); }}>{showPlanForm && !editingPlanId ? 'Cancelar' : '+ Cadastrar Novo Plano'}</button>
+                  <button className="rounded-lg bg-sky-700 px-3 py-2 text-sm font-semibold text-white" onClick={() => { setShowPlanForm(!showPlanForm); setEditingPlanId(''); setPlanCode(''); setPlanName(''); setPlanPrice('0'); setPlanDefaultPeriod('monthly'); setPlanUserLimit('10'); setPlanDataLimitMb('2048'); }}>{showPlanForm && !editingPlanId ? 'Cancelar' : '+ Cadastrar Novo Plano'}</button>
                 </div>
                 {(showPlanForm || editingPlanId) && (
                   <div className="mb-4 grid gap-2 rounded-lg border border-border bg-muted/50 p-3">
@@ -1397,13 +1399,17 @@ export default function Owner() {
                         <option value="yearly">Anual</option>
                       </select>
                     </div>
+                    <div className="grid gap-2 sm:grid-cols-2">
+                      <input className="rounded-lg border border-input bg-background px-2 py-2 text-sm" type="number" min="1" value={planUserLimit} onChange={(e) => setPlanUserLimit(e.target.value)} placeholder="Limite de usuários" />
+                      <input className="rounded-lg border border-input bg-background px-2 py-2 text-sm" type="number" min="256" value={planDataLimitMb} onChange={(e) => setPlanDataLimitMb(e.target.value)} placeholder="Limite dados (MB)" />
+                    </div>
                     {editingPlanId ? (
                       <div className="flex gap-2">
-                        <button className="rounded-lg bg-amber-600 px-3 py-2 text-sm font-semibold text-white" disabled={busy || !planCode || !planName} onClick={() => { runAction('update_plan', { plan: { id: editingPlanId, code: planCode.toUpperCase(), name: planName, description: `Periodicidade padrão: ${planDefaultPeriod}`, price_month: Number(planPrice || 0), module_flags: { default_periodicity: planDefaultPeriod } } }, 'Plano atualizado com sucesso.'); setEditingPlanId(''); setPlanCode(''); setPlanName(''); setPlanPrice('0'); setPlanDefaultPeriod('monthly'); }}>Alterar plano</button>
-                        <button className="rounded-lg border border-input px-3 py-2 text-sm" onClick={() => { setEditingPlanId(''); setPlanCode(''); setPlanName(''); setPlanPrice('0'); setPlanDefaultPeriod('monthly'); }}>Cancelar edição</button>
+                        <button className="rounded-lg bg-amber-600 px-3 py-2 text-sm font-semibold text-white" disabled={busy || !planCode || !planName} onClick={() => { runAction('update_plan', { plan: { id: editingPlanId, code: planCode.toUpperCase(), name: planName, description: `Periodicidade padrão: ${planDefaultPeriod}`, price_month: Number(planPrice || 0), module_flags: { default_periodicity: planDefaultPeriod } } }, 'Plano atualizado com sucesso.'); setEditingPlanId(''); setPlanCode(''); setPlanName(''); setPlanPrice('0'); setPlanDefaultPeriod('monthly'); setPlanUserLimit('10'); setPlanDataLimitMb('2048'); }}>Alterar plano</button>
+                        <button className="rounded-lg border border-input px-3 py-2 text-sm" onClick={() => { setEditingPlanId(''); setPlanCode(''); setPlanName(''); setPlanPrice('0'); setPlanDefaultPeriod('monthly'); setPlanUserLimit('10'); setPlanDataLimitMb('2048'); }}>Cancelar edição</button>
                       </div>
                     ) : (
-                      <button className="rounded-lg bg-sky-700 px-3 py-2 text-sm font-semibold text-white" disabled={busy || !planCode || !planName} onClick={() => { runAction('create_plan', { plan: { code: planCode.toUpperCase(), name: planName, description: `Periodicidade padrão: ${planDefaultPeriod}`, price_month: Number(planPrice || 0), user_limit: 10, data_limit_mb: 2048, module_flags: { default_periodicity: planDefaultPeriod }, active: true } }, 'Plano criado com sucesso.'); setShowPlanForm(false); }}>Criar plano</button>
+                      <button className="rounded-lg bg-sky-700 px-3 py-2 text-sm font-semibold text-white" disabled={busy || !planCode || !planName} onClick={() => { runAction('create_plan', { plan: { code: planCode.toUpperCase(), name: planName, description: `Periodicidade padrão: ${planDefaultPeriod}`, price_month: Number(planPrice || 0), user_limit: Number(planUserLimit) || 10, data_limit_mb: Number(planDataLimitMb) || 2048, module_flags: { default_periodicity: planDefaultPeriod }, active: true } }, 'Plano criado com sucesso.'); setShowPlanForm(false); }}>Criar plano</button>
                     )}
                   </div>
                 )}
