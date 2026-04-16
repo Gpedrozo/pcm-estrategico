@@ -142,6 +142,8 @@ export function AppSidebar() {
   );
   const { data: overdueMaintenanceCount } = useMaintenanceAlertCount();
 
+  const { data: overdueMaintenanceCount } = useMaintenanceAlertCount();
+
   useEffect(() => {
     let isMounted = true;
 

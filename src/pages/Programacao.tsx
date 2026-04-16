@@ -20,7 +20,6 @@ import {
   Printer,
   ExternalLink,
   Edit,
-  XCircle,
   Plus
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
