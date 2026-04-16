@@ -213,6 +213,7 @@ export default function Owner() {
   const [billingSubscriptionId, setBillingSubscriptionId] = useState('')
   const [billingAmount, setBillingAmount] = useState('')
   const [billingPaymentStatus, setBillingPaymentStatus] = useState('paid')
+  const [billingRenewalAt, setBillingRenewalAt] = useState('')
   const [asaasCustomerId, setAsaasCustomerId] = useState('')
   const [asaasSubscriptionId, setAsaasSubscriptionId] = useState('')
 
@@ -1597,6 +1598,7 @@ export default function Owner() {
                         <option value="pending">Pendente</option>
                         <option value="failed">Falhou</option>
                       </select>
+                      <input className="rounded-lg border border-input bg-background px-2 py-2 text-sm" type="date" value={billingRenewalAt} onChange={(e) => setBillingRenewalAt(e.target.value)} title="Próx. renovação (opcional)" placeholder="Próx. renovação" />
                       <button
                         className="rounded-lg bg-sky-700 px-3 py-2 text-sm font-semibold text-white"
                         disabled={busy || !billingSubscriptionId || !billingPaymentStatus}
@@ -1604,6 +1606,7 @@ export default function Owner() {
                           subscription_id: billingSubscriptionId,
                           amount: billingAmount ? Number(billingAmount) : undefined,
                           payment_status: billingPaymentStatus,
+                          renewal_at: billingRenewalAt || undefined,
                         }, 'Cobranca atualizada com sucesso.')}
                       >
                         Atualizar cobranca
