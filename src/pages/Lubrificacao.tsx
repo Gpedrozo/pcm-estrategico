@@ -124,7 +124,7 @@ export default function Lubrificacao() {
     return result;
   };
 
-  const handleDelete = (plano: PlanoLubrificacao) => {
+  const _handleDelete = (plano: PlanoLubrificacao) => {
     confirm({
       title: 'Excluir plano',
       description: `Deseja excluir o plano ${plano.codigo}? Esta ação não pode ser desfeita.`,

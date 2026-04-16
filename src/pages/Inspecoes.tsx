@@ -90,7 +90,7 @@ export default function Inspecoes() {
   const [statusFilter, setStatusFilter] = useState('all');
   const [rotaTipoFilter, setRotaTipoFilter] = useState('all');
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [selectedInspecao, setSelectedInspecao] = useState<InspecaoRow | null>(null);
+  const [_selectedInspecao, setSelectedInspecao] = useState<InspecaoRow | null>(null);
   const [checklist, setChecklist] = useState<ChecklistItem[]>(INSPECTION_MODELS.DIARIA_OPERACIONAL);
   const [osSuggestion, setOsSuggestion] = useState<OSPendingSuggestion | null>(null);
   const _inspecaoDraft = readDraft<typeof _defaultInspecaoForm>('draft:inspecao');

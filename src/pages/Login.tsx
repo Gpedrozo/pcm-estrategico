@@ -1,7 +1,6 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { getPostLoginPath } from '@/lib/security';
 import { consumePreferredPostLoginPath } from '@/lib/navigationState';
 import { supabase } from '@/integrations/supabase/client';
 import { resolveOrRepairTenantHost } from '@/lib/tenantDomain';
@@ -13,7 +12,6 @@ import {
 import {
   AUTH_RETRY_COUNT_MAX,
   AUTH_RETRY_COUNT_PARAM,
-  HANDOFF_FAILED_PARAM,
   buildTenantLoginUrl,
   getRetryCountFromSearch,
   getTenantBaseDomain,
@@ -228,7 +226,7 @@ export default function Login() {
     logo_menu_url: null,
   };
 
-  const resolvePreferredPath = () => consumePreferredPostLoginPath(effectiveRole);
+  const resolvePreferredPath = useCallback(() => consumePreferredPostLoginPath(effectiveRole), [effectiveRole]);
 
   // Redireciona para dashboard se já estiver logado
   useEffect(() => {
@@ -427,6 +425,8 @@ export default function Login() {
     tenantId,
     tenantBaseDomain,
     currentHost,
+    loginEmail,
+    resolvePreferredPath,
   ]);
 
   // Resolve tenant branding from e-mail when on the main domain (no tenant in context yet).
@@ -467,7 +467,7 @@ export default function Login() {
       if (error) {
         setLoginError(error);
       }
-    } catch (err) {
+    } catch {
       setLoginError('Erro ao fazer login. Tente novamente.');
     } finally {
       setIsLoginLoading(false);

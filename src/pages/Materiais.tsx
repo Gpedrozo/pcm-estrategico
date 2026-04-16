@@ -85,7 +85,7 @@ export default function Materiais() {
   
   // Queries
   const { data: materiais, isLoading: loadingMateriais } = useMateriais();
-  const { data: movimentacoes, isLoading: loadingMovimentacoes } = useMovimentacoes();
+  const { data: movimentacoes,  } = useMovimentacoes();
   
   // Mutations
   const createMaterial = useCreateMaterial();
@@ -160,7 +160,7 @@ export default function Materiais() {
       }
       setIsModalOpen(false);
       clearMaterialDraft();
-    } catch (error) {
+    } catch {
       // Error handled by mutation
     }
   };
@@ -171,7 +171,7 @@ export default function Materiais() {
       await deleteMaterial.mutateAsync(deletingMaterial.id);
       setIsDeleteDialogOpen(false);
       setDeletingMaterial(null);
-    } catch (error) {
+    } catch {
       // Error handled by mutation
     }
   };
@@ -186,7 +186,7 @@ export default function Materiais() {
         usuario_nome: user?.nome || 'Sistema',
       } as MovimentacaoInsert);
       setIsMovimentacaoModalOpen(false);
-    } catch (error) {
+    } catch {
       // Error handled by mutation
     }
   };
