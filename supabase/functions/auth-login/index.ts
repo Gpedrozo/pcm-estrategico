@@ -430,6 +430,7 @@ Deno.serve(async (req) => {
     }
 
     // ── Check empresa status — block if company is blocked ─────────────
+    // Also check subscription grace period directly (don't wait for cron)
     if (admin && tenant?.id) {
       try {
         const { data: empresa } = await admin
@@ -438,7 +439,54 @@ Deno.serve(async (req) => {
           .eq("id", tenant.id)
           .maybeSingle();
 
-        const empresaStatus = String(empresa?.status ?? "active").toLowerCase();
+        let empresaStatus = String(empresa?.status ?? "active").toLowerCase();
+
+        // If empresa is not yet blocked, check subscription grace period
+        if (empresaStatus !== "blocked") {
+          const { data: sub } = await admin
+            .from("subscriptions")
+            .select("status,ends_at")
+            .eq("empresa_id", tenant.id)
+            .in("status", ["ativa", "active", "teste", "trial"])
+            .maybeSingle();
+
+          if (sub) {
+            const subRow = sub as Record<string, unknown>;
+            const endsAt = subRow.ends_at ? new Date(String(subRow.ends_at)) : null;
+            if (endsAt) {
+              // Read grace period from config (default 15)
+              let graceDays = 15;
+              const { data: gpCfg } = await admin
+                .from("configuracoes_sistema")
+                .select("valor")
+                .is("empresa_id", null)
+                .eq("chave", "platform.grace_period_days")
+                .maybeSingle();
+              if (gpCfg) {
+                const v = (gpCfg as Record<string, unknown>).valor;
+                const parsed = Number(typeof v === "string" ? (function() { try { return JSON.parse(v); } catch { return v; } })() : v);
+                if (parsed > 0) graceDays = parsed;
+              }
+
+              const deadline = new Date(endsAt);
+              deadline.setDate(deadline.getDate() + graceDays);
+              if (deadline.getTime() < Date.now()) {
+                // Grace period elapsed — treat as blocked
+                empresaStatus = "blocked";
+                // Also block the empresa in DB so cron alignment
+                await admin
+                  .from("empresas")
+                  .update({ status: "blocked" })
+                  .eq("id", tenant.id);
+                await admin
+                  .from("subscriptions")
+                  .update({ status: "atrasada", payment_status: "late" })
+                  .eq("empresa_id", tenant.id)
+                  .in("status", ["ativa", "active", "teste", "trial"]);
+              }
+            }
+          }
+        }
 
         if (empresaStatus === "blocked") {
           // Fetch platform contact config for the error response
