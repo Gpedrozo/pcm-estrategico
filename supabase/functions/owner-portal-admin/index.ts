@@ -4043,6 +4043,11 @@ Deno.serve(async (req) => {
 
   if (body.action === "set_subscription_status") {
     if (!body.empresa_id || !body.status) return fail("empresa_id and status are required", 400, null, req);
+    // State machine: validate allowed transitions
+    const validStatuses = ["ativa", "atrasada", "cancelada", "teste", "active", "trial", "past_due", "suspended"];
+    if (!validStatuses.includes(String(body.status))) {
+      return fail(`Invalid status '${body.status}'. Allowed: ${validStatuses.join(", ")}`, 400, null, req);
+    }
     const { error } = await admin
       .from("subscriptions")
       .update({ status: body.status })
