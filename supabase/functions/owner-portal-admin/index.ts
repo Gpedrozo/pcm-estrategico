@@ -297,6 +297,10 @@ const SUPPORTED_OWNER_ACTIONS: Payload["action"][] = [
   "enforce_subscription_expiry",
   "set_asaas_api_key",
   "get_asaas_config",
+  "delete_support_ticket",
+  "get_platform_contact",
+  "update_platform_contact",
+  "reactivate_company",
 ];
 
 function resolveRateLimitConfig(action: Payload["action"]) {
