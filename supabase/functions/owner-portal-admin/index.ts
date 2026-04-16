@@ -59,7 +59,8 @@ type Payload = {
     | "list_subscription_payments"
     | "enforce_subscription_expiry"
     | "set_asaas_api_key"
-    | "get_asaas_config";
+    | "get_asaas_config"
+    | "reactivate_company";
   empresa_id?: string;
   include_deleted?: boolean;
   company?: {
@@ -4049,6 +4050,24 @@ Deno.serve(async (req) => {
     if (error) return fail(error.message, 400, null, req);
     await logPlatformAudit(admin, { actorId: auth.user.id, actorEmail: auth.user.email, empresaId: body.empresa_id, actionType: "OWNER_SET_SUBSCRIPTION_STATUS", details: { status: body.status } });
     return ok({ success: true }, 200, req);
+  }
+
+  if (body.action === "reactivate_company") {
+    if (!body.empresa_id) return fail("empresa_id is required", 400, null, req);
+    // 1. Reactivate subscription
+    const { error: subErr } = await admin
+      .from("subscriptions")
+      .update({ status: "ativa", payment_status: "paid" })
+      .eq("empresa_id", body.empresa_id);
+    if (subErr) return fail(subErr.message, 400, null, req);
+    // 2. Unblock empresa
+    const { error: empErr } = await admin
+      .from("empresas")
+      .update({ status: "active" })
+      .eq("id", body.empresa_id);
+    if (empErr) return fail(empErr.message, 400, null, req);
+    await logPlatformAudit(admin, { actorId: auth.user.id, actorEmail: auth.user.email, empresaId: body.empresa_id, actionType: "OWNER_REACTIVATE_COMPANY", details: {} });
+    return ok({ success: true, message: "Company reactivated: subscription=ativa, empresa=active" }, 200, req);
   }
 
   if (body.action === "enforce_subscription_expiry") {

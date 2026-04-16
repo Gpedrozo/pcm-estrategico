@@ -51,6 +51,7 @@ export type OwnerAction =
   | 'enforce_subscription_expiry'
   | 'set_asaas_api_key'
   | 'get_asaas_config'
+  | 'reactivate_company'
   | 'mark_ticket_read_owner'
   | 'get_platform_contact'
   | 'update_platform_contact'
