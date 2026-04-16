@@ -1951,11 +1951,29 @@ Deno.serve(async (req) => {
 
   if (body.action === "health_check") {
     const asaasOk = await isAsaasConfiguredAsync(admin);
+    // Check cron health — verify last execution within 25 hours
+    let cronHealthy = false;
+    let cronLastRun: string | null = null;
+    try {
+      const { data: cronLog } = await admin
+        .from("enterprise_audit_logs")
+        .select("created_at")
+        .eq("action_type", "CRON_ENFORCE_SUBSCRIPTION_EXPIRY")
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (cronLog) {
+        cronLastRun = String((cronLog as Record<string, unknown>).created_at);
+        const lastRunMs = new Date(cronLastRun).getTime();
+        cronHealthy = (Date.now() - lastRunMs) < 25 * 60 * 60 * 1000; // 25h
+      }
+    } catch { /* ignore — cron monitoring is best-effort */ }
     return ok({
       service: "owner-portal-admin",
       status: "ok",
       version: "2026-03-11-owner-health-v1",
       asaas_configured: asaasOk,
+      cron_subscription_expiry: { healthy: cronHealthy, last_run: cronLastRun },
       asaas_base_url: ASAAS_API_BASE_URL,
       cloudflare_provisioning: {
         pages_auto_domain_enabled: CF_PAGES_AUTO_DOMAIN_ENABLED,
