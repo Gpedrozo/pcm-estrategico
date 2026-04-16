@@ -85,7 +85,7 @@ export default function Materiais() {
   
   // Queries
   const { data: materiais, isLoading: loadingMateriais } = useMateriais();
-  const { data: movimentacoes,  } = useMovimentacoes();
+  const { data: movimentacoes } = useMovimentacoes();
   
   // Mutations
   const createMaterial = useCreateMaterial();
