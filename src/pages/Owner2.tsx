@@ -26,7 +26,7 @@ import {
 import { Area, AreaChart, Bar, BarChart, CartesianGrid, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import { useAuth } from '@/contexts/AuthContext'
 import { resolveOrRepairTenantHost } from '@/lib/tenantDomain'
-import { listPlatformCompanies } from '@/services/ownerPortal.service'
+import type { OwnerAction } from '@/services/ownerPortal.service'
 import { uploadToStorage } from '@/services/storage'
 import {
   useOwner2Actions,
@@ -762,7 +762,7 @@ export default function Owner() {
     return slug ? `https://${slug}.${TENANT_BASE_DOMAIN}/login` : ''
   }, [selectedCompany])
 
-  async function runAction(action: any, payload: Record<string, unknown>, successMessage: string) {
+  async function runAction(action: OwnerAction, payload: Record<string, unknown>, successMessage: string) {
     setError(null)
     setFeedback(null)
     try {

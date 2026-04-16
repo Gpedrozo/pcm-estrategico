@@ -15,7 +15,7 @@ import {
 } from 'lucide-react'
 import { SurfaceCard, MetricTile } from './owner2Components'
 import { statusColor, downloadCsv } from './owner2Helpers'
-import type { OwnerUser, OwnerAction } from '@/services/ownerPortal.service'
+import type { OwnerAction } from '@/services/ownerPortal.service'
 import { ROLE_LABELS } from '@/lib/roleLabels'
 
 const PAGE_SIZE = 20
