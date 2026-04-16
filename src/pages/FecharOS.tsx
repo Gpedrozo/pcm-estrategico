@@ -27,6 +27,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import { logger } from '@/lib/logger';
 import { updateWithColumnFallback } from '@/lib/supabaseCompat';
 import { supabase } from '@/integrations/supabase/client';
+import { useScheduledMaintenanceContext } from '@/hooks/useScheduledMaintenanceContext';
+import type { ChecklistItem } from '@/schemas/checklist.schema';
 import { 
   ArrowLeft, 
   Check, 
@@ -117,6 +119,41 @@ export default function FecharOS() {
   const [searchOS, setSearchOS] = useState('');
   const [anexosPendentes, setAnexosPendentes] = useState<File[]>([]);
   const servicoMinLength = 20;
+
+  // ── Checklist técnico do plano (quando O.S. vem de programação) ──
+  const scheduleId = selectedOS ? (selectedOS as Record<string, unknown>).maintenance_schedule_id as string | null : null;
+  const { data: scheduledContext } = useScheduledMaintenanceContext(scheduleId);
+  const hasPlanoChecklist = (scheduledContext?.checklist?.length ?? 0) > 0;
+
+  interface ChecklistResposta { item_id: string; resultado: 'OK' | 'NOK' | 'NA'; observacao: string; }
+  const [checklistRespostas, setChecklistRespostas] = useState<ChecklistResposta[]>([]);
+
+  useEffect(() => {
+    if (!scheduledContext?.checklist?.length) {
+      setChecklistRespostas([]);
+      return;
+    }
+    setChecklistRespostas((prev) => {
+      return scheduledContext.checklist.map((item) => {
+        const existing = prev.find(r => r.item_id === item.id);
+        return existing || { item_id: item.id, resultado: 'OK' as const, observacao: '' };
+      });
+    });
+  }, [scheduledContext?.checklist]);
+
+  const updateChecklistResposta = (itemId: string, field: 'resultado' | 'observacao', value: string) => {
+    setChecklistRespostas((prev) =>
+      prev.map((r) => r.item_id === itemId ? { ...r, [field]: value } : r),
+    );
+  };
+
+  const checklistNokSemJustificativa = useMemo(() => {
+    if (!hasPlanoChecklist) return [];
+    return checklistRespostas.filter((r) => {
+      const item = scheduledContext?.checklist.find(c => c.id === r.item_id);
+      return item?.obrigatorio && r.resultado === 'NOK' && !r.observacao.trim();
+    });
+  }, [checklistRespostas, scheduledContext?.checklist, hasPlanoChecklist]);
 
   const filteredPendingOS = useMemo(() => {
     if (!pendingOS) return [];
@@ -333,13 +370,15 @@ export default function FecharOS() {
       janelaExecucaoPreenchida &&
       janelaExecucaoValida &&
       !dataFimBloqueada &&
-      servicoValido,
+      servicoValido &&
+      checklistNokSemJustificativa.length === 0,
   );
   const checklist: Array<{ label: string; ok: boolean; optional?: boolean }> = [
     { label: 'Mecânico selecionado', ok: Boolean(formData.mecanicoId), optional: true },
     { label: 'Horário de execução válido', ok: janelaExecucaoPreenchida && janelaExecucaoValida },
     ...(bloquearFuturo ? [{ label: 'Data/hora de fim não é futura', ok: !dataFimFutura }] : []),
     { label: `Serviço com mínimo de ${servicoMinLength} caracteres`, ok: servicoValido },
+    ...(hasPlanoChecklist ? [{ label: 'Itens obrigatórios do checklist técnico respondidos', ok: checklistNokSemJustificativa.length === 0 }] : []),
   ];
   const requiredChecklist = checklist.filter((item) => !item.optional);
   const progressoChecklist = requiredChecklist.length > 0 ? Math.round((requiredChecklist.filter((item) => item.ok).length / requiredChecklist.length) * 100) : 0;
@@ -736,9 +775,17 @@ export default function FecharOS() {
             <div className="bg-card border border-border rounded-lg p-4 md:p-6">
               <form id="close-os-form" onSubmit={handleSubmit} className="space-y-6">
                 <Tabs value={activeTab} onValueChange={setActiveTab}>
-                  <TabsList className="grid w-full grid-cols-2">
+                  <TabsList className={`grid w-full ${hasPlanoChecklist ? 'grid-cols-3' : 'grid-cols-2'}`}>
                     <TabsTrigger value="execucao" className="gap-2"><Wrench className="h-4 w-4" />Execução</TabsTrigger>
                     <TabsTrigger value="materiais" className="gap-2"><Package className="h-4 w-4" />Materiais</TabsTrigger>
+                    {hasPlanoChecklist && (
+                      <TabsTrigger value="checklist-tecnico" className="gap-2">
+                        <ClipboardList className="h-4 w-4" />Checklist
+                        {checklistNokSemJustificativa.length > 0 && (
+                          <span className="ml-1 inline-flex items-center justify-center w-5 h-5 text-xs font-bold text-red-600 bg-red-100 rounded-full">!</span>
+                        )}
+                      </TabsTrigger>
+                    )}
                   </TabsList>
 
                   <TabsContent value="execucao" className="space-y-6 mt-6">
@@ -999,6 +1046,91 @@ export default function FecharOS() {
                       />
                     </div>
                   </TabsContent>
+
+                  {/* ── Tab Checklist Técnico (condicional) ── */}
+                  {hasPlanoChecklist && scheduledContext && (
+                    <TabsContent value="checklist-tecnico" className="space-y-4 mt-6">
+                      <div className="px-1">
+                        <div className="flex items-center gap-2 mb-1">
+                          <ClipboardList className="h-5 w-5 text-blue-500" />
+                          <h3 className="font-semibold text-sm">
+                            Checklist Técnico — {scheduledContext.plano_codigo}
+                          </h3>
+                        </div>
+                        <p className="text-xs text-muted-foreground mb-4">
+                          {scheduledContext.plano_nome} • {scheduledContext.tipo === 'preventiva' ? 'Preventiva' : 'Lubrificação'}
+                        </p>
+
+                        {(() => {
+                          const total = scheduledContext.checklist.length;
+                          const respondidos = checklistRespostas.filter(r => r.resultado === 'OK' || r.resultado === 'NA').length;
+                          const pct = total > 0 ? Math.round((respondidos / total) * 100) : 0;
+                          return (
+                            <div className="flex items-center gap-2 mb-4">
+                              <div className="h-2 flex-1 bg-muted rounded-full overflow-hidden">
+                                <div
+                                  className={`h-full transition-all ${pct === 100 ? 'bg-green-500' : 'bg-blue-500'}`}
+                                  style={{ width: `${pct}%` }}
+                                />
+                              </div>
+                              <span className="font-mono font-medium text-xs">{respondidos}/{total}</span>
+                            </div>
+                          );
+                        })()}
+
+                        <div className="border border-border rounded-lg overflow-hidden">
+                          <table className="w-full text-sm">
+                            <thead>
+                              <tr className="bg-muted/50 border-b border-border">
+                                <th className="text-left px-3 py-2 font-medium">Item</th>
+                                <th className="w-16 text-center px-1 py-2 font-medium text-green-600">OK</th>
+                                <th className="w-16 text-center px-1 py-2 font-medium text-red-600">NOK</th>
+                                <th className="w-16 text-center px-1 py-2 font-medium text-muted-foreground">N/A</th>
+                                <th className="w-40 text-left px-3 py-2 font-medium">Obs</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {scheduledContext.checklist.map((item, idx) => {
+                                const resp = checklistRespostas.find(r => r.item_id === item.id);
+                                const resultado = resp?.resultado ?? 'OK';
+                                const isNokSemObs = item.obrigatorio && resultado === 'NOK' && !resp?.observacao?.trim();
+                                return (
+                                  <tr
+                                    key={item.id}
+                                    className={`border-b border-border/50 last:border-0 ${isNokSemObs ? 'bg-red-500/5' : idx % 2 === 0 ? 'bg-background' : 'bg-muted/20'}`}
+                                  >
+                                    <td className="px-3 py-2">
+                                      <span>{item.descricao}</span>
+                                      {item.obrigatorio && <span className="ml-1 text-red-500 text-xs font-bold">*</span>}
+                                    </td>
+                                    <td className="text-center px-1 py-2">
+                                      <input type="radio" name={`check-${item.id}`} checked={resultado === 'OK'} onChange={() => updateChecklistResposta(item.id, 'resultado', 'OK')} className="accent-green-600 w-4 h-4" />
+                                    </td>
+                                    <td className="text-center px-1 py-2">
+                                      <input type="radio" name={`check-${item.id}`} checked={resultado === 'NOK'} onChange={() => updateChecklistResposta(item.id, 'resultado', 'NOK')} className="accent-red-600 w-4 h-4" />
+                                    </td>
+                                    <td className="text-center px-1 py-2">
+                                      <input type="radio" name={`check-${item.id}`} checked={resultado === 'NA'} onChange={() => updateChecklistResposta(item.id, 'resultado', 'NA')} className="accent-gray-500 w-4 h-4" />
+                                    </td>
+                                    <td className="px-3 py-2">
+                                      <input type="text" value={resp?.observacao ?? ''} onChange={(e) => updateChecklistResposta(item.id, 'observacao', e.target.value)} placeholder={isNokSemObs ? 'Justificativa obrigatória' : ''} className={`w-full text-xs px-2 py-1 rounded border ${isNokSemObs ? 'border-red-400 bg-red-50 dark:bg-red-950/30' : 'border-border bg-background'}`} />
+                                    </td>
+                                  </tr>
+                                );
+                              })}
+                            </tbody>
+                          </table>
+                        </div>
+
+                        {checklistNokSemJustificativa.length > 0 && (
+                          <p className="text-xs text-red-500 mt-2 flex items-center gap-1">
+                            <AlertTriangle className="h-3.5 w-3.5" />
+                            {checklistNokSemJustificativa.length} item(ns) obrigatório(s) marcado(s) como NOK sem justificativa.
+                          </p>
+                        )}
+                      </div>
+                    </TabsContent>
+                  )}
 
                 </Tabs>
 

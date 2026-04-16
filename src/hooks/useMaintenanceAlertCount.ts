@@ -2,29 +2,54 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 
+export interface MaintenanceAlertCounts {
+  /** Manutenções com data_programada < hoje (status = programado) */
+  vencidas: number;
+  /** Manutenções com data_programada entre hoje e hoje+7d (status = programado) */
+  proximas: number;
+  /** Total = vencidas + proximas */
+  total: number;
+}
+
 /**
- * Retorna contagem de manutenções vencidas (data_programada < hoje e status = 'programado').
- * Usado no sidebar badge de Programação.
+ * Retorna contagens diferenciadas de manutenções programadas:
+ * - vencidas (vermelha): data < hoje
+ * - próximas (âmbar): hoje ≤ data ≤ hoje+7d
+ * Usado no sidebar badge e dashboard.
  */
 export function useMaintenanceAlertCount() {
   const { tenantId } = useAuth();
 
-  return useQuery({
+  return useQuery<MaintenanceAlertCounts>({
     queryKey: ['maintenance-alert-count', tenantId],
-    queryFn: async () => {
-      if (!tenantId) return 0;
+    queryFn: async (): Promise<MaintenanceAlertCounts> => {
+      if (!tenantId) return { vencidas: 0, proximas: 0, total: 0 };
 
-      const hoje = new Date().toISOString();
+      const hoje = new Date();
+      const hojeIso = hoje.toISOString();
+      const em7dias = new Date(hoje.getTime() + 7 * 86_400_000).toISOString();
 
-      const { count, error } = await supabase
+      // Buscar todas as programadas com data ≤ hoje+7d em uma única query
+      const { data, error } = await supabase
         .from('maintenance_schedule')
-        .select('*', { count: 'exact', head: true })
+        .select('data_programada')
         .eq('empresa_id', tenantId)
         .eq('status', 'programado')
-        .lt('data_programada', hoje);
+        .lte('data_programada', em7dias);
 
-      if (error) return 0;
-      return count ?? 0;
+      if (error || !data) return { vencidas: 0, proximas: 0, total: 0 };
+
+      let vencidas = 0;
+      let proximas = 0;
+      for (const row of data) {
+        if (row.data_programada < hojeIso) {
+          vencidas++;
+        } else {
+          proximas++;
+        }
+      }
+
+      return { vencidas, proximas, total: vencidas + proximas };
     },
     enabled: !!tenantId,
     staleTime: 60_000,

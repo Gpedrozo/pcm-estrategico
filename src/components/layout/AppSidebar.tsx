@@ -140,7 +140,9 @@ export function AppSidebar() {
     (sum, t) => sum + (t.unread_client_messages ?? 0),
     0,
   );
-  const { data: overdueMaintenanceCount } = useMaintenanceAlertCount();
+  const { data: maintenanceAlerts } = useMaintenanceAlertCount();
+  const overdueMaintenanceCount = maintenanceAlerts?.total ?? 0;
+  const maintenanceVencidas = maintenanceAlerts?.vencidas ?? 0;
 
   useEffect(() => {
     let isMounted = true;
@@ -202,9 +204,12 @@ export function AppSidebar() {
               {unreadClientCount > 99 ? '99+' : unreadClientCount}
             </span>
           )}
-          {item.url === '/programacao' && (overdueMaintenanceCount ?? 0) > 0 && (
-            <span className="ml-auto inline-flex h-5 min-w-[20px] items-center justify-center rounded-full bg-amber-500 px-1.5 text-[11px] font-bold leading-none text-white" title="Manutenções vencidas">
-              {(overdueMaintenanceCount ?? 0) > 99 ? '99+' : overdueMaintenanceCount}
+          {item.url === '/programacao' && overdueMaintenanceCount > 0 && (
+            <span
+              className={`ml-auto inline-flex h-5 min-w-[20px] items-center justify-center rounded-full px-1.5 text-[11px] font-bold leading-none text-white ${maintenanceVencidas > 0 ? 'bg-red-500' : 'bg-amber-500'}`}
+              title={maintenanceVencidas > 0 ? `${maintenanceVencidas} vencida(s)` : 'Manutenções próximas'}
+            >
+              {overdueMaintenanceCount > 99 ? '99+' : overdueMaintenanceCount}
             </span>
           )}
         </NavLink>

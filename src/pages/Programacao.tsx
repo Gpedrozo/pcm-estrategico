@@ -28,6 +28,10 @@ import { useMaintenanceScheduleExpanded, useUpdateMaintenanceStatus, type Expand
 import { usePontosPlano } from '@/hooks/usePontosPlano';
 import { useCreateOrdemServico } from '@/hooks/useOrdensServico';
 import { useDadosEmpresa } from '@/hooks/useDadosEmpresa';
+import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
+import { insertWithColumnFallback } from '@/lib/supabaseCompat';
+import { logger } from '@/lib/logger';
 import { format, addDays, addMonths, subMonths, startOfWeek, startOfMonth, endOfMonth, startOfDay, endOfDay, isSameDay, parseISO, getDaysInMonth, getDay } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
@@ -70,6 +74,7 @@ export default function Programacao() {
   const { data: empresa } = useDadosEmpresa();
   const updateSchedule = useUpdateMaintenanceStatus();
   const createOSMutation = useCreateOrdemServico();
+  const { tenantId } = useAuth();
 
   const weekStart = useMemo(() => startOfWeek(currentDate, { weekStartsOn: 1 }), [currentDate]);
   const weekDays = useMemo(() => {
@@ -241,6 +246,41 @@ export default function Programacao() {
       usuario_abertura: null,
       maintenance_schedule_id: selectedEvent.id,
     });
+
+    // ── Criar registro de execução vinculado (PENDENTE) ──
+    try {
+      const tipoSchedule = selectedEvent.tipo;
+      const origemId = selectedEvent.origem_id;
+
+      if (tipoSchedule === 'preventiva' && origemId && tenantId) {
+        await insertWithColumnFallback(
+          async (payload) =>
+            supabase.from('execucoes_preventivas').insert(payload).select().single(),
+          {
+            plano_id: origemId,
+            empresa_id: tenantId,
+            data_execucao: selectedEvent.data_programada || new Date().toISOString(),
+            status: 'PENDENTE',
+            os_gerada_id: novaOS.id,
+            executor_nome: 'Programação de Manutenção',
+          } as Record<string, unknown>,
+        );
+      } else if (tipoSchedule === 'lubrificacao' && origemId) {
+        await insertWithColumnFallback(
+          async (payload) =>
+            supabase.from('execucoes_lubrificacao').insert(payload).select().single(),
+          {
+            plano_id: origemId,
+            data_execucao: selectedEvent.data_programada || new Date().toISOString(),
+            status: 'PENDENTE',
+            os_gerada_id: novaOS.id,
+            executor_nome: 'Programação de Manutenção',
+          } as Record<string, unknown>,
+        );
+      }
+    } catch (execError) {
+      logger.warn('emitir_os_exec_vinculo_falhou', { os_id: novaOS.id, error: String(execError) });
+    }
 
     await updateSchedule.mutateAsync({ id: selectedEvent.id, status: 'emitido' });
 
