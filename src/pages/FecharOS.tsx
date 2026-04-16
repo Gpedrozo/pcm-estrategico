@@ -128,12 +128,14 @@ export default function FecharOS() {
   interface ChecklistResposta { item_id: string; resultado: 'OK' | 'NOK' | 'NA'; observacao: string; }
   const [checklistRespostas, setChecklistRespostas] = useState<ChecklistResposta[]>([]);
 
+  // Sincronizar respostas quando o checklist do plano é carregado
   useEffect(() => {
     if (!scheduledContext?.checklist?.length) {
       setChecklistRespostas([]);
       return;
     }
     setChecklistRespostas((prev) => {
+      // Preservar respostas existentes quando possível
       return scheduledContext.checklist.map((item) => {
         const existing = prev.find(r => r.item_id === item.id);
         return existing || { item_id: item.id, resultado: 'OK' as const, observacao: '' };
@@ -147,6 +149,7 @@ export default function FecharOS() {
     );
   };
 
+  // Itens obrigatórios NOK sem observação bloqueiam fechamento
   const checklistNokSemJustificativa = useMemo(() => {
     if (!hasPlanoChecklist) return [];
     return checklistRespostas.filter((r) => {
@@ -154,7 +157,6 @@ export default function FecharOS() {
       return item?.obrigatorio && r.resultado === 'NOK' && !r.observacao.trim();
     });
   }, [checklistRespostas, scheduledContext?.checklist, hasPlanoChecklist]);
-
   const filteredPendingOS = useMemo(() => {
     if (!pendingOS) return [];
     if (!searchOS.trim()) return pendingOS;
@@ -1061,6 +1063,7 @@ export default function FecharOS() {
                           {scheduledContext.plano_nome} • {scheduledContext.tipo === 'preventiva' ? 'Preventiva' : 'Lubrificação'}
                         </p>
 
+                        {/* Progresso do checklist */}
                         {(() => {
                           const total = scheduledContext.checklist.length;
                           const respondidos = checklistRespostas.filter(r => r.resultado === 'OK' || r.resultado === 'NA').length;
@@ -1078,6 +1081,7 @@ export default function FecharOS() {
                           );
                         })()}
 
+                        {/* Tabela de itens */}
                         <div className="border border-border rounded-lg overflow-hidden">
                           <table className="w-full text-sm">
                             <thead>
@@ -1104,16 +1108,40 @@ export default function FecharOS() {
                                       {item.obrigatorio && <span className="ml-1 text-red-500 text-xs font-bold">*</span>}
                                     </td>
                                     <td className="text-center px-1 py-2">
-                                      <input type="radio" name={`check-${item.id}`} checked={resultado === 'OK'} onChange={() => updateChecklistResposta(item.id, 'resultado', 'OK')} className="accent-green-600 w-4 h-4" />
+                                      <input
+                                        type="radio"
+                                        name={`check-${item.id}`}
+                                        checked={resultado === 'OK'}
+                                        onChange={() => updateChecklistResposta(item.id, 'resultado', 'OK')}
+                                        className="accent-green-600 w-4 h-4"
+                                      />
                                     </td>
                                     <td className="text-center px-1 py-2">
-                                      <input type="radio" name={`check-${item.id}`} checked={resultado === 'NOK'} onChange={() => updateChecklistResposta(item.id, 'resultado', 'NOK')} className="accent-red-600 w-4 h-4" />
+                                      <input
+                                        type="radio"
+                                        name={`check-${item.id}`}
+                                        checked={resultado === 'NOK'}
+                                        onChange={() => updateChecklistResposta(item.id, 'resultado', 'NOK')}
+                                        className="accent-red-600 w-4 h-4"
+                                      />
                                     </td>
                                     <td className="text-center px-1 py-2">
-                                      <input type="radio" name={`check-${item.id}`} checked={resultado === 'NA'} onChange={() => updateChecklistResposta(item.id, 'resultado', 'NA')} className="accent-gray-500 w-4 h-4" />
+                                      <input
+                                        type="radio"
+                                        name={`check-${item.id}`}
+                                        checked={resultado === 'NA'}
+                                        onChange={() => updateChecklistResposta(item.id, 'resultado', 'NA')}
+                                        className="accent-gray-500 w-4 h-4"
+                                      />
                                     </td>
                                     <td className="px-3 py-2">
-                                      <input type="text" value={resp?.observacao ?? ''} onChange={(e) => updateChecklistResposta(item.id, 'observacao', e.target.value)} placeholder={isNokSemObs ? 'Justificativa obrigatória' : ''} className={`w-full text-xs px-2 py-1 rounded border ${isNokSemObs ? 'border-red-400 bg-red-50 dark:bg-red-950/30' : 'border-border bg-background'}`} />
+                                      <input
+                                        type="text"
+                                        value={resp?.observacao ?? ''}
+                                        onChange={(e) => updateChecklistResposta(item.id, 'observacao', e.target.value)}
+                                        placeholder={isNokSemObs ? 'Justificativa obrigatória' : ''}
+                                        className={`w-full text-xs px-2 py-1 rounded border ${isNokSemObs ? 'border-red-400 bg-red-50 dark:bg-red-950/30' : 'border-border bg-background'}`}
+                                      />
                                     </td>
                                   </tr>
                                 );
@@ -1125,7 +1153,7 @@ export default function FecharOS() {
                         {checklistNokSemJustificativa.length > 0 && (
                           <p className="text-xs text-red-500 mt-2 flex items-center gap-1">
                             <AlertTriangle className="h-3.5 w-3.5" />
-                            {checklistNokSemJustificativa.length} item(ns) obrigatório(s) marcado(s) como NOK sem justificativa.
+                            {checklistNokSemJustificativa.length} item(ns) obrigatório(s) marcado(s) como NOK sem justificativa. Preencha a observação para fechar.
                           </p>
                         )}
                       </div>

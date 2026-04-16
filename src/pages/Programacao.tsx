@@ -248,6 +248,9 @@ export default function Programacao() {
     });
 
     // ── Criar registro de execução vinculado (PENDENTE) ──
+    // Conecta a O.S. à execução programada para rastreabilidade completa.
+    // Em caso de falha aqui, a O.S. ainda é válida — a retroalimentação
+    // será feita pela RPC no fechamento mesmo sem este registro.
     try {
       const tipoSchedule = selectedEvent.tipo;
       const origemId = selectedEvent.origem_id;
@@ -281,7 +284,6 @@ export default function Programacao() {
     } catch (execError) {
       logger.warn('emitir_os_exec_vinculo_falhou', { os_id: novaOS.id, error: String(execError) });
     }
-
     await updateSchedule.mutateAsync({ id: selectedEvent.id, status: 'emitido' });
 
     setEmittedOSInfo({ numero_os: novaOS.numero_os, os_id: novaOS.id });
