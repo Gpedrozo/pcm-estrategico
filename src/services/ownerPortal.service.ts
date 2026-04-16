@@ -52,6 +52,8 @@ export type OwnerAction =
   | 'set_asaas_api_key'
   | 'get_asaas_config'
   | 'mark_ticket_read_owner'
+  | 'get_platform_contact'
+  | 'update_platform_contact'
 
 export interface OwnerCompany {
   id: string

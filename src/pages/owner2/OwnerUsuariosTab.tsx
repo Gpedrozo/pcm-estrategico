@@ -15,7 +15,7 @@ import {
 } from 'lucide-react'
 import { SurfaceCard, MetricTile } from './owner2Components'
 import { statusColor, downloadCsv } from './owner2Helpers'
-import type { OwnerUser } from '@/services/ownerPortal.service'
+import type { OwnerUser, OwnerAction } from '@/services/ownerPortal.service'
 import { ROLE_LABELS } from '@/lib/roleLabels'
 
 const PAGE_SIZE = 20
@@ -26,7 +26,7 @@ interface OwnerUsuariosTabProps {
   companyId: string
   isOwnerMaster: boolean
   busy: boolean
-  runAction: (action: string, payload: Record<string, unknown>, successMessage: string) => void
+  runAction: (action: OwnerAction, payload: Record<string, unknown>, successMessage: string) => void
   setFeedback: (msg: string | null) => void
 }
 

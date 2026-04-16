@@ -1,3 +1,5 @@
+import { type OwnerAction } from '@/services/ownerPortal.service'
+
 export const OWNER_TABS = [
   'dashboard',
   'monitoramento',
@@ -49,7 +51,7 @@ export type CriticalActionRequest = {
   title: string
   description: string
   confirmText: string
-  action: string
+  action: OwnerAction
   payload: Record<string, unknown>
   successMessage: string
   masterOnly?: boolean

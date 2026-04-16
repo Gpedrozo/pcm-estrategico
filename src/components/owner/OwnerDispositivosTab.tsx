@@ -23,10 +23,12 @@ import {
   Building2,
 } from 'lucide-react';
 
+import type { OwnerAction } from '@/services/ownerPortal.service';
+
 interface Props {
   selectedEmpresaId: string | null;
   empresas: Record<string, unknown>[];
-  runAction: (action: string, payload: Record<string, unknown>, successMsg: string) => void;
+  runAction: (action: OwnerAction, payload: Record<string, unknown>, successMsg: string) => void;
   busy: boolean;
 }
 

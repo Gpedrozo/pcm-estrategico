@@ -753,6 +753,7 @@ export default function Owner() {
 
     setCriticalRequest(null)
     setCriticalConfirmValue('')
+    setAuthPassword('')
   }
 
   const selectedCompanyLoginUrl = useMemo(() => {
