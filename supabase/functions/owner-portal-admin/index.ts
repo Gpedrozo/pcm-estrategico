@@ -3656,6 +3656,16 @@ Deno.serve(async (req) => {
       return fail("Não é permitido excluir usuários SYSTEM_OWNER ou SYSTEM_ADMIN.", 400, null, req);
     }
 
+    // Verificar senha do actor para exclusao destrutiva
+    const passwordOk = await verifyActorPassword({
+      email: auth.user.email,
+      password: body.auth_password ?? null,
+      expectedUserId: auth.user.id,
+    });
+    if (!passwordOk) {
+      return fail("Senha invalida para confirmar exclusao de usuario.", 401, null, req);
+    }
+
     // Coletar dados do perfil ANTES de deletar (para audit log)
     const { data: profileData } = await admin
       .from("profiles")
