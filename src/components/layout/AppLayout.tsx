@@ -112,6 +112,7 @@ export function AppLayout() {
         : '';
       return { message: `Você está no período de teste${plan_name ? ` do plano ${plan_name}` : ''}${expiresLabel}. Contrate um plano para garantir a continuidade.`, severity: 'warning', dismissable: true, blocked: false };
     }
+
     // --- No subscription record found ---
     if (status === 'missing') {
       return { message: `Nenhum plano ativo encontrado para esta empresa. Entre em contato com o administrador para configurar sua assinatura.${contactLabel}`, severity: 'warning', dismissable: true, blocked: false };

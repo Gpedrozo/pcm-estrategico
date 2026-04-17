@@ -280,7 +280,6 @@ export async function requireTenantContext(
     } as const;
   }
 
-
   // ── Empresa status check — block API access if empresa is blocked ──
   // System operators (SYSTEM_OWNER, SYSTEM_ADMIN, MASTER_TI) bypass this check
   const sysOp = await isSystemOperator(admin, userId);
