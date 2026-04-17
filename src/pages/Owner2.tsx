@@ -1939,6 +1939,7 @@ export default function Owner() {
                 await runAction('respond_support_ticket', { ticket_id: selectedTicketId, response: ticketResponse, status: ticketResponseStatus, attachments: attachmentUrls }, 'Ticket respondido com sucesso.')
                 setTicketResponse('')
                 setTicketAttachments([])
+                ticketsQuery.refetch()
               } catch { /* handled by runAction */ } finally { setTicketUploading(false) }
             }
 
@@ -1946,7 +1947,7 @@ export default function Owner() {
               setSelectedTicketId(tid)
               const ticket = tickets.find((t) => String(t.id) === tid)
               if (ticket && Number(ticket.unread_owner_messages ?? 0) > 0) {
-                try { await execute.mutateAsync({ action: 'mark_ticket_read_owner', payload: { ticket_id: tid } }) } catch { /* non-critical */ }
+                try { await execute.mutateAsync({ action: 'mark_ticket_read_owner', payload: { ticket_id: tid } }); ticketsQuery.refetch() } catch { /* non-critical */ }
               }
               setTimeout(() => ownerThreadEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 100)
             }
