@@ -125,6 +125,18 @@ export function LubrificacaoDetalhe({ plano, equipamentos, onEdit, onDelete }: L
     ]);
   };
 
+  const handleMoveEtapa = async (etapa, pontoId, direction) => {
+    const pontoEtapas = etapasMap?.get(pontoId) || [];
+    const sorted = [...pontoEtapas].sort((a, b) => a.ordem - b.ordem);
+    const idx = sorted.findIndex(e => e.id === etapa.id);
+    const swapIdx = direction === 'up' ? idx - 1 : idx + 1;
+    if (swapIdx < 0 || swapIdx >= sorted.length) return;
+    await Promise.all([
+      updateEtapa.mutateAsync({ id: etapa.id, ponto_id: pontoId, ordem: sorted[swapIdx].ordem }),
+      updateEtapa.mutateAsync({ id: sorted[swapIdx].id, ponto_id: pontoId, ordem: etapa.ordem }),
+    ]);
+  };
+
   const handleOpenEditPonto = (ponto: RotaPonto) => {
     setEditingPonto(ponto);
     setEditingPontoData({
@@ -367,7 +379,7 @@ export function LubrificacaoDetalhe({ plano, equipamentos, onEdit, onDelete }: L
                     {isExpanded && (
                       <div className="border-t border-border">
                         {/* Spreadsheet header */}
-                        <div className="grid grid-cols-[40px_1fr_100px_80px_90px] gap-2 px-3 py-2 bg-muted/20 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                        <div className="grid grid-cols-[40px_1fr_100px_80px_130px] gap-2 px-3 py-2 bg-muted/20 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                           <span>#</span>
                           <span>Etapa</span>
                           <span>Tempo</span>
@@ -389,6 +401,12 @@ export function LubrificacaoDetalhe({ plano, equipamentos, onEdit, onDelete }: L
                                 {et.concluido ? 'OK' : 'Pendente'}
                               </Badge>
                               <div className="flex gap-1">
+                                <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => handleMoveEtapa(et, p.id, 'up')} disabled={eIdx === 0} title="Mover acima">
+                                  <ArrowUp className="h-3 w-3" />
+                                </Button>
+                                <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => handleMoveEtapa(et, p.id, 'down')} disabled={eIdx === etapas.length - 1} title="Mover abaixo">
+                                  <ArrowDown className="h-3 w-3" />
+                                </Button>
                                 <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => handleOpenEditEtapa(et, p.id)} title="Editar etapa">
                                   <Edit className="h-3 w-3" />
                                 </Button>
