@@ -7,6 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Separator } from '@/components/ui/separator';
+import { Switch } from '@/components/ui/switch';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { useConfirmDialog } from '@/components/ui/confirm-dialog';
 import {
@@ -20,7 +21,7 @@ import { LubrificacaoPrintTemplate } from '@/components/lubrificacao/Lubrificaca
 import { useDadosEmpresa } from '@/hooks/useDadosEmpresa';
 import { usePontosPlano, useCreatePontoPlano, useUpdatePontoPlano, useDeletePontoPlano } from '@/hooks/usePontosPlano';
 import { useEtapasByPlano, useCreateEtapa, useUpdateEtapa, useDeleteEtapa, type EtapaPontoLubrificacao } from '@/hooks/useEtapasPontoLubrificacao';
-import { useExecucoesByPlanoLubrificacao, useCreateExecucaoLubrificacao, useDeletePlanoLubrificacao } from '@/hooks/useLubrificacao';
+import { useExecucoesByPlanoLubrificacao, useCreateExecucaoLubrificacao, useDeletePlanoLubrificacao, useUpdatePlanoLubrificacao } from '@/hooks/useLubrificacao';
 
 const prioridadeCores: Record<string, string> = {
   baixa: 'bg-green-100 text-green-800 border-green-300',
@@ -80,6 +81,7 @@ export function LubrificacaoDetalhe({ plano, equipamentos, onEdit, onDelete }: L
   const { data: execucoes } = useExecucoesByPlanoLubrificacao(plano?.id ?? null);
   const createExecucao = useCreateExecucaoLubrificacao();
   const deletePlano = useDeletePlanoLubrificacao();
+  const updatePlano = useUpdatePlanoLubrificacao();
 
   // Pontos mutations
   const createPonto = useCreatePontoPlano();
@@ -459,7 +461,17 @@ export function LubrificacaoDetalhe({ plano, equipamentos, onEdit, onDelete }: L
         <TabsContent value="config" className="flex-1 overflow-y-auto px-4 pb-4 mt-0">
           <h3 className="font-semibold text-sm text-muted-foreground uppercase tracking-wider py-3">Configuração do Plano</h3>
           <div className="space-y-4 max-w-lg">
-            <div className="p-3 border border-border rounded-lg space-y-2">
+                        <div className="flex items-center justify-between p-3 border border-border rounded-lg">
+              <div>
+                <p className="font-medium text-sm">Plano Ativo</p>
+                <p className="text-xs text-muted-foreground">Ativar ou desativar este plano</p>
+              </div>
+              <Switch
+                checked={plano.ativo}
+                onCheckedChange={(v) => updatePlano.mutate({ id: plano.id, ativo: v })}
+              />
+            </div>
+<div className="p-3 border border-border rounded-lg space-y-2">
               <p className="font-medium text-sm">Informações</p>
               <div className="grid grid-cols-2 gap-2 text-xs">
                 <span className="text-muted-foreground">Equipamento</span>
