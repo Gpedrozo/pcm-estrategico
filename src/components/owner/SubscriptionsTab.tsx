@@ -117,9 +117,25 @@ export default function SubscriptionsTab({
     busy: hookBusy,
     runAction,
     refreshPayments,
+    plansLoading,
+    subscriptionsLoading,
   } = hook
 
+  // Local company selector for new subscription form
+  const [localCompanyId, setLocalCompanyId] = useState(companyId)
+
   const [showNewSubForm, setShowNewSubForm] = useState(false)
+
+  const effectiveCompanyId = localCompanyId || companyId
+
+  if (plansLoading || subscriptionsLoading) {
+    return (
+      <div className="flex items-center justify-center py-16">
+        <div className="animate-spin h-6 w-6 rounded-full border-2 border-sky-600 border-t-transparent" />
+        <span className="ml-3 text-sm text-muted-foreground">Carregando dados de assinaturas...</span>
+      </div>
+    )
+  }
 
   return (
     <div className="grid gap-6">
@@ -221,13 +237,24 @@ export default function SubscriptionsTab({
         </button>
         {showNewSubForm && (
           <div className="grid gap-2 rounded-lg border border-border bg-muted/50 p-3">
-            <p className="text-xs font-semibold text-muted-foreground">Empresa selecionada: {companyId || 'nenhuma'}</p>
+            <div className="grid gap-2 sm:grid-cols-2">
+              <div>
+                <label className="text-xs font-semibold text-muted-foreground">Empresa</label>
+                <select className="mt-1 w-full rounded-lg border border-input bg-background px-2 py-2 text-sm" value={effectiveCompanyId} onChange={(e) => setLocalCompanyId(e.target.value)}>
+                  <option value="">Selecione a empresa</option>
+                  {companies.map((c) => <option key={String(c.id)} value={String(c.id)}>{String(c.nome ?? c.slug ?? c.id)}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="text-xs font-semibold text-muted-foreground">Plano</label>
+                <select className="mt-1 w-full rounded-lg border border-input bg-background px-2 py-2 text-sm" value={subscriptionPlanId} onChange={(e) => setSubscriptionPlanId(e.target.value)}>
+                  <option value="">Selecione o plano</option>
+                  {plans.map((p) => <option key={String(p.id)} value={String(p.id)}>{String(p.name ?? p.code ?? p.id)}</option>)}
+                </select>
+              </div>
+            </div>
             <div className="grid gap-2 sm:grid-cols-3">
-              <select className="rounded-lg border border-input bg-background px-2 py-2 text-sm" value={subscriptionPlanId} onChange={(e) => setSubscriptionPlanId(e.target.value)}>
-                <option value="">Plano</option>
-                {plans.map((p) => <option key={String(p.id)} value={String(p.id)}>{String(p.name ?? p.code ?? p.id)}</option>)}
-              </select>
-              <input className="rounded-lg border border-input bg-background px-2 py-2 text-sm" value={subscriptionAmount} onChange={(e) => setSubscriptionAmount(e.target.value)} placeholder="Valor" />
+              <input className="rounded-lg border border-input bg-background px-2 py-2 text-sm" value={subscriptionAmount} onChange={(e) => setSubscriptionAmount(e.target.value)} placeholder="Valor (R$)" />
               <select className="rounded-lg border border-input bg-background px-2 py-2 text-sm" value={subscriptionPeriod} onChange={(e) => setSubscriptionPeriod(e.target.value)}>
                 <option value="monthly">Mensal</option>
                 <option value="quarterly">Trimestral</option>
@@ -235,7 +262,7 @@ export default function SubscriptionsTab({
                 <option value="custom">Customizada</option>
               </select>
             </div>
-            <div className="grid gap-2 sm:grid-cols-5">
+            <div className="grid gap-2 sm:grid-cols-4">
               <select className="rounded-lg border border-input bg-background px-2 py-2 text-sm" value={subscriptionStatus} onChange={(e) => setSubscriptionStatus(e.target.value)}>
                 <option value="teste">TESTE</option>
                 <option value="ativa">Ativa</option>
@@ -253,8 +280,8 @@ export default function SubscriptionsTab({
             </div>
             <button
               className="rounded-lg bg-sky-700 px-3 py-2 text-sm font-semibold text-white hover:bg-sky-800 disabled:opacity-50 transition-colors"
-              disabled={ownerBusy || !companyId || !subscriptionPlanId}
-              onClick={() => runOwnerAction('create_subscription', { subscription: { empresa_id: companyId, plan_id: subscriptionPlanId, amount: Number(subscriptionAmount || 0), period: subscriptionPeriod, payment_method: subscriptionPaymentMethod, starts_at: subscriptionStartsAt || undefined, renewal_at: subscriptionRenewalAt || undefined, ends_at: subscriptionEndsAt || undefined, status: subscriptionStatus } }, 'Assinatura criada com sucesso.')}
+              disabled={ownerBusy || !effectiveCompanyId || !subscriptionPlanId}
+              onClick={() => runOwnerAction('create_subscription', { subscription: { empresa_id: effectiveCompanyId, plan_id: subscriptionPlanId, amount: Number(subscriptionAmount || 0), period: subscriptionPeriod, payment_method: subscriptionPaymentMethod, starts_at: subscriptionStartsAt || undefined, renewal_at: subscriptionRenewalAt || undefined, ends_at: subscriptionEndsAt || undefined, status: subscriptionStatus } }, 'Assinatura criada com sucesso.')}
             >
               Criar assinatura
             </button>

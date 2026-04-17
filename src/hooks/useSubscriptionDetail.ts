@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useOwner2Actions, useOwner2Plans, useOwner2Subscriptions } from '@/hooks/useOwner2Portal'
+import { callOwnerAdmin } from '@/services/ownerPortal.service'
 import { safeArray, asNumber } from '@/pages/owner2/owner2Helpers'
 import type { OwnerAction } from '@/services/ownerPortal.service'
 
@@ -53,14 +54,13 @@ export function useSubscriptionDetail(enabled: boolean, companies: Record<string
     }
   }, [filteredSubscriptions, selectedSubId])
 
-  // Load payments for selected subscription
+  // Load payments for selected subscription (uses callOwnerAdmin directly to avoid mutation collision)
   useEffect(() => {
     if (!enabled || !selectedSubId || paymentsLoaded) return
     let cancelled = false
     setPaymentsLoading(true)
-    execute
-      .mutateAsync({ action: 'list_subscription_payments' as OwnerAction, payload: { subscription_id: selectedSubId } })
-      .then((res) => {
+    callOwnerAdmin({ action: 'list_subscription_payments' as OwnerAction, subscription_id: selectedSubId })
+      .then((res: any) => {
         if (!cancelled) {
           const arr = Array.isArray(res?.payments) ? res.payments : []
           setPayments(arr as PaymentRecord[])
@@ -70,18 +70,16 @@ export function useSubscriptionDetail(enabled: boolean, companies: Record<string
       .catch(() => { if (!cancelled) setPayments([]) })
       .finally(() => { if (!cancelled) setPaymentsLoading(false) })
     return () => { cancelled = true }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [enabled, selectedSubId, paymentsLoaded])
 
-  // ASAAS health check
+  // ASAAS health check (uses callOwnerAdmin directly to avoid mutation collision)
   useEffect(() => {
     if (!enabled) return
     let cancelled = false
-    execute.mutateAsync({ action: 'health_check' as OwnerAction, payload: {} })
-      .then((res) => { if (!cancelled) setAsaasHealthOk(res?.asaas_configured === true) })
+    callOwnerAdmin({ action: 'health_check' as OwnerAction })
+      .then((res: any) => { if (!cancelled) setAsaasHealthOk(res?.asaas_configured === true) })
       .catch(() => { if (!cancelled) setAsaasHealthOk(false) })
     return () => { cancelled = true }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [enabled])
 
   // Reset payments when selection changes
