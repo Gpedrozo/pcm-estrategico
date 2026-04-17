@@ -274,7 +274,26 @@ Deno.serve(async (req: Request) => {
     const admin = adminClient();
     const localSubscription = await resolveLocalSubscription(admin, payload);
 
-    if (!localSubscription?.id) {
+    // ── Validate empresa ownership when externalReference is present ──
+    {
+      const extRef = parseExternalReference(
+        payload?.payment?.externalReference ?? payload?.subscription?.externalReference
+      );
+      if (extRef.empresaId && localSubscription?.empresa_id && extRef.empresaId !== localSubscription.empresa_id) {
+        await logAlert("ASAAS_WEBHOOK_EMPRESA_MISMATCH", "critical", {
+          event: eventName,
+          expected_empresa: extRef.empresaId,
+          actual_empresa: localSubscription.empresa_id,
+          subscription_id: localSubscription.id,
+        });
+        return new Response(JSON.stringify({ error: "Empresa mismatch" }), {
+          status: 403,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+    }
+
+        if (!localSubscription?.id) {
       await logAlert("ASAAS_WEBHOOK_SUBSCRIPTION_NOT_FOUND", "warning", {
         event: eventName,
         payment_id: payload?.payment?.id ?? null,
