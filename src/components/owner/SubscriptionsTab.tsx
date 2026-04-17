@@ -269,6 +269,8 @@ export default function SubscriptionsTab({
                 <option value="atrasada">Atrasada</option>
                 <option value="cancelada">Cancelada</option>
               </select>
+            </div>
+            <div className="grid gap-2 sm:grid-cols-4">
               <select className="rounded-lg border border-input bg-background px-2 py-2 text-sm" value={subscriptionPaymentMethod} onChange={(e) => setSubscriptionPaymentMethod(e.target.value)}>
                 <option value="pix">PIX</option>
                 <option value="boleto">Boleto</option>
