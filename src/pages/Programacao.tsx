@@ -30,6 +30,7 @@ import { useCreateOrdemServico } from '@/hooks/useOrdensServico';
 import { useDadosEmpresa } from '@/hooks/useDadosEmpresa';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
+import { materializeSchedule, advanceMasterSchedule } from '@/services/maintenanceSchedule';
 import { insertWithColumnFallback } from '@/lib/supabaseCompat';
 import { logger } from '@/lib/logger';
 import { format, addDays, addMonths, subMonths, startOfWeek, startOfMonth, endOfMonth, startOfDay, endOfDay, isSameDay, parseISO, getDaysInMonth, getDay } from 'date-fns';
@@ -218,14 +219,65 @@ export default function Programacao() {
 
   const handleEmitirOS = async () => {
     if (!selectedEvent) return;
+
+    let scheduleId = selectedEvent.id;
+    let scheduleDate = selectedEvent.data_programada;
+
+    // ── Se for projeção virtual, materializar primeiro ──
     if (selectedEvent.virtual) {
-      toast({ title: 'Ação indisponível', description: 'Ações só são permitidas na próxima ocorrência real.', variant: 'destructive' });
-      return;
+      try {
+        const masterId = selectedEvent.id.replace(/_vn?\d+$/, '');
+        const { data: masterRow, error: mErr } = await supabase
+          .from('maintenance_schedule')
+          .select('*')
+          .eq('id', masterId)
+          .single();
+        if (mErr || !masterRow) {
+          toast({ title: 'Erro', description: 'Registro master não encontrado.', variant: 'destructive' });
+          return;
+        }
+        const materialized = await materializeSchedule(masterRow, selectedEvent.data_programada);
+        scheduleId = materialized.id;
+        scheduleDate = materialized.data_programada;
+
+        let intervalDays = 0;
+        if (masterRow.tipo === 'lubrificacao') {
+          const { data: lubPlan } = await supabase
+            .from('planos_lubrificacao')
+            .select('periodicidade,tipo_periodicidade')
+            .eq('id', masterRow.origem_id)
+            .single();
+          if (lubPlan && lubPlan.periodicidade > 0) {
+            const tp = lubPlan.tipo_periodicidade || 'dias';
+            if (tp === 'dias') intervalDays = lubPlan.periodicidade;
+            else if (tp === 'semanas') intervalDays = lubPlan.periodicidade * 7;
+            else if (tp === 'meses') intervalDays = lubPlan.periodicidade * 30;
+            else if (tp === 'horas') intervalDays = Math.max(1, Math.round(lubPlan.periodicidade / 24));
+          }
+        } else if (masterRow.tipo === 'preventiva') {
+          const { data: prevPlan } = await supabase
+            .from('planos_preventivos')
+            .select('frequencia_dias')
+            .eq('id', masterRow.origem_id)
+            .single();
+          if (prevPlan?.frequencia_dias && prevPlan.frequencia_dias > 0) {
+            intervalDays = prevPlan.frequencia_dias;
+          }
+        }
+
+        if (intervalDays > 0) {
+          await advanceMasterSchedule(masterId, masterRow.empresa_id, selectedEvent.data_programada, intervalDays);
+        }
+
+        logger.info('materialize_projection', { masterId, materializedId: scheduleId, intervalDays });
+      } catch (matErr) {
+        toast({ title: 'Erro ao materializar', description: String(matErr), variant: 'destructive' });
+        return;
+      }
     }
 
     const equipamento = resolveEquipamentoByEvent(selectedEvent);
     const tag = equipamento?.tag || '';
-
 
     const novaOS = await createOSMutation.mutateAsync({
       tipo: mapMaintenanceTipoToOsTipo(selectedEvent.tipo),
@@ -236,13 +288,9 @@ export default function Programacao() {
       problema: selectedEvent.descricao || `Execução programada: ${selectedEvent.titulo}`,
       tempo_estimado: null,
       usuario_abertura: null,
-      maintenance_schedule_id: selectedEvent.id,
+      maintenance_schedule_id: scheduleId,
     });
 
-    // ── Criar registro de execução vinculado (PENDENTE) ──
-    // Conecta a O.S. à execução programada para rastreabilidade completa.
-    // Em caso de falha aqui, a O.S. ainda é válida — a retroalimentação
-    // será feita pela RPC no fechamento mesmo sem este registro.
     try {
       const tipoSchedule = selectedEvent.tipo;
       const origemId = selectedEvent.origem_id;
@@ -254,7 +302,7 @@ export default function Programacao() {
           {
             plano_id: origemId,
             empresa_id: tenantId,
-            data_execucao: selectedEvent.data_programada || new Date().toISOString(),
+            data_execucao: scheduleDate || new Date().toISOString(),
             status: 'PENDENTE',
             os_gerada_id: novaOS.id,
             executor_nome: 'Programação de Manutenção',
@@ -266,7 +314,7 @@ export default function Programacao() {
             supabase.from('execucoes_lubrificacao').insert(payload).select().single(),
           {
             plano_id: origemId,
-            data_execucao: selectedEvent.data_programada || new Date().toISOString(),
+            data_execucao: scheduleDate || new Date().toISOString(),
             status: 'PENDENTE',
             os_gerada_id: novaOS.id,
             executor_nome: 'Programação de Manutenção',
@@ -276,7 +324,7 @@ export default function Programacao() {
     } catch (execError) {
       logger.warn('emitir_os_exec_vinculo_falhou', { os_id: novaOS.id, error: String(execError) });
     }
-    await updateSchedule.mutateAsync({ id: selectedEvent.id, status: 'emitido' });
+    await updateSchedule.mutateAsync({ id: scheduleId, status: 'emitido' });
 
     setEmittedOSInfo({ numero_os: novaOS.numero_os, os_id: novaOS.id });
 
@@ -1079,7 +1127,7 @@ export default function Programacao() {
               {/* Virtual event notice */}
               {selectedEvent.virtual && (
                 <div className="rounded-md border border-blue-500/30 bg-blue-500/5 p-3 text-sm text-blue-700 dark:text-blue-300">
-                  <strong>Projeção de recorrência</strong> — Esta é uma ocorrência futura calculada. Ações só estão disponíveis na próxima ocorrência real.
+                  <strong>Projeção de recorrência</strong> — Esta é uma ocorrência futura calculada. Ao emitir a O.S., o registro será criado automaticamente.
                 </div>
               )}
 
@@ -1141,14 +1189,14 @@ export default function Programacao() {
                 <Button
                   className="gap-2"
                   onClick={() => void handleEmitirOS()}
-                  disabled={!!selectedEvent.virtual || createOSMutation.isPending || ['emitido', 'executado', 'concluido', 'concluida'].includes((selectedEvent.status || '').toLowerCase())}
+                  disabled={createOSMutation.isPending || ['emitido', 'executado', 'concluido', 'concluida'].includes((selectedEvent.status || '').toLowerCase())}
                 >
                   {createOSMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Calendar className="h-4 w-4" />}
                   Emitir O.S
                 </Button>
 
                 {/* Reprint button - visible when OS already emitted */}
-                {(selectedEvent.status === 'emitido' || emittedOSInfo) && !selectedEvent.virtual && (
+                {(selectedEvent.status === 'emitido' || emittedOSInfo) && (
                   <Button
                     variant="outline"
                     className="gap-2"
@@ -1161,11 +1209,24 @@ export default function Programacao() {
                 <Button
                   variant="outline"
                   className="gap-2"
-                  disabled={!!selectedEvent.virtual}
-                  onClick={() => {
+                  onClick={async () => {
                     if (!rescheduleDate) return;
+                    let targetId = selectedEvent.id;
+                    if (selectedEvent.virtual) {
+                      try {
+                        const masterId = selectedEvent.id.replace(/_vn?\d+$/, '');
+                        const { data: masterRow, error: mErr } = await supabase
+                          .from('maintenance_schedule')
+                          .select('*')
+                          .eq('id', masterId)
+                          .single();
+                        if (mErr || !masterRow) { toast({ title: 'Erro', description: 'Registro master não encontrado.', variant: 'destructive' }); return; }
+                        const materialized = await materializeSchedule(masterRow, selectedEvent.data_programada);
+                        targetId = materialized.id;
+                      } catch (e) { toast({ title: 'Erro ao materializar', description: String(e), variant: 'destructive' }); return; }
+                    }
                     updateSchedule.mutate({
-                      id: selectedEvent.id,
+                      id: targetId,
                       dataProgramada: new Date(rescheduleDate).toISOString(),
                       status: 'programado',
                     });
@@ -1193,7 +1254,6 @@ export default function Programacao() {
                 <Button
                   variant="outline"
                   className="gap-2 sm:col-span-2"
-                  disabled={!!selectedEvent.virtual}
                   onClick={handlePrintFicha}
                 >
                   <Printer className="h-4 w-4" /> Imprimir ficha para execução

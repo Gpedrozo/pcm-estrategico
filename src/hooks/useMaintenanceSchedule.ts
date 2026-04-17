@@ -102,6 +102,15 @@ export function useMaintenanceScheduleExpanded(fromIso?: string, toIso?: string)
       // 3) Expand recurrences
       const result: ExpandedScheduleRow[] = [];
 
+      // Build a set of real (materialized) schedule keys to avoid duplicate virtual projections
+      const realScheduleKeys = new Set<string>();
+      for (const sched of schedules as MaintenanceScheduleRow[]) {
+        if (sched.data_programada) {
+          const dayKey = sched.data_programada.slice(0, 10);
+          realScheduleKeys.add(`${sched.origem_id}_${dayKey}`);
+        }
+      }
+
       for (const sched of schedules as MaintenanceScheduleRow[]) {
         if (!sched.data_programada) continue;
         const baseDate = new Date(sched.data_programada);
@@ -135,14 +144,17 @@ export function useMaintenanceScheduleExpanded(fromIso?: string, toIso?: string)
             if (idx === 0) {
               result.push({ ...sched, virtual: false, recurrence_index: 0 });
             } else {
-              result.push({
-                ...sched,
-                id: `${sched.id}_v${idx}`,
-                data_programada: d.toISOString(),
-                status: 'programado',
-                virtual: true,
-                recurrence_index: idx,
-              });
+              const projDayKey = d.toISOString().slice(0, 10);
+              if (!realScheduleKeys.has(`${sched.origem_id}_${projDayKey}`)) {
+                result.push({
+                  ...sched,
+                  id: `${sched.id}_v${idx}`,
+                  data_programada: d.toISOString(),
+                  status: 'programado',
+                  virtual: true,
+                  recurrence_index: idx,
+                });
+              }
             }
           }
           idx++;
@@ -155,14 +167,17 @@ export function useMaintenanceScheduleExpanded(fromIso?: string, toIso?: string)
         d = new Date(baseDate.getTime() - idx * intervalDays * 86400000);
         while (d >= viewStart && idx <= 60) {
           if (d <= viewEnd) {
-            result.push({
-              ...sched,
-              id: `${sched.id}_vn${idx}`,
-              data_programada: d.toISOString(),
-              status: 'programado',
-              virtual: true,
-              recurrence_index: -idx,
-            });
+            const projDayKey = d.toISOString().slice(0, 10);
+            if (!realScheduleKeys.has(`${sched.origem_id}_${projDayKey}`)) {
+              result.push({
+                ...sched,
+                id: `${sched.id}_vn${idx}`,
+                data_programada: d.toISOString(),
+                status: 'programado',
+                virtual: true,
+                recurrence_index: -idx,
+              });
+            }
           }
           idx++;
           d = new Date(baseDate.getTime() - idx * intervalDays * 86400000);

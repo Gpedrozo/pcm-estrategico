@@ -62,6 +62,54 @@ export async function upsertMaintenanceSchedule(input: MaintenanceScheduleUpsert
   } as MaintenanceScheduleRow;
 }
 
+/**
+ * Materializa uma projeção virtual: cria um novo registro real no DB
+ * clonando o master, mas com a data projetada.
+ * Retorna o novo registro real (com UUID gerado pelo banco).
+ */
+export async function materializeSchedule(
+  master: MaintenanceScheduleRow,
+  projectedDate: string,
+) {
+  const { data, error } = await supabase
+    .from('maintenance_schedule')
+    .insert({
+      empresa_id: master.empresa_id,
+      tipo: master.tipo,
+      origem_id: master.origem_id,
+      equipamento_id: master.equipamento_id,
+      titulo: master.titulo,
+      descricao: master.descricao,
+      data_programada: projectedDate,
+      status: 'programado',
+      responsavel: master.responsavel,
+    })
+    .select()
+    .single();
+  if (error) throw error;
+  return data as MaintenanceScheduleRow;
+}
+
+/**
+ * Avança o master (registro original) para a próxima data de recorrência.
+ * Se intervalDays <= 0, apenas marca como emitido sem avançar.
+ */
+export async function advanceMasterSchedule(
+  masterId: string,
+  empresaId: string,
+  currentDate: string,
+  intervalDays: number,
+) {
+  if (intervalDays <= 0) return;
+  const nextDate = new Date(new Date(currentDate).getTime() + intervalDays * 86400000);
+  const { error } = await supabase
+    .from('maintenance_schedule')
+    .update({ data_programada: nextDate.toISOString(), status: 'programado' })
+    .eq('id', masterId)
+    .eq('empresa_id', empresaId);
+  if (error) throw error;
+}
+
 export async function deleteMaintenanceSchedule(tipo: MaintenanceTipo, origemId: string, empresaId?: string) {
   if (!empresaId) throw new Error('empresa_id obrigatório para delete em maintenance_schedule');
   const query = supabase
