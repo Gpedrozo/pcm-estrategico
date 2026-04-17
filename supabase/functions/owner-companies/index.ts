@@ -9,7 +9,6 @@ const ALLOWED_ACTIONS = [
   "create_company",
   "update_company",
   "set_company_status",
-  "block_company",
 ] as const;
 
 Deno.serve((req) => proxyOwnerAction(req, {

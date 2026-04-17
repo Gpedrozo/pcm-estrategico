@@ -36,7 +36,6 @@ type Payload = {
     | "get_company_settings"
     | "update_company_settings"
     | "set_user_inactivity_timeout"
-    | "block_company"
     | "change_plan"
     | "platform_stats"
     | "create_system_admin"
@@ -274,7 +273,6 @@ const SUPPORTED_OWNER_ACTIONS: Payload["action"][] = [
   "get_company_settings",
   "update_company_settings",
   "set_user_inactivity_timeout",
-  "block_company",
   "change_plan",
   "platform_stats",
   "create_system_admin",
@@ -3119,7 +3117,7 @@ Deno.serve(async (req) => {
     return ok({ success: true, warning: updateWarning }, 200, req);
   }
 
-  if (body.action === "set_company_status" || body.action === "block_company") {
+  if (body.action === "set_company_status") {
     if (!body.empresa_id) return fail("empresa_id is required", 400, null, req);
 
     // Verificar senha para bloqueio/desbloqueio de empresa
@@ -3131,7 +3129,7 @@ Deno.serve(async (req) => {
       });
       if (!pwOk) return fail("Senha invalida.", 401, null, req);
     }
-    const status = body.action === "block_company" ? "blocked" : (body.status ?? "active");
+    const status = body.status ?? "active";
     const { error } = await admin
       .from("empresas")
       .update({ status })
