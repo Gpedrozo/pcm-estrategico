@@ -45,10 +45,12 @@ import {
   Upload,
   FileText,
   CalendarClock,
+  Printer,
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { OSStatusBadge } from '@/components/os/OSStatusBadge';
 import { OSTypeBadge } from '@/components/os/OSTypeBadge';
+import { OSPrintDialog } from '@/components/os/OSPrintDialog';
 import { Skeleton } from '@/components/ui/skeleton';
 import { normalizeOSStatus, normalizeOSType } from '@/lib/osBadges';
 
@@ -725,7 +727,16 @@ export default function FecharOS() {
             <div className="bg-card border border-border rounded-lg p-4">
               <div className="flex items-center gap-2 mb-3">
                 <FileCheck className="h-5 w-5 text-primary" />
-                <h2 className="text-lg font-semibold">Fechamento — {selectedOS.numero_os}</h2>
+                <h2 className="text-lg font-semibold flex-1">Fechamento — {selectedOS.numero_os}</h2>
+                <OSPrintDialog
+                  os={selectedOS}
+                  trigger={
+                    <Button variant="outline" size="sm" className="gap-1.5" title="Reimprimir O.S.">
+                      <Printer className="h-4 w-4" />
+                      Imprimir
+                    </Button>
+                  }
+                />
               </div>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3 p-3 bg-muted/30 rounded-lg border border-border/50">
                 <div>
