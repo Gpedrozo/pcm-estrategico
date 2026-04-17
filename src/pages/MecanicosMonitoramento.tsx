@@ -47,11 +47,7 @@ export default function MecanicosMonitoramento() {
   const [loading, setLoading] = useState(true);
   const [autoRefresh, setAutoRefresh] = useState(true);
 
-<<<<<<< HEAD
-  // Carregar mecânicos online
-=======
   // Carregar mecanicos online
->>>>>>> bce4b5e92f89dee57c74176eafa717010e70ce2c
   const carregarMecanicosOnline = useCallback(async () => {
     try {
       const { data, error } = await supabase
