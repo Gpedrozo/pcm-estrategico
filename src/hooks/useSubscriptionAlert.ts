@@ -31,7 +31,26 @@ export function useSubscriptionAlert() {
         .eq('empresa_id', tenantId)
         .maybeSingle();
 
-      if (error || !data) return null;
+      if (error || !data) {
+        // Nenhuma subscription encontrada — retornar status 'missing' para que
+        // o frontend possa exibir aviso de que não há plano ativo.
+        // NÃO bloqueia (pode ser empresa em setup), mas alerta o admin.
+        if (!error && !data) {
+          return {
+            status: 'missing',
+            renewal_at: null,
+            ends_at: null,
+            plan_name: null,
+            contact_email: null,
+            contact_whatsapp: null,
+            contact_name: null,
+            custom_message: null,
+            grace_period_days: 15,
+            alert_days_before: 7,
+          };
+        }
+        return null;
+      }
 
       const row = data as Record<string, unknown>;
 

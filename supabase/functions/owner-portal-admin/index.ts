@@ -374,7 +374,6 @@ function shouldEnforceRateLimit(action: Payload["action"]) {
     "respond_support_ticket",
     "update_company_settings",
     "set_user_inactivity_timeout",
-    "block_company",
     "change_plan",
     "create_system_admin",
     "impersonate_company",

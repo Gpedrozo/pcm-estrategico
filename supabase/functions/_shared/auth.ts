@@ -280,6 +280,27 @@ export async function requireTenantContext(
     } as const;
   }
 
+
+  // ── Empresa status check — block API access if empresa is blocked ──
+  // System operators (SYSTEM_OWNER, SYSTEM_ADMIN, MASTER_TI) bypass this check
+  const sysOp = await isSystemOperator(admin, userId);
+  if (!sysOp) {
+    const { data: empresa } = await admin
+      .from("empresas")
+      .select("status")
+      .eq("id", resolved.empresaId)
+      .maybeSingle();
+
+    const empresaStatus = String(empresa?.status ?? "active").toLowerCase();
+    if (empresaStatus === "blocked" || empresaStatus === "deleted") {
+      return {
+        error: "Empresa bloqueada ou inativa. Acesso negado.",
+        status: 403,
+        reason: "empresa-blocked",
+      } as const;
+    }
+  }
+
   return {
     empresaId: resolved.empresaId,
     source: resolved.source,

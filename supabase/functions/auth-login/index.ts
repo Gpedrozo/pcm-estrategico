@@ -535,9 +535,14 @@ Deno.serve(async (req) => {
           }, req);
         }
       } catch (checkErr: any) {
-        console.error("[auth-login] empresa status check degraded (allowing login)", {
+        console.error("[auth-login] empresa status check FAILED \u2014 denying login (fail-closed)", {
           reason: checkErr?.message ?? String(checkErr),
+          empresa_id: tenant?.id,
+          user_email: email,
         });
+        return fail("Não foi possível verificar o status da empresa. Tente novamente em instantes.", 503, {
+          code: "empresa_check_unavailable",
+        }, req);
       }
     }
 
