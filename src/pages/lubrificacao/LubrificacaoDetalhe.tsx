@@ -13,7 +13,7 @@ import { useConfirmDialog } from '@/components/ui/confirm-dialog';
 import {
   Printer, Edit, Play, Clock, Calendar, ChevronDown, ChevronRight,
   GripVertical, Droplets, History, Timer, ListChecks, Settings,
-  Plus, Trash2, ArrowUp, ArrowDown,
+  Plus, Trash2, ArrowUp, ArrowDown, ArrowLeft,
 } from 'lucide-react';
 import type { EquipamentoRow } from '@/hooks/useEquipamentos';
 import type { PlanoLubrificacao, RotaPonto } from '@/types/lubrificacao';
@@ -44,9 +44,10 @@ interface LubrificacaoDetalheProps {
   plano: PlanoLubrificacao | null;
   equipamentos: EquipamentoRow[];
   onEdit: (plano: PlanoLubrificacao) => void;
+  onBack?: () => void;
 }
 
-export function LubrificacaoDetalhe({ plano, equipamentos, onEdit, onDelete }: LubrificacaoDetalheProps) {
+export function LubrificacaoDetalhe({ plano, equipamentos, onEdit, onDelete, onBack }: LubrificacaoDetalheProps) {
   const [tab, setTab] = useState('pontos');
   const [expandedPontos, setExpandedPontos] = useState<Set<string>>(new Set());
   const [execFormOpen, setExecFormOpen] = useState(false);
@@ -233,7 +234,13 @@ export function LubrificacaoDetalhe({ plano, equipamentos, onEdit, onDelete }: L
       {/* Header — mesmo padrão de Preventivas */}
       <div className="p-4 border-b border-border bg-muted/30">
         <div className="flex items-center justify-between">
-          <div>
+          <div className="flex items-center gap-3">
+            {onBack && (
+              <Button size="icon" variant="ghost" className="h-8 w-8 shrink-0" onClick={onBack} title="Voltar para lista">
+                <ArrowLeft className="h-4 w-4" />
+              </Button>
+            )}
+            <div>
             <div className="flex items-center gap-2">
               <span className="font-mono font-bold text-primary text-lg">{plano.codigo}</span>
               <Badge variant={plano.ativo !== false ? 'default' : 'secondary'}>
@@ -245,6 +252,7 @@ export function LubrificacaoDetalhe({ plano, equipamentos, onEdit, onDelete }: L
             </div>
             <h2 className="text-lg font-semibold">{plano.nome}</h2>
             {equipamento && <p className="text-sm text-muted-foreground">TAG: {equipamento.tag} — {equipamento.nome}</p>}
+            </div>
           </div>
           <div className="flex items-center gap-2">
             <Button size="sm" variant="outline" onClick={() => onEdit(plano)}>

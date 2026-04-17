@@ -187,7 +187,7 @@ export default function Preventiva() {
         {/* Right panel - Detail */}
         <div className="flex-1 overflow-hidden">
           {selectedPlano ? (
-            <PlanoDetailPanel plano={selectedPlano} equipamentos={equipamentos || []} />
+            <PlanoDetailPanel plano={selectedPlano} equipamentos={equipamentos || []} onBack={() => setSelectedPlanoId(null)} />
           ) : (
             <div className="h-full flex items-center justify-center bg-card border border-border rounded-lg">
               <div className="text-center text-muted-foreground">

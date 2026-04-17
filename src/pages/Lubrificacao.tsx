@@ -187,6 +187,7 @@ export default function Lubrificacao() {
                 setFormOpen(true);
               }}
             onDelete={() => setSelectedPlano(null)}
+            onBack={() => setSelectedPlano(null)}
             />
           ) : (
             <div className="h-full flex items-center justify-center bg-card border border-border rounded-lg">

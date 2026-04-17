@@ -15,7 +15,7 @@ import { useConfirmDialog } from '@/components/ui/confirm-dialog';
 import {
   Plus, Trash2, Edit, Play, Clock, Calendar, ChevronDown, ChevronRight,
   GripVertical, Copy, History, Timer,
-  ListChecks, Settings, ArrowUp, ArrowDown, Printer
+  ListChecks, Settings, ArrowUp, ArrowDown, Printer, ArrowLeft
 } from 'lucide-react';
 import type { PlanoPreventivo } from '@/hooks/usePlanosPreventivos';
 import { useUpdatePlanoPreventivo, useDeletePlanoPreventivo } from '@/hooks/usePlanosPreventivos';
@@ -35,6 +35,7 @@ import { PRINT_PAGE_STYLE } from '@/components/print/DocumentPrintBase';
 interface Props {
   plano: PlanoPreventivo;
   equipamentos: EquipamentoRow[];
+  onBack?: () => void;
 }
 
 const formatMin = (min: number) => {
@@ -43,7 +44,7 @@ const formatMin = (min: number) => {
   return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
 };
 
-export default function PlanoDetailPanel({ plano, equipamentos }: Props) {
+export default function PlanoDetailPanel({ plano, equipamentos, onBack }: Props) {
   const [tab, setTab] = useState('estrutura');
   const [isEditingPlano, setIsEditingPlano] = useState(false);
   const [addAtividadeOpen, setAddAtividadeOpen] = useState(false);
@@ -229,13 +230,20 @@ export default function PlanoDetailPanel({ plano, equipamentos }: Props) {
       {/* Header */}
       <div className="p-4 border-b border-border bg-muted/30">
         <div className="flex items-center justify-between">
-          <div>
+          <div className="flex items-center gap-3">
+            {onBack && (
+              <Button size="icon" variant="ghost" className="h-8 w-8 shrink-0" onClick={onBack} title="Voltar para lista">
+                <ArrowLeft className="h-4 w-4" />
+              </Button>
+            )}
+            <div>
             <div className="flex items-center gap-2">
               <span className="font-mono font-bold text-primary text-lg">{plano.codigo}</span>
               <Badge variant={plano.ativo ? 'default' : 'secondary'}>{plano.ativo ? 'Ativo' : 'Inativo'}</Badge>
             </div>
             <h2 className="text-lg font-semibold">{plano.nome}</h2>
             {plano.tag && <p className="text-sm text-muted-foreground">TAG: {plano.tag}</p>}
+            </div>
           </div>
           <div className="flex items-center gap-2">
             <Button size="sm" variant="outline" onClick={() => { setEditingPlanoData({ nome: plano.nome, descricao: plano.descricao, equipamento_id: plano.equipamento_id || '', tipo_gatilho: plano.tipo_gatilho, frequencia_dias: plano.frequencia_dias, frequencia_ciclos: plano.frequencia_ciclos, condicao_disparo: plano.condicao_disparo || '', tolerancia_antes_dias: plano.tolerancia_antes_dias ?? 0, tolerancia_depois_dias: plano.tolerancia_depois_dias ?? 0, tempo_estimado_min: plano.tempo_estimado_min, instrucoes: plano.instrucoes, ativo: plano.ativo }); setIsEditingPlano(true); }}>
