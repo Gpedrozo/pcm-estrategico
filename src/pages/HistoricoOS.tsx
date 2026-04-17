@@ -35,6 +35,18 @@ import { OSTypeBadge } from '@/components/os/OSTypeBadge';
 import { OSPrintDialog } from '@/components/os/OSPrintDialog';
 import { DataTablePagination } from '@/components/ui/data-table-pagination';
 import { useOSImpressoesMap, useOSImpressoes } from '@/hooks/useOSImpressoes';
+import { useCancelOrdemServico } from '@/hooks/useCancelOrdemServico';
+import { Textarea } from '@/components/ui/textarea';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { 
   Search, 
   FileText, 
@@ -306,6 +318,12 @@ export default function HistoricoOS() {
   const [hoveredOS, setHoveredOS] = useState<OrdemServicoRow | null>(null);
   const [, setHoverPoint] = useState<{ x: number; y: number } | null>(null);
   const [activeQuickDays, setActiveQuickDays] = useState<number | null>(null);
+
+  // Cancel OS
+  const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
+  const [cancelTargetOS, setCancelTargetOS] = useState<OrdemServicoRow | null>(null);
+  const [cancelMotivo, setCancelMotivo] = useState('');
+  const cancelMutation = useCancelOrdemServico();
 
   const { data: ordensServico, isLoading: loadingOS, error } = useOrdensServico();
   const { data: equipamentos } = useEquipamentos();
