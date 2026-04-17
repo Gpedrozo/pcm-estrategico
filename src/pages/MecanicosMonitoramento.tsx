@@ -47,7 +47,11 @@ export default function MecanicosMonitoramento() {
   const [loading, setLoading] = useState(true);
   const [autoRefresh, setAutoRefresh] = useState(true);
 
+<<<<<<< HEAD
+  // Carregar mecânicos online
+=======
   // Carregar mecanicos online
+>>>>>>> bce4b5e92f89dee57c74176eafa717010e70ce2c
   const carregarMecanicosOnline = useCallback(async () => {
     try {
       const { data, error } = await supabase
@@ -68,7 +72,7 @@ export default function MecanicosMonitoramento() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [tenantId, toast]);
 
   // Auto-refresh
   useEffect(() => {
@@ -78,7 +82,7 @@ export default function MecanicosMonitoramento() {
 
     const interval = setInterval(() => {
       carregarMecanicosOnline();
-    }, 10000); // Atualiza a cada 10 segundos
+    }, 10000);
 
     return () => clearInterval(interval);
   }, [carregarMecanicosOnline, autoRefresh]);
