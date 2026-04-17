@@ -67,7 +67,11 @@ export default function SubscriptionList({
             const planObj = plans.find(
               (p) => String(p.id) === String(s.plan_id ?? (s as Record<string, unknown>).plano_id),
             )
-            const planLabel = planObj ? String(planObj.name ?? planObj.code) : '-'
+            // Use embedded planos data from list_subscriptions response, fallback to plans list
+            const embeddedPlano = (s as Record<string, unknown>).planos as Record<string, unknown> | null | undefined
+            const planLabel = embeddedPlano
+              ? String(embeddedPlano.nome ?? embeddedPlano.codigo ?? '-')
+              : planObj ? String(planObj.name ?? planObj.code) : '-'
             const st = String(s.status ?? '-')
             const provider = String(s.billing_provider ?? 'manual')
             const providerBadge =

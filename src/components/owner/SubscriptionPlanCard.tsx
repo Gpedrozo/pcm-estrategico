@@ -28,6 +28,11 @@ export default function SubscriptionPlanCard({
   const planObj = plans.find(
     (p) => String(p.id) === String(subscription.plan_id ?? (subscription as Record<string, unknown>).plano_id),
   )
+  // Use embedded planos data from list_subscriptions response
+  const embeddedPlano = (subscription as Record<string, unknown>).planos as Record<string, unknown> | null | undefined
+  const planDisplayName = embeddedPlano
+    ? String(embeddedPlano.nome ?? embeddedPlano.codigo ?? '-')
+    : planObj ? String(planObj.name ?? planObj.code) : '-'
   const empresa = companies.find((c) => String(c.id) === String(subscription.empresa_id))
   const empresaLabel = empresa ? String(empresa.nome ?? empresa.slug ?? '') : String(subscription.empresa_id ?? '-')
   const flags = planObj ? ((planObj as Record<string, unknown>).module_flags as Record<string, unknown> | undefined) : undefined
@@ -58,7 +63,7 @@ export default function SubscriptionPlanCard({
         <div className="grid gap-1 text-sm">
           <div className="flex justify-between">
             <span className="text-muted-foreground">Plano</span>
-            <span className="font-medium">{planObj ? String(planObj.name ?? planObj.code) : '-'}</span>
+            <span className="font-medium">{planDisplayName}</span>
           </div>
           <div className="flex justify-between">
             <span className="text-muted-foreground">Valor</span>
