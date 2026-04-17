@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Separator } from '@/components/ui/separator';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { useConfirmDialog } from '@/components/ui/confirm-dialog';
 import {
@@ -19,7 +20,7 @@ import { LubrificacaoPrintTemplate } from '@/components/lubrificacao/Lubrificaca
 import { useDadosEmpresa } from '@/hooks/useDadosEmpresa';
 import { usePontosPlano, useCreatePontoPlano, useUpdatePontoPlano, useDeletePontoPlano } from '@/hooks/usePontosPlano';
 import { useEtapasByPlano, useCreateEtapa, useUpdateEtapa, useDeleteEtapa, type EtapaPontoLubrificacao } from '@/hooks/useEtapasPontoLubrificacao';
-import { useExecucoesByPlanoLubrificacao, useCreateExecucaoLubrificacao } from '@/hooks/useLubrificacao';
+import { useExecucoesByPlanoLubrificacao, useCreateExecucaoLubrificacao, useDeletePlanoLubrificacao } from '@/hooks/useLubrificacao';
 
 const prioridadeCores: Record<string, string> = {
   baixa: 'bg-green-100 text-green-800 border-green-300',
@@ -44,7 +45,7 @@ interface LubrificacaoDetalheProps {
   onEdit: (plano: PlanoLubrificacao) => void;
 }
 
-export function LubrificacaoDetalhe({ plano, equipamentos, onEdit }: LubrificacaoDetalheProps) {
+export function LubrificacaoDetalhe({ plano, equipamentos, onEdit, onDelete }: LubrificacaoDetalheProps) {
   const [tab, setTab] = useState('pontos');
   const [expandedPontos, setExpandedPontos] = useState<Set<string>>(new Set());
   const [execFormOpen, setExecFormOpen] = useState(false);
@@ -78,6 +79,7 @@ export function LubrificacaoDetalhe({ plano, equipamentos, onEdit }: Lubrificaca
   const { data: pontosPlano } = usePontosPlano(plano?.id);
   const { data: execucoes } = useExecucoesByPlanoLubrificacao(plano?.id ?? null);
   const createExecucao = useCreateExecucaoLubrificacao();
+  const deletePlano = useDeletePlanoLubrificacao();
 
   // Pontos mutations
   const createPonto = useCreatePontoPlano();
