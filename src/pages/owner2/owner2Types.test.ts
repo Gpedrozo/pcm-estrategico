@@ -1,4 +1,4 @@
-﻿import { describe, it, expect } from 'vitest'
+import { describe, it, expect } from 'vitest'
 import { OWNER_TABS, OWNER_TAB_LABELS } from '@/pages/owner2/owner2Types'
 import type { CompanyCredentialNote, CriticalActionRequest } from '@/pages/owner2/owner2Types'
 
