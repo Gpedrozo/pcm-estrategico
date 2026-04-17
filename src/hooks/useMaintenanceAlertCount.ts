@@ -25,24 +25,27 @@ export function useMaintenanceAlertCount() {
     queryFn: async (): Promise<MaintenanceAlertCounts> => {
       if (!tenantId) return { vencidas: 0, proximas: 0, total: 0 };
 
+      // Usar date-only (YYYY-MM-DD) para evitar bugs de fuso horário na comparação
       const hoje = new Date();
-      const hojeIso = hoje.toISOString();
-      const em7dias = new Date(hoje.getTime() + 7 * 86_400_000).toISOString();
+      const hojeStr = hoje.toISOString().slice(0, 10);
+      const em7dias = new Date(hoje.getTime() + 7 * 86_400_000).toISOString().slice(0, 10);
 
-      // Buscar todas as programadas com data ≤ hoje+7d em uma única query
+      // Buscar programadas com data ≤ hoje+7d, com limite de segurança
       const { data, error } = await supabase
         .from('maintenance_schedule')
         .select('data_programada')
         .eq('empresa_id', tenantId)
         .eq('status', 'programado')
-        .lte('data_programada', em7dias);
+        .lte('data_programada', em7dias)
+        .limit(500);
 
       if (error || !data) return { vencidas: 0, proximas: 0, total: 0 };
 
       let vencidas = 0;
       let proximas = 0;
       for (const row of data) {
-        if (row.data_programada < hojeIso) {
+        const rowDate = (row.data_programada || '').slice(0, 10);
+        if (rowDate < hojeStr) {
           vencidas++;
         } else {
           proximas++;
