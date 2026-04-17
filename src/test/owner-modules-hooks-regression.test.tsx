@@ -73,9 +73,9 @@ describe('owner v1 page stability', () => {
       expect(screen.getAllByText('Criar usuário').length).toBeGreaterThan(0)
     })
 
-    fireEvent.click(screen.getByRole('button', { name: 'Planos' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Assinaturas' }))
     await waitFor(() => {
-      expect(screen.getAllByText('+ Cadastrar Novo Plano').length).toBeGreaterThan(0)
+      expect(screen.getAllByText(/Assinatura/i).length).toBeGreaterThan(0)
     })
   })
 })
