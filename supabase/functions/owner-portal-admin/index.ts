@@ -4137,8 +4137,18 @@ Deno.serve(async (req) => {
       .update({ status: body.status })
       .eq("empresa_id", body.empresa_id);
     if (error) return fail(error.message, 400, null, req);
-    await logPlatformAudit(admin, { actorId: auth.user.id, actorEmail: auth.user.email, empresaId: body.empresa_id, actionType: "OWNER_SET_SUBSCRIPTION_STATUS", details: { status: body.status } });
-    return ok({ success: true }, 200, req);
+
+    // Auto-block empresa when subscription is cancelled/suspended/atrasada
+    const blockingStatuses = ["cancelada", "suspended", "atrasada", "past_due"];
+    const activatingStatuses = ["ativa", "active"];
+    if (blockingStatuses.includes(String(body.status))) {
+      await admin.from("empresas").update({ status: "blocked" }).eq("id", body.empresa_id);
+    } else if (activatingStatuses.includes(String(body.status))) {
+      await admin.from("empresas").update({ status: "active" }).eq("id", body.empresa_id);
+    }
+
+    await logPlatformAudit(admin, { actorId: auth.user.id, actorEmail: auth.user.email, empresaId: body.empresa_id, actionType: "OWNER_SET_SUBSCRIPTION_STATUS", details: { status: body.status, empresa_blocked: blockingStatuses.includes(String(body.status)) } });
+    return ok({ success: true, empresa_status: blockingStatuses.includes(String(body.status)) ? "blocked" : (activatingStatuses.includes(String(body.status)) ? "active" : "unchanged") }, 200, req);
   }
 
   if (body.action === "reactivate_company") {

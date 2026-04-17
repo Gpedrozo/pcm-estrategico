@@ -94,15 +94,17 @@ export function AppLayout() {
       }
     }
 
+        // --- Blocked statuses: cancelada / cancelled / suspended / atrasada ---
+    if (status === 'cancelada' || status === 'cancelled' || status === 'suspended') {
+      const label = (status === 'suspended') ? 'suspensa' : 'cancelada';
+      return { message: `Sua assinatura ${plan_name ? `(${plan_name}) ` : ''}está ${label}. O acesso ao sistema foi bloqueado. Entre em contato com o suporte para reativar.${contactLabel}`, severity: 'danger', dismissable: false, blocked: true };
+    }
+    if (status === 'atrasada' || status === 'past_due') {
+      return { message: `Sua assinatura ${plan_name ? `(${plan_name}) ` : ''}está com pagamento atrasado. O acesso ao sistema foi bloqueado até a regularização.${contactLabel}`, severity: 'danger', dismissable: false, blocked: true };
+    }
+
     // --- Existing status-based alerts ---
     if (subscriptionAlertDismissed) return null;
-
-    if (status === 'cancelled' || status === 'suspended') {
-      return { message: `Sua assinatura ${plan_name ? `(${plan_name}) ` : ''}está ${status === 'cancelled' ? 'cancelada' : 'suspensa'}. Entre em contato com o suporte para reativar.${contactLabel}`, severity: 'danger', dismissable: true, blocked: false };
-    }
-    if (status === 'past_due') {
-      return { message: `Sua assinatura ${plan_name ? `(${plan_name}) ` : ''}está com pagamento atrasado. Regularize para evitar bloqueio.${contactLabel}`, severity: 'warning', dismissable: true, blocked: false };
-    }
     if (status === 'trial' || status === 'teste') {
       const expiresLabel = renewal_at
         ? ` até ${new Date(renewal_at).toLocaleDateString('pt-BR')}`
