@@ -1383,7 +1383,7 @@ export default function Owner() {
               {/* Catálogo de Planos */}
               <SurfaceCard title="Catálogo de Planos" subtitle="Gerencie os planos disponíveis para as empresas">
                 <div className="mb-3 flex flex-wrap gap-2">
-                  <button className="rounded-lg bg-sky-700 px-3 py-2 text-sm font-semibold text-white" onClick={() => { setShowPlanForm(!showPlanForm); setEditingPlanId(''); setPlanCode(''); setPlanName(''); setPlanPrice('0'); setPlanDefaultPeriod('monthly'); setPlanUserLimit('10'); setPlanDataLimitMb('2048'); }}>{showPlanForm && !editingPlanId ? 'Cancelar' : '+ Cadastrar Novo Plano'}</button>
+                  <button className="rounded-lg bg-sky-700 px-3 py-2 text-sm font-semibold text-white hover:bg-sky-800 disabled:opacity-50 transition-colors" onClick={() => { setShowPlanForm(!showPlanForm); setEditingPlanId(''); setPlanCode(''); setPlanName(''); setPlanPrice('0'); setPlanDefaultPeriod('monthly'); setPlanUserLimit('10'); setPlanDataLimitMb('2048'); }}>{showPlanForm && !editingPlanId ? 'Cancelar' : '+ Cadastrar Novo Plano'}</button>
                 </div>
                 {(showPlanForm || editingPlanId) && (
                   <div className="mb-4 grid gap-2 rounded-lg border border-border bg-muted/50 p-3">
@@ -1407,10 +1407,10 @@ export default function Owner() {
                     {editingPlanId ? (
                       <div className="flex gap-2">
                         <button className="rounded-lg bg-amber-600 px-3 py-2 text-sm font-semibold text-white" disabled={busy || !planCode || !planName} onClick={() => { runAction('update_plan', { plan: { id: editingPlanId, code: planCode.toUpperCase(), name: planName, description: `Periodicidade padrão: ${planDefaultPeriod}`, price_month: Number(planPrice || 0), module_flags: { default_periodicity: planDefaultPeriod } } }, 'Plano atualizado com sucesso.'); setEditingPlanId(''); setPlanCode(''); setPlanName(''); setPlanPrice('0'); setPlanDefaultPeriod('monthly'); setPlanUserLimit('10'); setPlanDataLimitMb('2048'); }}>Alterar plano</button>
-                        <button className="rounded-lg border border-input px-3 py-2 text-sm" onClick={() => { setEditingPlanId(''); setPlanCode(''); setPlanName(''); setPlanPrice('0'); setPlanDefaultPeriod('monthly'); setPlanUserLimit('10'); setPlanDataLimitMb('2048'); }}>Cancelar edição</button>
+                        <button className="rounded-lg border border-border px-3 py-2 text-sm text-foreground hover:bg-muted disabled:opacity-50 transition-colors" onClick={() => { setEditingPlanId(''); setPlanCode(''); setPlanName(''); setPlanPrice('0'); setPlanDefaultPeriod('monthly'); setPlanUserLimit('10'); setPlanDataLimitMb('2048'); }}>Cancelar edição</button>
                       </div>
                     ) : (
-                      <button className="rounded-lg bg-sky-700 px-3 py-2 text-sm font-semibold text-white" disabled={busy || !planCode || !planName} onClick={() => { runAction('create_plan', { plan: { code: planCode.toUpperCase(), name: planName, description: `Periodicidade padrão: ${planDefaultPeriod}`, price_month: Number(planPrice || 0), user_limit: Number(planUserLimit) || 10, data_limit_mb: Number(planDataLimitMb) || 2048, module_flags: { default_periodicity: planDefaultPeriod }, active: true } }, 'Plano criado com sucesso.'); setShowPlanForm(false); }}>Criar plano</button>
+                      <button className="rounded-lg bg-sky-700 px-3 py-2 text-sm font-semibold text-white hover:bg-sky-800 disabled:opacity-50 transition-colors" disabled={busy || !planCode || !planName} onClick={() => { runAction('create_plan', { plan: { code: planCode.toUpperCase(), name: planName, description: `Periodicidade padrão: ${planDefaultPeriod}`, price_month: Number(planPrice || 0), user_limit: Number(planUserLimit) || 10, data_limit_mb: Number(planDataLimitMb) || 2048, module_flags: { default_periodicity: planDefaultPeriod }, active: true } }, 'Plano criado com sucesso.'); setShowPlanForm(false); }}>Criar plano</button>
                     )}
                   </div>
                 )}
@@ -1481,12 +1481,12 @@ export default function Owner() {
                     <input className="rounded-lg border border-input bg-background px-2 py-2 text-sm" type="date" value={subscriptionEndsAt} onChange={(e) => setSubscriptionEndsAt(e.target.value)} title="Fim (opcional)" />
                   </div>
                   <div className="flex flex-wrap gap-2">
-                    <button className="rounded-lg bg-sky-700 px-3 py-2 text-sm font-semibold text-white" disabled={busy || !companyId || !subscriptionPlanId} onClick={() => runAction('create_subscription', { subscription: { empresa_id: companyId, plan_id: subscriptionPlanId, amount: Number(subscriptionAmount || 0), period: subscriptionPeriod, payment_method: subscriptionPaymentMethod, starts_at: subscriptionStartsAt || undefined, renewal_at: subscriptionRenewalAt || undefined, ends_at: subscriptionEndsAt || undefined, status: subscriptionStatus } }, 'Assinatura criada com sucesso.')}>Criar assinatura</button>
-                    <button className="rounded-lg border border-input px-3 py-2 text-sm" disabled={busy || !companyId} onClick={() => runAction('set_subscription_status', { empresa_id: companyId, status: 'ativa' }, 'Assinatura ativada.')} title="Ativa apenas a assinatura (não altera status da empresa)">Ativar assinatura</button>
+                    <button className="rounded-lg bg-sky-700 px-3 py-2 text-sm font-semibold text-white hover:bg-sky-800 disabled:opacity-50 transition-colors" disabled={busy || !companyId || !subscriptionPlanId} onClick={() => runAction('create_subscription', { subscription: { empresa_id: companyId, plan_id: subscriptionPlanId, amount: Number(subscriptionAmount || 0), period: subscriptionPeriod, payment_method: subscriptionPaymentMethod, starts_at: subscriptionStartsAt || undefined, renewal_at: subscriptionRenewalAt || undefined, ends_at: subscriptionEndsAt || undefined, status: subscriptionStatus } }, 'Assinatura criada com sucesso.')}>Criar assinatura</button>
+                    <button className="rounded-lg border border-border px-3 py-2 text-sm text-foreground hover:bg-muted disabled:opacity-50 transition-colors" disabled={busy || !companyId} onClick={() => runAction('set_subscription_status', { empresa_id: companyId, status: 'ativa' }, 'Assinatura ativada.')} title="Ativa apenas a assinatura (não altera status da empresa)">Ativar assinatura</button>
                                       <button onClick={() => companyId && runAction('reactivate_company', { empresa_id: companyId }, 'Empresa reativada com sucesso!')} disabled={busy || !companyId} className="inline-flex items-center gap-1 rounded bg-emerald-600 px-3 py-1 text-xs text-white hover:bg-emerald-700 disabled:opacity-50" title="Reativa subscription + desbloqueia empresa atomicamente">Reativar empresa</button>
-<button className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-700" disabled={busy || !isOwnerMaster} onClick={() => runAction('enforce_subscription_expiry', {}, 'Vencimentos processados.')}>Processar vencimentos</button>
+<button className="rounded-lg border border-amber-300 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-800/50 px-3 py-2 text-sm text-amber-700 dark:text-amber-400 hover:bg-amber-100 dark:hover:bg-amber-950/50 disabled:opacity-50 transition-colors" disabled={busy || !isOwnerMaster} onClick={() => runAction('enforce_subscription_expiry', {}, 'Vencimentos processados.')}>Processar vencimentos</button>
                     <input className="rounded-lg border border-input bg-background px-2 py-2 text-sm" value={planCodeToChange} onChange={(e) => setPlanCodeToChange(e.target.value)} placeholder="Código novo plano" />
-                    <button className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-700" disabled={busy || !companyId || !planCodeToChange} onClick={() => runAction('change_plan', { empresa_id: companyId, plano_codigo: planCodeToChange.toUpperCase() }, 'Plano alterado.')}>Trocar plano</button>
+                    <button className="rounded-lg border border-amber-300 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-800/50 px-3 py-2 text-sm text-amber-700 dark:text-amber-400 hover:bg-amber-100 dark:hover:bg-amber-950/50 disabled:opacity-50 transition-colors" disabled={busy || !companyId || !planCodeToChange} onClick={() => runAction('change_plan', { empresa_id: companyId, plano_codigo: planCodeToChange.toUpperCase() }, 'Plano alterado.')}>Trocar plano</button>
                   </div>
                 </div>
                 <div className="max-h-[420px] overflow-auto rounded-xl border border-border">
@@ -1600,7 +1600,7 @@ export default function Owner() {
                       </select>
                       <input className="rounded-lg border border-input bg-background px-2 py-2 text-sm" type="date" value={billingRenewalAt} onChange={(e) => setBillingRenewalAt(e.target.value)} title="Próx. renovação (opcional)" placeholder="Próx. renovação" />
                       <button
-                        className="rounded-lg bg-sky-700 px-3 py-2 text-sm font-semibold text-white"
+                        className="rounded-lg bg-sky-700 px-3 py-2 text-sm font-semibold text-white hover:bg-sky-800 disabled:opacity-50 transition-colors"
                         disabled={busy || !billingSubscriptionId || !billingPaymentStatus}
                         onClick={() => runAction('update_subscription_billing', {
                           subscription_id: billingSubscriptionId,
@@ -1825,8 +1825,8 @@ export default function Owner() {
                   <input className="rounded-lg border border-input bg-background px-2 py-2 text-sm" value={contractSummary} onChange={(e) => setContractSummary(e.target.value)} placeholder="Resumo da alteração" />
                   <div className="grid gap-2 sm:grid-cols-3">
                     <button className="rounded-lg bg-sky-700 px-3 py-2 text-sm font-semibold text-white hover:bg-sky-800" disabled={busy || !selectedContractId} onClick={() => { runAction('update_contract', { contract_id: selectedContractId, content: contractContent, summary: contractSummary }, 'Contrato atualizado.'); contractsQuery.refetch() }}>Salvar alterações</button>
-                    <button className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-700" disabled={busy || !selectedContractId} onClick={() => { runAction('regenerate_contract', { contract_id: selectedContractId }, 'Contrato regenerado.'); contractsQuery.refetch() }}>Regenerar contrato</button>
-                    <button className="rounded-lg border border-rose-300 bg-rose-50 px-3 py-2 text-sm text-rose-700" disabled={busy || !selectedContractId} onClick={() => { runAction('delete_contract', { contract_id: selectedContractId }, 'Contrato excluído.'); setSelectedContractId(''); contractsQuery.refetch() }}>Excluir contrato</button>
+                    <button className="rounded-lg border border-amber-300 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-800/50 px-3 py-2 text-sm text-amber-700 dark:text-amber-400 hover:bg-amber-100 dark:hover:bg-amber-950/50 disabled:opacity-50 transition-colors" disabled={busy || !selectedContractId} onClick={() => { runAction('regenerate_contract', { contract_id: selectedContractId }, 'Contrato regenerado.'); contractsQuery.refetch() }}>Regenerar contrato</button>
+                    <button className="rounded-lg border border-rose-300 bg-rose-50 dark:bg-rose-950/30 dark:border-rose-800/50 px-3 py-2 text-sm text-rose-700 dark:text-rose-400 hover:bg-rose-100 dark:hover:bg-rose-950/50 disabled:opacity-50 transition-colors" disabled={busy || !selectedContractId} onClick={() => { runAction('delete_contract', { contract_id: selectedContractId }, 'Contrato excluído.'); setSelectedContractId(''); contractsQuery.refetch() }}>Excluir contrato</button>
                   </div>
                 </div>
               </SurfaceCard>
@@ -2122,7 +2122,7 @@ export default function Owner() {
                 </div>
 
                 <button
-                  className="mt-4 rounded-lg bg-sky-700 px-3 py-2 text-sm font-semibold text-white"
+                  className="mt-4 rounded-lg bg-sky-700 px-3 py-2 text-sm font-semibold text-white hover:bg-sky-800 disabled:opacity-50 transition-colors"
                   disabled={busy || !companyId}
                   onClick={() => runAction('update_company_settings', {
                     empresa_id: companyId,
@@ -2154,7 +2154,7 @@ export default function Owner() {
               <SurfaceCard title="Ações de segurança">
                 <div className="grid gap-2">
                   <button
-                    className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-700"
+                    className="rounded-lg border border-amber-300 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-800/50 px-3 py-2 text-sm text-amber-700 dark:text-amber-400 hover:bg-amber-100 dark:hover:bg-amber-950/50 disabled:opacity-50 transition-colors"
                     disabled={busy || !companyId}
                     onClick={() => openCriticalAction({
                       title: 'Limpeza completa de dados',
@@ -2168,7 +2168,7 @@ export default function Owner() {
                     Executar limpeza completa
                   </button>
                   <button
-                    className="rounded-lg border border-rose-300 bg-rose-50 px-3 py-2 text-sm text-rose-700"
+                    className="rounded-lg border border-rose-300 bg-rose-50 dark:bg-rose-950/30 dark:border-rose-800/50 px-3 py-2 text-sm text-rose-700 dark:text-rose-400 hover:bg-rose-100 dark:hover:bg-rose-950/50 disabled:opacity-50 transition-colors"
                     disabled={busy || !companyId || !isOwnerMaster}
                     onClick={() => openCriticalAction({
                       title: 'Exclusao definitiva da empresa',
@@ -2215,7 +2215,7 @@ export default function Owner() {
                   </div>
                 </div>
                 <button
-                  className="mt-4 rounded-lg bg-sky-700 px-3 py-2 text-sm font-semibold text-white"
+                  className="mt-4 rounded-lg bg-sky-700 px-3 py-2 text-sm font-semibold text-white hover:bg-sky-800 disabled:opacity-50 transition-colors"
                   disabled={busy}
                   onClick={() => runAction('update_platform_contact', {
                     contact_email: platformContactEmail,
@@ -2294,7 +2294,7 @@ export default function Owner() {
                 </div>
 
                 <button
-                  className="mt-4 rounded-lg bg-sky-700 px-3 py-2 text-sm font-semibold text-white"
+                  className="mt-4 rounded-lg bg-sky-700 px-3 py-2 text-sm font-semibold text-white hover:bg-sky-800 disabled:opacity-50 transition-colors"
                   disabled={busy || !companyId}
                   onClick={() => runAction('update_company_settings', {
                     empresa_id: companyId,
@@ -2396,7 +2396,7 @@ export default function Owner() {
                   </select>
                   <input className="rounded-lg border border-input bg-background px-2 py-2 text-sm" type="date" value={auditDateFrom} onChange={(e) => setAuditDateFrom(e.target.value)} title="Data inicial" />
                   <input className="rounded-lg border border-input bg-background px-2 py-2 text-sm" type="date" value={auditDateTo} onChange={(e) => setAuditDateTo(e.target.value)} title="Data final" />
-                  <button className="rounded-lg border border-input px-3 py-2 text-sm" onClick={() => { setAuditSearch(''); setAuditResultadoFilter('todos'); setAuditUsuarioFilter('todos'); setAuditTableFilter('todos'); setAuditActionFilter('todos'); setAuditDateFrom(''); setAuditDateTo('') }}>Limpar filtros</button>
+                  <button className="rounded-lg border border-border px-3 py-2 text-sm text-foreground hover:bg-muted disabled:opacity-50 transition-colors" onClick={() => { setAuditSearch(''); setAuditResultadoFilter('todos'); setAuditUsuarioFilter('todos'); setAuditTableFilter('todos'); setAuditActionFilter('todos'); setAuditDateFrom(''); setAuditDateTo('') }}>Limpar filtros</button>
                 </div>
 
                 <div className="max-h-[520px] overflow-auto rounded-xl border border-border">
@@ -2477,7 +2477,7 @@ export default function Owner() {
                 </select>
                 <input className="rounded-lg border border-input bg-background px-2 py-2 text-sm" type="date" value={logDateFrom} onChange={(e) => setLogDateFrom(e.target.value)} />
                 <input className="rounded-lg border border-input bg-background px-2 py-2 text-sm" type="date" value={logDateTo} onChange={(e) => setLogDateTo(e.target.value)} />
-                <button className="rounded-lg border border-input px-3 py-2 text-sm" onClick={() => { setLogSearch(''); setLogSeverityFilter('todos'); setLogActorFilter(''); setLogModuleFilter('todos'); setLogDateFrom(''); setLogDateTo('') }}>Limpar filtros</button>
+                <button className="rounded-lg border border-border px-3 py-2 text-sm text-foreground hover:bg-muted disabled:opacity-50 transition-colors" onClick={() => { setLogSearch(''); setLogSeverityFilter('todos'); setLogActorFilter(''); setLogModuleFilter('todos'); setLogDateFrom(''); setLogDateTo('') }}>Limpar filtros</button>
               </div>
 
               <div className="max-h-[520px] overflow-auto rounded-xl border border-border">
@@ -2532,7 +2532,7 @@ export default function Owner() {
                   </select>
 
                   <button
-                    className="rounded-lg border border-input px-3 py-2 text-sm"
+                    className="rounded-lg border border-border px-3 py-2 text-sm text-foreground hover:bg-muted disabled:opacity-50 transition-colors"
                     disabled={busy || !systemUserId}
                     onClick={() => openCriticalAction({
                       title: 'Conceder SYSTEM_ADMIN',
@@ -2558,7 +2558,7 @@ export default function Owner() {
                   </select>
 
                   <button
-                    className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-700"
+                    className="rounded-lg border border-amber-300 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-800/50 px-3 py-2 text-sm text-amber-700 dark:text-amber-400 hover:bg-amber-100 dark:hover:bg-amber-950/50 disabled:opacity-50 transition-colors"
                     disabled={busy || !selectedTableName}
                     onClick={() => openCriticalAction({
                       title: 'Purge de tabela',
@@ -2576,7 +2576,7 @@ export default function Owner() {
                     <p className="mb-2 text-xs font-semibold text-muted-foreground">Dispositivos (conexões QR Code)</p>
                     <p className="mb-2 text-xs text-muted-foreground">{deviceUsers.length} dispositivo(s) registrado(s) no banco.</p>
                     <button
-                      className="rounded-lg border border-rose-300 bg-rose-50 px-3 py-2 text-sm text-rose-700"
+                      className="rounded-lg border border-rose-300 bg-rose-50 dark:bg-rose-950/30 dark:border-rose-800/50 px-3 py-2 text-sm text-rose-700 dark:text-rose-400 hover:bg-rose-100 dark:hover:bg-rose-950/50 disabled:opacity-50 transition-colors"
                       disabled={busy || deviceUsers.length === 0}
                       onClick={() => openCriticalAction({
                         title: 'Purge de dispositivos',
@@ -2619,7 +2619,7 @@ export default function Owner() {
                   <input className="rounded-lg border border-input bg-background px-2 py-2 text-sm" value={ownerName} onChange={(e) => setOwnerName(e.target.value)} placeholder="Nome" />
                   <input className="rounded-lg border border-input bg-background px-2 py-2 text-sm" value={ownerEmail} onChange={(e) => setOwnerEmail(e.target.value)} placeholder="Email" />
                   <input className="rounded-lg border border-input bg-background px-2 py-2 text-sm" type="password" value={ownerPassword} onChange={(e) => setOwnerPassword(e.target.value)} placeholder="Senha (opcional)" />
-                  <button className="rounded-lg bg-sky-700 px-3 py-2 text-sm font-semibold text-white" disabled={busy || !isOwnerMaster || !ownerName || !ownerEmail} onClick={() => runAction('create_platform_owner', { owner_user: { nome: ownerName, email: ownerEmail, password: ownerPassword || undefined, role: 'SYSTEM_ADMIN' } }, 'Owner de plataforma criado com sucesso.')}>Criar owner</button>
+                  <button className="rounded-lg bg-sky-700 px-3 py-2 text-sm font-semibold text-white hover:bg-sky-800 disabled:opacity-50 transition-colors" disabled={busy || !isOwnerMaster || !ownerName || !ownerEmail} onClick={() => runAction('create_platform_owner', { owner_user: { nome: ownerName, email: ownerEmail, password: ownerPassword || undefined, role: 'SYSTEM_ADMIN' } }, 'Owner de plataforma criado com sucesso.')}>Criar owner</button>
                 </div>
               </SurfaceCard>
 
