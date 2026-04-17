@@ -4024,11 +4024,11 @@ Deno.serve(async (req) => {
     }
 
     // Resolve plan_id: frontend sends plans.id (EN table).
-    // DB FK may reference planos.id (PT-BR table). Map through code.
+    // DB FK references planos.id (PT-BR table). Map through code, auto-create if missing.
     let resolvedPlanId = body.subscription.plan_id;
     const { data: planEnLookup } = await admin
       .from("plans")
-      .select("id,code")
+      .select("id,code,name,description,user_limit,data_limit_mb,price_month,module_flags,active")
       .eq("id", body.subscription.plan_id)
       .maybeSingle();
     if (planEnLookup?.code) {
@@ -4037,7 +4037,29 @@ Deno.serve(async (req) => {
         .select("id")
         .eq("codigo", planEnLookup.code)
         .maybeSingle();
-      if (planoPtBrLookup?.id) resolvedPlanId = planoPtBrLookup.id;
+      if (planoPtBrLookup?.id) {
+        resolvedPlanId = planoPtBrLookup.id;
+      } else {
+        // Auto-create planos record from plans data
+        const { data: newPlano } = await admin
+          .from("planos")
+          .insert({
+            codigo: planEnLookup.code,
+            nome: planEnLookup.name ?? planEnLookup.code,
+            descricao: planEnLookup.description ?? null,
+            user_limit: planEnLookup.user_limit ?? 10,
+            limite_usuarios: planEnLookup.user_limit ?? 10,
+            storage_limit_mb: planEnLookup.data_limit_mb ?? 2048,
+            limite_storage_mb: planEnLookup.data_limit_mb ?? 2048,
+            price_month: planEnLookup.price_month ?? 0,
+            features: planEnLookup.module_flags ?? {},
+            ativo: planEnLookup.active ?? true,
+            active: planEnLookup.active ?? true,
+          })
+          .select("id")
+          .single();
+        if (newPlano?.id) resolvedPlanId = newPlano.id;
+      }
     }
 
     const startsAt = body.subscription.starts_at ?? new Date().toISOString().slice(0, 10);
@@ -4698,14 +4720,40 @@ Deno.serve(async (req) => {
 
     if (planoError || !plano) return fail("Plan not found", 404, null, req);
 
-    // Resolve plan_id: FK may reference planos.id (PT-BR). Map through code.
+    // Resolve plan_id: FK references planos.id (PT-BR). Map through code, auto-create if missing.
     let resolvedChangePlanId = plano.id;
     const { data: planoPtBrChange } = await admin
       .from("planos")
       .select("id")
       .eq("codigo", plano.code)
       .maybeSingle();
-    if (planoPtBrChange?.id) resolvedChangePlanId = planoPtBrChange.id;
+    if (planoPtBrChange?.id) {
+      resolvedChangePlanId = planoPtBrChange.id;
+    } else {
+      const { data: planEnFull } = await admin
+        .from("plans")
+        .select("name,description,user_limit,data_limit_mb,price_month,module_flags,active")
+        .eq("id", plano.id)
+        .maybeSingle();
+      const { data: newPlano } = await admin
+        .from("planos")
+        .insert({
+          codigo: plano.code,
+          nome: planEnFull?.name ?? plano.code,
+          descricao: planEnFull?.description ?? null,
+          user_limit: planEnFull?.user_limit ?? 10,
+          limite_usuarios: planEnFull?.user_limit ?? 10,
+          storage_limit_mb: planEnFull?.data_limit_mb ?? 2048,
+          limite_storage_mb: planEnFull?.data_limit_mb ?? 2048,
+          price_month: plano.price_month ?? 0,
+          features: planEnFull?.module_flags ?? {},
+          ativo: planEnFull?.active ?? true,
+          active: planEnFull?.active ?? true,
+        })
+        .select("id")
+        .single();
+      if (newPlano?.id) resolvedChangePlanId = newPlano.id;
+    }
 
     const { data: subscription, error: subscriptionError } = await admin
       .from("subscriptions")
