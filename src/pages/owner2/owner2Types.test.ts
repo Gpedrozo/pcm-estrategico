@@ -3,8 +3,8 @@ import { OWNER_TABS, OWNER_TAB_LABELS } from '@/pages/owner2/owner2Types'
 import type { CompanyCredentialNote, CriticalActionRequest } from '@/pages/owner2/owner2Types'
 
 describe('owner2Types', () => {
-  it('OWNER_TABS has 15 entries', () => {
-    expect(OWNER_TABS).toHaveLength(15)
+  it('OWNER_TABS has 16 entries', () => {
+    expect(OWNER_TABS).toHaveLength(16)
   })
 
   it('OWNER_TABS includes all expected tabs', () => {

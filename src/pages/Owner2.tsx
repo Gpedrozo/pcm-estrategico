@@ -48,6 +48,8 @@ import { normalizeEmail, resolveOwnerMasterEmail, safeArray, asObject, asBool, a
 import { SurfaceCard, MetricTile } from './owner2/owner2Components'
 import OwnerDispositivosTab from '@/components/owner/OwnerDispositivosTab'
 import OwnerShadowAudit from '@/components/owner/OwnerShadowAudit'
+import SubscriptionsTab from '@/components/owner/SubscriptionsTab'
+import { useSubscriptionDetail } from '@/hooks/useSubscriptionDetail'
 import OwnerUsuariosTab from './owner2/OwnerUsuariosTab'
 
 const isImageUrl = (url: unknown) => {
@@ -309,8 +311,8 @@ export default function Owner() {
     activeTab === 'usuarios' || activeTab === 'configuracoes' || activeTab === 'dashboard' || activeTab === 'sistema',
     isOwnerMaster,
   )
-  const plansQuery = useOwner2Plans(activeTab === 'comercial' || activeTab === 'dashboard' || activeTab === 'cadastro')
-  const subscriptionsQuery = useOwner2Subscriptions(activeTab === 'comercial' || activeTab === 'dashboard' || activeTab === 'cadastro' || activeTab === 'financeiro')
+  const plansQuery = useOwner2Plans(activeTab === 'comercial' || activeTab === 'dashboard' || activeTab === 'cadastro' || activeTab === 'assinaturas')
+  const subscriptionsQuery = useOwner2Subscriptions(activeTab === 'comercial' || activeTab === 'dashboard' || activeTab === 'cadastro' || activeTab === 'financeiro' || activeTab === 'assinaturas')
   const contractsQuery = useOwner2Contracts(activeTab === 'contratos' || activeTab === 'dashboard')
   const ticketsQuery = useOwner2Tickets(true)
   const auditFilters = useMemo(
@@ -416,6 +418,11 @@ export default function Owner() {
   )
 
   const busy = execute.isPending
+
+  const subscriptionDetailHook = useSubscriptionDetail(
+    activeTab === 'assinaturas',
+    companies,
+  )
 
   useEffect(() => {
     if (typeof document === 'undefined') return
@@ -1806,6 +1813,51 @@ export default function Owner() {
                 </SurfaceCard>
               </div>
             </div>
+          )}
+
+          {activeTab === 'assinaturas' && (
+            <SubscriptionsTab
+              hook={subscriptionDetailHook}
+              companies={companies}
+              isOwnerMaster={isOwnerMaster}
+              onFeedback={setFeedback}
+              onError={setError}
+              showPlanForm={showPlanForm}
+              setShowPlanForm={setShowPlanForm}
+              editingPlanId={editingPlanId}
+              setEditingPlanId={setEditingPlanId}
+              planCode={planCode}
+              setPlanCode={setPlanCode}
+              planName={planName}
+              setPlanName={setPlanName}
+              planPrice={planPrice}
+              setPlanPrice={setPlanPrice}
+              planDefaultPeriod={planDefaultPeriod}
+              setPlanDefaultPeriod={setPlanDefaultPeriod}
+              planUserLimit={planUserLimit}
+              setPlanUserLimit={setPlanUserLimit}
+              planDataLimitMb={planDataLimitMb}
+              setPlanDataLimitMb={setPlanDataLimitMb}
+              busy={busy}
+              runOwnerAction={runAction}
+              companyId={companyId}
+              subscriptionPlanId={subscriptionPlanId}
+              setSubscriptionPlanId={setSubscriptionPlanId}
+              subscriptionAmount={subscriptionAmount}
+              setSubscriptionAmount={setSubscriptionAmount}
+              subscriptionPeriod={subscriptionPeriod}
+              setSubscriptionPeriod={setSubscriptionPeriod}
+              subscriptionStatus={subscriptionStatus}
+              setSubscriptionStatus={setSubscriptionStatus}
+              subscriptionPaymentMethod={subscriptionPaymentMethod}
+              setSubscriptionPaymentMethod={setSubscriptionPaymentMethod}
+              subscriptionStartsAt={subscriptionStartsAt}
+              setSubscriptionStartsAt={setSubscriptionStartsAt}
+              subscriptionEndsAt={subscriptionEndsAt}
+              setSubscriptionEndsAt={setSubscriptionEndsAt}
+              subscriptionRenewalAt={subscriptionRenewalAt}
+              setSubscriptionRenewalAt={setSubscriptionRenewalAt}
+            />
           )}
 
           {activeTab === 'contratos' && (
