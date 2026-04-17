@@ -35,15 +35,17 @@ export default function Preventiva() {
   const { data: planos, isLoading, isError, error } = usePlanosPreventivos();
   const { data: equipamentos } = useEquipamentos();
 
+  type CalendarNavState = { dataProgramada?: string };
+  const dataProgramadaFromCalendar = (location.state as CalendarNavState | null)?.dataProgramada;
+
   const calendarModalAppliedRef = useRef(false);
   useEffect(() => {
     if (calendarModalAppliedRef.current) return;
-    type CalendarNavState = { dataProgramada?: string };
-    if ((location.state as CalendarNavState | null)?.dataProgramada) {
+    if (dataProgramadaFromCalendar) {
       calendarModalAppliedRef.current = true;
       setIsCreateOpen(true);
     }
-  }, [location.state]);
+  }, [dataProgramadaFromCalendar]);
 
   const equipmentTagById = useMemo(() => {
     const map = new Map<string, string>();
@@ -192,6 +194,7 @@ export default function Preventiva() {
         open={isCreateOpen}
         onOpenChange={setIsCreateOpen}
         equipamentos={equipamentos || []}
+        dataProgramada={dataProgramadaFromCalendar}
       />
     </div>
   );

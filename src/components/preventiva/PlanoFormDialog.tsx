@@ -14,6 +14,7 @@ interface Props {
   open: boolean;
   onOpenChange: (v: boolean) => void;
   equipamentos: EquipamentoRow[];
+  dataProgramada?: string;
 }
 
 const INITIAL_FORM = {
@@ -30,7 +31,7 @@ const INITIAL_FORM = {
   instrucoes: '',
 };
 
-export default function PlanoFormDialog({ open, onOpenChange, equipamentos }: Props) {
+export default function PlanoFormDialog({ open, onOpenChange, equipamentos, dataProgramada }: Props) {
   const createMutation = useCreatePlanoPreventivo();
   const nextDocNumber = useNextDocumentNumber();
   const [form, setForm] = useState(INITIAL_FORM);
@@ -50,6 +51,7 @@ export default function PlanoFormDialog({ open, onOpenChange, equipamentos }: Pr
       tag: equipamentoSelecionado?.tag || null,
       frequencia_ciclos: form.tipo_gatilho === 'CICLO' ? form.frequencia_ciclos : null,
       condicao_disparo: form.tipo_gatilho === 'CONDICAO' ? form.condicao_disparo : null,
+      proxima_execucao: dataProgramada ? new Date(dataProgramada + 'T08:00:00').toISOString() : undefined,
     });
 
     onOpenChange(false);

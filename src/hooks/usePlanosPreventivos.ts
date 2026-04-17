@@ -47,6 +47,7 @@ export interface PlanoInsert {
   checklist?: Checklist;
   tolerancia_antes_dias?: number | null;
   tolerancia_depois_dias?: number | null;
+  proxima_execucao?: string | null;
 }
 
 export function usePlanosPreventivos() {
@@ -99,10 +100,14 @@ export function useCreatePlanoPreventivo() {
     mutationFn: async (plano: PlanoInsert) => {
       if (!tenantId) throw new Error('Tenant não resolvido.');
 
-      // Calculate next execution date
-      const proximaExecucao = new Date();
-      if (plano.frequencia_dias) {
-        proximaExecucao.setDate(proximaExecucao.getDate() + plano.frequencia_dias);
+      // Calculate next execution date (respect explicit value from calendar)
+      let proximaExecucaoISO = plano.proxima_execucao;
+      if (!proximaExecucaoISO) {
+        const proximaExecucao = new Date();
+        if (plano.frequencia_dias) {
+          proximaExecucao.setDate(proximaExecucao.getDate() + plano.frequencia_dias);
+        }
+        proximaExecucaoISO = proximaExecucao.toISOString();
       }
 
       const data = await insertWithColumnFallback(
@@ -114,7 +119,7 @@ export function useCreatePlanoPreventivo() {
             .single(),
         {
           ...plano,
-          proxima_execucao: proximaExecucao.toISOString(),
+          proxima_execucao: proximaExecucaoISO,
           empresa_id: tenantId, // MUST be last to prevent spread override
         } as Record<string, unknown>,
       );
