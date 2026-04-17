@@ -2101,7 +2101,7 @@ Deno.serve(async (req) => {
       admin.from("empresas").select("id", { count: "exact", head: true }).gte("created_at", monthStart),
       admin.from("support_tickets").select("id", { count: "exact", head: true }).in("status", ["aberto", "em_andamento"]),
       admin.from("subscriptions").select("amount").eq("status", "ativa"),
-      admin.from("subscriptions").select("plan_id, plans(name)").eq("status", "ativa"),
+      admin.from("subscriptions").select("plan_id, planos(nome)").eq("status", "ativa"),
       admin
         .from("subscriptions")
         .select("id")
@@ -2122,7 +2122,7 @@ Deno.serve(async (req) => {
     const mrr = (revenue ?? []).reduce((acc: number, item: any) => acc + Number(item.amount ?? 0), 0);
     const arr = mrr * 12;
     const usageByPlan = (plans ?? []).reduce((acc: Record<string, number>, item: any) => {
-      const planName = item?.plans?.name ?? "Sem plano";
+      const planName = item?.planos?.nome ?? "Sem plano";
       acc[planName] = (acc[planName] ?? 0) + 1;
       return acc;
     }, {});
@@ -3755,34 +3755,39 @@ Deno.serve(async (req) => {
 
   if (body.action === "list_plans") {
     const { data, error } = await admin
-      .from("plans")
+      .from("planos")
       .select("*")
       .order("price_month", { ascending: true });
     if (error) return fail(error.message, 400, null, req);
-    return ok({ plans: data ?? [] }, 200, req);
+    // Map planos columns to the frontend-expected shape (code/name)
+    const plans = (data ?? []).map((p: Record<string, unknown>) => ({
+      ...p,
+      code: p.codigo ?? p.code,
+      name: p.nome ?? p.name,
+    }));
+    return ok({ plans }, 200, req);
   }
 
   if (body.action === "create_plan") {
     if (!body.plan?.code || !body.plan?.name) return fail("plan code and name are required", 400, null, req);
     const { data, error } = await admin
-      .from("plans")
+      .from("planos")
       .insert({
-        code: body.plan.code,
-        name: body.plan.name,
-        description: body.plan.description ?? null,
-        user_limit: body.plan.user_limit ?? 10,
-        module_flags: body.plan.module_flags ?? {},
-        data_limit_mb: body.plan.data_limit_mb ?? 2048,
-        premium_features: body.plan.premium_features ?? [],
-        company_limit: body.plan.company_limit ?? null,
+        codigo: body.plan.code,
+        nome: body.plan.name,
+        descricao: body.plan.description ?? null,
+        limite_usuarios: body.plan.user_limit ?? 10,
+        features: body.plan.module_flags ?? {},
+        limite_storage_mb: body.plan.data_limit_mb ?? 2048,
         price_month: body.plan.price_month ?? 0,
+        ativo: body.plan.active ?? true,
         active: body.plan.active ?? true,
       })
       .select("*")
       .single();
     if (error) return fail(error.message, 400, null, req);
-    await logPlatformAudit(admin, { actorId: auth.user.id, actorEmail: auth.user.email, actionType: "OWNER_CREATE_PLAN", details: { plan_id: data.id, code: data.code, name: data.name } });
-    return ok({ plan: data }, 200, req);
+    await logPlatformAudit(admin, { actorId: auth.user.id, actorEmail: auth.user.email, actionType: "OWNER_CREATE_PLAN", details: { plan_id: data.id, code: data.codigo, name: data.nome } });
+    return ok({ plan: { ...data, code: data.codigo, name: data.nome } }, 200, req);
   }
 
   if (body.action === "update_plan") {
@@ -3791,25 +3796,24 @@ Deno.serve(async (req) => {
     if (!planId && !planCode) return fail("plan id or code is required", 400, null, req);
 
     const raw: Record<string, unknown> = {
-      code: body.plan?.code,
-      name: body.plan?.name,
-      description: body.plan?.description,
-      user_limit: body.plan?.user_limit,
-      module_flags: body.plan?.module_flags,
-      data_limit_mb: body.plan?.data_limit_mb,
-      premium_features: body.plan?.premium_features,
-      company_limit: body.plan?.company_limit,
+      codigo: body.plan?.code,
+      nome: body.plan?.name,
+      descricao: body.plan?.description,
+      limite_usuarios: body.plan?.user_limit,
+      features: body.plan?.module_flags,
+      limite_storage_mb: body.plan?.data_limit_mb,
       price_month: body.plan?.price_month,
+      ativo: body.plan?.active,
       active: body.plan?.active,
     };
     const updatePayload = Object.fromEntries(Object.entries(raw).filter(([, v]) => v !== undefined));
     if (Object.keys(updatePayload).length === 0) return fail("no fields to update", 400, null, req);
 
     let query = admin
-      .from("plans")
+      .from("planos")
       .update(updatePayload);
 
-    query = planId ? query.eq("id", planId) : query.eq("code", planCode);
+    query = planId ? query.eq("id", planId) : query.eq("codigo", planCode);
 
     const { error } = await query;
     if (error) return fail(error.message, 400, null, req);
@@ -4204,7 +4208,7 @@ Deno.serve(async (req) => {
   if (body.action === "list_contracts") {
     const { data, error } = await admin
       .from("contracts")
-      .select("*, empresas(id,nome), plans(id,name,code), subscriptions(id,status)")
+      .select("*, empresas(id,nome), planos(id,nome,codigo), subscriptions(id,status)")
       .order("generated_at", { ascending: false })
       .limit(1000);
     // Tabela pode não existir se a migration ainda não foi aplicada — retorna lista vazia
@@ -4712,40 +4716,55 @@ Deno.serve(async (req) => {
   if (body.action === "change_plan") {
     if (!body.empresa_id || !body.plano_codigo) return fail("empresa_id and plano_codigo are required", 400, null, req);
 
-    const { data: plano, error: planoError } = await admin
-      .from("plans")
-      .select("id,code,price_month")
-      .eq("code", body.plano_codigo)
-      .single();
+    // Lookup in planos (primary source — subscriptions FK)
+    let plano: Record<string, unknown> | null = null;
+    const { data: planoPtBr } = await admin
+      .from("planos")
+      .select("id,codigo,price_month")
+      .eq("codigo", body.plano_codigo)
+      .maybeSingle();
+    if (planoPtBr) {
+      plano = planoPtBr;
+    } else {
+      // Fallback: try plans table (legacy EN)
+      const { data: planEn } = await admin
+        .from("plans")
+        .select("id,code,price_month")
+        .eq("code", body.plano_codigo)
+        .maybeSingle();
+      if (planEn) plano = { ...planEn, codigo: planEn.code };
+    }
 
-    if (planoError || !plano) return fail("Plan not found", 404, null, req);
+    if (!plano) return fail("Plan not found", 404, null, req);
 
     // Resolve plan_id: FK references planos.id (PT-BR). Map through code, auto-create if missing.
-    let resolvedChangePlanId = plano.id;
-    const { data: planoPtBrChange } = await admin
-      .from("planos")
-      .select("id")
-      .eq("codigo", plano.code)
-      .maybeSingle();
-    if (planoPtBrChange?.id) {
-      resolvedChangePlanId = planoPtBrChange.id;
-    } else {
-      const { data: planEnFull } = await admin
-        .from("plans")
-        .select("name,description,user_limit,data_limit_mb,price_month,module_flags,active")
-        .eq("id", plano.id)
+    let resolvedChangePlanId = String(plano.id);
+    // If it came from plans table, find or create in planos
+    if (!planoPtBr) {
+      const { data: mappedPlano } = await admin
+        .from("planos")
+        .select("id")
+        .eq("codigo", String(plano.codigo ?? ""))
         .maybeSingle();
+      if (mappedPlano?.id) {
+        resolvedChangePlanId = mappedPlano.id;
+      } else {
+        const { data: planEnFull } = await admin
+          .from("plans")
+          .select("name,description,user_limit,data_limit_mb,price_month,module_flags,active")
+          .eq("id", String(plano.id))
+          .maybeSingle();
       const { data: newPlano } = await admin
         .from("planos")
         .insert({
-          codigo: plano.code,
-          nome: planEnFull?.name ?? plano.code,
+          codigo: String(plano.codigo ?? ""),
+          nome: planEnFull?.name ?? String(plano.codigo ?? ""),
           descricao: planEnFull?.description ?? null,
           user_limit: planEnFull?.user_limit ?? 10,
           limite_usuarios: planEnFull?.user_limit ?? 10,
           storage_limit_mb: planEnFull?.data_limit_mb ?? 2048,
           limite_storage_mb: planEnFull?.data_limit_mb ?? 2048,
-          price_month: plano.price_month ?? 0,
+          price_month: Number(plano.price_month ?? 0),
           features: planEnFull?.module_flags ?? {},
           ativo: planEnFull?.active ?? true,
           active: planEnFull?.active ?? true,
@@ -4753,6 +4772,7 @@ Deno.serve(async (req) => {
         .select("id")
         .single();
       if (newPlano?.id) resolvedChangePlanId = newPlano.id;
+      }
     }
 
     const { data: subscription, error: subscriptionError } = await admin
