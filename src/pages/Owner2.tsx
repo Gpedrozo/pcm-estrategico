@@ -204,20 +204,12 @@ export default function Owner() {
   const [subscriptionStartsAt, setSubscriptionStartsAt] = useState('')
   const [subscriptionEndsAt, setSubscriptionEndsAt] = useState('')
   const [subscriptionRenewalAt, setSubscriptionRenewalAt] = useState('')
-  const [planCodeToChange, setPlanCodeToChange] = useState('')
   const [showPlanForm, setShowPlanForm] = useState(false)
   const [editingPlanId, setEditingPlanId] = useState('')
 
   const [selectedContractId, setSelectedContractId] = useState('')
   const [contractContent, setContractContent] = useState('')
   const [contractSummary, setContractSummary] = useState('')
-
-  const [billingSubscriptionId, setBillingSubscriptionId] = useState('')
-  const [billingAmount, setBillingAmount] = useState('')
-  const [billingPaymentStatus, setBillingPaymentStatus] = useState('paid')
-  const [billingRenewalAt, setBillingRenewalAt] = useState('')
-  const [asaasCustomerId, setAsaasCustomerId] = useState('')
-  const [asaasSubscriptionId, setAsaasSubscriptionId] = useState('')
 
   const [selectedTicketId, setSelectedTicketId] = useState('')
   const [ticketResponse, setTicketResponse] = useState('')
@@ -311,8 +303,8 @@ export default function Owner() {
     activeTab === 'usuarios' || activeTab === 'configuracoes' || activeTab === 'dashboard' || activeTab === 'sistema',
     isOwnerMaster,
   )
-  const plansQuery = useOwner2Plans(activeTab === 'comercial' || activeTab === 'dashboard' || activeTab === 'cadastro' || activeTab === 'assinaturas')
-  const subscriptionsQuery = useOwner2Subscriptions(activeTab === 'comercial' || activeTab === 'dashboard' || activeTab === 'cadastro' || activeTab === 'financeiro' || activeTab === 'assinaturas')
+  const plansQuery = useOwner2Plans(activeTab === 'dashboard' || activeTab === 'cadastro' || activeTab === 'assinaturas')
+  const subscriptionsQuery = useOwner2Subscriptions(activeTab === 'dashboard' || activeTab === 'cadastro' || activeTab === 'assinaturas')
   const contractsQuery = useOwner2Contracts(activeTab === 'contratos' || activeTab === 'dashboard')
   const ticketsQuery = useOwner2Tickets(true)
   const auditFilters = useMemo(
@@ -336,30 +328,12 @@ export default function Owner() {
   const settingsQuery = useOwner2Settings(companyId || undefined, activeTab === 'configuracoes' || activeTab === 'feature-flags')
   const { execute } = useOwner2Actions()
 
-  // Payments state for financeiro tab
-  const [payments, setPayments] = useState<Record<string, unknown>[]>([])
-  const [paymentsLoading, setPaymentsLoading] = useState(false)
-  const [paymentsLoaded, setPaymentsLoaded] = useState(false)
+  // ASAAS health state
   const [asaasHealthOk, setAsaasHealthOk] = useState<boolean | null>(null)
 
-  // Load payments when financeiro tab is active
+  // Check ASAAS health via health_check when configuracoes tab is active
   useEffect(() => {
-    if (activeTab === 'financeiro' && !paymentsLoaded && !paymentsLoading) {
-      setPaymentsLoading(true)
-      execute.mutateAsync({ action: 'list_subscription_payments', payload: {} })
-        .then((res: Record<string, unknown>) => {
-          setPayments(safeArray(res?.payments ?? res?.data ?? []))
-          setPaymentsLoaded(true)
-        })
-        .catch(() => { /* ignore */ })
-        .finally(() => setPaymentsLoading(false))
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeTab, paymentsLoaded])
-
-  // Check ASAAS health via health_check
-  useEffect(() => {
-    if (activeTab === 'financeiro' && asaasHealthOk === null) {
+    if (activeTab === 'configuracoes' && asaasHealthOk === null) {
       execute.mutateAsync({ action: 'health_check', payload: {} })
         .then((res: Record<string, unknown>) => {
           const hasKey = Boolean(res?.asaas_configured ?? res?.integrations?.asaas)
@@ -568,15 +542,6 @@ export default function Owner() {
     }
   }, [subscriptions])
 
-  const financeStatusData = useMemo(() => {
-    const grouped = subscriptions.reduce<Record<string, number>>((acc, sub) => {
-      const status = String(sub.payment_status ?? sub.status ?? 'unknown').toLowerCase()
-      acc[status] = (acc[status] || 0) + 1
-      return acc
-    }, {})
-    return Object.entries(grouped).map(([name, value]) => ({ name, value }))
-  }, [subscriptions])
-
   const availableLogModules = useMemo(() => {
     const modules = new Set<string>()
     logs.forEach((log) => {
@@ -718,19 +683,6 @@ export default function Owner() {
     ])
     downloadCsv('owner-logs.csv', ['id', 'acao', 'resultado', 'tabela', 'usuario', 'data'], rows)
     setFeedback('Exportacao de logs gerada em CSV.')
-  }
-
-  function exportFinanceCsv() {
-    const rows = subscriptions.map((s) => [
-      String(s.id ?? ''),
-      String(s.empresa_id ?? ''),
-      String(s.plan_id ?? s.plano_id ?? ''),
-      asNumber(s.amount, 0),
-      String(s.payment_status ?? ''),
-      String(s.status ?? ''),
-    ])
-    downloadCsv('owner-financeiro.csv', ['id', 'empresa_id', 'plano_id', 'valor', 'payment_status', 'status'], rows)
-    setFeedback('Exportacao financeira gerada em CSV.')
   }
 
   function openCriticalAction(request: CriticalActionRequest) {
@@ -1385,435 +1337,10 @@ export default function Owner() {
             />
           )}
 
-          {activeTab === 'comercial' && (
-            <div className="space-y-6">
-              {/* Catálogo de Planos */}
-              <SurfaceCard title="Catálogo de Planos" subtitle="Gerencie os planos disponíveis para as empresas">
-                <div className="mb-3 flex flex-wrap gap-2">
-                  <button className="rounded-lg bg-sky-700 px-3 py-2 text-sm font-semibold text-white hover:bg-sky-800 disabled:opacity-50 transition-colors" onClick={() => { setShowPlanForm(!showPlanForm); setEditingPlanId(''); setPlanCode(''); setPlanName(''); setPlanPrice('0'); setPlanDefaultPeriod('monthly'); setPlanUserLimit('10'); setPlanDataLimitMb('2048'); }}>{showPlanForm && !editingPlanId ? 'Cancelar' : '+ Cadastrar Novo Plano'}</button>
-                </div>
-                {(showPlanForm || editingPlanId) && (
-                  <div className="mb-4 grid gap-2 rounded-lg border border-border bg-muted/50 p-3">
-                    <p className="text-xs font-semibold text-muted-foreground">{editingPlanId ? 'Editar Plano' : 'Novo Plano'}</p>
-                    <div className="grid gap-2 sm:grid-cols-2">
-                      <input className="rounded-lg border border-input bg-background px-2 py-2 text-sm" value={planCode} onChange={(e) => setPlanCode(e.target.value)} placeholder="Código" />
-                      <input className="rounded-lg border border-input bg-background px-2 py-2 text-sm" value={planName} onChange={(e) => setPlanName(e.target.value)} placeholder="Nome" />
-                    </div>
-                    <div className="grid gap-2 sm:grid-cols-2">
-                      <input className="rounded-lg border border-input bg-background px-2 py-2 text-sm" value={planPrice} onChange={(e) => setPlanPrice(e.target.value)} placeholder="Preço mensal" />
-                      <select className="rounded-lg border border-input bg-background px-2 py-2 text-sm" value={planDefaultPeriod} onChange={(e) => setPlanDefaultPeriod(e.target.value as 'monthly' | 'quarterly' | 'yearly')}>
-                        <option value="monthly">Mensal</option>
-                        <option value="quarterly">Trimestral</option>
-                        <option value="yearly">Anual</option>
-                      </select>
-                    </div>
-                    <div className="grid gap-2 sm:grid-cols-2">
-                      <input className="rounded-lg border border-input bg-background px-2 py-2 text-sm" type="number" min="1" value={planUserLimit} onChange={(e) => setPlanUserLimit(e.target.value)} placeholder="Limite de usuários" />
-                      <input className="rounded-lg border border-input bg-background px-2 py-2 text-sm" type="number" min="256" value={planDataLimitMb} onChange={(e) => setPlanDataLimitMb(e.target.value)} placeholder="Limite dados (MB)" />
-                    </div>
-                    {editingPlanId ? (
-                      <div className="flex gap-2">
-                        <button className="rounded-lg bg-amber-600 px-3 py-2 text-sm font-semibold text-white" disabled={busy || !planCode || !planName} onClick={() => { runAction('update_plan', { plan: { id: editingPlanId, code: planCode.toUpperCase(), name: planName, description: `Periodicidade padrão: ${planDefaultPeriod}`, price_month: Number(planPrice || 0), module_flags: { default_periodicity: planDefaultPeriod } } }, 'Plano atualizado com sucesso.'); setEditingPlanId(''); setPlanCode(''); setPlanName(''); setPlanPrice('0'); setPlanDefaultPeriod('monthly'); setPlanUserLimit('10'); setPlanDataLimitMb('2048'); }}>Alterar plano</button>
-                        <button className="rounded-lg border border-border px-3 py-2 text-sm text-foreground hover:bg-muted disabled:opacity-50 transition-colors" onClick={() => { setEditingPlanId(''); setPlanCode(''); setPlanName(''); setPlanPrice('0'); setPlanDefaultPeriod('monthly'); setPlanUserLimit('10'); setPlanDataLimitMb('2048'); }}>Cancelar edição</button>
-                      </div>
-                    ) : (
-                      <button className="rounded-lg bg-sky-700 px-3 py-2 text-sm font-semibold text-white hover:bg-sky-800 disabled:opacity-50 transition-colors" disabled={busy || !planCode || !planName} onClick={() => { runAction('create_plan', { plan: { code: planCode.toUpperCase(), name: planName, description: `Periodicidade padrão: ${planDefaultPeriod}`, price_month: Number(planPrice || 0), user_limit: Number(planUserLimit) || 10, data_limit_mb: Number(planDataLimitMb) || 2048, module_flags: { default_periodicity: planDefaultPeriod }, active: true } }, 'Plano criado com sucesso.'); setShowPlanForm(false); }}>Criar plano</button>
-                    )}
-                  </div>
-                )}
-                <div className="max-h-[420px] overflow-auto rounded-xl border border-border">
-                  <table className="w-full text-xs">
-                    <thead className="bg-muted">
-                      <tr>
-                        <th className="px-2 py-2 text-left">Código</th>
-                        <th className="px-2 py-2 text-left">Nome</th>
-                        <th className="px-2 py-2 text-left">Preço</th>
-                        <th className="px-2 py-2 text-left">Período</th>
-                        <th className="px-2 py-2 text-left">Ação</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {plans.map((p) => {
-                        const flags = (p as Record<string, unknown>).module_flags as Record<string, unknown> | undefined
-                        const periodLabel = flags?.default_periodicity === 'yearly' ? 'Anual' : flags?.default_periodicity === 'quarterly' ? 'Trimestral' : 'Mensal'
-                        return (
-                          <tr key={String(p.id)} className={`border-t border-border ${editingPlanId === String(p.id) ? 'bg-amber-50' : ''}`}>
-                            <td className="px-2 py-2">{String(p.code ?? '-')}</td>
-                            <td className="px-2 py-2">{String(p.name ?? '-')}</td>
-                            <td className="px-2 py-2">R$ {Number(p.price_month ?? 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-                            <td className="px-2 py-2">{periodLabel}</td>
-                            <td className="px-2 py-2">
-                              <button className="rounded border border-amber-300 bg-amber-50 px-2 py-0.5 text-[11px] text-amber-700" onClick={() => { setEditingPlanId(String(p.id)); setPlanCode(String(p.code ?? '')); setPlanName(String(p.name ?? '')); setPlanPrice(String(p.price_month ?? '0')); setPlanDefaultPeriod((flags?.default_periodicity as 'monthly' | 'quarterly' | 'yearly') || 'monthly'); setShowPlanForm(false); }}>Editar</button>
-                            </td>
-                          </tr>
-                        )
-                      })}
-                      {plans.length === 0 && <tr><td colSpan={5} className="px-2 py-3 text-muted-foreground">Nenhum plano cadastrado.</td></tr>}
-                    </tbody>
-                  </table>
-                </div>
-              </SurfaceCard>
+          {/* REMOVED: comercial tab - merged into 'assinaturas' */}
 
-              {/* Assinaturas */}
-              <SurfaceCard title="Assinaturas" subtitle="Cada empresa com plano, valor e periodicidade próprios">
-                <div className="mb-4 grid gap-2 rounded-lg border border-border bg-muted/50 p-3">
-                  <p className="text-xs font-semibold text-muted-foreground">Nova assinatura (empresa selecionada: {companyId || 'nenhuma'})</p>
-                  <div className="grid gap-2 sm:grid-cols-3">
-                    <select className="rounded-lg border border-input bg-background px-2 py-2 text-sm" value={subscriptionPlanId} onChange={(e) => setSubscriptionPlanId(e.target.value)}>
-                      <option value="">Plano</option>
-                      {plans.map((p) => <option key={String(p.id)} value={String(p.id)}>{String(p.name ?? p.code ?? p.id)}</option>)}
-                    </select>
-                    <input className="rounded-lg border border-input bg-background px-2 py-2 text-sm" value={subscriptionAmount} onChange={(e) => setSubscriptionAmount(e.target.value)} placeholder="Valor" />
-                    <select className="rounded-lg border border-input bg-background px-2 py-2 text-sm" value={subscriptionPeriod} onChange={(e) => setSubscriptionPeriod(e.target.value as 'monthly' | 'quarterly' | 'yearly' | 'custom')}>
-                      <option value="monthly">Mensal</option>
-                      <option value="quarterly">Trimestral</option>
-                      <option value="yearly">Anual</option>
-                      <option value="custom">Customizada</option>
-                    </select>
-                  </div>
-                  <div className="grid gap-2 sm:grid-cols-5">
-                    <select className="rounded-lg border border-input bg-background px-2 py-2 text-sm" value={subscriptionStatus} onChange={(e) => setSubscriptionStatus(e.target.value as 'ativa' | 'atrasada' | 'cancelada' | 'teste')}>
-                      <option value="teste">TESTE</option>
-                      <option value="ativa">Ativa</option>
-                      <option value="atrasada">Atrasada</option>
-                      <option value="cancelada">Cancelada</option>
-                    </select>
-                    <select className="rounded-lg border border-input bg-background px-2 py-2 text-sm" value={subscriptionPaymentMethod} onChange={(e) => setSubscriptionPaymentMethod(e.target.value)}>
-                      <option value="pix">PIX</option>
-                      <option value="boleto">Boleto</option>
-                      <option value="credit_card">Cartao de credito</option>
-                    </select>
-                    <input className="rounded-lg border border-input bg-background px-2 py-2 text-sm" type="date" value={subscriptionStartsAt} onChange={(e) => setSubscriptionStartsAt(e.target.value)} title="Inicio" />
-                    <input className="rounded-lg border border-input bg-background px-2 py-2 text-sm" type="date" value={subscriptionRenewalAt} onChange={(e) => setSubscriptionRenewalAt(e.target.value)} title="Proximo vencimento" />
-                    <input className="rounded-lg border border-input bg-background px-2 py-2 text-sm" type="date" value={subscriptionEndsAt} onChange={(e) => setSubscriptionEndsAt(e.target.value)} title="Fim (opcional)" />
-                  </div>
-                  <div className="flex flex-wrap gap-2">
-                    <button className="rounded-lg bg-sky-700 px-3 py-2 text-sm font-semibold text-white hover:bg-sky-800 disabled:opacity-50 transition-colors" disabled={busy || !companyId || !subscriptionPlanId} onClick={() => runAction('create_subscription', { subscription: { empresa_id: companyId, plan_id: subscriptionPlanId, amount: Number(subscriptionAmount || 0), period: subscriptionPeriod, payment_method: subscriptionPaymentMethod, starts_at: subscriptionStartsAt || undefined, renewal_at: subscriptionRenewalAt || undefined, ends_at: subscriptionEndsAt || undefined, status: subscriptionStatus } }, 'Assinatura criada com sucesso.')}>Criar assinatura</button>
-                    <button className="rounded-lg border border-border px-3 py-2 text-sm text-foreground hover:bg-muted disabled:opacity-50 transition-colors" disabled={busy || !companyId} onClick={() => runAction('set_subscription_status', { empresa_id: companyId, status: 'ativa' }, 'Assinatura ativada.')} title="Ativa apenas a assinatura (não altera status da empresa)">Ativar assinatura</button>
-                                      <button onClick={() => companyId && runAction('reactivate_company', { empresa_id: companyId }, 'Empresa reativada com sucesso!')} disabled={busy || !companyId} className="inline-flex items-center gap-1 rounded bg-emerald-600 px-3 py-1 text-xs text-white hover:bg-emerald-700 disabled:opacity-50" title="Reativa subscription + desbloqueia empresa atomicamente">Reativar empresa</button>
-<button className="rounded-lg border border-amber-300 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-800/50 px-3 py-2 text-sm text-amber-700 dark:text-amber-400 hover:bg-amber-100 dark:hover:bg-amber-950/50 disabled:opacity-50 transition-colors" disabled={busy || !isOwnerMaster} onClick={() => runAction('enforce_subscription_expiry', {}, 'Vencimentos processados.')}>Processar vencimentos</button>
-                    <input className="rounded-lg border border-input bg-background px-2 py-2 text-sm" value={planCodeToChange} onChange={(e) => setPlanCodeToChange(e.target.value)} placeholder="Código novo plano" />
-                    <button className="rounded-lg border border-amber-300 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-800/50 px-3 py-2 text-sm text-amber-700 dark:text-amber-400 hover:bg-amber-100 dark:hover:bg-amber-950/50 disabled:opacity-50 transition-colors" disabled={busy || !companyId || !planCodeToChange} onClick={() => runAction('change_plan', { empresa_id: companyId, plano_codigo: planCodeToChange.toUpperCase() }, 'Plano alterado.')}>Trocar plano</button>
-                  </div>
-                </div>
-                <div className="max-h-[420px] overflow-auto rounded-xl border border-border">
-                  <table className="w-full text-xs">
-                    <thead className="bg-muted">
-                      <tr>
-                        <th className="px-2 py-2 text-left">Empresa</th>
-                        <th className="px-2 py-2 text-left">Plano</th>
-                        <th className="px-2 py-2 text-left">Status</th>
-                        <th className="px-2 py-2 text-left">Validade</th>
-                        <th className="px-2 py-2 text-left">Ação</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {subscriptions.map((s, idx) => {
-                        const st = String(s.status ?? '-')
-                        const sa = (s as Record<string, unknown>).starts_at as string | null
-                        const ea = (s as Record<string, unknown>).ends_at as string | null
-                        const fmtDate = (d: string | null) => d ? new Date(d).toLocaleDateString('pt-BR') : '–'
-                        const planObj = plans.find((p) => String(p.id) === String(s.plan_id ?? (s as Record<string, unknown>).plano_id))
-                        return (
-                          <tr key={`${String(s.id ?? 'sub')}-${idx}`} className="border-t border-border">
-                            <td className="px-2 py-2">{String(s.empresa_id ?? '-')}</td>
-                            <td className="px-2 py-2">{planObj ? String(planObj.name ?? planObj.code) : String(s.plan_id ?? (s as Record<string, unknown>).plano_id ?? '-')}</td>
-                            <td className="px-2 py-2"><span className={`rounded border px-2 py-0.5 ${statusColor(st)}`}>{st}</span></td>
-                            <td className="px-2 py-2 whitespace-nowrap">{fmtDate(sa)} — {fmtDate(ea)}</td>
-                            <td className="px-2 py-2">
-                              <button className="rounded border border-sky-300 bg-sky-50 px-2 py-0.5 text-[11px] text-sky-700" disabled={busy} onClick={() => runAction('set_subscription_status', { empresa_id: String(s.empresa_id ?? ''), status: 'ativa' }, 'Ativada.')}>Ativar</button>
-                            </td>
-                          </tr>
-                        )
-                      })}
-                      {subscriptions.length === 0 && <tr><td colSpan={5} className="px-2 py-3 text-muted-foreground">Nenhuma assinatura.</td></tr>}
-                    </tbody>
-                  </table>
-                </div>
-              </SurfaceCard>
-            </div>
-          )}
+          {/* REMOVED: financeiro tab - merged into 'assinaturas' */}
 
-          {activeTab === 'financeiro' && (
-            <div className="grid gap-4">
-              {/* Row 1: Metricas + Status ASAAS */}
-              <div className="grid gap-4 xl:grid-cols-2">
-                <SurfaceCard title="Resumo financeiro" subtitle="Receita recorrente e status de pagamento">
-                  <div className="grid gap-2 sm:grid-cols-2">
-                    <MetricTile label="MRR" value={`R$ ${financeSummary.totalMrr.toLocaleString('pt-BR')}`} icon={CreditCard} tone="emerald" />
-                    <MetricTile label="Assinaturas pagas" value={financeSummary.paid} icon={ShieldCheck} tone="sky" />
-                    <MetricTile label="Assinaturas atrasadas" value={financeSummary.late} icon={AlertTriangle} tone="amber" />
-                    <MetricTile label="ARPA" value={`R$ ${financeSummary.arpa.toLocaleString('pt-BR', { maximumFractionDigits: 2 })}`} icon={Database} tone="rose" />
-                  </div>
-                  <div className="mt-3 rounded-xl border border-border bg-card p-2">
-                    <div className="mb-2 flex items-center justify-between">
-                      <p className="text-xs text-muted-foreground">Status de pagamento</p>
-                      <button className="inline-flex items-center gap-1 rounded-lg border border-input bg-background px-2 py-1 text-[11px] font-semibold text-foreground" onClick={exportFinanceCsv}>
-                        <Download className="h-3 w-3" /> Exportar CSV
-                      </button>
-                    </div>
-                    <div className="h-44">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <BarChart data={financeStatusData} margin={{ top: 10, right: 8, left: 0, bottom: 0 }}>
-                          <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-                          <XAxis dataKey="name" tick={{ fontSize: 11 }} stroke="#64748b" />
-                          <YAxis allowDecimals={false} tick={{ fontSize: 11 }} stroke="#64748b" />
-                          <Tooltip />
-                          <Bar dataKey="value" fill="#0ea5e9" radius={[6, 6, 0, 0]} />
-                        </BarChart>
-                      </ResponsiveContainer>
-                    </div>
-                  </div>
-                </SurfaceCard>
-
-                <div className="grid gap-4">
-                  {/* ASAAS Status Indicator */}
-                  <SurfaceCard title="Status ASAAS" subtitle="Integracao com gateway de pagamento">
-                    <div className="flex items-center gap-3 rounded-xl border p-3 ${asaasHealthOk ? 'border-emerald-200 bg-emerald-50' : asaasHealthOk === false ? 'border-rose-200 bg-rose-50' : 'border-border bg-muted/50'}">
-                      {asaasHealthOk === null ? (
-                        <><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /><div><p className="text-sm font-semibold text-foreground">Verificando...</p><p className="text-xs text-muted-foreground">Checando API key do ASAAS</p></div></>
-                      ) : asaasHealthOk ? (
-                        <><CheckCircle2 className="h-5 w-5 text-emerald-600" /><div><p className="text-sm font-semibold text-emerald-700">ASAAS conectado</p><p className="text-xs text-emerald-600">API key configurada. Webhooks e sync prontos.</p></div></>
-                      ) : (
-                        <><XCircle className="h-5 w-5 text-rose-600" /><div><p className="text-sm font-semibold text-rose-700">ASAAS nao configurado</p><p className="text-xs text-rose-600">Defina ASAAS_API_KEY nos secrets do Supabase.</p></div></>
-                      )}
-                    </div>
-                    <p className="mt-2 text-[11px] text-muted-foreground">Para configurar: <code className="rounded bg-muted px-1">supabase secrets set ASAAS_API_KEY=seu_token</code></p>
-                  </SurfaceCard>
-
-                  {/* Atualizar cobranca */}
-                  <SurfaceCard title="Atualizar cobranca" subtitle="Alterar valor ou status de pagamento">
-                    <div className="grid gap-2">
-                      <select className="rounded-lg border border-input bg-background px-2 py-2 text-sm" value={billingSubscriptionId} onChange={(e) => setBillingSubscriptionId(e.target.value)}>
-                        <option value="">Selecione a assinatura</option>
-                        {subscriptions.map((s, idx) => {
-                          const provider = String(s.billing_provider ?? 'manual')
-                          const tag = provider !== 'manual' ? ` [${provider.toUpperCase()}]` : ''
-                          const empresa = companies.find((c) => String(c.id) === String(s.empresa_id))
-                          const label = empresa ? String(empresa.nome ?? empresa.slug ?? s.empresa_id) : String(s.empresa_id ?? '-')
-                          return (
-                            <option key={`${String(s.id ?? 'sub')}-${idx}`} value={String(s.id ?? '')}>
-                              {label}{tag} - R$ {asNumber(s.amount, 0).toLocaleString('pt-BR')}
-                            </option>
-                          )
-                        })}
-                      </select>
-                      <input className="rounded-lg border border-input bg-background px-2 py-2 text-sm" placeholder="Novo valor (opcional)" value={billingAmount} onChange={(e) => setBillingAmount(e.target.value)} />
-                      <select className="rounded-lg border border-input bg-background px-2 py-2 text-sm" value={billingPaymentStatus} onChange={(e) => setBillingPaymentStatus(e.target.value)}>
-                        <option value="paid">Pago</option>
-                        <option value="late">Atrasado</option>
-                        <option value="pending">Pendente</option>
-                        <option value="failed">Falhou</option>
-                      </select>
-                      <input className="rounded-lg border border-input bg-background px-2 py-2 text-sm" type="date" value={billingRenewalAt} onChange={(e) => setBillingRenewalAt(e.target.value)} title="Próx. renovação (opcional)" placeholder="Próx. renovação" />
-                      <button
-                        className="rounded-lg bg-sky-700 px-3 py-2 text-sm font-semibold text-white hover:bg-sky-800 disabled:opacity-50 transition-colors"
-                        disabled={busy || !billingSubscriptionId || !billingPaymentStatus}
-                        onClick={() => runAction('update_subscription_billing', {
-                          subscription_id: billingSubscriptionId,
-                          amount: billingAmount ? Number(billingAmount) : undefined,
-                          payment_status: billingPaymentStatus,
-                          renewal_at: billingRenewalAt || undefined,
-                        }, 'Cobranca atualizada com sucesso.')}
-                      >
-                        Atualizar cobranca
-                      </button>
-                    </div>
-                  </SurfaceCard>
-                </div>
-              </div>
-
-              {/* Row 2: Assinaturas com badges de provider */}
-              <SurfaceCard title="Assinaturas" subtitle="Todas as assinaturas com status do provider">
-                <div className="max-h-[350px] overflow-auto rounded-xl border border-border">
-                  <table className="w-full text-xs">
-                    <thead className="sticky top-0 bg-muted">
-                      <tr>
-                        <th className="px-2 py-2 text-left">Empresa</th>
-                        <th className="px-2 py-2 text-left">Provider</th>
-                        <th className="px-2 py-2 text-left">Valor</th>
-                        <th className="px-2 py-2 text-left">Status</th>
-                        <th className="px-2 py-2 text-left">Pagamento</th>
-                        <th className="px-2 py-2 text-left">Renovacao</th>
-                        <th className="px-2 py-2 text-left">Acoes</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {subscriptions.map((s, idx) => {
-                        const provider = String(s.billing_provider ?? 'manual')
-                        const providerBadge = provider === 'asaas'
-                          ? 'bg-violet-100 text-violet-700 border-violet-200'
-                          : provider === 'stripe'
-                            ? 'bg-indigo-100 text-indigo-700 border-indigo-200'
-                            : 'bg-muted text-muted-foreground border-border'
-                        const empresa = companies.find((c) => String(c.id) === String(s.empresa_id))
-                        const empresaLabel = empresa ? String(empresa.nome ?? empresa.slug ?? '') : String(s.empresa_id ?? '-').slice(0, 8)
-                        return (
-                          <tr key={`fs-${String(s.id ?? idx)}`} className="border-t border-border hover:bg-muted/50">
-                            <td className="px-2 py-2 font-medium">{empresaLabel}</td>
-                            <td className="px-2 py-2">
-                              <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-semibold ${providerBadge}`}>
-                                {provider.toUpperCase()}
-                              </span>
-                            </td>
-                            <td className="px-2 py-2">R$ {asNumber(s.amount, 0).toLocaleString('pt-BR')}</td>
-                            <td className="px-2 py-2"><span className={`inline-block rounded-full border px-2 py-0.5 text-[10px] font-semibold ${statusColor(String(s.status ?? ''))}`}>{String(s.status ?? '-')}</span></td>
-                            <td className="px-2 py-2"><span className={`inline-block rounded-full border px-2 py-0.5 text-[10px] font-semibold ${statusColor(String(s.payment_status ?? ''))}`}>{String(s.payment_status ?? '-')}</span></td>
-                            <td className="px-2 py-2 text-muted-foreground">{s.renewal_at ? new Date(String(s.renewal_at)).toLocaleDateString('pt-BR') : '-'}</td>
-                            <td className="px-2 py-2">
-                              <div className="flex gap-1">
-                                {isOwnerMaster && provider === 'asaas' && (
-                                  <button
-                                    className="inline-flex items-center gap-1 rounded border border-emerald-300 bg-emerald-50 px-1.5 py-0.5 text-[10px] text-emerald-700 hover:bg-emerald-100"
-                                    disabled={busy}
-                                    title="Sincronizar com ASAAS"
-                                    onClick={() => runAction('asaas_sync_subscription', { subscription_id: String(s.id) }, 'Sincronizacao ASAAS concluida.')}
-                                  >
-                                    <RefreshCw className="h-3 w-3" /> Sync
-                                  </button>
-                                )}
-                                {isOwnerMaster && provider === 'manual' && (
-                                  <button
-                                    className="inline-flex items-center gap-1 rounded border border-violet-300 bg-violet-50 px-1.5 py-0.5 text-[10px] text-violet-700 hover:bg-violet-100"
-                                    disabled={busy}
-                                    title="Vincular ao ASAAS"
-                                    onClick={() => { setBillingSubscriptionId(String(s.id)); }}
-                                  >
-                                    <Link2 className="h-3 w-3" /> Vincular
-                                  </button>
-                                )}
-                              </div>
-                            </td>
-                          </tr>
-                        )
-                      })}
-                      {subscriptions.length === 0 && <tr><td colSpan={7} className="px-2 py-4 text-center text-muted-foreground">Nenhuma assinatura.</td></tr>}
-                    </tbody>
-                  </table>
-                </div>
-              </SurfaceCard>
-
-              {/* Row 3: Vincular ASAAS + Historico de pagamentos */}
-              <div className="grid gap-4 xl:grid-cols-2">
-                {/* Vincular ASAAS */}
-                {isOwnerMaster ? (
-                  <SurfaceCard title="Vincular ASAAS" subtitle="Conectar assinatura local ao ASAAS">
-                    <div className="grid gap-2">
-                      <select className="rounded-lg border border-input bg-background px-2 py-2 text-sm" value={billingSubscriptionId} onChange={(e) => setBillingSubscriptionId(e.target.value)}>
-                        <option value="">Selecione a assinatura</option>
-                        {subscriptions.map((s, idx) => {
-                          const empresa = companies.find((c) => String(c.id) === String(s.empresa_id))
-                          const label = empresa ? String(empresa.nome ?? empresa.slug ?? s.empresa_id) : String(s.empresa_id ?? '-')
-                          return (
-                            <option key={`link-${String(s.id ?? 'sub')}-${idx}`} value={String(s.id ?? '')}>
-                              {label} - {String(s.billing_provider ?? 'manual').toUpperCase()}
-                            </option>
-                          )
-                        })}
-                      </select>
-                      <input className="rounded-lg border border-input bg-background px-2 py-2 text-sm" placeholder="Asaas customer ID (cus_xxx)" value={asaasCustomerId} onChange={(e) => setAsaasCustomerId(e.target.value)} />
-                      <input className="rounded-lg border border-input bg-background px-2 py-2 text-sm" placeholder="Asaas subscription ID (sub_xxx)" value={asaasSubscriptionId} onChange={(e) => setAsaasSubscriptionId(e.target.value)} />
-                      <div className="grid gap-2 sm:grid-cols-2">
-                        <button
-                          className="inline-flex items-center justify-center gap-1 rounded-lg border border-violet-300 bg-violet-50 px-3 py-2 text-sm font-semibold text-violet-700 hover:bg-violet-100"
-                          disabled={busy || (!billingSubscriptionId && !companyId)}
-                          onClick={() => runAction('asaas_link_subscription', {
-                            subscription_id: billingSubscriptionId || undefined,
-                            empresa_id: billingSubscriptionId ? undefined : (companyId || undefined),
-                            asaas_customer_id: asaasCustomerId || undefined,
-                            asaas_subscription_id: asaasSubscriptionId || undefined,
-                          }, 'Vinculo ASAAS salvo com sucesso.')}
-                        >
-                          <Link2 className="h-4 w-4" /> Salvar vinculo
-                        </button>
-                        <button
-                          className="inline-flex items-center justify-center gap-1 rounded-lg border border-emerald-300 bg-emerald-50 px-3 py-2 text-sm font-semibold text-emerald-700 hover:bg-emerald-100"
-                          disabled={busy || (!billingSubscriptionId && !companyId)}
-                          onClick={() => {
-                            runAction('asaas_sync_subscription', {
-                              subscription_id: billingSubscriptionId || undefined,
-                              empresa_id: billingSubscriptionId ? undefined : (companyId || undefined),
-                            }, 'Sincronizacao ASAAS concluida.')
-                            setPaymentsLoaded(false)
-                          }}
-                        >
-                          <RefreshCw className="h-4 w-4" /> Sincronizar agora
-                        </button>
-                      </div>
-                      <p className="text-[11px] text-muted-foreground">Ao vincular, o webhook do ASAAS vai atualizar status e pagamentos automaticamente.</p>
-                    </div>
-                  </SurfaceCard>
-                ) : (
-                  <SurfaceCard title="Integracao ASAAS" subtitle="Area restrita">
-                    <div className="rounded-xl border border-border bg-muted/50 p-4 text-center">
-                      <p className="text-sm text-muted-foreground">Vinculacao e sincronizacao ASAAS disponivel apenas para OWNER_MASTER.</p>
-                    </div>
-                  </SurfaceCard>
-                )}
-
-                {/* Historico de pagamentos */}
-                <SurfaceCard title="Historico de pagamentos" subtitle={`${payments.length} pagamento(s) registrado(s)`}>
-                  {paymentsLoading ? (
-                    <div className="flex items-center justify-center py-8">
-                      <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-                      <span className="ml-2 text-sm text-muted-foreground">Carregando pagamentos...</span>
-                    </div>
-                  ) : (
-                    <div className="max-h-[320px] overflow-auto rounded-xl border border-border">
-                      <table className="w-full text-xs">
-                        <thead className="sticky top-0 bg-muted">
-                          <tr>
-                            <th className="px-2 py-2 text-left">Data</th>
-                            <th className="px-2 py-2 text-left">Valor</th>
-                            <th className="px-2 py-2 text-left">Status</th>
-                            <th className="px-2 py-2 text-left">Provider</th>
-                            <th className="px-2 py-2 text-left">Metodo</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {payments.map((p, idx) => {
-                            const pStatus = String(p.status ?? '-').toLowerCase()
-                            const pStatusBadge = pStatus === 'paid' || pStatus === 'pago'
-                              ? 'bg-emerald-100 text-emerald-700 border-emerald-200'
-                              : pStatus === 'late' || pStatus === 'atrasado' || pStatus === 'overdue'
-                                ? 'bg-amber-100 text-amber-700 border-amber-200'
-                                : pStatus === 'failed' || pStatus === 'falhou'
-                                  ? 'bg-rose-100 text-rose-700 border-rose-200'
-                                  : 'bg-muted text-muted-foreground border-border'
-                            const pProvider = String(p.provider ?? 'manual')
-                            const pProviderBadge = pProvider === 'asaas'
-                              ? 'bg-violet-100 text-violet-700 border-violet-200'
-                              : pProvider === 'stripe'
-                                ? 'bg-indigo-100 text-indigo-700 border-indigo-200'
-                                : 'bg-muted text-muted-foreground border-border'
-                            return (
-                              <tr key={`pay-${String(p.id ?? idx)}`} className="border-t border-border hover:bg-muted/50">
-                                <td className="px-2 py-2 text-muted-foreground">
-                                  {p.paid_at ? new Date(String(p.paid_at)).toLocaleDateString('pt-BR') : p.due_at ? new Date(String(p.due_at)).toLocaleDateString('pt-BR') : '-'}
-                                </td>
-                                <td className="px-2 py-2 font-medium">R$ {asNumber(p.amount, 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
-                                <td className="px-2 py-2"><span className={`inline-block rounded-full border px-2 py-0.5 text-[10px] font-semibold ${pStatusBadge}`}>{String(p.status ?? '-')}</span></td>
-                                <td className="px-2 py-2"><span className={`inline-block rounded-full border px-2 py-0.5 text-[10px] font-semibold ${pProviderBadge}`}>{pProvider.toUpperCase()}</span></td>
-                                <td className="px-2 py-2 text-muted-foreground">{String(p.method ?? '-')}</td>
-                              </tr>
-                            )
-                          })}
-                          {payments.length === 0 && <tr><td colSpan={5} className="px-2 py-4 text-center text-muted-foreground">Nenhum pagamento registrado.</td></tr>}
-                        </tbody>
-                      </table>
-                    </div>
-                  )}
-                  <button
-                    className="mt-2 inline-flex items-center gap-1 rounded-lg border border-input bg-background px-2 py-1 text-[11px] font-semibold text-foreground hover:bg-muted/50"
-                    disabled={paymentsLoading}
-                    onClick={() => { setPaymentsLoaded(false) }}
-                  >
-                    <RefreshCw className={`h-3 w-3 ${paymentsLoading ? 'animate-spin' : ''}`} /> Atualizar
-                  </button>
-                </SurfaceCard>
-              </div>
-            </div>
-          )}
 
           {activeTab === 'assinaturas' && (
             <SubscriptionsTab
