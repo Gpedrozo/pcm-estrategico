@@ -8,7 +8,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Plus, Search, ShieldAlert, AlertTriangle, FileWarning, Calendar, GraduationCap, Trash2, HardHat, FileSearch2, BarChart3, Printer, FileSpreadsheet, FileText, PackagePlus, PackageMinus, ArrowDown, ArrowUp, RotateCcw, Users, Edit2 } from 'lucide-react';
+import { Plus, Search, ShieldAlert, AlertTriangle, FileWarning, Calendar, GraduationCap, Trash2, HardHat, FileSearch2, BarChart3, Printer, FileSpreadsheet, FileText, PackagePlus, PackageMinus, ArrowDown, ArrowUp, RotateCcw, Users, Edit2, Loader2 } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
 import { useReactToPrint } from 'react-to-print';
 import { useIncidentesSSMA, useCreateIncidenteSSMA, usePermissoesTrabalho, useCreatePermissaoTrabalho } from '@/hooks/useSSMA';
 import { useEPIs, useCreateEPI, useEntregasEPI, useCreateEntregaEPI, useMovimentacoesEPI, useCreateMovimentacaoEPI, calcularSaldoMovimentacao, type TipoMovimentacaoEPI } from '@/hooks/useEPIs';
@@ -145,6 +146,7 @@ export default function SSMA() {
     estoque_atual: 0,
     estoque_minimo: 0,
   });
+  const [buscandoCA, setBuscandoCA] = useState(false);
 
   const [entregaForm, setEntregaForm] = useState({
     epi_id: '',
@@ -291,6 +293,33 @@ export default function SSMA() {
       data_validade: '', dias_alerta_antes: 30,
       numero_certificado: '', observacoes: '',
     });
+  };
+
+  const handleBuscarCA = async () => {
+    const ca = epiForm.numero_ca.replace(/\D/g, '').trim();
+    if (!ca) {
+      toast({ title: 'Informe o número do C.A.', variant: 'destructive' });
+      return;
+    }
+    setBuscandoCA(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('consulta-ca', { body: { ca } });
+      if (error || data?.error) {
+        toast({ title: 'C.A. não encontrado', description: data?.error || error?.message || 'Verifique o número e tente novamente.', variant: 'destructive' });
+        return;
+      }
+      setEPIForm(prev => ({
+        ...prev,
+        nome: data.nome || prev.nome,
+        fabricante: data.fabricante || prev.fabricante,
+        validade_ca: data.validade || prev.validade_ca,
+      }));
+      toast({ title: 'C.A. encontrado!', description: `${data.nome} — ${data.fabricante ?? 'Fabricante não informado'} — Situação: ${data.situacao}` });
+    } catch (err) {
+      toast({ title: 'Erro ao consultar C.A.', description: err instanceof Error ? err.message : 'Tente novamente.', variant: 'destructive' });
+    } finally {
+      setBuscandoCA(false);
+    }
   };
 
   const handleSubmitEPI = async (e: React.FormEvent) => {
@@ -1749,7 +1778,12 @@ export default function SSMA() {
               </div>
               <div className="space-y-2">
                 <Label>Nº CA</Label>
-                <Input value={epiForm.numero_ca} onChange={(e) => setEPIForm({...epiForm, numero_ca: e.target.value})} placeholder="Ex: 12345" />
+                <div className="flex gap-2">
+                  <Input value={epiForm.numero_ca} onChange={(e) => setEPIForm({...epiForm, numero_ca: e.target.value})} placeholder="Ex: 12345" />
+                  <Button type="button" variant="outline" size="icon" onClick={handleBuscarCA} disabled={buscandoCA || !epiForm.numero_ca.trim()} title="Buscar dados do C.A. online">
+                    {buscandoCA ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
+                  </Button>
+                </div>
               </div>
             </div>
             <div className="grid grid-cols-2 gap-4">
