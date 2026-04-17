@@ -13,7 +13,7 @@ import { Switch } from '@/components/ui/switch';
 import {
   Plus, Search, Calendar, Clock, Settings, ChevronDown, ChevronRight,
   GripVertical, Trash2, Edit, Play, FileText, Copy, History, CheckSquare,
-  Download, ListChecks, Timer, Wrench, LayoutList
+  Download, ListChecks, Timer, Wrench, LayoutList, AlertTriangle
 } from 'lucide-react';
 import { usePlanosPreventivos, useCreatePlanoPreventivo, useUpdatePlanoPreventivo, useDeletePlanoPreventivo, type PlanoPreventivo } from '@/hooks/usePlanosPreventivos';
 import { useEquipamentos } from '@/hooks/useEquipamentos';
@@ -162,11 +162,18 @@ export default function Preventiva() {
                     <span className="flex items-center gap-1"><Calendar className="h-3 w-3" />{plano.frequencia_dias ?? 0}d</span>
                     <span className="flex items-center gap-1"><Clock className="h-3 w-3" />{formatMinutes(plano.tempo_estimado_min ?? 0)}</span>
                   </div>
-                  {plano.proxima_execucao && (
-                    <p className="text-[10px] mt-1 text-info">
-                      Próxima: {new Date(plano.proxima_execucao).toLocaleDateString('pt-BR')}
-                    </p>
-                  )}
+                  {plano.proxima_execucao && (() => {
+                    const vencido = new Date(plano.proxima_execucao).getTime() < Date.now();
+                    return (
+                      <div className="flex items-center gap-1 mt-1">
+                        {vencido && <AlertTriangle className="h-3 w-3 text-red-500" />}
+                        <p className={`text-[10px] ${vencido ? 'text-red-600 font-semibold' : 'text-info'}`}>
+                          {vencido ? 'Vencido: ' : 'Próxima: '}
+                          {new Date(plano.proxima_execucao).toLocaleDateString('pt-BR')}
+                        </p>
+                      </div>
+                    );
+                  })()}
                 </button>
                 );
               })
