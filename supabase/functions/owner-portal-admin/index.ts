@@ -3121,6 +3121,16 @@ Deno.serve(async (req) => {
 
   if (body.action === "set_company_status" || body.action === "block_company") {
     if (!body.empresa_id) return fail("empresa_id is required", 400, null, req);
+
+    // Verificar senha para bloqueio/desbloqueio de empresa
+    if (body.auth_password) {
+      const pwOk = await verifyActorPassword({
+        email: auth.user.email,
+        password: body.auth_password,
+        expectedUserId: auth.user.id,
+      });
+      if (!pwOk) return fail("Senha invalida.", 401, null, req);
+    }
     const status = body.action === "block_company" ? "blocked" : (body.status ?? "active");
     const { error } = await admin
       .from("empresas")
