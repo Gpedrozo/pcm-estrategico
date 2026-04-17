@@ -3825,7 +3825,7 @@ Deno.serve(async (req) => {
 
     const { data, error } = await admin
       .from("subscriptions")
-      .select("*, plans(id,code,name,user_limit,module_flags), empresas(id,nome)")
+      .select("*, planos(id,codigo,nome,price_month,limite_usuarios,features), empresas(id,nome)")
       .order("updated_at", { ascending: false })
       .limit(safeLimit);
     if (error) return fail(error.message, 400, null, req);
