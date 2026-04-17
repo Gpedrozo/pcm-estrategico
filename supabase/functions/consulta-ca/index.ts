@@ -41,6 +41,22 @@ interface ConsultaCAResult {
   normas: string[];
 }
 
+// Helper: strip HTML tags
+function stripTags(s: string): string {
+  return s.replace(/<[^>]*>/g, "").trim();
+}
+
+// Helper: decode common HTML entities
+function decodeEntities(s: string): string {
+  return s
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&nbsp;/g, " ");
+}
+
 // Parse the HTML from consultaca.com to extract structured data
 function parseConsultaCAHtml(html: string, ca: string): ConsultaCAResult | null {
   const result: ConsultaCAResult = {
@@ -55,72 +71,80 @@ function parseConsultaCAHtml(html: string, ca: string): ConsultaCAResult | null 
     normas: [],
   };
 
-  // Title / EPI Name – extract from <title> tag or <h1>
-  const titleMatch = html.match(/<title[^>]*>\s*CA\s*\d+\s*[-–—]\s*(.+?)\s*[-–—|<]/i);
-  if (titleMatch) {
-    result.nome = titleMatch[1].trim();
-  } else {
-    // Fallback: first h1
-    const h1 = html.match(/<h1[^>]*>([^<]+)<\/h1>/i);
-    if (h1) result.nome = h1[1].trim();
+  // EPI Name - from <h1>
+  const h1 = html.match(/<h1[^>]*>([\s\S]*?)<\/h1>/i);
+  if (h1) {
+    result.nome = stripTags(h1[1]).replace(/\s+/g, " ").trim();
+  }
+  // Fallback: <title> tag
+  if (!result.nome) {
+    const titleMatch = html.match(/<title[^>]*>([^<]+)<\/title>/i);
+    if (titleMatch) {
+      const cleaned = titleMatch[1].replace(/^\s*CA\s*\d+\s*[-\u2013\u2014]\s*/i, "").trim();
+      if (cleaned.length > 3) result.nome = cleaned;
+    }
   }
 
-  // Situação (VÁLIDO / VENCIDO)
-  const situacaoMatch = html.match(/Situa[çc][ãa]o:\s*<\/span>\s*<span[^>]*>([^<]+)/i)
-    ?? html.match(/Situa[çc][ãa]o:\s*([A-ZÁÉÍÓÚÂÊÔÃÕ]+)/i);
-  if (situacaoMatch) {
-    result.situacao = situacaoMatch[1].trim();
+  // Situacao - "Situacao:VALIDO" (with or without tags/spaces)
+  const sitMatch = html.match(/Situa[\xE7c][\xE3a]o[:\s]*(?:<[^>]*>)*\s*([A-Z\xC0-\xDA\xC4-\xDC]+)/i);
+  if (sitMatch) {
+    result.situacao = sitMatch[1].trim();
   }
 
-  // Validade (date in dd/mm/yyyy)
-  const validadeMatch = html.match(/Validade:\s*<\/span>\s*<span[^>]*>\s*(\d{2}\/\d{2}\/\d{4})/i)
-    ?? html.match(/Validade:\s*(\d{2}\/\d{2}\/\d{4})/i);
-  if (validadeMatch) {
-    // Convert dd/mm/yyyy to yyyy-mm-dd
-    const parts = validadeMatch[1].split("/");
+  // Validade - "Validade:  09/11/2026"
+  const valMatch = html.match(/Validade[:\s]*(?:<[^>]*>)*\s*(\d{2}\/\d{2}\/\d{4})/i);
+  if (valMatch) {
+    const parts = valMatch[1].split("/");
     if (parts.length === 3) {
       result.validade = `${parts[2]}-${parts[1]}-${parts[0]}`;
     }
   }
 
-  // Fabricante – Razão Social
-  const fabricanteMatch = html.match(
-    /Raz[ãa]o\s*Social:\s*(?:<[^>]*>)*\s*([^<]+)/i,
-  );
-  if (fabricanteMatch) {
-    result.fabricante = fabricanteMatch[1].trim();
+  // Fabricante - "Razao Social" or "Razao Social Importador:"
+  const fabMatch = html.match(/Raz[\xE3a]o\s*Social[^:]*:\s*(?:<[^>]*>)*\s*([^<]+)/i);
+  if (fabMatch) {
+    let fab = fabMatch[1].trim();
+    fab = fab.replace(/\s*CNPJ.*$/i, "").trim();
+    if (fab.length > 2) result.fabricante = decodeEntities(fab);
+  }
+  // Fallback: Nome Fantasia
+  if (!result.fabricante) {
+    const nfMatch = html.match(/Nome\s*Fantasia[:\s]*(?:<[^>]*>)*\s*([^<]+)/i);
+    if (nfMatch && nfMatch[1].trim().length > 2) {
+      result.fabricante = decodeEntities(nfMatch[1].trim());
+    }
   }
 
-  // Descrição Completa
-  const descMatch = html.match(
-    /Descri[çc][ãa]o\s*Completa[\s\S]*?<\/h\d>\s*(?:<[^>]*>\s*)*([^<]{10,})/i,
-  );
-  if (descMatch) {
-    result.descricao = descMatch[1].trim().replace(/\s+/g, " ");
+  // Descricao Completa
+  const descBlock = html.match(/Descri[\xE7c][\xE3a]o\s*Completa[\s\S]{0,500}/i);
+  if (descBlock) {
+    const afterHeading = descBlock[0].replace(/^[\s\S]*?Descri[\xE7c][\xE3a]o\s*Completa\s*/i, "");
+    const text = stripTags(afterHeading).replace(/\s+/g, " ").trim();
+    if (text.length >= 10) result.descricao = decodeEntities(text);
   }
 
   // Aprovado Para
-  const aprovadoMatch = html.match(
-    /Aprovado\s*Para:\s*(?:<[^>]*>)*\s*([^<]+)/i,
-  );
-  if (aprovadoMatch) {
-    result.aprovado_para = aprovadoMatch[1].trim();
+  const aprovMatch = html.match(/Aprovado\s*Para[:\s]*(?:<[^>]*>)*\s*([^<]+)/i);
+  if (aprovMatch) {
+    const val = aprovMatch[1].trim();
+    if (val.length > 3) result.aprovado_para = decodeEntities(val);
   }
 
-  // Natureza
-  const naturezaMatch = html.match(
-    /Natureza:\s*(?:<[^>]*>)*\s*([^<]+)/i,
-  );
-  if (naturezaMatch) {
-    result.natureza = naturezaMatch[1].trim();
+  // Natureza (Nacional / Importado)
+  const natMatch = html.match(/Natureza[:\s]*(?:<[^>]*>)*\s*([A-Za-z\xC0-\xFF]+)/i);
+  if (natMatch) {
+    result.natureza = natMatch[1].trim();
   }
 
-  // Normas (e.g. ABNT NBR 8221:2019)
-  const normasBlock = html.match(/Normas[\s\S]*?((?:ABNT[^<]+(?:<[^>]*>)*\s*)+)/i);
-  if (normasBlock) {
-    const normaMatches = normasBlock[1].matchAll(/(ABNT\s*NBR\s*[\d:]+(?:\s*\d{4})?)/gi);
+  // Normas - e.g. "BS EN 388:2016", "ABNT NBR 8221:2019"
+  const normasSection = html.match(/Normas[\s\S]{0,2000}?(?=###|<h[2-4]|Hist[\xF3o]rico|$)/i);
+  if (normasSection) {
+    const normaMatches = normasSection[0].matchAll(
+      /((?:ABNT\s*)?(?:NBR|BS|EN|ISO)\s*(?:EN\s*(?:ISO\s*)?)?[\d]+(?:[:\/]\d+)?(?:\s*\+\s*A\d[:\d]*)?)/gi,
+    );
     for (const m of normaMatches) {
-      result.normas.push(m[1].trim());
+      const n = m[1].replace(/\s+/g, " ").trim();
+      if (!result.normas.includes(n)) result.normas.push(n);
     }
   }
 
@@ -129,7 +153,6 @@ function parseConsultaCAHtml(html: string, ca: string): ConsultaCAResult | null 
 
   return result;
 }
-
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return preflight(req, "POST, OPTIONS");

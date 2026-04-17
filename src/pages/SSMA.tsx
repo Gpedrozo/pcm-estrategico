@@ -304,8 +304,16 @@ export default function SSMA() {
     setBuscandoCA(true);
     try {
       const { data, error } = await supabase.functions.invoke('consulta-ca', { body: { ca } });
-      if (error || data?.error) {
-        toast({ title: 'C.A. não encontrado', description: data?.error || error?.message || 'Verifique o número e tente novamente.', variant: 'destructive' });
+      if (error) {
+        toast({ title: 'Erro ao consultar C.A.', description: error.message || 'Edge function indisponível. Verifique se foi deployada.', variant: 'destructive' });
+        return;
+      }
+      if (!data || data.error) {
+        toast({ title: 'C.A. não encontrado', description: data?.error || 'Verifique o número e tente novamente.', variant: 'destructive' });
+        return;
+      }
+      if (!data.nome && !data.situacao) {
+        toast({ title: 'C.A. sem dados', description: 'O site retornou uma página mas não foi possível extrair informações.', variant: 'destructive' });
         return;
       }
       setEPIForm(prev => ({
