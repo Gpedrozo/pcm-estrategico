@@ -116,10 +116,11 @@ function parseConsultaCAHtml(html: string, ca: string): ConsultaCAResult | null 
   }
 
   // Descricao Completa
-  const descBlock = html.match(/Descri[\xE7c][\xE3a]o\s*Completa[\s\S]{0,500}/i);
+  const descBlock = html.match(/Descri[\xE7c][\xE3a]o\s*Completa[\s\S]{0,1500}/i);
   if (descBlock) {
     const afterHeading = descBlock[0].replace(/^[\s\S]*?Descri[\xE7c][\xE3a]o\s*Completa\s*/i, "");
-    const text = stripTags(afterHeading).replace(/\s+/g, " ").trim();
+    const trimmed = afterHeading.split(/###|<h[2-6]|Fotos\s*d[eo]\s*Equipamento/i)[0];
+    const text = stripTags(trimmed).replace(/\s+/g, " ").trim();
     if (text.length >= 10) result.descricao = decodeEntities(text);
   }
 
