@@ -141,7 +141,7 @@ export function useComponentesEquipamento(equipamentoId?: string) {
         .from('componentes_equipamento')
         .select('*')
         .eq('equipamento_id', equipamentoId);
-      if (tenantId) query = query.eq('empresa_id', tenantId);
+      query = query.eq('empresa_id', tenantId!);
       const { data, error } = await query
         .order('tipo', { ascending: true })
         .order('nome', { ascending: true })
@@ -165,7 +165,7 @@ export function useAllComponentes(equipamentoId?: string) {
         .from('componentes_equipamento')
         .select('*')
         .eq('equipamento_id', equipamentoId);
-      if (tenantId) query = query.eq('empresa_id', tenantId);
+      query = query.eq('empresa_id', tenantId!);
       const { data, error } = await query
         .order('tipo', { ascending: true })
         .order('nome', { ascending: true })
