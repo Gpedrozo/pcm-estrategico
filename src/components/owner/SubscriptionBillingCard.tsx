@@ -18,7 +18,7 @@ interface Props {
 
 export default function SubscriptionBillingCard({
   subscription,
-  companies,
+  companies: _companies,
   asaasHealthOk,
   isOwnerMaster,
   busy,
