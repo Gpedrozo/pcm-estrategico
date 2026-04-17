@@ -292,11 +292,60 @@ export default function Programacao() {
     }, 500);
   };
 
-  const handlePrintFicha = () => {
+  const handlePrintFicha = async () => {
     if (!selectedEvent) return;
 
     const equipamento = equipamentos?.find((item) => item.id === selectedEvent.equipamento_id);
+
+    // ── Buscar dados completos do plano: atividades, serviços, pontos ──
+    const origemId = selectedEvent.origem_id;
+    const tipoEvt = selectedEvent.tipo;
+    let planoData: Record<string, unknown> | null = null;
+    let atividadesPrev: Array<{ id: string; nome: string; responsavel: string | null; ordem: number; tempo_total_min: number; observacoes: string | null; servicos: Array<{ descricao: string; tempo_estimado_min: number; ordem: number; observacoes: string | null }> }> = [];
+    let atividadesLub: Array<{ id: string; nome: string; descricao: string | null; ordem: number | null; observacoes: string | null; tempo_estimado_min: number | null }> = [];
+    let pontosLub: Array<{ descricao: string; lubrificante: string | null; quantidade: string | null; tempo_estimado_min: number | null; instrucoes: string | null; localizacao: string | null; ferramenta: string | null; codigo_ponto: string | null }> = [];
+
+    if (origemId && tenantId) {
+      try {
+        if (tipoEvt === 'preventiva') {
+          const { data: plano } = await supabase.from('planos_preventivos').select('*').eq('id', origemId).single();
+          planoData = plano as Record<string, unknown> | null;
+          const { data: ativs } = await supabase
+            .from('atividades_preventivas')
+            .select('*, servicos:servicos_preventivos(*)')
+            .eq('plano_id', origemId)
+            .eq('empresa_id', tenantId)
+            .order('ordem', { ascending: true })
+            .limit(200);
+          atividadesPrev = (ativs || []) as typeof atividadesPrev;
+        } else if (tipoEvt === 'lubrificacao') {
+          const { data: plano } = await supabase.from('planos_lubrificacao').select('*').eq('id', origemId).single();
+          planoData = plano as Record<string, unknown> | null;
+          const { data: ativs } = await supabase
+            .from('atividades_lubrificacao')
+            .select('*')
+            .eq('plano_id', origemId)
+            .eq('empresa_id', tenantId)
+            .order('ordem', { ascending: true })
+            .limit(200);
+          atividadesLub = (ativs || []) as typeof atividadesLub;
+          const { data: pontos } = await supabase
+            .from('rotas_lubrificacao_pontos')
+            .select('*')
+            .eq('plano_id', origemId)
+            .is('rota_id', null)
+            .order('ordem', { ascending: true })
+            .limit(200);
+          pontosLub = (pontos || []) as typeof pontosLub;
+        }
+      } catch (fetchErr) {
+        logger.warn('print_ficha_fetch_plano', { error: String(fetchErr) });
+      }
+    }
+
+    const osInfo = emittedOSInfo;
     const printWindow = window.open('', '_blank', 'width=900,height=700');
+    if (!printWindow) return;
     if (!printWindow) return;
 
     const tipoLabels: Record<string, string> = {
@@ -467,9 +516,26 @@ export default function Programacao() {
     html += `<div class="section-content">${esc(selectedEvent.descricao || '—')}</div>`;
     html += '</div>';
 
-    /* TYPE-SPECIFIC SECTIONS */
+    /* ═══ NÚMERO O.S. (se emitida) ═══ */
+    if (osInfo) {
+      html += '<div class="section-block">';
+      html += '<div class="info-grid cols-2">';
+      html += `<div class="info-cell"><span class="info-label">Nº ORDEM DE SERVIÇO</span><span class="info-value mono">${esc(osInfo.numero_os)}</span></div>`;
+      html += `<div class="info-cell"><span class="info-label">EMISSÃO O.S.</span><span class="info-value">${dataEmissao}</span></div>`;
+      html += '</div></div>';
+    }
+
+    /* ═══ INSTRUÇÕES DO PLANO ═══ */
+    const instrucoes = planoData?.instrucoes as string | null;
+    if (instrucoes) {
+      html += '<div class="section-block">';
+      html += '<div class="section-hdr">INSTRUÇÕES DE EXECUÇÃO</div>';
+      html += `<div class="section-content">${esc(instrucoes)}</div>`;
+      html += '</div>';
+    }
+
+    /* ═══ TYPE-SPECIFIC SECTIONS ═══ */
     if (selectedEvent.tipo === 'inspecao') {
-      /* Inspeção: checklist table */
       html += '<div class="section-block">';
       html += '<div class="section-hdr">CHECKLIST DE INSPEÇÃO</div>';
       html += '<table class="tbl"><thead><tr>';
@@ -490,10 +556,8 @@ export default function Programacao() {
         html += '<td></td>';
         html += '</tr>';
       }
-      html += '</tbody></table>';
-      html += '</div>';
+      html += '</tbody></table></div>';
     } else if (selectedEvent.tipo === 'preditiva') {
-      /* Preditiva: measurements table */
       html += '<div class="section-block">';
       html += '<div class="section-hdr">MEDIÇÕES / LEITURAS PREDITIVAS</div>';
       html += '<table class="tbl"><thead><tr>';
@@ -508,58 +572,169 @@ export default function Programacao() {
       for (let i = 1; i <= 8; i++) {
         html += '<tr>';
         html += `<td class="center" style="color:#999">${i}</td>`;
-        html += '<td style="height:6mm"></td>';
-        html += '<td></td>';
-        html += '<td></td>';
-        html += '<td></td>';
-        html += '<td></td>';
+        html += '<td style="height:6mm"></td><td></td><td></td><td></td><td></td>';
         html += '<td class="checkbox-cell"><span class="checkbox"></span></td>';
         html += '</tr>';
       }
-      html += '</tbody></table>';
-      html += '</div>';
-
-      /* Análise preditiva */
-      html += '<div class="section-block">';
-      html += '<div class="section-hdr">ANÁLISE / DIAGNÓSTICO PREDITIVO</div>';
+      html += '</tbody></table></div>';
+      html += '<div class="section-block"><div class="section-hdr">ANÁLISE / DIAGNÓSTICO PREDITIVO</div>';
       html += '<div class="blank-lines">';
       for (let i = 0; i < 4; i++) html += '<div class="blank-line"></div>';
       html += '</div></div>';
-    } else {
-      /* Preventiva / Lubrificação: checklist with real data */
-      html += '<div class="section-block">';
-      html += `<div class="section-hdr">CHECKLIST DE ATIVIDADES${selectedEvent.tipo === 'lubrificacao' ? ' — LUBRIFICAÇÃO' : ' — PREVENTIVA'}</div>`;
-      html += '<table class="tbl"><thead><tr>';
-      html += '<th style="width:8mm" class="center">#</th>';
-      html += '<th>SERVIÇO / ATIVIDADE</th>';
-      if (selectedEvent.tipo === 'lubrificacao') {
-        html += '<th style="width:25mm" class="center">LUBRIFICANTE</th>';
-        html += '<th style="width:18mm" class="center">QTD.</th>';
-      }
-      html += '<th style="width:18mm" class="center">TEMPO</th>';
-      html += '<th style="width:14mm" class="center">✓</th>';
-      html += '</tr></thead><tbody>';
-
-      // Use real pontos data if available
-      const hasPontos = pontosLubrificacao && pontosLubrificacao.length > 0;
-      const rowCount = hasPontos ? Math.max(pontosLubrificacao!.length, 8) : 8;
-
-      for (let i = 0; i < rowCount; i++) {
-        const ponto = hasPontos && i < pontosLubrificacao!.length ? pontosLubrificacao![i] : null;
-        html += '<tr>';
-        html += `<td class="center" style="color:#999">${i + 1}</td>`;
-        html += `<td style="height:6mm">${ponto ? esc(ponto.descricao || '') : ''}</td>`;
-        if (selectedEvent.tipo === 'lubrificacao') {
-          html += `<td class="center">${ponto?.lubrificante ? esc(ponto.lubrificante) : ''}</td>`;
-          html += `<td class="center">${ponto?.quantidade ? esc(String(ponto.quantidade)) : ''}</td>`;
+    } else if (selectedEvent.tipo === 'preventiva') {
+      /* ═══ PREVENTIVA: Atividades → Serviços reais do plano ═══ */
+      const hasAtividades = atividadesPrev.length > 0;
+      if (hasAtividades) {
+        let globalIdx = 0;
+        for (const ativ of atividadesPrev) {
+          html += '<div class="section-block">';
+          html += `<div class="section-hdr">ATIVIDADE: ${esc((ativ.nome || '').toUpperCase())}${ativ.responsavel ? ' — Resp: ' + esc(ativ.responsavel) : ''}${ativ.tempo_total_min ? ' (' + ativ.tempo_total_min + ' min)' : ''}</div>`;
+          if (ativ.observacoes) {
+            html += `<div class="section-content" style="font-size:8px;color:#666;">Obs: ${esc(ativ.observacoes)}</div>`;
+          }
+          const servicos = (ativ.servicos || []).sort((a, b) => a.ordem - b.ordem);
+          if (servicos.length > 0) {
+            html += '<table class="tbl"><thead><tr>';
+            html += '<th style="width:8mm" class="center">#</th>';
+            html += '<th>SERVIÇO / ETAPA</th>';
+            html += '<th style="width:18mm" class="center">TEMPO</th>';
+            html += '<th style="width:40mm">OBSERVAÇÃO</th>';
+            html += '<th style="width:14mm" class="center">✓</th>';
+            html += '</tr></thead><tbody>';
+            for (const svc of servicos) {
+              globalIdx++;
+              html += '<tr>';
+              html += `<td class="center" style="color:#999">${globalIdx}</td>`;
+              html += `<td>${esc(svc.descricao || '')}</td>`;
+              html += `<td class="center">${svc.tempo_estimado_min ? svc.tempo_estimado_min + 'min' : ''}</td>`;
+              html += `<td style="font-size:8px">${svc.observacoes ? esc(svc.observacoes) : ''}</td>`;
+              html += '<td class="checkbox-cell"><span class="checkbox"></span></td>';
+              html += '</tr>';
+            }
+            html += '</tbody></table>';
+          } else {
+            html += '<div class="section-content" style="color:#999;">Nenhum serviço cadastrado nesta atividade</div>';
+          }
+          html += '</div>';
         }
-        html += `<td class="center">${ponto?.tempo_estimado_min ? `${ponto.tempo_estimado_min}min` : ''}</td>`;
-        html += '<td class="checkbox-cell"><span class="checkbox"></span></td>';
-        html += '</tr>';
+      } else {
+        /* Fallback: checklist JSON do plano ou linhas em branco */
+        html += '<div class="section-block">';
+        html += '<div class="section-hdr">CHECKLIST DE ATIVIDADES — PREVENTIVA</div>';
+        html += '<table class="tbl"><thead><tr>';
+        html += '<th style="width:8mm" class="center">#</th>';
+        html += '<th>SERVIÇO / ATIVIDADE</th>';
+        html += '<th style="width:18mm" class="center">TEMPO</th>';
+        html += '<th style="width:14mm" class="center">✓</th>';
+        html += '</tr></thead><tbody>';
+        const checklistItems = Array.isArray(planoData?.checklist) ? planoData.checklist as Array<{ item?: string }> : [];
+        const rows = checklistItems.length > 0 ? checklistItems.length : 10;
+        for (let i = 0; i < rows; i++) {
+          const item = checklistItems[i];
+          html += '<tr>';
+          html += `<td class="center" style="color:#999">${i + 1}</td>`;
+          html += `<td style="height:6mm">${item?.item ? esc(String(item.item)) : ''}</td>`;
+          html += '<td class="center"></td>';
+          html += '<td class="checkbox-cell"><span class="checkbox"></span></td>';
+          html += '</tr>';
+        }
+        html += '</tbody></table></div>';
       }
-      html += '</tbody></table>';
-      html += '</div>';
+
+      /* Materiais previstos do plano */
+      const materiaisPrevistos = Array.isArray(planoData?.materiais_previstos) ? planoData.materiais_previstos as Array<{ item?: string }> : [];
+      if (materiaisPrevistos.length > 0) {
+        html += '<div class="section-block">';
+        html += '<div class="section-hdr">MATERIAIS PREVISTOS NO PLANO</div>';
+        html += '<table class="tbl"><thead><tr>';
+        html += '<th style="width:8mm" class="center">#</th><th>MATERIAL</th>';
+        html += '</tr></thead><tbody>';
+        materiaisPrevistos.forEach((m, idx) => {
+          html += `<tr><td class="center" style="color:#999">${idx + 1}</td><td>${m?.item ? esc(String(m.item)) : ''}</td></tr>`;
+        });
+        html += '</tbody></table></div>';
+      }
+    } else {
+      /* ═══ LUBRIFICAÇÃO: Atividades + Pontos reais ═══ */
+      const lubInfo = planoData || {};
+      const lubParts: string[] = [];
+      if ((lubInfo as Record<string,unknown>).lubrificante) lubParts.push('Lubrificante: ' + esc(String((lubInfo as Record<string,unknown>).lubrificante)));
+      if ((lubInfo as Record<string,unknown>).ponto_lubrificacao) lubParts.push('Ponto: ' + esc(String((lubInfo as Record<string,unknown>).ponto_lubrificacao)));
+      if (lubParts.length > 0) {
+        html += '<div class="section-block">';
+        html += `<div class="section-content" style="font-size:9px;"><strong>DADOS DO PLANO:</strong> ${lubParts.join(' | ')}</div>`;
+        html += '</div>';
+      }
+
+      /* Atividades de lubrificação */
+      if (atividadesLub.length > 0) {
+        html += '<div class="section-block">';
+        html += '<div class="section-hdr">ATIVIDADES DE LUBRIFICAÇÃO</div>';
+        html += '<table class="tbl"><thead><tr>';
+        html += '<th style="width:8mm" class="center">#</th>';
+        html += '<th>ATIVIDADE / DESCRIÇÃO</th>';
+        html += '<th style="width:18mm" class="center">TEMPO</th>';
+        html += '<th style="width:40mm">OBSERVAÇÃO</th>';
+        html += '<th style="width:14mm" class="center">✓</th>';
+        html += '</tr></thead><tbody>';
+        atividadesLub.forEach((a, idx) => {
+          html += '<tr>';
+          html += `<td class="center" style="color:#999">${idx + 1}</td>`;
+          html += `<td>${esc(a.nome || a.descricao || '')}</td>`;
+          html += `<td class="center">${a.tempo_estimado_min ? a.tempo_estimado_min + 'min' : ''}</td>`;
+          html += `<td style="font-size:8px">${a.observacoes ? esc(a.observacoes) : ''}</td>`;
+          html += '<td class="checkbox-cell"><span class="checkbox"></span></td>';
+          html += '</tr>';
+        });
+        html += '</tbody></table></div>';
+      }
+
+      /* Pontos de lubrificação (rota/plano) */
+      const allPontos = pontosLub.length > 0 ? pontosLub : (pontosLubrificacao || []);
+      if (allPontos.length > 0) {
+        html += '<div class="section-block">';
+        html += '<div class="section-hdr">PONTOS DE LUBRIFICAÇÃO — CHECKLIST</div>';
+        html += '<table class="tbl"><thead><tr>';
+        html += '<th style="width:8mm" class="center">#</th>';
+        html += '<th>PONTO / DESCRIÇÃO</th>';
+        html += '<th style="width:22mm" class="center">LUBRIF.</th>';
+        html += '<th style="width:15mm" class="center">QTD.</th>';
+        html += '<th style="width:15mm" class="center">TEMPO</th>';
+        html += '<th style="width:14mm" class="center">✓</th>';
+        html += '</tr></thead><tbody>';
+        allPontos.forEach((p: Record<string, unknown>, idx: number) => {
+          const desc = String(p.descricao || '');
+          const loc = p.localizacao ? ' (' + esc(String(p.localizacao)) + ')' : '';
+          const instr = p.instrucoes ? '<div style="font-size:7px;color:#666;margin-top:1px;">' + esc(String(p.instrucoes)) + '</div>' : '';
+          const ferr = p.ferramenta ? '<div style="font-size:7px;color:#888;">Ferramenta: ' + esc(String(p.ferramenta)) + '</div>' : '';
+          html += '<tr>';
+          html += `<td class="center" style="color:#999">${idx + 1}</td>`;
+          html += `<td>${esc(desc)}${loc}${instr}${ferr}</td>`;
+          html += `<td class="center" style="font-size:8px">${p.lubrificante ? esc(String(p.lubrificante)) : ''}</td>`;
+          html += `<td class="center">${p.quantidade ? esc(String(p.quantidade)) : ''}</td>`;
+          html += `<td class="center">${(p.tempo_estimado_min as number) ? p.tempo_estimado_min + 'min' : ''}</td>`;
+          html += '<td class="checkbox-cell"><span class="checkbox"></span></td>';
+          html += '</tr>';
+        });
+        html += '</tbody></table></div>';
+      }
+
+      /* Fallback se não tem nem atividades nem pontos */
+      if (atividadesLub.length === 0 && allPontos.length === 0) {
+        html += '<div class="section-block">';
+        html += '<div class="section-hdr">CHECKLIST DE ATIVIDADES — LUBRIFICAÇÃO</div>';
+        html += '<table class="tbl"><thead><tr>';
+        html += '<th style="width:8mm" class="center">#</th><th>SERVIÇO / ATIVIDADE</th>';
+        html += '<th style="width:25mm" class="center">LUBRIFICANTE</th><th style="width:18mm" class="center">QTD.</th>';
+        html += '<th style="width:18mm" class="center">TEMPO</th><th style="width:14mm" class="center">✓</th>';
+        html += '</tr></thead><tbody>';
+        for (let i = 0; i < 8; i++) {
+          html += `<tr><td class="center" style="color:#999">${i + 1}</td><td style="height:6mm"></td><td></td><td></td><td></td><td class="checkbox-cell"><span class="checkbox"></span></td></tr>`;
+        }
+        html += '</tbody></table></div>';
+      }
     }
+
 
     /* EXECUTORS */
     html += '<div class="executor-grid">';
