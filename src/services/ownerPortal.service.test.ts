@@ -104,6 +104,101 @@ describe('ownerPortal.service', () => {
       auth_password: 'senha-certa',
     })).rejects.toThrow('Acao delete_company indisponivel no backend owner.')
   })
+<<<<<<< HEAD
+
+  // ── Subscription / Plans consistency tests ──
+
+  it('listPlans retorna planos com campos code e name mapeados', async () => {
+    invoke.mockResolvedValue({
+      data: {
+        plans: [
+          { id: 'plano-1', codigo: 'free', nome: 'Free', price_month: 0, code: 'free', name: 'Free' },
+          { id: 'plano-2', codigo: 'basic', nome: 'Basico', price_month: 300, code: 'basic', name: 'Basico' },
+        ],
+      },
+      error: null,
+    })
+
+    const plans = await listPlans()
+    expect(plans).toHaveLength(2)
+    // Ensure frontend-expected fields exist
+    for (const p of plans) {
+      expect(p.id).toBeTruthy()
+      expect(typeof p.code === 'string' || p.code === null).toBe(true)
+      expect(typeof p.name === 'string' || p.name === null).toBe(true)
+    }
+  })
+
+  it('listSubscriptions retorna assinaturas com plan_id que pode ser encontrado em planos', async () => {
+    const planId = 'plano-1'
+    invoke
+      .mockResolvedValueOnce({
+        data: {
+          subscriptions: [
+            { id: 'sub-1', empresa_id: 'emp-1', plan_id: planId, status: 'ativa', planos: { id: planId, codigo: 'free', nome: 'Free' } },
+          ],
+        },
+        error: null,
+      })
+
+    const subs = await listSubscriptions()
+    expect(subs).toHaveLength(1)
+    expect(subs[0].plan_id).toBe(planId)
+    expect(subs[0].status).toBe('ativa')
+  })
+
+  it('listPlans IDs são compatíveis com subscription.plan_id (planos table)', async () => {
+    const sharedPlanId = '22eb37ac-15df-4d67-a31a-e06b9c0318e6'
+    // Simulate listPlans response (from planos table)
+    invoke
+      .mockResolvedValueOnce({
+        data: {
+          plans: [
+            { id: sharedPlanId, codigo: 'free', nome: 'Free', price_month: 0, code: 'free', name: 'Free' },
+          ],
+        },
+        error: null,
+      })
+      .mockResolvedValueOnce({
+        data: {
+          subscriptions: [
+            { id: 'sub-1', empresa_id: 'emp-1', plan_id: sharedPlanId, status: 'ativa' },
+          ],
+        },
+        error: null,
+      })
+
+    const plans = await listPlans()
+    const subs = await listSubscriptions()
+
+    // Critical: subscription.plan_id must match a plan.id
+    const planIds = new Set(plans.map(p => p.id))
+    for (const sub of subs) {
+      if (sub.plan_id) {
+        expect(planIds.has(sub.plan_id)).toBe(true)
+      }
+    }
+  })
+
+  it('listSubscriptions aceita status em português (ativa/teste/atrasada/cancelada)', async () => {
+    const statuses = ['ativa', 'teste', 'atrasada', 'cancelada']
+    invoke.mockResolvedValue({
+      data: {
+        subscriptions: statuses.map((s, i) => ({
+          id: `sub-${i}`,
+          empresa_id: `emp-${i}`,
+          plan_id: 'plano-1',
+          status: s,
+        })),
+      },
+      error: null,
+    })
+
+    const subs = await listSubscriptions()
+    const returnedStatuses = subs.map(s => s.status)
+    expect(returnedStatuses).toEqual(statuses)
+  })
+=======
 
   // ── Subscription / Plans consistency tests ──
 
@@ -194,4 +289,5 @@ describe('ownerPortal.service', () => {
     const returnedStatuses = subs.map(s => s.status)
     expect(returnedStatuses).toEqual(statuses)
   })
+>>>>>>> c1232ead9c597b7e3f6db18c57adcf1a346abf83
 })
