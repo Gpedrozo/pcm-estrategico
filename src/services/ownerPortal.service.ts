@@ -611,50 +611,14 @@ export async function getPlatformStats() {
   return callOwnerAdmin<Record<string, unknown>>({ action: 'dashboard' })
 }
 
-export async function createCompany(payload: {
-  company: Record<string, unknown>
-  user: Record<string, unknown>
-  subscription?: Record<string, unknown>
-}) {
-  return callOwnerAdmin({ action: 'create_company', ...payload })
-}
-
-export async function updateCompany(empresaId: string, company: Record<string, unknown>) {
-  return callOwnerAdmin({ action: 'update_company', empresa_id: empresaId, company })
-}
-
-export async function setCompanyStatus(empresaId: string, status: string, reason?: string) {
-  return callOwnerAdmin({ action: 'set_company_status', empresa_id: empresaId, status, reason })
-}
-
 export async function listGlobalUsers(empresaId?: string, includeDeleted = false): Promise<OwnerUser[]> {
   const data = await callOwnerAdmin<{ users: OwnerUser[] }>({ action: 'list_users', empresa_id: empresaId ?? null, include_deleted: includeDeleted })
   return Array.isArray(data?.users) ? data.users : []
 }
 
-export async function deleteUser(userId: string) {
-  return callOwnerAdmin({ action: 'delete_user', user_id: userId })
-}
-
-export async function createUser(user: Record<string, unknown>) {
-  return callOwnerAdmin({ action: 'create_user', user })
-}
-
-export async function setUserStatus(userId: string, status: string) {
-  return callOwnerAdmin({ action: 'set_user_status', user_id: userId, status })
-}
-
 export async function listPlans(): Promise<OwnerPlan[]> {
   const data = await callOwnerAdmin<{ plans: OwnerPlan[] }>({ action: 'list_plans' })
   return Array.isArray(data?.plans) ? data.plans : []
-}
-
-export async function createPlan(plan: Record<string, unknown>) {
-  return callOwnerAdmin({ action: 'create_plan', plan })
-}
-
-export async function updatePlan(plan: Record<string, unknown>) {
-  return callOwnerAdmin({ action: 'update_plan', plan })
 }
 
 export async function listSubscriptions(limit = 500): Promise<OwnerSubscription[]> {
@@ -663,38 +627,9 @@ export async function listSubscriptions(limit = 500): Promise<OwnerSubscription[
   return Array.isArray(data?.subscriptions) ? data.subscriptions : []
 }
 
-export async function createSubscription(subscription: Record<string, unknown>) {
-  return callOwnerAdmin({ action: 'create_subscription', subscription })
-}
-
-export async function setSubscriptionStatus(empresaId: string, status: string) {
-  return callOwnerAdmin({ action: 'set_subscription_status', empresa_id: empresaId, status })
-}
-
-export async function updateSubscriptionBilling(params: {
-  subscriptionId?: string
-  empresaId?: string
-  billing: Record<string, unknown>
-}) {
-  return callOwnerAdmin({
-    action: 'update_subscription_billing',
-    subscription_id: params.subscriptionId,
-    empresa_id: params.empresaId,
-    billing: params.billing,
-  })
-}
-
 export async function listContracts(): Promise<OwnerContract[]> {
   const data = await callOwnerAdmin<{ contracts: OwnerContract[] }>({ action: 'list_contracts' })
   return Array.isArray(data?.contracts) ? data.contracts : []
-}
-
-export async function updateContract(contractId: string, content: string, summary?: string, status?: string) {
-  return callOwnerAdmin({ action: 'update_contract', contract_id: contractId, content, summary, status })
-}
-
-export async function regenerateContract(contractId: string) {
-  return callOwnerAdmin({ action: 'regenerate_contract', contract_id: contractId })
 }
 
 export async function deleteContract(contractId: string) {
@@ -704,13 +639,6 @@ export async function deleteContract(contractId: string) {
 export async function listSupportTickets(): Promise<OwnerSupportTicket[]> {
   const data = await callOwnerAdmin<{ tickets: OwnerSupportTicket[] }>({ action: 'list_support_tickets' })
   return Array.isArray(data?.tickets) ? data.tickets : []
-}
-
-export async function respondSupportTicket(ticketId: string, response: string, status = 'resolvido') {
-  return callOwnerAdmin({ action: 'respond_support_ticket', ticket_id: ticketId, response, status })
-}
-export async function deleteSupportTicket(ticketId: string) {
-  return callOwnerAdmin({ action: 'delete_support_ticket', ticket_id: ticketId })
 }
 
 export async function listAuditLogs(filters?: Record<string, unknown>): Promise<OwnerAuditLog[]> {
@@ -724,26 +652,6 @@ export async function getCompanySettings(empresaId: string) {
     action: 'get_company_settings',
     empresa_id: empresaId,
   })
-}
-
-export async function updateCompanySettings(empresaId: string, settings: Record<string, unknown>) {
-  return callOwnerAdmin({ action: 'update_company_settings', empresa_id: empresaId, settings })
-}
-
-export async function setUserInactivityTimeout(userId: string, inactivityTimeoutMinutes: number) {
-  return callOwnerAdmin({
-    action: 'set_user_inactivity_timeout',
-    user_id: userId,
-    inactivity_timeout_minutes: inactivityTimeoutMinutes,
-  })
-}
-
-export async function changePlan(params: { empresa_id: string; plano_codigo: string }) {
-  return callOwnerAdmin({ action: 'change_plan', ...params })
-}
-
-export async function createSystemAdmin(userId: string) {
-  return callOwnerAdmin({ action: 'create_system_admin', user_id: userId })
 }
 
 export async function impersonateCompany(empresaId: string) {
@@ -765,23 +673,6 @@ export async function validateImpersonationSession(params: {
 export async function listPlatformOwners(): Promise<PlatformOwnerRow[]> {
   const data = await callOwnerAdmin<{ owners: PlatformOwnerRow[] }>({ action: 'list_platform_owners' })
   return Array.isArray(data?.owners) ? data.owners : []
-}
-
-export async function createPlatformOwner(payload: {
-  nome: string
-  email: string
-  password?: string
-  role?: string
-}) {
-  return callOwnerAdmin({
-    action: 'create_platform_owner',
-    owner_user: {
-      nome: payload.nome,
-      email: payload.email,
-      password: payload.password,
-      role: payload.role ?? 'SYSTEM_ADMIN',
-    },
-  })
 }
 
 export async function listDatabaseTables(empresaId?: string | null): Promise<OwnerDatabaseTable[]> {
@@ -839,16 +730,6 @@ export async function getOwnerBackendHealth(): Promise<OwnerBackendHealth> {
     }
     throw err
   }
-}
-
-export async function cleanupCompanyData(payload: {
-  empresa_id: string
-  keep_company_core?: boolean
-  keep_billing_data?: boolean
-  include_auth_users?: boolean
-  auth_password: string
-}) {
-  return callOwnerAdmin({ action: 'cleanup_company_data', ...payload })
 }
 
 export async function purgeTableData(payload: {
