@@ -1428,6 +1428,7 @@ async function logPlatformAudit(
     empresaId?: string | null;
     actionType: string;
     details?: Record<string, unknown>;
+    resultado?: string;
   },
 ) {
   await admin.from("enterprise_audit_logs").insert({
@@ -1441,7 +1442,7 @@ async function logPlatformAudit(
       severity: "info",
       source: "owner-portal-admin",
     },
-    resultado: "sucesso",
+    resultado: payload.resultado ?? "sucesso",
   });
 }
 
