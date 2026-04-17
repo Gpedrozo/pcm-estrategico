@@ -199,7 +199,7 @@ export default function Owner() {
   const [subscriptionPlanId, setSubscriptionPlanId] = useState('')
   const [subscriptionAmount, setSubscriptionAmount] = useState('0')
   const [subscriptionPeriod, setSubscriptionPeriod] = useState<'monthly' | 'quarterly' | 'yearly' | 'custom'>('monthly')
-  const [subscriptionStatus, setSubscriptionStatus] = useState<'ativa' | 'atrasada' | 'cancelada' | 'teste'>('teste')
+  const [subscriptionStatus, setSubscriptionStatus] = useState<'ativa' | 'atrasada' | 'cancelada' | 'teste'>('ativa')
   const [subscriptionPaymentMethod, setSubscriptionPaymentMethod] = useState('pix')
   const [subscriptionStartsAt, setSubscriptionStartsAt] = useState('')
   const [subscriptionEndsAt, setSubscriptionEndsAt] = useState('')

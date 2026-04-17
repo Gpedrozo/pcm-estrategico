@@ -236,49 +236,86 @@ export default function SubscriptionsTab({
           {showNewSubForm ? 'Fechar formulario' : '+ Nova assinatura'}
         </button>
         {showNewSubForm && (
-          <div className="grid gap-2 rounded-lg border border-border bg-muted/50 p-3">
+          <div className="grid gap-3 rounded-lg border border-border bg-muted/50 p-3">
             <div className="grid gap-2 sm:grid-cols-2">
               <div>
-                <label className="text-xs font-semibold text-muted-foreground">Empresa</label>
+                <label className="text-xs font-semibold text-muted-foreground">Empresa *</label>
+                <p className="text-[10px] text-muted-foreground/70">Selecione a empresa que receberá a assinatura</p>
                 <select className="mt-1 w-full rounded-lg border border-input bg-background px-2 py-2 text-sm" value={effectiveCompanyId} onChange={(e) => setLocalCompanyId(e.target.value)}>
                   <option value="">Selecione a empresa</option>
                   {companies.map((c) => <option key={String(c.id)} value={String(c.id)}>{String(c.nome ?? c.slug ?? c.id)}</option>)}
                 </select>
               </div>
               <div>
-                <label className="text-xs font-semibold text-muted-foreground">Plano</label>
-                <select className="mt-1 w-full rounded-lg border border-input bg-background px-2 py-2 text-sm" value={subscriptionPlanId} onChange={(e) => setSubscriptionPlanId(e.target.value)}>
+                <label className="text-xs font-semibold text-muted-foreground">Plano *</label>
+                <p className="text-[10px] text-muted-foreground/70">O plano define os recursos e limites da empresa</p>
+                <select className="mt-1 w-full rounded-lg border border-input bg-background px-2 py-2 text-sm" value={subscriptionPlanId} onChange={(e) => {
+                  const pid = e.target.value
+                  setSubscriptionPlanId(pid)
+                  const selected = plans.find((p) => String(p.id) === pid)
+                  if (selected) {
+                    setSubscriptionAmount(String(selected.price_month ?? 0))
+                  }
+                }}>
                   <option value="">Selecione o plano</option>
-                  {plans.map((p) => <option key={String(p.id)} value={String(p.id)}>{String(p.name ?? p.code ?? p.id)}</option>)}
+                  {plans.map((p) => <option key={String(p.id)} value={String(p.id)}>{String(p.name ?? p.code ?? p.id)} — R$ {Number(p.price_month ?? 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</option>)}
                 </select>
               </div>
             </div>
             <div className="grid gap-2 sm:grid-cols-3">
-              <input className="rounded-lg border border-input bg-background px-2 py-2 text-sm" value={subscriptionAmount} onChange={(e) => setSubscriptionAmount(e.target.value)} placeholder="Valor (R$)" />
-              <select className="rounded-lg border border-input bg-background px-2 py-2 text-sm" value={subscriptionPeriod} onChange={(e) => setSubscriptionPeriod(e.target.value)}>
-                <option value="monthly">Mensal</option>
-                <option value="quarterly">Trimestral</option>
-                <option value="yearly">Anual</option>
-                <option value="custom">Customizada</option>
-              </select>
+              <div>
+                <label className="text-xs font-semibold text-muted-foreground">Valor (R$)</label>
+                <p className="text-[10px] text-muted-foreground/70">Valor cobrado por período. Preenchido automaticamente pelo plano</p>
+                <input className="mt-1 w-full rounded-lg border border-input bg-background px-2 py-2 text-sm" value={subscriptionAmount} onChange={(e) => setSubscriptionAmount(e.target.value)} placeholder="0,00" />
+              </div>
+              <div>
+                <label className="text-xs font-semibold text-muted-foreground">Periodicidade</label>
+                <p className="text-[10px] text-muted-foreground/70">Frequência da cobrança</p>
+                <select className="mt-1 w-full rounded-lg border border-input bg-background px-2 py-2 text-sm" value={subscriptionPeriod} onChange={(e) => setSubscriptionPeriod(e.target.value)}>
+                  <option value="monthly">Mensal</option>
+                  <option value="quarterly">Trimestral</option>
+                  <option value="yearly">Anual</option>
+                  <option value="custom">Customizada</option>
+                </select>
+              </div>
+              <div>
+                <label className="text-xs font-semibold text-muted-foreground">Forma de Pagamento</label>
+                <p className="text-[10px] text-muted-foreground/70">Meio utilizado para cobrança</p>
+                <select className="mt-1 w-full rounded-lg border border-input bg-background px-2 py-2 text-sm" value={subscriptionPaymentMethod} onChange={(e) => setSubscriptionPaymentMethod(e.target.value)}>
+                  <option value="pix">PIX</option>
+                  <option value="boleto">Boleto</option>
+                  <option value="credit_card">Cartao de credito</option>
+                </select>
+              </div>
             </div>
-            <div className="grid gap-2 sm:grid-cols-4">
-              <select className="rounded-lg border border-input bg-background px-2 py-2 text-sm" value={subscriptionStatus} onChange={(e) => setSubscriptionStatus(e.target.value)}>
-                <option value="teste">TESTE</option>
-                <option value="ativa">Ativa</option>
-                <option value="atrasada">Atrasada</option>
-                <option value="cancelada">Cancelada</option>
-              </select>
+            <div className="grid gap-2 sm:grid-cols-2">
+              <div>
+                <label className="text-xs font-semibold text-muted-foreground">Status da Assinatura</label>
+                <p className="text-[10px] text-muted-foreground/70">Situação atual. "Ativa" libera acesso total ao sistema</p>
+                <select className="mt-1 w-full rounded-lg border border-input bg-background px-2 py-2 text-sm" value={subscriptionStatus} onChange={(e) => setSubscriptionStatus(e.target.value)}>
+                  <option value="ativa">Ativa</option>
+                  <option value="teste">Teste (período de avaliação)</option>
+                  <option value="atrasada">Atrasada</option>
+                  <option value="cancelada">Cancelada</option>
+                </select>
+              </div>
             </div>
-            <div className="grid gap-2 sm:grid-cols-4">
-              <select className="rounded-lg border border-input bg-background px-2 py-2 text-sm" value={subscriptionPaymentMethod} onChange={(e) => setSubscriptionPaymentMethod(e.target.value)}>
-                <option value="pix">PIX</option>
-                <option value="boleto">Boleto</option>
-                <option value="credit_card">Cartao de credito</option>
-              </select>
-              <input className="rounded-lg border border-input bg-background px-2 py-2 text-sm" type="date" value={subscriptionStartsAt} onChange={(e) => setSubscriptionStartsAt(e.target.value)} title="Inicio" />
-              <input className="rounded-lg border border-input bg-background px-2 py-2 text-sm" type="date" value={subscriptionRenewalAt} onChange={(e) => setSubscriptionRenewalAt(e.target.value)} title="Proximo vencimento" />
-              <input className="rounded-lg border border-input bg-background px-2 py-2 text-sm" type="date" value={subscriptionEndsAt} onChange={(e) => setSubscriptionEndsAt(e.target.value)} title="Fim (opcional)" />
+            <div className="grid gap-2 sm:grid-cols-3">
+              <div>
+                <label className="text-xs font-semibold text-muted-foreground">Data de Início</label>
+                <p className="text-[10px] text-muted-foreground/70">Quando a assinatura começa a valer</p>
+                <input className="mt-1 w-full rounded-lg border border-input bg-background px-2 py-2 text-sm" type="date" value={subscriptionStartsAt} onChange={(e) => setSubscriptionStartsAt(e.target.value)} />
+              </div>
+              <div>
+                <label className="text-xs font-semibold text-muted-foreground">Próximo Vencimento</label>
+                <p className="text-[10px] text-muted-foreground/70">Data da próxima cobrança / renovação</p>
+                <input className="mt-1 w-full rounded-lg border border-input bg-background px-2 py-2 text-sm" type="date" value={subscriptionRenewalAt} onChange={(e) => setSubscriptionRenewalAt(e.target.value)} />
+              </div>
+              <div>
+                <label className="text-xs font-semibold text-muted-foreground">Data de Término (opcional)</label>
+                <p className="text-[10px] text-muted-foreground/70">Quando a assinatura expira. Se vazio, não expira</p>
+                <input className="mt-1 w-full rounded-lg border border-input bg-background px-2 py-2 text-sm" type="date" value={subscriptionEndsAt} onChange={(e) => setSubscriptionEndsAt(e.target.value)} />
+              </div>
             </div>
             <button
               className="rounded-lg bg-sky-700 px-3 py-2 text-sm font-semibold text-white hover:bg-sky-800 disabled:opacity-50 transition-colors"
