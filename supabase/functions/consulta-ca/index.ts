@@ -56,7 +56,7 @@ function parseConsultaCAHtml(html: string, ca: string): ConsultaCAResult | null 
   };
 
   // Title / EPI Name – extract from <title> tag or <h1>
-  const titleMatch = html.match(/<title[^>]*>\s*CA\s*\d+\s*[-\u2013\u2014]\s*(.+?)\s*[-\u2013\u2014|<]/i);
+  const titleMatch = html.match(/<title[^>]*>\s*CA\s*\d+\s*[-–—]\s*(.+?)\s*[-–—|<]/i);
   if (titleMatch) {
     result.nome = titleMatch[1].trim();
   } else {
@@ -66,8 +66,8 @@ function parseConsultaCAHtml(html: string, ca: string): ConsultaCAResult | null 
   }
 
   // Situação (VÁLIDO / VENCIDO)
-  const situacaoMatch = html.match(/Situa[\xE7c][\xE3a]o:\s*<\/span>\s*<span[^>]*>([^<]+)/i)
-    ?? html.match(/Situa[\xE7c][\xE3a]o:\s*([A-Z\xC1\xC9\xCD\xD3\xDA\xC2\xCA\xD4\xC3\xD5]+)/i);
+  const situacaoMatch = html.match(/Situa[çc][ãa]o:\s*<\/span>\s*<span[^>]*>([^<]+)/i)
+    ?? html.match(/Situa[çc][ãa]o:\s*([A-ZÁÉÍÓÚÂÊÔÃÕ]+)/i);
   if (situacaoMatch) {
     result.situacao = situacaoMatch[1].trim();
   }
@@ -85,7 +85,7 @@ function parseConsultaCAHtml(html: string, ca: string): ConsultaCAResult | null 
 
   // Fabricante – Razão Social
   const fabricanteMatch = html.match(
-    /Raz[\xE3a]o\s*Social:\s*(?:<[^>]*>)*\s*([^<]+)/i,
+    /Raz[ãa]o\s*Social:\s*(?:<[^>]*>)*\s*([^<]+)/i,
   );
   if (fabricanteMatch) {
     result.fabricante = fabricanteMatch[1].trim();
@@ -93,7 +93,7 @@ function parseConsultaCAHtml(html: string, ca: string): ConsultaCAResult | null 
 
   // Descrição Completa
   const descMatch = html.match(
-    /Descri[\xE7c][\xE3a]o\s*Completa[\s\S]*?<\/h\d>\s*(?:<[^>]*>\s*)*([^<]{10,})/i,
+    /Descri[çc][ãa]o\s*Completa[\s\S]*?<\/h\d>\s*(?:<[^>]*>\s*)*([^<]{10,})/i,
   );
   if (descMatch) {
     result.descricao = descMatch[1].trim().replace(/\s+/g, " ");

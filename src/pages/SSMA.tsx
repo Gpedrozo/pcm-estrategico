@@ -315,7 +315,7 @@ export default function SSMA() {
         validade_ca: data.validade || prev.validade_ca,
       }));
       toast({ title: 'C.A. encontrado!', description: `${data.nome} — ${data.fabricante ?? 'Fabricante não informado'} — Situação: ${data.situacao}` });
-    } catch (err) {
+    } catch (err: unknown) {
       toast({ title: 'Erro ao consultar C.A.', description: err instanceof Error ? err.message : 'Tente novamente.', variant: 'destructive' });
     } finally {
       setBuscandoCA(false);
