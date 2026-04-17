@@ -23,7 +23,7 @@ export default function SubscriptionPlanCard({
   onFeedback,
   onError,
 }: Props) {
-  const [planCodeToChange, setPlanCodeToChange] = useState('')
+  const [selectedPlanCode, setSelectedPlanCode] = useState('')
 
   const planObj = plans.find(
     (p) => String(p.id) === String(subscription.plan_id ?? (subscription as Record<string, unknown>).plano_id),
@@ -35,15 +35,18 @@ export default function SubscriptionPlanCard({
 
   const fmtDate = (d: unknown) => (d ? new Date(String(d)).toLocaleDateString('pt-BR') : '–')
 
+  // Filter out the current plan from the change plan dropdown
+  const otherPlans = plans.filter((p) => String(p.id) !== String(subscription.plan_id ?? (subscription as Record<string, unknown>).plano_id))
+
   async function handleChangePlan() {
-    if (!planCodeToChange.trim()) return
+    if (!selectedPlanCode) return
     try {
       await runAction('change_plan' as OwnerAction, {
         empresa_id: String(subscription.empresa_id ?? ''),
-        plano_codigo: planCodeToChange.toUpperCase(),
+        plano_codigo: selectedPlanCode,
       })
       onFeedback('Plano alterado com sucesso.')
-      setPlanCodeToChange('')
+      setSelectedPlanCode('')
     } catch (err: any) {
       onError(String(err?.message ?? 'Falha ao trocar plano.'))
     }
@@ -81,15 +84,21 @@ export default function SubscriptionPlanCard({
 
         {/* Change plan inline */}
         <div className="flex gap-2">
-          <input
+          <select
             className="flex-1 rounded-lg border border-input bg-background px-2 py-1.5 text-sm"
-            value={planCodeToChange}
-            onChange={(e) => setPlanCodeToChange(e.target.value)}
-            placeholder="Codigo novo plano"
-          />
+            value={selectedPlanCode}
+            onChange={(e) => setSelectedPlanCode(e.target.value)}
+          >
+            <option value="">Selecione novo plano</option>
+            {otherPlans.map((p) => (
+              <option key={String(p.id)} value={String(p.code ?? '')}>
+                {String(p.name ?? p.code ?? p.id)} — R$ {Number(p.price_month ?? 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+              </option>
+            ))}
+          </select>
           <button
             className="rounded-lg border border-amber-300 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-800/50 px-3 py-1.5 text-sm text-amber-700 dark:text-amber-400 hover:bg-amber-100 dark:hover:bg-amber-950/50 disabled:opacity-50 transition-colors"
-            disabled={busy || !planCodeToChange.trim()}
+            disabled={busy || !selectedPlanCode}
             onClick={handleChangePlan}
           >
             Trocar plano

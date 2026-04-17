@@ -4023,13 +4023,30 @@ Deno.serve(async (req) => {
       return fail("subscription payload is required", 400, null, req);
     }
 
+    // Resolve plan_id: frontend sends plans.id (EN table).
+    // DB FK may reference planos.id (PT-BR table). Map through code.
+    let resolvedPlanId = body.subscription.plan_id;
+    const { data: planEnLookup } = await admin
+      .from("plans")
+      .select("id,code")
+      .eq("id", body.subscription.plan_id)
+      .maybeSingle();
+    if (planEnLookup?.code) {
+      const { data: planoPtBrLookup } = await admin
+        .from("planos")
+        .select("id")
+        .eq("codigo", planEnLookup.code)
+        .maybeSingle();
+      if (planoPtBrLookup?.id) resolvedPlanId = planoPtBrLookup.id;
+    }
+
     const startsAt = body.subscription.starts_at ?? new Date().toISOString().slice(0, 10);
 
     const { data, error } = await admin
       .from("subscriptions")
       .upsert({
         empresa_id: body.subscription.empresa_id,
-        plan_id: body.subscription.plan_id,
+        plan_id: resolvedPlanId,
         amount: body.subscription.amount ?? 0,
         payment_method: body.subscription.payment_method ?? null,
         period: body.subscription.period ?? "monthly",
@@ -4681,11 +4698,20 @@ Deno.serve(async (req) => {
 
     if (planoError || !plano) return fail("Plan not found", 404, null, req);
 
+    // Resolve plan_id: FK may reference planos.id (PT-BR). Map through code.
+    let resolvedChangePlanId = plano.id;
+    const { data: planoPtBrChange } = await admin
+      .from("planos")
+      .select("id")
+      .eq("codigo", plano.code)
+      .maybeSingle();
+    if (planoPtBrChange?.id) resolvedChangePlanId = planoPtBrChange.id;
+
     const { data: subscription, error: subscriptionError } = await admin
       .from("subscriptions")
       .upsert({
         empresa_id: body.empresa_id,
-        plan_id: plano.id,
+        plan_id: resolvedChangePlanId,
         amount: plano.price_month ?? 0,
         period: "monthly",
         starts_at: new Date().toISOString().slice(0, 10),
