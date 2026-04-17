@@ -236,7 +236,13 @@ Deno.serve(async (req: Request) => {
 
   {
     const tokenHeader = req.headers.get("asaas-access-token") ?? req.headers.get("x-asaas-access-token") ?? "";
-    if (!tokenHeader || tokenHeader !== asaasWebhookToken) {
+    const encoder = new TextEncoder();
+    const a = encoder.encode(tokenHeader);
+    const b = encoder.encode(asaasWebhookToken);
+    const tokenValid = a.byteLength === b.byteLength && crypto.subtle
+      ? await crypto.subtle.timingSafeEqual(a, b)
+      : a.byteLength === b.byteLength && a.every((v, i) => v === b[i]);
+    if (!tokenHeader || !tokenValid) {
       await logAlert("ASAAS_WEBHOOK_INVALID_TOKEN", "warning", {
         ip: requestKey(req),
       });
