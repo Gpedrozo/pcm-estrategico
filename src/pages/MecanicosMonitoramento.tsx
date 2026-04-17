@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { useCallback, useEffect, useState } from 'react';
+import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -48,7 +48,7 @@ export default function MecanicosMonitoramento() {
   const [autoRefresh, setAutoRefresh] = useState(true);
 
   // Carregar mec├ónicos online
-  const carregarMecanicosOnline = async () => {
+  const carregarMecanicosOnline = useCallback(async () => {
     try {
       const { data, error } = await supabase
         .from('v_mecanicos_online_agora')
@@ -81,7 +81,7 @@ export default function MecanicosMonitoramento() {
     }, 10000); // Atualiza a cada 10 segundos
 
     return () => clearInterval(interval);
-  }, [tenantId, autoRefresh]);
+  }, [carregarMecanicosOnline, autoRefresh]);
 
   const mecanicosFiltered = mecanicos.filter(m =>
     m.mecanico_nome.toLowerCase().includes(filtro.toLowerCase()) ||

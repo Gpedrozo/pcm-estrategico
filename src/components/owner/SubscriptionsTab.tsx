@@ -1,10 +1,8 @@
 import { useState } from 'react'
 import { SurfaceCard } from '@/pages/owner2/owner2Components'
-import { statusColor } from '@/pages/owner2/owner2Helpers'
 import SubscriptionMetrics from './SubscriptionMetrics'
 import SubscriptionList from './SubscriptionList'
 import SubscriptionDetail from './SubscriptionDetail'
-import type { OwnerAction } from '@/services/ownerPortal.service'
 import type { useSubscriptionDetail } from '@/hooks/useSubscriptionDetail'
 
 type HookReturn = ReturnType<typeof useSubscriptionDetail>

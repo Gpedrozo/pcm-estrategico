@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { CheckCircle2, Link2, Loader2, RefreshCw, XCircle } from 'lucide-react'
 import { SurfaceCard } from '@/pages/owner2/owner2Components'
-import { asNumber, statusColor } from '@/pages/owner2/owner2Helpers'
+import { statusColor } from '@/pages/owner2/owner2Helpers'
 import type { SubscriptionRecord } from '@/hooks/useSubscriptionDetail'
 import type { OwnerAction } from '@/services/ownerPortal.service'
 

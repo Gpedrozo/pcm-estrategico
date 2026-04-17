@@ -105,7 +105,7 @@ export default function NovaOS() {
   } | null>(null);
   const registrarImpressao = useRegistrarImpressao();
   const [showSuccessModal, setShowSuccessModal] = useState(false);
-  const [nomeEmpresa, setNomeEmpresa] = useState('MANUTENÇÃO INDUSTRIAL');
+  const [nomeEmpresa] = useState('MANUTENÇÃO INDUSTRIAL');
   const [showSolicitacoesModal, setShowSolicitacoesModal] = useState(false);
   const [dismissedTagWarnings, setDismissedTagWarnings] = useState<Record<string, boolean>>({});
   const [semTag, setSemTag] = useState(_novaOSDraft?.semTag || false);
