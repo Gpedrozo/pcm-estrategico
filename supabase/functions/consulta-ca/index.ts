@@ -85,13 +85,13 @@ function parseConsultaCAHtml(html: string, ca: string): ConsultaCAResult | null 
     }
   }
 
-  // Situacao - "Situacao:VALIDO" (with or without tags/spaces)
+  // Situacao (with or without tags/spaces)
   const sitMatch = html.match(/Situa[\xE7c][\xE3a]o[:\s]*(?:<[^>]*>)*\s*([A-Z\xC0-\xDA\xC4-\xDC]+)/i);
   if (sitMatch) {
     result.situacao = sitMatch[1].trim();
   }
 
-  // Validade - "Validade:  09/11/2026"
+  // Validade
   const valMatch = html.match(/Validade[:\s]*(?:<[^>]*>)*\s*(\d{2}\/\d{2}\/\d{4})/i);
   if (valMatch) {
     const parts = valMatch[1].split("/");
@@ -100,7 +100,7 @@ function parseConsultaCAHtml(html: string, ca: string): ConsultaCAResult | null 
     }
   }
 
-  // Fabricante - "Razao Social" or "Razao Social Importador:"
+  // Fabricante - Razao Social / Razao Social Importador
   const fabMatch = html.match(/Raz[\xE3a]o\s*Social[^:]*:\s*(?:<[^>]*>)*\s*([^<]+)/i);
   if (fabMatch) {
     let fab = fabMatch[1].trim();
