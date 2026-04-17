@@ -63,7 +63,8 @@ import {
   CheckCircle2,
   AlertCircle,
   Tag,
-  SlidersHorizontal
+  SlidersHorizontal,
+  Ban
 } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { format, subDays, parseISO } from 'date-fns';
@@ -907,6 +908,22 @@ export default function HistoricoOS() {
                                 </Button>
                               }
                             />
+                            {os.status !== 'FECHADA' && os.status !== 'CANCELADA' && (
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                title="Cancelar O.S."
+                                className="text-destructive hover:text-destructive"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setCancelTargetOS(os);
+                                  setCancelMotivo('');
+                                  setCancelDialogOpen(true);
+                                }}
+                              >
+                                <Ban className="h-4 w-4" />
+                              </Button>
+                            )}
                           </div>
                         </td>
                       </tr>
@@ -1214,6 +1231,54 @@ export default function HistoricoOS() {
         isOpen={isModalOpen} 
         onClose={() => setIsModalOpen(false)} 
       />
+
+      {/* Cancel OS Dialog */}
+      <AlertDialog open={cancelDialogOpen} onOpenChange={setCancelDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              Cancelar O.S. {cancelTargetOS?.numero_os}?
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta ação cancelará a ordem de serviço e, se originária de programação,
+              reverterá o agendamento para que possa ser re-emitido.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="py-2">
+            <Label htmlFor="cancel-motivo">Motivo do cancelamento</Label>
+            <Textarea
+              id="cancel-motivo"
+              placeholder="Informe o motivo do cancelamento..."
+              value={cancelMotivo}
+              onChange={(e) => setCancelMotivo(e.target.value)}
+              className="mt-1"
+              rows={3}
+            />
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={cancelMutation.isPending}>
+              Voltar
+            </AlertDialogCancel>
+            <AlertDialogAction
+              disabled={!cancelMotivo.trim() || cancelMutation.isPending}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={async (e) => {
+                e.preventDefault();
+                if (!cancelTargetOS) return;
+                await cancelMutation.mutateAsync({
+                  osId: cancelTargetOS.id,
+                  motivo: cancelMotivo.trim(),
+                });
+                setCancelDialogOpen(false);
+                setCancelTargetOS(null);
+                setCancelMotivo('');
+              }}
+            >
+              {cancelMutation.isPending ? 'Cancelando...' : 'Confirmar cancelamento'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

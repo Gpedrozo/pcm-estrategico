@@ -492,6 +492,10 @@ export function LubrificacaoDetalhe({ plano, equipamentos, onEdit, onDelete }: L
                 <p className="text-xs text-muted-foreground whitespace-pre-wrap">{plano.descricao}</p>
               </div>
             )}
+            <Separator />
+            <Button variant="destructive" size="sm" onClick={() => confirm({ title: 'Excluir plano', description: 'Tem certeza que deseja excluir este plano de lubrificação? Todos os pontos e etapas serão removidos.', onConfirm: async () => { await deletePlano.mutateAsync(plano.id); onDelete?.(); } })}>
+              <Trash2 className="h-4 w-4 mr-1" /> Excluir Plano
+            </Button>
           </div>
         </TabsContent>
       </Tabs>
