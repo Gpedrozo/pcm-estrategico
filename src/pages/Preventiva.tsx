@@ -30,7 +30,7 @@ export default function Preventiva() {
   const [search, setSearch] = useState('');
   const [selectedPlanoId, setSelectedPlanoId] = useState<string | null>(null);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
-  const [filterAtivo, setFilterAtivo] = useState<boolean | null>(true);
+  const [filterAtivo, setFilterAtivo] = useState<'ativos' | 'inativos' | 'vencidos' | 'todos'>('ativos');
 
   const { data: planos, isLoading, isError, error } = usePlanosPreventivos();
   const { data: equipamentos } = useEquipamentos();
@@ -58,7 +58,9 @@ export default function Preventiva() {
   const filteredPlanos = useMemo(() => {
     if (!planos) return [];
     return planos.filter(p => {
-      if (filterAtivo !== null && p.ativo !== filterAtivo) return false;
+      if (filterAtivo === 'ativos' && !p.ativo) return false;
+      if (filterAtivo === 'inativos' && p.ativo) return false;
+      if (filterAtivo === 'vencidos' && !(p.proxima_execucao && new Date(p.proxima_execucao).getTime() < Date.now())) return false;
       if (!search) return true;
       const s = search.toLowerCase();
       const codigo = (p.codigo || '').toLowerCase();
@@ -127,9 +129,10 @@ export default function Preventiva() {
               />
             </div>
             <div className="flex gap-1">
-              <Button size="sm" variant={filterAtivo === true ? 'default' : 'ghost'} className="h-7 text-xs" onClick={() => setFilterAtivo(true)}>Ativos</Button>
-              <Button size="sm" variant={filterAtivo === false ? 'default' : 'ghost'} className="h-7 text-xs" onClick={() => setFilterAtivo(false)}>Inativos</Button>
-              <Button size="sm" variant={filterAtivo === null ? 'default' : 'ghost'} className="h-7 text-xs" onClick={() => setFilterAtivo(null)}>Todos</Button>
+              <Button size="sm" variant={filterAtivo === 'todos' ? 'default' : 'ghost'} className="h-7 text-xs" onClick={() => setFilterAtivo('todos')}>Todos</Button>
+              <Button size="sm" variant={filterAtivo === 'ativos' ? 'default' : 'ghost'} className="h-7 text-xs" onClick={() => setFilterAtivo('ativos')}>Ativos</Button>
+              <Button size="sm" variant={filterAtivo === 'inativos' ? 'default' : 'ghost'} className="h-7 text-xs" onClick={() => setFilterAtivo('inativos')}>Inativos</Button>
+              <Button size="sm" variant={filterAtivo === 'vencidos' ? 'default' : 'ghost'} className="h-7 text-xs" onClick={() => setFilterAtivo('vencidos')}>Vencidos</Button>
             </div>
           </div>
 
