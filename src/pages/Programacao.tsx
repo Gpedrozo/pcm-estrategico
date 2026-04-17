@@ -226,19 +226,11 @@ export default function Programacao() {
     const equipamento = resolveEquipamentoByEvent(selectedEvent);
     const tag = equipamento?.tag || '';
 
-    if (!tag) {
-      toast({
-        title: 'Não foi possível emitir O.S',
-        description: 'Este item não possui TAG de equipamento vinculada.',
-        variant: 'destructive',
-      });
-      return;
-    }
 
     const novaOS = await createOSMutation.mutateAsync({
       tipo: mapMaintenanceTipoToOsTipo(selectedEvent.tipo),
       prioridade: 'MEDIA',
-      tag,
+      tag: tag || null,
       equipamento: equipamento?.nome || selectedEvent.titulo,
       solicitante: 'Programação de Manutenção',
       problema: selectedEvent.descricao || `Execução programada: ${selectedEvent.titulo}`,

@@ -3,7 +3,7 @@ import { z } from 'zod';
 export const ordemServicoSchema = z.object({
   tipo: z.enum(['CORRETIVA', 'PREVENTIVA', 'PREDITIVA', 'INSPECAO', 'MELHORIA', 'LUBRIFICACAO']),
   prioridade: z.enum(['URGENTE', 'ALTA', 'MEDIA', 'BAIXA']).default('MEDIA'),
-  tag: z.string().min(1, 'TAG do equipamento é obrigatória'),
+  tag: z.string().optional().nullable().default(''),
   equipamento: z.string().min(1, 'Nome do equipamento é obrigatório'),
   solicitante: z.string().min(2, 'Nome do solicitante é obrigatório'),
   problema: z.string().min(5, 'Descrição do problema é obrigatória (mínimo 5 caracteres)'),
