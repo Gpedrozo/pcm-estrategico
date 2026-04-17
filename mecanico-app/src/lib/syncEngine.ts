@@ -86,7 +86,7 @@ async function pushPendingChanges(db: SupabaseClient): Promise<number> {
           }
         }
       } else if (item.operation === 'DELETE') {
-        const { error } = await db.from(table).delete().eq('id', item.record_id);
+        const { error } = await db.from(table).delete().eq('id', item.record_id).eq('empresa_id', payload.empresa_id);
         if (error) throw error;
       }
 
