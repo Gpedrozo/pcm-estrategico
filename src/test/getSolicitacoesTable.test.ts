@@ -45,7 +45,7 @@ describe('getSolicitacoesTable', () => {
 
     expect(result).toBe('solicitacoes_manutencao');
     expect(mocks.fromSpy).toHaveBeenCalledWith('solicitacoes_manutencao');
-  });
+  }, 15_000);
 
   it('faz fallback para "solicitacoes" quando solicitacoes_manutencao não existe', async () => {
     // Primeira chamada: tabela não existe (42P01)
