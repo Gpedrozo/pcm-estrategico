@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Card, CardContent } from '@/components/ui/card';
-import { Plus, Search, FileText, DollarSign, AlertCircle, CheckCircle2, Pencil, Trash2 } from 'lucide-react';
+import { Plus, Search, FileText, DollarSign, AlertCircle, CheckCircle2, Pencil, Trash2, Printer, Loader2 } from 'lucide-react';
 import { useConfirmDialog } from '@/components/ui/confirm-dialog';
 import { 
   useContratos, 
@@ -19,11 +19,17 @@ import {
 } from '@/hooks/useContratos';
 import { useFornecedores } from '@/hooks/useFornecedores';
 import { useAuth } from '@/contexts/AuthContext';
+import { useDadosEmpresa } from '@/hooks/useDadosEmpresa';
+import { generateContratoPDF, type ContratoForPDF } from '@/lib/reportGenerator';
+import { useToast } from '@/hooks/use-toast';
 import { format, differenceInDays, parseISO } from 'date-fns';
 import { useFormDraft } from '@/hooks/useFormDraft';
 
 export default function Contratos() {
   const { user } = useAuth();
+  const { data: empresa } = useDadosEmpresa();
+  const { toast } = useToast();
+  const [generatingPDF, setGeneratingPDF] = useState<string | null>(null);
 
   const [search, setSearch] = useState('');
   const [filterStatus, setFilterStatus] = useState<string>('all');
@@ -147,6 +153,53 @@ export default function Contratos() {
       responsavel_nome: '',
       penalidade_descricao: '',
     });
+  };
+
+  const handleGeneratePDF = async (contrato: any) => {
+    setGeneratingPDF(contrato.id);
+    try {
+      const contratoData: ContratoForPDF = {
+        numero_contrato: contrato.numero_contrato,
+        titulo: contrato.titulo,
+        descricao: contrato.descricao,
+        tipo: contrato.tipo,
+        status: contrato.status,
+        data_inicio: contrato.data_inicio,
+        data_fim: contrato.data_fim,
+        valor_total: contrato.valor_total,
+        valor_mensal: contrato.valor_mensal,
+        sla_atendimento_horas: contrato.sla_atendimento_horas,
+        sla_resolucao_horas: contrato.sla_resolucao_horas,
+        responsavel_nome: contrato.responsavel_nome,
+        penalidade_descricao: contrato.penalidade_descricao,
+        fornecedor: contrato.fornecedor,
+      };
+      await generateContratoPDF(contratoData, {
+        title: `CONTRATO ${contrato.numero_contrato}`,
+        dateFrom: contrato.data_inicio || '',
+        dateTo: contrato.data_fim || '',
+        empresaNome: empresa?.nome_fantasia || empresa?.razao_social || '',
+        empresaRazaoSocial: empresa?.razao_social || '',
+        empresaCnpj: empresa?.cnpj || '',
+        empresaIE: empresa?.inscricao_estadual || '',
+        empresaTelefone: empresa?.telefone || '',
+        empresaWhatsapp: empresa?.whatsapp || '',
+        empresaEmail: empresa?.email || '',
+        empresaSite: empresa?.site || '',
+        empresaEndereco: empresa?.endereco || '',
+        empresaCidade: empresa?.cidade || '',
+        empresaEstado: empresa?.estado || '',
+        empresaCep: empresa?.cep || '',
+        empresaResponsavelNome: empresa?.responsavel_nome || '',
+        empresaResponsavelCargo: empresa?.responsavel_cargo || '',
+        logoUrl: empresa?.logo_pdf_url || empresa?.logo_url || '',
+      });
+      toast({ title: 'PDF do contrato gerado com sucesso' });
+    } catch (err) {
+      toast({ title: 'Erro ao gerar PDF', description: (err as Error).message, variant: 'destructive' });
+    } finally {
+      setGeneratingPDF(null);
+    }
   };
 
   const handleDelete = async (id: string) => {
@@ -295,18 +348,28 @@ export default function Contratos() {
                   {contrato.sla_atendimento_horas}h / {contrato.sla_resolucao_horas}h
                 </td>
                 <td>
-                  <div className="flex gap-2">
+                  <div className="flex gap-1">
                     <Button
                       size="icon"
                       variant="ghost"
+                      title="Gerar PDF"
+                      disabled={generatingPDF === contrato.id}
+                      onClick={() => handleGeneratePDF(contrato)}
+                    >
+                      {generatingPDF === contrato.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Printer className="h-4 w-4" />}
+                    </Button>
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      title="Editar"
                       onClick={() => handleEdit(contrato)}
                     >
                       <Pencil className="h-4 w-4" />
                     </Button>
-
                     <Button
                       size="icon"
                       variant="ghost"
+                      title="Excluir"
                       onClick={() => handleDelete(contrato.id)}
                     >
                       <Trash2 className="h-4 w-4 text-destructive" />

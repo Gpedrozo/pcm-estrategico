@@ -1374,3 +1374,270 @@ export async function generateAuditoriaPDF(
   addProfessionalFooter(doc, options);
   doc.save(`Auditoria_${options.dateFrom || format(new Date(), 'yyyyMMdd')}_${options.dateTo || format(new Date(), 'yyyyMMdd')}.pdf`);
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   CONTRATO — PDF Profissional A4 (estilo laudo industrial)
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+export interface ContratoForPDF {
+  numero_contrato: string;
+  titulo: string;
+  descricao?: string | null;
+  tipo?: string | null;
+  status?: string | null;
+  data_inicio: string;
+  data_fim?: string | null;
+  valor_total?: number | null;
+  valor_mensal?: number | null;
+  sla_atendimento_horas?: number | null;
+  sla_resolucao_horas?: number | null;
+  responsavel_nome?: string | null;
+  penalidade_descricao?: string | null;
+  fornecedor?: {
+    nome?: string | null;
+    razao_social?: string | null;
+    nome_fantasia?: string | null;
+  } | null;
+}
+
+const TIPO_LABELS: Record<string, string> = {
+  SERVICO: 'Prestação de Serviço',
+  FORNECIMENTO: 'Fornecimento de Materiais',
+  MATERIAL: 'Fornecimento de Materiais',
+  MISTO: 'Misto (Serviço + Fornecimento)',
+  LOCACAO: 'Locação de Equipamentos',
+};
+
+function brl(v: number | null | undefined): string {
+  return (v ?? 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+}
+
+function fmtDateBR(d: string | null | undefined): string {
+  if (!d) return '—';
+  try { return format(new Date(d + 'T00:00:00'), 'dd/MM/yyyy', { locale: ptBR }); } catch { return d; }
+}
+
+export async function generateContratoPDF(
+  contrato: ContratoForPDF,
+  options: ReportOptions
+) {
+  const doc = new jsPDF() as JsPDFWithAutoTable;
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const pageHeight = doc.internal.pageSize.getHeight();
+  const LEFT = 14;
+  const RIGHT = pageWidth - LEFT;
+  const CONTENT_W = RIGHT - LEFT;
+  const now = format(new Date(), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR });
+
+  // ── Header profissional ──
+  const startY = await addProfessionalHeader(doc, {
+    ...options,
+    title: `CONTRATO ${contrato.numero_contrato}`,
+    subtitle: contrato.titulo,
+  });
+
+  let y = startY;
+
+  // ── Bloco: PARTES ──
+  doc.setFontSize(9); doc.setFont('helvetica', 'bold'); doc.setTextColor(...DARK);
+  doc.text('1. DAS PARTES', LEFT, y); y += 5;
+
+  const contratante = options.empresaNome || options.empresaRazaoSocial || 'CONTRATANTE';
+  const contratanteDetail = [
+    options.empresaRazaoSocial && options.empresaRazaoSocial !== contratante ? options.empresaRazaoSocial : '',
+    options.empresaCnpj ? `CNPJ: ${options.empresaCnpj}` : '',
+    buildAddress(options),
+  ].filter(Boolean).join(' — ');
+
+  const fornecedorNome = contrato.fornecedor?.razao_social || contrato.fornecedor?.nome_fantasia || contrato.fornecedor?.nome || 'A definir';
+
+  autoTable(doc, {
+    startY: y,
+    head: [['Parte', 'Identificação']],
+    body: [
+      ['CONTRATANTE', `${contratante}${contratanteDetail ? `\n${contratanteDetail}` : ''}`],
+      ['CONTRATADA', fornecedorNome],
+    ],
+    styles: { fontSize: 8, cellPadding: 3.5 },
+    headStyles: { fillColor: BRAND, fontStyle: 'bold', textColor: [255, 255, 255] },
+    alternateRowStyles: { fillColor: [247, 249, 252] },
+    columnStyles: {
+      0: { cellWidth: 32, fontStyle: 'bold', halign: 'center' },
+    },
+    margin: { left: LEFT, right: LEFT },
+  });
+  y = (doc.lastAutoTable?.finalY ?? y) + 6;
+
+  // ── Bloco: OBJETO ──
+  doc.setFontSize(9); doc.setFont('helvetica', 'bold'); doc.setTextColor(...DARK);
+  doc.text('2. DO OBJETO', LEFT, y); y += 5;
+
+  const tipoLabel = TIPO_LABELS[contrato.tipo || ''] || contrato.tipo || 'Não especificado';
+  doc.setFontSize(8); doc.setFont('helvetica', 'normal'); doc.setTextColor(35, 35, 35);
+  const objetoText = `O presente contrato tem por objeto a ${tipoLabel.toLowerCase()}, conforme descrito abaixo:`;
+  const splitObjeto = doc.splitTextToSize(objetoText, CONTENT_W);
+  doc.text(splitObjeto, LEFT, y); y += splitObjeto.length * 4 + 2;
+
+  if (contrato.descricao) {
+    doc.setFont('helvetica', 'italic'); doc.setTextColor(60, 60, 60);
+    const splitDesc = doc.splitTextToSize(contrato.descricao, CONTENT_W - 6);
+    doc.setDrawColor(180, 180, 180); doc.setLineWidth(0.3);
+    doc.line(LEFT, y, LEFT, y + splitDesc.length * 3.5 + 2);
+    doc.text(splitDesc, LEFT + 4, y + 3); 
+    y += splitDesc.length * 3.5 + 8;
+  }
+
+  // ── Bloco: DADOS COMERCIAIS ──
+  doc.setFontSize(9); doc.setFont('helvetica', 'bold'); doc.setTextColor(...DARK);
+  doc.text('3. DADOS COMERCIAIS E VIGÊNCIA', LEFT, y); y += 5;
+
+  autoTable(doc, {
+    startY: y,
+    body: [
+      ['Nº do Contrato', contrato.numero_contrato, 'Tipo', tipoLabel],
+      ['Valor Total', brl(contrato.valor_total), 'Valor Mensal', brl(contrato.valor_mensal)],
+      ['Data de Início', fmtDateBR(contrato.data_inicio), 'Data de Término', fmtDateBR(contrato.data_fim)],
+      ['Status', contrato.status || '—', 'Responsável', contrato.responsavel_nome || '—'],
+    ],
+    styles: { fontSize: 7.5, cellPadding: 3 },
+    alternateRowStyles: { fillColor: [247, 249, 252] },
+    columnStyles: {
+      0: { fontStyle: 'bold', cellWidth: 32, textColor: MGRAY },
+      1: { cellWidth: 55 },
+      2: { fontStyle: 'bold', cellWidth: 32, textColor: MGRAY },
+      3: { cellWidth: 55 },
+    },
+    theme: 'plain',
+    tableLineColor: [200, 200, 200],
+    tableLineWidth: 0.2,
+    margin: { left: LEFT, right: LEFT },
+  });
+  y = (doc.lastAutoTable?.finalY ?? y) + 6;
+
+  // ── Bloco: SLA ──
+  if (contrato.sla_atendimento_horas || contrato.sla_resolucao_horas) {
+    doc.setFontSize(9); doc.setFont('helvetica', 'bold'); doc.setTextColor(...DARK);
+    doc.text('4. ACORDO DE NÍVEL DE SERVIÇO (SLA)', LEFT, y); y += 5;
+
+    autoTable(doc, {
+      startY: y,
+      head: [['Indicador', 'Prazo Acordado', 'Descrição']],
+      body: [
+        [
+          'SLA de Atendimento',
+          contrato.sla_atendimento_horas ? `${contrato.sla_atendimento_horas} hora(s)` : '—',
+          'Prazo máximo para início do atendimento após abertura de chamado.',
+        ],
+        [
+          'SLA de Resolução',
+          contrato.sla_resolucao_horas ? `${contrato.sla_resolucao_horas} hora(s)` : '—',
+          'Prazo máximo para resolução completa do chamado.',
+        ],
+      ],
+      styles: { fontSize: 7.5, cellPadding: 3 },
+      headStyles: { fillColor: BRAND, fontStyle: 'bold', textColor: [255, 255, 255] },
+      alternateRowStyles: { fillColor: [247, 249, 252] },
+      columnStyles: {
+        0: { fontStyle: 'bold', cellWidth: 36 },
+        1: { halign: 'center', cellWidth: 30, fontStyle: 'bold' },
+      },
+      margin: { left: LEFT, right: LEFT },
+    });
+    y = (doc.lastAutoTable?.finalY ?? y) + 6;
+  }
+
+  // ── Bloco: PENALIDADES ──
+  const sectionNum = (contrato.sla_atendimento_horas || contrato.sla_resolucao_horas) ? 5 : 4;
+
+  if (contrato.penalidade_descricao) {
+    if (y > pageHeight - 60) { doc.addPage(); y = 14; }
+    doc.setFontSize(9); doc.setFont('helvetica', 'bold'); doc.setTextColor(...DARK);
+    doc.text(`${sectionNum}. DAS PENALIDADES`, LEFT, y); y += 5;
+
+    doc.setFontSize(8); doc.setFont('helvetica', 'normal'); doc.setTextColor(35, 35, 35);
+    const splitPen = doc.splitTextToSize(contrato.penalidade_descricao, CONTENT_W);
+    doc.text(splitPen, LEFT, y);
+    y += splitPen.length * 3.8 + 6;
+  }
+
+  // ── Bloco: DISPOSIÇÕES GERAIS ──
+  const dispNum = sectionNum + (contrato.penalidade_descricao ? 1 : 0);
+  if (y > pageHeight - 55) { doc.addPage(); y = 14; }
+  doc.setFontSize(9); doc.setFont('helvetica', 'bold'); doc.setTextColor(...DARK);
+  doc.text(`${dispNum}. DISPOSIÇÕES GERAIS`, LEFT, y); y += 5;
+
+  doc.setFontSize(7.5); doc.setFont('helvetica', 'normal'); doc.setTextColor(50, 50, 50);
+  const disposicoes = [
+    `${dispNum}.1. Qualquer alteração neste contrato somente será válida se formalizada por escrito e assinada por ambas as partes.`,
+    `${dispNum}.2. As partes elegem o foro da comarca da sede da CONTRATANTE para dirimir quaisquer dúvidas oriundas deste contrato.`,
+    `${dispNum}.3. Este contrato é regido pelas leis da República Federativa do Brasil.`,
+    `${dispNum}.4. Os casos omissos serão resolvidos de comum acordo entre as partes.`,
+  ];
+  disposicoes.forEach(d => {
+    const split = doc.splitTextToSize(d, CONTENT_W);
+    doc.text(split, LEFT, y);
+    y += split.length * 3.5 + 2;
+  });
+  y += 4;
+
+  // ── Bloco: ASSINATURAS ──
+  if (y > pageHeight - 60) { doc.addPage(); y = 14; }
+  doc.setDrawColor(160, 160, 160); doc.setLineWidth(0.3);
+  doc.line(LEFT, y, RIGHT, y);
+  y += 8;
+
+  doc.setFontSize(7.5); doc.setFont('helvetica', 'normal'); doc.setTextColor(...MGRAY);
+  const localData = `${options.empresaCidade || ''}${options.empresaCidade && options.empresaEstado ? '/' : ''}${options.empresaEstado || ''}, ${format(new Date(), "dd 'de' MMMM 'de' yyyy", { locale: ptBR })}`;
+  doc.text(localData, pageWidth / 2, y, { align: 'center' });
+  y += 14;
+
+  // Coluna esquerda: CONTRATANTE
+  const signW = 65;
+  const signX1 = LEFT + (CONTENT_W / 2 - signW) / 2;
+  const signX2 = pageWidth / 2 + (CONTENT_W / 2 - signW) / 2;
+
+  doc.setDrawColor(80, 80, 80); doc.setLineWidth(0.4);
+  doc.line(signX1, y, signX1 + signW, y);
+  doc.line(signX2, y, signX2 + signW, y);
+
+  y += 4;
+  doc.setFontSize(7.5); doc.setFont('helvetica', 'bold'); doc.setTextColor(...DARK);
+  doc.text('CONTRATANTE', signX1 + signW / 2, y, { align: 'center' });
+  doc.text('CONTRATADA', signX2 + signW / 2, y, { align: 'center' });
+
+  y += 4;
+  doc.setFontSize(7); doc.setFont('helvetica', 'normal'); doc.setTextColor(...MGRAY);
+  doc.text(contratante.substring(0, 40), signX1 + signW / 2, y, { align: 'center' });
+  doc.text(fornecedorNome.substring(0, 40), signX2 + signW / 2, y, { align: 'center' });
+
+  if (options.empresaResponsavelNome) {
+    y += 3.5;
+    doc.text(options.empresaResponsavelNome, signX1 + signW / 2, y, { align: 'center' });
+  }
+
+  // Testemunhas
+  y += 14;
+  if (y < pageHeight - 30) {
+    doc.setDrawColor(120, 120, 120); doc.setLineWidth(0.3);
+    doc.line(signX1, y, signX1 + signW, y);
+    doc.line(signX2, y, signX2 + signW, y);
+    y += 4;
+    doc.setFontSize(7); doc.setFont('helvetica', 'normal'); doc.setTextColor(...MGRAY);
+    doc.text('TESTEMUNHA 1', signX1 + signW / 2, y, { align: 'center' });
+    doc.text('TESTEMUNHA 2', signX2 + signW / 2, y, { align: 'center' });
+    y += 3.5;
+    doc.text('Nome:', signX1, y);
+    doc.text('Nome:', signX2, y);
+    y += 3.5;
+    doc.text('CPF:', signX1, y);
+    doc.text('CPF:', signX2, y);
+  }
+
+  // ── Nota de rodapé ──
+  y += 10;
+  doc.setFontSize(6); doc.setFont('helvetica', 'italic'); doc.setTextColor(130, 130, 130);
+  doc.text(`Documento gerado eletronicamente em ${now} — PCM Estratégico`, LEFT, Math.min(y, pageHeight - 20));
+
+  addProfessionalFooter(doc, options);
+  doc.save(`Contrato_${contrato.numero_contrato.replace(/[^a-zA-Z0-9]/g, '_')}.pdf`);
+}
