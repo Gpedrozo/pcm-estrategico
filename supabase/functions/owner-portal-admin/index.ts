@@ -1960,7 +1960,7 @@ Deno.serve(async (req) => {
       const { data: cronLog } = await admin
         .from("enterprise_audit_logs")
         .select("created_at")
-        .eq("action_type", "CRON_ENFORCE_SUBSCRIPTION_EXPIRY")
+        .eq("acao", "CRON_ENFORCE_SUBSCRIPTION_EXPIRY")
         .order("created_at", { ascending: false })
         .limit(1)
         .maybeSingle();
