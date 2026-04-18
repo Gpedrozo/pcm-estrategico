@@ -1976,17 +1976,10 @@ Deno.serve(async (req) => {
       version: "2026-03-11-owner-health-v1",
       asaas_configured: asaasOk,
       cron_subscription_expiry: { healthy: cronHealthy, last_run: cronLastRun },
-      asaas_base_url: ASAAS_API_BASE_URL,
       cloudflare_provisioning: {
-        pages_auto_domain_enabled: CF_PAGES_AUTO_DOMAIN_ENABLED,
-        pages_provision_required: CF_PAGES_PROVISION_REQUIRED,
         pages_credentials_configured: Boolean(CF_API_TOKEN && CF_ACCOUNT_ID && CF_PAGES_PROJECT_NAME),
-        dns_auto_record_enabled: CF_DNS_AUTO_RECORD_ENABLED,
-        dns_provision_required: CF_DNS_PROVISION_REQUIRED,
         dns_credentials_configured: Boolean(CF_API_TOKEN && CF_ZONE_ID && CF_DNS_RECORD_TARGET),
-        dns_record_type: CF_DNS_RECORD_TYPE,
       },
-      supported_actions: SUPPORTED_OWNER_ACTIONS,
       timestamp: new Date().toISOString(),
     }, 200, req);
   }
