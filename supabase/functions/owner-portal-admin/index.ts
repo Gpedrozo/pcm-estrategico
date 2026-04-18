@@ -3122,7 +3122,11 @@ Deno.serve(async (req) => {
       });
       if (!pwOk) return fail("Senha invalida.", 401, null, req);
     }
+    const ALLOWED_COMPANY_STATUSES = ["active", "blocked", "cancelled", "teste", "ativo", "bloqueado", "cancelado"];
     const status = body.status ?? "active";
+    if (!ALLOWED_COMPANY_STATUSES.includes(status)) {
+      return fail(`Invalid status. Allowed: ${ALLOWED_COMPANY_STATUSES.join(", ")}`, 400, null, req);
+    }
     const { error } = await admin
       .from("empresas")
       .update({ status })
