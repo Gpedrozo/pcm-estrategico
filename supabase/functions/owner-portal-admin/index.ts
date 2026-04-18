@@ -393,7 +393,7 @@ function shouldEnforceRateLimit(action: Payload["action"]) {
   return writeOrSensitiveActions.has(action);
 }
 
-const OWNER_RATE_LIMIT_ENABLED = (Deno.env.get("OWNER_RATE_LIMIT_ENABLED") ?? "false").toLowerCase() === "true";
+const OWNER_RATE_LIMIT_ENABLED = (Deno.env.get("OWNER_RATE_LIMIT_ENABLED") ?? "true").toLowerCase() === "true";
 
 /**
  * Verifica se o JWT do usuário contém role de Owner (SYSTEM_OWNER ou SYSTEM_ADMIN).
