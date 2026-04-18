@@ -11,7 +11,7 @@ export type PaymentRecord = Record<string, unknown>
 export function useSubscriptionDetail(enabled: boolean, companies: Record<string, unknown>[]) {
   const plansQuery = useOwner2Plans(enabled)
   const subscriptionsQuery = useOwner2Subscriptions(enabled)
-  const execute = useOwner2Actions()
+  const { execute } = useOwner2Actions()
 
   // Selection state
   const [selectedSubId, setSelectedSubId] = useState('')
