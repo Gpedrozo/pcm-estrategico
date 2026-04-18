@@ -4877,14 +4877,14 @@ Deno.serve(async (req) => {
   }
 
   if (body.action === "stop_impersonation") {
-    const stopQuery = admin
+    let stopQuery = admin
       .from("owner_impersonation_sessions")
       .update({ active: false })
       .eq("owner_user_id", auth.user.id)
       .eq("active", true);
 
     if (body.empresa_id) {
-      stopQuery.eq("empresa_id", body.empresa_id);
+      stopQuery = stopQuery.eq("empresa_id", body.empresa_id);
     }
 
     await stopQuery;
