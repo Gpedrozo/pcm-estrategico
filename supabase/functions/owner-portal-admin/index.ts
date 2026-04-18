@@ -4609,10 +4609,11 @@ Deno.serve(async (req) => {
     await logAuditEvent(admin, {
       empresaId: null,
       userId: auth.user.id,
-      actionType: "OWNER_SET_ASAAS_API_KEY",
-      severity: "warn",
+      action: "OWNER_SET_ASAAS_API_KEY",
+      entityType: "configuration",
+      severity: "warning",
       source: "owner-portal-admin",
-      details: { masked_key: `${apiKey.slice(0, 12)}...`, environment: ASAAS_API_BASE_URL.includes("sandbox") ? "sandbox" : "production" },
+      payload: { masked_key: `${apiKey.slice(0, 12)}...`, environment: ASAAS_API_BASE_URL.includes("sandbox") ? "sandbox" : "production" },
     });
 
     return ok({
