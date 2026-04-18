@@ -5013,7 +5013,7 @@ Deno.serve(async (req) => {
     }
 
     const normalizedEmail = body.owner_user.email.trim().toLowerCase();
-    const password = body.owner_user.password?.trim() || `Tmp#${Math.random().toString(36).slice(2, 10)}!`;
+    const password = body.owner_user.password?.trim() || generateTemporaryPassword();
 
     const { data: existingUsersPage, error: listError } = await admin.auth.admin.listUsers({ page: 1, perPage: 1000 });
     if (listError) return fail(listError.message, 400, null, req);
