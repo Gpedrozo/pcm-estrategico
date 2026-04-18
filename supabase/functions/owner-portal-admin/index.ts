@@ -3870,6 +3870,11 @@ Deno.serve(async (req) => {
     const billing = body.billing ?? {};
     const updatePayload: Record<string, unknown> = {};
 
+    const ALLOWED_BILLING_STATUSES = ["ativa", "cancelada", "expirada", "pendente", "suspensa", "trial", "active", "cancelled", "expired", "pending", "suspended"];
+    if (billing.status !== undefined && !ALLOWED_BILLING_STATUSES.includes(billing.status ?? "ativa")) {
+      return fail(`Invalid billing status. Allowed: ${ALLOWED_BILLING_STATUSES.join(", ")}`, 400, null, req);
+    }
+
     if (billing.amount !== undefined) updatePayload.amount = Number(billing.amount ?? 0);
     if (billing.period !== undefined) updatePayload.period = billing.period ?? "monthly";
     if (billing.payment_method !== undefined) updatePayload.payment_method = billing.payment_method ?? null;
