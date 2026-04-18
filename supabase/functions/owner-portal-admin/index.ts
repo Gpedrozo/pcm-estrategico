@@ -994,9 +994,11 @@ async function resolveAsaasApiKey(admin: ReturnType<typeof adminClient>): Promis
         .select("valor")
         .is("empresa_id", null)
         .eq("chave", "platform.asaas_api_key")
-        .maybeSingle();
-      if (data?.valor) {
-        let val = data.valor;
+        .order("updated_at", { ascending: false })
+        .limit(1);
+      const row = Array.isArray(data) ? data[0] : data;
+      if (row?.valor) {
+        let val = row.valor;
         if (typeof val === "string") {
           try { val = JSON.parse(val); } catch { /* keep as string */ }
         }
@@ -1015,6 +1017,38 @@ function isAsaasConfigured() {
 async function isAsaasConfiguredAsync(admin: ReturnType<typeof adminClient>) {
   const key = await resolveAsaasApiKey(admin);
   return Boolean(key);
+}
+
+/**
+ * NULL-safe upsert for configuracoes_sistema with empresa_id IS NULL.
+ * PostgreSQL's ON CONFLICT (empresa_id, chave) doesn't match NULL rows,
+ * so we SELECT → UPDATE or INSERT explicitly.
+ */
+async function upsertPlatformConfig(
+  admin: ReturnType<typeof adminClient>,
+  chave: string,
+  valor: unknown,
+): Promise<{ error: { message: string } | null }> {
+  const { data: existing } = await admin
+    .from("configuracoes_sistema")
+    .select("id")
+    .is("empresa_id", null)
+    .eq("chave", chave)
+    .limit(1)
+    .maybeSingle();
+
+  if (existing?.id) {
+    const { error } = await admin
+      .from("configuracoes_sistema")
+      .update({ valor })
+      .eq("id", existing.id);
+    return { error };
+  }
+
+  const { error } = await admin
+    .from("configuracoes_sistema")
+    .insert({ empresa_id: null, chave, valor });
+  return { error };
 }
 
 function normalizeDigits(value?: string | null) {
@@ -1973,12 +2007,11 @@ Deno.serve(async (req) => {
     return ok({
       service: "owner-portal-admin",
       status: "ok",
-      version: "2026-03-11-owner-health-v1",
+      version: "2026-03-11-owner-health-v2",
       asaas_configured: asaasOk,
       cron_subscription_expiry: { healthy: cronHealthy, last_run: cronLastRun },
       cloudflare_provisioning: {
-        pages_credentials_configured: Boolean(CF_API_TOKEN && CF_ACCOUNT_ID && CF_PAGES_PROJECT_NAME),
-        dns_credentials_configured: Boolean(CF_API_TOKEN && CF_ZONE_ID && CF_DNS_RECORD_TARGET),
+        configured: Boolean(CF_API_TOKEN && CF_ACCOUNT_ID && CF_PAGES_PROJECT_NAME && CF_ZONE_ID && CF_DNS_RECORD_TARGET),
       },
       timestamp: new Date().toISOString(),
     }, 200, req);
@@ -4519,9 +4552,7 @@ Deno.serve(async (req) => {
   }
 
   if (body.action === "update_platform_contact") {
-    const config = body.config ?? body.payload ?? {};
-    if (!config || typeof config !== "object" || Object.keys(config).length === 0) return fail("config object is required", 400, null, req);
-
+    // Accept both { config: { ... } } and flat fields for resilience
     const allowedKeys = [
       "contact_email",
       "contact_whatsapp",
@@ -4530,32 +4561,30 @@ Deno.serve(async (req) => {
       "grace_period_days",
       "alert_days_before",
     ];
+    const explicitConfig = body.config ?? body.payload;
+    const config: Record<string, unknown> = (explicitConfig && typeof explicitConfig === "object" && Object.keys(explicitConfig).length > 0)
+      ? explicitConfig as Record<string, unknown>
+      : (() => {
+          const flat: Record<string, unknown> = {};
+          for (const key of allowedKeys) {
+            if ((body as Record<string, unknown>)[key] !== undefined) flat[key] = (body as Record<string, unknown>)[key];
+          }
+          return flat;
+        })();
 
-    const rows: { empresa_id: null; chave: string; valor: unknown }[] = [];
-    for (const [key, value] of Object.entries(config as Record<string, unknown>)) {
+    if (!config || typeof config !== "object" || Object.keys(config).length === 0) return fail("config object is required", 400, null, req);
+
+    const rows: { chave: string; valor: string }[] = [];
+    for (const [key, value] of Object.entries(config)) {
       if (!allowedKeys.includes(key)) continue;
-      rows.push({
-        empresa_id: null,
-        chave: `platform.${key}`,
-        valor: JSON.stringify(value),
-      });
+      rows.push({ chave: `platform.${key}`, valor: JSON.stringify(value) });
     }
 
     if (rows.length === 0) return fail("No valid config keys provided", 400, null, req);
 
     for (const row of rows) {
-      const { error } = await admin
-        .from("configuracoes_sistema")
-        .upsert(row, { onConflict: "empresa_id,chave", ignoreDuplicates: false });
-      if (error) {
-        // Try insert if upsert fails (NULL empresa_id edge case)
-        const { error: insertErr } = await admin
-          .from("configuracoes_sistema")
-          .update({ valor: row.valor })
-          .is("empresa_id", null)
-          .eq("chave", row.chave);
-        if (insertErr) return fail(`Failed to save ${row.chave}: ${insertErr.message}`, 400, null, req);
-      }
+      const { error } = await upsertPlatformConfig(admin, row.chave, row.valor);
+      if (error) return fail(`Failed to save ${row.chave}: ${error.message}`, 400, null, req);
     }
 
     await logPlatformAudit(admin, { actorId: auth.user.id, actorEmail: auth.user.email, actionType: "OWNER_UPDATE_PLATFORM_CONTACT", details: { keys: rows.map((r) => r.chave) } });
@@ -4595,23 +4624,9 @@ Deno.serve(async (req) => {
       // Network error — save anyway, user can re-test
     }
 
-    // Save to configuracoes_sistema
-    const { error } = await admin
-      .from("configuracoes_sistema")
-      .upsert(
-        { empresa_id: null, chave: "platform.asaas_api_key", valor: JSON.stringify(apiKey) },
-        { onConflict: "empresa_id,chave", ignoreDuplicates: false },
-      );
-
-    if (error) {
-      // Fallback: try update
-      const { error: updErr } = await admin
-        .from("configuracoes_sistema")
-        .update({ valor: JSON.stringify(apiKey) })
-        .is("empresa_id", null)
-        .eq("chave", "platform.asaas_api_key");
-      if (updErr) return fail(`Falha ao salvar chave: ${updErr.message}`, 400, null, req);
-    }
+    // Save to configuracoes_sistema (NULL-safe upsert)
+    const { error } = await upsertPlatformConfig(admin, "platform.asaas_api_key", JSON.stringify(apiKey));
+    if (error) return fail(`Falha ao salvar chave: ${error.message}`, 400, null, req);
 
     // Refresh in-memory cache
     _asaasApiKeyFromDb = apiKey;
