@@ -1,4 +1,6 @@
 import { useState, useMemo, useCallback } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
@@ -18,8 +20,12 @@ import { generateAuditoriaPDF } from '@/lib/reportGenerator';
 import {
   Search, Filter, ClipboardList, User, Clock, Tag, AlertTriangle,
   Download, FileText, FileSpreadsheet, FileJson, BarChart3, Users, Loader2, ChevronDown,
+  Database, Globe, ChevronLeft, ChevronRight, Eye,
 } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Badge } from '@/components/ui/badge';
+import { Card, CardContent } from '@/components/ui/card';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip } from 'recharts';
 import { useToast } from '@/hooks/use-toast';
 
@@ -69,6 +75,13 @@ export default function Auditoria() {
   const [exporting, setExporting] = useState(false);
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
+  // ── DB Rastreamento state ──
+  const DB_PAGE_SIZE = 25;
+  const [dbPage, setDbPage] = useState(0);
+  const [dbSearch, setDbSearch] = useState('');
+  const [dbTableFilter, setDbTableFilter] = useState('ALL');
+  const [viewingDbLog, setViewingDbLog] = useState<any>(null);
+
   const { tenantId } = useAuth();
   const { data: empresa } = useDadosEmpresa();
   const { toast } = useToast();
@@ -77,6 +90,46 @@ export default function Auditoria() {
     dateFrom: filters.dateFrom || undefined,
     dateTo: filters.dateTo || undefined,
   });
+
+  // ── DB Rastreamento query (server-side paginated) ──
+  const { data: dbAuditData, isLoading: loadingDbAudit } = useQuery({
+    queryKey: ['auditoria-db-tracking', tenantId, dbPage, dbSearch, dbTableFilter],
+    queryFn: async () => {
+      if (!tenantId) return { logs: [], total: 0 };
+      let query = supabase
+        .from('enterprise_audit_logs')
+        .select('*', { count: 'exact' })
+        .eq('empresa_id', tenantId)
+        .not('dados_antes', 'is', null)
+        .order('created_at', { ascending: false })
+        .range(dbPage * DB_PAGE_SIZE, (dbPage + 1) * DB_PAGE_SIZE - 1);
+      if (dbSearch) {
+        const s = dbSearch.replace(/[%_()\\*]/g, '');
+        query = query.or(`tabela.ilike.%${s}%,acao.ilike.%${s}%,usuario_email.ilike.%${s}%`);
+      }
+      if (dbTableFilter !== 'ALL') query = query.eq('tabela', dbTableFilter);
+      const { data, count, error: qError } = await query;
+      if (qError) throw qError;
+      return {
+        logs: (data || []).map((row: any) => ({
+          id: row.id,
+          tabela: row.tabela ?? 'N/A',
+          operacao: row.acao ?? 'UNKNOWN',
+          registro_id: row.registro_id ?? null,
+          dados_antes: row.dados_antes ?? null,
+          dados_depois: row.dados_depois ?? null,
+          diferenca: row.diferenca ?? null,
+          created_at: row.ocorreu_em ?? row.created_at,
+          usuario_email: row.usuario_email ?? null,
+          resultado: row.resultado ?? 'sucesso',
+          ip_address: row.ip_address ?? null,
+        })),
+        total: count ?? 0,
+      };
+    },
+    enabled: !!tenantId,
+  });
+  const dbTotalPages = Math.ceil((dbAuditData?.total ?? 0) / DB_PAGE_SIZE);
 
   const formatDateTime = (date: string) => {
     return new Date(date).toLocaleString('pt-BR');
@@ -105,8 +158,9 @@ export default function Auditoria() {
     const total = filteredAuditoria.length;
     const criticos = filteredAuditoria.filter(l => l.acao === 'DELETE' || l.acao === 'REJECT').length;
     const usuarios = new Set(filteredAuditoria.map(l => l.usuario_nome)).size;
-    return { total, criticos, usuarios };
-  }, [filteredAuditoria]);
+    const dbChanges = dbAuditData?.total ?? 0;
+    return { total, criticos, usuarios, dbChanges };
+  }, [filteredAuditoria, dbAuditData]);
 
   const moduloData = useMemo(() => {
     const counts: Record<string, number> = {};
@@ -131,6 +185,15 @@ export default function Auditoria() {
     });
     return Object.entries(map).sort((a, b) => b[1].total - a[1].total);
   }, [auditoria]);
+
+  const actionColor = (acao: string) => {
+    const a = acao.toUpperCase();
+    if (a.includes('LOGIN') || a.includes('LOGOUT')) return 'bg-info/10 text-info border-info/20';
+    if (a.includes('CREATE') || a.includes('CRIAR') || a.includes('INSERT') || a.includes('APPROVE')) return 'bg-success/10 text-success border-success/20';
+    if (a.includes('UPDATE') || a.includes('EDITAR') || a.includes('CLOSE') || a.includes('EXPORT')) return 'bg-warning/10 text-warning border-warning/20';
+    if (a.includes('DELETE') || a.includes('EXCLUIR') || a.includes('REJECT')) return 'bg-destructive/10 text-destructive border-destructive/20';
+    return 'bg-secondary text-secondary-foreground';
+  };
 
   // ── Handlers de exportação ──
   const empresaNome = empresa?.nome_fantasia ?? empresa?.razao_social ?? 'PCM Estratégico';
@@ -268,19 +331,16 @@ export default function Auditoria() {
           <p className="mt-1 text-2xl font-bold text-emerald-800">{kpis.usuarios}</p>
         </div>
         <div className="rounded-xl border bg-gradient-to-br from-amber-50 to-orange-50 border-amber-200 p-4">
-          <p className="text-xs font-medium text-amber-700 opacity-80">Período</p>
-          <p className="mt-1 text-sm font-bold text-amber-800">
-            {filters.dateFrom && filters.dateTo
-              ? `${new Date(filters.dateFrom).toLocaleDateString('pt-BR')} — ${new Date(filters.dateTo).toLocaleDateString('pt-BR')}`
-              : 'Todos'}
-          </p>
+          <p className="text-xs font-medium text-amber-700 opacity-80">Alterações DB</p>
+          <p className="mt-1 text-2xl font-bold text-amber-800">{kpis.dbChanges}</p>
         </div>
       </div>
 
       {/* Tabs */}
       <Tabs defaultValue="timeline" className="space-y-4">
-        <TabsList className="grid w-full grid-cols-4">
+        <TabsList className="grid w-full grid-cols-5">
           <TabsTrigger value="timeline" className="gap-1.5"><ClipboardList className="h-4 w-4" /> Linha do Tempo</TabsTrigger>
+          <TabsTrigger value="rastreamento" className="gap-1.5"><Globe className="h-4 w-4" /> Rastreamento DB</TabsTrigger>
           <TabsTrigger value="modulo" className="gap-1.5"><BarChart3 className="h-4 w-4" /> Por Módulo</TabsTrigger>
           <TabsTrigger value="usuario" className="gap-1.5"><Users className="h-4 w-4" /> Por Usuário</TabsTrigger>
           <TabsTrigger value="exportar" className="gap-1.5"><Download className="h-4 w-4" /> Exportar</TabsTrigger>
@@ -444,6 +504,12 @@ export default function Auditoria() {
                           {log.registro_id && (
                             <span className="font-mono text-xs opacity-60">#{log.registro_id.slice(0, 8)}</span>
                           )}
+                          {log.ip_address && (
+                            <span className="flex items-center gap-1 font-mono text-xs opacity-60">
+                              <Globe className="h-3 w-3" />
+                              {log.ip_address}
+                            </span>
+                          )}
                         </div>
                       </div>
                       {hasDetail && (
@@ -588,6 +654,184 @@ export default function Auditoria() {
               </p>
             )}
           </div>
+        </TabsContent>
+
+        {/* TAB: Rastreamento DB */}
+        <TabsContent value="rastreamento" className="space-y-4">
+          <Card>
+            <CardContent className="p-4 space-y-4">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
+                <div className="relative flex-1 w-full">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Buscar por e-mail, tabela ou registro..."
+                    value={dbSearch}
+                    onChange={(e) => { setDbSearch(e.target.value); setDbPage(0); }}
+                    className="pl-9"
+                  />
+                </div>
+                <select
+                  className="h-10 rounded-md border border-input bg-background px-3 text-sm"
+                  value={dbTableFilter}
+                  onChange={(e) => { setDbTableFilter(e.target.value); setDbPage(0); }}
+                >
+                  <option value="">Todas as Tabelas</option>
+                  <option value="ordens_servico">Ordens de Serviço</option>
+                  <option value="equipamentos">Equipamentos</option>
+                  <option value="planos_preventiva">Planos Preventiva</option>
+                  <option value="colaboradores">Colaboradores</option>
+                  <option value="configuracoes_sistema">Configurações</option>
+                  <option value="contratos">Contratos</option>
+                </select>
+              </div>
+
+              {dbAuditLoading ? (
+                <div className="flex items-center justify-center py-12">
+                  <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                </div>
+              ) : !dbAuditData?.logs?.length ? (
+                <div className="text-center py-12 text-muted-foreground">
+                  <Eye className="h-12 w-12 mx-auto mb-3 opacity-40" />
+                  <p>Nenhuma alteração de banco registrada</p>
+                </div>
+              ) : (
+                <>
+                  <div className="overflow-x-auto rounded-lg border border-border">
+                    <table className="w-full text-sm">
+                      <thead className="bg-muted/50">
+                        <tr>
+                          <th className="px-4 py-3 text-left font-medium text-muted-foreground">Data</th>
+                          <th className="px-4 py-3 text-left font-medium text-muted-foreground">Tabela</th>
+                          <th className="px-4 py-3 text-left font-medium text-muted-foreground">Operação</th>
+                          <th className="px-4 py-3 text-left font-medium text-muted-foreground">Usuário</th>
+                          <th className="px-4 py-3 text-left font-medium text-muted-foreground">IP</th>
+                          <th className="px-4 py-3 text-center font-medium text-muted-foreground">Detalhes</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {dbAuditData.logs.map((row: any) => (
+                          <tr key={row.id} className="border-t border-border hover:bg-muted/30">
+                            <td className="px-4 py-3 text-xs font-mono whitespace-nowrap">
+                              {new Date(row.ocorreu_em || row.created_at).toLocaleString('pt-BR')}
+                            </td>
+                            <td className="px-4 py-3">
+                              <Badge variant="outline" className="font-mono text-xs">{row.tabela}</Badge>
+                            </td>
+                            <td className="px-4 py-3">
+                              <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${actionColor(row.acao)}`}>
+                                {row.acao}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3 text-xs truncate max-w-[180px]">{row.usuario_email || '—'}</td>
+                            <td className="px-4 py-3 text-xs font-mono opacity-70">{row.ip_address || '—'}</td>
+                            <td className="px-4 py-3 text-center">
+                              <Button size="sm" variant="ghost" onClick={() => setViewingDbLog(row)}>
+                                <Eye className="h-4 w-4" />
+                              </Button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  {/* Pagination */}
+                  <div className="flex items-center justify-between">
+                    <p className="text-xs text-muted-foreground">
+                      Página {dbPage + 1} de {dbTotalPages || 1} &middot; {dbAuditData.total} registro{dbAuditData.total !== 1 ? 's' : ''}
+                    </p>
+                    <div className="flex items-center gap-2">
+                      <Button size="sm" variant="outline" disabled={dbPage === 0} onClick={() => setDbPage((p) => p - 1)}>
+                        <ChevronLeft className="h-4 w-4" />
+                      </Button>
+                      <Button size="sm" variant="outline" disabled={dbPage + 1 >= (dbTotalPages || 1)} onClick={() => setDbPage((p) => p + 1)}>
+                        <ChevronRight className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                </>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Detail Dialog */}
+          <Dialog open={!!viewingDbLog} onOpenChange={(open) => !open && setViewingDbLog(null)}>
+            <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle className="flex items-center gap-2">
+                  <Eye className="h-5 w-5" />
+                  Detalhes da Alteração
+                </DialogTitle>
+              </DialogHeader>
+              {viewingDbLog && (
+                <div className="space-y-4 text-sm">
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <p className="text-xs font-medium text-muted-foreground">Tabela</p>
+                      <p className="font-mono">{viewingDbLog.tabela}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs font-medium text-muted-foreground">Operação</p>
+                      <p><span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${actionColor(viewingDbLog.acao)}`}>{viewingDbLog.acao}</span></p>
+                    </div>
+                    <div>
+                      <p className="text-xs font-medium text-muted-foreground">Usuário</p>
+                      <p>{viewingDbLog.usuario_email || '—'}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs font-medium text-muted-foreground">IP</p>
+                      <p className="font-mono">{viewingDbLog.ip_address || '—'}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs font-medium text-muted-foreground">Registro ID</p>
+                      <p className="font-mono text-xs">{viewingDbLog.registro_id || '—'}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs font-medium text-muted-foreground">Data</p>
+                      <p>{new Date(viewingDbLog.ocorreu_em || viewingDbLog.created_at).toLocaleString('pt-BR')}</p>
+                    </div>
+                  </div>
+                  {viewingDbLog.dados_antes && (
+                    <div>
+                      <p className="text-xs font-semibold text-rose-600 mb-1">Dados Antes</p>
+                      <pre className="bg-muted rounded-lg p-3 text-xs overflow-x-auto max-h-48">{JSON.stringify(viewingDbLog.dados_antes, null, 2)}</pre>
+                    </div>
+                  )}
+                  {viewingDbLog.dados_depois && (
+                    <div>
+                      <p className="text-xs font-semibold text-emerald-600 mb-1">Dados Depois</p>
+                      <pre className="bg-muted rounded-lg p-3 text-xs overflow-x-auto max-h-48">{JSON.stringify(viewingDbLog.dados_depois, null, 2)}</pre>
+                    </div>
+                  )}
+                  {viewingDbLog.diferenca && Object.keys(viewingDbLog.diferenca).length > 0 && (
+                    <div>
+                      <p className="text-xs font-semibold text-amber-600 mb-1">Diferença</p>
+                      <div className="overflow-x-auto rounded-lg border border-border">
+                        <table className="w-full text-xs">
+                          <thead className="bg-muted">
+                            <tr>
+                              <th className="px-3 py-2 text-left font-medium">Campo</th>
+                              <th className="px-3 py-2 text-left font-medium text-rose-600">Antes</th>
+                              <th className="px-3 py-2 text-left font-medium text-emerald-600">Depois</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {Object.entries(viewingDbLog.diferenca as Record<string, { antes: unknown; depois: unknown }>).map(([campo, val]) => (
+                              <tr key={campo} className="border-t border-border">
+                                <td className="px-3 py-2 font-mono font-medium">{campo}</td>
+                                <td className="px-3 py-2 text-rose-700 bg-rose-50/50">{JSON.stringify(val.antes)}</td>
+                                <td className="px-3 py-2 text-emerald-700 bg-emerald-50/50">{JSON.stringify(val.depois)}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </DialogContent>
+          </Dialog>
         </TabsContent>
 
         {/* TAB: Por Módulo */}
