@@ -59,20 +59,9 @@ export function useOwner2Companies(enabled = true) {
   return useQuery({
     queryKey: owner2Keys.companies,
     queryFn: async () => {
-      try {
-        const data = await listPlatformCompanies()
-        const companies = Array.isArray(data?.companies) ? data.companies : []
-        if (companies.length > 0) return { companies }
-      } catch { /* edge function failed, try direct fallback */ }
-
-      // Direct Supabase fallback – bypasses edge function
-      const { data: rows } = await (await import('@/integrations/supabase/client')).supabase
-        .from('empresas')
-        .select('id,nome,slug,status,created_at,updated_at')
-        .order('created_at', { ascending: false })
-        .limit(500)
-
-      return { companies: Array.isArray(rows) ? rows : [] }
+      const data = await listPlatformCompanies()
+      const companies = Array.isArray(data?.companies) ? data.companies : []
+      return { companies }
     },
     enabled,
     retry: 1,
@@ -195,6 +184,13 @@ export function useOwner2Actions() {
           due_date: source.due_date,
           paid_at: source.paid_at,
         },
+      }
+    }
+
+    if (action === 'update_platform_contact' && !('config' in source)) {
+      return {
+        action,
+        config: source,
       }
     }
 
