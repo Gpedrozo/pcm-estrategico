@@ -3455,7 +3455,8 @@ Deno.serve(async (req) => {
     });
 
     const finalWarning = mergeWarnings(planLimitWarning, createUserWarning);
-    return ok({ success: true, user_id: createdAuth.user.id, warning: finalWarning }, 200, req);
+    const wasPasswordGenerated = !body.user.password?.trim();
+    return ok({ success: true, user_id: createdAuth.user.id, warning: finalWarning, ...(wasPasswordGenerated ? { temporary_password: password } : {}) }, 200, req);
   }
 
   if (body.action === "move_user_company") {
