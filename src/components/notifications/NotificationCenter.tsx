@@ -307,6 +307,70 @@ export function NotificationCenter() {
         }
       } catch { /* skip */ }
 
+      // --- Ativos Temporários vencendo ou vencidos ---
+      try {
+        const in7days = new Date(Date.now() + 7 * 86400000).toISOString().split('T')[0];
+        const todayStr = new Date().toISOString().split('T')[0];
+
+        const { data: tempEquips, error: teErr } = await supabase
+          .from('equipamentos')
+          .select('id, tag, nome, data_vencimento, origem')
+          .eq('empresa_id', tenantId)
+          .eq('temporario', true)
+          .eq('ativo', true)
+          .lte('data_vencimento', in7days)
+          .order('data_vencimento', { ascending: true })
+          .limit(10);
+
+        if (!teErr && tempEquips && tempEquips.length > 0) {
+          const vencidos = tempEquips.filter((e: any) => e.data_vencimento <= todayStr);
+          const proximos = tempEquips.filter((e: any) => e.data_vencimento > todayStr);
+
+          if (vencidos.length > 0) {
+            const details = vencidos
+              .slice(0, 3)
+              .map((e: any) => `${e.tag} (${e.nome})`)
+              .join(' · ');
+            const extra = vencidos.length > 3 ? ` + ${vencidos.length - 3} mais` : '';
+
+            const nId = 'temp-equip-vencidos';
+            notifs.push({
+              id: nId,
+              type: 'error',
+              title: `${vencidos.length} Ativo(s) Temporário(s) Vencido(s)`,
+              message: `${details}${extra} — Inativar, tornar permanente ou estender prazo`,
+              read: readIds.has(nId),
+              dismissed: dismissedIds.has(nId),
+              created_at: new Date().toISOString(),
+              link: '/equipamentos',
+            });
+          }
+
+          if (proximos.length > 0) {
+            const details = proximos
+              .slice(0, 3)
+              .map((e: any) => {
+                const dias = Math.ceil((new Date(e.data_vencimento).getTime() - Date.now()) / 86400000);
+                return `${e.tag} (${dias}d)`;
+              })
+              .join(' · ');
+            const extra = proximos.length > 3 ? ` + ${proximos.length - 3} mais` : '';
+
+            const nId = 'temp-equip-vencendo';
+            notifs.push({
+              id: nId,
+              type: 'warning',
+              title: `${proximos.length} Ativo(s) Temporário(s) Próximo(s) do Vencimento`,
+              message: `${details}${extra}`,
+              read: readIds.has(nId),
+              dismissed: dismissedIds.has(nId),
+              created_at: new Date().toISOString(),
+              link: '/equipamentos',
+            });
+          }
+        }
+      } catch { /* skip */ }
+
       // Welcome (always read)
       const wId = 'welcome';
       notifs.push({

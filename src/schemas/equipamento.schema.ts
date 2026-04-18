@@ -12,6 +12,12 @@ export const equipamentoSchema = z.object({
   data_instalacao: z.string().optional().nullable(),
   sistema_id: z.string().uuid('ID do sistema inválido').optional().nullable(),
   ativo: z.boolean().default(true),
-});
+  temporario: z.boolean().default(false),
+  data_vencimento: z.string().optional().nullable(),
+  origem: z.enum(['proprio', 'locado', 'terceiro']).default('proprio'),
+}).refine(
+  (data) => !data.temporario || (data.temporario && data.data_vencimento),
+  { message: 'Data de vencimento é obrigatória para ativos temporários', path: ['data_vencimento'] },
+);
 
 export type EquipamentoFormData = z.infer<typeof equipamentoSchema>;

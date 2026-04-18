@@ -18,6 +18,9 @@ export interface EquipamentoRow {
   data_instalacao: string | null;
   sistema_id: string | null;
   ativo: boolean;
+  temporario: boolean;
+  data_vencimento: string | null;
+  origem: string;
   created_at: string;
   updated_at: string;
   sistema?: {
@@ -49,6 +52,9 @@ export interface EquipamentoInsert {
   data_instalacao?: string | null;
   sistema_id?: string | null;
   ativo?: boolean;
+  temporario?: boolean;
+  data_vencimento?: string | null;
+  origem?: string;
 }
 
 export interface EquipamentoUpdate {
@@ -62,6 +68,9 @@ export interface EquipamentoUpdate {
   data_instalacao?: string | null;
   sistema_id?: string | null;
   ativo?: boolean;
+  temporario?: boolean;
+  data_vencimento?: string | null;
+  origem?: string;
 }
 
 export function useEquipamentos() {

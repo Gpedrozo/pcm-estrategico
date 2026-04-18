@@ -34,7 +34,7 @@ import {
   DialogDescription,
 } from '@/components/ui/dialog';
 import { Checkbox } from '@/components/ui/checkbox';
-import { useEquipamentos } from '@/hooks/useEquipamentos';
+import { useEquipamentos, useCreateEquipamento } from '@/hooks/useEquipamentos';
 import { useCreateOrdemServico } from '@/hooks/useOrdensServico';
 import { useMecanicosAtivos } from '@/hooks/useMecanicos';
 import { useLogAuditoria } from '@/hooks/useAuditoria';
@@ -43,7 +43,7 @@ import { resolvePrioridadeFromClassificacao, useTenantPadronizacoes } from '@/ho
 import { useDadosEmpresa } from '@/hooks/useDadosEmpresa';
 import { useAuth } from '@/contexts/AuthContext';
 import { useFormDraft, readDraft } from '@/hooks/useFormDraft';
-import { ArrowLeft, Check, Loader2, Printer, CheckCircle, AlertTriangle, FileText } from 'lucide-react';
+import { ArrowLeft, Check, Loader2, Printer, CheckCircle, AlertTriangle, FileText, Clock, Timer } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { OSPrintTemplate } from '@/components/os/OSPrintTemplate';
 import { useRecentOrdensServico } from '@/hooks/useOrdensServico';
@@ -65,6 +65,7 @@ export default function NovaOS() {
   const { data: solicitacoesPendentes = [] } = useSolicitacoesPendentes();
   const createOSMutation = useCreateOrdemServico();
   const updateSolicitacaoMutation = useUpdateSolicitacao();
+  const createEquipMutation = useCreateEquipamento();
   const { data: recentOS = [] } = useRecentOrdensServico(10);
 
   const prioridadesOS = padronizacoes?.prioridades_os?.length
@@ -113,6 +114,13 @@ export default function NovaOS() {
   const [tagComboOpen, setTagComboOpen] = useState(false);
   const [tagSearch, setTagSearch] = useState('');
   const [showCadastrarAtivoDialog, setShowCadastrarAtivoDialog] = useState(false);
+  const [cadastroInlineStep, setCadastroInlineStep] = useState<'choose' | 'form'>('choose');
+  const [cadastroTipo, setCadastroTipo] = useState<'permanente' | 'temporario'>('permanente');
+  const [cadastroNome, setCadastroNome] = useState('');
+  const [cadastroTag, setCadastroTag] = useState('');
+  const [cadastroOrigem, setCadastroOrigem] = useState<'locado' | 'terceiro' | 'proprio'>('locado');
+  const [cadastroVencimento, setCadastroVencimento] = useState('');
+  const [cadastroSaving, setCadastroSaving] = useState(false);
   const problemaMinLength = 5;
   const problemaValido = formData.problema.trim().length >= problemaMinLength;
 
@@ -168,6 +176,44 @@ export default function NovaOS() {
       setDismissedTagWarnings((prev) => ({ ...prev, [formData.tag]: true }));
     }
     setShowSolicitacoesModal(false);
+  };
+
+  const handleOpenCadastroInline = () => {
+    setTagComboOpen(false);
+    setCadastroInlineStep('choose');
+    setCadastroTipo('permanente');
+    setCadastroNome(tagSearch || '');
+    setCadastroTag('');
+    setCadastroOrigem('locado');
+    setCadastroVencimento('');
+    setShowCadastrarAtivoDialog(true);
+  };
+
+  const handleCadastroInlineSubmit = async () => {
+    if (!cadastroTag.trim() || !cadastroNome.trim()) return;
+    if (cadastroTipo === 'temporario' && !cadastroVencimento) return;
+
+    setCadastroSaving(true);
+    try {
+      const created = await createEquipMutation.mutateAsync({
+        tag: cadastroTag.toUpperCase().trim(),
+        nome: cadastroNome.trim(),
+        temporario: cadastroTipo === 'temporario',
+        data_vencimento: cadastroTipo === 'temporario' ? cadastroVencimento : null,
+        origem: cadastroTipo === 'temporario' ? cadastroOrigem : 'proprio',
+      });
+
+      // Seleciona automaticamente o ativo recém-criado
+      setFormData((prev) => ({ ...prev, tag: created.tag }));
+      setSemTag(false);
+      setEquipamentoManual('');
+      setTagSearch('');
+      setShowCadastrarAtivoDialog(false);
+    } catch {
+      // toast já tratado pelo hook
+    } finally {
+      setCadastroSaving(false);
+    }
   };
 
   const handleGerarAPartirDaSS = (ss: SolicitacaoRow) => {
@@ -391,10 +437,7 @@ export default function NovaOS() {
                                 variant="outline"
                                 size="sm"
                                 className="gap-1.5"
-                                onClick={() => {
-                                  setTagComboOpen(false);
-                                  setShowCadastrarAtivoDialog(true);
-                                }}
+                                onClick={handleOpenCadastroInline}
                               >
                                 Não encontrou? Cadastrar ou continuar sem TAG
                               </Button>
@@ -684,44 +727,156 @@ export default function NovaOS() {
         </DialogContent>
       </Dialog>
 
-      {/* Dialog: Equipamento não encontrado */}
+      {/* Dialog: Cadastro Rápido de Ativo (Temporário / Permanente) */}
       <Dialog open={showCadastrarAtivoDialog} onOpenChange={setShowCadastrarAtivoDialog}>
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <AlertTriangle className="h-5 w-5 text-amber-500" />
-              Equipamento não encontrado
+              {cadastroInlineStep === 'choose' ? (
+                <>
+                  <AlertTriangle className="h-5 w-5 text-amber-500" />
+                  Equipamento não encontrado
+                </>
+              ) : (
+                <>
+                  {cadastroTipo === 'temporario' ? (
+                    <Timer className="h-5 w-5 text-amber-500" />
+                  ) : (
+                    <Check className="h-5 w-5 text-primary" />
+                  )}
+                  Cadastrar Ativo {cadastroTipo === 'temporario' ? 'Temporário' : 'Permanente'}
+                </>
+              )}
             </DialogTitle>
             <DialogDescription>
-              O equipamento que você procura não está cadastrado no sistema. Deseja cadastrá-lo agora?
+              {cadastroInlineStep === 'choose'
+                ? 'O equipamento não está cadastrado. Deseja cadastrá-lo agora para manter rastreabilidade?'
+                : cadastroTipo === 'temporario'
+                ? 'Equipamento locado, emprestado ou de terceiro com prazo de permanência.'
+                : 'Ativo próprio da empresa, sem prazo de permanência.'}
             </DialogDescription>
           </DialogHeader>
-          <p className="text-sm text-muted-foreground">
-            Se for um equipamento locado, emprestado ou temporário, você pode continuar sem cadastro.
-          </p>
-          <div className="flex flex-col gap-2 pt-2">
-            <Button
-              className="gap-2"
-              onClick={() => {
-                setShowCadastrarAtivoDialog(false);
-                navigate('/equipamentos');
-              }}
-            >
-              Sim, cadastrar ativo
-            </Button>
-            <Button
-              variant="outline"
-              onClick={() => {
-                setShowCadastrarAtivoDialog(false);
-                setSemTag(true);
-                setFormData((prev) => ({ ...prev, tag: '' }));
-                setEquipamentoManual(tagSearch);
-                setTagSearch('');
-              }}
-            >
-              Não, continuar sem cadastro
-            </Button>
-          </div>
+
+          {cadastroInlineStep === 'choose' ? (
+            <div className="flex flex-col gap-2 pt-2">
+              <Button
+                className="gap-2 h-12"
+                onClick={() => {
+                  setCadastroTipo('permanente');
+                  setCadastroOrigem('proprio');
+                  setCadastroInlineStep('form');
+                }}
+              >
+                <Check className="h-4 w-4" />
+                Ativo Permanente
+                <span className="text-xs opacity-70 ml-1">— próprio da empresa</span>
+              </Button>
+              <Button
+                variant="outline"
+                className="gap-2 h-12 border-amber-300 text-amber-700 hover:bg-amber-50 dark:border-amber-600 dark:text-amber-400 dark:hover:bg-amber-950"
+                onClick={() => {
+                  setCadastroTipo('temporario');
+                  setCadastroOrigem('locado');
+                  setCadastroInlineStep('form');
+                }}
+              >
+                <Timer className="h-4 w-4" />
+                Ativo Temporário
+                <span className="text-xs opacity-70 ml-1">— locado / emprestado</span>
+              </Button>
+              <div className="relative my-1">
+                <div className="absolute inset-0 flex items-center"><span className="w-full border-t" /></div>
+                <div className="relative flex justify-center text-xs uppercase"><span className="bg-background px-2 text-muted-foreground">ou</span></div>
+              </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="text-muted-foreground"
+                onClick={() => {
+                  setShowCadastrarAtivoDialog(false);
+                  setSemTag(true);
+                  setFormData((prev) => ({ ...prev, tag: '' }));
+                  setEquipamentoManual(tagSearch);
+                  setTagSearch('');
+                }}
+              >
+                Continuar sem cadastro (Sem TAG)
+              </Button>
+            </div>
+          ) : (
+            <div className="space-y-3 pt-1">
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label htmlFor="cad-tag">TAG *</Label>
+                  <Input
+                    id="cad-tag"
+                    value={cadastroTag}
+                    onChange={(e) => setCadastroTag(e.target.value.toUpperCase())}
+                    placeholder="Ex: COMP-001"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="cad-nome">Nome *</Label>
+                  <Input
+                    id="cad-nome"
+                    value={cadastroNome}
+                    onChange={(e) => setCadastroNome(e.target.value)}
+                    placeholder="Descrição do equipamento"
+                  />
+                </div>
+              </div>
+
+              {cadastroTipo === 'temporario' && (
+                <>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1.5">
+                      <Label>Origem</Label>
+                      <Select value={cadastroOrigem} onValueChange={(v) => setCadastroOrigem(v as 'locado' | 'terceiro' | 'proprio')}>
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="locado">Locado</SelectItem>
+                          <SelectItem value="terceiro">Terceiro / Emprestado</SelectItem>
+                          <SelectItem value="proprio">Próprio (temporário)</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label htmlFor="cad-vencimento">Permanência até *</Label>
+                      <Input
+                        id="cad-vencimento"
+                        type="date"
+                        value={cadastroVencimento}
+                        onChange={(e) => setCadastroVencimento(e.target.value)}
+                        min={new Date().toISOString().split('T')[0]}
+                      />
+                    </div>
+                  </div>
+                  <div className="rounded-md border border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/30 p-2.5 text-xs text-amber-800 dark:text-amber-300 flex items-start gap-2">
+                    <Clock className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+                    <span>
+                      O sistema alertará 7 dias antes do vencimento. Após o vencimento, você poderá tornar o ativo permanente, estender o prazo ou inativá-lo.
+                    </span>
+                  </div>
+                </>
+              )}
+
+              <div className="flex gap-2 pt-2">
+                <Button
+                  className="flex-1 gap-2"
+                  disabled={cadastroSaving || !cadastroTag.trim() || !cadastroNome.trim() || (cadastroTipo === 'temporario' && !cadastroVencimento)}
+                  onClick={handleCadastroInlineSubmit}
+                >
+                  {cadastroSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
+                  Cadastrar e usar nesta O.S
+                </Button>
+                <Button variant="outline" onClick={() => setCadastroInlineStep('choose')}>
+                  Voltar
+                </Button>
+              </div>
+            </div>
+          )}
         </DialogContent>
       </Dialog>
     </div>

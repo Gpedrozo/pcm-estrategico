@@ -36,7 +36,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { 
   Plus, Search, Tag, Edit, Trash2, Loader2, AlertTriangle, CheckCircle, 
-  AlertCircle, Building2, Eye, Settings2, FileText, Wrench, Download, Upload, QrCode
+  AlertCircle, Building2, Eye, Settings2, FileText, Wrench, Download, Upload, QrCode,
+  Timer, Clock, CalendarClock
 } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 
@@ -68,6 +69,9 @@ interface FormData {
   modelo: string;
   numero_serie: string;
   sistema_id: string;
+  temporario: boolean;
+  data_vencimento: string;
+  origem: string;
 }
 
 const initialFormData: FormData = {
@@ -80,6 +84,9 @@ const initialFormData: FormData = {
   modelo: '',
   numero_serie: '',
   sistema_id: '',
+  temporario: false,
+  data_vencimento: '',
+  origem: 'proprio',
 };
 
 export default function Equipamentos() {
@@ -95,6 +102,9 @@ export default function Equipamentos() {
   const { clearDraft: clearEquipDraft } = useFormDraft('draft:equipamento', formData, setFormData);
   const [importing, setImporting] = useState(false);
   const [qrEquip, setQrEquip] = useState<EquipamentoRow | null>(null);
+  const [tempActionEquip, setTempActionEquip] = useState<EquipamentoRow | null>(null);
+  const [tempActionType, setTempActionType] = useState<'permanente' | 'estender' | 'inativar' | null>(null);
+  const [tempExtendDate, setTempExtendDate] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const { data: equipamentos, isLoading, error } = useEquipamentos();
@@ -130,6 +140,9 @@ export default function Equipamentos() {
         modelo: formData.modelo || null,
         numero_serie: formData.numero_serie || null,
         sistema_id: formData.sistema_id || null,
+        temporario: formData.temporario,
+        data_vencimento: formData.temporario && formData.data_vencimento ? formData.data_vencimento : null,
+        origem: formData.temporario ? formData.origem : 'proprio',
       });
     } else {
       await createMutation.mutateAsync({
@@ -142,6 +155,9 @@ export default function Equipamentos() {
         modelo: formData.modelo || null,
         numero_serie: formData.numero_serie || null,
         sistema_id: formData.sistema_id || null,
+        temporario: formData.temporario,
+        data_vencimento: formData.temporario && formData.data_vencimento ? formData.data_vencimento : null,
+        origem: formData.temporario ? formData.origem : 'proprio',
       });
     }
     
@@ -163,6 +179,9 @@ export default function Equipamentos() {
       modelo: equip.modelo || '',
       numero_serie: equip.numero_serie || '',
       sistema_id: equip.sistema_id || '',
+      temporario: equip.temporario || false,
+      data_vencimento: equip.data_vencimento || '',
+      origem: equip.origem || 'proprio',
     });
     setIsModalOpen(true);
   };
@@ -188,6 +207,44 @@ export default function Equipamentos() {
 
   const handleViewDetails = (equip: EquipamentoRow) => {
     setSelectedEquip(equip);
+  };
+
+  const handleTempAction = async () => {
+    if (!tempActionEquip || !tempActionType) return;
+    try {
+      if (tempActionType === 'permanente') {
+        await updateMutation.mutateAsync({
+          id: tempActionEquip.id,
+          temporario: false,
+          data_vencimento: null,
+          origem: 'proprio',
+        });
+      } else if (tempActionType === 'estender') {
+        if (!tempExtendDate) return;
+        await updateMutation.mutateAsync({
+          id: tempActionEquip.id,
+          data_vencimento: tempExtendDate,
+        });
+      } else if (tempActionType === 'inativar') {
+        await updateMutation.mutateAsync({
+          id: tempActionEquip.id,
+          ativo: false,
+        });
+      }
+      setTempActionEquip(null);
+      setTempActionType(null);
+      setTempExtendDate('');
+    } catch {
+      // toast já tratado pelo hook
+    }
+  };
+
+  const getVencimentoStatus = (equip: EquipamentoRow) => {
+    if (!equip.temporario || !equip.data_vencimento) return null;
+    const dias = Math.ceil((new Date(equip.data_vencimento).getTime() - Date.now()) / 86400000);
+    if (dias < 0) return { label: `Vencido há ${Math.abs(dias)}d`, color: 'bg-destructive/10 text-destructive border-destructive/20' };
+    if (dias <= 7) return { label: `Vence em ${dias}d`, color: 'bg-amber-100 text-amber-800 border-amber-300 dark:bg-amber-950 dark:text-amber-300 dark:border-amber-700' };
+    return { label: `Vence em ${dias}d`, color: 'bg-info/10 text-info border-info/20' };
   };
 
   const getCriticidadeBadge = (criticidade: string) => {
@@ -450,6 +507,23 @@ export default function Equipamentos() {
                   }`}>
                     {equip.ativo ? 'Ativo' : 'Inativo'}
                   </span>
+                  {equip.temporario && (
+                    <>
+                      <span className="text-xs font-medium px-2 py-1 rounded border bg-amber-50 text-amber-700 border-amber-300 dark:bg-amber-950 dark:text-amber-400 dark:border-amber-700 flex items-center gap-1">
+                        <Timer className="h-3 w-3" />
+                        {equip.origem === 'locado' ? 'Locado' : equip.origem === 'terceiro' ? 'Terceiro' : 'Temporário'}
+                      </span>
+                      {(() => {
+                        const vs = getVencimentoStatus(equip);
+                        return vs ? (
+                          <span className={`text-xs font-medium px-2 py-1 rounded border flex items-center gap-1 ${vs.color}`}>
+                            <Clock className="h-3 w-3" />
+                            {vs.label}
+                          </span>
+                        ) : null;
+                      })()}
+                    </>
+                  )}
                 </div>
               </div>
             );
@@ -601,6 +675,81 @@ export default function Equipamentos() {
                       Gerar QR Code
                     </Button>
                   </div>
+
+                  {selectedEquip.temporario && (
+                    <Card className="border-amber-300 dark:border-amber-700">
+                      <CardHeader className="pb-2">
+                        <CardTitle className="text-base flex items-center gap-2 text-amber-700 dark:text-amber-400">
+                          <Timer className="h-4 w-4" />
+                          Ativo Temporário
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent className="space-y-3">
+                        <div className="grid grid-cols-2 gap-4 text-sm">
+                          <div>
+                            <p className="text-muted-foreground">Origem</p>
+                            <p className="font-medium capitalize">{selectedEquip.origem || 'locado'}</p>
+                          </div>
+                          <div>
+                            <p className="text-muted-foreground">Permanência até</p>
+                            <p className="font-medium">
+                              {selectedEquip.data_vencimento
+                                ? new Date(selectedEquip.data_vencimento + 'T00:00:00').toLocaleDateString('pt-BR')
+                                : '—'}
+                            </p>
+                          </div>
+                        </div>
+                        {(() => {
+                          const vs = getVencimentoStatus(selectedEquip);
+                          return vs ? (
+                            <div className={`rounded-md border p-2 text-xs font-medium flex items-center gap-1.5 ${vs.color}`}>
+                              <CalendarClock className="h-3.5 w-3.5" />
+                              {vs.label}
+                            </div>
+                          ) : null;
+                        })()}
+                        <div className="flex gap-2 flex-wrap">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="gap-1.5"
+                            onClick={() => {
+                              setTempActionEquip(selectedEquip);
+                              setTempActionType('permanente');
+                            }}
+                          >
+                            <CheckCircle className="h-3.5 w-3.5" />
+                            Tornar Permanente
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="gap-1.5"
+                            onClick={() => {
+                              setTempActionEquip(selectedEquip);
+                              setTempActionType('estender');
+                              setTempExtendDate(selectedEquip.data_vencimento || '');
+                            }}
+                          >
+                            <CalendarClock className="h-3.5 w-3.5" />
+                            Estender Prazo
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="gap-1.5 text-destructive hover:text-destructive"
+                            onClick={() => {
+                              setTempActionEquip(selectedEquip);
+                              setTempActionType('inativar');
+                            }}
+                          >
+                            <AlertTriangle className="h-3.5 w-3.5" />
+                            Inativar
+                          </Button>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  )}
                 </TabsContent>
 
                 <TabsContent value="manutencao" className="mt-4">
@@ -822,6 +971,50 @@ export default function Equipamentos() {
               />
             </div>
 
+            {/* Ativo Temporário */}
+            <div className="rounded-lg border border-border p-3 space-y-3">
+              <div className="flex items-center gap-3">
+                <input
+                  type="checkbox"
+                  id="temporario"
+                  checked={formData.temporario}
+                  onChange={(e) => setFormData({ ...formData, temporario: e.target.checked, ...(!e.target.checked && { data_vencimento: '', origem: 'proprio' }) })}
+                  className="h-4 w-4 rounded border-border"
+                />
+                <Label htmlFor="temporario" className="flex items-center gap-1.5 cursor-pointer">
+                  <Timer className="h-4 w-4 text-amber-500" />
+                  Ativo Temporário (locado / emprestado)
+                </Label>
+              </div>
+              {formData.temporario && (
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <Label>Origem</Label>
+                    <Select value={formData.origem} onValueChange={(v) => setFormData({ ...formData, origem: v })}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="locado">Locado</SelectItem>
+                        <SelectItem value="terceiro">Terceiro / Emprestado</SelectItem>
+                        <SelectItem value="proprio">Próprio (temporário)</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="data_vencimento">Permanência até *</Label>
+                    <Input
+                      id="data_vencimento"
+                      type="date"
+                      value={formData.data_vencimento}
+                      onChange={(e) => setFormData({ ...formData, data_vencimento: e.target.value })}
+                      min={new Date().toISOString().split('T')[0]}
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
+
             <div className="flex gap-2 pt-4">
               <Button type="submit" className="flex-1" disabled={isPending}>
                 {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
@@ -868,6 +1061,53 @@ export default function Equipamentos() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Ação sobre Ativo Temporário */}
+      <Dialog open={!!tempActionEquip && !!tempActionType} onOpenChange={(open) => { if (!open) { setTempActionEquip(null); setTempActionType(null); setTempExtendDate(''); } }}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              {tempActionType === 'permanente' && <><CheckCircle className="h-5 w-5 text-primary" /> Tornar Permanente</>}
+              {tempActionType === 'estender' && <><CalendarClock className="h-5 w-5 text-amber-500" /> Estender Prazo</>}
+              {tempActionType === 'inativar' && <><AlertTriangle className="h-5 w-5 text-destructive" /> Inativar Ativo</>}
+            </DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            TAG: <span className="font-mono font-bold text-foreground">{tempActionEquip?.tag}</span> — {tempActionEquip?.nome}
+          </p>
+          {tempActionType === 'permanente' && (
+            <p className="text-sm">O ativo será convertido para permanente (próprio). A data de vencimento será removida.</p>
+          )}
+          {tempActionType === 'estender' && (
+            <div className="space-y-2">
+              <p className="text-sm">Informe a nova data de permanência:</p>
+              <Input
+                type="date"
+                value={tempExtendDate}
+                onChange={(e) => setTempExtendDate(e.target.value)}
+                min={new Date().toISOString().split('T')[0]}
+              />
+            </div>
+          )}
+          {tempActionType === 'inativar' && (
+            <p className="text-sm">O ativo será inativado. Ele não aparecerá mais na seleção de equipamentos, mas todo o histórico de O.S será preservado.</p>
+          )}
+          <div className="flex gap-2 pt-2">
+            <Button
+              className="flex-1"
+              variant={tempActionType === 'inativar' ? 'destructive' : 'default'}
+              onClick={handleTempAction}
+              disabled={updateMutation.isPending || (tempActionType === 'estender' && !tempExtendDate)}
+            >
+              {updateMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Confirmar
+            </Button>
+            <Button variant="outline" onClick={() => { setTempActionEquip(null); setTempActionType(null); }}>
+              Cancelar
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

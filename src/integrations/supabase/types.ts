@@ -1421,6 +1421,7 @@ export type Database = {
           created_at: string
           criticidade: string
           data_instalacao: string | null
+          data_vencimento: string | null
           empresa_id: string
           fabricante: string | null
           id: string
@@ -1429,8 +1430,10 @@ export type Database = {
           nivel_risco: string
           nome: string
           numero_serie: string | null
+          origem: string
           sistema_id: string | null
           tag: string
+          temporario: boolean
           updated_at: string
         }
         Insert: {
@@ -1438,6 +1441,7 @@ export type Database = {
           created_at?: string
           criticidade?: string
           data_instalacao?: string | null
+          data_vencimento?: string | null
           empresa_id: string
           fabricante?: string | null
           id?: string
@@ -1446,8 +1450,10 @@ export type Database = {
           nivel_risco?: string
           nome: string
           numero_serie?: string | null
+          origem?: string
           sistema_id?: string | null
           tag: string
+          temporario?: boolean
           updated_at?: string
         }
         Update: {
@@ -1455,6 +1461,7 @@ export type Database = {
           created_at?: string
           criticidade?: string
           data_instalacao?: string | null
+          data_vencimento?: string | null
           empresa_id?: string
           fabricante?: string | null
           id?: string
@@ -1463,8 +1470,10 @@ export type Database = {
           nivel_risco?: string
           nome?: string
           numero_serie?: string | null
+          origem?: string
           sistema_id?: string | null
           tag?: string
+          temporario?: boolean
           updated_at?: string
         }
         Relationships: [
