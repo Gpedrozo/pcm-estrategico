@@ -2529,7 +2529,8 @@ Deno.serve(async (req) => {
       }
     }
 
-    const masterRole = body.user.role ?? "MASTER_TI";
+    const ALLOWED_MASTER_ROLES = ["MASTER_TI", "MASTER", "ADMIN", "GESTOR"];
+    const masterRole = ALLOWED_MASTER_ROLES.includes(body.user.role) ? body.user.role : "MASTER_TI";
     const password = body.user.password?.trim() || generateTemporaryPassword();
 
     const normalizedMasterEmail = body.user.email.trim().toLowerCase();
