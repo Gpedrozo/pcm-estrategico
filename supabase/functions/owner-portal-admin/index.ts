@@ -4409,7 +4409,7 @@ Deno.serve(async (req) => {
         owner_response: body.response,
         owner_responder_id: auth.user.id,
         responded_at: now,
-        status: body.status && ["aberto","em_analise","resolvido"].includes(body.status) ? body.status : "resolvido",
+        status: body.status && ["aberto","em_analise","em_andamento","resolvido"].includes(body.status) ? body.status : "resolvido",
         messages: existingMessages,
         unread_client_messages: currentUnread + 1,
         last_message_sender: "owner",
