@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-export const equipamentoSchema = z.object({
+export const equipamentoBaseSchema = z.object({
   tag: z.string().min(2, 'TAG é obrigatória (mínimo 2 caracteres)'),
   nome: z.string().min(3, 'Nome é obrigatório (mínimo 3 caracteres)'),
   criticidade: z.enum(['A', 'B', 'C']).default('C'),
@@ -15,7 +15,9 @@ export const equipamentoSchema = z.object({
   temporario: z.boolean().default(false),
   data_vencimento: z.string().optional().nullable(),
   origem: z.enum(['proprio', 'locado', 'terceiro']).default('proprio'),
-}).refine(
+});
+
+export const equipamentoSchema = equipamentoBaseSchema.refine(
   (data) => !data.temporario || (data.temporario && data.data_vencimento),
   { message: 'Data de vencimento é obrigatória para ativos temporários', path: ['data_vencimento'] },
 );

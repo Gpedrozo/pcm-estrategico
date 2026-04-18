@@ -1,11 +1,12 @@
-import { describe, it, expect } from 'vitest';
+﻿import { describe, it, expect } from 'vitest';
 import { 
   equipamentoSchema,
+  equipamentoBaseSchema,
   type EquipamentoFormData
 } from '@/schemas/equipamento.schema';
 
 /**
- * FASE 2 Test Pattern — Equipamentos Module
+ * FASE 2 Test Pattern â€” Equipamentos Module
  * Purpose: Validate Zod schema across CRUD lifecycle
  * Template: Replicate across all 28 modules with minimal changes
  * 
@@ -108,7 +109,7 @@ describe('EquipamentoSchema - FASE 2 Validation Suite', () => {
   describe('UPDATE - Valid Scenarios', () => {
     it('should parse partial update with single field', () => {
       const data: Partial<EquipamentoFormData> = { nome: 'New Name' };
-      const result = equipamentoSchema.partial().safeParse(data);
+      const result = equipamentoBaseSchema.partial().safeParse(data);
       expect(result.success).toBe(true);
       expect(result.data?.nome).toBe('New Name');
     });
@@ -119,14 +120,14 @@ describe('EquipamentoSchema - FASE 2 Validation Suite', () => {
         criticidade: 'B',
         nivel_risco: 'MEDIO',
       };
-      const result = equipamentoSchema.partial().safeParse(data);
+      const result = equipamentoBaseSchema.partial().safeParse(data);
       expect(result.success).toBe(true);
       expect(result.data?.criticidade).toBe('B');
     });
 
     it('should parse empty update object (no-op update)', () => {
       const data: Partial<EquipamentoFormData> = {};
-      const result = equipamentoSchema.partial().safeParse(data);
+      const result = equipamentoBaseSchema.partial().safeParse(data);
       expect(result.success).toBe(true);
     });
   });
@@ -138,13 +139,13 @@ describe('EquipamentoSchema - FASE 2 Validation Suite', () => {
   describe('UPDATE - Invalid Scenarios', () => {
     it('should reject update with invalid nivel_risco', () => {
       const data: Partial<EquipamentoFormData> = { nivel_risco: 'CRITICO' as any };
-      const result = equipamentoSchema.partial().safeParse(data);
+      const result = equipamentoBaseSchema.partial().safeParse(data);
       expect(result.success).toBe(false);
     });
 
     it('should reject update with nome too short', () => {
       const data: Partial<EquipamentoFormData> = { nome: 'AB' }; // Min 3 chars
-      const result = equipamentoSchema.partial().safeParse(data);
+      const result = equipamentoBaseSchema.partial().safeParse(data);
       expect(result.success).toBe(false);
     });
   });
