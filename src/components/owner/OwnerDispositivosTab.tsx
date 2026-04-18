@@ -11,7 +11,6 @@ import {
   useRemoveDispositivo,
   useDesativarTodosDispositivos,
 } from '@/hooks/useDispositivosMoveis';
-import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useConfirmDialog } from '@/components/ui/confirm-dialog';
 import {
@@ -32,7 +31,7 @@ interface Props {
   busy: boolean;
 }
 
-export default function OwnerDispositivosTab({ selectedEmpresaId, empresas: _empresas, runAction: _runAction, busy: _busy }: Props) {
+export default function OwnerDispositivosTab({ selectedEmpresaId, empresas: _empresas, runAction, busy: _busy }: Props) {
   const { toast } = useToast();
   const { data: dispositivos, isLoading } = useDispositivosMoveis(selectedEmpresaId || undefined);
   const toggleDevice = useToggleDispositivo();
@@ -57,31 +56,16 @@ export default function OwnerDispositivosTab({ selectedEmpresaId, empresas: _emp
 
   const handleToggleEmpresaDispositivos = async (ativo: boolean) => {
     if (!selectedEmpresaId) return;
-    const { error } = await supabase
-      .from('empresas')
-      .update({ dispositivos_moveis_ativos: ativo })
-      .eq('id', selectedEmpresaId);
-    if (error) {
-      toast({ title: 'Erro', description: error.message, variant: 'destructive' });
-    } else {
-      toast({ title: ativo ? 'Dispositivos móveis ativados' : 'Dispositivos móveis desativados para esta empresa' });
-    }
+    runAction('update_company' as OwnerAction, { empresa_id: selectedEmpresaId, company: { dispositivos_moveis_ativos: ativo } }, ativo ? 'Dispositivos móveis ativados' : 'Dispositivos móveis desativados para esta empresa');
   };
 
   const handleUpdateMaxDispositivos = async () => {
     if (!selectedEmpresaId) return;
     const val = parseInt(maxDispositivos);
     if (isNaN(val) || val < 1) return;
-    const { error } = await supabase
-      .from('empresas')
-      .update({ max_dispositivos_moveis: val })
-      .eq('id', selectedEmpresaId);
-    if (error) {
-      toast({ title: 'Erro', description: error.message, variant: 'destructive' });
-    } else {
-      toast({ title: `Limite atualizado para ${val} dispositivos` });
-    }
+    runAction('update_company' as OwnerAction, { empresa_id: selectedEmpresaId, company: { max_dispositivos_moveis: val } }, `Limite atualizado para ${val} dispositivos`);
   };
+
 
   if (!selectedEmpresaId) {
     return (
