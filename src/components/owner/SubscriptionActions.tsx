@@ -68,7 +68,7 @@ export default function SubscriptionActions({
           <button
             className="rounded-lg border border-border px-3 py-2 text-sm text-foreground hover:bg-muted disabled:opacity-50 transition-colors"
             disabled={busy || !empresaId || st === 'cancelada'}
-            onClick={() => handle('set_subscription_status' as OwnerAction, { empresa_id: empresaId, status: 'cancelada' }, 'Assinatura cancelada.')}
+            onClick={() => { if (window.confirm('Tem certeza que deseja cancelar esta assinatura? Esta ação não pode ser desfeita facilmente.')) handle('set_subscription_status' as OwnerAction, { empresa_id: empresaId, status: 'cancelada' }, 'Assinatura cancelada.'); }}
           >
             Cancelar assinatura
           </button>
