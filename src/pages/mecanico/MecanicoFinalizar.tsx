@@ -5,6 +5,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { useOrdensServico, useUpdateOrdemServico } from '@/hooks/useOrdensServico';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import { checkStorageLimit } from '@/lib/storageLimit';
 import { useAuth } from '@/contexts/AuthContext';
 import {
   ArrowLeft,
@@ -85,7 +86,15 @@ export default function MecanicoFinalizar() {
     if (!file || !tenantId || !os) return;
     setUploading(true);
     const ext = file.name.split('.').pop() || 'jpg';
-    const path = `os-fotos/${tenantId}/${os.id}/depois_${Date.now()}.${ext}`;
+        // Storage limit check
+    if (tenantId) {
+      const storageCheck = await checkStorageLimit(tenantId, file.size);
+      if (!storageCheck.allowed) {
+        toast({ title: 'Limite de armazenamento', description: storageCheck.message, variant: 'destructive' });
+        return;
+      }
+    }
+const path = `os-fotos/${tenantId}/${os.id}/depois_${Date.now()}.${ext}`;
     const { error } = await supabase.storage.from('attachments').upload(path, file, {
       contentType: file.type,
       upsert: false,

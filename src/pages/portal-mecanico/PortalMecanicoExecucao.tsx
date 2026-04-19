@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { useOrdensServico, useUpdateOrdemServico } from '@/hooks/useOrdensServico';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import { checkStorageLimit } from '@/lib/storageLimit';
 import { useOptionalTenant } from '@/contexts/TenantContext';
 import { Textarea } from '@/components/ui/textarea';
 import {
@@ -144,7 +145,15 @@ export default function PortalMecanicoExecucao() {
     if (!file || !tenantId || !os) return;
     setUploading(true);
     const ext = file.name.split('.').pop() || 'jpg';
-    const path = `os-fotos/${tenantId}/${os.id}/${fotoFase}_${Date.now()}.${ext}`;
+        // Storage limit check
+    if (tenantId) {
+      const storageCheck = await checkStorageLimit(tenantId, file.size);
+      if (!storageCheck.allowed) {
+        toast({ title: 'Limite de armazenamento', description: storageCheck.message, variant: 'destructive' });
+        return;
+      }
+    }
+const path = `os-fotos/${tenantId}/${os.id}/${fotoFase}_${Date.now()}.${ext}`;
     const { error } = await supabase.storage.from('attachments').upload(path, file, {
       contentType: file.type,
       upsert: false,

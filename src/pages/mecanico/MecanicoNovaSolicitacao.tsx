@@ -8,6 +8,7 @@ import { useEquipamentos } from '@/hooks/useEquipamentos';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import { checkStorageLimit } from '@/lib/storageLimit';
 import {
   ArrowLeft,
   Search,
@@ -74,7 +75,15 @@ export default function MecanicoNovaSolicitacao() {
     if (!file || !tenantId) return;
     setUploading(true);
     const ext = file.name.split('.').pop() || 'jpg';
-    const path = `solicitacao-fotos/${tenantId}/${Date.now()}.${ext}`;
+        // Storage limit check
+    if (tenantId) {
+      const storageCheck = await checkStorageLimit(tenantId, file.size);
+      if (!storageCheck.allowed) {
+        toast({ title: 'Limite de armazenamento', description: storageCheck.message, variant: 'destructive' });
+        return;
+      }
+    }
+const path = `solicitacao-fotos/${tenantId}/${Date.now()}.${ext}`;
     const { error } = await supabase.storage.from('attachments').upload(path, file, { contentType: file.type });
     if (error) {
       toast({ title: 'Erro no upload', description: error.message, variant: 'destructive' });

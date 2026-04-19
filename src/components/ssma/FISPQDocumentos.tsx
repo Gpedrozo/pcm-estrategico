@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Paperclip, Upload, ExternalLink, FileText, Trash2, Eye, Loader2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
+import { checkStorageLimit } from '@/lib/storageLimit';
 import { useToast } from '@/hooks/use-toast';
 import type { FichaSegurancaRow, DocumentoAnexo } from '@/hooks/useFichasSeguranca';
 
@@ -35,7 +36,10 @@ export function FISPQDocumentos({ ficha, onArquivoSalvo }: Props) {
 
   async function uploadFile(file: File, prefix: string): Promise<string> {
     const ext = file.name.split('.').pop();
-    const path = `ssma/fispq/${ficha.empresa_id}/${prefix}_${Date.now()}.${ext}`;
+        // Storage limit check
+    const storageCheck = await checkStorageLimit(ficha.empresa_id, file.size);
+    if (!storageCheck.allowed) throw new Error(storageCheck.message);
+const path = `ssma/fispq/${ficha.empresa_id}/${prefix}_${Date.now()}.${ext}`;
     const { error } = await supabase.storage.from('documentos').upload(path, file, { upsert: true });
     if (error) throw error;
     const { data } = supabase.storage.from('documentos').getPublicUrl(path);

@@ -9,6 +9,7 @@ import { useOptionalTenant } from '@/contexts/TenantContext';
 import { usePortalMecanico } from '@/contexts/PortalMecanicoContext';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import { checkStorageLimit } from '@/lib/storageLimit';
 import {
   ArrowLeft, Search, Send, Camera, CheckCircle2,
   Loader2, X, AlertTriangle, AlertCircle, Shield,
@@ -59,7 +60,15 @@ export default function PortalMecanicoSolicitacao() {
     if (!file || !tenantId) return;
     setUploading(true);
     const ext = file.name.split('.').pop() || 'jpg';
-    const path = `solicitacao-fotos/${tenantId}/${Date.now()}.${ext}`;
+        // Storage limit check
+    if (tenantId) {
+      const storageCheck = await checkStorageLimit(tenantId, file.size);
+      if (!storageCheck.allowed) {
+        toast({ title: 'Limite de armazenamento', description: storageCheck.message, variant: 'destructive' });
+        return;
+      }
+    }
+const path = `solicitacao-fotos/${tenantId}/${Date.now()}.${ext}`;
     const { error } = await supabase.storage.from('attachments').upload(path, file, { contentType: file.type });
     if (error) {
       toast({ title: 'Erro no upload', description: error.message, variant: 'destructive' });

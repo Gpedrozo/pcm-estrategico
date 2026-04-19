@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { checkStorageLimit } from '@/lib/storageLimit';
 import { useToast } from '@/hooks/use-toast';
 import { useTenant } from '@/contexts/TenantContext';
 import { useAuth } from '@/contexts/AuthContext';
@@ -215,7 +216,12 @@ export function useUpdateEmpresa() {
 }
 
 export async function uploadLogo(file: File, path?: string) {
-  const filePath = path || `logos/${Date.now()}-${file.name}`;
+    // Storage limit check
+  if (empresaId) {
+    const storageCheck = await checkStorageLimit(empresaId, file.size);
+    if (!storageCheck.allowed) throw new Error(storageCheck.message);
+  }
+const filePath = path || `logos/${Date.now()}-${file.name}`;
 
   const { error: uploadError } = await supabase.storage
     .from('empresa-logos')
