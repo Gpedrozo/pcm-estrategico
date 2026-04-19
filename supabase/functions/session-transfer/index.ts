@@ -172,6 +172,15 @@ Deno.serve(async (req) => {
     const codeHash = await sha256Hex(code);
     const targetHost = normalizeHost(body.target_host);
 
+    // EF-10: Validate target_host against domain allowlist
+    const isAllowedHost = (host: string) => {
+      const h = host.toLowerCase();
+      return h === "gppis.com.br" || h === "www.gppis.com.br" || (h.endsWith(".gppis.com.br") && !h.includes(".."));
+    };
+    if (targetHost && !isAllowedHost(targetHost)) {
+      return fail("Target host not in allowlist", 403, null, req);
+    }
+
     const { error } = await admin
       .from("auth_session_transfer_tokens")
       .insert({
