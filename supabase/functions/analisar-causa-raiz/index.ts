@@ -68,6 +68,14 @@ Deno.serve(async (req: Request) => {
     }
     const dateFrom = body?.date_from || null;
     const dateTo = body?.date_to || null;
+
+    // EF-01: Sanitize tag for prompt injection defense
+    const sanitizedTag = tag.replace(/[<>{}[\]\\]/g, "").slice(0, 100);
+    // EF-01: Validate date format
+    const isoDateRe = /^\d{4}-\d{2}-\d{2}(T\d{2}:\d{2}:\d{2})?$/;
+    if (dateFrom && !isoDateRe.test(dateFrom)) return fail("date_from format invalid", 400, null, req);
+    if (dateTo && !isoDateRe.test(dateTo)) return fail("date_to format invalid", 400, null, req);
+
     console.log("[IA] tag:", tag, "empresa_id:", body?.empresa_id, "period:", dateFrom, "->", dateTo);
 
     // ── 3. Tenant ────────────────────────────────────────────
@@ -305,7 +313,7 @@ Deno.serve(async (req: Request) => {
       "Analise TODOS os dados abaixo para identificar causa raiz, padrões e riscos ocultos.",
       "",
       "═══ EQUIPAMENTO ═══",
-      `TAG: ${tag}`,
+      `TAG: ${sanitizedTag}`,
       `Nome: ${equipamento?.nome || "N/A"}`,
       `Fabricante: ${equipamento?.fabricante || "N/A"}`,
       `Criticidade: ${equipamento?.criticidade || "N/A"}`,

@@ -250,9 +250,14 @@ Deno.serve(async (req: Request) => {
       const msg = parsed.error.issues[0]?.message ?? "Invalid request body";
       return fail(msg, 400, null, req);
     }
-    const pergunta = parsed.data.pergunta.trim();
+    const rawPergunta = parsed.data.pergunta.trim();
     const role = (parsed.data.role ?? "USUARIO").trim();
-    const contextoTela = parsed.data.contexto_tela?.trim();
+    const rawContextoTela = parsed.data.contexto_tela?.trim();
+
+    // EF-01: Sanitize user inputs against prompt injection
+    const sanitizeInput = (s: string) => s.replace(/[<>{}[\]\\]/g, "").slice(0, 500);
+    const pergunta = sanitizeInput(rawPergunta);
+    const contextoTela = rawContextoTela ? sanitizeInput(rawContextoTela) : undefined;
 
     if (!AI_KEY) {
       return fail("Assistente IA não configurado. Contacte o administrador.", 503, null, req);

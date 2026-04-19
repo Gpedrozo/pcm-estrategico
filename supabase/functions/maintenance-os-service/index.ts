@@ -178,6 +178,21 @@ Deno.serve(async (req) => {
   }
 
   if (payload.action === "close_os") {
+    // EF-12: Validate OS status before closing
+    const { data: currentOs, error: fetchErr } = await admin
+      .from("ordens_servico")
+      .select("status")
+      .eq("id", payload.os_id!)
+      .eq("empresa_id", empresaId)
+      .single();
+
+    if (fetchErr || !currentOs) return fail("O.S não encontrada", 404, null, req);
+
+    const closableStatuses = ["ABERTA", "EM_ANDAMENTO"];
+    if (!closableStatuses.includes(currentOs.status)) {
+      return fail(`Não é possível fechar O.S com status ${currentOs.status}`, 409, { current_status: currentOs.status }, req);
+    }
+
     const nowIso = new Date().toISOString();
 
     const { error: osError } = await admin

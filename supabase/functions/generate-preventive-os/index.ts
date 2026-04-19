@@ -127,6 +127,22 @@ Deno.serve(async (req) => {
           }
         }
 
+        // EF-13: Idempotency — skip if OS already generated today for this plan
+        const { data: existing } = await supabase
+          .from("ordens_servico")
+          .select("id")
+          .eq("empresa_id", plano.empresa_id)
+          .eq("tipo", "PREVENTIVA")
+          .eq("tag", tag)
+          .ilike("problema", `%${plano.codigo}%`)
+          .gte("created_at", `${today}T00:00:00`)
+          .limit(1);
+
+        if (existing && existing.length > 0) {
+          osGeradas.push(`OS já existente para plano ${plano.codigo} (idempotência)`);
+          continue;
+        }
+
         const { data: novaOS, error: osError } = await supabase
           .from("ordens_servico")
           .insert({
@@ -148,7 +164,7 @@ Deno.serve(async (req) => {
           continue;
         }
 
-        if (plano.frequencia_dias) {
+        if (plano.frequencia_dias && plano.frequencia_dias > 0) {
           const proximaExecucao = new Date();
           proximaExecucao.setDate(proximaExecucao.getDate() + plano.frequencia_dias);
 
