@@ -1,4 +1,4 @@
-﻿import { Suspense, useEffect, useRef, useState } from 'react'
+import { Suspense, useEffect, useRef, useState } from 'react'
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -418,7 +418,6 @@ function TenantRoutes() {
                 <Route path="/change-password" element={<ChangePassword />} />
                 <Route path="/forgot-password" element={<ForgotPassword />} />
                 <Route path="/reset-password" element={<ResetPassword />} />
-                <Route path="/instalar" element={<Instalar />} />
 
               {/* Rotas mobile mecânico — fora do ExperienceRouter, sem Supabase login */}
               <Route element={<MecanicoLayout />}>

@@ -440,6 +440,13 @@ export function AppLayout() {
     return <Navigate to={`/login?next=${nextPath}`} replace />;
   }
 
+  // VULN-01: Check session expiration for tenant routes (mirrors OwnerOnlyRoute check)
+  const sessionExpiredAt = session?.expires_at ? session.expires_at * 1000 : 0;
+  if (sessionExpiredAt > 0 && sessionExpiredAt <= Date.now()) {
+    const nextPath = encodeURIComponent(`${location.pathname}${location.search}` || '/dashboard');
+    return <Navigate to={`/login?next=${nextPath}&reason=session_expired`} replace />;
+  }
+
   if (forcePasswordChange && location.pathname !== '/change-password') {
     return <Navigate to="/change-password" replace />;
   }
