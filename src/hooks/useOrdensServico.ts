@@ -4,6 +4,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import { ordensServicoService } from '@/services/ordensServico.service';
 import { type OrdemServicoFormData, type OrdemServicoUpdateData } from '@/schemas/ordemServico.schema';
 import { writeAuditLog } from '@/lib/audit';
+import { usePlanLimits } from '@/hooks/usePlanLimits';
+import { supabase } from '@/integrations/supabase/client';
 
 function getCreateOrdemServicoErrorMessage(error: unknown) {
   const message =
@@ -125,10 +127,24 @@ export function useCreateOrdemServico() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const { tenantId } = useAuth();
+  const { limits, isOwnerBypass } = usePlanLimits();
 
   return useMutation({
     mutationFn: async (os: OrdemServicoInsert) => {
       if (!tenantId) throw new Error('Tenant não resolvido.');
+      if (!isOwnerBypass && limits.os_mes > 0) {
+        const startOfMonth = new Date();
+        startOfMonth.setDate(1);
+        startOfMonth.setHours(0, 0, 0, 0);
+        const { count, error: countErr } = await supabase
+          .from('ordens_servico')
+          .select('id', { count: 'exact', head: true })
+          .eq('empresa_id', tenantId)
+          .gte('created_at', startOfMonth.toISOString());
+        if (!countErr && count !== null && count >= limits.os_mes) {
+          throw new Error(`Limite de OS/mês atingido (${limits.os_mes}). Solicite ao administrador a ampliação do plano.`);
+        }
+      }
       return ordensServicoService.criar(os as OrdemServicoFormData, tenantId) as Promise<OrdemServicoRow>;
     },
     onSuccess: (data) => {
