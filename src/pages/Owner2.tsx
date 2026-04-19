@@ -433,7 +433,11 @@ export default function Owner() {
     for (const key of Object.keys(loadedFlags)) {
       if (typeof modules[key] === 'boolean') loadedFlags[key] = modules[key] as boolean
     }
-    setModuleFlags(loadedFlags)
+    setModuleFlags((prev) => {
+      const keys = Object.keys(loadedFlags)
+      if (keys.length === Object.keys(prev).length && keys.every((k) => prev[k] === loadedFlags[k])) return prev
+      return loadedFlags
+    })
 
     setLimitUsers(String(asNumber(limits.users, 50)))
     setLimitAssets(String(asNumber(limits.equipamentos, 500)))
