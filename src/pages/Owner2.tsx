@@ -220,12 +220,6 @@ export default function Owner() {
 
   const [systemUserId, setSystemUserId] = useState('')
   const [selectedTableName, setSelectedTableName] = useState('')
-  const [logSearch, setLogSearch] = useState('')
-  const [logSeverityFilter, setLogSeverityFilter] = useState<'todos' | 'info' | 'warning' | 'error' | 'critical'>('todos')
-  const [logModuleFilter, setLogModuleFilter] = useState('todos')
-  const [logActorFilter, setLogActorFilter] = useState('')
-  const [logDateFrom, setLogDateFrom] = useState('')
-  const [logDateTo, setLogDateTo] = useState('')
 
   const [auditSearch, setAuditSearch] = useState('')
   const [auditResultadoFilter, setAuditResultadoFilter] = useState<'todos' | 'sucesso' | 'erro' | 'rejeitado'>('todos')
@@ -313,7 +307,7 @@ export default function Owner() {
   )
   const auditsQuery = useOwner2Audits(
     auditFilters,
-    activeTab === 'auditoria' || activeTab === 'monitoramento' || activeTab === 'logs' || activeTab === 'owner-master',
+    activeTab === 'auditoria' || activeTab === 'monitoramento' || activeTab === 'owner-master',
   )
   const ownersQuery = useOwner2PlatformOwners(activeTab === 'owner-master')
   const monitoringLive = activeTab === 'monitoramento' && isDocumentVisible
@@ -325,7 +319,7 @@ export default function Owner() {
     tablesLive,
     tablesRefetchInterval,
   )
-  const settingsQuery = useOwner2Settings(companyId || undefined, activeTab === 'configuracoes' || activeTab === 'feature-flags')
+  const settingsQuery = useOwner2Settings(companyId || undefined, activeTab === 'configuracoes')
   const { execute } = useOwner2Actions()
 
   // ASAAS health state
@@ -542,15 +536,6 @@ export default function Owner() {
     }
   }, [subscriptions])
 
-  const availableLogModules = useMemo(() => {
-    const modules = new Set<string>()
-    logs.forEach((log) => {
-      const moduleName = String(log.tabela ?? '').trim()
-      if (moduleName) modules.add(moduleName)
-    })
-    return Array.from(modules).sort((a, b) => a.localeCompare(b))
-  }, [logs])
-
   const availableAuditUsuarios = useMemo(() => {
     const emails = new Set<string>()
     logs.forEach((log) => {
@@ -647,43 +632,6 @@ export default function Owner() {
     return { total, erros, tenants, usuarios }
   }, [auditFiltered])
 
-  const logsFiltered = useMemo(() => {
-    const q = logSearch.trim().toLowerCase()
-    const actorQ = logActorFilter.trim().toLowerCase()
-    const fromDate = logDateFrom ? new Date(`${logDateFrom}T00:00:00`) : null
-    const toDate = logDateTo ? new Date(`${logDateTo}T23:59:59`) : null
-
-    return logs.filter((log) => {
-      const action = String(log.acao ?? '').toLowerCase()
-      const actor = String(log.usuario_email ?? '').toLowerCase()
-      const resultado = String(log.resultado ?? '').toLowerCase()
-      const moduleName = String(log.tabela ?? '')
-      const logDateRaw = String(log.created_at ?? '')
-      const logDate = logDateRaw ? new Date(logDateRaw) : null
-
-      const textOk = !q || action.includes(q) || actor.includes(q)
-      const severityOk = logSeverityFilter === 'todos' || resultado === logSeverityFilter
-      const actorOk = !actorQ || actor.includes(actorQ)
-      const moduleOk = logModuleFilter === 'todos' || moduleName === logModuleFilter
-      const fromOk = !fromDate || (logDate && !Number.isNaN(logDate.getTime()) && logDate >= fromDate)
-      const toOk = !toDate || (logDate && !Number.isNaN(logDate.getTime()) && logDate <= toDate)
-
-      return textOk && severityOk && actorOk && moduleOk && Boolean(fromOk) && Boolean(toOk)
-    })
-  }, [logActorFilter, logDateFrom, logDateTo, logModuleFilter, logSearch, logSeverityFilter, logs])
-
-  function exportLogsCsv() {
-    const rows = logsFiltered.map((l) => [
-      String(l.id ?? ''),
-      String(l.acao ?? ''),
-      String(l.resultado ?? 'sucesso'),
-      String(l.tabela ?? ''),
-      String(l.usuario_email ?? ''),
-      String(l.created_at ?? ''),
-    ])
-    downloadCsv('owner-logs.csv', ['id', 'acao', 'resultado', 'tabela', 'usuario', 'data'], rows)
-    setFeedback('Exportacao de logs gerada em CSV.')
-  }
 
   function openCriticalAction(request: CriticalActionRequest) {
     setCriticalConfirmValue('')
@@ -1337,9 +1285,6 @@ export default function Owner() {
             />
           )}
 
-          {/* REMOVED: comercial tab - merged into 'assinaturas' */}
-
-          {/* REMOVED: financeiro tab - merged into 'assinaturas' */}
 
 
           {activeTab === 'assinaturas' && (
@@ -1863,54 +1808,6 @@ export default function Owner() {
             </div>
           )}
 
-          {activeTab === 'feature-flags' && (
-            <div className="grid gap-4 xl:grid-cols-2">
-              <SurfaceCard title="Feature Flags por empresa" subtitle="Controle rápido de recursos premium">
-                <div className="space-y-2">
-                  <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={featureAi} onChange={(e) => setFeatureAi(e.target.checked)} /> IA habilitada</label>
-                  <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={featureApi} onChange={(e) => setFeatureApi(e.target.checked)} /> API habilitada</label>
-                  <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={featureSso} onChange={(e) => setFeatureSso(e.target.checked)} /> SSO habilitado</label>
-                </div>
-
-                <button
-                  className="mt-4 rounded-lg bg-sky-700 px-3 py-2 text-sm font-semibold text-white hover:bg-sky-800 disabled:opacity-50 transition-colors"
-                  disabled={busy || !companyId}
-                  onClick={() => runAction('update_company_settings', {
-                    empresa_id: companyId,
-                    settings: {
-                      modules: {
-                        os: moduleOs,
-                        preventiva: modulePreventiva,
-                        preditiva: modulePreditiva,
-                        materiais: moduleMateriais,
-                        auditoria: moduleAuditoria,
-                      },
-                      limits: {
-                        users: Number(limitUsers || 0),
-                        equipamentos: Number(limitAssets || 0),
-                        storage_mb: Number(limitStorageMb || 0),
-                      },
-                      features: {
-                        ai: featureAi,
-                        api: featureApi,
-                        sso: featureSso,
-                      },
-                    },
-                  }, 'Feature flags salvas com sucesso.')}
-                >
-                  Salvar feature flags
-                </button>
-              </SurfaceCard>
-
-              <SurfaceCard title="Estado atual" subtitle="Configuração carregada da empresa selecionada">
-                <div className="rounded-xl border border-border bg-muted/50 p-3 text-xs text-foreground">
-                  <p>Empresa selecionada: {companyId || 'Nenhuma'}</p>
-                  <p className="mt-1">Recursos atuais: AI {featureAi ? 'ON' : 'OFF'} • API {featureApi ? 'ON' : 'OFF'} • SSO {featureSso ? 'ON' : 'OFF'}</p>
-                </div>
-              </SurfaceCard>
-            </div>
-          )}
-
           {activeTab === 'auditoria' && (
             <div className="space-y-4">
               {/* KPI Cards */}
@@ -2026,73 +1923,6 @@ export default function Owner() {
                 </div>
               </SurfaceCard>
             </div>
-          )}
-
-          {activeTab === 'logs' && (
-            <SurfaceCard title="Logs" subtitle="Busca por ação/usuário e filtro de resultado">
-              <div className="mb-3 flex justify-end">
-                <button className="inline-flex items-center gap-1 rounded-lg border border-input bg-background px-3 py-2 text-xs font-semibold text-foreground" onClick={exportLogsCsv}>
-                  <Download className="h-3.5 w-3.5" /> Exportar CSV
-                </button>
-              </div>
-
-              <div className="mb-3 grid gap-2 sm:grid-cols-3">
-                <input className="rounded-lg border border-input bg-background px-2 py-2 text-sm" placeholder="Buscar ação ou usuário" value={logSearch} onChange={(e) => setLogSearch(e.target.value)} />
-                <select className="rounded-lg border border-input bg-background px-2 py-2 text-sm" value={logSeverityFilter} onChange={(e) => setLogSeverityFilter(e.target.value as typeof logSeverityFilter)}>
-                  <option value="todos">Resultado: Todos</option>
-                  <option value="sucesso">Sucesso</option>
-                  <option value="erro">Erro</option>
-                  <option value="rejeitado">Rejeitado</option>
-                </select>
-                <input className="rounded-lg border border-input bg-background px-2 py-2 text-sm" placeholder="Filtrar por usuário (email)" value={logActorFilter} onChange={(e) => setLogActorFilter(e.target.value)} />
-              </div>
-
-              <div className="mb-3 grid gap-2 sm:grid-cols-4">
-                <select className="rounded-lg border border-input bg-background px-2 py-2 text-sm" value={logModuleFilter} onChange={(e) => setLogModuleFilter(e.target.value)}>
-                  <option value="todos">Tabela: Todas</option>
-                  {availableLogModules.map((moduleName) => (
-                    <option key={moduleName} value={moduleName}>{moduleName}</option>
-                  ))}
-                </select>
-                <input className="rounded-lg border border-input bg-background px-2 py-2 text-sm" type="date" value={logDateFrom} onChange={(e) => setLogDateFrom(e.target.value)} />
-                <input className="rounded-lg border border-input bg-background px-2 py-2 text-sm" type="date" value={logDateTo} onChange={(e) => setLogDateTo(e.target.value)} />
-                <button className="rounded-lg border border-border px-3 py-2 text-sm text-foreground hover:bg-muted disabled:opacity-50 transition-colors" onClick={() => { setLogSearch(''); setLogSeverityFilter('todos'); setLogActorFilter(''); setLogModuleFilter('todos'); setLogDateFrom(''); setLogDateTo('') }}>Limpar filtros</button>
-              </div>
-
-              <div className="max-h-[520px] overflow-auto rounded-xl border border-border">
-                <table className="w-full text-xs">
-                  <thead className="bg-muted">
-                    <tr>
-                      <th className="px-2 py-2 text-left">Ação</th>
-                      <th className="px-2 py-2 text-left">Tabela</th>
-                      <th className="px-2 py-2 text-left">Resultado</th>
-                      <th className="px-2 py-2 text-left">Usuário</th>
-                      <th className="px-2 py-2 text-left">Data</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {logsFiltered.map((l, idx) => {
-                      const createdAt = String(l.created_at ?? '')
-                      const formatted = createdAt ? new Date(createdAt).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'medium' }) : '-'
-                      return (
-                        <tr key={`${String(l.id ?? 'log')}-${idx}`} className="border-t border-border">
-                          <td className="px-2 py-2 font-medium">{String(l.acao ?? '-')}</td>
-                          <td className="px-2 py-2">{String(l.tabela ?? '-')}</td>
-                          <td className="px-2 py-2">{String(l.resultado ?? 'sucesso')}</td>
-                          <td className="px-2 py-2">{String(l.usuario_email ?? '-')}</td>
-                          <td className="px-2 py-2 whitespace-nowrap">{formatted}</td>
-                        </tr>
-                      )
-                    })}
-                    {logsFiltered.length === 0 && (
-                      <tr>
-                        <td className="px-2 py-3 text-muted-foreground" colSpan={5}>Nenhum log encontrado com os filtros atuais.</td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            </SurfaceCard>
           )}
 
           {activeTab === 'dispositivos' && (

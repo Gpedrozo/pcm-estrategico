@@ -3,15 +3,15 @@ import { OWNER_TABS, OWNER_TAB_LABELS } from '@/pages/owner2/owner2Types'
 import type { CompanyCredentialNote, CriticalActionRequest } from '@/pages/owner2/owner2Types'
 
 describe('owner2Types', () => {
-  it('OWNER_TABS has 14 entries', () => {
-    expect(OWNER_TABS).toHaveLength(14)
+  it('OWNER_TABS has 12 entries', () => {
+    expect(OWNER_TABS).toHaveLength(12)
   })
 
   it('OWNER_TABS includes all expected tabs', () => {
     const expected = [
       'dashboard', 'monitoramento', 'cadastro', 'usuarios',
       'assinaturas', 'contratos', 'suporte',
-      'configuracoes', 'feature-flags', 'auditoria', 'logs',
+      'configuracoes', 'auditoria',
       'sistema', 'owner-master', 'dispositivos',
     ]
     for (const tab of expected) {

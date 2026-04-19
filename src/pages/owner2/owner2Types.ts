@@ -9,10 +9,8 @@ export const OWNER_TABS = [
   'contratos',
   'suporte',
   'configuracoes',
-  'feature-flags',
   'dispositivos',
   'auditoria',
-  'logs',
   'sistema',
   'owner-master',
 ] as const
@@ -28,10 +26,8 @@ export const OWNER_TAB_LABELS: Record<OwnerTab, string> = {
   contratos: 'Contratos',
   suporte: 'Suporte',
   configuracoes: 'Configuracoes',
-  'feature-flags': 'Feature Flags',
   dispositivos: 'Dispositivos',
   auditoria: 'Auditoria',
-  logs: 'Logs',
   sistema: 'Sistema',
   'owner-master': 'Owner Master',
 }
