@@ -1,4 +1,4 @@
-import { useState } from 'react';
+﻿import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -27,13 +27,13 @@ const RLS_TABLES = [
 
 const SECURITY_POLICIES = [
   { name: 'Row Level Security (RLS)', desc: 'Todas as tabelas protegidas com RLS', status: true },
-  { name: 'Rate Limiting', desc: 'Limitação de requisições por endpoint', status: true },
-  { name: 'Security Definer Functions', desc: 'Funções seguras para acesso a dados sensíveis', status: true },
-  { name: 'Auditoria Completa', desc: 'Registro de todas as ações do sistema', status: true },
-  { name: 'Separação de Roles', desc: 'Tabela user_roles separada de profiles', status: true },
-  { name: 'Triggers de Auditoria DB', desc: 'Registro automático de INSERT/UPDATE/DELETE', status: true },
-  { name: 'Permissões Granulares', desc: 'Controle fino por módulo e ação', status: true },
-  { name: 'Proteção contra Escalação', desc: 'Roles impossível de auto-promoção', status: true },
+  { name: 'Rate Limiting', desc: 'LimitaÃ§Ã£o de requisiÃ§Ãµes por endpoint', status: true },
+  { name: 'Security Definer Functions', desc: 'FunÃ§Ãµes seguras para acesso a dados sensÃ­veis', status: true },
+  { name: 'Auditoria Completa', desc: 'Registro de todas as aÃ§Ãµes do sistema', status: true },
+  { name: 'SeparaÃ§Ã£o de Roles', desc: 'Tabela user_roles separada de profiles', status: true },
+  { name: 'Triggers de Auditoria DB', desc: 'Registro automÃ¡tico de INSERT/UPDATE/DELETE', status: true },
+  { name: 'PermissÃµes Granulares', desc: 'Controle fino por mÃ³dulo e aÃ§Ã£o', status: true },
+  { name: 'ProteÃ§Ã£o contra EscalaÃ§Ã£o', desc: 'Roles impossÃ­vel de auto-promoÃ§Ã£o', status: true },
 ];
 
 export function MasterSecurity() {
@@ -52,8 +52,8 @@ export function MasterSecurity() {
 
       const [totalLogs, failedAttempts, rateLimits, logins24h, loginsWeek, totalUsers, masterCount, adminCount] = await Promise.all([
         withTenant(supabase.from('security_logs').select('*', { count: 'exact', head: true })),
-        withTenant(supabase.from('security_logs').select('*', { count: 'exact', head: true }).eq('success', false)).gte('created_at', oneDayAgo),
-        withTenant(supabase.from('security_logs').select('*', { count: 'exact', head: true }).eq('action', 'RATE_LIMIT_EXCEEDED')).gte('created_at', oneDayAgo),
+        withTenant(supabase.from('security_logs').select('*', { count: 'exact', head: true }).eq('severity', 'critical')).gte('created_at', oneDayAgo),
+        withTenant(supabase.from('security_logs').select('*', { count: 'exact', head: true }).eq('event_type', 'RATE_LIMIT_EXCEEDED')).gte('created_at', oneDayAgo),
         withTenant(supabase.from('enterprise_audit_logs').select('*', { count: 'exact', head: true }).eq('acao', 'LOGIN')).gte('created_at', oneDayAgo),
         withTenant(supabase.from('enterprise_audit_logs').select('*', { count: 'exact', head: true }).eq('acao', 'LOGIN')).gte('created_at', oneWeekAgo),
         withTenant(supabase.from('profiles').select('*', { count: 'exact', head: true })),
@@ -108,7 +108,7 @@ export function MasterSecurity() {
               </div>
               <div className="flex-1">
                 <p className="text-3xl font-bold">{securityScore}%</p>
-                <p className="text-xs text-muted-foreground">Score de Segurança</p>
+                <p className="text-xs text-muted-foreground">Score de SeguranÃ§a</p>
                 <Progress value={securityScore} className="mt-2 h-2" />
               </div>
             </div>
@@ -118,7 +118,7 @@ export function MasterSecurity() {
           { label: 'Falhas (24h)', value: securityData?.failedAttempts ?? 0, icon: AlertTriangle, bg: 'bg-destructive/10', color: 'text-destructive' },
           { label: 'Rate Limits (24h)', value: securityData?.rateLimits ?? 0, icon: Lock, bg: 'bg-warning/10', color: 'text-warning' },
           { label: 'Logins (24h)', value: securityData?.logins24h ?? 0, icon: Key, bg: 'bg-info/10', color: 'text-info' },
-          { label: 'Total Usuários', value: securityData?.totalUsers ?? 0, icon: Users, bg: 'bg-primary/10', color: 'text-primary' },
+          { label: 'Total UsuÃ¡rios', value: securityData?.totalUsers ?? 0, icon: Users, bg: 'bg-primary/10', color: 'text-primary' },
         ].map(s => (
           <Card key={s.label}>
             <CardContent className="p-4 flex items-center gap-3">
@@ -134,15 +134,15 @@ export function MasterSecurity() {
 
       <Tabs value={secTab} onValueChange={setSecTab}>
         <TabsList>
-          <TabsTrigger value="overview" className="gap-2"><Shield className="h-4 w-4" /> Visão Geral</TabsTrigger>
+          <TabsTrigger value="overview" className="gap-2"><Shield className="h-4 w-4" /> VisÃ£o Geral</TabsTrigger>
           <TabsTrigger value="rls" className="gap-2"><Database className="h-4 w-4" /> RLS / Tabelas</TabsTrigger>
-          <TabsTrigger value="logs" className="gap-2"><Activity className="h-4 w-4" /> Logs de Segurança</TabsTrigger>
+          <TabsTrigger value="logs" className="gap-2"><Activity className="h-4 w-4" /> Logs de SeguranÃ§a</TabsTrigger>
           <TabsTrigger value="access" className="gap-2"><Users className="h-4 w-4" /> Controle de Acesso</TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview" className="mt-4 space-y-4">
           <Card>
-            <CardHeader><CardTitle className="flex items-center gap-2"><Shield className="h-5 w-5" /> Políticas de Segurança Ativas</CardTitle></CardHeader>
+            <CardHeader><CardTitle className="flex items-center gap-2"><Shield className="h-5 w-5" /> PolÃ­ticas de SeguranÃ§a Ativas</CardTitle></CardHeader>
             <CardContent>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 {SECURITY_POLICIES.map(p => (
@@ -181,7 +181,7 @@ export function MasterSecurity() {
           <div className="flex gap-3">
             <div className="relative flex-1 max-w-md">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input placeholder="Buscar ação ou recurso..." value={logSearch} onChange={e => { setLogSearch(e.target.value); setLogPage(0); }} className="pl-9" />
+              <Input placeholder="Buscar aÃ§Ã£o ou recurso..." value={logSearch} onChange={e => { setLogSearch(e.target.value); setLogPage(0); }} className="pl-9" />
             </div>
             <Badge variant="secondary">{(logData?.total ?? 0).toLocaleString('pt-BR')} logs</Badge>
           </div>
@@ -192,7 +192,7 @@ export function MasterSecurity() {
             <Card>
               <CardContent className="p-0">
                 <table className="table-industrial w-full">
-                  <thead><tr><th>Data</th><th>Ação</th><th>Recurso</th><th>Status</th><th>Mensagem</th><th>Detalhes</th></tr></thead>
+                  <thead><tr><th>Data</th><th>AÃ§Ã£o</th><th>Recurso</th><th>Status</th><th>Mensagem</th><th>Detalhes</th></tr></thead>
                   <tbody>
                     {!logData?.logs.length ? (
                       <tr><td colSpan={6} className="text-center py-6 text-muted-foreground">Nenhum evento</td></tr>
@@ -216,7 +216,7 @@ export function MasterSecurity() {
                               {log.severity || 'info'}
                             </Badge>
                           </td>
-                          <td className="text-sm text-muted-foreground max-w-xs truncate">{String((log.metadata as Record<string, unknown> | null)?.error ?? '—')}</td>
+                          <td className="text-sm text-muted-foreground max-w-xs truncate">{String((log.metadata as Record<string, unknown> | null)?.error ?? 'â€”')}</td>
                           <td>
                             <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setViewingLog(log)}><Eye className="h-3 w-3" /></Button>
                           </td>
@@ -232,7 +232,7 @@ export function MasterSecurity() {
           {logTotalPages > 1 && (
             <div className="flex items-center justify-center gap-2">
               <Button variant="outline" size="icon" disabled={logPage === 0} onClick={() => setLogPage(p => p - 1)}><ChevronLeft className="h-4 w-4" /></Button>
-              <span className="text-sm text-muted-foreground">Página {logPage + 1} de {logTotalPages}</span>
+              <span className="text-sm text-muted-foreground">PÃ¡gina {logPage + 1} de {logTotalPages}</span>
               <Button variant="outline" size="icon" disabled={logPage >= logTotalPages - 1} onClick={() => setLogPage(p => p + 1)}><ChevronRight className="h-4 w-4" /></Button>
             </div>
           )}
@@ -260,23 +260,23 @@ export function MasterSecurity() {
               <CardContent className="p-4 text-center">
                 <Users className="h-8 w-8 mx-auto mb-2 text-info" />
                 <p className="text-3xl font-bold">{(securityData?.totalUsers ?? 0) - (securityData?.masterCount ?? 0) - (securityData?.adminCount ?? 0)}</p>
-                <p className="text-sm text-muted-foreground">Usuários Regulares</p>
-                <p className="text-xs text-muted-foreground mt-1">Acesso conforme permissões</p>
+                <p className="text-sm text-muted-foreground">UsuÃ¡rios Regulares</p>
+                <p className="text-xs text-muted-foreground mt-1">Acesso conforme permissÃµes</p>
               </CardContent>
             </Card>
           </div>
 
           <Card>
-            <CardHeader><CardTitle className="text-sm">Histórico de Logins</CardTitle></CardHeader>
+            <CardHeader><CardTitle className="text-sm">HistÃ³rico de Logins</CardTitle></CardHeader>
             <CardContent>
               <div className="grid grid-cols-2 gap-4">
                 <div className="p-4 rounded-lg bg-muted/30 text-center">
                   <p className="text-2xl font-bold">{securityData?.logins24h ?? 0}</p>
-                  <p className="text-xs text-muted-foreground">Últimas 24h</p>
+                  <p className="text-xs text-muted-foreground">Ãšltimas 24h</p>
                 </div>
                 <div className="p-4 rounded-lg bg-muted/30 text-center">
                   <p className="text-2xl font-bold">{securityData?.loginsWeek ?? 0}</p>
-                  <p className="text-xs text-muted-foreground">Última semana</p>
+                  <p className="text-xs text-muted-foreground">Ãšltima semana</p>
                 </div>
               </div>
             </CardContent>
@@ -287,12 +287,12 @@ export function MasterSecurity() {
       {/* Security Log Detail */}
       <Dialog open={!!viewingLog} onOpenChange={open => !open && setViewingLog(null)}>
         <DialogContent className="max-w-lg">
-          <DialogHeader><DialogTitle>Detalhes do Evento de Segurança</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>Detalhes do Evento de SeguranÃ§a</DialogTitle></DialogHeader>
           {viewingLog && (
             <div className="space-y-3 text-sm">
               <div className="grid grid-cols-2 gap-3">
                 <div><span className="text-muted-foreground">Data:</span><p>{new Date(viewingLog.created_at).toLocaleString('pt-BR')}</p></div>
-                <div><span className="text-muted-foreground">Ação:</span><p className="font-medium">{viewingLog.event_type}</p></div>
+                <div><span className="text-muted-foreground">AÃ§Ã£o:</span><p className="font-medium">{viewingLog.event_type}</p></div>
                 <div><span className="text-muted-foreground">Origem:</span><p className="font-mono">{viewingLog.source}</p></div>
                 <div><span className="text-muted-foreground">Status:</span>
                   <Badge
@@ -315,7 +315,7 @@ export function MasterSecurity() {
               {viewingLog.metadata && (
                 <div><span className="text-muted-foreground">Metadata:</span><pre className="mt-1 p-3 bg-muted/30 rounded-lg text-xs overflow-auto max-h-48">{JSON.stringify(viewingLog.metadata, null, 2)}</pre></div>
               )}
-              <div><span className="text-muted-foreground">User ID:</span><p className="font-mono text-xs">{viewingLog.actor_user_id || '—'}</p></div>
+              <div><span className="text-muted-foreground">User ID:</span><p className="font-mono text-xs">{viewingLog.actor_user_id || 'â€”'}</p></div>
             </div>
           )}
         </DialogContent>
