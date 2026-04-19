@@ -27,6 +27,16 @@ vi.mock('@/components/command-palette/CommandPalette', () => ({
   CommandPalette: () => null,
 }));
 
+vi.mock('@/hooks/useModuleAccess', () => ({
+  useModuleAccess: () => ({
+    modules: {},
+    isLoading: false,
+    isModuleEnabled: () => true,
+    isRouteEnabled: () => true,
+    isSidebarItemVisible: () => true,
+  }),
+}));
+
 import { useAuth } from '@/contexts/AuthContext';
 import { useBranding } from '@/contexts/BrandingContext';
 

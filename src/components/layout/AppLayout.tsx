@@ -1,4 +1,5 @@
 import { Outlet, Navigate, useLocation } from 'react-router-dom';
+import { ModuleGate } from '@/components/guards/ModuleGate';
 import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
 import { AppSidebar } from './AppSidebar';
 import { useAuth } from '@/contexts/AuthContext';
@@ -552,7 +553,7 @@ export function AppLayout() {
             ) : (
               <div className="pcm-module-shell mx-auto w-full max-w-[1400px] px-4 py-6 md:px-6 md:py-7">
                 <div className="module-page">
-                  <Outlet />
+                  <ModuleGate><Outlet /></ModuleGate>
                 </div>
               </div>
             )}

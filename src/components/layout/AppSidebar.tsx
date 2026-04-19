@@ -33,6 +33,7 @@ import {
 } from 'lucide-react';
 import { NavLink, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
+import { useModuleAccess } from '@/hooks/useModuleAccess';
 import { useBranding } from '@/contexts/BrandingContext';
 import { useOptionalTenant } from '@/contexts/TenantContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -128,6 +129,7 @@ const masterTIMenuItems = [
 
 export function AppSidebar() {
   const { user, logout, isAdmin, isMasterTI, effectiveRole } = useAuth();
+  const { isSidebarItemVisible } = useModuleAccess();
   const { branding } = useBranding();
   const tenantContext = useOptionalTenant();
   const tenant = tenantContext?.tenant ?? null;
@@ -184,6 +186,9 @@ export function AppSidebar() {
   const _isUsuarioOrBelow = isSolicitanteOnly || effectiveRole === 'USUARIO';
   const _isAdminOrAbove = isAdmin || effectiveRole === 'MASTER_TI' || effectiveRole === 'SYSTEM_OWNER' || effectiveRole === 'SYSTEM_ADMIN';
   const isRestrictedRole = isSolicitanteOnly || isTechnicianOnly;
+
+  const filterByModule = (items: { title: string; url: string; icon: React.ElementType }[]) =>
+    items.filter((item) => isSidebarItemVisible(item.url));
 
   const renderMenuLink = (item: { title: string; url: string; icon: React.ElementType }) => (
     <SidebarMenuItem key={item.url}>
@@ -260,10 +265,10 @@ export function AppSidebar() {
           <SidebarGroupContent>
             <SidebarMenu>
               {isSolicitanteOnly
-                ? operadorMenuItems.map(renderMenuLink)
+                ? filterByModule(operadorMenuItems).map(renderMenuLink)
                 : isTechnicianOnly
-                  ? mecanicoMenuItems.map(renderMenuLink)
-                  : osMenuItems.map(renderMenuLink)
+                  ? filterByModule(mecanicoMenuItems).map(renderMenuLink)
+                  : filterByModule(osMenuItems).map(renderMenuLink)
               }
             </SidebarMenu>
           </SidebarGroupContent>
@@ -276,7 +281,7 @@ export function AppSidebar() {
             </SidebarGroupLabel>
             <SidebarGroupContent>
               <SidebarMenu>
-                {planejamentoMenuItems.map(renderMenuLink)}
+                {filterByModule(planejamentoMenuItems).map(renderMenuLink)}
               </SidebarMenu>
             </SidebarGroupContent>
           </SidebarGroup>
@@ -289,7 +294,7 @@ export function AppSidebar() {
             </SidebarGroupLabel>
             <SidebarGroupContent>
               <SidebarMenu>
-                {analisesMenuItems.map(renderMenuLink)}
+                {filterByModule(analisesMenuItems).map(renderMenuLink)}
               </SidebarMenu>
             </SidebarGroupContent>
           </SidebarGroup>
@@ -302,7 +307,7 @@ export function AppSidebar() {
             </SidebarGroupLabel>
             <SidebarGroupContent>
               <SidebarMenu>
-                {cadastroMenuItems.map(renderMenuLink)}
+                {filterByModule(cadastroMenuItems).map(renderMenuLink)}
               </SidebarMenu>
             </SidebarGroupContent>
           </SidebarGroup>
@@ -316,7 +321,7 @@ export function AppSidebar() {
               </SidebarGroupLabel>
               <SidebarGroupContent>
                 <SidebarMenu>
-                  {relatoriosMenuItems.map(renderMenuLink)}
+                  {filterByModule(relatoriosMenuItems).map(renderMenuLink)}
                 </SidebarMenu>
               </SidebarGroupContent>
             </SidebarGroup>
@@ -327,7 +332,7 @@ export function AppSidebar() {
               </SidebarGroupLabel>
               <SidebarGroupContent>
                 <SidebarMenu>
-                  {ssmaMenuItems.map(renderMenuLink)}
+                  {filterByModule(ssmaMenuItems).map(renderMenuLink)}
                 </SidebarMenu>
               </SidebarGroupContent>
             </SidebarGroup>
