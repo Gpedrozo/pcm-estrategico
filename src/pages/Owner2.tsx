@@ -631,7 +631,6 @@ export default function Owner() {
     return { total, erros, tenants, usuarios }
   }, [auditFiltered])
 
-
   function openCriticalAction(request: CriticalActionRequest) {
     setCriticalConfirmValue('')
     setCriticalRequest(request)
