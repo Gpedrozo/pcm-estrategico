@@ -283,15 +283,15 @@ export default function NovaOS() {
       });
     }
 
-    await log('CRIAR_OS', `Criação da O.S ${result.numero_os}`, formData.tag);
+    await log('CRIAR_OS', `Criação da O.S ${result.numero_os}`, tagValue);
     
     // Show success modal with print option
     setCreatedOS({
       id: result.id,
       numero_os: result.numero_os,
       data_solicitacao: result.data_solicitacao,
-      tag: formData.tag,
-      equipamento: selectedEquipamento?.nome || '',
+      tag: tagValue,
+      equipamento: equipamentoNome,
       problema: formData.problema,
       solicitante: formData.solicitante,
       tipo: formData.tipo,
@@ -429,44 +429,50 @@ export default function NovaOS() {
                           onValueChange={setTagSearch}
                         />
                         <CommandList>
-                          <CommandEmpty>
-                            <div className="py-3 text-center space-y-2">
-                              <p className="text-sm text-muted-foreground">Nenhum equipamento encontrado.</p>
-                              <Button
-                                type="button"
-                                variant="outline"
-                                size="sm"
-                                className="gap-1.5"
-                                onClick={handleOpenCadastroInline}
-                              >
-                                Não encontrou? Cadastrar ou continuar sem TAG
-                              </Button>
-                            </div>
-                          </CommandEmpty>
-                          <CommandGroup>
-                            {equipamentosAtivos
+                          {(() => {
+                            const filtered = equipamentosAtivos
                               .filter((eq) =>
                                 !tagSearch ||
                                 eq.tag.toLowerCase().includes(tagSearch.toLowerCase()) ||
                                 eq.nome.toLowerCase().includes(tagSearch.toLowerCase())
                               )
-                              .slice(0, 50)
-                              .map((eq) => (
-                                <CommandItem
-                                  key={eq.id}
-                                  value={eq.tag}
-                                  onSelect={() => {
-                                    handleTagChange(eq.tag);
-                                    setTagSearch('');
-                                    setTagComboOpen(false);
-                                  }}
-                                >
-                                  <Check className={`mr-2 h-4 w-4 ${formData.tag === eq.tag ? 'opacity-100' : 'opacity-0'}`} />
-                                  <span className="font-mono font-medium">{eq.tag}</span>
-                                  <span className="ml-2 text-muted-foreground">{eq.nome}</span>
-                                </CommandItem>
-                              ))}
-                          </CommandGroup>
+                              .slice(0, 50);
+                            return (
+                              <>
+                                {filtered.length === 0 && (
+                                  <div className="py-3 text-center space-y-2">
+                                    <p className="text-sm text-muted-foreground">Nenhum equipamento encontrado.</p>
+                                    <Button
+                                      type="button"
+                                      variant="outline"
+                                      size="sm"
+                                      className="gap-1.5"
+                                      onClick={handleOpenCadastroInline}
+                                    >
+                                      Não encontrou? Cadastrar ou continuar sem TAG
+                                    </Button>
+                                  </div>
+                                )}
+                                <CommandGroup>
+                                  {filtered.map((eq) => (
+                                    <CommandItem
+                                      key={eq.id}
+                                      value={eq.tag}
+                                      onSelect={() => {
+                                        handleTagChange(eq.tag);
+                                        setTagSearch('');
+                                        setTagComboOpen(false);
+                                      }}
+                                    >
+                                      <Check className={`mr-2 h-4 w-4 ${formData.tag === eq.tag ? 'opacity-100' : 'opacity-0'}`} />
+                                      <span className="font-mono font-medium">{eq.tag}</span>
+                                      <span className="ml-2 text-muted-foreground">{eq.nome}</span>
+                                    </CommandItem>
+                                  ))}
+                                </CommandGroup>
+                              </>
+                            );
+                          })()}
                         </CommandList>
                       </Command>
                     </PopoverContent>
@@ -478,10 +484,9 @@ export default function NovaOS() {
                 <Label>Equipamento</Label>
                 <Input
                   value={semTag ? equipamentoManual : (selectedEquipamento?.nome || '')}
-                  disabled={!semTag}
-                  className={semTag ? '' : 'bg-muted'}
-                  placeholder={semTag ? 'Descrição do equipamento' : 'Selecione uma TAG'}
-                  onChange={semTag ? (e) => setEquipamentoManual(e.target.value) : undefined}
+                  disabled
+                  className="bg-muted"
+                  placeholder={semTag ? 'Preenchido automaticamente' : 'Selecione uma TAG'}
                 />
               </div>
             </div>
