@@ -36,7 +36,7 @@ export function useModuleAccess(): ModuleAccessResult {
         .from('configuracoes_sistema')
         .select('valor')
         .eq('empresa_id', tenantId)
-        .eq('chave', 'modules')
+        .eq('chave', 'owner.modules')
         .maybeSingle()
 
       if (error) {

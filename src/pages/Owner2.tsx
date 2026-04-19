@@ -43,6 +43,7 @@ import {
   useOwner2Tickets,
   useOwner2Users,
 } from '@/hooks/useOwner2Portal'
+import { SYSTEM_MODULES, DEFAULT_MODULES } from '@/lib/moduleRegistry'
 import { OWNER_TABS, OWNER_TAB_LABELS, type OwnerTab, type CompanyCredentialNote, type CriticalActionRequest } from './owner2/owner2Types'
 import { normalizeEmail, resolveOwnerMasterEmail, safeArray, asObject, asBool, asNumber, statusColor, downloadCsv, TENANT_BASE_DOMAIN } from './owner2/owner2Helpers'
 import { SurfaceCard, MetricTile } from './owner2/owner2Components'
@@ -232,15 +233,12 @@ export default function Owner() {
   const [criticalRequest, setCriticalRequest] = useState<CriticalActionRequest | null>(null)
   const [criticalConfirmValue, setCriticalConfirmValue] = useState('')
 
-  const [moduleOs, setModuleOs] = useState(true)
-  const [modulePreventiva, setModulePreventiva] = useState(true)
-  const [modulePreditiva, setModulePreditiva] = useState(true)
-  const [moduleMateriais, setModuleMateriais] = useState(true)
-  const [moduleAuditoria, setModuleAuditoria] = useState(true)
+  const [moduleFlags, setModuleFlags] = useState<Record<string, boolean>>({ ...DEFAULT_MODULES })
 
   const [limitUsers, setLimitUsers] = useState('50')
   const [limitAssets, setLimitAssets] = useState('500')
   const [limitStorageMb, setLimitStorageMb] = useState('2048')
+  const [limitOrders, setLimitOrders] = useState('0')
 
   const [featureAi, setFeatureAi] = useState(true)
   const [featureApi, setFeatureApi] = useState(false)
@@ -431,15 +429,16 @@ export default function Owner() {
     const limits = asObject(current.limits)
     const features = asObject(current.features)
 
-    setModuleOs(asBool(modules.os, true))
-    setModulePreventiva(asBool(modules.preventiva, true))
-    setModulePreditiva(asBool(modules.preditiva, true))
-    setModuleMateriais(asBool(modules.materiais, true))
-    setModuleAuditoria(asBool(modules.auditoria, true))
+    const loadedFlags: Record<string, boolean> = { ...DEFAULT_MODULES }
+    for (const key of Object.keys(loadedFlags)) {
+      if (typeof modules[key] === 'boolean') loadedFlags[key] = modules[key] as boolean
+    }
+    setModuleFlags(loadedFlags)
 
     setLimitUsers(String(asNumber(limits.users, 50)))
     setLimitAssets(String(asNumber(limits.equipamentos, 500)))
     setLimitStorageMb(String(asNumber(limits.storage_mb, 2048)))
+    setLimitOrders(String(asNumber(limits.orders, 0)))
 
     setFeatureAi(asBool(features.ai, true))
     setFeatureApi(asBool(features.api, false))
@@ -1623,19 +1622,37 @@ export default function Owner() {
           {activeTab === 'configuracoes' && (
             <div className="grid gap-4 xl:grid-cols-2">
               <SurfaceCard title="Configurações operacionais" subtitle="Sem JSON/SQL. Ajustes por chave liga/desliga e limites simples.">
-                <div className="space-y-3">
-                  <h3 className="text-sm font-semibold">Módulos</h3>
-                  <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={moduleOs} onChange={(e) => setModuleOs(e.target.checked)} /> Ordens de serviço</label>
-                  <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={modulePreventiva} onChange={(e) => setModulePreventiva(e.target.checked)} /> Preventiva</label>
-                  <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={modulePreditiva} onChange={(e) => setModulePreditiva(e.target.checked)} /> Preditiva</label>
-                  <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={moduleMateriais} onChange={(e) => setModuleMateriais(e.target.checked)} /> Materiais</label>
-                  <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={moduleAuditoria} onChange={(e) => setModuleAuditoria(e.target.checked)} /> Auditoria</label>
+                <div className="space-y-4">
+                  <h3 className="text-sm font-semibold">Módulos do sistema</h3>
+                  {(['ordens', 'planejamento', 'analises', 'catalogos', 'relatorios', 'seguranca'] as const).map((section) => {
+                    const sectionLabels: Record<string, string> = { ordens: 'Ordens de Serviço', planejamento: 'Planejamento', analises: 'Análises', catalogos: 'Catálogos', relatorios: 'Relatórios', seguranca: 'Segurança' }
+                    const mods = SYSTEM_MODULES.filter((m) => m.section === section)
+                    if (mods.length === 0) return null
+                    return (
+                      <div key={section}>
+                        <p className="text-xs font-medium text-muted-foreground mb-1">{sectionLabels[section]}</p>
+                        <div className="grid gap-1 sm:grid-cols-2">
+                          {mods.map((mod) => (
+                            <label key={mod.key} className="flex items-center gap-2 text-sm" title={mod.description}>
+                              <input
+                                type="checkbox"
+                                checked={moduleFlags[mod.key] !== false}
+                                onChange={(e) => setModuleFlags((prev) => ({ ...prev, [mod.key]: e.target.checked }))}
+                              />
+                              {mod.label}
+                            </label>
+                          ))}
+                        </div>
+                      </div>
+                    )
+                  })}
                 </div>
 
-                <div className="mt-3 grid gap-2 sm:grid-cols-3">
+                <div className="mt-3 grid gap-2 sm:grid-cols-4">
                   <input className="rounded-lg border border-input bg-background px-2 py-2 text-sm" value={limitUsers} onChange={(e) => setLimitUsers(e.target.value)} placeholder="Limite usuários" />
                   <input className="rounded-lg border border-input bg-background px-2 py-2 text-sm" value={limitAssets} onChange={(e) => setLimitAssets(e.target.value)} placeholder="Limite equipamentos" />
                   <input className="rounded-lg border border-input bg-background px-2 py-2 text-sm" value={limitStorageMb} onChange={(e) => setLimitStorageMb(e.target.value)} placeholder="Armazenamento MB" />
+                  <input className="rounded-lg border border-input bg-background px-2 py-2 text-sm" value={limitOrders} onChange={(e) => setLimitOrders(e.target.value)} placeholder="Limite OS/mês (0=ilimitado)" />
                 </div>
 
                 <div className="mt-3 space-y-2">
@@ -1651,17 +1668,12 @@ export default function Owner() {
                   onClick={() => runAction('update_company_settings', {
                     empresa_id: companyId,
                     settings: {
-                      modules: {
-                        os: moduleOs,
-                        preventiva: modulePreventiva,
-                        preditiva: modulePreditiva,
-                        materiais: moduleMateriais,
-                        auditoria: moduleAuditoria,
-                      },
+                      modules: moduleFlags,
                       limits: {
                         users: Number(limitUsers || 0),
                         equipamentos: Number(limitAssets || 0),
                         storage_mb: Number(limitStorageMb || 0),
+                        orders: Number(limitOrders || 0),
                       },
                       features: {
                         ai: featureAi,
