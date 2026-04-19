@@ -1,4 +1,4 @@
-import { Suspense, useEffect, useRef } from 'react'
+﻿import { Suspense, useEffect, useRef, useState } from 'react'
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -134,15 +134,24 @@ const queryClient = new QueryClient({
   },
 });
 
+const ADMIN_GUARD_TIMEOUT_MS = 8_000;
+
 const AdminOnlyRoute = ({ children }: { children: React.ReactNode }) => {
   const { isAdmin, tenantId } = useAuth();
   const { data: hasTenantAdminPermission, isLoading } = usePermission("tenant.admin", tenantId);
+  const [timedOut, setTimedOut] = useState(false);
+
+  useEffect(() => {
+    if (!isLoading) return;
+    const t = setTimeout(() => setTimedOut(true), ADMIN_GUARD_TIMEOUT_MS);
+    return () => clearTimeout(t);
+  }, [isLoading]);
 
   if (isAdmin) {
     return <>{children}</>;
   }
 
-  if (isLoading) return null;
+  if (isLoading && !timedOut) return null;
 
   if (!hasTenantAdminPermission) {
     return <Navigate to="/dashboard" replace />;
@@ -511,6 +520,7 @@ function TenantRoutes() {
                   }
                 />
                 <Route path="/status" element={<SystemStatus />} />
+                <Route path="/instalar" element={<Instalar />} />
 
                 {/* Manual de Operação — 22 capítulos (dentro do AppLayout) */}
                 <Route path="/manuais-operacao" element={<ManualLayout basePath="/manuais-operacao" />}>
