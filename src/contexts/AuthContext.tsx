@@ -475,22 +475,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const loadImpersonation = async () => {
       try {
-        const raw = window.localStorage.getItem(IMPERSONATION_STORAGE_KEY);
+        const raw = window.sessionStorage.getItem(IMPERSONATION_STORAGE_KEY);
         if (!raw) return;
         const parsed = JSON.parse(raw) as ImpersonationSession;
         if (!parsed?.empresaId || !parsed?.startedAt) {
-          window.localStorage.removeItem(IMPERSONATION_STORAGE_KEY);
+          window.sessionStorage.removeItem(IMPERSONATION_STORAGE_KEY);
           return;
         }
         if (parsed.expiresAt && new Date(parsed.expiresAt).getTime() <= Date.now()) {
-          window.localStorage.removeItem(IMPERSONATION_STORAGE_KEY);
+          window.sessionStorage.removeItem(IMPERSONATION_STORAGE_KEY);
           return;
         }
 
         // Reject tampered localStorage impersonation sessions unless backend confirms validity.
         if (!parsed.id || !parsed.sessionToken) {
           // Missing validation tokens — reject unverified impersonation session.
-          window.localStorage.removeItem(IMPERSONATION_STORAGE_KEY);
+          window.sessionStorage.removeItem(IMPERSONATION_STORAGE_KEY);
           return;
         }
 
@@ -501,13 +501,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             impersonation_session_token: parsed.sessionToken,
           });
         } catch {
-          window.localStorage.removeItem(IMPERSONATION_STORAGE_KEY);
+          window.sessionStorage.removeItem(IMPERSONATION_STORAGE_KEY);
           return;
         }
 
         setImpersonation(parsed);
       } catch {
-        window.localStorage.removeItem(IMPERSONATION_STORAGE_KEY);
+        window.sessionStorage.removeItem(IMPERSONATION_STORAGE_KEY);
       }
     };
 
@@ -516,11 +516,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (!impersonation) {
-      window.localStorage.removeItem(IMPERSONATION_STORAGE_KEY);
+      window.sessionStorage.removeItem(IMPERSONATION_STORAGE_KEY);
       return;
     }
 
-    window.localStorage.setItem(IMPERSONATION_STORAGE_KEY, JSON.stringify(impersonation));
+    window.sessionStorage.setItem(IMPERSONATION_STORAGE_KEY, JSON.stringify(impersonation));
   }, [impersonation]);
 
   useEffect(() => {
@@ -1635,7 +1635,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
 
     setImpersonation(null);
-    window.localStorage.removeItem(IMPERSONATION_STORAGE_KEY);
+    window.sessionStorage.removeItem(IMPERSONATION_STORAGE_KEY);
     if (user?.id) clearAuthProfileCache(user.id);
     setUser(null);
     setSession(null);

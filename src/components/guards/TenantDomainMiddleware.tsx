@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useLocation } from 'react-router-dom'
 import { AlertTriangle, Loader2 } from 'lucide-react'
 import { useTenant } from '@/contexts/TenantContext'
@@ -31,6 +31,8 @@ export function TenantDomainMiddleware({ children }: { children: React.ReactNode
   const { isAuthenticated, authStatus, isHydrating, tenantId, isLoading: isAuthLoading } = useAuth()
   const location = useLocation()
   const mismatchTimerRef = useRef<number | null>(null)
+  // VULN-06: Track mismatch to block rendering during the reauth window
+  const [isTenantMismatch, setIsTenantMismatch] = useState(false);
 
   const hostname = window.location.hostname.toLowerCase()
   const isOwnerHost = isOwnerDomain(hostname)
@@ -72,6 +74,7 @@ export function TenantDomainMiddleware({ children }: { children: React.ReactNode
     if (!tenant?.id || !tenantId) return
 
     if (tenant.id !== tenantId) {
+      setIsTenantMismatch(true);
       mismatchTimerRef.current = window.setTimeout(() => {
         void forceTenantLocalReauth('tenant_mismatch')
       }, 1200)
@@ -110,6 +113,15 @@ export function TenantDomainMiddleware({ children }: { children: React.ReactNode
     && authStatus === 'unauthenticated'
   ) {
     return <>{children}</>
+  }
+
+  // VULN-06: Block render during tenant mismatch reauth window
+  if (isTenantMismatch) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    )
   }
 
   if (hostContext.isTenantSubdomain && isAuthenticated && (!tenant || error)) {
