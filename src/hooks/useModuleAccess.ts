@@ -56,6 +56,25 @@ export function useModuleAccess(): ModuleAccessResult {
           merged[key] = stored[key] as boolean
         }
       }
+
+      // E12: check for module expiration dates
+      const { data: expiryRow } = await supabase
+        .from('configuracoes_sistema')
+        .select('valor')
+        .eq('empresa_id', tenantId)
+        .eq('chave', 'owner.module_expiry')
+        .maybeSingle()
+
+      if (expiryRow?.valor && typeof expiryRow.valor === 'object') {
+        const expiry = expiryRow.valor as Record<string, string>
+        const now = new Date().toISOString()
+        for (const [key, expiresAt] of Object.entries(expiry)) {
+          if (expiresAt && expiresAt < now && merged[key]) {
+            merged[key] = false
+          }
+        }
+      }
+
       return merged
     },
     enabled: Boolean(tenantId) && !isSystemOwner,
