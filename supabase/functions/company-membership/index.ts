@@ -90,6 +90,11 @@ Deno.serve(async (req) => {
   if (body.action === "upsert_member") {
     if (!body.user_id || !body.role) return fail("user_id and role are required", 400, null, req);
 
+    // EF-15: Prevent self-role modification to avoid privilege escalation
+    if (body.user_id === auth.user.id) {
+      return fail("Cannot modify own role. Another admin must do this.", 403, null, req);
+    }
+
     // Security: whitelist assignable roles to prevent privilege escalation
     const TENANT_ASSIGNABLE_ROLES = ["ADMIN", "USUARIO", "TECHNICIAN", "SOLICITANTE", "VIEWER", "PLANNER", "MANAGER"];
     const normalizedRole = String(body.role).toUpperCase().trim();
