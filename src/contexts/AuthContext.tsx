@@ -1564,6 +1564,29 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     if (!empresaId) return { error: 'Domínio não autorizado para cadastro.' };
 
+    // E10: check user limit before signup
+    try {
+      const { data: limitsRow } = await supabase
+        .from('configuracoes_sistema')
+        .select('valor')
+        .eq('empresa_id', empresaId)
+        .eq('chave', 'owner.limits')
+        .maybeSingle();
+      const maxUsers = Number((limitsRow?.valor as Record<string, unknown>)?.usuarios ?? 0);
+      if (maxUsers > 0) {
+        const { count } = await supabase
+          .from('profiles')
+          .select('id', { count: 'exact', head: true })
+          .eq('empresa_id', empresaId)
+          .eq('status', 'ativo');
+        if (count !== null && count >= maxUsers) {
+          return { error: 'Limite de usuários da empresa atingido. Contate o administrador.' };
+        }
+      }
+    } catch {
+      // non-blocking: if limit check fails, allow signup (fail-open for UX)
+    }
+
     const { error } = await supabase.auth.signUp({
       email,
       password,
