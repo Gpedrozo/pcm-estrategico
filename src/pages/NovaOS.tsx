@@ -604,7 +604,7 @@ export default function NovaOS() {
               <Button 
                 type="submit" 
                 className="flex-1 gap-2 h-10"
-                disabled={createOSMutation.isPending || !formData.tag || !formData.tipo || !formData.solicitante || !problemaValido}
+                disabled={createOSMutation.isPending || (!semTag && !formData.tag) || (semTag && !equipamentoManual.trim()) || !formData.tipo || !formData.solicitante || !problemaValido}
               >
                 {createOSMutation.isPending ? (
                   <>
