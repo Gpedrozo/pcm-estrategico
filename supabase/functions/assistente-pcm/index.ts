@@ -241,6 +241,17 @@ Deno.serve(async (req: Request) => {
     // Rate limit: 10 AI calls per 60s per IP
     const asstIp = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? req.headers.get("x-real-ip") ?? "unknown";
     const rl = await enforceRateLimit(admin, { scope: "ai_assistente_pcm", identifier: `${scope.empresaId}:${asstIp}`, maxRequests: 10, windowSeconds: 60 });
+
+    // EF-18: Subscription gate — verify company has active subscription for AI
+    const { data: activeSub } = await admin
+      .from("assinaturas")
+      .select("id,status")
+      .eq("empresa_id", scope.empresaId)
+      .in("status", ["ativa", "active", "trialing"])
+      .limit(1);
+    if (!activeSub || activeSub.length === 0) {
+      return fail("Recurso IA requer assinatura ativa. Contate o administrador.", 403, null, req);
+    }
     if (!rl.allowed) return fail("Too many requests", 429, null, req);
 
     // Parse body

@@ -88,6 +88,17 @@ Deno.serve(async (req: Request) => {
     }
     console.log("[IA] Tenant OK, empresaId:", scope.empresaId);
 
+    // EF-18: Subscription gate — verify company has active subscription for AI
+    const { data: activeSub } = await supabase
+      .from("assinaturas")
+      .select("id,status")
+      .eq("empresa_id", scope.empresaId)
+      .in("status", ["ativa", "active", "trialing"])
+      .limit(1);
+    if (!activeSub || activeSub.length === 0) {
+      return fail("Recurso IA requer assinatura ativa. Contate o administrador.", 403, null, req);
+    }
+
     // ── 4. AI secrets ────────────────────────────────────────
     const AI_KEY = Deno.env.get("AI_GATEWAY_API_KEY");
     const AI_URL = Deno.env.get("AI_GATEWAY_URL") || "https://api.groq.com/openai/v1/chat/completions";

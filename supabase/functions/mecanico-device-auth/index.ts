@@ -141,6 +141,11 @@ Deno.serve(async (req: Request) => {
         return respond({ ok: false, error: "Dispositivos móveis desativados para esta empresa" }, req);
       }
 
+    // EF-09: Validate empresa is still active before trusting it in app_metadata
+    if (empresa.ativo === false || empresa.status === "inactive" || empresa.status === "suspended") {
+      return fail("Empresa inativa ou suspensa. Contate o administrador.", 403, null, req);
+    }
+
       // Check device limit
       const { count } = await admin
         .from("dispositivos_moveis")

@@ -1,5 +1,6 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { adminClient } from "../_shared/auth.ts";
+import { enforceRateLimit } from "../_shared/rateLimit.ts";
 
 declare const Deno: {
   env: {
@@ -218,13 +219,24 @@ Deno.serve(async (req: Request) => {
     });
   }
 
-  if (isRateLimited(req)) {
-    await logAlert("ASAAS_WEBHOOK_RATE_LIMITED", "warning", { ip: requestKey(req) });
-    return new Response(JSON.stringify({ error: "Too many requests" }), {
-      status: 429,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    // EF-16: Use DB-backed rate limiter instead of in-memory (survives deploys)
+    const webhookIp = requestKey(req);
+    const admin = adminClient();
+    const rl = await enforceRateLimit(admin, {
+      scope: "asaas_webhook",
+      identifier: webhookIp,
+      maxRequests: 150,
+      windowSeconds: 60,
     });
-  }
+    if (!rl.allowed) {
+      await logOperationalAlert("ASAAS_WEBHOOK_RATE_LIMITED", "warning", {
+        ip: webhookIp,
+      });
+      return new Response(JSON.stringify({ error: "Too many requests" }), {
+        status: 429,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
 
   if (!asaasWebhookToken) {
     console.error("[asaas-webhook] ASAAS_WEBHOOK_TOKEN not configured — rejecting request (fail-closed)");
