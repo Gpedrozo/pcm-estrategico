@@ -5136,6 +5136,10 @@ Deno.serve(async (req) => {
 
   if (body.action === "cleanup_company_data") {
     if (!body.empresa_id) return fail("empresa_id is required", 400, null, req);
+    // EF-02: Require confirmation phrase for destructive operations
+    if ((body.confirmation_phrase ?? "").trim() !== "CONFIRMO EXCLUSAO") {
+      return fail("Frase de confirmação inválida. Envie confirmation_phrase: 'CONFIRMO EXCLUSAO'", 400, null, req);
+    }
     const operationId = crypto.randomUUID();
 
     const passwordOk = await verifyActorPassword({
@@ -5230,6 +5234,10 @@ Deno.serve(async (req) => {
   }
 
   if (body.action === "purge_table_data") {
+    // EF-02: Require confirmation phrase for destructive operations
+    if ((body.confirmation_phrase ?? "").trim() !== "CONFIRMO EXCLUSAO") {
+      return fail("Frase de confirmação inválida. Envie confirmation_phrase: 'CONFIRMO EXCLUSAO'", 400, null, req);
+    }
     const tableName = (body.table_name ?? "").trim();
     if (!tableName) return fail("table_name is required", 400, null, req);
     const operationId = crypto.randomUUID();

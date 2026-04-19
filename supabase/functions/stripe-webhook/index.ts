@@ -115,7 +115,10 @@ async function handleSubscriptionChange(payload: Stripe.Subscription) {
       throw new Error("Default plan not found to create subscription");
     }
 
-    const empresaId = payload.metadata?.empresa_id;
+    const rawEmpresaId = payload.metadata?.empresa_id ?? "";
+    // EF-04: Validate empresa_id from Stripe metadata is a valid UUID
+    const uuidRe = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    const empresaId = uuidRe.test(rawEmpresaId) ? rawEmpresaId : null;
 
     if (!empresaId) {
       throw new Error("empresa_id missing in Stripe subscription metadata");

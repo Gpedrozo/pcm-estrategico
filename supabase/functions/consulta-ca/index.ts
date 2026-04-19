@@ -199,7 +199,12 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    const html = await response.text();
+    let html = await response.text();
+    // EF-05: Limit HTML size to prevent ReDoS on regex parsing
+    const MAX_HTML_SIZE = 512_000; // 512KB
+    if (html.length > MAX_HTML_SIZE) {
+      html = html.slice(0, MAX_HTML_SIZE);
+    }
 
     // Check if the page indicates CA not found
     if (
