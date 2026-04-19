@@ -4,6 +4,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import { equipamentosService } from '@/services/equipamentos.service';
 import { type EquipamentoFormData } from '@/schemas/equipamento.schema';
 import { writeAuditLog } from '@/lib/audit';
+import { usePlanLimits } from '@/hooks/usePlanLimits';
+import { supabase } from '@/integrations/supabase/client';
 
 export interface EquipamentoRow {
   id: string;
@@ -92,10 +94,20 @@ export function useCreateEquipamento() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const { tenantId } = useAuth();
+  const { limits, isOwnerBypass } = usePlanLimits();
 
   return useMutation({
     mutationFn: async (equipamento: EquipamentoInsert) => {
       if (!tenantId) throw new Error('Tenant não resolvido.');
+      if (!isOwnerBypass && limits.equipamentos > 0) {
+        const { count, error: countErr } = await supabase
+          .from('equipamentos')
+          .select('id', { count: 'exact', head: true })
+          .eq('empresa_id', tenantId);
+        if (!countErr && count !== null && count >= limits.equipamentos) {
+          throw new Error(`Limite de equipamentos atingido (${limits.equipamentos}). Solicite ao administrador a ampliação do plano.`);
+        }
+      }
       return equipamentosService.criar(equipamento as EquipamentoFormData, tenantId);
     },
     onSuccess: (data) => {
