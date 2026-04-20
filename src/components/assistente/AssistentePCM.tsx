@@ -55,8 +55,12 @@ export function AssistentePCM() {
     }
   }, [isOpen, activeTab]);
 
+  const MAX_PERGUNTA_LENGTH = 500;
+
+  const sanitizePromptInput = (s: string) => s.replace(/[<>{}[\]\\]/g, '').slice(0, MAX_PERGUNTA_LENGTH);
+
   const handleSendMessage = useCallback(async () => {
-    const text = chatInput.trim();
+    const text = sanitizePromptInput(chatInput.trim());
     if (!text || isTyping) return;
 
     const userMessage: ChatMessage = {
@@ -419,9 +423,10 @@ function ChatTab({
             ref={inputRef}
             type="text"
             value={chatInput}
-            onChange={(e) => setChatInput(e.target.value)}
+            onChange={(e) => setChatInput(e.target.value.slice(0, 500))}
             onKeyDown={handleKeyDown}
             placeholder="Digite sua dúvida..."
+            maxLength={500}
             className="flex-1 h-9 rounded-lg border border-input bg-background px-3 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary"
             disabled={isTyping}
           />
