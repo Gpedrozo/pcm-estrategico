@@ -16,6 +16,7 @@ import {
   consumeSessionTransferCode,
   getSessionTransferFromUrl,
 } from '@/lib/sessionTransfer';
+import { extractEdgeFunctionErrorAsync } from '@/lib/supabaseCompat';
 import { HANDOFF_FAILED_PARAM, resolveTenantHostSlug } from '@/lib/tenantLoginFlow';
 import { validateImpersonationSession } from '@/services/ownerPortal.service';
 import {
@@ -1449,8 +1450,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     });
 
     if (changeError) {
+      const changeErrorMessage = await extractEdgeFunctionErrorAsync(changeError, null);
       logger.warn('auth_change_password_function_failed_fallback_to_update_user', {
-        error: changeError.message ?? 'invoke_failed',
+        error: changeErrorMessage || 'invoke_failed',
       });
 
       const { error: fallbackChangeError } = await supabase.auth.updateUser({
@@ -1461,7 +1463,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       });
 
       if (fallbackChangeError) {
-        return { error: fallbackChangeError.message || changeError.message || 'Falha ao atualizar senha.' };
+        return { error: fallbackChangeError.message || changeErrorMessage || 'Falha ao atualizar senha.' };
       }
 
       const { data: fallbackUserResult } = await supabase.auth.getUser();

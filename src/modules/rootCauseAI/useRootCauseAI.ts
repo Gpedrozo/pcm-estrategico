@@ -2,7 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
-import { extractEdgeFunctionError } from '@/lib/supabaseCompat';
+import { extractEdgeFunctionErrorAsync } from '@/lib/supabaseCompat';
 import type { AIRootCauseAnalysis, AnalysisResponse } from './types';
 
 export function useAIAnalysisHistory(tag?: string) {
@@ -57,7 +57,7 @@ export function useGenerateAnalysis() {
       });
 
       if (error) {
-        throw new Error(extractEdgeFunctionError(error, data));
+        throw new Error(await extractEdgeFunctionErrorAsync(error, data));
       }
       if (data?.error) throw new Error(data.error);
       return data as AnalysisResponse;

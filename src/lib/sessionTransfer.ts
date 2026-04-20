@@ -1,6 +1,7 @@
 import type { Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { logger } from '@/lib/logger';
+import { extractEdgeFunctionErrorAsync } from '@/lib/supabaseCompat';
 
 const SESSION_TRANSFER_PARAM = 'session_transfer';
 const SESSION_LOOKUP_RETRIES = 5;
@@ -158,7 +159,7 @@ export async function createSessionTransferCode(sessionData: Session | null, tar
     logger.warn('session_transfer_create_failed', {
       targetHost: normalizedTargetHost,
       attempt,
-      error: error?.message ?? 'empty code',
+      error: await extractEdgeFunctionErrorAsync(error, data),
     });
 
     if (attempt < SESSION_TRANSFER_CREATE_RETRIES) {
@@ -221,7 +222,9 @@ export async function consumeSessionTransferCode(code: string, targetHost: strin
   });
 
   if (error) {
-    logger.warn('session_transfer_consume_code_failed', { error: error.message });
+    logger.warn('session_transfer_consume_code_failed', {
+      error: await extractEdgeFunctionErrorAsync(error, data),
+    });
     return null;
   }
 

@@ -29,6 +29,61 @@ export function extractEdgeFunctionError(
   return error?.message || 'Erro desconhecido na edge function';
 }
 
+/**
+ * Async version that also inspects Response-like `error.context`
+ * via `json()`/`text()` when available.
+ */
+export async function extractEdgeFunctionErrorAsync(
+  error: { message?: string; context?: unknown } | null,
+  data: unknown,
+): Promise<string> {
+  const syncMsg = extractEdgeFunctionError(error, data);
+
+  if (!error?.context || typeof error.context !== 'object') {
+    return syncMsg;
+  }
+
+  const context = error.context as {
+    clone?: () => unknown;
+    json?: () => Promise<unknown>;
+    text?: () => Promise<string>;
+  };
+
+  try {
+    const jsonReader = typeof context.clone === 'function' ? context.clone() as { json?: () => Promise<unknown> } : context;
+    if (typeof jsonReader?.json === 'function') {
+      const parsed = await jsonReader.json();
+      if (parsed && typeof parsed === 'object') {
+        const p = parsed as Record<string, unknown>;
+        const msg = String(p.error ?? p.message ?? '').trim();
+        if (msg) return msg;
+      }
+    }
+  } catch {
+    // Ignore and try text fallback.
+  }
+
+  try {
+    const textReader = typeof context.clone === 'function' ? context.clone() as { text?: () => Promise<string> } : context;
+    if (typeof textReader?.text === 'function') {
+      const text = String(await textReader.text()).trim();
+      if (text) {
+        try {
+          const parsed = JSON.parse(text) as Record<string, unknown>;
+          const msg = String(parsed?.error ?? parsed?.message ?? '').trim();
+          if (msg) return msg;
+        } catch {
+          return text;
+        }
+      }
+    }
+  } catch {
+    // Ignore and return sync fallback.
+  }
+
+  return syncMsg;
+}
+
 export function getSupabaseErrorMessage(error: unknown): string {
   if (!error || typeof error !== 'object') return '';
   if ('message' in error) return String((error as { message?: unknown }).message ?? '');
