@@ -246,6 +246,7 @@ export default function Programacao() {
             .from('planos_lubrificacao')
             .select('periodicidade,tipo_periodicidade')
             .eq('id', masterRow.origem_id)
+            .eq('empresa_id', tenantId!)
             .single();
           if (lubPlan && lubPlan.periodicidade > 0) {
             const tp = lubPlan.tipo_periodicidade || 'dias';
@@ -259,6 +260,7 @@ export default function Programacao() {
             .from('planos_preventivos')
             .select('frequencia_dias')
             .eq('id', masterRow.origem_id)
+            .eq('empresa_id', tenantId!)
             .single();
           if (prevPlan?.frequencia_dias && prevPlan.frequencia_dias > 0) {
             intervalDays = prevPlan.frequencia_dias;
@@ -356,7 +358,7 @@ export default function Programacao() {
     if (origemId && tenantId) {
       try {
         if (tipoEvt === 'preventiva') {
-          const { data: plano } = await supabase.from('planos_preventivos').select('*').eq('id', origemId).single();
+          const { data: plano } = await supabase.from('planos_preventivos').select('*').eq('id', origemId).eq('empresa_id', tenantId).single();
           planoData = plano as Record<string, unknown> | null;
           const { data: ativs } = await supabase
             .from('atividades_preventivas')
@@ -367,7 +369,7 @@ export default function Programacao() {
             .limit(200);
           atividadesPrev = (ativs || []) as typeof atividadesPrev;
         } else if (tipoEvt === 'lubrificacao') {
-          const { data: plano } = await supabase.from('planos_lubrificacao').select('*').eq('id', origemId).single();
+          const { data: plano } = await supabase.from('planos_lubrificacao').select('*').eq('id', origemId).eq('empresa_id', tenantId).single();
           planoData = plano as Record<string, unknown> | null;
           const { data: ativs } = await supabase
             .from('atividades_lubrificacao')
