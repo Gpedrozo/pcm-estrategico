@@ -65,15 +65,23 @@ export function buildTenantLoginUrl(
 
   const rawNext = String(options?.next ?? '').trim();
   if (rawNext) {
-    // Prevent open redirect — only allow same-origin relative paths
+    // Prevent open redirect — only allow same-origin relative paths.
+    // Block protocol-relative URLs (//evil.com), backslash tricks (/\evil.com),
+    // and encoded variants that browsers may resolve to a different origin.
+    const isSafeRelativePath = (p: string) =>
+      p.startsWith('/') && !p.startsWith('//') && !/^\/[\\@]/.test(p);
+
     try {
       const parsed = new URL(rawNext, window.location.origin);
       if (parsed.origin === window.location.origin) {
-        params.set('next', parsed.pathname + parsed.search);
+        const safePath = parsed.pathname + parsed.search;
+        if (isSafeRelativePath(safePath)) {
+          params.set('next', safePath);
+        }
       }
     } catch {
-      // If rawNext is already a relative path, use it directly after sanitization
-      if (rawNext.startsWith('/')) {
+      // If rawNext is already a relative path, use it directly after validation
+      if (isSafeRelativePath(rawNext)) {
         params.set('next', rawNext);
       }
     }

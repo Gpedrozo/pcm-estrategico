@@ -137,5 +137,37 @@ describe('tenantLoginFlow', () => {
       });
       expect(url).toContain('handoff_failed=1');
     });
+
+    it('accepts safe relative next path', () => {
+      const url = buildTenantLoginUrl('acme.gppis.com.br', {
+        next: '/dashboard',
+        protocol: 'https:',
+      });
+      expect(url).toContain('next=%2Fdashboard');
+    });
+
+    it('blocks protocol-relative open redirect (//evil.com)', () => {
+      const url = buildTenantLoginUrl('acme.gppis.com.br', {
+        next: '//evil.com',
+        protocol: 'https:',
+      });
+      expect(url).not.toContain('next=');
+    });
+
+    it('blocks backslash redirect (/\\evil.com)', () => {
+      const url = buildTenantLoginUrl('acme.gppis.com.br', {
+        next: '/\\evil.com',
+        protocol: 'https:',
+      });
+      expect(url).not.toContain('next=');
+    });
+
+    it('blocks absolute URL redirect', () => {
+      const url = buildTenantLoginUrl('acme.gppis.com.br', {
+        next: 'https://evil.com/steal',
+        protocol: 'https:',
+      });
+      expect(url).not.toContain('next=');
+    });
   });
 });
