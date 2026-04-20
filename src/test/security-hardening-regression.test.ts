@@ -118,7 +118,7 @@ describe('Security Hardening Regression Tests', () => {
 
     it('does NOT trust user_metadata for empresa_id', () => {
       // The context should use app_metadata, not user_metadata
-      expect(content).not.toMatch(/user_metadata\s*[\.\?]?\s*\.?\s*empresa_id/);
+      expect(content).not.toMatch(/user_metadata\s*[.?]?\s*\.?\s*empresa_id/);
     });
   });
 
