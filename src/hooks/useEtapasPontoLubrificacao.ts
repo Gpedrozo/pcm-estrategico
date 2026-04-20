@@ -28,9 +28,10 @@ export interface EtapaPontoLubrificacao {
  * Busca etapas de um ponto específico, ordenadas por `ordem`.
  */
 export function useEtapasByPonto(pontoId: string | null | undefined) {
+  const { tenantId } = useAuth();
   return useQuery({
-    queryKey: ['etapas_ponto_lubrificacao', pontoId],
-    enabled: !!pontoId,
+    queryKey: ['etapas_ponto_lubrificacao', pontoId, tenantId],
+    enabled: !!pontoId && !!tenantId,
     queryFn: async () => {
       const { data, error } = await (supabase as any)
         .from('etapas_ponto_lubrificacao')
@@ -48,9 +49,10 @@ export function useEtapasByPonto(pontoId: string | null | undefined) {
  * Retorna um Map<pontoId, EtapaPontoLubrificacao[]>.
  */
 export function useEtapasByPlano(pontoIds: string[] | undefined) {
+  const { tenantId } = useAuth();
   return useQuery({
-    queryKey: ['etapas_ponto_lubrificacao', 'batch', pontoIds],
-    enabled: !!pontoIds && pontoIds.length > 0,
+    queryKey: ['etapas_ponto_lubrificacao', 'batch', pontoIds, tenantId],
+    enabled: !!pontoIds && pontoIds.length > 0 && !!tenantId,
     queryFn: async () => {
       const { data, error } = await (supabase as any)
         .from('etapas_ponto_lubrificacao')
@@ -99,6 +101,7 @@ export function useCreateEtapa() {
       ordem?: number;
       _plano_id?: string;
     }) => {
+      if (!tenantId) throw new Error('tenantId obrigatório');
       const { _plano_id, ...payload } = input;
       const { data, error } = await (supabase as any)
         .from('etapas_ponto_lubrificacao')
@@ -122,6 +125,7 @@ export function useCreateEtapa() {
 export function useUpdateEtapa() {
   const qc = useQueryClient();
   const { toast } = useToast();
+  const { tenantId } = useAuth();
 
   return useMutation({
     mutationFn: async (input: {
@@ -133,6 +137,7 @@ export function useUpdateEtapa() {
       concluido?: boolean;
       observacoes?: string | null;
     }) => {
+      if (!tenantId) throw new Error('tenantId obrigatório');
       const { id, ponto_id, ...updates } = input;
       const { data, error } = await (supabase as any)
         .from('etapas_ponto_lubrificacao')
@@ -160,6 +165,7 @@ export function useDeleteEtapa() {
 
   return useMutation({
     mutationFn: async (input: { id: string; ponto_id: string }) => {
+      if (!tenantId) throw new Error('tenantId obrigatório');
       const { error } = await (supabase as any)
         .from('etapas_ponto_lubrificacao')
         .delete()

@@ -273,4 +273,32 @@ describe('Security Hardening Regression Tests', () => {
       });
     });
   });
+
+  // ═══════════════════════════════════════════
+  // 9. Etapas Ponto Lubrificação — Tenant Cache Isolation
+  // ═══════════════════════════════════════════
+  describe('useEtapasPontoLubrificacao — tenant isolation', () => {
+    const content = readSrc('hooks/useEtapasPontoLubrificacao.ts');
+
+    it('useEtapasByPonto includes tenantId in queryKey', () => {
+      const funcStart = content.indexOf('function useEtapasByPonto');
+      const funcBody = content.slice(funcStart, funcStart + 400);
+      expect(funcBody).toMatch(/queryKey:.*tenantId/);
+    });
+
+    it('useEtapasByPlano includes tenantId in queryKey', () => {
+      const funcStart = content.indexOf('function useEtapasByPlano');
+      const funcBody = content.slice(funcStart, funcStart + 400);
+      expect(funcBody).toMatch(/queryKey:.*tenantId/);
+    });
+
+    it('queries are guarded with enabled: !!tenantId', () => {
+      expect(content).toMatch(/enabled:.*&&\s*!!tenantId/);
+    });
+
+    it('all 3 mutations guard with tenantId check', () => {
+      const guards = content.match(/if \(!tenantId\) throw/g) || [];
+      expect(guards.length).toBeGreaterThanOrEqual(3);
+    });
+  });
 });
