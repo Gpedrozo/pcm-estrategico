@@ -133,7 +133,7 @@ Deno.serve(async (req: Request) => {
       // Validate empresa
       const { data: empresa, error: empErr } = await admin
         .from("empresas")
-        .select("id, slug, nome, dispositivos_moveis_ativos, max_dispositivos_moveis")
+        .select("id, slug, nome, ativo, status, dispositivos_moveis_ativos, max_dispositivos_moveis")
         .eq("id", qr.empresa_id)
         .single();
 
@@ -143,7 +143,7 @@ Deno.serve(async (req: Request) => {
 
     // EF-09: Validate empresa is still active before trusting it in app_metadata
     if (empresa.ativo === false || empresa.status === "inactive" || empresa.status === "suspended") {
-      return fail("Empresa inativa ou suspensa. Contate o administrador.", 403, null, req);
+      return respond({ ok: false, error: "Empresa inativa ou suspensa. Contate o administrador." }, req);
     }
 
       // Check device limit

@@ -111,14 +111,14 @@ async function resolveProfileAndTenant(admin: ReturnType<typeof createClient>, u
 
   const profileQuery = await admin
     .from("profiles")
-    .select("nome,email,empresa_id,tenant_id,force_password_change")
+    .select("nome,email,empresa_id,force_password_change")
     .eq("id", userId)
     .maybeSingle();
 
   if (!profileQuery.error && profileQuery.data) {
     profileNome = String(profileQuery.data.nome ?? profileNome);
     profileForcePasswordChange = Boolean(profileQuery.data.force_password_change);
-    tenantId = String(profileQuery.data.tenant_id ?? profileQuery.data.empresa_id ?? "").trim() || null;
+    tenantId = String(profileQuery.data.empresa_id ?? "").trim() || null;
   }
 
   const tenantUserQuery = await admin
