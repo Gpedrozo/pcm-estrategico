@@ -13,6 +13,7 @@ import {
   roleScopeDescription,
 } from '@/lib/manualRoleConfig';
 import { supabase } from '@/integrations/supabase/client';
+import { extractEdgeFunctionError } from '@/lib/supabaseCompat';
 
 type Tab = 'help' | 'chat';
 
@@ -85,9 +86,7 @@ export function AssistentePCM() {
       });
 
       if (error) {
-        // supabase.functions.invoke wraps non-2xx; real message may be in data
-        const realMsg = data?.error || data?.message || error.message || '';
-        throw new Error(realMsg);
+        throw new Error(extractEdgeFunctionError(error, data));
       }
 
       // Edge function can return error in body even with 200

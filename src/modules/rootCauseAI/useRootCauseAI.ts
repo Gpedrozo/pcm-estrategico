@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
+import { extractEdgeFunctionError } from '@/lib/supabaseCompat';
 import type { AIRootCauseAnalysis, AnalysisResponse } from './types';
 
 export function useAIAnalysisHistory(tag?: string) {
@@ -56,9 +57,7 @@ export function useGenerateAnalysis() {
       });
 
       if (error) {
-        // Supabase JS wraps non-2xx as generic message; real error is in data
-        const realMessage = data?.error || data?.message || error.message;
-        throw new Error(realMessage);
+        throw new Error(extractEdgeFunctionError(error, data));
       }
       if (data?.error) throw new Error(data.error);
       return data as AnalysisResponse;

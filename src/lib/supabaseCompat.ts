@@ -1,5 +1,34 @@
 import { logger } from '@/lib/logger';
 
+/**
+ * Extracts the real error message from a Supabase Edge Function invocation.
+ * When a function returns non-2xx, the SDK wraps it as a generic
+ * "Edge Function returned a non-2xx status code" but the actual body
+ * may be in `data`, `error.context`, or parseable from the error itself.
+ */
+export function extractEdgeFunctionError(
+  error: { message?: string; context?: unknown } | null,
+  data: unknown,
+): string {
+  // 1. Try data.error or data.message (our edge functions return { error: "..." })
+  if (data && typeof data === 'object') {
+    const d = data as Record<string, unknown>;
+    if (typeof d.error === 'string' && d.error) return d.error;
+    if (typeof d.message === 'string' && d.message) return d.message;
+  }
+
+  // 2. Try error.context (Supabase SDK v2.x stores response body here)
+  if (error?.context && typeof error.context === 'object') {
+    const ctx = error.context as Record<string, unknown>;
+    if (typeof ctx.error === 'string' && ctx.error) return ctx.error;
+    if (typeof ctx.message === 'string' && ctx.message) return ctx.message;
+    // context might be a Response object — can't read body synchronously
+  }
+
+  // 3. Fall back to error.message
+  return error?.message || 'Erro desconhecido na edge function';
+}
+
 export function getSupabaseErrorMessage(error: unknown): string {
   if (!error || typeof error !== 'object') return '';
   if ('message' in error) return String((error as { message?: unknown }).message ?? '');

@@ -29,6 +29,7 @@ import { useEquipamentos } from '@/hooks/useEquipamentos';
 import { useAuth } from '@/contexts/AuthContext';
 import { useFormDraft } from '@/hooks/useFormDraft';
 import { useDadosEmpresa } from '@/hooks/useDadosEmpresa';
+import { extractEdgeFunctionError } from '@/lib/supabaseCompat';
 import { SSMADashboard } from '@/components/ssma/SSMADashboard';
 import { FichaEPIPrintTemplate } from '@/components/ssma/FichaEPIPrintTemplate';
 import { FISPQDocumentos, type DocumentoAnexo } from '@/components/ssma/FISPQDocumentos';
@@ -305,7 +306,8 @@ export default function SSMA() {
     try {
       const { data, error } = await supabase.functions.invoke('consulta-ca', { body: { ca } });
       if (error) {
-        toast({ title: 'Erro ao consultar C.A.', description: error.message || 'Edge function indisponível. Verifique se foi deployada.', variant: 'destructive' });
+        const msg = extractEdgeFunctionError(error, data);
+        toast({ title: 'Erro ao consultar C.A.', description: msg || 'Edge function indisponível. Verifique se foi deployada.', variant: 'destructive' });
         return;
       }
       if (!data || data.error) {
