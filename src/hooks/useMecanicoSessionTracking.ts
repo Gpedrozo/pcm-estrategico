@@ -2,6 +2,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { writeAuditLog } from '@/lib/audit';
+import { logger } from '@/lib/logger';
 
 export interface MecanicoLoginSession {
   session_id: string;
@@ -59,7 +60,7 @@ export function useMecanicoLogin() {
       writeAuditLog({ action: 'MECANICO_LOGIN', table: 'mecanico_sessoes', empresaId: variables.empresa_id, source: 'useMecanicoSessionTracking' });
     },
     onError: (e: Error) => {
-      console.error('Login registration error:', e);
+      logger.warn('mecanico_login_registration_error', { error: e.message });
       toast({ title: 'Erro ao registrar login', description: e.message, variant: 'destructive' });
     },
   });
@@ -86,7 +87,7 @@ export function useMecanicoLogout() {
       writeAuditLog({ action: 'MECANICO_LOGOUT', table: 'mecanico_sessoes', source: 'useMecanicoSessionTracking' });
     },
     onError: (e: Error) => {
-      console.error('Logout registration error:', e);
+      logger.warn('mecanico_logout_registration_error', { error: e.message });
       // Don't show toast here - logout should always proceed even if logging fails
     },
   });
@@ -128,7 +129,7 @@ export function useMecanicoValidarCredenciais() {
       writeAuditLog({ action: 'MECANICO_VALIDAR_CREDENCIAIS', table: 'mecanico_sessoes', empresaId: variables.empresa_id, source: 'useMecanicoSessionTracking' });
     },
     onError: (e: Error) => {
-      console.error('Validation error:', e);
+      logger.warn('mecanico_validation_error', { error: e.message });
       toast({ title: 'Erro na validação', description: e.message, variant: 'destructive' });
     },
   });
@@ -244,7 +245,7 @@ export function saveEncryptedDeviceToken(token: string, empresa_id: string) {
     const encrypted = xorEncrypt(token, key);
     localStorage.setItem(`pcm_device_token_${empresa_id}`, encrypted);
   } catch (e) {
-    console.error('Encryption error:', e);
+    logger.warn('mecanico_encryption_error', { error: String(e) });
     // Fallback: save plain token
     localStorage.setItem(`pcm_device_token_${empresa_id}`, token);
   }
@@ -262,7 +263,7 @@ export function getEncryptedDeviceToken(empresa_id: string): string | null {
     const decrypted = xorDecrypt(encrypted, key);
     return decrypted;
   } catch (e) {
-    console.error('Decryption error:', e);
+    logger.warn('mecanico_decryption_error', { error: String(e) });
     return null;
   }
 }

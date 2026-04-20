@@ -5,6 +5,7 @@ import { upsertMaintenanceSchedule } from '@/services/maintenanceSchedule';
 import { insertWithColumnFallback, updateWithColumnFallback } from '@/lib/supabaseCompat';
 import { useAuth } from '@/contexts/AuthContext';
 import { writeAuditLog } from '@/lib/audit';
+import { logger } from '@/lib/logger';
 
 export interface InspecaoRow {
   id: string;
@@ -124,7 +125,7 @@ export function useCreateInspecao() {
           status: data.status || 'programado',
           responsavel: data.inspetor_nome,
         });
-      } catch { /* schedule sync best-effort */ }
+      } catch (e) { logger.warn('inspecao_schedule_sync_failed', { error: String(e) }); }
 
       return data as InspecaoRow;
     },
@@ -179,7 +180,7 @@ export function useUpdateInspecao() {
           status: data.status || 'programado',
           responsavel: data.inspetor_nome,
         });
-      } catch { /* schedule sync best-effort */ }
+      } catch (e) { logger.warn('inspecao_schedule_sync_failed', { error: String(e) }); }
 
       return data as InspecaoRow;
     },

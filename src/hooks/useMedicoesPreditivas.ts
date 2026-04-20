@@ -5,6 +5,7 @@ import { deleteMaintenanceSchedule, upsertMaintenanceSchedule } from '@/services
 import { insertWithColumnFallback, updateWithColumnFallback } from '@/lib/supabaseCompat';
 import { useAuth } from '@/contexts/AuthContext';
 import { writeAuditLog } from '@/lib/audit';
+import { logger } from '@/lib/logger';
 
 export interface MedicaoPreditivaRow {
   id: string;
@@ -143,7 +144,7 @@ export function useCreateMedicaoPreditiva() {
           status: data.status || 'programado',
           responsavel: data.responsavel_nome,
         });
-      } catch { /* schedule sync best-effort */ }
+      } catch (e) { logger.warn('medicao_schedule_sync_failed', { error: String(e) }); }
 
       return data as MedicaoPreditivaRow;
     },
@@ -212,7 +213,7 @@ export function useUpdateMedicaoPreditiva() {
             tipo_medicao: data.tipo_medicao,
           },
         });
-      } catch { /* audit best-effort */ }
+      } catch (e) { logger.warn('medicao_audit_failed', { error: String(e) }); }
 
       try {
         await upsertMaintenanceSchedule({
@@ -226,7 +227,7 @@ export function useUpdateMedicaoPreditiva() {
           status: data.status || 'programado',
           responsavel: data.responsavel_nome,
         });
-      } catch { /* schedule sync best-effort */ }
+      } catch (e) { logger.warn('medicao_schedule_sync_failed', { error: String(e) }); }
 
       return data as MedicaoPreditivaRow;
     },

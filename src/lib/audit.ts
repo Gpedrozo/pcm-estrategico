@@ -120,8 +120,8 @@ export async function writeAuditLog(input: AuditInput) {
         error: error.message,
       })
     }
-  } catch {
-    // fire-and-forget: never let audit break the caller
+  } catch (e) {
+    logger.warn('writeAuditLog_fire_and_forget_failed', { input: String(input?.action ?? ''), error: String(e) });
   }
 }
 
@@ -175,10 +175,8 @@ export async function auditCreate(args: {
       dadosDepois: args.dadosDepois,
       resultado: 'sucesso',
     })
-  } catch { /* fire-and-forget */ }
+  } catch (e) { logger.warn('audit_create_failed', { tabela: args.tabela, error: String(e) }); }
 }
-
-/** Entity update — stores before/after; RPC computes field-level diff automatically */
 export async function auditUpdate(args: {
   tabela: string
   recordId?: string | null
@@ -196,7 +194,7 @@ export async function auditUpdate(args: {
       dadosDepois: args.dadosDepois,
       resultado: 'sucesso',
     })
-  } catch { /* fire-and-forget */ }
+  } catch (e) { logger.warn('audit_update_failed', { tabela: args.tabela, error: String(e) }); }
 }
 
 /** Entity deletion — stores snapshot of deleted record */
@@ -216,7 +214,7 @@ export async function auditDelete(args: {
       dadosDepois: null,
       resultado: 'sucesso',
     })
-  } catch { /* fire-and-forget */ }
+  } catch (e) { logger.warn('audit_delete_failed', { tabela: args.tabela, error: String(e) }); }
 }
 
 /** Login attempt — records email, result, attempt count and error message */
@@ -243,7 +241,7 @@ export async function auditLogin(args: {
       resultado: args.resultado,
       mensagemErro: args.resultado === 'erro' ? (args.mensagemErro ?? 'Credenciais inválidas') : null,
     })
-  } catch { /* fire-and-forget */ }
+  } catch (e) { logger.warn('audit_login_failed', { email: args.email, error: String(e) }); }
 }
 
 /** Data export — records format, applied filters and record count */
@@ -268,5 +266,5 @@ export async function auditExport(args: {
       },
       resultado: 'sucesso',
     })
-  } catch { /* fire-and-forget */ }
+  } catch (e) { logger.warn('audit_export_failed', { tabela: args.tabela, error: String(e) }); }
 }
