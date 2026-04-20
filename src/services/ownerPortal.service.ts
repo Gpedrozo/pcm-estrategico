@@ -1,4 +1,5 @@
 import { supabase } from '@/integrations/supabase/client'
+import { logger } from '@/lib/logger'
 
 export type OwnerAction =
   | 'health_check'
@@ -500,7 +501,7 @@ export async function callOwnerAdmin<T = unknown>(payload: OwnerActionPayload) {
         if (isConnectionError && retryCount < maxRetries) {
           // Retry on connection errors with exponential backoff
           const delay = baseDelay * Math.pow(2, retryCount);
-          console.warn(`[Owner API] Connection error, retrying in ${delay}ms (attempt ${retryCount + 1}/${maxRetries})`);
+          logger.warn('owner_api_connection_retry', { delay, attempt: retryCount + 1, maxRetries });
           await new Promise(resolve => setTimeout(resolve, delay));
           return invokeWithToken(accessToken, retryCount + 1);
         }
@@ -517,7 +518,7 @@ export async function callOwnerAdmin<T = unknown>(payload: OwnerActionPayload) {
       const errMsg = String(err instanceof Error ? err.message : (err as Record<string, unknown>)?.message ?? '').toLowerCase();
       if ((errMsg.includes('failed to send') || errMsg.includes('network')) && retryCount < maxRetries) {
         const delay = baseDelay * Math.pow(2, retryCount);
-        console.warn(`[Owner API] Retry after connection error (attempt ${retryCount + 1}/${maxRetries})`);
+        logger.warn('owner_api_catch_retry', { attempt: retryCount + 1, maxRetries });
         await new Promise(resolve => setTimeout(resolve, delay));
         return invokeWithToken(accessToken, retryCount + 1);
       }
@@ -548,7 +549,7 @@ export async function callOwnerAdmin<T = unknown>(payload: OwnerActionPayload) {
     
     // Log connection errors for debugging
     if (isConnectionError) {
-      console.error('[Owner API] Edge Function connection failed after retries:', errorMsg);
+      logger.warn('owner_api_edge_function_failed', { error: errorMsg });
     }
     
     if (!isUnauthorizedOwnerError(error)) {

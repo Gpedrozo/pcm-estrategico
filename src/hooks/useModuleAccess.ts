@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query'
 import { useAuth } from '@/contexts/AuthContext'
 import { supabase } from '@/integrations/supabase/client'
 import { DEFAULT_MODULES, getModuleForRoute, getModuleForSidebarPath } from '@/lib/moduleRegistry'
+import { logger } from '@/lib/logger'
 
 export interface ModuleAccessResult {
   /** Map of module_key -> enabled boolean */
@@ -40,7 +41,7 @@ export function useModuleAccess(): ModuleAccessResult {
         .maybeSingle()
 
       if (error) {
-        console.warn('[useModuleAccess] Failed to load modules config:', error.message)
+        logger.warn('module_access_config_failed', { error: error.message })
         return DEFAULT_MODULES
       }
 

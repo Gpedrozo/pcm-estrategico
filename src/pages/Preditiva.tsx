@@ -35,6 +35,7 @@ import { useCreateOrdemServico } from '@/hooks/useOrdensServico';
 import { useHistoricoAlteracoesMedicao } from '@/hooks/useMedicoesPreditivas';
 import type { MedicaoPreditivaRow } from '@/hooks/useMedicoesPreditivas';
 import { writeAuditLog } from '@/lib/audit';
+import { logger } from '@/lib/logger';
 import { useFormDraft } from '@/hooks/useFormDraft';
 import { useLocation } from 'react-router-dom';
 import {
@@ -104,7 +105,7 @@ const useMedicoesPreditivas = (tenantId: string | null, allowedTags: string[], a
       }
 
       // Fallback para esquemas antigos sem empresa_id: filtra em memória pelos ativos do tenant.
-      console.warn('[Preditiva] Coluna empresa_id ausente — fallback de compatibilidade ativado');
+      logger.warn('preditiva_empresa_id_column_missing_fallback');
       const allRows = await supabase
         .from('medicoes_preditivas')
         .select('*')

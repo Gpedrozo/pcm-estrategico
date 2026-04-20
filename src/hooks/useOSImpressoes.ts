@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { logger } from '@/lib/logger';
 
 export interface OSImpressaoRow {
   id: string;
@@ -88,7 +89,7 @@ export function useRegistrarImpressao() {
 
       if (error) {
         // Falha silenciosa — não interrompe o fluxo de impressão
-        console.warn('[useRegistrarImpressao] falha ao registrar impressão:', error.message);
+        logger.warn('impressao_registration_failed', { error: error.message });
       }
     },
     onSuccess: (_data, { osId }) => {
