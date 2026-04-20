@@ -174,7 +174,7 @@ export function useAllComponentes(equipamentoId?: string) {
       if (error) throw error;
       return data as ComponenteEquipamento[];
     },
-    enabled: !!equipamentoId,
+    enabled: !!equipamentoId && !!tenantId,
   });
 }
 

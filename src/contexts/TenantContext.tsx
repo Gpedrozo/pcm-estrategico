@@ -217,7 +217,7 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
           id: empresaId,
           slug: fallbackSlug,
           name: fallbackSlug,
-          is_active: true,
+          is_active: false,
         });
         setError(null);
         logger.warn('tenant_resolution_company_not_found_fallback_applied', {
