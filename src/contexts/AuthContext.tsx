@@ -1583,7 +1583,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           return { error: 'Limite de usuários da empresa atingido. Contate o administrador.' };
         }
       }
-    } catch {
+    } catch (e) {
+      logger.warn('signup_limit_check_failed', { empresaId, error: String(e) });
       // non-blocking: if limit check fails, allow signup (fail-open for UX)
     }
 
@@ -1631,7 +1632,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         });
       }
     } catch (error) {
-      void error;
+      logger.warn('logout_audit_failed', { error: String(error) });
     }
 
     setImpersonation(null);

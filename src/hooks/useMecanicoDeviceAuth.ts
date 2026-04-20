@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { getDeviceConfig } from '@/lib/offlineSync';
 import { useAuth } from '@/contexts/AuthContext';
+import { logger } from '@/lib/logger';
 
 const MAX_RETRIES = 3;
 const RETRY_BASE_MS = 2000;
@@ -37,25 +38,25 @@ async function invokeWithRetry(
 
       // Se recebeu data com ok:false, é erro de negócio — não faz retry
       if (data && data.ok === false) {
-        console.warn(`[device-auth] erro de negócio:`, data.error);
+        logger.warn('device_auth_business_error', { error: data.error });
         return { data, networkError: null };
       }
 
       // Se error do supabase-js (ex: rede), faz retry
       if (error) {
         const msg = String(error.message || error);
-        console.error(`[device-auth] attempt ${attempt + 1}/${retries + 1}:`, msg);
+        logger.warn('device_auth_network_error', { attempt: attempt + 1, error: msg });
         if (attempt === retries) return { data: null, networkError: msg };
         await new Promise(r => setTimeout(r, RETRY_BASE_MS * (attempt + 1)));
         continue;
       }
 
       // Resposta inesperada — trata como erro
-      console.error(`[device-auth] unexpected response:`, data);
+      logger.warn('device_auth_unexpected_response', { attempt: attempt + 1 });
       if (attempt === retries) return { data, networkError: null };
       await new Promise(r => setTimeout(r, RETRY_BASE_MS * (attempt + 1)));
     } catch (networkErr: any) {
-      console.error(`[device-auth] attempt ${attempt + 1}/${retries + 1} exception:`, networkErr);
+      logger.warn('device_auth_exception', { attempt: attempt + 1, error: networkErr?.message || String(networkErr) });
       if (attempt === retries)
         return { data: null, networkError: networkErr?.message || String(networkErr) };
       await new Promise(r => setTimeout(r, RETRY_BASE_MS * (attempt + 1)));
@@ -122,7 +123,7 @@ export function useMecanicoDeviceAuth() {
         // Erro de negócio retornado pela edge function
         if (!data?.ok) {
           const msg = data?.error || 'Falha na autenticação do dispositivo';
-          console.error('[device-auth] business error:', msg, data?.detail);
+          logger.warn('device_auth_business_error', { error: msg });
           setError(humanizeError(msg));
           setIsLoading(false);
           return;
