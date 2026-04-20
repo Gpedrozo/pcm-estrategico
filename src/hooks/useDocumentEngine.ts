@@ -164,6 +164,7 @@ export function useNextDocumentNumber() {
             .from(DOCUMENT_SEQUENCES_TABLE)
             .update({ proximo_numero: proximoValor, updated_at: new Date().toISOString() })
             .eq('id', currentRow.id)
+            .eq('empresa_id', tenantId)
             .eq('proximo_numero', numeroAtual)
             .select('id');
 

@@ -57,13 +57,15 @@ export function useCancelOrdemServico() {
             .from('execucoes_preventivas')
             .delete()
             .eq('os_gerada_id', osId)
-            .eq('status', 'PENDENTE');
+            .eq('status', 'PENDENTE')
+            .eq('empresa_id', tenantId);
 
           await supabase
             .from('execucoes_lubrificacao')
             .delete()
             .eq('os_gerada_id', osId)
-            .eq('status', 'PENDENTE');
+            .eq('status', 'PENDENTE')
+            .eq('empresa_id', tenantId);
         } catch (rollbackErr) {
           // Não bloqueia o cancelamento — log para diagnóstico
           logger.warn('cancel_os_schedule_rollback_failed', {
