@@ -5,6 +5,11 @@ import { useToast } from '@/hooks/use-toast';
 import { useOptionalTenant } from '@/contexts/TenantContext';
 import { supabase } from '@/integrations/supabase/client';
 
+const MAX_CODIGO_LENGTH = 20;
+const MAX_SENHA_LENGTH = 128;
+const MAX_LOGIN_ATTEMPTS = 5;
+const LOCKOUT_DURATION_MS = 60_000;
+
 interface MecanicoLogado {
   id: string;
   nome: string;
@@ -44,6 +49,9 @@ export function PortalMecanicoProvider({ children }: { children: React.ReactNode
     try { return sessionStorage.getItem('portal_mecanico_session_id'); } catch { return null; }
   });
   const [isLoggingIn, setIsLoggingIn] = useState(false);
+
+  const loginAttemptsRef = useRef(0);
+  const lockoutUntilRef = useRef(0);
 
   const sessionIdRef = useRef(sessionId);
   useEffect(() => { sessionIdRef.current = sessionId; }, [sessionId]);
@@ -101,8 +109,20 @@ export function PortalMecanicoProvider({ children }: { children: React.ReactNode
 
   const login = useCallback((codigo: string, senha: string) => {
     const code = codigo.trim().toUpperCase();
-    if (!code || !senha.trim()) {
+    const pass = senha.trim();
+    if (!code || !pass) {
       toast({ title: 'Dados obrigatórios', description: 'Informe código e senha.', variant: 'destructive' });
+      return;
+    }
+
+    if (code.length > MAX_CODIGO_LENGTH || pass.length > MAX_SENHA_LENGTH) {
+      toast({ title: 'Dados inválidos', description: 'Código ou senha excede o tamanho máximo permitido.', variant: 'destructive' });
+      return;
+    }
+
+    if (Date.now() < lockoutUntilRef.current) {
+      const remainingSec = Math.ceil((lockoutUntilRef.current - Date.now()) / 1000);
+      toast({ title: 'Aguarde', description: `Muitas tentativas. Tente novamente em ${remainingSec}s.`, variant: 'destructive' });
       return;
     }
 
@@ -134,11 +154,16 @@ export function PortalMecanicoProvider({ children }: { children: React.ReactNode
         {
           empresa_id: empresaId,
           codigo_acesso: code,
-          senha_acesso: senha,
+          senha_acesso: pass,
         },
         {
           onSuccess: (result) => {
             if (!result.ok) {
+              loginAttemptsRef.current += 1;
+              if (loginAttemptsRef.current >= MAX_LOGIN_ATTEMPTS) {
+                lockoutUntilRef.current = Date.now() + LOCKOUT_DURATION_MS;
+                loginAttemptsRef.current = 0;
+              }
               toast({
                 title: `Erro: ${result.resultado}`,
                 description: result.motivo || 'Falha na validação',
@@ -150,6 +175,9 @@ export function PortalMecanicoProvider({ children }: { children: React.ReactNode
               setIsLoggingIn(false);
               return;
             }
+
+            loginAttemptsRef.current = 0;
+            lockoutUntilRef.current = 0;
 
             const id = result.mecanico_id || '';
 
