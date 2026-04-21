@@ -345,6 +345,27 @@ export default function RootCauseAIPage() {
         ].filter(Boolean).join('\n\n'),
       });
       created.push(`preventiva (${preventive.codigo})`);
+
+      // Auto-popular plano com atividades e serviços a partir do template
+      try {
+        const componentType = (matchedComponent?.tipo || 'compressor').toLowerCase();
+        const populateResp = await supabase.functions.invoke('montar-plano-da-template', {
+          body: {
+            plano_id: preventive.id,
+            tipo_componente: componentType,
+            empresa_id: tenantId,
+          },
+        });
+
+        if (populateResp.data?.success) {
+          console.log(`[RCA] Plano auto-populado: ${populateResp.data.stats?.atividadesInseridas || 0} atividades, ${populateResp.data.stats?.servicosInseridos || 0} serviços`);
+        } else {
+          console.warn(`[RCA] Auto-população parcial ou falhada:`, populateResp.data?.message);
+        }
+      } catch (populateErr) {
+        console.warn(`[RCA] Erro ao chamar função de auto-população:`, populateErr instanceof Error ? populateErr.message : 'desconhecido');
+        // Não falha o fluxo principal se a auto-população falhar
+      }
     } catch (error) {
       failures.push(`preventiva: ${error instanceof Error ? error.message : 'erro desconhecido'}`);
     }
