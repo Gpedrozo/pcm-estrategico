@@ -15,6 +15,7 @@ import { useAIAnalysisHistory, useGenerateAnalysis, useDeleteAnalysis } from './
 import { useCreateOrdemServico } from '@/hooks/useOrdensServico';
 import { useCreateMelhoria } from '@/hooks/useMelhorias';
 import { useCreatePlanoPreventivo } from '@/hooks/usePlanosPreventivos';
+import { useCreateAtividade, useCreateServico } from '@/hooks/useAtividadesPreventivas';
 import { useCreatePlanoLubrificacao } from '@/hooks/useLubrificacao';
 import { useCreatePontoPlano } from '@/hooks/usePontosPlano';
 import { useUpsertMaintenanceSchedule } from '@/hooks/useMaintenanceSchedule';
@@ -128,10 +129,28 @@ export default function RootCauseAIPage() {
   const createOSMutation = useCreateOrdemServico();
   const createMelhoriaMutation = useCreateMelhoria();
   const createPlanoPreventivoMutation = useCreatePlanoPreventivo();
+  const createAtividadeMutation = useCreateAtividade();
+  const createServicoMutation = useCreateServico();
   const createPlanoLubrificacaoMutation = useCreatePlanoLubrificacao();
   const createPontoPlanoMutation = useCreatePontoPlano();
   const upsertMaintenanceScheduleMutation = useUpsertMaintenanceSchedule();
   const nextDocNumber = useNextDocumentNumber();
+
+  const normalizeComponentType = (raw: string | undefined | null): string => {
+    if (!raw) return 'compressor';
+    const normalized = raw
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .trim();
+
+    if (normalized.includes('compressor')) return 'compressor';
+    if (normalized.includes('motor')) return 'motor';
+    if (normalized.includes('bomba')) return 'bomba';
+    if (normalized.includes('redutor')) return 'redutor';
+    if (normalized.includes('rolamento')) return 'rolamento';
+    return 'generico';
+  };
 
   const handleDelete = (e: React.MouseEvent, id: string) => {
     e.stopPropagation();
@@ -231,16 +250,14 @@ export default function RootCauseAIPage() {
     const codigo = await nextDocNumber.mutateAsync('PREVENTIVA');
     const freq = Math.max(7, Math.min(365, Number(suggestion.suggested_frequency_days ?? Math.floor((currentResult.mtbf_days ?? 45) * 0.7))));
 
+    const componente = suggestion.recurring_component || 'componente crítico';
     const instrucoesGeradas = [
-      `Origem: Inteligência IA para TAG ${selectedTag}.`,
-      `Componente recorrente: ${suggestion.recurring_component || 'N/A'}.`,
-      `Motivo estratégico: ${suggestion.strategic_reason || 'Reduzir recorrência de falha.'}`,
-      currentResult.analysis.recommended_solution ? `Solução corretiva base: ${currentResult.analysis.recommended_solution}` : null,
-      currentResult.analysis.preventive_actions?.length ? `Ações preventivas:\n- ${currentResult.analysis.preventive_actions.join('\n- ')}` : null,
-      suggestion.stock_recommendations?.length ? `Recomendação de estoque:\n- ${suggestion.stock_recommendations.join('\n- ')}` : null,
-    ].filter(Boolean).join('\n\n');
+      `Executar o checklist de atividades e sub-atividades deste plano para o componente ${componente}.`,
+      'Registrar evidências e anomalias durante a execução.',
+      currentResult.analysis.recommended_solution ? `Base técnica: ${currentResult.analysis.recommended_solution}` : null,
+    ].filter(Boolean).join(' ');
 
-    await createPlanoPreventivoMutation.mutateAsync({
+    const planoCriado = await createPlanoPreventivoMutation.mutateAsync({
       codigo,
       nome: suggestion.plan_name || `Plano IA - ${selectedTag}`,
       descricao: `Plano sugerido por IA para reduzir falhas recorrentes do componente ${suggestion.recurring_component || 'crítico'}.`,
@@ -252,9 +269,76 @@ export default function RootCauseAIPage() {
       instrucoes: instrucoesGeradas,
     });
 
+    let populadoPorTemplate = false;
+
+    try {
+      const { data, error } = await supabase.functions.invoke('montar-plano-da-template', {
+        body: {
+          plano_id: planoCriado.id,
+          tipo_componente: normalizeComponentType(suggestion.recurring_component),
+        },
+      });
+
+      if (!error) {
+        const atividadesInseridas = Number((data as { atividadesInseridas?: number } | null)?.atividadesInseridas || 0);
+        const servicosInseridos = Number((data as { servicosInseridos?: number } | null)?.servicosInseridos || 0);
+        populadoPorTemplate = atividadesInseridas > 0 || servicosInseridos > 0;
+      }
+    } catch {
+      populadoPorTemplate = false;
+    }
+
+    if (!populadoPorTemplate) {
+      const preventiveActions = (currentResult.analysis.preventive_actions || []).filter(Boolean);
+      const stockRecommendations = (suggestion.stock_recommendations || []).filter(Boolean);
+      const fallbackActions = preventiveActions.length
+        ? preventiveActions
+        : [
+            `Inspecionar condição geral do ${componente}`,
+            `Validar parâmetros operacionais do ${componente}`,
+            `Registrar resultado da inspeção e liberar equipamento`,
+          ];
+
+      const atividadeExecucao = await createAtividadeMutation.mutateAsync({
+        plano_id: planoCriado.id,
+        nome: 'Execução preventiva orientada por IA',
+        ordem: 1,
+      });
+
+      for (let i = 0; i < fallbackActions.length; i += 1) {
+        await createServicoMutation.mutateAsync({
+          atividade_id: atividadeExecucao.id,
+          descricao: fallbackActions[i],
+          tempo_estimado_min: 15,
+          ordem: i + 1,
+          _plano_id: planoCriado.id,
+        });
+      }
+
+      if (stockRecommendations.length > 0) {
+        const atividadeMateriais = await createAtividadeMutation.mutateAsync({
+          plano_id: planoCriado.id,
+          nome: 'Preparação de materiais e sobressalentes',
+          ordem: 2,
+        });
+
+        for (let i = 0; i < stockRecommendations.length; i += 1) {
+          await createServicoMutation.mutateAsync({
+            atividade_id: atividadeMateriais.id,
+            descricao: stockRecommendations[i],
+            tempo_estimado_min: 10,
+            ordem: i + 1,
+            _plano_id: planoCriado.id,
+          });
+        }
+      }
+    }
+
     toast({
       title: 'Plano preventivo criado',
-      description: 'A recomendação estratégica da IA foi convertida em plano preventivo.',
+      description: populadoPorTemplate
+        ? 'Plano criado com atividades e sub-atividades preenchidas por template.'
+        : 'Plano criado com atividades e sub-atividades estruturadas automaticamente.',
     });
   };
 

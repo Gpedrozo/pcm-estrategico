@@ -33,6 +33,17 @@ const formatMin = (min: number) => {
   return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
 };
 
+const extractChecklistFromInstructions = (instrucoes: string | null | undefined): string[] => {
+  if (!instrucoes) return [];
+
+  return instrucoes
+    .split('\n')
+    .map((line) => line.trim())
+    .filter((line) => line.startsWith('- ') || /^\d+[.)]\s+/.test(line))
+    .map((line) => line.replace(/^-\s+/, '').replace(/^\d+[.)]\s+/, '').trim())
+    .filter(Boolean);
+};
+
 export const PreventivaPrintTemplate = forwardRef<HTMLDivElement, PreventivaPrintTemplateProps>(
   ({ data, empresa, documentNumber, layoutVersion }, ref) => {
     const { plano, atividades, tempoTotal } = data;
@@ -41,6 +52,11 @@ export const PreventivaPrintTemplate = forwardRef<HTMLDivElement, PreventivaPrin
     const proximaExec = plano.proxima_execucao
       ? format(new Date(plano.proxima_execucao), 'dd/MM/yyyy', { locale: ptBR })
       : 'N/A';
+    const checklistFallback = Array.isArray(plano.checklist)
+      ? plano.checklist.map((item) => item?.descricao).filter(Boolean)
+      : [];
+    const itensInstrucoes = extractChecklistFromInstructions(plano.instrucoes);
+    const itensFallback = checklistFallback.length > 0 ? checklistFallback : itensInstrucoes;
 
     const tipoGatilho: Record<string, string> = {
       TEMPO: 'Tempo', CICLO: 'Ciclo', CONDICAO: 'Condição',
@@ -119,7 +135,28 @@ export const PreventivaPrintTemplate = forwardRef<HTMLDivElement, PreventivaPrin
             </div>
           ))}
 
-          {atividades.length === 0 && (
+          {atividades.length === 0 && itensFallback.length > 0 && (
+            <div>
+              <div className="flex border-b border-black text-[8px] font-bold text-gray-500">
+                <div className="w-[8mm] border-r border-black p-1 text-center">#</div>
+                <div className="flex-1 p-1 pl-3">CHECKLIST DE EXECUÇÃO</div>
+                <div className="w-[18mm] border-l border-black p-1 text-center">TEMPO</div>
+                <div className="w-[14mm] border-l border-black p-1 text-center">OK</div>
+              </div>
+              {itensFallback.map((item, idx) => (
+                <div key={`fallback-${idx}`} className="flex border-b border-black text-[9px]">
+                  <div className="w-[8mm] border-r border-black p-1 text-center text-gray-400 text-[8px]">{idx + 1}</div>
+                  <div className="flex-1 p-1 pl-3">{item}</div>
+                  <div className="w-[18mm] border-l border-black p-1 text-center font-mono text-[8px]">--:--</div>
+                  <div className="w-[14mm] border-l border-black p-1 flex items-center justify-center">
+                    <span className="inline-block w-3.5 h-3.5 border border-black"></span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {atividades.length === 0 && itensFallback.length === 0 && (
             <div className="p-3 text-center text-[9px] text-gray-400">Nenhuma atividade cadastrada</div>
           )}
         </div>
