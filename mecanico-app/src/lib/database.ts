@@ -261,6 +261,13 @@ export async function clearDeviceConfig(): Promise<void> {
   await database.runAsync('DELETE FROM device_config');
 }
 
+export async function removeDeviceConfigKeys(keys: string[]): Promise<void> {
+  if (!keys.length) return;
+  const database = await getDB();
+  const placeholders = keys.map(() => '?').join(',');
+  await database.runAsync(`DELETE FROM device_config WHERE key IN (${placeholders})`, keys);
+}
+
 // ============================================================
 // AutoSave helpers
 // ============================================================

@@ -20,6 +20,7 @@ import {
   upsertRequisicao,
   upsertSolicitacao,
   getDeviceConfig,
+  removeDeviceConfigKeys,
   saveDeviceConfig,
 } from './database';
 
@@ -119,6 +120,7 @@ async function uploadPhoto(db: SupabaseClient, execucaoId: string, localUri: str
 
 // Module-level cached access token for authenticated queries
 let cachedAccessToken: string | null = null;
+let legacyTokenCachePurged = false;
 
 /** Decode JWT payload and check expiration (with 60s buffer) */
 function isTokenExpired(token: string): boolean {
@@ -159,11 +161,7 @@ async function reauthViaEdgeFunction(): Promise<string | null> {
     logger.info('sync', 'got fresh access_token from edge function');
     cachedAccessToken = data.access_token;
 
-    // Persist token in SQLite
-    await saveDeviceConfig('access_token', data.access_token);
-    if (data.refresh_token) {
-      await saveDeviceConfig('refresh_token', data.refresh_token);
-    }
+    // Security hardening: never persist auth tokens in SQLite device_config.
 
     // Also try setSession (best-effort, non-blocking)
     supabase.auth.setSession({
@@ -185,10 +183,15 @@ async function reauthViaEdgeFunction(): Promise<string | null> {
  * Get a VALID (non-expired) access token from:
  * 1. Existing supabase session (auto-refreshed)
  * 2. Module-level cached token (if not expired)
- * 3. Persisted token in SQLite (if not expired)
- * 4. Edge function re-auth using device_token
+ * 3. Edge function re-auth using device_token
  */
 export async function getAccessToken(): Promise<string | null> {
+  // One-time cleanup for legacy versions that cached tokens in SQLite.
+  if (!legacyTokenCachePurged) {
+    await removeDeviceConfigKeys(['access_token', 'refresh_token']);
+    legacyTokenCachePurged = true;
+  }
+
   // 1. Check existing supabase session (supabase-js auto-refreshes)
   try {
     const { data: { session } } = await supabase.auth.getSession();
@@ -204,34 +207,7 @@ export async function getAccessToken(): Promise<string | null> {
     return cachedAccessToken;
   }
 
-  // 3. Check persisted token in SQLite (if not expired)
-  const persistedToken = await getDeviceConfig('access_token');
-  if (persistedToken && !isTokenExpired(persistedToken)) {
-    logger.info('sync', 'using persisted access_token from device_config');
-    cachedAccessToken = persistedToken;
-    return persistedToken;
-  }
-
-  // 4. Try refresh_token first
-  const refreshToken = await getDeviceConfig('refresh_token');
-  if (refreshToken) {
-    try {
-      const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession({
-        refresh_token: refreshToken,
-      });
-      if (!refreshError && refreshData?.session?.access_token) {
-        logger.info('sync', 'token refreshed successfully');
-        cachedAccessToken = refreshData.session.access_token;
-        await saveDeviceConfig('access_token', refreshData.session.access_token);
-        if (refreshData.session.refresh_token) {
-          await saveDeviceConfig('refresh_token', refreshData.session.refresh_token);
-        }
-        return refreshData.session.access_token;
-      }
-    } catch { /* fallback to edge function re-auth when refresh fails */ }
-  }
-
-  // 5. Last resort: re-auth via edge function
+  // 3. Last resort: re-auth via edge function
   return reauthViaEdgeFunction();
 }
 
@@ -291,7 +267,6 @@ export async function pullData(empresaId: string, forceFullRefresh = false, db?:
     if (isAuthError(osError) && !_isRetry) {
       logger.warn('sync', 'auth error detected — clearing token and retrying...');
       clearCachedToken();
-      await saveDeviceConfig('access_token', '');
       const freshToken = await getAccessToken();
       if (freshToken) {
         const freshDb = createAuthenticatedClient(freshToken);
