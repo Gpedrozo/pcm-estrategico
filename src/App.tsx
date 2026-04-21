@@ -512,11 +512,7 @@ function TenantRoutes() {
                 />
                 <Route
                   path="/inteligencia-causa-raiz"
-                  element={
-                    <AdminOnlyRoute>
-                      <RootCauseAIPage />
-                    </AdminOnlyRoute>
-                  }
+                  element={<RootCauseAIPage />}
                 />
                 <Route path="/status" element={<SystemStatus />} />
                 <Route path="/instalar" element={<Instalar />} />
