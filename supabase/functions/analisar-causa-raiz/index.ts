@@ -352,6 +352,20 @@ Deno.serve(async (req: Request) => {
       })
       .slice(0, 5);
 
+    // Solicitações canceladas/rejeitadas
+    const solicitCanceladas = (solicitacoes || []).filter((s: any) => s.status === "CANCELADA" || s.status === "REJEITADA");
+    const solicitConvertidas = (solicitacoes || []).filter((s: any) => s.status === "CONVERTIDA" || s.status === "APROVADA");
+
+    // Paradas
+    let tempoParadaTotal = 0;
+    const tiposParada: Record<string, number> = {};
+    for (const p of (paradas || [])) {
+      tiposParada[p.tipo] = (tiposParada[p.tipo] || 0) + 1;
+      if (p.inicio && p.fim) {
+        tempoParadaTotal += (new Date(p.fim).getTime() - new Date(p.inicio).getTime()) / 3_600_000;
+      }
+    }
+
     const hasStrongComponentRecurrence = (recurringComponents[0]?.eventos || 0) >= 2;
     const hasRelevantFailures = corretivas.length >= 3;
     const hasDowntimeSignal = tempoParadaTotal >= 4;
@@ -384,20 +398,6 @@ Deno.serve(async (req: Request) => {
     }
     if (execPrev.length === 0 && (planosPreventivos || []).length > 0) {
       crossModuleFindings.push("Existem planos preventivos cadastrados sem execução recente registrada.");
-    }
-
-    // Solicitações canceladas/rejeitadas
-    const solicitCanceladas = (solicitacoes || []).filter((s: any) => s.status === "CANCELADA" || s.status === "REJEITADA");
-    const solicitConvertidas = (solicitacoes || []).filter((s: any) => s.status === "CONVERTIDA" || s.status === "APROVADA");
-
-    // Paradas
-    let tempoParadaTotal = 0;
-    const tiposParada: Record<string, number> = {};
-    for (const p of (paradas || [])) {
-      tiposParada[p.tipo] = (tiposParada[p.tipo] || 0) + 1;
-      if (p.inicio && p.fim) {
-        tempoParadaTotal += (new Date(p.fim).getTime() - new Date(p.inicio).getTime()) / 3_600_000;
-      }
     }
 
     // Sanitize descriptions against prompt injection
@@ -743,7 +743,7 @@ Deno.serve(async (req: Request) => {
       ? Math.round(dtReduction * 10) / 10
       : null;
 
-    if (corretivas.length < 3) {
+    if (corretivas.length < 2) {
       analysis.preventive_plan_suggestion.should_create_plan = false;
       analysis.recurrence_insights = [
         `Dados insuficientes para recorrência robusta (${corretivas.length} corretivas). Recomenda-se acumular mais histórico ou ampliar o período analisado.`,
@@ -772,7 +772,9 @@ Deno.serve(async (req: Request) => {
       }
     }
 
-    const deterministicShouldCreatePlan = recurrenceSignalScore >= 60 && corretivas.length >= 3;
+    const deterministicShouldCreatePlan =
+      (recurrenceSignalScore >= 60 && corretivas.length >= 2) ||
+      (corretivas.length >= 2 && mtbf > 0 && mtbf <= 10);
     if (deterministicShouldCreatePlan) {
       analysis.preventive_plan_suggestion.should_create_plan = true;
       if (!analysis.preventive_plan_suggestion.plan_name || /^Plano preventivo IA -/i.test(analysis.preventive_plan_suggestion.plan_name)) {
