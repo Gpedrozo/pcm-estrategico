@@ -28,6 +28,9 @@ export interface PreventivePlanSuggestion {
   recurrence_interval_days: number | null;
   stock_recommendations: string[];
   expected_downtime_reduction_hours: number | null;
+  confidence_to_create_plan?: number;
+  deterministic_triggered?: boolean;
+  source_evidence?: string[];
 }
 
 export interface AnalysisResponse {
@@ -41,6 +44,8 @@ export interface AnalysisResponse {
     preventive_actions: string[];
     recommended_improvements?: string[];
     recurrence_insights?: string[];
+    cross_module_findings?: string[];
+    planning_priority_score?: number;
     preventive_plan_suggestion?: PreventivePlanSuggestion;
     criticality: string;
     confidence_score: number;

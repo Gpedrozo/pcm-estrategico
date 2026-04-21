@@ -352,6 +352,40 @@ Deno.serve(async (req: Request) => {
       })
       .slice(0, 5);
 
+    const hasStrongComponentRecurrence = (recurringComponents[0]?.eventos || 0) >= 2;
+    const hasRelevantFailures = corretivas.length >= 3;
+    const hasDowntimeSignal = tempoParadaTotal >= 4;
+    const hasRiskSignal = (fmeaRows || []).some((f: any) => Number(f.rpn) >= 120);
+    const hasPredictiveAlert = (medicoesPreditivas || []).some((m: any) => String(m.status || "").toUpperCase().includes("CRIT"));
+    const hasInspectionOpenAnomaly = (anomaliasInspecao || []).some((a: any) => String(a.status || "").toUpperCase() !== "RESOLVIDA");
+
+    const recurrenceSignalScore = [
+      hasRelevantFailures ? 35 : corretivas.length >= 2 ? 18 : 0,
+      hasStrongComponentRecurrence ? 25 : recurringComponents.length > 0 ? 12 : 0,
+      mtbf > 0 && mtbf <= 45 ? 15 : mtbf > 0 && mtbf <= 75 ? 8 : 0,
+      hasDowntimeSignal ? 10 : 0,
+      hasRiskSignal ? 8 : 0,
+      hasPredictiveAlert ? 5 : 0,
+      hasInspectionOpenAnomaly ? 2 : 0,
+    ].reduce((acc, item) => acc + item, 0);
+
+    const crossModuleFindings: string[] = [];
+    if (hasRiskSignal) {
+      crossModuleFindings.push("FMEA com RPN elevado sugere risco estrutural ainda não totalmente mitigado.");
+    }
+    if (hasPredictiveAlert) {
+      crossModuleFindings.push("Medições preditivas possuem alerta crítico associado ao ativo analisado.");
+    }
+    if (hasInspectionOpenAnomaly) {
+      crossModuleFindings.push("Há anomalias de inspeção abertas sem resolução confirmada.");
+    }
+    if ((solicitCanceladas || []).length > 0) {
+      crossModuleFindings.push(`Solicitações canceladas/rejeitadas (${solicitCanceladas.length}) podem indicar manutenção diferida.`);
+    }
+    if (execPrev.length === 0 && (planosPreventivos || []).length > 0) {
+      crossModuleFindings.push("Existem planos preventivos cadastrados sem execução recente registrada.");
+    }
+
     // Solicitações canceladas/rejeitadas
     const solicitCanceladas = (solicitacoes || []).filter((s: any) => s.status === "CANCELADA" || s.status === "REJEITADA");
     const solicitConvertidas = (solicitacoes || []).filter((s: any) => s.status === "CONVERTIDA" || s.status === "APROVADA");
@@ -599,6 +633,8 @@ Deno.serve(async (req: Request) => {
                   preventive_actions: { type: "array",   items: { type: "string" }, description: "Ações preventivas" },
                   recommended_improvements: { type: "array", items: { type: "string" }, description: "Melhorias de engenharia/processo priorizadas" },
                   recurrence_insights: { type: "array", items: { type: "string" }, description: "Insights de recorrência e periodicidade de falhas" },
+                  cross_module_findings: { type: "array", items: { type: "string" }, description: "Achados de correlação entre corretiva/preventiva/preditiva/inspeções/FMEA" },
+                  planning_priority_score: { type: "number", description: "Score de prioridade de planejamento preventivo de 0-100" },
                   preventive_plan_suggestion: {
                     type: "object",
                     properties: {
@@ -617,7 +653,7 @@ Deno.serve(async (req: Request) => {
                   criticality:        { type: "string",  enum: ["Baixo", "Médio", "Alto", "Crítico"] },
                   confidence_score:   { type: "number",  description: "0-100" },
                 },
-                required: ["summary", "possible_causes", "main_hypothesis", "recommended_solution", "preventive_actions", "recommended_improvements", "recurrence_insights", "preventive_plan_suggestion", "criticality", "confidence_score"],
+                required: ["summary", "possible_causes", "main_hypothesis", "recommended_solution", "preventive_actions", "recommended_improvements", "recurrence_insights", "cross_module_findings", "planning_priority_score", "preventive_plan_suggestion", "criticality", "confidence_score"],
               },
             },
           },
@@ -679,6 +715,8 @@ Deno.serve(async (req: Request) => {
     if (!Array.isArray(analysis.preventive_actions)) analysis.preventive_actions = [];
     if (!Array.isArray(analysis.recommended_improvements)) analysis.recommended_improvements = [];
     if (!Array.isArray(analysis.recurrence_insights)) analysis.recurrence_insights = [];
+    if (!Array.isArray(analysis.cross_module_findings)) analysis.cross_module_findings = [];
+    analysis.planning_priority_score = Math.min(100, Math.max(0, Number(analysis.planning_priority_score) || recurrenceSignalScore));
     if (typeof analysis.preventive_plan_suggestion !== "object" || !analysis.preventive_plan_suggestion) {
       analysis.preventive_plan_suggestion = {};
     }
@@ -733,6 +771,41 @@ Deno.serve(async (req: Request) => {
         ];
       }
     }
+
+    const deterministicShouldCreatePlan = recurrenceSignalScore >= 60 && corretivas.length >= 3;
+    if (deterministicShouldCreatePlan) {
+      analysis.preventive_plan_suggestion.should_create_plan = true;
+      if (!analysis.preventive_plan_suggestion.plan_name || /^Plano preventivo IA -/i.test(analysis.preventive_plan_suggestion.plan_name)) {
+        analysis.preventive_plan_suggestion.plan_name = `Plano IA Recorrência - ${sanitizedTag}`;
+      }
+      if (!analysis.preventive_plan_suggestion.suggested_frequency_days) {
+        analysis.preventive_plan_suggestion.suggested_frequency_days = Math.max(7, Math.min(90, Math.round((mtbf > 0 ? mtbf : 30) * 0.7)));
+      }
+      if (!analysis.preventive_plan_suggestion.strategic_reason || analysis.preventive_plan_suggestion.strategic_reason === "Recorrência de falhas detectada.") {
+        analysis.preventive_plan_suggestion.strategic_reason = `Recorrência confirmada por score ${recurrenceSignalScore}/100 com evidências de corretivas, componentes e criticidade operacional.`;
+      }
+      if (analysis.preventive_plan_suggestion.stock_recommendations.length === 0 && recurringComponents[0]) {
+        analysis.preventive_plan_suggestion.stock_recommendations = [
+          `Definir estoque mínimo para ${recurringComponents[0].nome} considerando consumo recorrente e lead time.`,
+        ];
+      }
+    }
+
+    analysis.preventive_plan_suggestion.confidence_to_create_plan = recurrenceSignalScore;
+    analysis.preventive_plan_suggestion.deterministic_triggered = deterministicShouldCreatePlan;
+    analysis.preventive_plan_suggestion.source_evidence = [
+      `Corretivas avaliadas: ${corretivas.length}`,
+      recurringComponents[0] ? `Componente recorrente: ${recurringComponents[0].nome} (${recurringComponents[0].eventos} eventos)` : "Sem componente recorrente dominante",
+      mtbf > 0 ? `MTBF estimado: ${mtbf.toFixed(1)} dias` : "MTBF indisponível",
+      `Tempo de parada consolidado: ${tempoParadaTotal.toFixed(1)}h`,
+    ];
+
+    analysis.cross_module_findings = Array.from(new Set([
+      ...crossModuleFindings,
+      ...analysis.cross_module_findings,
+    ])).slice(0, 8);
+    analysis.planning_priority_score = Math.max(analysis.planning_priority_score, recurrenceSignalScore);
+
     if (typeof analysis.recommended_solution !== "string" || !analysis.recommended_solution.trim()) {
       analysis.recommended_solution = analysis.preventive_actions[0] || "Solução não determinada";
     }

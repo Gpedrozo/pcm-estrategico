@@ -17,7 +17,29 @@ import { useCreatePlanoPreventivo } from '@/hooks/usePlanosPreventivos';
 import { useNextDocumentNumber } from '@/hooks/useDocumentEngine';
 import { AnalysisResultCard } from './components/AnalysisResultCard';
 import { PrintableReport } from './components/PrintableReport';
-import type { AnalysisResponse } from './types';
+import type { AnalysisResponse, PreventivePlanSuggestion } from './types';
+
+const normalizePlanSuggestion = (input: unknown, selectedTag: string): PreventivePlanSuggestion | undefined => {
+  if (!input || typeof input !== 'object') return undefined;
+  const source = input as Partial<PreventivePlanSuggestion>;
+  const confidence = Number(source.confidence_to_create_plan ?? 0);
+  const inferredShouldCreate = Boolean(source.should_create_plan) || confidence >= 60;
+
+  return {
+    should_create_plan: inferredShouldCreate,
+    plan_name: source.plan_name || `Plano IA - ${selectedTag}`,
+    trigger_type: source.trigger_type === 'CICLO' || source.trigger_type === 'CONDICAO' ? source.trigger_type : 'TEMPO',
+    suggested_frequency_days: Number(source.suggested_frequency_days ?? null) || null,
+    strategic_reason: source.strategic_reason || 'Recorrência detectada pela análise de IA.',
+    recurring_component: source.recurring_component || 'Componente crítico',
+    recurrence_interval_days: Number(source.recurrence_interval_days ?? null) || null,
+    stock_recommendations: Array.isArray(source.stock_recommendations) ? source.stock_recommendations : [],
+    expected_downtime_reduction_hours: Number(source.expected_downtime_reduction_hours ?? null) || null,
+    confidence_to_create_plan: Number.isFinite(confidence) ? confidence : undefined,
+    deterministic_triggered: Boolean(source.deterministic_triggered),
+    source_evidence: Array.isArray(source.source_evidence) ? source.source_evidence : [],
+  };
+};
 
 export default function RootCauseAIPage() {
   const [selectedTag, setSelectedTag] = useState<string>('');
@@ -121,7 +143,7 @@ export default function RootCauseAIPage() {
   const handleCreatePreventivePlan = async () => {
     if (!selectedTag || !currentResult) return;
 
-    const suggestion = currentResult.analysis.preventive_plan_suggestion;
+    const suggestion = normalizePlanSuggestion(currentResult.analysis.preventive_plan_suggestion, selectedTag);
     if (!suggestion?.should_create_plan) {
       toast({
         title: 'Dados insuficientes para plano automático',
@@ -304,7 +326,9 @@ export default function RootCauseAIPage() {
               preventiveActions={currentResult.analysis.preventive_actions}
               recommendedImprovements={currentResult.analysis.recommended_improvements}
               recurrenceInsights={currentResult.analysis.recurrence_insights}
-              preventivePlanSuggestion={currentResult.analysis.preventive_plan_suggestion}
+              crossModuleFindings={currentResult.analysis.cross_module_findings}
+              planningPriorityScore={currentResult.analysis.planning_priority_score}
+              preventivePlanSuggestion={normalizePlanSuggestion(currentResult.analysis.preventive_plan_suggestion, selectedTag)}
               criticality={currentResult.analysis.criticality}
               confidenceScore={currentResult.analysis.confidence_score}
               osCount={currentResult.os_count}
@@ -361,7 +385,9 @@ export default function RootCauseAIPage() {
                         preventive_actions: (item.preventive_actions as string[]) || [],
                         recommended_improvements: (item.recommended_improvements as string[]) || item.raw_response?.analysis?.recommended_improvements || item.raw_response?.structured_analysis?.recommended_improvements || [],
                         recurrence_insights: item.raw_response?.analysis?.recurrence_insights || item.raw_response?.structured_analysis?.recurrence_insights || [],
-                        preventive_plan_suggestion: item.raw_response?.analysis?.preventive_plan_suggestion || item.raw_response?.structured_analysis?.preventive_plan_suggestion || undefined,
+                        cross_module_findings: item.raw_response?.analysis?.cross_module_findings || item.raw_response?.structured_analysis?.cross_module_findings || [],
+                        planning_priority_score: item.raw_response?.analysis?.planning_priority_score || item.raw_response?.structured_analysis?.planning_priority_score || undefined,
+                        preventive_plan_suggestion: normalizePlanSuggestion(item.raw_response?.analysis?.preventive_plan_suggestion || item.raw_response?.structured_analysis?.preventive_plan_suggestion, selectedTag),
                         criticality: item.criticality || 'Médio',
                         confidence_score: item.confidence_score || 0,
                       },

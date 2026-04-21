@@ -12,6 +12,8 @@ interface AnalysisResultCardProps {
   preventiveActions: string[];
   recommendedImprovements?: string[];
   recurrenceInsights?: string[];
+  crossModuleFindings?: string[];
+  planningPriorityScore?: number;
   preventivePlanSuggestion?: PreventivePlanSuggestion;
   criticality: string;
   confidenceScore: number;
@@ -28,6 +30,8 @@ export function AnalysisResultCard({
   preventiveActions,
   recommendedImprovements = [],
   recurrenceInsights = [],
+  crossModuleFindings = [],
+  planningPriorityScore,
   preventivePlanSuggestion,
   criticality,
   confidenceScore,
@@ -170,6 +174,11 @@ export function AnalysisResultCard({
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
+          {typeof planningPriorityScore === 'number' && (
+            <p className="text-sm">
+              Prioridade de planejamento preventivo: <strong>{Math.round(planningPriorityScore)}/100</strong>
+            </p>
+          )}
           {recurrenceInsights.length > 0 ? (
             <ul className="space-y-2">
               {recurrenceInsights.map((insight, i) => (
@@ -189,7 +198,23 @@ export function AnalysisResultCard({
               <p className="text-sm">Componente recorrente: <strong>{preventivePlanSuggestion.recurring_component || 'N/A'}</strong></p>
               <p className="text-sm">Gatilho: <strong>{preventivePlanSuggestion.trigger_type}</strong></p>
               <p className="text-sm">Frequência recomendada: <strong>{preventivePlanSuggestion.suggested_frequency_days ?? 'N/A'} dias</strong></p>
+              {typeof preventivePlanSuggestion.confidence_to_create_plan === 'number' && (
+                <p className="text-sm">Confiança para criar plano: <strong>{Math.round(preventivePlanSuggestion.confidence_to_create_plan)}/100</strong></p>
+              )}
+              {preventivePlanSuggestion.deterministic_triggered && (
+                <p className="text-xs text-blue-700">Plano habilitado por validação determinística de recorrência.</p>
+              )}
               <p className="text-sm text-muted-foreground">{preventivePlanSuggestion.strategic_reason}</p>
+              {preventivePlanSuggestion.source_evidence && preventivePlanSuggestion.source_evidence.length > 0 && (
+                <ul className="space-y-1 pt-1">
+                  {preventivePlanSuggestion.source_evidence.map((evidence, i) => (
+                    <li key={i} className="text-sm flex items-start gap-2">
+                      <span className="font-bold text-blue-600 mt-0.5">{i + 1}.</span>
+                      <span>{evidence}</span>
+                    </li>
+                  ))}
+                </ul>
+              )}
               {preventivePlanSuggestion.stock_recommendations?.length > 0 && (
                 <ul className="space-y-1 pt-1">
                   {preventivePlanSuggestion.stock_recommendations.map((item, i) => (
@@ -203,6 +228,20 @@ export function AnalysisResultCard({
             </div>
           ) : (
             <p className="text-sm text-muted-foreground">A IA não recomenda criação automática de plano preventivo com os dados atuais.</p>
+          )}
+
+          {crossModuleFindings.length > 0 && (
+            <div className="rounded-md border border-slate-200 bg-slate-50 p-3">
+              <p className="text-sm font-semibold mb-2">Achados intermodulares</p>
+              <ul className="space-y-1">
+                {crossModuleFindings.map((finding, i) => (
+                  <li key={i} className="text-sm flex items-start gap-2">
+                    <span className="font-bold text-slate-600 mt-0.5">{i + 1}.</span>
+                    <span>{finding}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
           )}
         </CardContent>
       </Card>
