@@ -15,9 +15,7 @@ import {
   Loader2,
   FileOutput,
   Smartphone,
-  ScrollText,
 } from "lucide-react";
-import { MasterContratosPanel } from "@/components/master-ti/MasterContratosPanel";
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { lazyWithRetry } from "@/lib/lazyWithRetry";
@@ -98,8 +96,7 @@ type TabKey =
   | "audit"
   | "security"
   | "documents"
-  | "dispositivos"
-  | "contrato";
+  | "dispositivos";
 
 const TABS: { key: TabKey; label: string; icon: React.ElementType }[] = [
   { key: "users", label: "Usuários", icon: Users },
@@ -113,7 +110,6 @@ const TABS: { key: TabKey; label: string; icon: React.ElementType }[] = [
   { key: "security", label: "Segurança", icon: Lock },
   { key: "documents", label: "Documentos", icon: FileOutput },
   { key: "dispositivos", label: "Dispositivos", icon: Smartphone },
-  { key: "contrato", label: "Contrato", icon: ScrollText },
 ];
 
 function TabFallback() {
@@ -226,10 +222,6 @@ export default function MasterTI() {
 
           <TabsContent value="dispositivos">
             <DispositivosMoveis />
-          </TabsContent>
-
-          <TabsContent value="contrato">
-            <MasterContratosPanel />
           </TabsContent>
         </Suspense>
       </Tabs>
