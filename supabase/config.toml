@@ -25,7 +25,7 @@ otp_expiry = 3600
 enabled = false
 
 [functions.analisar-causa-raiz]
-verify_jwt = true
+verify_jwt = false
 
 [functions.owner-portal-admin]
 verify_jwt = false
