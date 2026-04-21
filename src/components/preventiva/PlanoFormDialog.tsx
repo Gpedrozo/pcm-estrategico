@@ -31,6 +31,19 @@ const INITIAL_FORM = {
   instrucoes: '',
 };
 
+const sanitizeBasicInstruction = (value: string): string => {
+  const flatText = value
+    .split('\n')
+    .map((line) => line.trim())
+    .filter((line) => line.length > 0)
+    .filter((line) => !line.startsWith('- ') && !/^\d+[.)]\s+/.test(line))
+    .join(' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  return flatText.slice(0, 220);
+};
+
 export default function PlanoFormDialog({ open, onOpenChange, equipamentos, dataProgramada }: Props) {
   const createMutation = useCreatePlanoPreventivo();
   const nextDocNumber = useNextDocumentNumber();
@@ -46,6 +59,7 @@ export default function PlanoFormDialog({ open, onOpenChange, equipamentos, data
     const equipamentoSelecionado = equipamentos.find((eq) => eq.id === form.equipamento_id);
     await createMutation.mutateAsync({
       ...form,
+      instrucoes: sanitizeBasicInstruction(form.instrucoes),
       codigo,
       equipamento_id: equipamentoSelecionado?.id || null,
       tag: equipamentoSelecionado?.tag || null,
@@ -138,8 +152,17 @@ export default function PlanoFormDialog({ open, onOpenChange, equipamentos, data
             </div>
           </div>
           <div className="space-y-2">
-            <Label>Instruções</Label>
-            <Textarea value={form.instrucoes} onChange={e => set('instrucoes', e.target.value)} rows={3} placeholder="Instruções detalhadas para execução..." />
+            <Label>Instruções básicas (resumo curto)</Label>
+            <Textarea
+              value={form.instrucoes}
+              onChange={e => set('instrucoes', e.target.value)}
+              rows={3}
+              maxLength={220}
+              placeholder="Ex: Seguir procedimento padrão, usar EPI e registrar evidências."
+            />
+            <p className="text-xs text-muted-foreground">
+              Não liste tarefas aqui. Cadastre tarefas em Atividades e Subatividades.
+            </p>
           </div>
           <p className="text-xs text-muted-foreground">O código será gerado automaticamente (ex: PR-000001).</p>
           <div className="flex gap-3 pt-2">

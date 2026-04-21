@@ -44,6 +44,19 @@ const formatMin = (min: number) => {
   return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
 };
 
+const sanitizeBasicInstruction = (value: string): string => {
+  const flatText = value
+    .split('\n')
+    .map((line) => line.trim())
+    .filter((line) => line.length > 0)
+    .filter((line) => !line.startsWith('- ') && !/^\d+[.)]\s+/.test(line))
+    .join(' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  return flatText.slice(0, 220);
+};
+
 export default function PlanoDetailPanel({ plano, equipamentos, onBack }: Props) {
   const [tab, setTab] = useState('estrutura');
   const [isEditingPlano, setIsEditingPlano] = useState(false);
@@ -181,6 +194,7 @@ export default function PlanoDetailPanel({ plano, equipamentos, onBack }: Props)
     await updatePlano.mutateAsync({
       id: plano.id,
       ...editingPlanoData,
+      instrucoes: sanitizeBasicInstruction(editingPlanoData.instrucoes || ''),
       equipamento_id: eqId,
       tag: eq?.tag || null,
     });
@@ -691,8 +705,17 @@ export default function PlanoDetailPanel({ plano, equipamentos, onBack }: Props)
               </div>
             </div>
             <div className="space-y-1">
-              <Label className="text-xs">Instruções</Label>
-              <Textarea value={editingPlanoData.instrucoes || ''} onChange={e => setEditingPlanoData((p: any) => ({ ...p, instrucoes: e.target.value }))} rows={3} />
+              <Label className="text-xs">Instruções básicas (resumo curto)</Label>
+              <Textarea
+                value={editingPlanoData.instrucoes || ''}
+                onChange={e => setEditingPlanoData((p: any) => ({ ...p, instrucoes: e.target.value }))}
+                rows={3}
+                maxLength={220}
+                placeholder="Ex: Seguir procedimento padrão, usar EPI e registrar evidências."
+              />
+              <p className="text-xs text-muted-foreground">
+                Atividades detalhadas devem ser cadastradas em Atividades e Subatividades.
+              </p>
             </div>
             <div className="flex items-center justify-between p-2 border border-border rounded-lg">
               <Label className="text-xs">Plano Ativo</Label>
