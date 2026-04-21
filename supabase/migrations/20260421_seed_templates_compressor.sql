@@ -10,7 +10,7 @@ SELECT
   true,
   1
 FROM empresas
-WHERE tag = 'GPPIS' -- ou ajuste conforme sua empresa
+-- Templates work for any company
 LIMIT 1
 ON CONFLICT DO NOTHING;
 
@@ -269,3 +269,4 @@ FROM atividade_5,
   ('Liberar ativo para operação produtiva', 5, 4, 'Checklist verde = ativo liberado', 'checklist', 'geral', 'Comunicar ao operador de produção')
 ) AS t(col1, col2, col3, col4, col5, col6, col7)
 ON CONFLICT DO NOTHING;
+
