@@ -2,7 +2,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { ConfidenceScoreBar } from './ConfidenceScoreBar';
 import { AlertTriangle, CheckCircle, Lightbulb, Search, Target } from 'lucide-react';
-import type { PreventivePlanSuggestion } from '../types';
+import type { PreventivePlanSuggestion, StrategicDecisionSupport } from '../types';
 
 interface AnalysisResultCardProps {
   summary: string;
@@ -15,6 +15,7 @@ interface AnalysisResultCardProps {
   crossModuleFindings?: string[];
   planningPriorityScore?: number;
   preventivePlanSuggestion?: PreventivePlanSuggestion;
+  strategicDecisionSupport?: StrategicDecisionSupport;
   criticality: string;
   confidenceScore: number;
   osCount: number | null;
@@ -33,6 +34,7 @@ export function AnalysisResultCard({
   crossModuleFindings = [],
   planningPriorityScore,
   preventivePlanSuggestion,
+  strategicDecisionSupport,
   criticality,
   confidenceScore,
   osCount,
@@ -245,6 +247,58 @@ export function AnalysisResultCard({
           )}
         </CardContent>
       </Card>
+
+      {strategicDecisionSupport && (
+        <Card className="border-indigo-500/30">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base flex items-center gap-2">
+              <Target className="h-4 w-4 text-indigo-600" /> Suporte Decisório Estratégico
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div className="rounded-md border border-indigo-200 bg-indigo-50/60 p-3">
+                <p className="text-xs text-muted-foreground">Score de Saúde do Ativo</p>
+                <p className="text-xl font-semibold text-indigo-700">{strategicDecisionSupport.health_score}/100</p>
+              </div>
+              <div className="rounded-md border border-rose-200 bg-rose-50/60 p-3">
+                <p className="text-xs text-muted-foreground">Score de Risco Operacional</p>
+                <p className="text-xl font-semibold text-rose-700">{strategicDecisionSupport.risk_score}/100</p>
+              </div>
+              <div className="rounded-md border border-slate-200 bg-slate-50 p-3">
+                <p className="text-xs text-muted-foreground">Custo Corretivo Anual Estimado</p>
+                <p className="text-lg font-semibold">R$ {strategicDecisionSupport.annual_corrective_cost_estimate.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+              </div>
+              <div className="rounded-md border border-slate-200 bg-slate-50 p-3">
+                <p className="text-xs text-muted-foreground">Indisponibilidade Anual Estimada</p>
+                <p className="text-lg font-semibold">{strategicDecisionSupport.annual_downtime_hours_estimate.toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}h</p>
+              </div>
+            </div>
+
+            <div className="rounded-md border border-emerald-200 bg-emerald-50 p-3">
+              <p className="text-sm font-semibold">Estratégia recomendada: {strategicDecisionSupport.recommended_strategy}</p>
+              <p className="text-sm text-muted-foreground mt-1">{strategicDecisionSupport.executive_summary}</p>
+            </div>
+
+            {strategicDecisionSupport.scenarios?.length > 0 && (
+              <div className="space-y-2">
+                <p className="text-sm font-semibold">Cenários comparativos</p>
+                <ul className="space-y-2">
+                  {strategicDecisionSupport.scenarios.map((scenario, index) => (
+                    <li key={`${scenario.scenario}-${index}`} className="rounded-md border border-slate-200 p-3 text-sm space-y-1">
+                      <p className="font-semibold">{scenario.scenario}</p>
+                      <p>Custo anual estimado: <strong>R$ {scenario.annual_cost_estimate.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</strong></p>
+                      <p>Indisponibilidade estimada: <strong>{scenario.annual_downtime_estimate_hours.toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}h/ano</strong></p>
+                      <p>Redução de risco: <strong>{scenario.risk_reduction_percent}%</strong></p>
+                      <p className="text-muted-foreground">{scenario.recommendation}</p>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       <Card>
         <CardHeader className="pb-3">

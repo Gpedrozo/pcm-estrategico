@@ -638,6 +638,7 @@ export default function RootCauseAIPage() {
               crossModuleFindings={currentResult.analysis.cross_module_findings}
               planningPriorityScore={currentResult.analysis.planning_priority_score}
               preventivePlanSuggestion={normalizePlanSuggestion(currentResult.analysis.preventive_plan_suggestion, selectedTag)}
+              strategicDecisionSupport={currentResult.analysis.strategic_decision_support}
               criticality={currentResult.analysis.criticality}
               confidenceScore={currentResult.analysis.confidence_score}
               osCount={currentResult.os_count}
@@ -697,6 +698,7 @@ export default function RootCauseAIPage() {
                         cross_module_findings: item.raw_response?.analysis?.cross_module_findings || item.raw_response?.structured_analysis?.cross_module_findings || [],
                         planning_priority_score: item.raw_response?.analysis?.planning_priority_score || item.raw_response?.structured_analysis?.planning_priority_score || undefined,
                         preventive_plan_suggestion: normalizePlanSuggestion(item.raw_response?.analysis?.preventive_plan_suggestion || item.raw_response?.structured_analysis?.preventive_plan_suggestion, selectedTag),
+                        strategic_decision_support: item.raw_response?.analysis?.strategic_decision_support || item.raw_response?.structured_analysis?.strategic_decision_support || undefined,
                         criticality: item.criticality || 'Médio',
                         confidence_score: item.confidence_score || 0,
                       },

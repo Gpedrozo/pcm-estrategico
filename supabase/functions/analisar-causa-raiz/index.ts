@@ -844,6 +844,98 @@ Deno.serve(async (req: Request) => {
     ])).slice(0, 8);
     analysis.planning_priority_score = Math.max(analysis.planning_priority_score, recurrenceSignalScore);
 
+    // ── 10b. Deterministic strategic decision support ───────
+    const totalMaintenanceCost = custoTotal + custoMateriais;
+    const correctiveCount = Math.max(1, corretivas.length);
+    const costPerCorrective = totalMaintenanceCost / correctiveCount;
+
+    const periodDays = (() => {
+      if (dateFrom && dateTo) {
+        const fromMs = new Date(`${dateFrom}T00:00:00`).getTime();
+        const toMs = new Date(`${dateTo}T23:59:59`).getTime();
+        const diffDays = Math.max(1, Math.ceil((toMs - fromMs) / 86_400_000));
+        return diffDays;
+      }
+      if (timestamps.length >= 2) {
+        return Math.max(1, Math.ceil((timestamps[timestamps.length - 1] - timestamps[0]) / 86_400_000));
+      }
+      return 30;
+    })();
+
+    const correctivePerDay = corretivas.length / periodDays;
+    const projectedAnnualFailures = Math.max(1, correctivePerDay * 365);
+    const annualCorrectiveCostEstimate = Math.round((costPerCorrective * projectedAnnualFailures) * 100) / 100;
+
+    const downtimePerCorrective = tempoParadaTotal / correctiveCount;
+    const annualDowntimeHoursEstimate = Math.round((downtimePerCorrective * projectedAnnualFailures) * 10) / 10;
+
+    const riskScore = Math.min(
+      100,
+      Math.round(
+        (recurrenceSignalScore * 0.55)
+        + ((tempoParadaTotal >= 4 ? 100 : tempoParadaTotal * 20) * 0.25)
+        + ((hasRiskSignal || hasPredictiveAlert ? 100 : 40) * 0.20),
+      ),
+    );
+    const healthScore = Math.max(0, Math.min(100, Math.round(100 - ((recurrenceSignalScore * 0.7) + (riskScore * 0.3)))));
+
+    const scenarioBaselineCost = annualCorrectiveCostEstimate;
+    const scenarioBaselineDowntime = annualDowntimeHoursEstimate;
+
+    const strategicScenarios = [
+      {
+        scenario: "MANTER_COM_AJUSTES",
+        annual_cost_estimate: Math.round(scenarioBaselineCost * 0.95 * 100) / 100,
+        annual_downtime_estimate_hours: Math.round(scenarioBaselineDowntime * 0.92 * 10) / 10,
+        risk_reduction_percent: 8,
+        recommendation: "Aplicar padronização de procedimentos e reforço de disciplina de execução.",
+      },
+      {
+        scenario: "OTIMIZAR_MANUTENCAO",
+        annual_cost_estimate: Math.round(scenarioBaselineCost * 0.78 * 100) / 100,
+        annual_downtime_estimate_hours: Math.round(scenarioBaselineDowntime * 0.65 * 10) / 10,
+        risk_reduction_percent: 35,
+        recommendation: "Integrar preventiva+preditiva+inspeção+lubrificação com foco no componente recorrente e gatilhos de condição.",
+      },
+      {
+        scenario: "RETROFIT",
+        annual_cost_estimate: Math.round((scenarioBaselineCost * 0.62 + 0.12 * scenarioBaselineCost) * 100) / 100,
+        annual_downtime_estimate_hours: Math.round(scenarioBaselineDowntime * 0.48 * 10) / 10,
+        risk_reduction_percent: 52,
+        recommendation: "Planejar retrofit de subsistemas críticos para elevar confiabilidade e reduzir reincidência estrutural.",
+      },
+      {
+        scenario: "SUBSTITUICAO_EQUIPAMENTO",
+        annual_cost_estimate: Math.round((scenarioBaselineCost * 0.45 + 0.22 * scenarioBaselineCost) * 100) / 100,
+        annual_downtime_estimate_hours: Math.round(scenarioBaselineDowntime * 0.30 * 10) / 10,
+        risk_reduction_percent: 70,
+        recommendation: "Avaliar CAPEX para substituição quando recorrência crítica persistir apesar das ações de otimização.",
+      },
+    ];
+
+    const weightedScenarioScores = strategicScenarios.map((scenario) => {
+      const weighted = (scenario.annual_cost_estimate * 0.6) + (scenario.annual_downtime_estimate_hours * 100 * 0.4);
+      return { ...scenario, weighted_score: weighted };
+    });
+    weightedScenarioScores.sort((a, b) => a.weighted_score - b.weighted_score);
+    const bestScenario = weightedScenarioScores[0];
+
+    analysis.strategic_decision_support = {
+      health_score: healthScore,
+      risk_score: riskScore,
+      annual_corrective_cost_estimate: annualCorrectiveCostEstimate,
+      annual_downtime_hours_estimate: annualDowntimeHoursEstimate,
+      recommended_strategy: bestScenario?.scenario || "OTIMIZAR_MANUTENCAO",
+      scenarios: weightedScenarioScores.map((item) => ({
+        scenario: item.scenario,
+        annual_cost_estimate: item.annual_cost_estimate,
+        annual_downtime_estimate_hours: item.annual_downtime_estimate_hours,
+        risk_reduction_percent: item.risk_reduction_percent,
+        recommendation: item.recommendation,
+      })),
+      executive_summary: `Estimativa anual atual: R$ ${annualCorrectiveCostEstimate.toFixed(2)} e ${annualDowntimeHoursEstimate.toFixed(1)}h de indisponibilidade. Estratégia prioritária: ${bestScenario?.scenario || "OTIMIZAR_MANUTENCAO"}.`,
+    };
+
     if (typeof analysis.recommended_solution !== "string" || !analysis.recommended_solution.trim()) {
       analysis.recommended_solution = analysis.preventive_actions[0] || "Solução não determinada";
     }

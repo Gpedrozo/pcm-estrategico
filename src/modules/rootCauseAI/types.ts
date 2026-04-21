@@ -33,6 +33,24 @@ export interface PreventivePlanSuggestion {
   source_evidence?: string[];
 }
 
+export interface StrategicScenario {
+  scenario: string;
+  annual_cost_estimate: number;
+  annual_downtime_estimate_hours: number;
+  risk_reduction_percent: number;
+  recommendation: string;
+}
+
+export interface StrategicDecisionSupport {
+  health_score: number;
+  risk_score: number;
+  annual_corrective_cost_estimate: number;
+  annual_downtime_hours_estimate: number;
+  recommended_strategy: string;
+  scenarios: StrategicScenario[];
+  executive_summary: string;
+}
+
 export interface AnalysisResponse {
   analysis: {
     id: string;
@@ -47,6 +65,7 @@ export interface AnalysisResponse {
     cross_module_findings?: string[];
     planning_priority_score?: number;
     preventive_plan_suggestion?: PreventivePlanSuggestion;
+    strategic_decision_support?: StrategicDecisionSupport;
     criticality: string;
     confidence_score: number;
   };
