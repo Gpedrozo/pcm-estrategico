@@ -10,14 +10,84 @@ import { Brain, Loader2, History, Sparkles, RefreshCw, CalendarDays, Trash2, Pri
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { useEquipamentos } from '@/hooks/useEquipamentos';
+import { useAllComponentes, type ComponenteEquipamento } from '@/hooks/useComponentesEquipamento';
 import { useAIAnalysisHistory, useGenerateAnalysis, useDeleteAnalysis } from './useRootCauseAI';
 import { useCreateOrdemServico } from '@/hooks/useOrdensServico';
 import { useCreateMelhoria } from '@/hooks/useMelhorias';
 import { useCreatePlanoPreventivo } from '@/hooks/usePlanosPreventivos';
+import { useCreatePlanoLubrificacao } from '@/hooks/useLubrificacao';
+import { useCreatePontoPlano } from '@/hooks/usePontosPlano';
+import { useUpsertMaintenanceSchedule } from '@/hooks/useMaintenanceSchedule';
 import { useNextDocumentNumber } from '@/hooks/useDocumentEngine';
+import { supabase } from '@/integrations/supabase/client';
 import { AnalysisResultCard } from './components/AnalysisResultCard';
 import { PrintableReport } from './components/PrintableReport';
 import type { AnalysisResponse, PreventivePlanSuggestion } from './types';
+
+interface RootCauseOSContextRow {
+  id: string;
+  numero_os: number | null;
+  problema: string;
+  descricao_execucao: string | null;
+  causa_raiz: string | null;
+  acao_corretiva: string | null;
+  modo_falha: string | null;
+  prioridade: string;
+  status: string;
+  tipo: string;
+  data_solicitacao: string;
+}
+
+const normalizeSearchText = (value: string) =>
+  value
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase();
+
+const safeText = (value: unknown) => String(value ?? '').trim();
+
+const buildEvidenceLines = (rows: RootCauseOSContextRow[]) =>
+  rows
+    .slice(0, 20)
+    .map((os, index) => {
+      const numero = os.numero_os ? `OS ${os.numero_os}` : `OS ${index + 1}`;
+      const problema = safeText(os.problema) || 'Sem problema informado';
+      const resolucao = safeText(os.descricao_execucao || os.acao_corretiva || os.causa_raiz) || 'Sem resolução registrada';
+      return `${numero} | Problema: ${problema} | Resolução: ${resolucao}`;
+    });
+
+const resolveBestComponent = (
+  componentes: ComponenteEquipamento[],
+  evidenceTexts: string[],
+) => {
+  if (!componentes || componentes.length === 0) return null;
+  const corpus = normalizeSearchText(evidenceTexts.join(' | '));
+
+  const scored = componentes.map((comp) => {
+    const aliases = [comp.nome, comp.codigo, comp.tipo, comp.fabricante || '', comp.modelo || '']
+      .map((item) => normalizeSearchText(safeText(item)))
+      .filter((item) => item.length >= 3);
+
+    const score = aliases.reduce((acc, alias) => {
+      if (!alias) return acc;
+      return corpus.includes(alias) ? acc + Math.max(2, alias.length / 5) : acc;
+    }, 0);
+
+    return { comp, score };
+  });
+
+  scored.sort((a, b) => b.score - a.score);
+  return scored[0] && scored[0].score > 0 ? scored[0].comp : null;
+};
+
+const buildPreventiveChecklist = (componentName: string) => [
+  { id: crypto.randomUUID(), descricao: `Inspecionar condição geral de ${componentName}`, obrigatorio: true, concluido: false },
+  { id: crypto.randomUUID(), descricao: 'Verificar reaperto e alinhamento mecânico', obrigatorio: true, concluido: false },
+  { id: crypto.randomUUID(), descricao: 'Registrar vibração, temperatura e ruído', obrigatorio: true, concluido: false },
+  { id: crypto.randomUUID(), descricao: 'Comparar medições com limites de alerta e crítico', obrigatorio: true, concluido: false },
+  { id: crypto.randomUUID(), descricao: 'Executar intervenção corretiva prevista se fora de padrão', obrigatorio: true, concluido: false },
+  { id: crypto.randomUUID(), descricao: 'Registrar evidências e liberar ativo para operação', obrigatorio: true, concluido: false },
+];
 
 const normalizePlanSuggestion = (input: unknown, selectedTag: string): PreventivePlanSuggestion | undefined => {
   if (!input || typeof input !== 'object') return undefined;
@@ -46,16 +116,21 @@ export default function RootCauseAIPage() {
   const [currentResult, setCurrentResult] = useState<AnalysisResponse | null>(null);
   const [dateFrom, setDateFrom] = useState<string>('');
   const [dateTo, setDateTo] = useState<string>('');
-  const { user } = useAuth();
+  const { user, tenantId } = useAuth();
   const { toast } = useToast();
 
   const { data: equipamentos } = useEquipamentos();
+  const selectedEquipment = equipamentos?.find((item) => item.tag === selectedTag) || null;
+  const { data: allComponentes } = useAllComponentes(selectedEquipment?.id || undefined);
   const { data: history, isLoading: historyLoading } = useAIAnalysisHistory(selectedTag || undefined);
   const generateMutation = useGenerateAnalysis();
   const deleteMutation = useDeleteAnalysis();
   const createOSMutation = useCreateOrdemServico();
   const createMelhoriaMutation = useCreateMelhoria();
   const createPlanoPreventivoMutation = useCreatePlanoPreventivo();
+  const createPlanoLubrificacaoMutation = useCreatePlanoLubrificacao();
+  const createPontoPlanoMutation = useCreatePontoPlano();
+  const upsertMaintenanceScheduleMutation = useUpsertMaintenanceSchedule();
   const nextDocNumber = useNextDocumentNumber();
 
   const handleDelete = (e: React.MouseEvent, id: string) => {
@@ -81,7 +156,7 @@ export default function RootCauseAIPage() {
   const handleCreateCorrectiveOS = async () => {
     if (!selectedTag || !currentResult) return;
 
-    const equipamento = equipamentos?.find((item) => item.tag === selectedTag);
+    const equipamento = selectedEquipment;
     if (!equipamento) {
       toast({
         title: 'Equipamento não encontrado',
@@ -114,7 +189,7 @@ export default function RootCauseAIPage() {
   const handleCreateMelhoria = async () => {
     if (!selectedTag || !currentResult) return;
 
-    const equipamento = equipamentos?.find((item) => item.tag === selectedTag);
+    const equipamento = selectedEquipment;
     const improvements = currentResult.analysis.recommended_improvements || [];
     const suggestedTitle = improvements[0] || `Melhoria baseada em RCA - ${selectedTag}`;
 
@@ -152,7 +227,7 @@ export default function RootCauseAIPage() {
       return;
     }
 
-    const equipamento = equipamentos?.find((item) => item.tag === selectedTag);
+    const equipamento = selectedEquipment;
     const codigo = await nextDocNumber.mutateAsync('PREVENTIVA');
     const freq = Math.max(7, Math.min(365, Number(suggestion.suggested_frequency_days ?? Math.floor((currentResult.mtbf_days ?? 45) * 0.7))));
 
@@ -180,6 +255,219 @@ export default function RootCauseAIPage() {
     toast({
       title: 'Plano preventivo criado',
       description: 'A recomendação estratégica da IA foi convertida em plano preventivo.',
+    });
+  };
+
+  const handleCreateStructuredPlanBundle = async () => {
+    if (!selectedTag || !currentResult || !tenantId) return;
+    if (!selectedEquipment) {
+      toast({
+        title: 'Equipamento não encontrado',
+        description: 'Selecione um equipamento válido para estruturar os planos.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    let osQuery = supabase
+      .from('ordens_servico')
+      .select('id,numero_os,problema,descricao_execucao,causa_raiz,acao_corretiva,modo_falha,prioridade,status,tipo,data_solicitacao')
+      .eq('empresa_id', tenantId)
+      .eq('tag', selectedTag)
+      .order('data_solicitacao', { ascending: false })
+      .limit(120);
+
+    if (dateFrom) osQuery = osQuery.gte('data_solicitacao', `${dateFrom}T00:00:00`);
+    if (dateTo) osQuery = osQuery.lte('data_solicitacao', `${dateTo}T23:59:59`);
+
+    const { data: osRowsRaw, error: osError } = await osQuery;
+    if (osError) {
+      toast({ title: 'Erro ao estruturar planos', description: osError.message, variant: 'destructive' });
+      return;
+    }
+
+    const osRows = (osRowsRaw || []) as RootCauseOSContextRow[];
+    const evidenceTexts = [
+      currentResult.analysis.summary,
+      currentResult.analysis.main_hypothesis,
+      currentResult.analysis.recommended_solution || '',
+      ...(currentResult.analysis.possible_causes || []),
+      ...(currentResult.analysis.preventive_actions || []),
+      ...osRows.flatMap((os) => [os.problema, os.descricao_execucao || '', os.causa_raiz || '', os.acao_corretiva || '', os.modo_falha || '']),
+    ].filter(Boolean);
+
+    const matchedComponent = resolveBestComponent(allComponentes || [], evidenceTexts);
+    const componentLabel = matchedComponent?.nome || normalizePlanSuggestion(currentResult.analysis.preventive_plan_suggestion, selectedTag)?.recurring_component || 'Componente crítico';
+    const evidenceLines = buildEvidenceLines(osRows);
+    const strategicReason = normalizePlanSuggestion(currentResult.analysis.preventive_plan_suggestion, selectedTag)?.strategic_reason
+      || currentResult.analysis.summary
+      || 'Recorrência detectada na análise de O.S.';
+
+    const failuresByProblem = new Map<string, number>();
+    for (const row of osRows) {
+      const key = normalizeSearchText(row.problema || '').slice(0, 120);
+      if (!key) continue;
+      failuresByProblem.set(key, (failuresByProblem.get(key) || 0) + 1);
+    }
+    const topPatterns = [...failuresByProblem.entries()]
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 5)
+      .map(([problem, count]) => `Padrão recorrente (${count}x): ${problem}`);
+
+    const preventiveCode = await nextDocNumber.mutateAsync('PREVENTIVA');
+    const lubricationCode = await nextDocNumber.mutateAsync('LUBRIFICACAO');
+    const inspectionCode = await nextDocNumber.mutateAsync('INSPECAO');
+    const predictiveCode = await nextDocNumber.mutateAsync('PREDITIVA');
+
+    const baseFreqDays = Math.max(7, Math.min(120, Math.round((currentResult.mtbf_days || 30) * 0.7)));
+    const preventiveChecklist = buildPreventiveChecklist(componentLabel);
+    const created: string[] = [];
+    const failures: string[] = [];
+
+    try {
+      const preventive = await createPlanoPreventivoMutation.mutateAsync({
+        codigo: preventiveCode,
+        nome: `Plano IA Estruturado - ${selectedTag} - ${componentLabel}`.slice(0, 120),
+        descricao: `Plano preventivo estruturado por IA para ${componentLabel}, baseado em histórico de falhas e resoluções de O.S.`,
+        equipamento_id: selectedEquipment.id,
+        tag: selectedTag,
+        tipo_gatilho: 'TEMPO',
+        frequencia_dias: baseFreqDays,
+        tempo_estimado_min: 120,
+        especialidade: matchedComponent?.tipo || 'MECANICA',
+        checklist: preventiveChecklist,
+        instrucoes: [
+          `Contexto estratégico: ${strategicReason}`,
+          `Componente-alvo na árvore estrutural: ${componentLabel}${matchedComponent?.codigo ? ` (${matchedComponent.codigo})` : ''}`,
+          topPatterns.length ? `Padrões identificados:\n- ${topPatterns.join('\n- ')}` : null,
+          evidenceLines.length ? `Evidências de O.S analisadas:\n- ${evidenceLines.join('\n- ')}` : null,
+          `Ações obrigatórias:\n- Executar checklist técnico completo\n- Registrar medições e tendência\n- Validar critério de aceitação antes da liberação`,
+        ].filter(Boolean).join('\n\n'),
+      });
+      created.push(`preventiva (${preventive.codigo})`);
+    } catch (error) {
+      failures.push(`preventiva: ${error instanceof Error ? error.message : 'erro desconhecido'}`);
+    }
+
+    try {
+      const lubrication = await createPlanoLubrificacaoMutation.mutateAsync({
+        codigo: lubricationCode,
+        nome: `Plano IA Lubrificação - ${selectedTag} - ${componentLabel}`.slice(0, 120),
+        equipamento_id: selectedEquipment.id,
+        descricao: `Plano de lubrificação orientado por IA para reduzir desgaste e atrito em ${componentLabel}.`,
+        ponto_lubrificacao: componentLabel,
+        lubrificante: 'Graxa EP2',
+        periodicidade: Math.max(7, Math.min(45, Math.round(baseFreqDays * 0.5))),
+        tipo_periodicidade: 'dias',
+        tempo_estimado: 45,
+        prioridade: currentResult.analysis.criticality === 'Crítico' ? 'critica' : 'alta',
+        responsavel_nome: user?.nome || 'Equipe PCM',
+        status: 'programado',
+        ativo: true,
+      });
+
+      const basePoint = matchedComponent?.codigo || selectedTag;
+      await createPontoPlanoMutation.mutateAsync({
+        plano_id: lubrication.id,
+        descricao: `Ponto principal de lubrificação em ${componentLabel}`,
+        codigo_ponto: `${basePoint}-P1`.slice(0, 30),
+        equipamento_tag: selectedTag,
+        localizacao: selectedEquipment.localizacao || 'Linha principal',
+        lubrificante: 'Graxa EP2',
+        quantidade: '5 g',
+        ferramenta: 'Pistola de graxa',
+        tempo_estimado_min: 10,
+        instrucoes: 'Limpar ponto, aplicar quantidade especificada e registrar condição visual.',
+        requer_parada: false,
+        ordem: 1,
+      });
+
+      await createPontoPlanoMutation.mutateAsync({
+        plano_id: lubrication.id,
+        descricao: `Ponto secundário de lubrificação em ${componentLabel}`,
+        codigo_ponto: `${basePoint}-P2`.slice(0, 30),
+        equipamento_tag: selectedTag,
+        localizacao: selectedEquipment.localizacao || 'Linha principal',
+        lubrificante: 'Graxa EP2',
+        quantidade: '5 g',
+        ferramenta: 'Pistola de graxa',
+        tempo_estimado_min: 10,
+        instrucoes: 'Verificar presença de contaminação e reaplicar conforme padrão.',
+        requer_parada: false,
+        ordem: 2,
+      });
+
+      created.push(`lubrificação (${lubrication.codigo})`);
+    } catch (error) {
+      failures.push(`lubrificação: ${error instanceof Error ? error.message : 'erro desconhecido'}`);
+    }
+
+    const nextInspectionDate = new Date();
+    nextInspectionDate.setDate(nextInspectionDate.getDate() + Math.max(3, Math.round(baseFreqDays * 0.35)));
+    try {
+      await upsertMaintenanceScheduleMutation.mutateAsync({
+        tipo: 'inspecao',
+        origemId: `ia-inspecao-${selectedEquipment.id}-${Date.now()}`,
+        empresaId: tenantId,
+        equipamentoId: selectedEquipment.id,
+        titulo: `${inspectionCode} • Plano IA de Inspeção - ${selectedTag}`,
+        descricao: [
+          `Inspeção orientada por IA para ${componentLabel}.`,
+          `Foco de inspeção: ${currentResult.analysis.main_hypothesis}.`,
+          evidenceLines.length ? `Base O.S:\n- ${evidenceLines.slice(0, 8).join('\n- ')}` : null,
+        ].filter(Boolean).join('\n\n'),
+        dataProgramada: nextInspectionDate.toISOString(),
+        status: 'programado',
+        responsavel: user?.nome || 'Equipe PCM',
+      });
+      created.push(`inspeção (${inspectionCode})`);
+    } catch (error) {
+      failures.push(`inspeção: ${error instanceof Error ? error.message : 'erro desconhecido'}`);
+    }
+
+    const nextPredictiveDate = new Date();
+    nextPredictiveDate.setDate(nextPredictiveDate.getDate() + Math.max(2, Math.round(baseFreqDays * 0.25)));
+    try {
+      await upsertMaintenanceScheduleMutation.mutateAsync({
+        tipo: 'preditiva',
+        origemId: `ia-preditiva-${selectedEquipment.id}-${Date.now()}`,
+        empresaId: tenantId,
+        equipamentoId: selectedEquipment.id,
+        titulo: `${predictiveCode} • Plano IA Preditivo - ${selectedTag}`,
+        descricao: [
+          `Plano preditivo orientado para ${componentLabel}.`,
+          'Medições recomendadas: vibração, temperatura, corrente e ruído.',
+          `Critério de escalonamento: abrir O.S corretiva se tendência exceder limite de alerta por 2 ciclos.`,
+        ].join('\n\n'),
+        dataProgramada: nextPredictiveDate.toISOString(),
+        status: 'programado',
+        responsavel: user?.nome || 'Equipe PCM',
+      });
+      created.push(`preditiva (${predictiveCode})`);
+    } catch (error) {
+      failures.push(`preditiva: ${error instanceof Error ? error.message : 'erro desconhecido'}`);
+    }
+
+    if (created.length > 0 && failures.length === 0) {
+      toast({
+        title: 'Pacote de planos estruturado com sucesso',
+        description: `Criados: ${created.join(', ')}.`,
+      });
+      return;
+    }
+
+    if (created.length > 0) {
+      toast({
+        title: 'Pacote criado com ressalvas',
+        description: `Criados: ${created.join(', ')}. Falhas: ${failures.join(' | ')}`,
+      });
+      return;
+    }
+
+    toast({
+      title: 'Falha ao criar pacote estruturado',
+      description: failures.join(' | ') || 'Não foi possível criar os planos.',
+      variant: 'destructive',
     });
   };
 
@@ -311,6 +599,27 @@ export default function RootCauseAIPage() {
               >
                 {(createPlanoPreventivoMutation.isPending || nextDocNumber.isPending) ? <Loader2 className="h-3 w-3 animate-spin" /> : <CalendarDays className="h-3 w-3" />}
                 Criar Plano Preventivo
+              </Button>
+              <Button
+                size="sm"
+                className="gap-2"
+                onClick={() => void handleCreateStructuredPlanBundle()}
+                disabled={
+                  nextDocNumber.isPending
+                  || createPlanoPreventivoMutation.isPending
+                  || createPlanoLubrificacaoMutation.isPending
+                  || createPontoPlanoMutation.isPending
+                  || upsertMaintenanceScheduleMutation.isPending
+                }
+              >
+                {(nextDocNumber.isPending
+                  || createPlanoPreventivoMutation.isPending
+                  || createPlanoLubrificacaoMutation.isPending
+                  || createPontoPlanoMutation.isPending
+                  || upsertMaintenanceScheduleMutation.isPending)
+                  ? <Loader2 className="h-3 w-3 animate-spin" />
+                  : <Sparkles className="h-3 w-3" />}
+                Gerar Pacote Estruturado IA
               </Button>
               <Button variant="outline" size="sm" onClick={handleGenerate} disabled={generateMutation.isPending} className="gap-2">
                 <RefreshCw className="h-3 w-3" /> Regenerar
