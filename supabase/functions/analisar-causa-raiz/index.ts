@@ -95,15 +95,51 @@ Deno.serve(async (req: Request) => {
     }
     console.log("[IA] Tenant OK, empresaId:", scope.empresaId);
 
-    // EF-18: Subscription gate — verify company has active subscription for AI
-    const { data: activeSub } = await supabase
-      .from("assinaturas")
+    // EF-18: Subscription gate — support legacy and current billing schemas
+    const allowedLegacyStatuses = ["ativa", "active", "trialing", "trial", "teste"];
+    const allowedCurrentStatuses = ["ativa", "active", "trialing", "trial", "teste"];
+    const allowedCompanySubStatuses = ["active", "trial", "ativa", "teste"];
+
+    let hasActiveSubscription = false;
+
+    const { data: currentSub, error: currentSubError } = await supabase
+      .from("subscriptions")
       .select("id,status")
       .eq("empresa_id", scope.empresaId)
-      .in("status", ["ativa", "active", "trialing"])
+      .in("status", allowedCurrentStatuses)
+      .order("updated_at", { ascending: false })
       .limit(1);
-    if (!activeSub || activeSub.length === 0) {
-      return fail("Recurso IA requer assinatura ativa. Contate o administrador.", 403, null, req);
+    if (!currentSubError && Array.isArray(currentSub) && currentSub.length > 0) {
+      hasActiveSubscription = true;
+    }
+
+    if (!hasActiveSubscription) {
+      const { data: companySub, error: companySubError } = await supabase
+        .from("company_subscriptions")
+        .select("id,status")
+        .eq("empresa_id", scope.empresaId)
+        .in("status", allowedCompanySubStatuses)
+        .order("updated_at", { ascending: false })
+        .limit(1);
+      if (!companySubError && Array.isArray(companySub) && companySub.length > 0) {
+        hasActiveSubscription = true;
+      }
+    }
+
+    if (!hasActiveSubscription) {
+      const { data: legacySub, error: legacySubError } = await supabase
+        .from("assinaturas")
+        .select("id,status")
+        .eq("empresa_id", scope.empresaId)
+        .in("status", allowedLegacyStatuses)
+        .limit(1);
+      if (!legacySubError && Array.isArray(legacySub) && legacySub.length > 0) {
+        hasActiveSubscription = true;
+      }
+    }
+
+    if (!hasActiveSubscription) {
+      return fail("Recurso IA requer assinatura ativa para a empresa. Contate o administrador.", 403, null, req);
     }
 
     // ── 4. AI secrets ────────────────────────────────────────
