@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { AlertCircle, ArrowLeft, Loader2, MailCheck } from 'lucide-react';
 import { z } from 'zod';
 import { supabase } from '@/integrations/supabase/client';
+import { extractEdgeFunctionErrorAsync } from '@/lib/supabaseCompat';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -15,6 +16,23 @@ const schema = z.object({
     .max(255, 'Email muito longo')
     .regex(/^[^\s@]+@[^\s@]+\.[^\s@]+$/, 'Email inválido'),
 });
+
+function toRecoveryUserMessage(rawMessage: string): string {
+  const msg = (rawMessage || '').toLowerCase();
+  if (msg.includes('rate limit') || msg.includes('too many requests')) {
+    return 'Muitas tentativas em sequência. Aguarde alguns minutos e tente novamente.';
+  }
+  if (msg.includes('network') || msg.includes('fetch') || msg.includes('connection')) {
+    return 'Não foi possível conectar ao serviço de recuperação. Verifique sua internet e tente novamente.';
+  }
+  if (msg.includes('functionnotfound') || msg.includes('not found') || msg.includes('404')) {
+    return 'Serviço de recuperação temporariamente indisponível. Avise o administrador do sistema.';
+  }
+  if (msg.includes('email inválido') || msg.includes('email invalido')) {
+    return 'O email informado é inválido. Confira o endereço e tente novamente.';
+  }
+  return 'Não foi possível iniciar a recuperação agora. Tente novamente em instantes.';
+}
 
 export default function ForgotPassword() {
   const [email, setEmail] = useState('');
@@ -36,7 +54,7 @@ export default function ForgotPassword() {
     setIsSubmitting(true);
     try {
       const redirectTo = `${window.location.origin}/reset-password`;
-      const { error: invokeError } = await supabase.functions.invoke('auth-forgot-password', {
+      const { data, error: invokeError } = await supabase.functions.invoke('auth-forgot-password', {
         body: {
           email: normalizedEmail,
           redirect_to: redirectTo,
@@ -44,11 +62,15 @@ export default function ForgotPassword() {
       });
 
       if (invokeError) {
-        setError('Não foi possível iniciar a recuperação agora. Tente novamente em instantes.');
+        const realMessage = await extractEdgeFunctionErrorAsync(invokeError, data);
+        setError(toRecoveryUserMessage(realMessage));
         return;
       }
 
       setSubmitted(true);
+    } catch (err: unknown) {
+      const rawMessage = err instanceof Error ? err.message : '';
+      setError(toRecoveryUserMessage(rawMessage));
     } finally {
       setIsSubmitting(false);
     }

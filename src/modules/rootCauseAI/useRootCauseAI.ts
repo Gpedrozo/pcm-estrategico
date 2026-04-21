@@ -5,6 +5,26 @@ import { useAuth } from '@/contexts/AuthContext';
 import { extractEdgeFunctionErrorAsync } from '@/lib/supabaseCompat';
 import type { AIRootCauseAnalysis, AnalysisResponse } from './types';
 
+function toRootCauseUserMessage(rawMessage: string): string {
+  const msg = (rawMessage || '').toLowerCase();
+  if (msg.includes('invalid request body') || msg.includes('tag é obrigatória') || msg.includes('tag e obrigatoria')) {
+    return 'Parâmetros de análise inválidos. Revise a TAG e o período informado e tente novamente.';
+  }
+  if (msg.includes('nenhuma o.s') || msg.includes('nenhuma o.s.')) {
+    return 'Não há O.S. suficientes para essa TAG no período selecionado. Ajuste o período ou escolha outro ativo.';
+  }
+  if (msg.includes('assinatura ativa') || msg.includes('403')) {
+    return 'A análise por IA requer assinatura ativa para a empresa. Contate o administrador.';
+  }
+  if (msg.includes('too many requests') || msg.includes('429')) {
+    return 'Muitas análises em sequência. Aguarde alguns instantes e tente novamente.';
+  }
+  if (msg.includes('api de ia') || msg.includes('ai_gateway_api_key') || msg.includes('créditos insuficientes') || msg.includes('creditos insuficientes')) {
+    return 'Serviço de IA indisponível no momento. Tente novamente em alguns minutos ou acione o suporte.';
+  }
+  return rawMessage || 'Não foi possível gerar a análise de causa raiz.';
+}
+
 export function useAIAnalysisHistory(tag?: string) {
   const { tenantId } = useAuth();
   return useQuery({
@@ -78,9 +98,10 @@ export function useGenerateAnalysis() {
       });
     },
     onError: (error: any) => {
+      const rawMessage = String(error?.message ?? '');
       toast({
         title: 'Erro na análise',
-        description: error.message || 'Não foi possível gerar a análise.',
+        description: toRootCauseUserMessage(rawMessage),
         variant: 'destructive',
       });
     },
