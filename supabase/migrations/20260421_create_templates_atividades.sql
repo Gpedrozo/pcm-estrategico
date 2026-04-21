@@ -61,6 +61,6 @@ CREATE POLICY "tenant_isolation_templates_servicos" ON template_atividades_preve
   FOR ALL USING (empresa_id = auth.uid() OR (SELECT empresa_id FROM profiles WHERE id = auth.uid()) = empresa_id);
 
 -- Índices
-CREATE INDEX idx_templates_empresa_tipo ON template_atividades_preventivas(empresa_id, tipo_componente, ativo);
-CREATE INDEX idx_templates_atividades_template ON template_atividades_preventivas_atividades(template_id, empresa_id);
-CREATE INDEX idx_templates_servicos_atividade ON template_atividades_preventivas_servicos(atividade_template_id, empresa_id);
+CREATE INDEX IF NOT EXISTS idx_templates_empresa_tipo ON template_atividades_preventivas(empresa_id, tipo_componente, ativo);
+CREATE INDEX IF NOT EXISTS idx_templates_atividades_template ON template_atividades_preventivas_atividades(template_id, empresa_id);
+CREATE INDEX IF NOT EXISTS idx_templates_servicos_atividade ON template_atividades_preventivas_servicos(atividade_template_id, empresa_id);
