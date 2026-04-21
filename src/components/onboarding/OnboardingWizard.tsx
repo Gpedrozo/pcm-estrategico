@@ -20,7 +20,7 @@ interface OnboardingStep {
 }
 
 export function OnboardingWizard() {
-  const { user: _user } = useAuth();
+  const { user } = useAuth();
   const { data: plantas } = usePlantas();
   const { data: equipamentos } = useEquipamentos();
   const { data: mecanicos } = useMecanicos();
@@ -34,40 +34,77 @@ export function OnboardingWizard() {
     }
   });
 
-  const steps = useMemo((): OnboardingStep[] => [
-    {
-      id: 'hierarquia',
-      title: 'Cadastrar Hierarquia',
-      description: 'Crie plantas, áreas e sistemas para organizar seus ativos.',
-      icon: Factory,
-      completed: (plantas?.length ?? 0) > 0,
-      href: '/hierarquia',
-    },
-    {
-      id: 'equipamentos',
-      title: 'Cadastrar Equipamentos',
-      description: 'Adicione equipamentos com TAG, criticidade e localização.',
-      icon: Wrench,
-      completed: (equipamentos?.length ?? 0) > 0,
-      href: '/equipamentos',
-    },
-    {
-      id: 'mecanicos',
-      title: 'Cadastrar Mecânicos',
-      description: 'Registre sua equipe técnica para atribuição de OS.',
-      icon: Users,
-      completed: (mecanicos?.length ?? 0) > 0,
-      href: '/mecanicos',
-    },
-    {
-      id: 'os',
-      title: 'Emitir Primeira OS',
-      description: 'Crie uma ordem de serviço para iniciar o controle de manutenção.',
-      icon: FileText,
-      completed: (ordens?.length ?? 0) > 0,
-      href: '/os/nova',
-    },
-  ], [plantas, equipamentos, mecanicos, ordens]);
+  const steps = useMemo((): OnboardingStep[] => {
+    const role = String(user?.tipo ?? '').toUpperCase();
+    const isOperationalProfile = role === 'USUARIO' || role === 'SOLICITANTE';
+
+    if (isOperationalProfile) {
+      return [
+        {
+          id: 'solicitacao',
+          title: 'Abrir Primeira Solicitação',
+          description: 'Registre um problema inicial para iniciar o fluxo de atendimento.',
+          icon: FileText,
+          completed: (ordens?.length ?? 0) > 0,
+          href: '/solicitacoes',
+        },
+        {
+          id: 'painel-operador',
+          title: 'Acompanhar Execução no Painel',
+          description: 'Acompanhe evolução das demandas e prioridades do turno.',
+          icon: Wrench,
+          completed: (ordens?.length ?? 0) > 0,
+          href: '/painel-operador',
+        },
+        {
+          id: 'historico',
+          title: 'Acompanhar Histórico',
+          description: 'Valide status, tempo e causa das últimas intervenções.',
+          icon: Factory,
+          completed: (ordens?.length ?? 0) >= 3,
+          href: '/solicitacoes',
+        },
+      ];
+    }
+
+    return [
+      {
+        id: 'hierarquia',
+        title: 'Cadastrar Hierarquia',
+        description: 'Crie plantas, áreas e sistemas para organizar seus ativos.',
+        icon: Factory,
+        completed: (plantas?.length ?? 0) > 0,
+        href: '/hierarquia',
+      },
+      {
+        id: 'equipamentos',
+        title: 'Cadastrar Equipamentos',
+        description: 'Adicione equipamentos com TAG, criticidade e localização.',
+        icon: Wrench,
+        completed: (equipamentos?.length ?? 0) > 0,
+        href: '/equipamentos',
+      },
+      {
+        id: 'mecanicos',
+        title: 'Cadastrar Mecânicos',
+        description: 'Registre sua equipe técnica para atribuição de O.S.',
+        icon: Users,
+        completed: (mecanicos?.length ?? 0) > 0,
+        href: '/mecanicos',
+      },
+      {
+        id: 'os',
+        title: 'Emitir Primeira O.S',
+        description: 'Crie uma ordem de serviço para iniciar o controle de manutenção.',
+        icon: FileText,
+        completed: (ordens?.length ?? 0) > 0,
+        href: '/os/nova',
+      },
+    ];
+  }, [equipamentos, mecanicos, ordens, plantas, user?.tipo]);
+
+  const roleLabel = String(user?.tipo ?? '').toUpperCase();
+  const journeyLabel = roleLabel === 'USUARIO' || roleLabel === 'SOLICITANTE' ? 'Operação' : 'Implantação';
 
   const completedCount = steps.filter((s) => s.completed).length;
   const progress = Math.round((completedCount / steps.length) * 100);
@@ -104,7 +141,10 @@ export function OnboardingWizard() {
             <span className="text-muted-foreground">
               {completedCount}/{steps.length} etapas concluídas
             </span>
-            <Badge variant="secondary">{progress}%</Badge>
+            <div className="flex items-center gap-2">
+              <Badge variant="outline">Trilha: {journeyLabel}</Badge>
+              <Badge variant="secondary">{progress}%</Badge>
+            </div>
           </div>
           <Progress value={progress} className="h-2" />
         </div>
