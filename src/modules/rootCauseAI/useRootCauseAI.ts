@@ -47,13 +47,20 @@ export function useGenerateAnalysis() {
         throw new Error('Tenant inválido para análise de causa raiz.');
       }
 
+      const body: Record<string, string> = {
+        tag: params.tag,
+        empresa_id: tenantId,
+      };
+
+      if (params.date_from) {
+        body.date_from = params.date_from;
+      }
+      if (params.date_to) {
+        body.date_to = params.date_to;
+      }
+
       const { data, error } = await supabase.functions.invoke('analisar-causa-raiz', {
-        body: {
-          tag: params.tag,
-          empresa_id: tenantId,
-          date_from: params.date_from || null,
-          date_to: params.date_to || null,
-        },
+        body,
       });
 
       if (error) {

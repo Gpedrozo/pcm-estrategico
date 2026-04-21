@@ -153,7 +153,9 @@ export default function RootCauseAIPage() {
               summary={currentResult.analysis.summary}
               possibleCauses={currentResult.analysis.possible_causes}
               mainHypothesis={currentResult.analysis.main_hypothesis}
+              recommendedSolution={currentResult.analysis.recommended_solution}
               preventiveActions={currentResult.analysis.preventive_actions}
+              recommendedImprovements={currentResult.analysis.recommended_improvements}
               criticality={currentResult.analysis.criticality}
               confidenceScore={currentResult.analysis.confidence_score}
               osCount={currentResult.os_count}
@@ -169,7 +171,9 @@ export default function RootCauseAIPage() {
             summary={currentResult.analysis.summary}
             possibleCauses={currentResult.analysis.possible_causes}
             mainHypothesis={currentResult.analysis.main_hypothesis}
+            recommendedSolution={currentResult.analysis.recommended_solution}
             preventiveActions={currentResult.analysis.preventive_actions}
+            recommendedImprovements={currentResult.analysis.recommended_improvements}
             criticality={currentResult.analysis.criticality}
             confidenceScore={currentResult.analysis.confidence_score}
             osCount={currentResult.os_count}
@@ -204,7 +208,9 @@ export default function RootCauseAIPage() {
                         summary: item.summary || '',
                         possible_causes: (item.possible_causes as string[]) || [],
                         main_hypothesis: item.main_hypothesis || '',
+                        recommended_solution: item.recommended_solution || item.raw_response?.analysis?.recommended_solution || item.raw_response?.structured_analysis?.recommended_solution || '',
                         preventive_actions: (item.preventive_actions as string[]) || [],
+                        recommended_improvements: (item.recommended_improvements as string[]) || item.raw_response?.analysis?.recommended_improvements || item.raw_response?.structured_analysis?.recommended_improvements || [],
                         criticality: item.criticality || 'Médio',
                         confidence_score: item.confidence_score || 0,
                       },

@@ -6,7 +6,9 @@ export interface AIRootCauseAnalysis {
   summary: string | null;
   possible_causes: string[] | null;
   main_hypothesis: string | null;
+  recommended_solution?: string | null;
   preventive_actions: string[] | null;
+  recommended_improvements?: string[] | null;
   criticality: string | null;
   confidence_score: number | null;
   raw_response: any;
@@ -23,7 +25,9 @@ export interface AnalysisResponse {
     summary: string;
     possible_causes: string[];
     main_hypothesis: string;
+    recommended_solution?: string;
     preventive_actions: string[];
+    recommended_improvements?: string[];
     criticality: string;
     confidence_score: number;
   };

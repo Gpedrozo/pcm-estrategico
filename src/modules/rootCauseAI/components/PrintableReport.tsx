@@ -6,7 +6,9 @@ interface PrintableReportProps {
   summary: string;
   possibleCauses: string[];
   mainHypothesis: string;
+  recommendedSolution?: string;
   preventiveActions: string[];
+  recommendedImprovements?: string[];
   criticality: string;
   confidenceScore: number;
   osCount: number | null;
@@ -31,7 +33,9 @@ export const PrintableReport = forwardRef<HTMLDivElement, PrintableReportProps>(
       summary,
       possibleCauses,
       mainHypothesis,
+      recommendedSolution,
       preventiveActions,
+      recommendedImprovements = [],
       criticality,
       confidenceScore,
       osCount,
@@ -117,9 +121,16 @@ export const PrintableReport = forwardRef<HTMLDivElement, PrintableReportProps>(
           <p className="report-text highlight-text">{mainHypothesis}</p>
         </div>
 
+        {recommendedSolution && (
+          <div className="report-section">
+            <h2>3. Solução Mais Provável</h2>
+            <p className="report-text">{recommendedSolution}</p>
+          </div>
+        )}
+
         {/* ── Possible Causes ────────────────── */}
         <div className="report-section">
-          <h2>3. Possíveis Causas</h2>
+          <h2>4. Possíveis Causas</h2>
           {possibleCauses.length > 0 ? (
             <ol className="report-list numbered">
               {possibleCauses.map((cause, i) => (
@@ -133,7 +144,7 @@ export const PrintableReport = forwardRef<HTMLDivElement, PrintableReportProps>(
 
         {/* ── Preventive Actions ─────────────── */}
         <div className="report-section">
-          <h2>4. Ações Preventivas Recomendadas</h2>
+          <h2>5. Ações Preventivas Recomendadas</h2>
           {preventiveActions.length > 0 ? (
             <ul className="report-checklist">
               {preventiveActions.map((action, i) => (
@@ -145,6 +156,22 @@ export const PrintableReport = forwardRef<HTMLDivElement, PrintableReportProps>(
             </ul>
           ) : (
             <p className="report-text muted">Nenhuma ação preventiva sugerida.</p>
+          )}
+        </div>
+
+        <div className="report-section">
+          <h2>6. Melhorias Recomendadas</h2>
+          {recommendedImprovements.length > 0 ? (
+            <ul className="report-checklist">
+              {recommendedImprovements.map((improvement, i) => (
+                <li key={i}>
+                  <span className="checkbox" />
+                  <span>{improvement}</span>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="report-text muted">Nenhuma melhoria adicional sugerida.</p>
           )}
         </div>
 

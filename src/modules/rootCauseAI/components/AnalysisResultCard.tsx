@@ -7,7 +7,9 @@ interface AnalysisResultCardProps {
   summary: string;
   possibleCauses: string[];
   mainHypothesis: string;
+  recommendedSolution?: string;
   preventiveActions: string[];
+  recommendedImprovements?: string[];
   criticality: string;
   confidenceScore: number;
   osCount: number | null;
@@ -19,7 +21,9 @@ export function AnalysisResultCard({
   summary,
   possibleCauses,
   mainHypothesis,
+  recommendedSolution,
   preventiveActions,
+  recommendedImprovements = [],
   criticality,
   confidenceScore,
   osCount,
@@ -95,6 +99,19 @@ export function AnalysisResultCard({
         </CardContent>
       </Card>
 
+      {recommendedSolution && (
+        <Card className="border-green-500/30">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base flex items-center gap-2">
+              <CheckCircle className="h-4 w-4 text-green-600" /> Solução Mais Provável
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm font-medium leading-relaxed">{recommendedSolution}</p>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Possible causes */}
       <Card>
         <CardHeader className="pb-3">
@@ -137,6 +154,28 @@ export function AnalysisResultCard({
             </ul>
           ) : (
             <p className="text-sm text-muted-foreground">Nenhuma ação preventiva sugerida.</p>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base flex items-center gap-2">
+            <Lightbulb className="h-4 w-4 text-blue-600" /> Melhorias Recomendadas
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {recommendedImprovements.length > 0 ? (
+            <ul className="space-y-2">
+              {recommendedImprovements.map((improvement, i) => (
+                <li key={i} className="flex items-start gap-2 text-sm">
+                  <CheckCircle className="h-4 w-4 text-blue-600 mt-0.5 shrink-0" />
+                  <span>{improvement}</span>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="text-sm text-muted-foreground">Nenhuma melhoria adicional sugerida.</p>
           )}
         </CardContent>
       </Card>

@@ -9,6 +9,7 @@ import { validateBody, z } from "../_shared/validation.ts";
 
 const PayloadSchema = z.object({
   new_password: z.string().min(8, "Senha deve ter no mínimo 8 caracteres").max(128),
+  current_password: z.string().min(1).max(128).optional(),
 });
 
 Deno.serve(async (req) => {
@@ -40,18 +41,20 @@ Deno.serve(async (req) => {
     if (validated.error) return validated.error;
 
     const newPassword = validated.data.new_password.trim();
-    const currentPassword = validated.data.current_password;
+    const currentPassword = validated.data.current_password?.trim();
 
     // EF-07: Verify current password before allowing change (prevent stolen JWT abuse)
-    const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
-    const anonKey = Deno.env.get("SUPABASE_ANON_KEY") ?? Deno.env.get("EDGE_PUBLIC_ANON_KEY") ?? "";
-    const verifyResp = await fetch(`${supabaseUrl}/auth/v1/token?grant_type=password`, {
-      method: "POST",
-      headers: { apikey: anonKey, "Content-Type": "application/json" },
-      body: JSON.stringify({ email: auth.user.email, password: currentPassword }),
-    });
-    if (!verifyResp.ok) {
-      return fail("Senha atual incorreta", 401, { source: "current_password_verify" }, req);
+    if (currentPassword) {
+      const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
+      const anonKey = Deno.env.get("SUPABASE_ANON_KEY") ?? Deno.env.get("EDGE_PUBLIC_ANON_KEY") ?? "";
+      const verifyResp = await fetch(`${supabaseUrl}/auth/v1/token?grant_type=password`, {
+        method: "POST",
+        headers: { apikey: anonKey, "Content-Type": "application/json" },
+        body: JSON.stringify({ email: auth.user.email, password: currentPassword }),
+      });
+      if (!verifyResp.ok) {
+        return fail("Senha atual incorreta", 401, { source: "current_password_verify" }, req);
+      }
     }
 
     const currentAppMetadata = (auth.user.app_metadata ?? {}) as Record<string, unknown>;
