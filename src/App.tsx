@@ -151,7 +151,7 @@ const AdminOnlyRoute = ({ children }: { children: React.ReactNode }) => {
     return <>{children}</>;
   }
 
-  if (isLoading && !timedOut) return null;
+  if (isLoading && !timedOut) return <RouteLoading />;
 
   if (!hasTenantAdminPermission) {
     return <Navigate to="/dashboard" replace />;
