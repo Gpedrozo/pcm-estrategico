@@ -25,6 +25,13 @@ const PRIORITY_OPTIONS = [
   { value: 'critica', label: 'Crítica' },
 ]
 
+const SLA_BY_PRIORITY_HOURS: Record<string, number> = {
+  baixa: 24,
+  media: 8,
+  alta: 4,
+  critica: 2,
+}
+
 const isImageUrl = (url: unknown) => {
   if (typeof url !== 'string') return false
   const normalized = url.split('?')[0].toLowerCase()
@@ -44,6 +51,55 @@ const priorityBadge = (priority: string) => {
   if (p === 'alta' || p === 'high' || p === 'urgente') return 'bg-red-100 text-red-700 border-red-200'
   if (p === 'media' || p === 'medium') return 'bg-amber-100 text-amber-700 border-amber-200'
   return 'bg-muted text-muted-foreground border-border'
+}
+
+function getSlaStatus(priority: string | null | undefined, createdAt: string, status: string) {
+  const p = String(priority ?? 'media').toLowerCase()
+  const slaHours = SLA_BY_PRIORITY_HOURS[p] ?? SLA_BY_PRIORITY_HOURS.media
+  const created = new Date(createdAt)
+  const deadline = new Date(created.getTime() + slaHours * 60 * 60 * 1000)
+  const now = new Date()
+  const isResolved = ['resolvido', 'resolved', 'fechado'].includes(String(status).toLowerCase())
+  const remainingMs = deadline.getTime() - now.getTime()
+  const remainingHours = Math.floor(remainingMs / (60 * 60 * 1000))
+
+  if (isResolved) {
+    return {
+      slaHours,
+      deadline,
+      label: 'Concluído',
+      toneClass: 'bg-emerald-100 text-emerald-700 border-emerald-200',
+      isOverdue: false,
+    }
+  }
+
+  if (remainingMs < 0) {
+    return {
+      slaHours,
+      deadline,
+      label: 'SLA estourado',
+      toneClass: 'bg-destructive text-destructive-foreground border-destructive/70',
+      isOverdue: true,
+    }
+  }
+
+  if (remainingHours <= 1) {
+    return {
+      slaHours,
+      deadline,
+      label: 'SLA em risco',
+      toneClass: 'bg-amber-100 text-amber-700 border-amber-200',
+      isOverdue: false,
+    }
+  }
+
+  return {
+    slaHours,
+    deadline,
+    label: `Dentro do SLA (${remainingHours}h)`,
+    toneClass: 'bg-sky-100 text-sky-700 border-sky-200',
+    isOverdue: false,
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -91,10 +147,18 @@ export default function Suporte() {
 
   const totals = useMemo(() => {
     const all = tickets ?? []
+    const emRisco = all.filter((t) => {
+      const sla = getSlaStatus(t.priority, t.created_at, t.status)
+      return !sla.isOverdue && sla.label === 'SLA em risco'
+    }).length
+    const estourado = all.filter((t) => getSlaStatus(t.priority, t.created_at, t.status).isOverdue).length
+
     return {
       total: all.length,
       aberto: all.filter((t) => t.status === 'aberto' || t.status === 'em_analise').length,
       resolvido: all.filter((t) => t.status === 'resolvido').length,
+      emRisco,
+      estourado,
     }
   }, [tickets])
 
@@ -213,7 +277,7 @@ export default function Suporte() {
       </div>
 
       {/* Stats */}
-      <section className="grid gap-3 grid-cols-2 md:grid-cols-4">
+      <section className="grid gap-3 grid-cols-2 md:grid-cols-6">
         <div className="rounded-lg border bg-card p-3">
           <p className="text-xs text-muted-foreground">Total</p>
           <p className="mt-1 text-xl font-semibold">{totals.total}</p>
@@ -229,6 +293,14 @@ export default function Suporte() {
         <div className="rounded-lg border bg-card p-3">
           <p className="text-xs text-muted-foreground">Não lidas</p>
           <p className="mt-1 text-xl font-semibold text-sky-600">{unreadClientTotal}</p>
+        </div>
+        <div className="rounded-lg border bg-card p-3">
+          <p className="text-xs text-muted-foreground">SLA em risco</p>
+          <p className="mt-1 text-xl font-semibold text-amber-600">{totals.emRisco}</p>
+        </div>
+        <div className="rounded-lg border bg-card p-3">
+          <p className="text-xs text-muted-foreground">SLA estourado</p>
+          <p className="mt-1 text-xl font-semibold text-destructive">{totals.estourado}</p>
         </div>
       </section>
 
@@ -291,6 +363,7 @@ export default function Suporte() {
                   const isSelected = ticket.id === selectedTicketId
                   const unread = Number(ticket.unread_client_messages ?? 0)
                   const created = new Date(ticket.created_at).toLocaleDateString('pt-BR')
+                  const sla = getSlaStatus(ticket.priority, ticket.created_at, ticket.status)
                   return (
                     <button
                       key={ticket.id}
@@ -309,6 +382,9 @@ export default function Suporte() {
                       <div className="flex items-center gap-2 mt-1.5">
                         <span className={`rounded border px-1.5 py-0.5 text-[10px] font-medium ${statusBadge(ticket.status)}`}>{ticket.status}</span>
                         <span className={`rounded border px-1.5 py-0.5 text-[10px] font-medium ${priorityBadge(ticket.priority ?? 'media')}`}>{ticket.priority ?? 'media'}</span>
+                        <span className={`rounded border px-1.5 py-0.5 text-[10px] font-medium ${sla.toneClass}`}>
+                          SLA {sla.slaHours}h
+                        </span>
                         <span className="text-[10px] text-muted-foreground ml-auto">{created}</span>
                       </div>
                     </button>
@@ -323,20 +399,27 @@ export default function Suporte() {
         <div className="xl:col-span-3 space-y-3">
           {selectedTicket ? (
             <>
-              {/* Ticket header */}
-              <div className="rounded-lg border bg-card p-4">
-                <h3 className="font-semibold text-base">{selectedTicket.subject}</h3>
-                <div className="flex flex-wrap items-center gap-3 mt-2 text-xs">
-                  <span className={`rounded border px-2 py-0.5 font-medium ${statusBadge(selectedTicket.status)}`}>{selectedTicket.status}</span>
-                  <span className={`rounded border px-2 py-0.5 font-medium ${priorityBadge(selectedTicket.priority ?? 'media')}`}>{selectedTicket.priority ?? 'media'}</span>
-                  <span className="text-muted-foreground">Criado em {new Date(selectedTicket.created_at).toLocaleString('pt-BR')}</span>
-                  {selectedTicket.unread_owner_messages === 0 && threadMessages.some((m) => m.sender === 'client') && (
-                    <span className="flex items-center gap-1 text-emerald-600">
-                      <CheckCheck className="h-3 w-3" /> Lido pelo suporte
-                    </span>
-                  )}
-                </div>
-              </div>
+              {(() => {
+                const sla = getSlaStatus(selectedTicket.priority, selectedTicket.created_at, selectedTicket.status)
+                return (
+                  <div className="rounded-lg border bg-card p-4">
+                    <h3 className="font-semibold text-base">{selectedTicket.subject}</h3>
+                    <div className="flex flex-wrap items-center gap-3 mt-2 text-xs">
+                      <span className={`rounded border px-2 py-0.5 font-medium ${statusBadge(selectedTicket.status)}`}>{selectedTicket.status}</span>
+                      <span className={`rounded border px-2 py-0.5 font-medium ${priorityBadge(selectedTicket.priority ?? 'media')}`}>{selectedTicket.priority ?? 'media'}</span>
+                      <span className={`rounded border px-2 py-0.5 font-medium ${sla.toneClass}`}>{sla.label}</span>
+                      <span className="text-muted-foreground">SLA alvo: {sla.slaHours}h</span>
+                      <span className="text-muted-foreground">Prazo: {sla.deadline.toLocaleString('pt-BR')}</span>
+                      <span className="text-muted-foreground">Criado em {new Date(selectedTicket.created_at).toLocaleString('pt-BR')}</span>
+                      {selectedTicket.unread_owner_messages === 0 && threadMessages.some((m) => m.sender === 'client') && (
+                        <span className="flex items-center gap-1 text-emerald-600">
+                          <CheckCheck className="h-3 w-3" /> Lido pelo suporte
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                )
+              })()}
 
               {/* Thread conversation */}
               <div className="rounded-lg border bg-card p-4">
