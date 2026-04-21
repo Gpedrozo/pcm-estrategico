@@ -6,13 +6,19 @@
 
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 
-const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL ?? '';
-const SUPABASE_ANON_KEY = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY ?? '';
+const rawSupabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL?.trim() ?? '';
+const rawSupabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY?.trim() ?? '';
 
-if (!SUPABASE_URL) {
+export const hasSupabaseConfig = Boolean(rawSupabaseUrl && rawSupabaseAnonKey);
+
+// Prevent startup crash in release builds if env vars were not embedded.
+const SUPABASE_URL = hasSupabaseConfig ? rawSupabaseUrl : 'https://invalid.supabase.local';
+const SUPABASE_ANON_KEY = hasSupabaseConfig ? rawSupabaseAnonKey : 'invalid-anon-key';
+
+if (!rawSupabaseUrl) {
   console.warn('[supabase] EXPO_PUBLIC_SUPABASE_URL not set. Set it in .env or app.json extra.');
 }
-if (!SUPABASE_ANON_KEY) {
+if (!rawSupabaseAnonKey) {
   console.warn('[supabase] EXPO_PUBLIC_SUPABASE_ANON_KEY not set. Set it in .env or app.json extra.');
 }
 
