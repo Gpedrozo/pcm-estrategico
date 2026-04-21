@@ -18,6 +18,18 @@ export interface AIRootCauseAnalysis {
   requested_by: string | null;
 }
 
+export interface PreventivePlanSuggestion {
+  should_create_plan: boolean;
+  plan_name: string;
+  trigger_type: 'TEMPO' | 'CICLO' | 'CONDICAO';
+  suggested_frequency_days: number | null;
+  strategic_reason: string;
+  recurring_component: string;
+  recurrence_interval_days: number | null;
+  stock_recommendations: string[];
+  expected_downtime_reduction_hours: number | null;
+}
+
 export interface AnalysisResponse {
   analysis: {
     id: string;
@@ -28,6 +40,8 @@ export interface AnalysisResponse {
     recommended_solution?: string;
     preventive_actions: string[];
     recommended_improvements?: string[];
+    recurrence_insights?: string[];
+    preventive_plan_suggestion?: PreventivePlanSuggestion;
     criticality: string;
     confidence_score: number;
   };

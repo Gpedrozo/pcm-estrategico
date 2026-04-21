@@ -172,6 +172,21 @@ Deno.serve(async (req: Request) => {
       .eq("empresa_id", scope.empresaId)
       .in("os_id", osIds);
 
+    const materialIds = Array.from(new Set((materiaisOS || [])
+      .map((m: any) => String(m.material_id || "").trim())
+      .filter(Boolean)));
+
+    let materiaisCatalogo: any[] = [];
+    if (materialIds.length > 0) {
+      const { data: materiaisData } = await supabase
+        .from("materiais")
+        .select("id,codigo,descricao")
+        .eq("empresa_id", scope.empresaId)
+        .in("id", materialIds)
+        .limit(300);
+      materiaisCatalogo = materiaisData || [];
+    }
+
     // 5e. Solicitações de manutenção (APROVADAS, REJEITADAS, CANCELADAS)
     const { data: solicitacoes } = await supabase
       .from("solicitacoes_manutencao")
@@ -307,10 +322,35 @@ Deno.serve(async (req: Request) => {
     // Materiais agregados
     let custoMateriais = 0;
     let qtdMateriais = 0;
+    const materialMetaById = new Map<string, { codigo: string; descricao: string }>();
+    for (const mat of materiaisCatalogo) {
+      materialMetaById.set(String(mat.id), {
+        codigo: String(mat.codigo || "").trim(),
+        descricao: String(mat.descricao || "").trim(),
+      });
+    }
+
+    const componentMap: Record<string, { nome: string; eventos: number; quantidade: number }> = {};
     for (const m of (materiaisOS || [])) {
       custoMateriais += (Number(m.quantidade) || 0) * (Number(m.custo_unitario) || 0);
       qtdMateriais += Number(m.quantidade) || 0;
+
+      const materialId = String(m.material_id || "").trim();
+      const meta = materialMetaById.get(materialId);
+      const nome = meta?.descricao || meta?.codigo || materialId || "Material não identificado";
+      if (!componentMap[nome]) {
+        componentMap[nome] = { nome, eventos: 0, quantidade: 0 };
+      }
+      componentMap[nome].eventos += 1;
+      componentMap[nome].quantidade += Number(m.quantidade) || 0;
     }
+
+    const recurringComponents = Object.values(componentMap)
+      .sort((a, b) => {
+        if (b.eventos !== a.eventos) return b.eventos - a.eventos;
+        return b.quantidade - a.quantidade;
+      })
+      .slice(0, 5);
 
     // Solicitações canceladas/rejeitadas
     const solicitCanceladas = (solicitacoes || []).filter((s: any) => s.status === "CANCELADA" || s.status === "REJEITADA");
@@ -407,6 +447,17 @@ Deno.serve(async (req: Request) => {
       `Problemas relatados (últimos ${Math.min(problemas.length, 20)}):`,
       descricoes || "  (nenhum)",
     ];
+
+    if (recurringComponents.length > 0) {
+      const recurringText = recurringComponents
+        .map((c, i) => `  ${i + 1}. ${sanitize(c.nome)} | eventos: ${c.eventos} | quantidade total: ${c.quantidade.toFixed(2)}`)
+        .join("\n");
+      promptSections.push(
+        "",
+        "═══ COMPONENTES RECORRENTES (MATERIAIS TROCADOS) ═══",
+        recurringText,
+      );
+    }
 
     if (custoTotal > 0 || tempoTotalExec > 0) {
       promptSections.push(
@@ -511,6 +562,7 @@ Deno.serve(async (req: Request) => {
       "Cruze histórico corretivo com FMEA, preditiva, inspeções e melhorias já propostas/implantadas.",
       "Identifique: padrões de falha, correlações entre fontes, causas técnicas, causa raiz provável, solução corretiva mais provável,",
       "ações preventivas, melhorias priorizadas, criticidade (Baixo/Médio/Alto/Crítico) e score de confiança (0-100).",
+      "Quando houver recorrência suficiente, proponha um plano preventivo estruturado com gatilho, frequência, componente crítico e recomendações de estoque.",
       "Se houver evidência conflitante, explicite a incerteza e priorize o que inspecionar primeiro em campo.",
     );
 
@@ -546,10 +598,26 @@ Deno.serve(async (req: Request) => {
                   recommended_solution: { type: "string", description: "Solução corretiva mais provável e objetiva" },
                   preventive_actions: { type: "array",   items: { type: "string" }, description: "Ações preventivas" },
                   recommended_improvements: { type: "array", items: { type: "string" }, description: "Melhorias de engenharia/processo priorizadas" },
+                  recurrence_insights: { type: "array", items: { type: "string" }, description: "Insights de recorrência e periodicidade de falhas" },
+                  preventive_plan_suggestion: {
+                    type: "object",
+                    properties: {
+                      should_create_plan: { type: "boolean" },
+                      plan_name: { type: "string" },
+                      trigger_type: { type: "string", enum: ["TEMPO", "CICLO", "CONDICAO"] },
+                      suggested_frequency_days: { type: ["number", "null"] },
+                      strategic_reason: { type: "string" },
+                      recurring_component: { type: "string" },
+                      recurrence_interval_days: { type: ["number", "null"] },
+                      stock_recommendations: { type: "array", items: { type: "string" } },
+                      expected_downtime_reduction_hours: { type: ["number", "null"] },
+                    },
+                    required: ["should_create_plan", "plan_name", "trigger_type", "suggested_frequency_days", "strategic_reason", "recurring_component", "recurrence_interval_days", "stock_recommendations", "expected_downtime_reduction_hours"],
+                  },
                   criticality:        { type: "string",  enum: ["Baixo", "Médio", "Alto", "Crítico"] },
                   confidence_score:   { type: "number",  description: "0-100" },
                 },
-                required: ["summary", "possible_causes", "main_hypothesis", "recommended_solution", "preventive_actions", "recommended_improvements", "criticality", "confidence_score"],
+                required: ["summary", "possible_causes", "main_hypothesis", "recommended_solution", "preventive_actions", "recommended_improvements", "recurrence_insights", "preventive_plan_suggestion", "criticality", "confidence_score"],
               },
             },
           },
@@ -610,6 +678,61 @@ Deno.serve(async (req: Request) => {
     if (!Array.isArray(analysis.possible_causes)) analysis.possible_causes = [];
     if (!Array.isArray(analysis.preventive_actions)) analysis.preventive_actions = [];
     if (!Array.isArray(analysis.recommended_improvements)) analysis.recommended_improvements = [];
+    if (!Array.isArray(analysis.recurrence_insights)) analysis.recurrence_insights = [];
+    if (typeof analysis.preventive_plan_suggestion !== "object" || !analysis.preventive_plan_suggestion) {
+      analysis.preventive_plan_suggestion = {};
+    }
+    analysis.preventive_plan_suggestion.should_create_plan = Boolean(analysis.preventive_plan_suggestion.should_create_plan);
+    analysis.preventive_plan_suggestion.plan_name = String(analysis.preventive_plan_suggestion.plan_name || `Plano preventivo IA - ${sanitizedTag}`).slice(0, 140);
+    analysis.preventive_plan_suggestion.trigger_type = ["TEMPO", "CICLO", "CONDICAO"].includes(String(analysis.preventive_plan_suggestion.trigger_type))
+      ? analysis.preventive_plan_suggestion.trigger_type
+      : "TEMPO";
+    const suggestedFrequency = Number(analysis.preventive_plan_suggestion.suggested_frequency_days);
+    analysis.preventive_plan_suggestion.suggested_frequency_days = Number.isFinite(suggestedFrequency) && suggestedFrequency > 0
+      ? Math.max(7, Math.min(365, Math.round(suggestedFrequency)))
+      : null;
+    analysis.preventive_plan_suggestion.strategic_reason = String(analysis.preventive_plan_suggestion.strategic_reason || "Recorrência de falhas detectada.");
+    analysis.preventive_plan_suggestion.recurring_component = String(analysis.preventive_plan_suggestion.recurring_component || recurringComponents[0]?.nome || "Componente crítico");
+    const recurrenceInterval = Number(analysis.preventive_plan_suggestion.recurrence_interval_days);
+    analysis.preventive_plan_suggestion.recurrence_interval_days = Number.isFinite(recurrenceInterval) && recurrenceInterval > 0
+      ? Math.max(1, Math.round(recurrenceInterval))
+      : (mtbf > 0 ? Math.round(mtbf) : null);
+    if (!Array.isArray(analysis.preventive_plan_suggestion.stock_recommendations)) {
+      analysis.preventive_plan_suggestion.stock_recommendations = [];
+    }
+    const dtReduction = Number(analysis.preventive_plan_suggestion.expected_downtime_reduction_hours);
+    analysis.preventive_plan_suggestion.expected_downtime_reduction_hours = Number.isFinite(dtReduction) && dtReduction >= 0
+      ? Math.round(dtReduction * 10) / 10
+      : null;
+
+    if (corretivas.length < 3) {
+      analysis.preventive_plan_suggestion.should_create_plan = false;
+      analysis.recurrence_insights = [
+        `Dados insuficientes para recorrência robusta (${corretivas.length} corretivas). Recomenda-se acumular mais histórico ou ampliar o período analisado.`,
+      ];
+    } else {
+      const autoInsights: string[] = [];
+      if (mtbf > 0) {
+        autoInsights.push(`Falhas corretivas em intervalo médio de ${mtbf.toFixed(1)} dias para a TAG ${sanitizedTag}.`);
+      }
+      if (recurringComponents[0]) {
+        autoInsights.push(`Componente mais recorrente: ${recurringComponents[0].nome} (${recurringComponents[0].eventos} ocorrências).`);
+      }
+      if (tempoParadaTotal > 0 && corretivas.length > 0) {
+        autoInsights.push(`Parada média aproximada de ${(tempoParadaTotal / Math.max(1, corretivas.length)).toFixed(1)}h por ocorrência relacionada.`);
+      }
+      analysis.recurrence_insights = Array.from(new Set([...autoInsights, ...analysis.recurrence_insights])).slice(0, 6);
+
+      if (analysis.preventive_plan_suggestion.trigger_type === "TEMPO" && !analysis.preventive_plan_suggestion.suggested_frequency_days && mtbf > 0) {
+        analysis.preventive_plan_suggestion.suggested_frequency_days = Math.max(7, Math.round(mtbf * 0.7));
+      }
+      if (analysis.preventive_plan_suggestion.stock_recommendations.length === 0 && recurringComponents[0]) {
+        analysis.preventive_plan_suggestion.stock_recommendations = [
+          `Manter estoque mínimo do componente ${recurringComponents[0].nome} para cobertura de pelo menos 1 ciclo de falha.`,
+          "Revisar ponto de reposição com base no lead time de compra e criticidade do ativo.",
+        ];
+      }
+    }
     if (typeof analysis.recommended_solution !== "string" || !analysis.recommended_solution.trim()) {
       analysis.recommended_solution = analysis.preventive_actions[0] || "Solução não determinada";
     }

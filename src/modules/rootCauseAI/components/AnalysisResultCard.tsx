@@ -2,6 +2,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { ConfidenceScoreBar } from './ConfidenceScoreBar';
 import { AlertTriangle, CheckCircle, Lightbulb, Search, Target } from 'lucide-react';
+import type { PreventivePlanSuggestion } from '../types';
 
 interface AnalysisResultCardProps {
   summary: string;
@@ -10,6 +11,8 @@ interface AnalysisResultCardProps {
   recommendedSolution?: string;
   preventiveActions: string[];
   recommendedImprovements?: string[];
+  recurrenceInsights?: string[];
+  preventivePlanSuggestion?: PreventivePlanSuggestion;
   criticality: string;
   confidenceScore: number;
   osCount: number | null;
@@ -24,6 +27,8 @@ export function AnalysisResultCard({
   recommendedSolution,
   preventiveActions,
   recommendedImprovements = [],
+  recurrenceInsights = [],
+  preventivePlanSuggestion,
   criticality,
   confidenceScore,
   osCount,
@@ -154,6 +159,50 @@ export function AnalysisResultCard({
             </ul>
           ) : (
             <p className="text-sm text-muted-foreground">Nenhuma ação preventiva sugerida.</p>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card className="border-blue-500/30">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base flex items-center gap-2">
+            <Target className="h-4 w-4 text-blue-600" /> Estratégia Preventiva Recomendada
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {recurrenceInsights.length > 0 ? (
+            <ul className="space-y-2">
+              {recurrenceInsights.map((insight, i) => (
+                <li key={i} className="flex items-start gap-2 text-sm">
+                  <span className="font-bold text-blue-600 mt-0.5">{i + 1}.</span>
+                  <span>{insight}</span>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="text-sm text-muted-foreground">Sem insight de recorrência suficiente para sugerir estratégia automática.</p>
+          )}
+
+          {preventivePlanSuggestion && preventivePlanSuggestion.should_create_plan ? (
+            <div className="rounded-md border border-blue-200 bg-blue-50/60 p-3 space-y-2">
+              <p className="text-sm font-semibold">Plano sugerido: {preventivePlanSuggestion.plan_name}</p>
+              <p className="text-sm">Componente recorrente: <strong>{preventivePlanSuggestion.recurring_component || 'N/A'}</strong></p>
+              <p className="text-sm">Gatilho: <strong>{preventivePlanSuggestion.trigger_type}</strong></p>
+              <p className="text-sm">Frequência recomendada: <strong>{preventivePlanSuggestion.suggested_frequency_days ?? 'N/A'} dias</strong></p>
+              <p className="text-sm text-muted-foreground">{preventivePlanSuggestion.strategic_reason}</p>
+              {preventivePlanSuggestion.stock_recommendations?.length > 0 && (
+                <ul className="space-y-1 pt-1">
+                  {preventivePlanSuggestion.stock_recommendations.map((item, i) => (
+                    <li key={i} className="text-sm flex items-start gap-2">
+                      <CheckCircle className="h-4 w-4 text-blue-600 mt-0.5 shrink-0" />
+                      <span>{item}</span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground">A IA não recomenda criação automática de plano preventivo com os dados atuais.</p>
           )}
         </CardContent>
       </Card>

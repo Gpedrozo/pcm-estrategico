@@ -13,6 +13,8 @@ import { useEquipamentos } from '@/hooks/useEquipamentos';
 import { useAIAnalysisHistory, useGenerateAnalysis, useDeleteAnalysis } from './useRootCauseAI';
 import { useCreateOrdemServico } from '@/hooks/useOrdensServico';
 import { useCreateMelhoria } from '@/hooks/useMelhorias';
+import { useCreatePlanoPreventivo } from '@/hooks/usePlanosPreventivos';
+import { useNextDocumentNumber } from '@/hooks/useDocumentEngine';
 import { AnalysisResultCard } from './components/AnalysisResultCard';
 import { PrintableReport } from './components/PrintableReport';
 import type { AnalysisResponse } from './types';
@@ -31,6 +33,8 @@ export default function RootCauseAIPage() {
   const deleteMutation = useDeleteAnalysis();
   const createOSMutation = useCreateOrdemServico();
   const createMelhoriaMutation = useCreateMelhoria();
+  const createPlanoPreventivoMutation = useCreatePlanoPreventivo();
+  const nextDocNumber = useNextDocumentNumber();
 
   const handleDelete = (e: React.MouseEvent, id: string) => {
     e.stopPropagation();
@@ -111,6 +115,49 @@ export default function RootCauseAIPage() {
     toast({
       title: 'Melhoria registrada',
       description: 'A recomendação da IA foi convertida em iniciativa de melhoria.',
+    });
+  };
+
+  const handleCreatePreventivePlan = async () => {
+    if (!selectedTag || !currentResult) return;
+
+    const suggestion = currentResult.analysis.preventive_plan_suggestion;
+    if (!suggestion?.should_create_plan) {
+      toast({
+        title: 'Dados insuficientes para plano automático',
+        description: 'A IA ainda não identificou recorrência forte para criar plano preventivo automaticamente.',
+      });
+      return;
+    }
+
+    const equipamento = equipamentos?.find((item) => item.tag === selectedTag);
+    const codigo = await nextDocNumber.mutateAsync('PREVENTIVA');
+    const freq = Math.max(7, Math.min(365, Number(suggestion.suggested_frequency_days ?? Math.floor((currentResult.mtbf_days ?? 45) * 0.7))));
+
+    const instrucoesGeradas = [
+      `Origem: Inteligência IA para TAG ${selectedTag}.`,
+      `Componente recorrente: ${suggestion.recurring_component || 'N/A'}.`,
+      `Motivo estratégico: ${suggestion.strategic_reason || 'Reduzir recorrência de falha.'}`,
+      currentResult.analysis.recommended_solution ? `Solução corretiva base: ${currentResult.analysis.recommended_solution}` : null,
+      currentResult.analysis.preventive_actions?.length ? `Ações preventivas:\n- ${currentResult.analysis.preventive_actions.join('\n- ')}` : null,
+      suggestion.stock_recommendations?.length ? `Recomendação de estoque:\n- ${suggestion.stock_recommendations.join('\n- ')}` : null,
+    ].filter(Boolean).join('\n\n');
+
+    await createPlanoPreventivoMutation.mutateAsync({
+      codigo,
+      nome: suggestion.plan_name || `Plano IA - ${selectedTag}`,
+      descricao: `Plano sugerido por IA para reduzir falhas recorrentes do componente ${suggestion.recurring_component || 'crítico'}.`,
+      equipamento_id: equipamento?.id ?? null,
+      tag: selectedTag,
+      tipo_gatilho: suggestion.trigger_type || 'TEMPO',
+      frequencia_dias: suggestion.trigger_type === 'TEMPO' ? freq : null,
+      tempo_estimado_min: 90,
+      instrucoes: instrucoesGeradas,
+    });
+
+    toast({
+      title: 'Plano preventivo criado',
+      description: 'A recomendação estratégica da IA foi convertida em plano preventivo.',
     });
   };
 
@@ -233,6 +280,16 @@ export default function RootCauseAIPage() {
                 {createOSMutation.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : <Wrench className="h-3 w-3" />}
                 Abrir O.S
               </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-2"
+                onClick={() => void handleCreatePreventivePlan()}
+                disabled={createPlanoPreventivoMutation.isPending || nextDocNumber.isPending}
+              >
+                {(createPlanoPreventivoMutation.isPending || nextDocNumber.isPending) ? <Loader2 className="h-3 w-3 animate-spin" /> : <CalendarDays className="h-3 w-3" />}
+                Criar Plano Preventivo
+              </Button>
               <Button variant="outline" size="sm" onClick={handleGenerate} disabled={generateMutation.isPending} className="gap-2">
                 <RefreshCw className="h-3 w-3" /> Regenerar
               </Button>
@@ -246,6 +303,8 @@ export default function RootCauseAIPage() {
               recommendedSolution={currentResult.analysis.recommended_solution}
               preventiveActions={currentResult.analysis.preventive_actions}
               recommendedImprovements={currentResult.analysis.recommended_improvements}
+              recurrenceInsights={currentResult.analysis.recurrence_insights}
+              preventivePlanSuggestion={currentResult.analysis.preventive_plan_suggestion}
               criticality={currentResult.analysis.criticality}
               confidenceScore={currentResult.analysis.confidence_score}
               osCount={currentResult.os_count}
@@ -301,6 +360,8 @@ export default function RootCauseAIPage() {
                         recommended_solution: item.recommended_solution || item.raw_response?.analysis?.recommended_solution || item.raw_response?.structured_analysis?.recommended_solution || '',
                         preventive_actions: (item.preventive_actions as string[]) || [],
                         recommended_improvements: (item.recommended_improvements as string[]) || item.raw_response?.analysis?.recommended_improvements || item.raw_response?.structured_analysis?.recommended_improvements || [],
+                        recurrence_insights: item.raw_response?.analysis?.recurrence_insights || item.raw_response?.structured_analysis?.recurrence_insights || [],
+                        preventive_plan_suggestion: item.raw_response?.analysis?.preventive_plan_suggestion || item.raw_response?.structured_analysis?.preventive_plan_suggestion || undefined,
                         criticality: item.criticality || 'Médio',
                         confidence_score: item.confidence_score || 0,
                       },
