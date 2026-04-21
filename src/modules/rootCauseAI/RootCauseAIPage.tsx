@@ -6,9 +6,13 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { Brain, Loader2, History, Sparkles, RefreshCw, CalendarDays, Trash2, Printer } from 'lucide-react';
+import { Brain, Loader2, History, Sparkles, RefreshCw, CalendarDays, Trash2, Printer, Wrench, PlusCircle } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/contexts/AuthContext';
 import { useEquipamentos } from '@/hooks/useEquipamentos';
 import { useAIAnalysisHistory, useGenerateAnalysis, useDeleteAnalysis } from './useRootCauseAI';
+import { useCreateOrdemServico } from '@/hooks/useOrdensServico';
+import { useCreateMelhoria } from '@/hooks/useMelhorias';
 import { AnalysisResultCard } from './components/AnalysisResultCard';
 import { PrintableReport } from './components/PrintableReport';
 import type { AnalysisResponse } from './types';
@@ -18,11 +22,15 @@ export default function RootCauseAIPage() {
   const [currentResult, setCurrentResult] = useState<AnalysisResponse | null>(null);
   const [dateFrom, setDateFrom] = useState<string>('');
   const [dateTo, setDateTo] = useState<string>('');
+  const { user } = useAuth();
+  const { toast } = useToast();
 
   const { data: equipamentos } = useEquipamentos();
   const { data: history, isLoading: historyLoading } = useAIAnalysisHistory(selectedTag || undefined);
   const generateMutation = useGenerateAnalysis();
   const deleteMutation = useDeleteAnalysis();
+  const createOSMutation = useCreateOrdemServico();
+  const createMelhoriaMutation = useCreateMelhoria();
 
   const handleDelete = (e: React.MouseEvent, id: string) => {
     e.stopPropagation();
@@ -42,6 +50,68 @@ export default function RootCauseAIPage() {
       date_to: dateTo || undefined,
     });
     setCurrentResult(result);
+  };
+
+  const handleCreateCorrectiveOS = async () => {
+    if (!selectedTag || !currentResult) return;
+
+    const equipamento = equipamentos?.find((item) => item.tag === selectedTag);
+    if (!equipamento) {
+      toast({
+        title: 'Equipamento não encontrado',
+        description: 'Não foi possível localizar o ativo para abrir a O.S.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    await createOSMutation.mutateAsync({
+      tipo: 'CORRETIVA',
+      prioridade: currentResult.analysis.criticality === 'Crítico' ? 'URGENTE' : 'ALTA',
+      tag: selectedTag,
+      equipamento: equipamento.nome,
+      solicitante: user?.nome || 'Análise IA',
+      problema: [
+        `Abertura automática a partir de análise IA de causa raiz (${currentResult.analysis.criticality}).`,
+        `Hipótese principal: ${currentResult.analysis.main_hypothesis}`,
+        currentResult.analysis.recommended_solution ? `Solução recomendada: ${currentResult.analysis.recommended_solution}` : null,
+      ].filter(Boolean).join('\n'),
+      usuario_abertura: user?.id || null,
+    });
+
+    toast({
+      title: 'O.S criada a partir da IA',
+      description: 'A recomendação foi convertida em ordem de serviço corretiva.',
+    });
+  };
+
+  const handleCreateMelhoria = async () => {
+    if (!selectedTag || !currentResult) return;
+
+    const equipamento = equipamentos?.find((item) => item.tag === selectedTag);
+    const improvements = currentResult.analysis.recommended_improvements || [];
+    const suggestedTitle = improvements[0] || `Melhoria baseada em RCA - ${selectedTag}`;
+
+    await createMelhoriaMutation.mutateAsync({
+      titulo: suggestedTitle.slice(0, 120),
+      descricao: [
+        `Origem: Inteligência de Causa Raiz para TAG ${selectedTag}.`,
+        `Hipótese principal: ${currentResult.analysis.main_hypothesis}`,
+        currentResult.analysis.recommended_solution ? `Solução recomendada: ${currentResult.analysis.recommended_solution}` : null,
+        improvements.length > 0 ? `Melhorias sugeridas:\n- ${improvements.join('\n- ')}` : null,
+      ].filter(Boolean).join('\n\n'),
+      tipo: 'KAIZEN',
+      equipamento_id: equipamento?.id ?? null,
+      tag: selectedTag,
+      proponente_nome: user?.nome || 'Sistema IA',
+      proponente_id: user?.id || null,
+      beneficios: currentResult.analysis.summary || null,
+    });
+
+    toast({
+      title: 'Melhoria registrada',
+      description: 'A recomendação da IA foi convertida em iniciativa de melhoria.',
+    });
   };
 
   return (
@@ -142,6 +212,26 @@ export default function RootCauseAIPage() {
             <div className="flex items-center gap-2">
               <Button variant="outline" size="sm" onClick={() => window.print()} className="gap-2">
                 <Printer className="h-3 w-3" /> Imprimir Relatório
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-2"
+                onClick={() => void handleCreateMelhoria()}
+                disabled={createMelhoriaMutation.isPending}
+              >
+                {createMelhoriaMutation.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : <PlusCircle className="h-3 w-3" />}
+                Criar Melhoria
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-2"
+                onClick={() => void handleCreateCorrectiveOS()}
+                disabled={createOSMutation.isPending}
+              >
+                {createOSMutation.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : <Wrench className="h-3 w-3" />}
+                Abrir O.S
               </Button>
               <Button variant="outline" size="sm" onClick={handleGenerate} disabled={generateMutation.isPending} className="gap-2">
                 <RefreshCw className="h-3 w-3" /> Regenerar
