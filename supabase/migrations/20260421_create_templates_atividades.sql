@@ -48,12 +48,15 @@ ALTER TABLE template_atividades_preventivas ENABLE ROW LEVEL SECURITY;
 ALTER TABLE template_atividades_preventivas_atividades ENABLE ROW LEVEL SECURITY;
 ALTER TABLE template_atividades_preventivas_servicos ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "tenant_isolation_templates" ON template_atividades_preventivas;
 CREATE POLICY "tenant_isolation_templates" ON template_atividades_preventivas
   FOR ALL USING (empresa_id = auth.uid() OR (SELECT empresa_id FROM profiles WHERE id = auth.uid()) = empresa_id);
 
+DROP POLICY IF EXISTS "tenant_isolation_templates_atividades" ON template_atividades_preventivas_atividades;
 CREATE POLICY "tenant_isolation_templates_atividades" ON template_atividades_preventivas_atividades
   FOR ALL USING (empresa_id = auth.uid() OR (SELECT empresa_id FROM profiles WHERE id = auth.uid()) = empresa_id);
 
+DROP POLICY IF EXISTS "tenant_isolation_templates_servicos" ON template_atividades_preventivas_servicos;
 CREATE POLICY "tenant_isolation_templates_servicos" ON template_atividades_preventivas_servicos
   FOR ALL USING (empresa_id = auth.uid() OR (SELECT empresa_id FROM profiles WHERE id = auth.uid()) = empresa_id);
 
