@@ -58,8 +58,6 @@ h1{font-size:1.25rem;font-weight:700;margin-bottom:.3rem;color:#f1f5f9}
   </div>
 </div>
 
-<iframe id="dlFrame" style="display:none" title="download"></iframe>
-
 <script>
 (function(){
   var APK='https://github.com/Gpedrozo/pcm-estrategico/releases/latest/download/pcm-mecanico.apk';
@@ -68,7 +66,10 @@ h1{font-size:1.25rem;font-weight:700;margin-bottom:.3rem;color:#f1f5f9}
   var doneIcon=document.getElementById('doneIcon');
   var retryBlock=document.getElementById('retryBlock');
   var retryLink=document.getElementById('retryLink');
-  var frame=document.getElementById('dlFrame');
+  function triggerDownload(){
+    // GitHub costuma bloquear download dentro de iframe; usar navegacao top-level e mais confiavel.
+    window.location.href=APK;
+  }
 
   function startDownload(){
     bar.style.width='0%';
@@ -89,9 +90,9 @@ h1{font-size:1.25rem;font-weight:700;margin-bottom:.3rem;color:#f1f5f9}
       if(pct>=80) status.textContent='Quase lá...';
     },300);
 
-    // Trigger actual download via hidden iframe (hides GitHub URL)
+    // Disparo direto do download apos feedback visual curto.
     setTimeout(function(){
-      frame.src=APK;
+      triggerDownload();
     },800);
 
     // Complete animation after enough time for browser to catch the download
