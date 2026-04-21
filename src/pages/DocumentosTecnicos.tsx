@@ -49,6 +49,18 @@ interface DocumentoTecnico {
   updated_at: string;
 }
 
+const MAX_DOCUMENT_SIZE_MB = 20;
+const ALLOWED_DOCUMENT_TYPES = new Set([
+  'application/pdf',
+  'image/png',
+  'image/jpeg',
+  'image/webp',
+  'application/msword',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  'application/vnd.ms-excel',
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+]);
+
 const useDocumentos = () => {
   const { tenantId } = useAuth();
 
@@ -98,6 +110,7 @@ const useCreateDocumento = () => {
 };
 
 export default function DocumentosTecnicos() {
+  const { tenantId } = useAuth();
   const [search, setSearch] = useState('');
   const [activeTab, setActiveTab] = useState('todos');
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -135,8 +148,27 @@ export default function DocumentosTecnicos() {
       let arquivo_nome: string | undefined;
 
       if (arquivo) {
-        const path = `documentos-tecnicos/${Date.now()}-${arquivo.name}`;
-        arquivo_url = await uploadToStorage('public', path, arquivo);
+        if (!ALLOWED_DOCUMENT_TYPES.has(arquivo.type)) {
+          toast({
+            title: 'Formato de arquivo não suportado',
+            description: 'Use PDF, imagem ou arquivo Office (DOC/XLS).',
+            variant: 'destructive',
+          });
+          return;
+        }
+
+        if (arquivo.size > MAX_DOCUMENT_SIZE_MB * 1024 * 1024) {
+          toast({
+            title: 'Arquivo muito grande',
+            description: `Limite máximo de ${MAX_DOCUMENT_SIZE_MB} MB por documento.`,
+            variant: 'destructive',
+          });
+          return;
+        }
+
+        const safeName = arquivo.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+        const path = `documentos-tecnicos/${tenantId || 'tenant'}/${Date.now()}-${safeName}`;
+        arquivo_url = await uploadToStorage('documentos', path, arquivo);
         arquivo_nome = arquivo.name;
       }
 
@@ -160,6 +192,18 @@ export default function DocumentosTecnicos() {
   const handleVisualizar = (doc: DocumentoTecnico) => {
     if (!doc.arquivo_url) return;
     window.open(doc.arquivo_url, '_blank', 'noopener,noreferrer');
+  };
+
+  const handleDownload = (doc: DocumentoTecnico) => {
+    if (!doc.arquivo_url) return;
+    const link = document.createElement('a');
+    link.href = doc.arquivo_url;
+    link.target = '_blank';
+    link.rel = 'noopener noreferrer';
+    link.download = doc.arquivo_nome || `${doc.codigo}.pdf`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
   const handleImprimir = (doc: DocumentoTecnico) => {
@@ -336,10 +380,15 @@ export default function DocumentosTecnicos() {
                       <Button variant="ghost" size="sm" onClick={() => handleImprimir(doc)} disabled={!doc.arquivo_url}>
                         <FileText className="h-3 w-3" />
                       </Button>
-                      <Button variant="ghost" size="sm" onClick={() => handleVisualizar(doc)} disabled={!doc.arquivo_url}>
+                      <Button variant="ghost" size="sm" onClick={() => handleDownload(doc)} disabled={!doc.arquivo_url}>
                         <Download className="h-3 w-3" />
                       </Button>
                     </div>
+                    {!doc.arquivo_url && (
+                      <p className="text-[11px] text-amber-700 mt-2">
+                        Documento sem arquivo final anexado.
+                      </p>
+                    )}
                   </CardContent>
                 </Card>
               ))
@@ -421,6 +470,9 @@ export default function DocumentosTecnicos() {
             <div className="space-y-2">
               <Label>Arquivo</Label>
               <Input type="file" onChange={(e) => setArquivo(e.target.files?.[0] || null)} />
+              <p className="text-xs text-muted-foreground">
+                Formatos aceitos: PDF, imagem, DOC/XLS. Tamanho máximo: {MAX_DOCUMENT_SIZE_MB} MB.
+              </p>
               {arquivo && <p className="text-xs text-muted-foreground">Selecionado: {arquivo.name}</p>}
             </div>
 
