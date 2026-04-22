@@ -2206,6 +2206,27 @@ export default function Owner() {
               </SurfaceCard>
 
               <OwnerShadowAudit logs={logs} />
+
+              <SurfaceCard title="Manutenção avançada (OWNER_MASTER)">
+                <div className="grid gap-2">
+                  <p className="text-xs text-muted-foreground">Remove dados de stress-test e registros de carga criados por scripts de teste no banco de dados da plataforma. Execute somente em ambiente de produção após validação prévia.</p>
+                  <button
+                    className="rounded-lg border border-rose-300 bg-rose-50 dark:bg-rose-950/30 dark:border-rose-800/50 px-3 py-2 text-sm text-rose-700 dark:text-rose-400 hover:bg-rose-100 dark:hover:bg-rose-950/50 disabled:opacity-50 transition-colors"
+                    disabled={busy || !isOwnerMaster}
+                    onClick={() => openCriticalAction({
+                      title: 'Limpeza de dados de stress-test',
+                      description: 'Remove todos os registros gerados por scripts de stress/carga do banco de dados. Esta ação é irreversível.',
+                      confirmText: 'CLEANUP_STRESS',
+                      action: 'cleanup_owner_stress_data',
+                      payload: {},
+                      successMessage: 'Dados de stress-test removidos com sucesso.',
+                      masterOnly: true,
+                    })}
+                  >
+                    Cleanup stress-test data
+                  </button>
+                </div>
+              </SurfaceCard>
             </div>
           )}
 
