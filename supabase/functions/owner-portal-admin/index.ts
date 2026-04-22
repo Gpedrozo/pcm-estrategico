@@ -723,6 +723,14 @@ function contractTemplate(input: {
   const fimFmt = input.fim ? fmtDate(input.fim) : "Indeterminado";
   const dataGeracao = new Date().toLocaleDateString("pt-BR");
 
+  const providerNome = input.providerRazaoSocial || "PCM Estrategico Sistemas Ltda.";
+  const providerNomeSistema = input.providerNomeSistema || "PCM Estrategico";
+  const providerCnpj = input.providerCnpj || "[A ser informado pela CONTRATADA]";
+  const providerEndereco = input.providerEndereco || "[A ser informado pela CONTRATADA]";
+  const providerEmail = input.providerEmail || "comercial@pcmestrategico.com.br";
+  const providerForoCidade = input.providerForoCidade || "Porto Alegre";
+  const providerForoEstado = input.providerForoEstado || "RS";
+
   const modulosList = input.modulos
     ? Object.entries(input.modulos)
         .filter(([, v]) => v === true || (typeof v === "string" && v !== ""))
@@ -947,7 +955,7 @@ por meio eletrônico (e-mail), sendo válidas para todos os efeitos legais.
  CLÁUSULA 14 — DO FORO
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-14.1. Fica eleito o foro da Comarca de Porto Alegre/RS para dirimir
+14.1. Fica eleito o foro da Comarca de ${providerForoCidade}/${providerForoEstado} para dirimir
 quaisquer controvérsias oriundas deste contrato, com renúncia expressa
 a qualquer outro, por mais privilegiado que seja.
 
@@ -1369,7 +1377,25 @@ async function createContractFromSubscription(
     planEnId = planDirect?.id ?? null;
   }
 
-  const content = contractTemplate({
+  // Fetch platform owner data for CONTRATADA fields in the contract
+  const providerData: Record<string, string> = {};
+  try {
+    const { data: providerRows } = await admin
+      .from("configuracoes_sistema")
+      .select("chave,valor")
+      .is("empresa_id", null)
+      .like("chave", "platform.owner.%");
+    for (const row of (providerRows ?? [])) {
+      const key = String((row as { chave: string; valor: unknown }).chave ?? "").replace("platform.owner.", "");
+      let val: unknown = (row as { chave: string; valor: unknown }).valor;
+      if (typeof val === "string") {
+        try { val = JSON.parse(val); } catch { /* keep as string */ }
+      }
+      providerData[key] = String(val ?? "");
+    }
+  } catch { /* non-critical: contract falls back to defaults */ }
+
+    const content = contractTemplate({
     empresaNome: companyData?.razao_social ?? companyData?.nome_fantasia ?? company?.nome ?? "Empresa",
     cnpj: companyData?.cnpj,
     responsavel: null,
@@ -4589,6 +4615,48 @@ Deno.serve(async (req) => {
 
     await logPlatformAudit(admin, { actorId: auth.user.id, actorEmail: auth.user.email, actionType: "OWNER_UPDATE_PLATFORM_CONTACT", details: { keys: rows.map((r) => r.chave) } });
     return ok({ success: true }, 200, req);
+  }
+
+  // ── Platform owner / white-label data ────────────────────────────────────
+  const PLATFORM_OWNER_KEYS = [
+    "nome_sistema", "razao_social", "nome_fantasia", "cnpj",
+    "endereco", "cidade", "estado", "cep",
+    "responsavel_nome", "responsavel_cargo",
+    "email", "telefone", "whatsapp", "site",
+    "foro_cidade", "foro_estado",
+  ] as const;
+
+  if (body.action === "get_platform_owner_data") {
+    const { data: rows, error } = await admin
+      .from("configuracoes_sistema")
+      .select("chave,valor")
+      .is("empresa_id", null)
+      .in("chave", PLATFORM_OWNER_KEYS.map((k) => `platform.owner.${k}`));
+    if (error) return fail(error.message, 400, null, req);
+    const result: Record<string, string> = {};
+    for (const row of (rows ?? [])) {
+      const key = String((row as { chave: string; valor: unknown }).chave ?? "").replace("platform.owner.", "");
+      let val: unknown = (row as { chave: string; valor: unknown }).valor;
+      if (typeof val === "string") {
+        try { val = JSON.parse(val); } catch { /* keep as string */ }
+      }
+      result[key] = String(val ?? "");
+    }
+    return ok({ data: result }, 200, req);
+  }
+
+  if (body.action === "update_platform_owner_data") {
+    if (!isOwnerMaster) return fail("Apenas SYSTEM_OWNER pode atualizar os dados da plataforma.", 403, null, req);
+    const payload = body as Record<string, unknown>;
+    const updated: string[] = [];
+    for (const key of PLATFORM_OWNER_KEYS) {
+      if ((payload as Record<string, unknown>)[key] === undefined) continue;
+      const { error } = await upsertPlatformConfig(admin, `platform.owner.${key}`, JSON.stringify(String((payload as Record<string, unknown>)[key] ?? "")));
+      if (error) return fail(`Erro ao salvar ${key}: ${error.message}`, 400, null, req);
+      updated.push(key);
+    }
+    await logPlatformAudit(admin, { actorId: auth.user.id, actorEmail: auth.user.email, actionType: "OWNER_UPDATE_PLATFORM_DATA", details: { keys: updated } });
+    return ok({ success: true, updated }, 200, req);
   }
 
   // ── ASAAS API Key management (stored in configuracoes_sistema) ───────────

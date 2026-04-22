@@ -15,6 +15,7 @@ import {
   Loader2,
   FileOutput,
   Smartphone,
+  Briefcase,
 } from "lucide-react";
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -91,6 +92,12 @@ const DispositivosMoveis = lazyWithRetry(() =>
   import("@/components/admin/DispositivosMoveis")
 );
 
+const MasterPlataformaDados = lazyWithRetry(() =>
+  import("@/components/master-ti/MasterPlataformaDados").then((m) => ({
+    default: m.MasterPlataformaDados,
+  }))
+);
+
 type TabKey =
   | "users"
   | "permissions"
@@ -103,19 +110,21 @@ type TabKey =
   | "audit"
   | "security"
   | "documents"
-  | "dispositivos";
+  | "dispositivos"
+  | "plataforma";
 
-const TABS: { key: TabKey; label: string; icon: React.ElementType }[] = [
-  { key: "users", label: "Usuários", icon: Users },
-  { key: "permissions", label: "Permissões", icon: ShieldCheck },
+const TABS: { key: TabKey; label: string; icon: React.ElementType; ownerOnly?: boolean }[] = [
+  { key: "users", label: "Usuarios", icon: Users },
+  { key: "permissions", label: "Permissoes", icon: ShieldCheck },
   { key: "empresa", label: "Empresa", icon: Building2 },
   { key: "logos", label: "Logos", icon: ImageIcon },
   { key: "database", label: "Banco de Dados", icon: Database },
   { key: "monitor", label: "Monitoramento", icon: Activity },
-  { key: "settings", label: "Configurações", icon: Settings },
-  { key: "contracts", label: "Contratos", icon: FileText },
+  { key: "settings", label: "Configuracoes", icon: Settings },
+  { key: "contracts", label: "Contratos", icon: FileText, ownerOnly: true },
+  { key: "plataforma", label: "Dados da Plataforma", icon: Briefcase, ownerOnly: true },
   { key: "audit", label: "Auditoria", icon: FileText },
-  { key: "security", label: "Segurança", icon: Lock },
+  { key: "security", label: "Seguranca", icon: Lock },
   { key: "documents", label: "Documentos", icon: FileOutput },
   { key: "dispositivos", label: "Dispositivos", icon: Smartphone },
 ];
@@ -132,7 +141,7 @@ export default function MasterTI() {
   const auth = useAuth();
   const isMasterTI = Boolean(auth?.isMasterTI);
   const isSystemOwner = Boolean(auth?.isSystemOwner);
-  const visibleTabs = isSystemOwner ? TABS : TABS.filter((tab) => tab.key !== "contracts");
+  const visibleTabs = isSystemOwner ? TABS : TABS.filter((tab) => !tab.ownerOnly);
 
   const [activeTab, setActiveTab] = useState<TabKey>("users");
 
@@ -147,7 +156,7 @@ export default function MasterTI() {
           <h2 className="text-xl font-bold">Acesso Negado</h2>
 
           <p className="text-muted-foreground max-w-md">
-            Este painel é exclusivo para usuários com perfil{" "}
+            Este painel e exclusivo para usuarios com perfil{" "}
             <strong>MASTER_TI</strong> ou <strong>SYSTEM_OWNER</strong>.
           </p>
         </div>
@@ -219,6 +228,10 @@ export default function MasterTI() {
 
           <TabsContent value="contracts">
             <MasterContratosPanel />
+          </TabsContent>
+
+          <TabsContent value="plataforma">
+            <MasterPlataformaDados />
           </TabsContent>
 
           <TabsContent value="audit">

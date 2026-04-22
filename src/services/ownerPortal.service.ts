@@ -55,6 +55,8 @@ export type OwnerAction =
   | 'mark_ticket_read_owner'
   | 'get_platform_contact'
   | 'update_platform_contact'
+  | 'get_platform_owner_data'
+  | 'update_platform_owner_data'
 
 export interface OwnerCompany {
   id: string
