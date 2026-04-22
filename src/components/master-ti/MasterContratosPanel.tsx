@@ -1,10 +1,17 @@
+import { useState } from 'react'
 import { useOwner2Contracts } from '@/hooks/useOwner2Portal'
 import type { OwnerContract } from '@/services/ownerPortal.service'
 import { useAuth } from '@/contexts/AuthContext'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
-import { AlertTriangle, RefreshCw, Lock } from 'lucide-react'
+import { AlertTriangle, RefreshCw, Lock, Printer, FileDown } from 'lucide-react'
+import { useToast } from '@/hooks/use-toast'
+import {
+  generateOwnerContractPDF,
+  printOwnerContractDocument,
+  type OwnerContractForDocument,
+} from '@/lib/reportGenerator'
 
 function fmt(val: string | null | undefined) {
   if (!val) return '—'
@@ -28,10 +35,52 @@ function StatusBadge({ status }: { status: string }) {
 
 export function MasterContratosPanel() {
   const { isSystemOwner } = useAuth()
+  const { toast } = useToast()
   const query = useOwner2Contracts(isSystemOwner) // só carrega se o usuário tiver acesso
+  const [activeAction, setActiveAction] = useState<string | null>(null)
   const contracts: OwnerContract[] = Array.isArray(query.data?.contracts)
     ? query.data.contracts
     : []
+
+  const toDocumentContract = (contract: OwnerContract): OwnerContractForDocument => ({
+    id: String(contract.id),
+    empresaNome: contract.empresas?.nome ?? contract.empresa_id ?? '—',
+    planoNome: contract.plans?.name ?? contract.plans?.code ?? '—',
+    status: contract.status ?? 'rascunho',
+    amount: contract.amount ?? null,
+    starts_at: contract.starts_at ?? null,
+    ends_at: contract.ends_at ?? null,
+    generated_at: contract.generated_at ?? contract.created_at ?? null,
+    signed_at: contract.signed_at ?? null,
+    version: contract.version ?? 1,
+    summary: contract.summary ?? null,
+    content: contract.content ?? null,
+  })
+
+  const executeDocumentAction = async (
+    contract: OwnerContract,
+    action: 'print' | 'pdf',
+  ) => {
+    const actionKey = `${action}:${contract.id}`
+    setActiveAction(actionKey)
+
+    try {
+      const printable = toDocumentContract(contract)
+      if (action === 'print') {
+        printOwnerContractDocument(printable)
+      } else {
+        await generateOwnerContractPDF(printable)
+      }
+    } catch (error) {
+      toast({
+        title: action === 'print' ? 'Erro ao imprimir contrato' : 'Erro ao gerar PDF do contrato',
+        description: error instanceof Error ? error.message : 'Falha inesperada ao processar o documento.',
+        variant: 'destructive',
+      })
+    } finally {
+      setActiveAction(null)
+    }
+  }
 
   if (!isSystemOwner) {
     return (
@@ -98,12 +147,13 @@ export function MasterContratosPanel() {
               <th className="px-3 py-2.5 text-left font-medium text-xs">Assinatura</th>
               <th className="px-3 py-2.5 text-left font-medium text-xs">Versão</th>
               <th className="px-3 py-2.5 text-left font-medium text-xs">Gerado em</th>
+              <th className="px-3 py-2.5 text-left font-medium text-xs">Ações</th>
             </tr>
           </thead>
           <tbody>
             {contracts.length === 0 && (
               <tr>
-                <td colSpan={8} className="px-3 py-8 text-center text-muted-foreground text-sm">
+                <td colSpan={9} className="px-3 py-8 text-center text-muted-foreground text-sm">
                   Nenhum contrato encontrado. Os contratos são gerados automaticamente ao criar uma empresa com assinatura.
                 </td>
               </tr>
@@ -115,6 +165,9 @@ export function MasterContratosPanel() {
               const starts = fmt(String(c.starts_at ?? ''))
               const ends = fmt(String(c.ends_at ?? ''))
               const vigencia = starts !== '—' || ends !== '—' ? `${starts} → ${ends}` : '—'
+              const hasDocumentContent = Boolean(String(c.content ?? c.summary ?? '').trim())
+              const isPrinting = activeAction === `print:${c.id}`
+              const isDownloading = activeAction === `pdf:${c.id}`
 
               return (
                 <tr key={String(c.id)} className="border-t border-border hover:bg-muted/40">
@@ -132,6 +185,33 @@ export function MasterContratosPanel() {
                   </td>
                   <td className="px-3 py-2.5 text-xs">v{String(c.version ?? '1')}</td>
                   <td className="px-3 py-2.5 text-xs">{fmt(String(c.generated_at ?? ''))}</td>
+                  <td className="px-3 py-2.5">
+                    <div className="flex items-center gap-2">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="gap-1"
+                        disabled={!hasDocumentContent || Boolean(activeAction)}
+                        title={hasDocumentContent ? 'Imprimir contrato' : 'Contrato sem conteúdo disponível para impressão'}
+                        onClick={() => void executeDocumentAction(c, 'print')}
+                      >
+                        <Printer className={`h-3.5 w-3.5 ${isPrinting ? 'animate-pulse' : ''}`} />
+                        Imprimir
+                      </Button>
+
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="gap-1"
+                        disabled={!hasDocumentContent || Boolean(activeAction)}
+                        title={hasDocumentContent ? 'Baixar PDF formal do contrato' : 'Contrato sem conteúdo disponível para exportação'}
+                        onClick={() => void executeDocumentAction(c, 'pdf')}
+                      >
+                        <FileDown className={`h-3.5 w-3.5 ${isDownloading ? 'animate-pulse' : ''}`} />
+                        PDF
+                      </Button>
+                    </div>
+                  </td>
                 </tr>
               )
             })}

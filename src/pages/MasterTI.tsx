@@ -63,6 +63,12 @@ const MasterGlobalSettings = lazyWithRetry(() =>
   }))
 );
 
+const MasterContratosPanel = lazyWithRetry(() =>
+  import("@/components/master-ti/MasterContratosPanel").then((m) => ({
+    default: m.MasterContratosPanel,
+  }))
+);
+
 const MasterAuditLogs = lazyWithRetry(() =>
   import("@/components/master-ti/MasterAuditLogs").then((m) => ({
     default: m.MasterAuditLogs,
@@ -93,6 +99,7 @@ type TabKey =
   | "database"
   | "monitor"
   | "settings"
+  | "contracts"
   | "audit"
   | "security"
   | "documents"
@@ -106,6 +113,7 @@ const TABS: { key: TabKey; label: string; icon: React.ElementType }[] = [
   { key: "database", label: "Banco de Dados", icon: Database },
   { key: "monitor", label: "Monitoramento", icon: Activity },
   { key: "settings", label: "Configurações", icon: Settings },
+  { key: "contracts", label: "Contratos", icon: FileText },
   { key: "audit", label: "Auditoria", icon: FileText },
   { key: "security", label: "Segurança", icon: Lock },
   { key: "documents", label: "Documentos", icon: FileOutput },
@@ -124,6 +132,7 @@ export default function MasterTI() {
   const auth = useAuth();
   const isMasterTI = Boolean(auth?.isMasterTI);
   const isSystemOwner = Boolean(auth?.isSystemOwner);
+  const visibleTabs = isSystemOwner ? TABS : TABS.filter((tab) => tab.key !== "contracts");
 
   const [activeTab, setActiveTab] = useState<TabKey>("users");
 
@@ -167,7 +176,7 @@ export default function MasterTI() {
         className="space-y-6"
       >
         <TabsList className="bg-card border border-border h-auto flex-wrap gap-1 p-1">
-          {TABS.map(({ key, label, icon: Icon }) => (
+          {visibleTabs.map(({ key, label, icon: Icon }) => (
             <TabsTrigger
               key={key}
               value={key}
@@ -206,6 +215,10 @@ export default function MasterTI() {
 
           <TabsContent value="settings">
             <MasterGlobalSettings />
+          </TabsContent>
+
+          <TabsContent value="contracts">
+            <MasterContratosPanel />
           </TabsContent>
 
           <TabsContent value="audit">

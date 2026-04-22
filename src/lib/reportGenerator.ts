@@ -1641,3 +1641,349 @@ export async function generateContratoPDF(
   addProfessionalFooter(doc, options);
   doc.save(`Contrato_${contrato.numero_contrato.replace(/[^a-zA-Z0-9]/g, '_')}.pdf`);
 }
+
+export interface OwnerContractForDocument {
+  id: string;
+  empresaNome?: string | null;
+  planoNome?: string | null;
+  status?: string | null;
+  amount?: number | null;
+  starts_at?: string | null;
+  ends_at?: string | null;
+  generated_at?: string | null;
+  signed_at?: string | null;
+  version?: number | null;
+  summary?: string | null;
+  content?: string | null;
+}
+
+function sanitizeDocumentFileName(value: string, fallback: string): string {
+  const normalized = value.replace(/[^a-zA-Z0-9]+/g, '_').replace(/^_+|_+$/g, '');
+  return normalized || fallback;
+}
+
+function formatOwnerContractStatus(status: string | null | undefined): string {
+  const normalized = String(status ?? '').trim();
+  if (!normalized) return 'Rascunho';
+
+  const label = normalized.replace(/_/g, ' ').toLowerCase();
+  return label.charAt(0).toUpperCase() + label.slice(1);
+}
+
+function getOwnerContractBody(contract: OwnerContractForDocument): string {
+  const content = String(contract.content ?? '').trim();
+  if (content) return content;
+
+  const summary = String(contract.summary ?? '').trim();
+  if (summary) return summary;
+
+  return 'Conteúdo do contrato não disponível.';
+}
+
+function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+export async function generateOwnerContractPDF(contract: OwnerContractForDocument) {
+  const doc = new jsPDF() as JsPDFWithAutoTable;
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const pageHeight = doc.internal.pageSize.getHeight();
+  const LEFT = 14;
+  const CONTENT_W = pageWidth - LEFT * 2;
+
+  const startY = await addProfessionalHeader(doc, {
+    title: 'CONTRATO DE SERVIÇO',
+    subtitle: contract.empresaNome || contract.planoNome || undefined,
+    dateFrom: contract.starts_at ? String(contract.starts_at).slice(0, 10) : '',
+    dateTo: contract.ends_at ? String(contract.ends_at).slice(0, 10) : '',
+    observacoes: contract.summary ? `Resumo executivo: ${contract.summary}` : undefined,
+    empresaNome: 'PCM Estratégico',
+    empresaRazaoSocial: 'PCM Estratégico',
+    layoutVersion: String(contract.version ?? '1'),
+  });
+
+  let y = startY;
+  const metadataRows = [
+    ['Empresa', contract.empresaNome || '—', 'Plano', contract.planoNome || '—'],
+    ['Status', formatOwnerContractStatus(contract.status), 'Valor mensal', brl(contract.amount)],
+    ['Início', fmtDateBR(contract.starts_at), 'Término', fmtDateBR(contract.ends_at)],
+    ['Gerado em', fmtDateBR(contract.generated_at), 'Assinado em', fmtDateBR(contract.signed_at)],
+  ];
+
+  doc.setFontSize(9);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(...DARK);
+  doc.text('1. IDENTIFICAÇÃO DO CONTRATO', LEFT, y);
+  y += 5;
+
+  autoTable(doc, {
+    startY: y,
+    body: metadataRows,
+    styles: { fontSize: 7.5, cellPadding: 3 },
+    alternateRowStyles: { fillColor: [247, 249, 252] },
+    columnStyles: {
+      0: { fontStyle: 'bold', cellWidth: 26, textColor: MGRAY },
+      1: { cellWidth: 54 },
+      2: { fontStyle: 'bold', cellWidth: 26, textColor: MGRAY },
+      3: { cellWidth: 54 },
+    },
+    theme: 'plain',
+    tableLineColor: [200, 200, 200],
+    tableLineWidth: 0.2,
+    margin: { left: LEFT, right: LEFT },
+  });
+
+  y = (doc.lastAutoTable?.finalY ?? y) + 8;
+
+  doc.setFontSize(9);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(...DARK);
+  doc.text('2. CLÁUSULAS CONTRATUAIS', LEFT, y);
+  y += 6;
+
+  const paragraphs = getOwnerContractBody(contract)
+    .split(/\n{2,}/)
+    .map((paragraph) => paragraph.trim())
+    .filter(Boolean);
+
+  doc.setFontSize(8);
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(35, 35, 35);
+
+  paragraphs.forEach((paragraph, index) => {
+    const split = doc.splitTextToSize(paragraph, CONTENT_W);
+    const paragraphHeight = split.length * 4 + 2;
+
+    if (y + paragraphHeight > pageHeight - 22) {
+      doc.addPage();
+      y = 18;
+      doc.setFontSize(8.5);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(...DARK);
+      doc.text('CLÁUSULAS CONTRATUAIS (continuação)', LEFT, y);
+      y += 6;
+      doc.setFontSize(8);
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(35, 35, 35);
+    }
+
+    doc.text(split, LEFT, y);
+    y += paragraphHeight;
+
+    if (index < paragraphs.length - 1) {
+      y += 2;
+    }
+  });
+
+  y += 6;
+  if (y > pageHeight - 35) {
+    doc.addPage();
+    y = 18;
+  }
+
+  doc.setDrawColor(160, 160, 160);
+  doc.setLineWidth(0.3);
+  doc.line(LEFT, y, pageWidth - LEFT, y);
+  y += 8;
+
+  doc.setFontSize(7);
+  doc.setFont('helvetica', 'italic');
+  doc.setTextColor(120, 120, 120);
+  doc.text(
+    'Documento emitido pelo painel owner do PCM Estratégico para conferência, impressão e arquivamento formal.',
+    LEFT,
+    y,
+  );
+
+  addProfessionalFooter(doc, {
+    title: 'CONTRATO DE SERVIÇO',
+    dateFrom: contract.starts_at ? String(contract.starts_at).slice(0, 10) : '',
+    dateTo: contract.ends_at ? String(contract.ends_at).slice(0, 10) : '',
+    empresaNome: 'PCM Estratégico',
+    empresaRazaoSocial: 'PCM Estratégico',
+    layoutVersion: String(contract.version ?? '1'),
+  });
+
+  const fileName = sanitizeDocumentFileName(
+    `Contrato_${contract.empresaNome || contract.id}`,
+    'Contrato_Plataforma',
+  );
+  doc.save(`${fileName}.pdf`);
+}
+
+export function printOwnerContractDocument(contract: OwnerContractForDocument) {
+  const printWindow = window.open('', '_blank', 'noopener,noreferrer,width=1024,height=768');
+
+  if (!printWindow) {
+    throw new Error('Não foi possível abrir a janela de impressão. Verifique se o navegador bloqueou pop-ups.');
+  }
+
+  const body = getOwnerContractBody(contract);
+  const bodyHtml = body
+    .split(/\n{2,}/)
+    .map((paragraph) => `<p>${escapeHtml(paragraph).replace(/\n/g, '<br />')}</p>`)
+    .join('');
+
+  const metadataRows = [
+    ['Empresa', contract.empresaNome || '—', 'Plano', contract.planoNome || '—'],
+    ['Status', formatOwnerContractStatus(contract.status), 'Valor mensal', brl(contract.amount)],
+    ['Início', fmtDateBR(contract.starts_at), 'Término', fmtDateBR(contract.ends_at)],
+    ['Gerado em', fmtDateBR(contract.generated_at), 'Assinado em', fmtDateBR(contract.signed_at)],
+    ['Versão', `v${String(contract.version ?? 1)}`, 'Contrato', contract.id],
+  ];
+
+  const metadataHtml = metadataRows
+    .map(
+      ([leftLabel, leftValue, rightLabel, rightValue]) => `
+        <tr>
+          <th>${escapeHtml(leftLabel)}</th>
+          <td>${escapeHtml(String(leftValue))}</td>
+          <th>${escapeHtml(rightLabel)}</th>
+          <td>${escapeHtml(String(rightValue))}</td>
+        </tr>`,
+    )
+    .join('');
+
+  printWindow.document.write(`<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <title>Contrato de Serviço</title>
+    <style>
+      :root {
+        color-scheme: light;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        font-family: "Segoe UI", Arial, sans-serif;
+        color: #1f2937;
+        background: #ffffff;
+      }
+      .page {
+        width: 210mm;
+        min-height: 297mm;
+        margin: 0 auto;
+        padding: 18mm 16mm;
+      }
+      .header {
+        border-top: 3px solid #1f2937;
+        border-bottom: 1px solid #9ca3af;
+        padding: 10px 0 14px;
+      }
+      .title {
+        font-size: 22px;
+        font-weight: 700;
+        letter-spacing: 0.04em;
+        margin: 0;
+      }
+      .subtitle {
+        font-size: 12px;
+        color: #6b7280;
+        margin: 6px 0 0;
+      }
+      .section {
+        margin-top: 20px;
+      }
+      .section h2 {
+        font-size: 13px;
+        letter-spacing: 0.04em;
+        margin: 0 0 10px;
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 12px;
+      }
+      th,
+      td {
+        border: 1px solid #d1d5db;
+        padding: 8px 10px;
+        text-align: left;
+        vertical-align: top;
+      }
+      th {
+        width: 18%;
+        background: #f3f4f6;
+        color: #4b5563;
+        font-weight: 600;
+      }
+      td {
+        width: 32%;
+      }
+      .content {
+        border: 1px solid #d1d5db;
+        padding: 14px;
+        font-size: 12px;
+        line-height: 1.65;
+        white-space: normal;
+      }
+      .content p {
+        margin: 0 0 12px;
+        text-align: justify;
+      }
+      .footer {
+        margin-top: 24px;
+        padding-top: 10px;
+        border-top: 1px solid #d1d5db;
+        font-size: 11px;
+        color: #6b7280;
+      }
+      @page {
+        size: A4;
+        margin: 12mm;
+      }
+      @media print {
+        body {
+          print-color-adjust: exact;
+          -webkit-print-color-adjust: exact;
+        }
+        .page {
+          width: auto;
+          min-height: auto;
+          padding: 0;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="page">
+      <header class="header">
+        <h1 class="title">CONTRATO DE SERVIÇO</h1>
+        <p class="subtitle">PCM Estratégico${contract.empresaNome ? ` · ${escapeHtml(contract.empresaNome)}` : ''}</p>
+      </header>
+
+      <section class="section">
+        <h2>1. Identificação do contrato</h2>
+        <table>
+          <tbody>${metadataHtml}</tbody>
+        </table>
+      </section>
+
+      <section class="section">
+        <h2>2. Cláusulas contratuais</h2>
+        <div class="content">${bodyHtml}</div>
+      </section>
+
+      <footer class="footer">
+        Documento emitido pelo painel owner do PCM Estratégico para conferência, impressão e arquivamento formal.
+      </footer>
+    </div>
+    <script>
+      window.addEventListener('load', function () {
+        window.print();
+      });
+    </script>
+  </body>
+</html>`);
+
+  printWindow.document.close();
+  printWindow.focus();
+}

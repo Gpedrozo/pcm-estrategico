@@ -190,8 +190,10 @@ export interface OwnerContract {
   starts_at?: string | null
   ends_at?: string | null
   signed_at?: string | null
+  generated_at?: string | null
   created_at?: string | null
   updated_at?: string | null
+  version?: number | null
   /** Join fields optionally returned by list_contracts action */
   empresas?: { nome?: string | null } | null
   plans?: { name?: string | null; code?: string | null } | null

@@ -4,7 +4,6 @@ import { contratosService } from '@/services/contratos.service';
 import { contratoSchema, type ContratoFormData } from '@/schemas/contrato.schema';
 import { ZodError } from 'zod';
 import { useAuth } from '@/contexts/AuthContext';
-import { writeAuditLog } from '@/lib/audit';
 
 export interface ContratoRow {
   id: string;
@@ -99,7 +98,6 @@ export function useCreateContrato() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['contratos', tenantId] });
-      writeAuditLog({ action: 'CREATE_CONTRATO', table: 'contratos', empresaId: tenantId, source: 'useContratos' });
       toast({
         title: 'Sucesso!',
         description: 'Contrato cadastrado com sucesso.',
@@ -124,12 +122,12 @@ export function useUpdateContrato() {
     mutationFn: async (
       payload: Partial<ContratoFormData> & { id: string }
     ) => {
+      if (!tenantId) throw new Error('Tenant não resolvido.');
       const { id, ...updates } = payload;
       return await contratosService.atualizar(id, updates, tenantId!);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['contratos', tenantId] });
-      writeAuditLog({ action: 'UPDATE_CONTRATO', table: 'contratos', empresaId: tenantId, source: 'useContratos' });
       toast({
         title: 'Sucesso!',
         description: 'Contrato atualizado com sucesso.',
@@ -152,11 +150,11 @@ export function useDeleteContrato() {
 
   return useMutation({
     mutationFn: async (id: string) => {
+      if (!tenantId) throw new Error('Tenant não resolvido.');
       return await contratosService.excluir(id, tenantId!);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['contratos', tenantId] });
-      writeAuditLog({ action: 'DELETE_CONTRATO', table: 'contratos', empresaId: tenantId, source: 'useContratos', severity: 'warning' });
       toast({
         title: 'Sucesso!',
         description: 'Contrato removido com sucesso.',

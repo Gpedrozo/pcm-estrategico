@@ -15,7 +15,8 @@ import {
   useCreateContrato, 
   useUpdateContrato,
   useDeleteContrato,
-  type ContratoInsert 
+  type ContratoInsert,
+  type ContratoRow,
 } from '@/hooks/useContratos';
 import { useFornecedores } from '@/hooks/useFornecedores';
 import { useAuth } from '@/contexts/AuthContext';
@@ -34,7 +35,7 @@ export default function Contratos() {
   const [search, setSearch] = useState('');
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [editingContrato, setEditingContrato] = useState<any>(null);
+  const [editingContrato, setEditingContrato] = useState<ContratoRow | null>(null);
 
   const [formData, setFormData] = useState<ContratoInsert>({
     numero_contrato: 'AUTO',
@@ -54,7 +55,7 @@ export default function Contratos() {
   });
   const { clearDraft: clearContratoDraft } = useFormDraft('draft:contrato', formData, setFormData);
 
-  const { data: contratos, isLoading } = useContratos();
+  const { data: contratos, isLoading, isError, error } = useContratos();
   const { data: fornecedores } = useFornecedores();
   const createContrato = useCreateContrato();
   const updateContrato = useUpdateContrato();
@@ -85,7 +86,7 @@ export default function Contratos() {
     valorTotal: contratos?.reduce((acc, c) => acc + (c.valor_total || 0), 0) || 0,
   };
 
-  const handleEdit = (contrato: any) => {
+  const handleEdit = (contrato: ContratoRow) => {
     setEditingContrato(contrato);
     setFormData({
       numero_contrato: contrato.numero_contrato,
@@ -155,7 +156,7 @@ export default function Contratos() {
     });
   };
 
-  const handleGeneratePDF = async (contrato: any) => {
+  const handleGeneratePDF = async (contrato: ContratoRow) => {
     setGeneratingPDF(contrato.id);
     try {
       const contratoData: ContratoForPDF = {
@@ -210,6 +211,10 @@ export default function Contratos() {
     });
   };
 
+  const emptyStateMessage = (contratos?.length ?? 0) === 0
+    ? 'Nenhum contrato cadastrado ainda.'
+    : 'Nenhum contrato corresponde aos filtros aplicados.';
+
   if (isLoading) {
     return (
       <div className="module-page space-y-6">
@@ -218,6 +223,28 @@ export default function Contratos() {
           {[1, 2, 3, 4].map(i => <Skeleton key={i} className="h-24" />)}
         </div>
         <Skeleton className="h-96 w-full" />
+      </div>
+    );
+  }
+
+  if (isError) {
+    return (
+      <div className="module-page space-y-6">
+        <div className="module-page-header">
+          <div>
+            <h1 className="text-2xl font-bold text-foreground">Contratos e Terceiros</h1>
+            <p className="text-muted-foreground">Gestão de contratos com terceiros e prestadores de serviço</p>
+          </div>
+        </div>
+
+        <Card>
+          <CardContent className="flex items-center gap-3 py-6 text-destructive">
+            <AlertCircle className="h-5 w-5 shrink-0" />
+            <p className="text-sm">
+              {error instanceof Error ? error.message : 'Falha ao carregar contratos.'}
+            </p>
+          </CardContent>
+        </Card>
       </div>
     );
   }
@@ -381,7 +408,7 @@ export default function Contratos() {
             {filteredContratos.length === 0 && (
               <tr>
                 <td colSpan={8} className="text-center py-8 text-muted-foreground">
-                  Nenhum contrato encontrado.
+                  {emptyStateMessage}
                 </td>
               </tr>
             )}
