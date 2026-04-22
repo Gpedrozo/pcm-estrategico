@@ -432,7 +432,16 @@ export default function Owner() {
     () => tickets.reduce((sum, t) => sum + Number(t.unread_owner_messages ?? 0), 0),
     [tickets],
   )
-  const logs = useMemo(() => safeArray<Record<string, unknown>>(auditsQuery.data?.logs), [auditsQuery.data])
+  const logs = useMemo(() => {
+    const raw = safeArray<Record<string, unknown>>(auditsQuery.data?.logs)
+    const seen = new Set<string>()
+    return raw.filter((l) => {
+      const id = String(l.id ?? '')
+      if (!id || seen.has(id)) return false
+      seen.add(id)
+      return true
+    })
+  }, [auditsQuery.data])
   const owners = useMemo(() => safeArray<Record<string, unknown>>(ownersQuery.data?.owners), [ownersQuery.data])
   const tables = useMemo(() => safeArray<Record<string, unknown>>(tablesQuery.data?.tables), [tablesQuery.data])
   const settings = useMemo(() => safeArray<Record<string, unknown>>(settingsQuery.data?.settings), [settingsQuery.data])
@@ -481,6 +490,13 @@ export default function Owner() {
   useEffect(() => {
     if (!selectedTicketId && tickets.length > 0) setSelectedTicketId(String(tickets[0]?.id ?? ''))
   }, [selectedTicketId, tickets])
+
+  // Auto-dismiss feedback após 5 segundos
+  useEffect(() => {
+    if (!feedback) return
+    const t = setTimeout(() => setFeedback(null), 5000)
+    return () => clearTimeout(t)
+  }, [feedback])
 
   useEffect(() => {
     const current = settings.length > 0 ? asObject(settings[0]) : {}
