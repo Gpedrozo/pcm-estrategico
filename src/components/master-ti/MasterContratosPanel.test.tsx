@@ -9,7 +9,9 @@ import type { OwnerContract } from '@/services/ownerPortal.service';
 // Mock dependencies
 vi.mock('@/hooks/useOwner2Portal');
 vi.mock('@/lib/reportGenerator');
-vi.mock('@/hooks/use-toast');
+vi.mock('@/hooks/use-toast', () => ({
+  useToast: () => ({ toast: vi.fn() }),
+}));
 vi.mock('@/contexts/AuthContext', () => ({
   useAuth: () => ({ isSystemOwner: true }),
 }));

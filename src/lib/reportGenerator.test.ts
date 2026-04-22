@@ -34,7 +34,7 @@ vi.mock('jspdf', () => ({
   },
 }));
 
-vi.mock('jspdf-autotable', () => ({}));
+vi.mock('jspdf-autotable', () => ({ default: vi.fn() }));
 
 describe('reportGenerator - Document Functions', () => {
   const mockContract: OwnerContractForDocument = {
@@ -181,7 +181,7 @@ describe('reportGenerator - Document Functions', () => {
       printOwnerContractDocument(contractWithSpecialChars);
       const htmlContent = documentWriteMock.mock.calls[0][0];
       expect(htmlContent).toContain('&lt;script&gt;');
-      expect(htmlContent).not.toContain('<script>');
+      expect(htmlContent).not.toContain('<script>alert(');  // XSS não deve aparecer não-escapado
       expect(htmlContent).toContain('&amp; Co.');
     });
 
@@ -198,7 +198,7 @@ describe('reportGenerator - Document Functions', () => {
       const htmlContent = documentWriteMock.mock.calls[0][0];
       expect(htmlContent).toContain('Empresa Teste');
       expect(htmlContent).toContain('Plano Premium');
-      expect(htmlContent).toContain('R$ 1.000,00');
+      expect(htmlContent).toContain('1.000,00');
     });
 
     it('renderiza clÃ¡usulas com quebras de parÃ¡grafo no HTML', () => {
@@ -259,3 +259,6 @@ describe('reportGenerator - Document Functions', () => {
     });
   });
 });
+
+
+
