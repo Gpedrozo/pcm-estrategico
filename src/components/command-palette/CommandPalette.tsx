@@ -104,7 +104,6 @@ export function CommandPalette() {
     { id: 'mecanicos', label: 'Mecânicos', description: 'Equipe de manutenção', icon: Wrench, action: () => navigateTo('/mecanicos'), keywords: ['tecnicos', 'equipe', 'manutentores'], group: 'Cadastros' },
     { id: 'materiais', label: 'Materiais', description: 'Estoque e peças', icon: Package, action: () => navigateTo('/materiais'), keywords: ['estoque', 'pecas', 'almoxarifado'], group: 'Cadastros' },
     { id: 'fornecedores', label: 'Fornecedores', description: 'Cadastro de fornecedores', icon: Truck, action: () => navigateTo('/fornecedores'), keywords: ['terceiros', 'prestadores', 'empresas'], group: 'Cadastros' },
-    { id: 'contratos', label: 'Contratos', description: 'Gestão de contratos', icon: FileText, action: () => navigateTo('/contratos'), keywords: ['acordos', 'sla', 'terceirizacao'], group: 'Cadastros' },
     { id: 'documentos', label: 'Documentos', description: 'Documentos técnicos', icon: FileArchive, action: () => navigateTo('/documentos'), keywords: ['manuais', 'procedimentos', 'pop'], group: 'Cadastros' },
     
     // Relatórios

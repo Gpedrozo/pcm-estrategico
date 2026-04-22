@@ -463,7 +463,7 @@ function TenantRoutes() {
                 <Route path="/mecanicos" element={<Mecanicos />} />
                 <Route path="/materiais" element={<Materiais />} />
                 <Route path="/fornecedores" element={<Fornecedores />} />
-                <Route path="/contratos" element={<Contratos />} />
+                <Route path="/contratos" element={<MasterTIGuard><Contratos /></MasterTIGuard>} />
                 <Route path="/documentos" element={<DocumentosTecnicos />} />
                 <Route path="/lubrificacao" element={<Lubrificacao />} />
                 <Route path="/lubrificacao/rotas" element={<RotasLubrificacao />} />

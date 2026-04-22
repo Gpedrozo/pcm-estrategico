@@ -100,7 +100,6 @@ const cadastroMenuItems = [
   { title: 'Mecânicos', url: '/mecanicos', icon: Wrench },
   { title: 'Materiais', url: '/materiais', icon: Package },
   { title: 'Fornecedores', url: '/fornecedores', icon: Truck },
-  { title: 'Contratos', url: '/contratos', icon: FileText },
   { title: 'Catálogos Técnicos', url: '/documentos', icon: FileArchive },
 ];
 
