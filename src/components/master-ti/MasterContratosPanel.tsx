@@ -5,7 +5,16 @@ import { useAuth } from '@/contexts/AuthContext'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
-import { AlertTriangle, RefreshCw, Lock, Printer, FileDown } from 'lucide-react'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import {
+  Sheet,
+  SheetClose,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from '@/components/ui/sheet'
+import { AlertTriangle, RefreshCw, Lock, Printer, FileDown, Eye } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
 import {
   generateOwnerContractPDF,
@@ -38,6 +47,7 @@ export function MasterContratosPanel() {
   const { toast } = useToast()
   const query = useOwner2Contracts(isSystemOwner) // só carrega se o usuário tiver acesso
   const [activeAction, setActiveAction] = useState<string | null>(null)
+  const [previewContract, setPreviewContract] = useState<OwnerContract | null>(null)
   const contracts: OwnerContract[] = Array.isArray(query.data?.contracts)
     ? query.data.contracts
     : []
@@ -57,7 +67,7 @@ export function MasterContratosPanel() {
     content: contract.content ?? null,
   })
 
-  const executeDocumentAction = async (
+  const executeDocumentActionInternal = async (
     contract: OwnerContract,
     action: 'print' | 'pdf',
   ) => {
@@ -80,6 +90,10 @@ export function MasterContratosPanel() {
     } finally {
       setActiveAction(null)
     }
+  }
+
+  const handlePreviewAction = async (contract: OwnerContract, action: 'print' | 'pdf') => {
+    await executeDocumentActionInternal(contract, action)
   }
 
   if (!isSystemOwner) {
@@ -186,31 +200,17 @@ export function MasterContratosPanel() {
                   <td className="px-3 py-2.5 text-xs">v{String(c.version ?? '1')}</td>
                   <td className="px-3 py-2.5 text-xs">{fmt(String(c.generated_at ?? ''))}</td>
                   <td className="px-3 py-2.5">
-                    <div className="flex items-center gap-2">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="gap-1"
-                        disabled={!hasDocumentContent || Boolean(activeAction)}
-                        title={hasDocumentContent ? 'Imprimir contrato' : 'Contrato sem conteúdo disponível para impressão'}
-                        onClick={() => void executeDocumentAction(c, 'print')}
-                      >
-                        <Printer className={`h-3.5 w-3.5 ${isPrinting ? 'animate-pulse' : ''}`} />
-                        Imprimir
-                      </Button>
-
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="gap-1"
-                        disabled={!hasDocumentContent || Boolean(activeAction)}
-                        title={hasDocumentContent ? 'Baixar PDF formal do contrato' : 'Contrato sem conteúdo disponível para exportação'}
-                        onClick={() => void executeDocumentAction(c, 'pdf')}
-                      >
-                        <FileDown className={`h-3.5 w-3.5 ${isDownloading ? 'animate-pulse' : ''}`} />
-                        PDF
-                      </Button>
-                    </div>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="gap-1"
+                      disabled={!hasDocumentContent}
+                      title={hasDocumentContent ? 'Visualizar contrato' : 'Contrato sem conteúdo disponível'}
+                      onClick={() => setPreviewContract(c)}
+                    >
+                      <Eye className="h-3.5 w-3.5" />
+                      Visualizar
+                    </Button>
                   </td>
                 </tr>
               )
@@ -218,6 +218,123 @@ export function MasterContratosPanel() {
           </tbody>
         </table>
       </div>
+
+      {previewContract && (
+        <Sheet open={!!previewContract} onOpenChange={(open) => !open && setPreviewContract(null)}>
+          <SheetContent className="w-full max-w-lg sm:max-w-xl space-y-6 overflow-y-auto">
+            <SheetHeader>
+              <SheetTitle>Prévia do Contrato</SheetTitle>
+              <SheetDescription>
+                Empresa: {String(previewContract.empresas?.nome ?? previewContract.empresa_id ?? '—')}
+              </SheetDescription>
+            </SheetHeader>
+
+            {/* Metadata Card */}
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm">Identificação</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3 text-sm">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-xs text-muted-foreground">Plano</p>
+                    <p className="font-medium">{String(previewContract.plans?.name ?? previewContract.plans?.code ?? '—')}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">Status</p>
+                    <div className="mt-1"><StatusBadge status={String(previewContract.status ?? 'rascunho')} /></div>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">Valor mensal</p>
+                    <p className="font-medium">{fmtValor(previewContract.amount)}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">Versão</p>
+                    <p className="font-medium">v{String(previewContract.version ?? '1')}</p>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4 pt-2 border-t">
+                  <div>
+                    <p className="text-xs text-muted-foreground">Vigência início</p>
+                    <p className="font-medium text-xs">{fmt(String(previewContract.starts_at ?? ''))}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">Vigência fim</p>
+                    <p className="font-medium text-xs">{fmt(String(previewContract.ends_at ?? ''))}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">Gerado em</p>
+                    <p className="font-medium text-xs">{fmt(String(previewContract.generated_at ?? ''))}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">Assinado em</p>
+                    <p className="font-medium text-xs">
+                      {previewContract.signed_at ? fmt(String(previewContract.signed_at)) : <span className="text-amber-600">Pendente</span>}
+                    </p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Summary / Content Preview */}
+            {(previewContract.summary || previewContract.content) && (
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-sm">Resumo / Conteúdo</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="max-h-72 overflow-y-auto rounded border border-border bg-muted/30 p-3 text-xs leading-relaxed">
+                    {previewContract.summary && (
+                      <>
+                        <p className="font-medium mb-2">Resumo executivo:</p>
+                        <p className="text-muted-foreground mb-4">{previewContract.summary}</p>
+                      </>
+                    )}
+                    {previewContract.content && (
+                      <>
+                        <p className="font-medium mb-2">Cláusulas:</p>
+                        <p className="text-muted-foreground whitespace-pre-wrap">
+                          {String(previewContract.content).slice(0, 600)}
+                          {String(previewContract.content).length > 600 ? '...' : ''}
+                        </p>
+                      </>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Actions */}
+            <div className="sticky bottom-0 space-y-2 border-t bg-background pt-4">
+              <div className="flex gap-2">
+                <Button
+                  className="flex-1 gap-2"
+                  disabled={Boolean(activeAction)}
+                  onClick={() => void handlePreviewAction(previewContract, 'print')}
+                >
+                  <Printer className={`h-4 w-4 ${activeAction?.startsWith('print:') ? 'animate-pulse' : ''}`} />
+                  Imprimir
+                </Button>
+                <Button
+                  className="flex-1 gap-2"
+                  variant="outline"
+                  disabled={Boolean(activeAction)}
+                  onClick={() => void handlePreviewAction(previewContract, 'pdf')}
+                >
+                  <FileDown className={`h-4 w-4 ${activeAction?.startsWith('pdf:') ? 'animate-pulse' : ''}`} />
+                  Baixar PDF
+                </Button>
+              </div>
+              <SheetClose asChild>
+                <Button variant="outline" className="w-full">
+                  Fechar
+                </Button>
+              </SheetClose>
+            </div>
+          </SheetContent>
+        </Sheet>
+      )}
     </div>
   )
 }
