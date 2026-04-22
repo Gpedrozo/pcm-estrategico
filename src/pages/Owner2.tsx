@@ -182,6 +182,8 @@ export default function Owner() {
   const [newCompanyEmail, setNewCompanyEmail] = useState('')
   const [newCompanyResponsible, setNewCompanyResponsible] = useState('')
   const [newCompanySegment, setNewCompanySegment] = useState('')
+  const [newCompanyRepresentanteId, setNewCompanyRepresentanteId] = useState('')
+  const [newCompanyVendedor, setNewCompanyVendedor] = useState('')
   const [newAdminName, setNewAdminName] = useState('')
   const [newAdminEmail, setNewAdminEmail] = useState('')
 
@@ -235,6 +237,25 @@ export default function Owner() {
   const [criticalRequest, setCriticalRequest] = useState<CriticalActionRequest | null>(null)
   const [criticalConfirmValue, setCriticalConfirmValue] = useState('')
 
+  // Representantes module state
+  const [representantes, setRepresentantes] = useState<Record<string, unknown>[]>([])
+  const [representantesLoading, setRepresentantesLoading] = useState(false)
+  const [gastos, setGastos] = useState<Record<string, unknown>[]>([])
+  const [gastosLoading, setGastosLoading] = useState(false)
+  const [comissoes, setComissoes] = useState<Record<string, unknown>[]>([])
+  const [comissoesPeriodo, setComissoesPeriodo] = useState(() => new Date().toISOString().slice(0, 7))
+  const [newRepNome, setNewRepNome] = useState('')
+  const [newRepCnpj, setNewRepCnpj] = useState('')
+  const [newRepEmail, setNewRepEmail] = useState('')
+  const [newRepTelefone, setNewRepTelefone] = useState('')
+  const [newRepModelo, setNewRepModelo] = useState<'liquido' | 'bruto'>('liquido')
+  const [newRepPercentual, setNewRepPercentual] = useState('10')
+  const [newGastoDescricao, setNewGastoDescricao] = useState('')
+  const [newGastoCategoria, setNewGastoCategoria] = useState('hospedagem')
+  const [newGastoValor, setNewGastoValor] = useState('')
+  const [newGastoRecorrencia, setNewGastoRecorrencia] = useState('mensal')
+  const [newGastoDataRef, setNewGastoDataRef] = useState(() => new Date().toISOString().slice(0, 10))
+
   const [moduleFlags, setModuleFlags] = useState<Record<string, boolean>>({ ...DEFAULT_MODULES })
 
   const [limitUsers, setLimitUsers] = useState('50')
@@ -275,7 +296,7 @@ export default function Owner() {
   })()
 
   const visibleTabs = useMemo(
-    () => OWNER_TABS.filter((tab) => (isOwnerMaster ? true : tab !== 'owner-master' && tab !== 'plataforma')),
+    () => OWNER_TABS.filter((tab) => (isOwnerMaster ? true : tab !== 'owner-master' && tab !== 'plataforma' && tab !== 'representantes')),
     [isOwnerMaster],
   )
 
@@ -346,6 +367,34 @@ export default function Owner() {
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab, platformContactLoaded])
+
+  // Load representantes when tab is activated (or when cadastro opens to populate select)
+  useEffect(() => {
+    if ((activeTab === 'representantes' || activeTab === 'cadastro') && representantes.length === 0 && !representantesLoading) {
+      setRepresentantesLoading(true);
+      (async () => {
+        try {
+          const r: any = await execute.mutateAsync({ action: 'list_representantes', payload: {} })
+          setRepresentantes(r?.representantes ?? [])
+        } catch { /* ignore */ } finally { setRepresentantesLoading(false) }
+      })()
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab])
+
+  // Load gastos when representantes tab is activated
+  useEffect(() => {
+    if (activeTab === 'representantes' && gastos.length === 0 && !gastosLoading) {
+      setGastosLoading(true);
+      (async () => {
+        try {
+          const r: any = await execute.mutateAsync({ action: 'list_gastos_sistema', payload: {} })
+          setGastos(r?.gastos ?? [])
+        } catch { /* ignore */ } finally { setGastosLoading(false) }
+      })()
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab])
 
   const healthStatus = useMemo(() => {
     if (healthQuery.isError) {
@@ -731,6 +780,8 @@ export default function Owner() {
       setNewCompanyEmail('')
       setNewCompanyResponsible('')
       setNewCompanySegment('')
+      setNewCompanyRepresentanteId('')
+      setNewCompanyVendedor('')
       setNewAdminName('')
       setNewAdminEmail('')
       setCadastroPlanId('')
@@ -756,6 +807,8 @@ export default function Owner() {
             email: newCompanyEmail || undefined,
             responsavel: newCompanyResponsible || undefined,
             segmento: newCompanySegment || undefined,
+            representante_id: newCompanyRepresentanteId || undefined,
+            vendedor: newCompanyVendedor || undefined,
           },
           user: { nome: newAdminName, email: newAdminEmail, role: 'MASTER_TI' },
           subscription: {
@@ -1111,6 +1164,13 @@ export default function Owner() {
                   <input className="rounded-lg border border-border bg-background px-2 py-2 text-sm text-foreground" value={newCompanyEmail} onChange={(e) => setNewCompanyEmail(e.target.value)} placeholder="Email comercial" />
                   <input className="rounded-lg border border-border bg-background px-2 py-2 text-sm text-foreground" value={newCompanyResponsible} onChange={(e) => setNewCompanyResponsible(e.target.value)} placeholder="Responsável" />
                   <input className="rounded-lg border border-border bg-background px-2 py-2 text-sm text-foreground" value={newCompanySegment} onChange={(e) => setNewCompanySegment(e.target.value)} placeholder="Segmento" />
+                  <select className="rounded-lg border border-border bg-background px-2 py-2 text-sm text-foreground" value={newCompanyRepresentanteId} onChange={(e) => setNewCompanyRepresentanteId(e.target.value)}>
+                    <option value="">Representante comercial (opcional)</option>
+                    {representantes.map((r) => (
+                      <option key={String(r.id)} value={String(r.id)}>{String(r.nome ?? r.id)}</option>
+                    ))}
+                  </select>
+                  <input className="rounded-lg border border-border bg-background px-2 py-2 text-sm text-foreground" value={newCompanyVendedor} onChange={(e) => setNewCompanyVendedor(e.target.value)} placeholder="Vendedor (opcional)" />
 
                   <p className="mt-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Administrador master</p>
                   <input className="rounded-lg border border-border bg-background px-2 py-2 text-sm text-foreground" value={newAdminName} onChange={(e) => setNewAdminName(e.target.value)} placeholder="Nome do administrador *" />
@@ -2078,6 +2138,210 @@ export default function Owner() {
               </SurfaceCard>
 
               <OwnerShadowAudit logs={logs} />
+            </div>
+          )}
+
+          {activeTab === 'representantes' && (
+            <div className="grid gap-4 xl:grid-cols-2">
+              <SurfaceCard title="Representantes comerciais">
+                <div className="grid gap-2">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Novo representante</p>
+                  <input className="rounded-lg border border-border bg-background px-2 py-2 text-sm text-foreground" value={newRepNome} onChange={(e) => setNewRepNome(e.target.value)} placeholder="Nome *" />
+                  <input className="rounded-lg border border-border bg-background px-2 py-2 text-sm text-foreground" value={newRepCnpj} onChange={(e) => setNewRepCnpj(e.target.value)} placeholder="CNPJ (opcional)" />
+                  <input className="rounded-lg border border-border bg-background px-2 py-2 text-sm text-foreground" value={newRepEmail} onChange={(e) => setNewRepEmail(e.target.value)} placeholder="Email" />
+                  <input className="rounded-lg border border-border bg-background px-2 py-2 text-sm text-foreground" value={newRepTelefone} onChange={(e) => setNewRepTelefone(e.target.value)} placeholder="Telefone" />
+                  <div className="grid grid-cols-2 gap-2">
+                    <select className="rounded-lg border border-border bg-background px-2 py-2 text-sm text-foreground" value={newRepModelo} onChange={(e) => setNewRepModelo(e.target.value as 'liquido' | 'bruto')}>
+                      <option value="liquido">Comissão sobre líquido</option>
+                      <option value="bruto">Comissão sobre bruto</option>
+                    </select>
+                    <input className="rounded-lg border border-border bg-background px-2 py-2 text-sm text-foreground" type="number" min="0" max="100" step="0.01" value={newRepPercentual} onChange={(e) => setNewRepPercentual(e.target.value)} placeholder="% comissão" />
+                  </div>
+                  <button
+                    className="rounded-lg bg-primary px-3 py-2 text-sm font-semibold text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-50"
+                    disabled={busy || !newRepNome}
+                    onClick={async () => {
+                      setError(null); setFeedback(null)
+                      try {
+                        await execute.mutateAsync({ action: 'create_representante', payload: { representante: { nome: newRepNome, cnpj: newRepCnpj || undefined, email: newRepEmail || undefined, telefone: newRepTelefone || undefined, modelo_comissao: newRepModelo, percentual_comissao: Number(newRepPercentual) } } })
+                        setNewRepNome(''); setNewRepCnpj(''); setNewRepEmail(''); setNewRepTelefone(''); setNewRepPercentual('10')
+                        setFeedback('Representante criado com sucesso.')
+                        setRepresentantesLoading(true)
+                        try {
+                          const r: any = await execute.mutateAsync({ action: 'list_representantes', payload: {} })
+                          setRepresentantes(r?.representantes ?? [])
+                        } catch { /* ignore */ } finally { setRepresentantesLoading(false) }
+                      } catch (err: any) { setError(String(err?.message ?? err)) }
+                    }}
+                  >Criar representante</button>
+                </div>
+                <div className="mt-4 max-h-[320px] overflow-auto rounded-xl border border-border">
+                  <div className="flex items-center justify-between px-2 pt-2 pb-1">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Lista</p>
+                    <button className="text-xs text-sky-600 hover:underline" disabled={representantesLoading} onClick={async () => { setRepresentantesLoading(true); try { const r: any = await execute.mutateAsync({ action: 'list_representantes', payload: {} }); setRepresentantes(r?.representantes ?? []) } catch { /* ignore */ } finally { setRepresentantesLoading(false) } }}>Recarregar</button>
+                  </div>
+                  {representantesLoading ? <p className="px-2 py-4 text-xs text-muted-foreground">Carregando…</p> : (
+                    <table className="w-full text-xs">
+                      <thead className="bg-muted/70"><tr>
+                        <th className="px-2 py-2 text-left text-muted-foreground">Nome</th>
+                        <th className="px-2 py-2 text-left text-muted-foreground">Modelo</th>
+                        <th className="px-2 py-2 text-left text-muted-foreground">%</th>
+                        <th className="px-2 py-2 text-left text-muted-foreground">Ativo</th>
+                      </tr></thead>
+                      <tbody>
+                        {representantes.map((r) => (
+                          <tr key={String(r.id)} className="border-t border-border">
+                            <td className="px-2 py-2 font-medium text-foreground">{String(r.nome ?? '-')}</td>
+                            <td className="px-2 py-2 text-muted-foreground">{String(r.modelo_comissao ?? '-')}</td>
+                            <td className="px-2 py-2 text-foreground">{Number(r.percentual_comissao ?? 0).toFixed(2)}%</td>
+                            <td className="px-2 py-2">{r.ativo ? '✓' : '✗'}</td>
+                          </tr>
+                        ))}
+                        {representantes.length === 0 && <tr><td colSpan={4} className="px-2 py-4 text-center text-muted-foreground">Nenhum representante cadastrado.</td></tr>}
+                      </tbody>
+                    </table>
+                  )}
+                </div>
+              </SurfaceCard>
+
+              <SurfaceCard title="Gastos do sistema">
+                <div className="grid gap-2">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Novo gasto</p>
+                  <input className="rounded-lg border border-border bg-background px-2 py-2 text-sm text-foreground" value={newGastoDescricao} onChange={(e) => setNewGastoDescricao(e.target.value)} placeholder="Descrição *" />
+                  <div className="grid grid-cols-2 gap-2">
+                    <select className="rounded-lg border border-border bg-background px-2 py-2 text-sm text-foreground" value={newGastoCategoria} onChange={(e) => setNewGastoCategoria(e.target.value)}>
+                      <option value="hospedagem">Hospedagem</option>
+                      <option value="dominio">Domínio</option>
+                      <option value="api">API/Serviço</option>
+                      <option value="outros">Outros</option>
+                    </select>
+                    <select className="rounded-lg border border-border bg-background px-2 py-2 text-sm text-foreground" value={newGastoRecorrencia} onChange={(e) => setNewGastoRecorrencia(e.target.value)}>
+                      <option value="mensal">Mensal</option>
+                      <option value="anual">Anual</option>
+                      <option value="avulso">Avulso</option>
+                    </select>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <input className="rounded-lg border border-border bg-background px-2 py-2 text-sm text-foreground" type="number" min="0" step="0.01" value={newGastoValor} onChange={(e) => setNewGastoValor(e.target.value)} placeholder="Valor R$ *" />
+                    <input className="rounded-lg border border-border bg-background px-2 py-2 text-sm text-foreground" type="date" value={newGastoDataRef} onChange={(e) => setNewGastoDataRef(e.target.value)} />
+                  </div>
+                  <button
+                    className="rounded-lg bg-primary px-3 py-2 text-sm font-semibold text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-50"
+                    disabled={busy || !newGastoDescricao || !newGastoValor}
+                    onClick={async () => {
+                      setError(null); setFeedback(null)
+                      try {
+                        await execute.mutateAsync({ action: 'create_gasto_sistema', payload: { gasto: { descricao: newGastoDescricao, categoria: newGastoCategoria, valor: Number(newGastoValor), recorrencia: newGastoRecorrencia, data_referencia: newGastoDataRef } } })
+                        setNewGastoDescricao(''); setNewGastoValor('')
+                        setFeedback('Gasto registrado com sucesso.')
+                        setGastosLoading(true)
+                        try {
+                          const r: any = await execute.mutateAsync({ action: 'list_gastos_sistema', payload: {} })
+                          setGastos(r?.gastos ?? [])
+                        } catch { /* ignore */ } finally { setGastosLoading(false) }
+                      } catch (err: any) { setError(String(err?.message ?? err)) }
+                    }}
+                  >Registrar gasto</button>
+                </div>
+                <div className="mt-4 max-h-[260px] overflow-auto rounded-xl border border-border">
+                  <div className="flex items-center justify-between px-2 pt-2 pb-1">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Gastos registrados</p>
+                    <button className="text-xs text-sky-600 hover:underline" disabled={gastosLoading} onClick={async () => { setGastosLoading(true); try { const r: any = await execute.mutateAsync({ action: 'list_gastos_sistema', payload: {} }); setGastos(r?.gastos ?? []) } catch { /* ignore */ } finally { setGastosLoading(false) } }}>Recarregar</button>
+                  </div>
+                  {gastosLoading ? <p className="px-2 py-4 text-xs text-muted-foreground">Carregando…</p> : (
+                    <table className="w-full text-xs">
+                      <thead className="bg-muted/70"><tr>
+                        <th className="px-2 py-2 text-left text-muted-foreground">Descrição</th>
+                        <th className="px-2 py-2 text-left text-muted-foreground">Cat.</th>
+                        <th className="px-2 py-2 text-left text-muted-foreground">Valor</th>
+                        <th className="px-2 py-2 text-left text-muted-foreground">Recorr.</th>
+                      </tr></thead>
+                      <tbody>
+                        {gastos.map((g) => (
+                          <tr key={String(g.id)} className="border-t border-border">
+                            <td className="px-2 py-2 font-medium text-foreground">{String(g.descricao ?? '-')}</td>
+                            <td className="px-2 py-2 text-muted-foreground">{String(g.categoria ?? '-')}</td>
+                            <td className="px-2 py-2 text-foreground">R$ {Number(g.valor ?? 0).toFixed(2)}</td>
+                            <td className="px-2 py-2 text-muted-foreground">{String(g.recorrencia ?? '-')}</td>
+                          </tr>
+                        ))}
+                        {gastos.length === 0 && <tr><td colSpan={4} className="px-2 py-4 text-center text-muted-foreground">Nenhum gasto registrado.</td></tr>}
+                      </tbody>
+                    </table>
+                  )}
+                </div>
+              </SurfaceCard>
+
+              <div className="xl:col-span-2">
+                <SurfaceCard title="Calcular comissões do período">
+                  <div className="flex flex-wrap items-end gap-3">
+                    <div>
+                      <label className="block text-xs text-muted-foreground mb-1">Período (AAAA-MM)</label>
+                      <input className="rounded-lg border border-border bg-background px-2 py-2 text-sm text-foreground" type="month" value={comissoesPeriodo} onChange={(e) => setComissoesPeriodo(e.target.value)} />
+                    </div>
+                    <button
+                      className="rounded-lg bg-sky-700 px-3 py-2 text-sm font-semibold text-white hover:bg-sky-800 transition-colors disabled:opacity-50"
+                      disabled={busy || !comissoesPeriodo}
+                      onClick={async () => {
+                        setError(null); setFeedback(null)
+                        try {
+                          const r: any = await execute.mutateAsync({ action: 'calcular_comissoes_mes', payload: { periodo: comissoesPeriodo } })
+                          setComissoes(r?.comissoes ?? [])
+                          setFeedback(`Comissões calculadas: ${(r?.comissoes ?? []).length} registros. Receita bruta total: R$ ${Number(r?.receita_bruta_total ?? 0).toFixed(2)} | Gastos: R$ ${Number(r?.gastos_total ?? 0).toFixed(2)}`)
+                        } catch (err: any) { setError(String(err?.message ?? err)) }
+                      }}
+                    >Calcular</button>
+                  </div>
+                  {comissoes.length > 0 && (
+                    <div className="mt-4 max-h-[280px] overflow-auto rounded-xl border border-border">
+                      <table className="w-full text-xs">
+                        <thead className="bg-muted/70"><tr>
+                          <th className="px-2 py-2 text-left text-muted-foreground">Repr. ID</th>
+                          <th className="px-2 py-2 text-left text-muted-foreground">Receita</th>
+                          <th className="px-2 py-2 text-left text-muted-foreground">Gastos aloc.</th>
+                          <th className="px-2 py-2 text-left text-muted-foreground">Base</th>
+                          <th className="px-2 py-2 text-left text-muted-foreground">%</th>
+                          <th className="px-2 py-2 text-left text-muted-foreground">Comissão</th>
+                          <th className="px-2 py-2 text-left text-muted-foreground">Status</th>
+                          <th className="px-2 py-2 text-left text-muted-foreground">Ação</th>
+                        </tr></thead>
+                        <tbody>
+                          {comissoes.map((c) => {
+                            const repNome = representantes.find((r) => String(r.id) === String(c.representante_id))?.nome
+                            return (
+                              <tr key={String(c.id)} className="border-t border-border">
+                                <td className="px-2 py-2 font-medium text-foreground">{String(repNome ?? String(c.representante_id ?? '-').slice(0, 8))}</td>
+                                <td className="px-2 py-2 text-foreground">R$ {Number(c.receita_bruta ?? 0).toFixed(2)}</td>
+                                <td className="px-2 py-2 text-muted-foreground">R$ {Number(c.gastos_alocados ?? 0).toFixed(2)}</td>
+                                <td className="px-2 py-2 text-foreground">R$ {Number(c.base_calculo ?? 0).toFixed(2)}</td>
+                                <td className="px-2 py-2 text-muted-foreground">{Number(c.percentual ?? 0).toFixed(2)}%</td>
+                                <td className="px-2 py-2 font-semibold text-emerald-700 dark:text-emerald-400">R$ {Number(c.valor_comissao ?? 0).toFixed(2)}</td>
+                                <td className="px-2 py-2">{String(c.status ?? '-')}</td>
+                                <td className="px-2 py-2">
+                                  {String(c.status ?? '') === 'pendente' && (
+                                    <button
+                                      className="rounded border border-emerald-400 px-2 py-0.5 text-[11px] text-emerald-700 hover:bg-emerald-50 dark:hover:bg-emerald-950/30 transition-colors"
+                                      disabled={busy}
+                                      onClick={async () => {
+                                        setError(null); setFeedback(null)
+                                        try {
+                                          await execute.mutateAsync({ action: 'registrar_pagamento_comissao', payload: { comissao_id: c.id } })
+                                          setComissoes((prev) => prev.map((x) => String(x.id) === String(c.id) ? { ...x, status: 'pago' } : x))
+                                          setFeedback('Pagamento registrado.')
+                                        } catch (err: any) { setError(String(err?.message ?? err)) }
+                                      }}
+                                    >Pagar</button>
+                                  )}
+                                </td>
+                              </tr>
+                            )
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </SurfaceCard>
+              </div>
             </div>
           )}
 
