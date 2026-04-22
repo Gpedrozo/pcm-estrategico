@@ -110,6 +110,33 @@ export function MasterPlataformaDados() {
       toast({ title: 'Erro ao salvar', description: e?.message ?? String(e), variant: 'destructive' }),
   });
 
+  function validateAndSave() {
+    const cnpjDigits = form.cnpj.replace(/\D/g, '');
+    if (cnpjDigits && cnpjDigits.length !== 14) {
+      toast({ title: 'CNPJ inválido', description: 'O CNPJ deve ter 14 dígitos.', variant: 'destructive' });
+      return;
+    }
+    const emailRe = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (form.email && !emailRe.test(form.email)) {
+      toast({ title: 'E-mail inválido', description: 'Verifique o campo E-mail.', variant: 'destructive' });
+      return;
+    }
+    if (form.email_notificacoes && !emailRe.test(form.email_notificacoes)) {
+      toast({ title: 'E-mail de notificações inválido', description: 'Verifique o campo E-mail de notificações.', variant: 'destructive' });
+      return;
+    }
+    const urlRe = /^https?:\/\/.+/i;
+    if (form.site && !urlRe.test(form.site)) {
+      toast({ title: 'URL do site inválida', description: 'A URL deve começar com http:// ou https://.', variant: 'destructive' });
+      return;
+    }
+    if (form.logo_url && !urlRe.test(form.logo_url)) {
+      toast({ title: 'URL do logo inválida', description: 'A URL deve começar com http:// ou https://.', variant: 'destructive' });
+      return;
+    }
+    saveMutation.mutate(form);
+  }
+
   if (!isSystemOwner) {
     return (
       <Card>
@@ -148,7 +175,7 @@ export function MasterPlataformaDados() {
             </Badge>
           )}
           <Button
-            onClick={() => saveMutation.mutate(form)}
+            onClick={validateAndSave}
             disabled={saveMutation.isPending || !dirty}
             size="sm"
             className="gap-2"
@@ -300,7 +327,7 @@ export function MasterPlataformaDados() {
 
       <div className="flex justify-end">
         <Button
-          onClick={() => saveMutation.mutate(form)}
+          onClick={validateAndSave}
           disabled={saveMutation.isPending || !dirty}
           className="gap-2"
         >

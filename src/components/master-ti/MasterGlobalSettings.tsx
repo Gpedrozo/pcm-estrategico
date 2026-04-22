@@ -141,7 +141,15 @@ export function MasterGlobalSettings() {
                     {editingId === config.id ? (
                       <>
                         <Input value={editValue} onChange={e => setEditValue(e.target.value)} className="w-48 h-8 text-sm" />
-                        <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => updateMutation.mutate({ id: config.id, valor: editValue })} disabled={updateMutation.isPending}>
+                        <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => {
+                          if (config.tipo === 'JSON' && editValue.trim()) {
+                            try { JSON.parse(editValue); } catch {
+                              toast({ title: 'JSON inválido', description: 'O valor não é um JSON válido.', variant: 'destructive' });
+                              return;
+                            }
+                          }
+                          updateMutation.mutate({ id: config.id, valor: editValue });
+                        }} disabled={updateMutation.isPending}>
                           {updateMutation.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : <Check className="h-3 w-3" />}
                         </Button>
                         <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => setEditingId(null)}><X className="h-3 w-3" /></Button>
@@ -168,7 +176,20 @@ export function MasterGlobalSettings() {
       <Dialog open={showAdd} onOpenChange={setShowAdd}>
         <DialogContent>
           <DialogHeader><DialogTitle>Nova Configuração</DialogTitle></DialogHeader>
-          <form onSubmit={e => { e.preventDefault(); addMutation.mutate(newConfig); }} className="space-y-4">
+          <form onSubmit={e => {
+            e.preventDefault();
+            if (!newConfig.chave.trim()) {
+              toast({ title: 'Chave obrigatória', description: 'Informe um nome para a configuração.', variant: 'destructive' });
+              return;
+            }
+            if (newConfig.tipo === 'JSON' && newConfig.valor.trim()) {
+              try { JSON.parse(newConfig.valor); } catch {
+                toast({ title: 'JSON inválido', description: 'O valor não é um JSON válido.', variant: 'destructive' });
+                return;
+              }
+            }
+            addMutation.mutate(newConfig);
+          }} className="space-y-4">
             <div className="space-y-2">
               <Label>Chave *</Label>
               <Input value={newConfig.chave} onChange={e => setNewConfig(c => ({ ...c, chave: e.target.value }))} placeholder="NOME_DA_CONFIGURACAO" required />
