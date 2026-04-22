@@ -1,4 +1,4 @@
-import jsPDF from 'jspdf';
+﻿import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
 // jspdf-autotable augments jsPDF with lastAutoTable; declare locally for TS compatibility
@@ -1655,6 +1655,14 @@ export interface OwnerContractForDocument {
   version?: number | null;
   summary?: string | null;
   content?: string | null;
+  // Campos opcionais para impressão enriquecida
+  logoUrl?: string | null;
+  empresaCnpj?: string | null;
+  empresaResponsavel?: string | null;
+  providerNome?: string | null;
+  providerCnpj?: string | null;
+  providerResponsavel?: string | null;
+  providerResponsavelCargo?: string | null;
 }
 
 function sanitizeDocumentFileName(value: string, fallback: string): string {
@@ -1899,162 +1907,155 @@ export function printOwnerContractDocument(contract: OwnerContractForDocument) {
   }
 
   const body = getOwnerContractBody(contract);
-  const bodyHtml = body
-    .split(/\n{2,}/)
-    .map((paragraph) => `<p>${escapeHtml(paragraph).replace(/\n/g, '<br />')}</p>`)
-    .join('');
 
+  // Número legível do contrato
+  const year = contract.generated_at ? new Date(contract.generated_at).getFullYear() : new Date().getFullYear();
+  const contractRef = `PCM-${year}-${contract.id.replace(/-/g, '').slice(-6).toUpperCase()}`;
+
+  // Tabela de metadados — sem Status/Versão (dados internos)
   const metadataRows = [
     ['Empresa', contract.empresaNome || '—', 'Plano', contract.planoNome || '—'],
-    ['Status', formatOwnerContractStatus(contract.status), 'Valor mensal', brl(contract.amount)],
+    ['CNPJ', contract.empresaCnpj || '—', 'Valor mensal', brl(contract.amount)],
     ['Início', fmtDateBR(contract.starts_at), 'Término', fmtDateBR(contract.ends_at)],
-    ['Gerado em', fmtDateBR(contract.generated_at), 'Assinado em', fmtDateBR(contract.signed_at)],
-    ['Versão', `v${String(contract.version ?? 1)}`, 'Contrato', contract.id],
+    ['Nº Contrato', contractRef, 'Gerado em', fmtDateBR(contract.generated_at)],
   ];
 
   const metadataHtml = metadataRows
-    .map(
-      ([leftLabel, leftValue, rightLabel, rightValue]) => `
+    .map(([ll, lv, rl, rv]) => `
         <tr>
-          <th>${escapeHtml(leftLabel)}</th>
-          <td>${escapeHtml(String(leftValue))}</td>
-          <th>${escapeHtml(rightLabel)}</th>
-          <td>${escapeHtml(String(rightValue))}</td>
-        </tr>`,
-    )
+          <th>${escapeHtml(ll)}</th>
+          <td>${escapeHtml(String(lv))}</td>
+          <th>${escapeHtml(rl)}</th>
+          <td>${escapeHtml(String(rv))}</td>
+        </tr>`)
     .join('');
+
+  // Corpo: remover bloco de título inicial (══...══ + título + ══...══)
+  // Manter a partir do primeiro ━━━ (início da Cláusula 1)
+  const bodyLines = body.split('\n');
+  const firstLightIdx = bodyLines.findIndex((l) => /^[\u2501]{3,}$/.test(l.trim()));
+  const clauseLines = firstLightIdx >= 0 ? bodyLines.slice(firstLightIdx) : bodyLines;
+
+  // Converter ═══ → <hr class="hr-h"> e ━━━ → <hr class="hr-l">
+  const htmlParts: string[] = [];
+  let paraBuffer: string[] = [];
+
+  const flushPara = () => {
+    const text = paraBuffer.join('\n').trim();
+    if (text) htmlParts.push(`<p>${escapeHtml(text).replace(/\n/g, '<br />')}</p>`);
+    paraBuffer = [];
+  };
+
+  for (const line of clauseLines) {
+    const t = line.trim();
+    if (/^[\u2550]{3,}$/.test(t)) { flushPara(); htmlParts.push('<hr class="hr-h" />'); }
+    else if (/^[\u2501]{3,}$/.test(t)) { flushPara(); htmlParts.push('<hr class="hr-l" />'); }
+    else if (t === '') { flushPara(); }
+    else { paraBuffer.push(line); }
+  }
+  flushPara();
+  const bodyHtml = htmlParts.join('');
+
+  // Dados para seção de assinaturas
+  const providerNomeEsc = escapeHtml(contract.providerNome || 'CONTRATADA');
+  const providerCnpjEsc = contract.providerCnpj ? escapeHtml(contract.providerCnpj) : '';
+  const providerRepEsc = escapeHtml(
+    [contract.providerResponsavel, contract.providerResponsavelCargo].filter(Boolean).join(' — '),
+  );
+  const clienteNomeEsc = escapeHtml(contract.empresaNome || 'CONTRATANTE');
+  const clienteCnpjEsc = contract.empresaCnpj ? escapeHtml(contract.empresaCnpj) : '';
+  const clienteRepEsc = contract.empresaResponsavel ? escapeHtml(contract.empresaResponsavel) : '';
+
+  // Logo no cabeçalho (opcional)
+  const logoHtml = contract.logoUrl
+    ? `<img src="${escapeHtml(contract.logoUrl)}" class="logo" alt="Logo da plataforma" />`
+    : '';
 
   printWindow.document.write(`<!DOCTYPE html>
 <html lang="pt-BR">
   <head>
     <meta charset="utf-8" />
-    <title>Contrato de Serviço</title>
+    <title>${escapeHtml(contractRef)} — Contrato de Licença</title>
     <style>
-      :root {
-        color-scheme: light;
-      }
-      * {
-        box-sizing: border-box;
-      }
-      body {
-        margin: 0;
-        font-family: "Segoe UI", Arial, sans-serif;
-        color: #1f2937;
-        background: #ffffff;
-      }
-      .page {
-        width: 210mm;
-        min-height: 297mm;
-        margin: 0 auto;
-        padding: 18mm 16mm;
-      }
-      .header {
-        border-top: 3px solid #1f2937;
-        border-bottom: 1px solid #9ca3af;
-        padding: 10px 0 14px;
-      }
-      .title {
-        font-size: 22px;
-        font-weight: 700;
-        letter-spacing: 0.04em;
-        margin: 0;
-      }
-      .subtitle {
-        font-size: 12px;
-        color: #6b7280;
-        margin: 6px 0 0;
-      }
-      .section {
-        margin-top: 20px;
-      }
-      .section h2 {
-        font-size: 13px;
-        letter-spacing: 0.04em;
-        margin: 0 0 10px;
-      }
-      table {
-        width: 100%;
-        border-collapse: collapse;
-        font-size: 12px;
-      }
-      th,
-      td {
-        border: 1px solid #d1d5db;
-        padding: 8px 10px;
-        text-align: left;
-        vertical-align: top;
-      }
-      th {
-        width: 18%;
-        background: #f3f4f6;
-        color: #4b5563;
-        font-weight: 600;
-      }
-      td {
-        width: 32%;
-      }
-      .content {
-        border: 1px solid #d1d5db;
-        padding: 14px;
-        font-size: 12px;
-        line-height: 1.65;
-        white-space: normal;
-      }
-      .content p {
-        margin: 0 0 12px;
-        text-align: justify;
-      }
-      .footer {
-        margin-top: 24px;
-        padding-top: 10px;
-        border-top: 1px solid #d1d5db;
-        font-size: 11px;
-        color: #6b7280;
-      }
-      @page {
-        size: A4;
-        margin: 12mm;
-      }
+      :root { color-scheme: light; }
+      * { box-sizing: border-box; }
+      body { margin: 0; font-family: "Segoe UI", Arial, sans-serif; color: #1f2937; background: #fff; }
+      .page { width: 210mm; min-height: 297mm; margin: 0 auto; padding: 16mm 15mm; }
+      .header { display: flex; align-items: center; gap: 14px; border-top: 3px solid #1f2937; border-bottom: 1px solid #9ca3af; padding: 10px 0 14px; }
+      .logo { height: 48px; max-width: 160px; object-fit: contain; }
+      .header-text { flex: 1; }
+      .title { font-size: 17px; font-weight: 700; letter-spacing: 0.03em; margin: 0; }
+      .contract-ref { font-size: 11px; color: #6b7280; margin: 4px 0 0; }
+      .section { margin-top: 18px; }
+      .section h2 { font-size: 11px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: #374151; margin: 0 0 8px; border-bottom: 1px solid #e5e7eb; padding-bottom: 4px; }
+      table { width: 100%; border-collapse: collapse; font-size: 11.5px; }
+      th, td { border: 1px solid #d1d5db; padding: 7px 9px; text-align: left; vertical-align: top; }
+      th { width: 16%; background: #f3f4f6; color: #4b5563; font-weight: 600; }
+      td { width: 34%; }
+      .content { font-size: 11.5px; line-height: 1.7; }
+      .content p { margin: 0 0 10px; text-align: justify; }
+      hr.hr-h { border: none; border-top: 2px solid #1f2937; margin: 12px 0 6px; }
+      hr.hr-l { border: none; border-top: 1px solid #9ca3af; margin: 8px 0 4px; }
+      .signatures { margin-top: 28px; page-break-inside: avoid; }
+      .signatures h2 { font-size: 11px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: #374151; margin: 0 0 16px; border-bottom: 1px solid #e5e7eb; padding-bottom: 4px; }
+      .sig-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; margin-bottom: 16px; }
+      .sig-block { border-top: 1px solid #374151; padding-top: 8px; }
+      .sig-block p { font-size: 11px; margin: 2px 0; color: #374151; }
+      .sig-space { height: 44px; }
+      .sig-location { font-size: 11px; color: #374151; margin-top: 20px; }
+      .footer { margin-top: 20px; padding-top: 10px; border-top: 1px solid #d1d5db; font-size: 10px; color: #9ca3af; }
+      @page { size: A4; margin: 12mm; }
       @media print {
-        body {
-          print-color-adjust: exact;
-          -webkit-print-color-adjust: exact;
-        }
-        .page {
-          width: auto;
-          min-height: auto;
-          padding: 0;
-        }
+        body { print-color-adjust: exact; -webkit-print-color-adjust: exact; }
+        .page { width: auto; min-height: auto; padding: 0; }
       }
     </style>
   </head>
   <body>
     <div class="page">
       <header class="header">
-        <h1 class="title">CONTRATO DE SERVIÇO</h1>
-        <p class="subtitle">PCM Estratégico${contract.empresaNome ? ` · ${escapeHtml(contract.empresaNome)}` : ''}</p>
+        ${logoHtml}
+        <div class="header-text">
+          <h1 class="title">CONTRATO DE LICENÇA DE USO DE SOFTWARE SaaS</h1>
+          <p class="contract-ref">${escapeHtml(contractRef)}${contract.empresaNome ? ` · ${escapeHtml(contract.empresaNome)}` : ''}</p>
+        </div>
       </header>
 
       <section class="section">
-        <h2>1. Identificação do contrato</h2>
-        <table>
-          <tbody>${metadataHtml}</tbody>
-        </table>
+        <h2>Identificação</h2>
+        <table><tbody>${metadataHtml}</tbody></table>
       </section>
 
       <section class="section">
-        <h2>2. Cláusulas contratuais</h2>
+        <h2>Cláusulas Contratuais</h2>
         <div class="content">${bodyHtml}</div>
       </section>
 
+      <section class="signatures">
+        <h2>Assinaturas</h2>
+        <div class="sig-grid">
+          <div class="sig-block">
+            <div class="sig-space"></div>
+            <p><strong>CONTRATADA:</strong> ${providerNomeEsc}</p>
+            ${providerCnpjEsc ? `<p>CNPJ: ${providerCnpjEsc}</p>` : ''}
+            ${providerRepEsc ? `<p>Representante: ${providerRepEsc}</p>` : ''}
+          </div>
+          <div class="sig-block">
+            <div class="sig-space"></div>
+            <p><strong>CONTRATANTE:</strong> ${clienteNomeEsc}</p>
+            ${clienteCnpjEsc ? `<p>CNPJ: ${clienteCnpjEsc}</p>` : ''}
+            ${clienteRepEsc ? `<p>Representante: ${clienteRepEsc}</p>` : ''}
+          </div>
+        </div>
+        <p class="sig-location">Local e data: __________________________________, ______/______/____________</p>
+      </section>
+
       <footer class="footer">
-        Documento emitido pelo painel owner do PCM Estratégico para conferência, impressão e arquivamento formal.
+        ${escapeHtml(contractRef)} · Documento gerado pelo sistema · Possui validade jurídica mediante aceite digital (MP nº 2.200-2/2001, art. 10, §2º).
       </footer>
     </div>
     <script>
-      window.addEventListener('load', function () {
-        window.print();
-      });
+      window.addEventListener('load', function () { window.print(); });
     </script>
   </body>
 </html>`);
@@ -2062,3 +2063,4 @@ export function printOwnerContractDocument(contract: OwnerContractForDocument) {
   printWindow.document.close();
   printWindow.focus();
 }
+
