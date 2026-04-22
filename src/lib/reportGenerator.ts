@@ -40,7 +40,10 @@ async function loadImageAsDataUrl(url: string): Promise<string | null> {
   if (!normalizedUrl) return null;
 
   try {
-    const response = await fetch(normalizedUrl);
+    const ctrl = new AbortController();
+    const timeoutId = setTimeout(() => ctrl.abort(), 5000);
+    const response = await fetch(normalizedUrl, { signal: ctrl.signal });
+    clearTimeout(timeoutId);
     if (!response.ok) return null;
 
     const blob = await response.blob();
@@ -2063,4 +2066,4 @@ export function printOwnerContractDocument(contract: OwnerContractForDocument) {
   printWindow.document.close();
   printWindow.focus();
 }
-
+
