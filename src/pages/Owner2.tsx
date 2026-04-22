@@ -241,8 +241,10 @@ export default function Owner() {
   // Representantes module state
   const [representantes, setRepresentantes] = useState<Record<string, unknown>[]>([])
   const [representantesLoading, setRepresentantesLoading] = useState(false)
+  const representantesInFlightRef = useRef(false)
   const [gastos, setGastos] = useState<Record<string, unknown>[]>([])
   const [gastosLoading, setGastosLoading] = useState(false)
+  const gastosInFlightRef = useRef(false)
   const [comissoes, setComissoes] = useState<Record<string, unknown>[]>([])
   const [comissoesPeriodo, setComissoesPeriodo] = useState(() => new Date().toISOString().slice(0, 7))
   const [newRepNome, setNewRepNome] = useState('')
@@ -374,13 +376,14 @@ export default function Owner() {
 
   // Load representantes when tab is activated (or when cadastro opens to populate select)
   useEffect(() => {
-    if ((activeTab === 'representantes' || activeTab === 'cadastro') && representantes.length === 0 && !representantesLoading) {
+    if ((activeTab === 'representantes' || activeTab === 'cadastro') && representantes.length === 0 && !representantesInFlightRef.current) {
+      representantesInFlightRef.current = true;
       setRepresentantesLoading(true);
       (async () => {
         try {
           const r: any = await execute.mutateAsync({ action: 'list_representantes', payload: {} })
           setRepresentantes(r?.representantes ?? [])
-        } catch { /* ignore */ } finally { setRepresentantesLoading(false) }
+        } catch { /* ignore */ } finally { setRepresentantesLoading(false); representantesInFlightRef.current = false; }
       })()
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -388,13 +391,14 @@ export default function Owner() {
 
   // Load gastos when representantes tab is activated
   useEffect(() => {
-    if (activeTab === 'representantes' && gastos.length === 0 && !gastosLoading) {
+    if (activeTab === 'representantes' && gastos.length === 0 && !gastosInFlightRef.current) {
+      gastosInFlightRef.current = true;
       setGastosLoading(true);
       (async () => {
         try {
           const r: any = await execute.mutateAsync({ action: 'list_gastos_sistema', payload: {} })
           setGastos(r?.gastos ?? [])
-        } catch { /* ignore */ } finally { setGastosLoading(false) }
+        } catch { /* ignore */ } finally { setGastosLoading(false); gastosInFlightRef.current = false; }
       })()
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
