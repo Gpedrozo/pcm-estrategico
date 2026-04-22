@@ -1746,20 +1746,57 @@ export async function generateOwnerContractPDF(contract: OwnerContractForDocumen
   doc.text('2. CLÁUSULAS CONTRATUAIS', LEFT, y);
   y += 6;
 
-  const paragraphs = getOwnerContractBody(contract)
-    .split(/\n{2,}/)
-    .map((paragraph) => paragraph.trim())
-    .filter(Boolean);
+  // Normaliza conteúdo: substitui caracteres Unicode box-drawing por marcadores visuais
+  const RE_DIVIDER_HEAVY = /^[\u2550]+$/;  // ══════ (U+2550)
+  const RE_DIVIDER_LIGHT = /^[\u2501]+$/;  // ━━━━━━ (U+2501)
+  const RE_CLAUSE_HEADER = /^(CLÁUSULA\s+\d+\s+—|ACEITE DIGITAL)/i;
+  const RE_CENTERED_TITLE = /^(CONTRATO DE LICENÇA|PCM ESTRAT|Contrato n[º°])/i;
+
+  type RenderItem =
+    | { type: 'divider-heavy' }
+    | { type: 'divider-light' }
+    | { type: 'clause-header'; text: string }
+    | { type: 'centered'; text: string }
+    | { type: 'text'; lines: string[] };
+
+  const renderItems: RenderItem[] = [];
+  const rawLines = getOwnerContractBody(contract).split('\n');
+  let buffer: string[] = [];
+
+  const flushBuffer = () => {
+    const joined = buffer.join('\n').trim();
+    if (joined) {
+      renderItems.push({ type: 'text', lines: doc.splitTextToSize(joined, CONTENT_W) });
+    }
+    buffer = [];
+  };
+
+  for (const line of rawLines) {
+    const trimmed = line.trim();
+    if (RE_DIVIDER_HEAVY.test(trimmed) && trimmed.length > 20) {
+      flushBuffer();
+      renderItems.push({ type: 'divider-heavy' });
+    } else if (RE_DIVIDER_LIGHT.test(trimmed) && trimmed.length > 20) {
+      flushBuffer();
+      renderItems.push({ type: 'divider-light' });
+    } else if (RE_CLAUSE_HEADER.test(trimmed)) {
+      flushBuffer();
+      renderItems.push({ type: 'clause-header', text: trimmed });
+    } else if (RE_CENTERED_TITLE.test(trimmed)) {
+      flushBuffer();
+      renderItems.push({ type: 'centered', text: trimmed });
+    } else {
+      buffer.push(line);
+    }
+  }
+  flushBuffer();
 
   doc.setFontSize(8);
   doc.setFont('helvetica', 'normal');
   doc.setTextColor(35, 35, 35);
 
-  paragraphs.forEach((paragraph, index) => {
-    const split = doc.splitTextToSize(paragraph, CONTENT_W);
-    const paragraphHeight = split.length * 4 + 2;
-
-    if (y + paragraphHeight > pageHeight - 22) {
+  const ensureSpace = (needed: number) => {
+    if (y + needed > pageHeight - 22) {
       doc.addPage();
       y = 18;
       doc.setFontSize(8.5);
@@ -1771,14 +1808,52 @@ export async function generateOwnerContractPDF(contract: OwnerContractForDocumen
       doc.setFont('helvetica', 'normal');
       doc.setTextColor(35, 35, 35);
     }
+  };
 
-    doc.text(split, LEFT, y);
-    y += paragraphHeight;
-
-    if (index < paragraphs.length - 1) {
-      y += 2;
+  for (const item of renderItems) {
+    if (item.type === 'divider-heavy') {
+      ensureSpace(6);
+      doc.setDrawColor(40, 40, 80);
+      doc.setLineWidth(0.5);
+      doc.line(LEFT, y, pageWidth - LEFT, y);
+      y += 4;
+    } else if (item.type === 'divider-light') {
+      ensureSpace(5);
+      doc.setDrawColor(140, 140, 160);
+      doc.setLineWidth(0.25);
+      doc.line(LEFT, y, pageWidth - LEFT, y);
+      y += 3;
+    } else if (item.type === 'clause-header') {
+      ensureSpace(10);
+      doc.setFillColor(240, 242, 248);
+      doc.setDrawColor(200, 205, 225);
+      doc.setLineWidth(0.2);
+      doc.roundedRect(LEFT - 1, y - 4, CONTENT_W + 2, 7.5, 1, 1, 'FD');
+      doc.setFontSize(8.5);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(...DARK);
+      doc.text(item.text, LEFT + 1, y + 1);
+      doc.setFontSize(8);
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(35, 35, 35);
+      y += 9;
+    } else if (item.type === 'centered') {
+      ensureSpace(8);
+      doc.setFontSize(9);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(...DARK);
+      doc.text(item.text, pageWidth / 2, y, { align: 'center' });
+      doc.setFontSize(8);
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(35, 35, 35);
+      y += 6;
+    } else {
+      const h = item.lines.length * 4 + 2;
+      ensureSpace(h);
+      doc.text(item.lines, LEFT, y);
+      y += h;
     }
-  });
+  }
 
   y += 6;
   if (y > pageHeight - 35) {
