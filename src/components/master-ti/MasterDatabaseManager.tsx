@@ -111,19 +111,28 @@ export function MasterDatabaseManager() {
       const { error } = await updateQuery;
       if (error) throw error;
 
-      await writeAuditLog({
-        action: 'UPDATE_DB_RECORD',
-        table,
-        recordId: id,
-        source: 'master_database_manager',
-        metadata: {
-          changed_fields: Object.keys(updates),
-        },
-      });
+      try {
+        await writeAuditLog({
+          action: 'UPDATE_DB_RECORD',
+          table,
+          recordId: id,
+          source: 'master_database_manager',
+          metadata: {
+            changed_fields: Object.keys(updates),
+          },
+        });
+      } catch {
+        return { auditFailed: true };
+      }
+      return { auditFailed: false };
     },
-    onSuccess: () => {
+    onSuccess: (result) => {
       queryClient.invalidateQueries({ queryKey: ['master-db-view', viewingTable] });
-      toast({ title: 'Registro atualizado' });
+      if (result?.auditFailed) {
+        toast({ title: 'Registro atualizado', description: 'Aviso: log de auditoria não registrado.', variant: 'default' });
+      } else {
+        toast({ title: 'Registro atualizado' });
+      }
       log('EDITAR_REGISTRO_DB', `Registro editado na tabela ${viewingTable}`, 'MASTER_TI');
       setEditingRow(null);
     },
