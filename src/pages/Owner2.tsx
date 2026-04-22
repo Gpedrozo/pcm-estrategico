@@ -52,6 +52,8 @@ import OwnerShadowAudit from '@/components/owner/OwnerShadowAudit'
 import SubscriptionsTab from '@/components/owner/SubscriptionsTab'
 import { useSubscriptionDetail } from '@/hooks/useSubscriptionDetail'
 import OwnerUsuariosTab from './owner2/OwnerUsuariosTab'
+import { MasterContratosPanel } from '@/components/master-ti/MasterContratosPanel'
+import { MasterPlataformaDados } from '@/components/master-ti/MasterPlataformaDados'
 
 const isImageUrl = (url: unknown) => {
   if (typeof url !== 'string') return false
@@ -273,7 +275,7 @@ export default function Owner() {
   })()
 
   const visibleTabs = useMemo(
-    () => OWNER_TABS.filter((tab) => (isOwnerMaster ? true : tab !== 'owner-master')),
+    () => OWNER_TABS.filter((tab) => (isOwnerMaster ? true : tab !== 'owner-master' && tab !== 'plataforma')),
     [isOwnerMaster],
   )
 
@@ -1334,7 +1336,9 @@ export default function Owner() {
             />
           )}
 
-          {activeTab === 'contratos' && (
+          {activeTab === 'contratos' && isOwnerMaster && <MasterContratosPanel />}
+          {activeTab === 'plataforma' && <MasterPlataformaDados />}
+          {activeTab === 'contratos' && !isOwnerMaster && (
             <div className="grid gap-4 xl:grid-cols-2">
               <SurfaceCard title="Gerenciar contrato">
                 <div className="grid gap-2">
