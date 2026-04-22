@@ -76,7 +76,8 @@ export default function Owner() {
   const [companyCredentialNote, setCompanyCredentialNote] = useState<CompanyCredentialNote | null>(null)
 
   const [companyId, setCompanyId] = useState('')
-  const [authPassword, setAuthPassword] = useState('')
+  const authPasswordRef = useRef<string>('')
+  const [authModalKey, setAuthModalKey] = useState(0)
   const [newCompanyName, setNewCompanyName] = useState('')
 
   // Dark/light mode — sincronizado com a chave pcm-theme do sistema
@@ -692,6 +693,7 @@ export default function Owner() {
   function openCriticalAction(request: CriticalActionRequest) {
     setCriticalConfirmValue('')
     setCriticalRequest(request)
+    setAuthModalKey(k => k + 1)
     setError(null)
     setFeedback(null)
   }
@@ -706,20 +708,20 @@ export default function Owner() {
       setError(`Confirme digitando exatamente: ${criticalRequest.confirmText}`)
       return
     }
-    if (!authPassword.trim()) {
+    if (!authPasswordRef.current.trim()) {
       setError('Informe a senha de confirmacao para continuar.')
       return
     }
 
     await runAction(
       criticalRequest.action,
-      { ...criticalRequest.payload, auth_password: authPassword },
+      { ...criticalRequest.payload, auth_password: authPasswordRef.current },
       criticalRequest.successMessage,
     )
 
     setCriticalRequest(null)
     setCriticalConfirmValue('')
-    setAuthPassword('')
+    authPasswordRef.current = ''
   }
 
   const selectedCompanyLoginUrl = useMemo(() => {
@@ -1007,7 +1009,7 @@ export default function Owner() {
                   <option key={String(c.id)} value={String(c.id)}>{String(c.nome ?? c.slug ?? c.id)}</option>
                 ))}
               </select>
-              <input className="rounded-lg border border-border bg-background px-2 py-2 text-sm text-foreground" type="password" value={authPassword} onChange={(e) => setAuthPassword(e.target.value)} placeholder="Senha de confirmação para ações críticas" />
+              <input className="rounded-lg border border-border bg-background px-2 py-2 text-sm text-foreground" type="password" defaultValue="" onChange={(e) => { authPasswordRef.current = e.target.value }} placeholder="Senha de confirmação para ações críticas" />
             </div>
           </div>
 
@@ -2410,15 +2412,16 @@ export default function Owner() {
                   />
                   <input
                     className="rounded-lg border border-border bg-background px-2 py-2 text-sm text-foreground"
+                    key={authModalKey}
                     type="password"
-                    value={authPassword}
-                    onChange={(e) => setAuthPassword(e.target.value)}
+                    defaultValue=""
+                    onChange={(e) => { authPasswordRef.current = e.target.value }}
                     placeholder="Senha de confirmacao"
                   />
                 </div>
 
                 <div className="mt-4 flex justify-end gap-2">
-                  <button className="rounded-lg border border-border bg-card px-3 py-2 text-sm text-foreground hover:bg-muted" onClick={() => setCriticalRequest(null)}>Cancelar</button>
+                  <button className="rounded-lg border border-border bg-card px-3 py-2 text-sm text-foreground hover:bg-muted" onClick={() => { authPasswordRef.current = ''; setCriticalRequest(null) }}>Cancelar</button>
                   <button className="rounded-lg border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm font-semibold text-destructive hover:bg-destructive/20" disabled={busy} onClick={confirmCriticalAction}>Confirmar acao</button>
                 </div>
               </div>
