@@ -2335,12 +2335,13 @@ Deno.serve(async (req) => {
       }
     }
 
+    const newCompanyPayload: Record<string, unknown> = { nome: companyName, slug };
+    if (body.company.representante_id) newCompanyPayload.representante_id = body.company.representante_id;
+    if (body.company.vendedor) newCompanyPayload.vendedor = String(body.company.vendedor).trim();
+
     const { data: insertedCompany, error: companyError } = await admin
       .from("empresas")
-      .insert({
-        nome: companyName,
-        slug,
-      })
+      .insert(newCompanyPayload)
       .select("id,nome,slug,created_at")
       .single();
 
@@ -5828,6 +5829,249 @@ Deno.serve(async (req) => {
 
     return ok({ success: true, summary }, 200, req);
   }
+
+  // ─── REPRESENTANTES ──────────────────────────────────────────────────────────
+
+  if (body.action === "list_representantes") {
+    const { data, error } = await admin
+      .from("representantes")
+      .select("*")
+      .order("nome", { ascending: true });
+    if (error) return fail(error.message, 400, null, req);
+    return ok({ representantes: data ?? [] }, 200, req);
+  }
+
+  if (body.action === "create_representante") {
+    if (!body.representante?.nome) return fail("nome é obrigatório", 400, null, req);
+    const r = body.representante;
+    const { data, error } = await admin
+      .from("representantes")
+      .insert({
+        nome: String(r.nome).trim(),
+        razao_social: r.razao_social ?? null,
+        cnpj: r.cnpj ? String(r.cnpj).replace(/\D+/g, "") : null,
+        email: r.email ?? null,
+        telefone: r.telefone ?? null,
+        modelo_comissao: ["liquido", "bruto"].includes(r.modelo_comissao) ? r.modelo_comissao : "liquido",
+        percentual_comissao: typeof r.percentual_comissao === "number" ? r.percentual_comissao : 0,
+        ativo: r.ativo !== false,
+        observacoes: r.observacoes ?? null,
+      })
+      .select("*")
+      .single();
+    if (error) return fail(error.message, 400, null, req);
+    return ok({ representante: data }, 200, req);
+  }
+
+  if (body.action === "update_representante") {
+    if (!body.representante_id || !body.representante) return fail("representante_id e representante são obrigatórios", 400, null, req);
+    const r = body.representante;
+    const patch: Record<string, unknown> = {};
+    if (r.nome !== undefined) patch.nome = String(r.nome).trim();
+    if (r.razao_social !== undefined) patch.razao_social = r.razao_social;
+    if (r.cnpj !== undefined) patch.cnpj = r.cnpj ? String(r.cnpj).replace(/\D+/g, "") : null;
+    if (r.email !== undefined) patch.email = r.email;
+    if (r.telefone !== undefined) patch.telefone = r.telefone;
+    if (r.modelo_comissao !== undefined && ["liquido", "bruto"].includes(r.modelo_comissao)) patch.modelo_comissao = r.modelo_comissao;
+    if (typeof r.percentual_comissao === "number") patch.percentual_comissao = r.percentual_comissao;
+    if (r.ativo !== undefined) patch.ativo = Boolean(r.ativo);
+    if (r.observacoes !== undefined) patch.observacoes = r.observacoes;
+    const { data, error } = await admin
+      .from("representantes")
+      .update(patch)
+      .eq("id", body.representante_id)
+      .select("*")
+      .single();
+    if (error) return fail(error.message, 400, null, req);
+    return ok({ representante: data }, 200, req);
+  }
+
+  if (body.action === "list_gastos_sistema") {
+    const { data, error } = await admin
+      .from("gastos_sistema")
+      .select("*")
+      .order("data_referencia", { ascending: false });
+    if (error) return fail(error.message, 400, null, req);
+    return ok({ gastos: data ?? [] }, 200, req);
+  }
+
+  if (body.action === "create_gasto_sistema") {
+    if (!body.gasto?.descricao || body.gasto?.valor === undefined) return fail("descricao e valor são obrigatórios", 400, null, req);
+    const g = body.gasto;
+    const CATS = ["hospedagem", "dominio", "api", "outros"] as const;
+    const RECS = ["mensal", "anual", "avulso"] as const;
+    const { data, error } = await admin
+      .from("gastos_sistema")
+      .insert({
+        descricao: String(g.descricao).trim(),
+        categoria: CATS.includes(g.categoria) ? g.categoria : "outros",
+        valor: Number(g.valor),
+        recorrencia: RECS.includes(g.recorrencia) ? g.recorrencia : "mensal",
+        data_referencia: g.data_referencia ?? new Date().toISOString().slice(0, 10),
+        ativo: g.ativo !== false,
+      })
+      .select("*")
+      .single();
+    if (error) return fail(error.message, 400, null, req);
+    return ok({ gasto: data }, 200, req);
+  }
+
+  if (body.action === "update_gasto_sistema") {
+    if (!body.gasto_id || !body.gasto) return fail("gasto_id e gasto são obrigatórios", 400, null, req);
+    const g = body.gasto;
+    const CATS = ["hospedagem", "dominio", "api", "outros"] as const;
+    const RECS = ["mensal", "anual", "avulso"] as const;
+    const patch: Record<string, unknown> = {};
+    if (g.descricao !== undefined) patch.descricao = String(g.descricao).trim();
+    if (g.categoria !== undefined && CATS.includes(g.categoria)) patch.categoria = g.categoria;
+    if (g.valor !== undefined) patch.valor = Number(g.valor);
+    if (g.recorrencia !== undefined && RECS.includes(g.recorrencia)) patch.recorrencia = g.recorrencia;
+    if (g.data_referencia !== undefined) patch.data_referencia = g.data_referencia;
+    if (g.ativo !== undefined) patch.ativo = Boolean(g.ativo);
+    const { data, error } = await admin
+      .from("gastos_sistema")
+      .update(patch)
+      .eq("id", body.gasto_id)
+      .select("*")
+      .single();
+    if (error) return fail(error.message, 400, null, req);
+    return ok({ gasto: data }, 200, req);
+  }
+
+  if (body.action === "calcular_comissoes_mes") {
+    // periodo: "2026-04" → first day of month
+    if (!body.periodo || !/^\d{4}-\d{2}$/.test(body.periodo)) {
+      return fail("periodo inválido, use YYYY-MM", 400, null, req);
+    }
+    const [yearStr, monthStr] = body.periodo.split("-");
+    const periodoRef = `${yearStr}-${monthStr}-01`;
+    const nextMonth = new Date(Number(yearStr), Number(monthStr), 1).toISOString().slice(0, 10);
+
+    // 1. Receita bruta do período = soma de subscription_payments pagos no período
+    const { data: pagamentos, error: pagamentosErr } = await admin
+      .from("subscription_payments")
+      .select("amount, subscription_id, subscriptions!inner(empresa_id)")
+      .gte("paid_at", periodoRef)
+      .lt("paid_at", nextMonth)
+      .eq("status", "paid");
+    if (pagamentosErr) return fail(pagamentosErr.message, 400, null, req);
+
+    const receitaBrutaTotal = (pagamentos ?? []).reduce((s: number, p: any) => s + Number(p.amount ?? 0), 0);
+
+    // 2. Montar mapa empresa_id → receita
+    const receitaPorEmpresa: Record<string, number> = {};
+    for (const p of (pagamentos ?? [])) {
+      const eid = (p as any).subscriptions?.empresa_id;
+      if (eid) receitaPorEmpresa[eid] = (receitaPorEmpresa[eid] ?? 0) + Number((p as any).amount ?? 0);
+    }
+
+    // 3. Gastos mensalizados do período
+    const { data: gastos, error: gastosErr } = await admin
+      .from("gastos_sistema")
+      .select("valor, recorrencia, data_referencia")
+      .eq("ativo", true);
+    if (gastosErr) return fail(gastosErr.message, 400, null, req);
+
+    let gastosTotal = 0;
+    for (const g of (gastos ?? [])) {
+      const rec = g.recorrencia;
+      const v = Number(g.valor ?? 0);
+      if (rec === "mensal") gastosTotal += v;
+      else if (rec === "anual") gastosTotal += v / 12;
+      else if (rec === "avulso") {
+        const dr = String(g.data_referencia ?? "").slice(0, 7);
+        if (dr === body.periodo) gastosTotal += v;
+      }
+    }
+
+    // 4. Representantes ativos
+    const { data: reps, error: repsErr } = await admin
+      .from("representantes")
+      .select("id, modelo_comissao, percentual_comissao")
+      .eq("ativo", true);
+    if (repsErr) return fail(repsErr.message, 400, null, req);
+
+    // 5. Mapa representante → empresas sob sua responsabilidade
+    const { data: empresasMap, error: emErr } = await admin
+      .from("empresas")
+      .select("id, representante_id")
+      .not("representante_id", "is", null);
+    if (emErr) return fail(emErr.message, 400, null, req);
+
+    const receitaPorRep: Record<string, number> = {};
+    for (const emp of (empresasMap ?? [])) {
+      if (!emp.representante_id) continue;
+      const repId = emp.representante_id;
+      const repReceita = receitaPorEmpresa[emp.id] ?? 0;
+      receitaPorRep[repId] = (receitaPorRep[repId] ?? 0) + repReceita;
+    }
+
+    // 6. Calcular e upsert comissões
+    const comissoesUpserted: unknown[] = [];
+    for (const rep of (reps ?? [])) {
+      const repReceita = receitaPorRep[rep.id] ?? 0;
+      if (repReceita === 0) continue;
+      const prop = receitaBrutaTotal > 0 ? repReceita / receitaBrutaTotal : 0;
+      const gastosAlocados = prop * gastosTotal;
+      const baseCalculo = rep.modelo_comissao === "liquido" ? Math.max(0, repReceita - gastosAlocados) : repReceita;
+      const percentual = Number(rep.percentual_comissao ?? 0);
+      const valorComissao = (baseCalculo * percentual) / 100;
+
+      const { data: com, error: comErr } = await admin
+        .from("comissoes_representantes")
+        .upsert({
+          representante_id: rep.id,
+          periodo_referencia: periodoRef,
+          receita_bruta: repReceita,
+          gastos_alocados: gastosAlocados,
+          base_calculo: baseCalculo,
+          percentual,
+          valor_comissao: valorComissao,
+          status: "pendente",
+        }, { onConflict: "representante_id,periodo_referencia" })
+        .select("*")
+        .single();
+      if (!comErr) comissoesUpserted.push(com);
+    }
+
+    return ok({
+      periodo: body.periodo,
+      receita_bruta_total: receitaBrutaTotal,
+      gastos_total: gastosTotal,
+      comissoes: comissoesUpserted,
+    }, 200, req);
+  }
+
+  if (body.action === "registrar_pagamento_comissao") {
+    if (!body.comissao_id) return fail("comissao_id é obrigatório", 400, null, req);
+    const { data, error } = await admin
+      .from("comissoes_representantes")
+      .update({
+        status: "pago",
+        data_pagamento: body.data_pagamento ?? new Date().toISOString().slice(0, 10),
+        observacoes: body.observacoes ?? null,
+      })
+      .eq("id", body.comissao_id)
+      .select("*")
+      .single();
+    if (error) return fail(error.message, 400, null, req);
+    return ok({ comissao: data }, 200, req);
+  }
+
+  if (body.action === "list_comissoes_representante") {
+    if (!body.representante_id) return fail("representante_id é obrigatório", 400, null, req);
+    const q = admin
+      .from("comissoes_representantes")
+      .select("*")
+      .eq("representante_id", body.representante_id)
+      .order("periodo_referencia", { ascending: false });
+    if (body.limit) q.limit(Number(body.limit));
+    const { data, error } = await q;
+    if (error) return fail(error.message, 400, null, req);
+    return ok({ comissoes: data ?? [] }, 200, req);
+  }
+
+  // ─── END REPRESENTANTES ───────────────────────────────────────────────────────
 
   return fail("Unsupported action", 400, null, req);
   } catch (error: any) {
