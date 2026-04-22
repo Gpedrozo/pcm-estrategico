@@ -8,7 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/hooks/use-toast';
 import {
-  Building2, Loader2, Save, ShieldAlert, MapPin, Phone, UserCheck, Gavel, Monitor, Info,
+  Building2, Loader2, Save, ShieldAlert, MapPin, Phone, UserCheck, Gavel, Monitor, Info, Image,
 } from 'lucide-react';
 import { callOwnerAdmin } from '@/services/ownerPortal.service';
 import { useAuth } from '@/contexts/AuthContext';
@@ -30,6 +30,8 @@ interface PlatformOwnerData {
   site: string;
   foro_cidade: string;
   foro_estado: string;
+  logo_url: string;
+  email_notificacoes: string;
 }
 
 const EMPTY: PlatformOwnerData = {
@@ -38,6 +40,7 @@ const EMPTY: PlatformOwnerData = {
   responsavel_nome: '', responsavel_cargo: '',
   email: '', telefone: '', whatsapp: '', site: '',
   foro_cidade: '', foro_estado: '',
+  logo_url: '', email_notificacoes: '',
 };
 
 function SectionHeader({ icon: Icon, title, description }: {
@@ -221,12 +224,37 @@ export function MasterPlataformaDados() {
           <Field label="E-mail comercial" id="email">
             <Input id="email" type="email" placeholder="comercial@empresa.com.br" value={form.email} onChange={set('email')} />
           </Field>
+          <Field label="E-mail de Notificacoes" id="email_notificacoes">
+            <Input id="email_notificacoes" type="email" placeholder="alertas@empresa.com.br" value={form.email_notificacoes} onChange={set('email_notificacoes')} />
+          </Field>
           <Field label="Telefone" id="telefone">
             <Input id="telefone" placeholder="+55 51 3333-3333" value={form.telefone} onChange={set('telefone')} />
           </Field>
           <Field label="WhatsApp" id="whatsapp">
             <Input id="whatsapp" placeholder="+55 51 99999-9999" value={form.whatsapp} onChange={set('whatsapp')} />
           </Field>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader className="pb-3">
+          <SectionHeader icon={Image} title="Identidade Visual" description="Logo exibida no cabecalho do contrato impresso" />
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <Field label="URL da Logo (PNG, SVG ou JPEG)" id="logo_url">
+            <Input id="logo_url" placeholder="https://empresa.com/logo.png" value={form.logo_url} onChange={set('logo_url')} />
+          </Field>
+          {form.logo_url && (
+            <div className="flex items-center gap-3 rounded-lg border border-border bg-muted/30 p-3">
+              <img
+                src={form.logo_url}
+                alt="Preview da logo"
+                className="h-12 max-w-[200px] object-contain"
+                onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
+              />
+              <span className="text-xs text-muted-foreground">Preview da logo no contrato</span>
+            </div>
+          )}
         </CardContent>
       </Card>
 

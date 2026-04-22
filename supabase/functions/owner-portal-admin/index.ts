@@ -708,6 +708,16 @@ function contractTemplate(input: {
   fim?: string | null;
   limiteUsuarios?: number | null;
   modulos?: Record<string, unknown> | null;
+  providerRazaoSocial?: string | null;
+  providerNomeSistema?: string | null;
+  providerCnpj?: string | null;
+  providerEndereco?: string | null;
+  providerEmail?: string | null;
+  providerForoCidade?: string | null;
+  providerForoEstado?: string | null;
+  providerResponsavel?: string | null;
+  providerResponsavelCargo?: string | null;
+  contractId?: string | null;
 }) {
   const currency = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(
     Number(input.valor ?? 0),
@@ -731,29 +741,54 @@ function contractTemplate(input: {
   const providerForoCidade = input.providerForoCidade || "Porto Alegre";
   const providerForoEstado = input.providerForoEstado || "RS";
 
+  const MODULE_LABELS: Record<string, string> = {
+    os: "Ordens de Serviço",
+    preventivas: "Manutenção Preventiva",
+    lubrificacao: "Lubrificação",
+    inspecoes: "Inspeções Técnicas",
+    rca: "Análise de Causa Raiz (RCA)",
+    fmea: "Análise de Modo e Efeito de Falha (FMEA)",
+    ssma: "Saúde, Segurança e Meio Ambiente (SSMA)",
+    relatorios: "Relatórios Gerenciais",
+    mecanico_app: "Aplicativo Móvel do Mecânico",
+    equipamentos: "Gestão de Equipamentos",
+    materiais: "Gestão de Materiais",
+    kpis: "Indicadores de Desempenho (KPIs)",
+  };
+
   const modulosList = input.modulos
     ? Object.entries(input.modulos)
         .filter(([, v]) => v === true || (typeof v === "string" && v !== ""))
-        .map(([k]) => `  - ${k}`)
+        .map(([k]) => `  - ${MODULE_LABELS[k] ?? k}`)
         .join("\n") || "  Todos os módulos do plano contratado"
     : "  Todos os módulos do plano contratado";
+
+  // Número legível do contrato e linha de responsável da CONTRATADA
+  const contratoPcm = input.contractId
+    ? `PCM-${new Date().getFullYear()}-${input.contractId.replace(/-/g, "").slice(-6).toUpperCase()}`
+    : "PCM-AUTO";
+  const providerResponsavelLine = input.providerResponsavel
+    ? `\nRepresentante: ${input.providerResponsavel}${
+        input.providerResponsavelCargo ? ` — ${input.providerResponsavelCargo}` : ""
+      }`
+    : "";
 
   return `══════════════════════════════════════════════════════════════════
                 CONTRATO DE LICENÇA DE USO DE SOFTWARE SaaS
                          PCM ESTRATÉGICO SISTEMAS
 ══════════════════════════════════════════════════════════════════
 
-Contrato nº gerado automaticamente em ${dataGeracao}
+Contrato nº ${contratoPcm} — gerado em ${dataGeracao}
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
  CLÁUSULA 1 — DAS PARTES
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 CONTRATADA:
-PCM Estratégico Sistemas Ltda.
-CNPJ: [A ser informado pela CONTRATADA]
-Endereço: [A ser informado pela CONTRATADA]
-E-mail: comercial@pcmestrategico.com.br
+${providerNome}
+CNPJ: ${providerCnpj}
+Endereço: ${providerEndereco}
+E-mail: ${providerEmail}
 Doravante denominada simplesmente CONTRATADA ou LICENCIANTE.
 
 CONTRATANTE:
@@ -834,7 +869,9 @@ excluindo-se manutenções programadas previamente comunicadas.
 CONTRATANTE armazenados no sistema.
 
 6.4. Prestar suporte técnico via e-mail e WhatsApp em horário comercial
-(segunda a sexta, 08h às 18h).
+(segunda a sexta, 08h às 18h), com prazo de primeiro atendimento de
+até 24 (vinte e quatro) horas úteis, contadas do recebimento da
+solicitação.
 
 6.5. Aplicar correções de segurança e atualizações de sistema sem custo
 adicional durante a vigência do contrato.
@@ -971,7 +1008,7 @@ validade jurídica nos termos do art. 10, §2º, da Medida Provisória
 nº 2.200-2/2001.
 
 
-CONTRATADA: PCM Estratégico Sistemas Ltda.
+CONTRATADA: ${providerNome}${providerResponsavelLine}
 
 CONTRATANTE: ${input.empresaNome}
 CNPJ: ${input.cnpj ?? "A ser informado"}
@@ -980,7 +1017,7 @@ Representante: ${input.responsavel ?? "A ser informado"}
 Data de geração: ${dataGeracao}
 
 ══════════════════════════════════════════════════════════════════
-        Documento gerado automaticamente pelo sistema PCM Estratégico.
+        Documento gerado automaticamente pelo sistema ${providerNomeSistema}.
         Este contrato possui validade jurídica mediante aceite digital.
 ══════════════════════════════════════════════════════════════════
 `;
@@ -1334,7 +1371,7 @@ async function createContractFromSubscription(
 
   const { data: companyData } = await admin
     .from("dados_empresa")
-    .select("razao_social,nome_fantasia,cnpj")
+    .select("razao_social,nome_fantasia,cnpj,responsavel_nome,responsavel_cargo")
     .eq("empresa_id", subscription.empresa_id)
     .maybeSingle();
 
@@ -1395,10 +1432,19 @@ async function createContractFromSubscription(
     }
   } catch { /* non-critical: contract falls back to defaults */ }
 
-    const content = contractTemplate({
+  // Pre-check for existing contract to get ID for use in template number
+  const { data: existing } = await admin
+    .from("contracts")
+    .select("id,version")
+    .eq("subscription_id", subscription.id)
+    .maybeSingle();
+
+  const contractId = existing?.id ?? crypto.randomUUID();
+
+  const content = contractTemplate({
     empresaNome: companyData?.razao_social ?? companyData?.nome_fantasia ?? company?.nome ?? "Empresa",
     cnpj: companyData?.cnpj,
-    responsavel: null,
+    responsavel: companyData?.responsavel_nome ?? null,
     planoNome: plan?.name ?? "Plano",
     valor: Number(subscription.amount ?? 0),
     formaPagamento: subscription.payment_method,
@@ -1406,13 +1452,17 @@ async function createContractFromSubscription(
     fim: subscription.ends_at,
     limiteUsuarios: plan?.user_limit,
     modulos: plan?.module_flags,
+    providerRazaoSocial: providerData["razao_social"] || null,
+    providerNomeSistema: providerData["nome_sistema"] || null,
+    providerCnpj: providerData["cnpj"] || null,
+    providerEndereco: providerData["endereco"] || null,
+    providerEmail: providerData["email"] || null,
+    providerForoCidade: providerData["foro_cidade"] || null,
+    providerForoEstado: providerData["foro_estado"] || null,
+    providerResponsavel: providerData["responsavel_nome"] || null,
+    providerResponsavelCargo: providerData["responsavel_cargo"] || null,
+    contractId,
   });
-
-  const { data: existing } = await admin
-    .from("contracts")
-    .select("id,version")
-    .eq("subscription_id", subscription.id)
-    .maybeSingle();
 
   if (existing?.id) {
     const nextVersion = Number(existing.version ?? 1) + 1;
@@ -1449,6 +1499,7 @@ async function createContractFromSubscription(
   const { data: created, error: createError } = await admin
     .from("contracts")
     .insert({
+      id: contractId,
       empresa_id: subscription.empresa_id,
       subscription_id: subscription.id,
       plan_id: planEnId,  // planEnId = plans(EN).id ou null — nunca planos(PT).id
@@ -4624,6 +4675,7 @@ Deno.serve(async (req) => {
     "responsavel_nome", "responsavel_cargo",
     "email", "telefone", "whatsapp", "site",
     "foro_cidade", "foro_estado",
+    "logo_url", "email_notificacoes",
   ] as const;
 
   if (body.action === "get_platform_owner_data") {
