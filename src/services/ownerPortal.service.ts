@@ -355,6 +355,7 @@ const isRoleBindingErrorMessage = (value: unknown) => {
 }
 
 const sanitizeOwnerPayload = (payload: OwnerActionPayload): OwnerActionPayload => {
+  // Strip CNPJ from company object (handled server-side via configuracoes_sistema)
   if ((payload.action === 'create_company' || payload.action === 'update_company') && payload.company && typeof payload.company === 'object') {
     const company = { ...(payload.company as Record<string, unknown>) }
     delete company.cnpj
@@ -366,6 +367,17 @@ const sanitizeOwnerPayload = (payload: OwnerActionPayload): OwnerActionPayload =
 
   return payload
 }
+
+/** Redact sensitive fields (auth_password) from a payload copy before logging. */
+const scrubPayloadForLogging = (payload: OwnerActionPayload): Record<string, unknown> => {
+  const result: Record<string, unknown> = { action: payload.action };
+  if (payload.payload && typeof payload.payload === 'object') {
+    const inner = { ...(payload.payload as Record<string, unknown>) };
+    if ('auth_password' in inner) inner.auth_password = '[REDACTED]';
+    result.payload = inner;
+  }
+  return result;
+};
 
 const listCompaniesFallback = async () => {
   const { data, error, count } = await supabase
@@ -435,8 +447,9 @@ const parseErrorMessage = async (error: unknown) => {
       const jsonReader = typeof context.clone === 'function' ? context.clone() : context
       if (typeof jsonReader.json === 'function') {
         const json = await jsonReader.json()
+        const errorCode = json?.error_code ? ` [${json.error_code}]` : '';
         const msg = String(json?.error ?? json?.message ?? json?.details?.reason ?? '').trim()
-        if (msg) return withStatus(msg)
+        if (msg) return withStatus(msg + errorCode)
       }
     } catch {
       // Ignore parse error and continue fallback.
@@ -551,9 +564,9 @@ export async function callOwnerAdmin<T = unknown>(payload: OwnerActionPayload) {
     const errorMsg = await parseErrorMessage(error);
     const isConnectionError = String(errorMsg).toLowerCase().includes('failed to send');
     
-    // Log connection errors for debugging
+    // Log connection errors for debugging (payload scrubbed — auth_password redacted)
     if (isConnectionError) {
-      logger.warn('owner_api_edge_function_failed', { error: errorMsg });
+      logger.warn('owner_api_edge_function_failed', { error: errorMsg, action: scrubPayloadForLogging(safePayload).action });
     }
     
     if (!isUnauthorizedOwnerError(error)) {
