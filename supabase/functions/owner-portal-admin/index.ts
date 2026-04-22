@@ -5830,6 +5830,66 @@ Deno.serve(async (req) => {
     return ok({ success: true, summary }, 200, req);
   }
 
+  // ─── CONTRACT EXPIRY ALERTS ─────────────────────────────────────────────────
+
+  if (body.action === "check_contract_expiry_alerts") {
+    // Read alert_days_before from platform config
+    const { data: configRow } = await admin
+      .from("configuracoes_sistema")
+      .select("valor")
+      .is("empresa_id", null)
+      .eq("chave", "platform.alert_days_before")
+      .maybeSingle();
+
+    let alertDays = 7;
+    if ((configRow as any)?.valor) {
+      try { alertDays = Number(JSON.parse(String((configRow as any).valor))) || 7; } catch { alertDays = 7; }
+    }
+    if (typeof body.alert_days === "number") alertDays = body.alert_days;
+
+    const today = new Date().toISOString().slice(0, 10);
+    const cutoff = new Date();
+    cutoff.setDate(cutoff.getDate() + alertDays);
+    const cutoffDate = cutoff.toISOString().slice(0, 10);
+
+    const { data: expiring, error: expiringError } = await admin
+      .from("subscriptions")
+      .select("id,empresa_id,ends_at,status,renewal_at")
+      .in("status", ["ativa", "teste"])
+      .not("ends_at", "is", null)
+      .gte("ends_at", today)
+      .lte("ends_at", cutoffDate)
+      .order("ends_at", { ascending: true });
+
+    if (expiringError) return fail(expiringError.message, 400, null, req);
+
+    // Enrich with company name
+    const companyIds = [...new Set((expiring ?? []).map((s: any) => s.empresa_id).filter(Boolean))];
+    let companyMap: Record<string, string> = {};
+    if (companyIds.length > 0) {
+      const { data: empresas } = await admin
+        .from("empresas")
+        .select("id,nome,slug")
+        .in("id", companyIds);
+      for (const e of (empresas ?? [])) {
+        companyMap[(e as any).id] = `${(e as any).nome ?? ''} (${(e as any).slug ?? ''})`;
+      }
+    }
+
+    const alerts = (expiring ?? []).map((s: any) => ({
+      subscription_id: s.id,
+      empresa_id: s.empresa_id,
+      empresa_nome: companyMap[s.empresa_id] ?? s.empresa_id,
+      ends_at: s.ends_at,
+      status: s.status,
+      days_remaining: Math.ceil((new Date(s.ends_at).getTime() - new Date(today).getTime()) / 86400000),
+    }));
+
+    return ok({ alerts, alert_days: alertDays, cutoff_date: cutoffDate, total: alerts.length }, 200, req);
+  }
+
+  // ─── END CONTRACT EXPIRY ALERTS ───────────────────────────────────────────────
+
   // ─── REPRESENTANTES ──────────────────────────────────────────────────────────
 
   if (body.action === "list_representantes") {

@@ -255,6 +255,9 @@ export default function Owner() {
   const [newGastoValor, setNewGastoValor] = useState('')
   const [newGastoRecorrencia, setNewGastoRecorrencia] = useState('mensal')
   const [newGastoDataRef, setNewGastoDataRef] = useState(() => new Date().toISOString().slice(0, 10))
+  // Contract expiry alerts state
+  const [contractAlerts, setContractAlerts] = useState<Record<string, unknown>[]>([])
+  const [contractAlertsLoading, setContractAlertsLoading] = useState(false)
 
   const [moduleFlags, setModuleFlags] = useState<Record<string, boolean>>({ ...DEFAULT_MODULES })
 
@@ -1831,6 +1834,49 @@ export default function Owner() {
                 >
                   Salvar contato comercial
                 </button>
+              </SurfaceCard>
+
+              <SurfaceCard title="Alertas de vencimento de contrato">
+                <div className="grid gap-3">
+                  <p className="text-xs text-muted-foreground">Consulta assinaturas no status <em>ativa</em> ou <em>teste</em> que vencem nos próximos <strong>{platformAlertDays} dias</strong> (configurável acima).</p>
+                  <button
+                    className="rounded-lg bg-amber-700 px-3 py-2 text-sm font-semibold text-white hover:bg-amber-800 transition-colors disabled:opacity-50"
+                    disabled={contractAlertsLoading || busy}
+                    onClick={async () => {
+                      setContractAlertsLoading(true)
+                      setError(null)
+                      try {
+                        const r: any = await execute.mutateAsync({ action: 'check_contract_expiry_alerts', payload: { alert_days: Number(platformAlertDays) || 7 } })
+                        setContractAlerts(r?.alerts ?? [])
+                        if ((r?.alerts ?? []).length === 0) setFeedback(`Nenhuma assinatura vencendo nos próximos ${platformAlertDays} dias.`)
+                        else setFeedback(`${r.alerts.length} assinatura(s) vencem até ${r.cutoff_date}.`)
+                      } catch (err: any) { setError(String(err?.message ?? err)) }
+                      finally { setContractAlertsLoading(false) }
+                    }}
+                  >{contractAlertsLoading ? 'Verificando…' : 'Verificar contratos a vencer'}</button>
+                  {contractAlerts.length > 0 && (
+                    <div className="max-h-[260px] overflow-auto rounded-xl border border-border">
+                      <table className="w-full text-xs">
+                        <thead className="bg-amber-50 dark:bg-amber-950/30"><tr>
+                          <th className="px-2 py-2 text-left text-muted-foreground">Empresa</th>
+                          <th className="px-2 py-2 text-left text-muted-foreground">Status</th>
+                          <th className="px-2 py-2 text-left text-muted-foreground">Vence em</th>
+                          <th className="px-2 py-2 text-left text-muted-foreground">Dias</th>
+                        </tr></thead>
+                        <tbody>
+                          {contractAlerts.map((a, idx) => (
+                            <tr key={`${String(a.subscription_id ?? idx)}`} className="border-t border-border">
+                              <td className="px-2 py-2 font-medium text-foreground">{String(a.empresa_nome ?? a.empresa_id ?? '-')}</td>
+                              <td className="px-2 py-2 text-muted-foreground">{String(a.status ?? '-')}</td>
+                              <td className="px-2 py-2 text-foreground">{String(a.ends_at ?? '-').slice(0, 10)}</td>
+                              <td className="px-2 py-2 font-semibold text-amber-700 dark:text-amber-400">{Number(a.days_remaining ?? 0)} dias</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
               </SurfaceCard>
 
               {isOwnerMaster && (
