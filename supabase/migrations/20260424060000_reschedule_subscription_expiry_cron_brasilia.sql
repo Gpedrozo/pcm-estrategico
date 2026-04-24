@@ -1,4 +1,4 @@
-﻿-- Migration: Reagendamento cron vencimentos 06:00 BRT (09:00 UTC) 2026-04-24
+-- Migration: Reagendamento cron vencimentos 06:00 BRT (09:00 UTC) 2026-04-24
 DO $block$ BEGIN
   IF EXISTS (SELECT 1 FROM cron.job WHERE jobname = 'enforce-subscription-expiry') THEN
     PERFORM cron.unschedule('enforce-subscription-expiry');
