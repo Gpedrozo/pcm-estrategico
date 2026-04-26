@@ -181,7 +181,7 @@ describe('reportGenerator - Document Functions', () => {
       printOwnerContractDocument(contractWithSpecialChars);
       const htmlContent = documentWriteMock.mock.calls[0][0];
       expect(htmlContent).toContain('&lt;script&gt;');
-      expect(htmlContent).not.toContain('<script>alert(');  // XSS não deve aparecer não-escapado
+      expect(htmlContent).not.toContain('<script>alert(');  // XSS nï¿½o deve aparecer nï¿½o-escapado
       expect(htmlContent).toContain('&amp; Co.');
     });
 

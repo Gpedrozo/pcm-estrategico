@@ -1,6 +1,6 @@
-﻿import { describe, it, expect, vi, beforeAll } from 'vitest';
+import { describe, it, expect, vi, beforeAll } from 'vitest';
 
-// Importacoes reais de componentes pesados podem demorar mais de 5s no CI
+// Importações reais de componentes pesados podem demorar mais de 5s no CI
 beforeAll(() => { vi.setConfig({ testTimeout: 20000 }); });
 
 // Mocks necessários para módulos com dependências pesadas
