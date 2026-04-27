@@ -1,8 +1,14 @@
 import { describe, it, expect, vi, beforeAll } from 'vitest';
 
+<<<<<<< HEAD
 // Importações reais de componentes pesados podem demorar mais de 5s no CI
 beforeAll(() => { vi.setConfig({ testTimeout: 20000 }); });
 
+=======
+// Importacoes reais de componentes pesados podem demorar mais de 5s no CI
+beforeAll(() => { vi.setConfig({ testTimeout: 20000 }); });
+
+>>>>>>> 39c6e351ffb7d2c7c78274d1d7bf7a518a31bef7
 // Mocks necessários para módulos com dependências pesadas
 vi.mock('@/integrations/supabase/client', () => ({ supabase: {} }));
 vi.mock('@/contexts/AuthContext', () => ({ useAuth: () => ({ isSystemOwner: true }) }));

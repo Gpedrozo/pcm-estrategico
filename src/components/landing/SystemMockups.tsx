@@ -84,31 +84,118 @@ export function DashboardMockup() {
   );
 }
 
-// ─── Mockup do Calendário Preventivo ─────────────────────────────────────────
-const calendarioEvents: Record<number, { color: string; label: string }> = {
-  5: { color: 'bg-blue-500', label: 'Revisão' },
-  12: { color: 'bg-emerald-500', label: 'Lubrif.' },
-  18: { color: 'bg-amber-500', label: 'Inspeção' },
-  24: { color: 'bg-purple-500', label: 'Troca filtro' },
-  28: { color: 'bg-red-500', label: 'Calibração' },
+// ─── Mockup do Calendário Preventivo (interativo) ────────────────────────────
+interface CalEvent {
+  color: string;
+  borderColor: string;
+  badgeColor: string;
+  label: string;
+  tipo: string;
+  equipamento: string;
+  responsavel: string;
+  status: string;
+  statusColor: string;
+  duracao: string;
+  descricao: string;
+}
+
+const calendarioEventsDetailed: Record<number, CalEvent> = {
+  5: {
+    color: 'bg-blue-500/20',
+    borderColor: 'border-blue-500/50',
+    badgeColor: 'bg-blue-500',
+    label: 'Preventiva',
+    tipo: 'Manutenção Preventiva',
+    equipamento: 'Compressor Atlas Copco GA55',
+    responsavel: 'Carlos Silva',
+    status: 'Agendada',
+    statusColor: 'text-blue-400 bg-blue-500/10 border-blue-500/20',
+    duracao: '4h estimadas',
+    descricao: 'Troca de filtros, verificação de correias e revisão geral conforme plano PCM.',
+  },
+  12: {
+    color: 'bg-emerald-500/20',
+    borderColor: 'border-emerald-500/50',
+    badgeColor: 'bg-emerald-500',
+    label: 'Lubrificação',
+    tipo: 'Lubrificação Programada',
+    equipamento: 'Torno CNC Romi GL240',
+    responsavel: 'João Pereira',
+    status: 'Agendada',
+    statusColor: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20',
+    duracao: '1h estimada',
+    descricao: 'Lubrificação de guias lineares, fuso e cabeçote conforme rota R-07.',
+  },
+  18: {
+    color: 'bg-amber-500/20',
+    borderColor: 'border-amber-500/50',
+    badgeColor: 'bg-amber-500',
+    label: 'Inspeção',
+    tipo: 'Inspeção Técnica',
+    equipamento: 'Ponte Rolante 10t',
+    responsavel: 'Marcos Souza',
+    status: 'Em aberto',
+    statusColor: 'text-amber-400 bg-amber-500/10 border-amber-500/20',
+    duracao: '2h estimadas',
+    descricao: 'Checklist de segurança, inspeção de cabos, freios e limitadores de curso.',
+  },
+  24: {
+    color: 'bg-purple-500/20',
+    borderColor: 'border-purple-500/50',
+    badgeColor: 'bg-purple-500',
+    label: 'Troca filtro',
+    tipo: 'Substituição de Peça',
+    equipamento: 'Prensa Hidráulica 200t',
+    responsavel: 'Carlos Silva',
+    status: 'Peça em estoque',
+    statusColor: 'text-purple-400 bg-purple-500/10 border-purple-500/20',
+    duracao: '3h estimadas',
+    descricao: 'Substituição do filtro hidráulico e elemento filtrante conforme TBF de 1.000h.',
+  },
+  28: {
+    color: 'bg-red-500/20',
+    borderColor: 'border-red-500/50',
+    badgeColor: 'bg-red-500',
+    label: 'Calibração',
+    tipo: 'Calibração / Preditiva',
+    equipamento: 'Forno Tratamento Térmico',
+    responsavel: 'Ricardo Alves',
+    status: 'Crítica',
+    statusColor: 'text-red-400 bg-red-500/10 border-red-500/20',
+    duracao: '6h estimadas',
+    descricao: 'Calibração de termopares e verificação de controladores. Equipamento crítico — parada programada.',
+  },
 };
 
 export function CalendarioMockup() {
-  const [highlight, setHighlight] = useState(5);
+  const [selectedDay, setSelectedDay] = useState<number | null>(null);
+  const [autoHighlight, setAutoHighlight] = useState(5);
+  const [paused, setPaused] = useState(false);
   const days = Array.from({ length: 30 }, (_, i) => i + 1);
 
   useEffect(() => {
-    const eventDays = Object.keys(calendarioEvents).map(Number);
+    if (paused) return;
+    const eventDays = Object.keys(calendarioEventsDetailed).map(Number);
     let idx = 0;
     const t = setInterval(() => {
-      setHighlight(eventDays[idx % eventDays.length]);
+      setAutoHighlight(eventDays[idx % eventDays.length]);
       idx++;
-    }, 1800);
+    }, 2000);
     return () => clearInterval(t);
-  }, []);
+  }, [paused]);
+
+  const activeDay = selectedDay ?? autoHighlight;
+  const activeEvent = calendarioEventsDetailed[activeDay];
+
+  const handleDayClick = (day: number) => {
+    if (!calendarioEventsDetailed[day]) return;
+    setPaused(true);
+    setSelectedDay(day === selectedDay ? null : day);
+  };
 
   return (
     <div className="w-full rounded-2xl overflow-hidden shadow-2xl border border-slate-700/60 bg-slate-900">
+      {/* Browser chrome */}
       <div className="flex items-center gap-2 px-4 py-3 bg-slate-800 border-b border-slate-700">
         <span className="w-3 h-3 rounded-full bg-red-500/80" />
         <span className="w-3 h-3 rounded-full bg-amber-500/80" />
@@ -119,40 +206,95 @@ export function CalendarioMockup() {
       </div>
 
       <div className="p-4">
-        <div className="flex items-center justify-between mb-4">
+        {/* Header */}
+        <div className="flex items-center justify-between mb-3">
           <span className="text-white/90 text-sm font-semibold">Calendário PCM — Abril 2026</span>
           <span className="text-xs text-slate-400 bg-blue-500/10 px-2 py-0.5 rounded-full border border-blue-500/20">
-            5 preventivas agendadas
+            5 atividades
           </span>
         </div>
 
+        {/* Legenda */}
+        <div className="flex flex-wrap gap-x-3 gap-y-1 mb-3">
+          {[
+            { color: 'bg-blue-500', label: 'Preventiva' },
+            { color: 'bg-emerald-500', label: 'Lubrificação' },
+            { color: 'bg-amber-500', label: 'Inspeção' },
+            { color: 'bg-purple-500', label: 'Troca peça' },
+            { color: 'bg-red-500', label: 'Calibração' },
+          ].map(l => (
+            <div key={l.label} className="flex items-center gap-1">
+              <span className={`w-2 h-2 rounded-full ${l.color}`} />
+              <span className="text-[9px] text-slate-500">{l.label}</span>
+            </div>
+          ))}
+        </div>
+
+        {/* Hint de clique */}
+        <div className="flex items-center gap-1.5 mb-2 text-[9px] text-slate-500 italic">
+          <span className="inline-block w-3 h-3 rounded border border-slate-600 flex items-center justify-center text-[8px]">↑</span>
+          Clique em uma data colorida para ver os detalhes
+        </div>
+
+        {/* Dias da semana */}
         <div className="grid grid-cols-7 gap-1 mb-1">
           {['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'].map(d => (
             <div key={d} className="text-center text-[9px] text-slate-500 font-semibold py-1">{d}</div>
           ))}
         </div>
 
+        {/* Grade de dias */}
         <div className="grid grid-cols-7 gap-1">
-          {/* Dias vazios para começar em terça */}
           {[...Array(2)].map((_, i) => <div key={`e${i}`} />)}
           {days.map(day => {
-            const ev = calendarioEvents[day];
-            const isHighlight = day === highlight;
+            const ev = calendarioEventsDetailed[day];
+            const isActive = day === activeDay;
+            const isSelected = day === selectedDay;
             return (
               <div
                 key={day}
-                className={`
-                  aspect-square rounded-md flex flex-col items-center justify-center text-[10px] transition-all duration-300
-                  ${ev ? `${ev.color}/20 border ${ev.color.replace('bg-', 'border-')}/40` : 'hover:bg-slate-800'}
-                  ${isHighlight ? 'ring-2 ring-white/30 scale-110 z-10' : ''}
-                `}
+                onClick={() => handleDayClick(day)}
+                className={[
+                  'aspect-square rounded-md flex flex-col items-center justify-center text-[10px] transition-all duration-200',
+                  ev ? `${ev.color} border ${ev.borderColor} cursor-pointer select-none` : 'text-slate-600',
+                  isActive && ev ? 'ring-2 ring-white/40 scale-110 z-10 shadow-lg' : '',
+                  isSelected ? 'ring-2 ring-white/60' : '',
+                  ev ? 'hover:scale-110 hover:ring-1 hover:ring-white/30' : '',
+                ].join(' ')}
               >
-                <span className={ev ? 'text-white font-semibold' : 'text-slate-500'}>{day}</span>
-                {ev && <span className={`w-1.5 h-1.5 rounded-full ${ev.color} mt-0.5`} />}
+                <span className={ev ? 'text-white font-bold' : 'text-slate-600'}>{day}</span>
+                {ev && <span className={`w-1.5 h-1.5 rounded-full ${ev.badgeColor} mt-0.5`} />}
               </div>
             );
           })}
         </div>
+
+        {/* Card de detalhe — aparece ao clicar ou no auto-highlight */}
+        {activeEvent && (
+          <div className={`mt-3 rounded-xl border ${activeEvent.borderColor} bg-slate-800/80 p-3 transition-all duration-300`}>
+            {/* Tipo + status */}
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center gap-1.5">
+                <span className={`w-2 h-2 rounded-full ${activeEvent.badgeColor}`} />
+                <span className="text-white text-[11px] font-semibold">{activeEvent.tipo}</span>
+              </div>
+              <span className={`text-[9px] font-medium px-1.5 py-0.5 rounded-full border ${activeEvent.statusColor}`}>
+                {activeEvent.status}
+              </span>
+            </div>
+
+            {/* Equipamento */}
+            <div className="text-[10px] text-slate-300 mb-0.5 flex items-center gap-1">
+              <span className="text-slate-500">⚙</span> {activeEvent.equipamento}
+            </div>
+            <div className="text-[10px] text-slate-400 mb-0.5 flex items-center gap-1">
+              <span className="text-slate-500">👤</span> {activeEvent.responsavel} · {activeEvent.duracao}
+            </div>
+            <div className="text-[9px] text-slate-500 leading-relaxed mt-1.5 border-t border-slate-700/60 pt-1.5">
+              {activeEvent.descricao}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
