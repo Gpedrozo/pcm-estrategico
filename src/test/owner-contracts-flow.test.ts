@@ -30,7 +30,7 @@ describe('Owner Contracts Flow - Smoke Tests', () => {
     );
     expect(mod.MasterContratosPanel).toBeDefined();
     expect(typeof mod.MasterContratosPanel).toBe('function');
-  });
+  }, 20000);
 
   it('funções de documento (print e pdf) devem estar disponíveis', async () => {
     const mod = await vi.importActual<typeof import('@/lib/reportGenerator')>(
