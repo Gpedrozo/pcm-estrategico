@@ -102,7 +102,7 @@ export default function CronogramaLubrificacao() {
       }
     }
     return map;
-  }, [planos, year, month, monthStart, monthEnd]);
+  }, [planos, monthStart, monthEnd]);
 
   const prevMonth = () => {
     if (month === 0) { setMonth(11); setYear(year - 1); } else setMonth(month - 1);
