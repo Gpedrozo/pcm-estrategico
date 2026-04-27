@@ -60,7 +60,7 @@ async function seedDemoData(admin: ReturnType<typeof adminClient>, empresaId: st
       { empresa_id: empresaId, nome: "Carlos Silva", especialidade: "Mecânica", status: "ativo", matricula: "MEC-001" },
       { empresa_id: empresaId, nome: "João Pereira", especialidade: "Elétrica", status: "ativo", matricula: "MEC-002" },
     ];
-    await admin.from("mecanicos").insert(mecanicos).throwOnError().catch(() => {});
+    await admin.from("mecanicos").insert(mecanicos);
   } catch {
     // Falha no seed não deve bloquear o trial
   }
@@ -92,6 +92,7 @@ async function resolveTrialPlanId(admin: ReturnType<typeof adminClient>): Promis
 
 // ─── Handler principal ──────────────────────────────────────────────────────
 Deno.serve(async (req: Request) => {
+  try {
   if (req.method === "OPTIONS") return preflight(req);
 
   const corsHeaders = resolveCorsHeaders(req);
@@ -125,11 +126,12 @@ Deno.serve(async (req: Request) => {
   if (!validateEmail(email)) return fail("E-mail inválido.", 400, undefined, req);
   if (!validatePassword(password)) return fail("Senha fraca. Use mínimo 8 caracteres, 1 maiúscula e 1 número.", 400, undefined, req);
 
-  const admin = adminClient();
   let authUserId: string | null = null;
   let empresaId: string | null = null;
+  let admin: ReturnType<typeof adminClient> | null = null;
 
   try {
+    admin = adminClient();
     // ── 1. Gerar slug único ──────────────────────────────────────────────────
     let slug = normalizeSlug(companyName);
     const { data: existing } = await admin.from("empresas").select("slug").ilike("slug", `${slug}%`);
@@ -167,7 +169,7 @@ Deno.serve(async (req: Request) => {
         responsavel: userName,
         source: "website_trial",
       }),
-    }).throwOnError().catch(() => {});
+    });
 
     // ── 4. Criar usuário auth ────────────────────────────────────────────────
     const { data: authData, error: authError } = await admin.auth.admin.createUser({
@@ -203,17 +205,19 @@ Deno.serve(async (req: Request) => {
     });
 
     // ── 6. Atribuir role MASTER_TI ──────────────────────────────────────────
-    await admin.from("user_roles").insert({
-      user_id: authUserId,
-      empresa_id: empresaId,
-      role: "MASTER_TI",
-    }).throwOnError().catch(() =>
-      admin.from("user_roles").upsert({
+    try {
+      await admin.from("user_roles").insert({
         user_id: authUserId,
         empresa_id: empresaId,
         role: "MASTER_TI",
-      })
-    );
+      });
+    } catch {
+      await admin.from("user_roles").upsert({
+        user_id: authUserId,
+        empresa_id: empresaId,
+        role: "MASTER_TI",
+      });
+    }
 
     // ── 7. Criar assinatura trial ─────────────────────────────────────────────
     const planId = await resolveTrialPlanId(admin);
@@ -230,7 +234,7 @@ Deno.serve(async (req: Request) => {
       starts_at: startsAt,
       ends_at: endsAt,
       renewal_at: endsAt,
-    }).select("id").single().throwOnError().catch(() => ({ data: null }));
+    }).select("id").single();
 
     // company_subscriptions (dual-table)
     if (planId) {
@@ -240,7 +244,7 @@ Deno.serve(async (req: Request) => {
         status: "trial",
         starts_at: startsAt,
         ends_at: endsAt,
-      }).throwOnError().catch(() => {});
+      });
     }
 
     // ── 8. Seed dados demo ──────────────────────────────────────────────────
@@ -261,7 +265,7 @@ Deno.serve(async (req: Request) => {
         ip,
       }),
       resultado: "sucesso",
-    }).throwOnError().catch(() => {});
+    });
 
     const tenantBase = Deno.env.get("VITE_TENANT_BASE_DOMAIN") ?? "gppis.com.br";
     const loginUrl = `https://${slug}.${tenantBase}/login`;
@@ -276,15 +280,19 @@ Deno.serve(async (req: Request) => {
     }, 200, req);
   } catch (err: any) {
     // Rollback: remover empresa e usuário criados em caso de falha
-    if (authUserId) {
-      await admin.auth.admin.deleteUser(authUserId).catch(() => {});
-    }
-    if (empresaId) {
-      await admin.from("user_roles").delete().eq("empresa_id", empresaId).catch(() => {});
-      await admin.from("profiles").delete().eq("empresa_id", empresaId).catch(() => {});
-      await admin.from("subscriptions").delete().eq("empresa_id", empresaId).catch(() => {});
-      await admin.from("empresa_config").delete().eq("empresa_id", empresaId).catch(() => {});
-      await admin.from("empresas").delete().eq("id", empresaId).catch(() => {});
+    try {
+      if (admin && authUserId) {
+        await admin.auth.admin.deleteUser(authUserId);
+      }
+      if (admin && empresaId) {
+        await admin.from("user_roles").delete().eq("empresa_id", empresaId);
+        await admin.from("profiles").delete().eq("empresa_id", empresaId);
+        await admin.from("subscriptions").delete().eq("empresa_id", empresaId);
+        await admin.from("empresa_config").delete().eq("empresa_id", empresaId);
+        await admin.from("empresas").delete().eq("id", empresaId);
+      }
+    } catch (_rollbackErr) {
+      // ignorar erros de rollback
     }
 
     const msg = String(err?.message ?? "Erro interno ao criar trial.");
@@ -292,5 +300,8 @@ Deno.serve(async (req: Request) => {
       return fail("Este e-mail já possui uma conta. Acesse pelo link do seu sistema ou use outro e-mail.", 409, undefined, req);
     }
     return fail(msg, 500, undefined, req);
+  }
+  } catch (topErr: any) {
+    return fail(String(topErr?.message ?? "Erro interno ao processar o cadastro."), 500, undefined, req);
   }
 });
