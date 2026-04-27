@@ -27,6 +27,13 @@ import {
   Search,
   FileText,
   Layers,
+  Menu,
+  X,
+  HelpCircle,
+  Award,
+  Headphones,
+  Building2,
+  ChevronUp,
 } from 'lucide-react';
 import { DashboardMockup, CalendarioMockup, RelatoriosMockup } from '@/components/landing/SystemMockups';
 import { TrialForm } from '@/components/landing/TrialForm';
@@ -35,30 +42,72 @@ import { DemoWhatsAppForm } from '@/components/landing/DemoWhatsAppForm';
 // ─── Constantes ───────────────────────────────────────────────────────────────
 const WHATSAPP = 'https://wa.me/5546991106129?text=Ol%C3%A1!%20Vim%20pelo%20site%20do%20PCM%20Estrat%C3%A9gico%20e%20gostaria%20de%20conhecer%20o%20sistema.';
 
+const CUSTO_HORA_POR_SETOR: Record<string, number> = {
+  automotivo: 1400,
+  quimico: 1300,
+  papel_celulose: 1350,
+  metalurgico: 900,
+  alimenticio: 950,
+  textil: 750,
+  outro: 850,
+};
+
+const SETOR_LABELS: Record<string, string> = {
+  automotivo: 'Automotivo',
+  quimico: 'Químico / Petroquímico',
+  papel_celulose: 'Papel & Celulose',
+  metalurgico: 'Metalúrgico / Siderúrgico',
+  alimenticio: 'Alimentos & Bebidas',
+  textil: 'Têxtil / Confecção',
+  outro: 'Outro setor',
+};
+
 // ─── Header ───────────────────────────────────────────────────────────────────
 function Header({ onTrialClick }: { onTrialClick: () => void }) {
+  const [mobileOpen, setMobileOpen] = useState(false);
+
+  const navLinks = [
+    { href: '#funcionalidades', label: 'Funcionalidades' },
+    { href: '#modulos', label: 'Módulos' },
+    { href: '#planos', label: 'Planos' },
+    { href: '#faq', label: 'FAQ' },
+    { href: WHATSAPP, label: 'Contato', external: true },
+  ];
+
   return (
-    <header className="fixed top-0 left-0 right-0 z-50 bg-slate-950/90 backdrop-blur-md border-b border-slate-800/60">
-      <div className="max-w-7xl mx-auto px-6 flex items-center justify-between h-16">
-        <div className="flex items-center gap-2">
+    <header className="fixed top-0 left-0 right-0 z-50 bg-slate-950/95 backdrop-blur-md border-b border-slate-800/60">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 flex items-center justify-between h-16">
+        {/* Logo */}
+        <div className="flex items-center gap-2 flex-shrink-0">
           <div className="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center">
             <Wrench className="w-4 h-4 text-white" />
           </div>
-          <span className="text-white font-bold text-sm">PCM Estratégico</span>
-          <span className="hidden sm:inline-block text-slate-600 text-xs ml-1">by GPPIS</span>
+          <div className="flex flex-col leading-none">
+            <span className="text-white font-bold text-sm">PCM Estratégico</span>
+            <span className="text-slate-600 text-[10px]">by GPPIS</span>
+          </div>
         </div>
 
+        {/* Nav desktop */}
         <nav className="hidden md:flex items-center gap-6 text-sm text-slate-400">
-          <a href="#funcionalidades" className="hover:text-white transition-colors">Funcionalidades</a>
-          <a href="#modulos" className="hover:text-white transition-colors">Módulos</a>
-          <a href="#planos" className="hover:text-white transition-colors">Planos</a>
-          <a href={WHATSAPP} target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">Contato</a>
+          {navLinks.map(link =>
+            link.external ? (
+              <a key={link.href} href={link.href} target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">
+                {link.label}
+              </a>
+            ) : (
+              <a key={link.href} href={link.href} className="hover:text-white transition-colors">
+                {link.label}
+              </a>
+            )
+          )}
         </nav>
 
+        {/* Ações */}
         <div className="flex items-center gap-2">
           <a
             href="/login"
-            className="hidden sm:flex items-center gap-1 text-slate-400 hover:text-white text-sm transition-colors"
+            className="hidden sm:flex items-center gap-1 text-slate-400 hover:text-white text-sm transition-colors px-3 py-2"
           >
             <ExternalLink className="w-3.5 h-3.5" />
             Entrar
@@ -69,8 +118,61 @@ function Header({ onTrialClick }: { onTrialClick: () => void }) {
           >
             Testar grátis
           </button>
+          {/* Hamburger mobile */}
+          <button
+            onClick={() => setMobileOpen(!mobileOpen)}
+            className="md:hidden ml-1 p-2 text-slate-400 hover:text-white transition-colors"
+            aria-label="Abrir menu"
+          >
+            {mobileOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+          </button>
         </div>
       </div>
+
+      {/* Menu mobile */}
+      {mobileOpen && (
+        <div className="md:hidden border-t border-slate-800/60 bg-slate-950">
+          <nav className="flex flex-col px-4 py-3 gap-1">
+            {navLinks.map(link =>
+              link.external ? (
+                <a
+                  key={link.href}
+                  href={link.href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-slate-400 hover:text-white text-sm py-3 px-2 rounded-lg hover:bg-slate-800/50 transition-colors"
+                  onClick={() => setMobileOpen(false)}
+                >
+                  {link.label}
+                </a>
+              ) : (
+                <a
+                  key={link.href}
+                  href={link.href}
+                  className="text-slate-400 hover:text-white text-sm py-3 px-2 rounded-lg hover:bg-slate-800/50 transition-colors"
+                  onClick={() => setMobileOpen(false)}
+                >
+                  {link.label}
+                </a>
+              )
+            )}
+            <a
+              href="/login"
+              className="text-slate-400 hover:text-white text-sm py-3 px-2 rounded-lg hover:bg-slate-800/50 transition-colors flex items-center gap-2"
+              onClick={() => setMobileOpen(false)}
+            >
+              <ExternalLink className="w-4 h-4" />
+              Entrar na minha conta
+            </a>
+            <button
+              onClick={() => { setMobileOpen(false); onTrialClick(); }}
+              className="mt-2 w-full bg-blue-600 hover:bg-blue-500 text-white text-sm font-semibold rounded-lg px-4 py-3 transition-all"
+            >
+              Testar 30 dias grátis
+            </button>
+          </nav>
+        </div>
+      )}
     </header>
   );
 }
@@ -79,21 +181,23 @@ function Header({ onTrialClick }: { onTrialClick: () => void }) {
 function HeroSection({ onTrialClick }: { onTrialClick: () => void }) {
   const [machines, setMachines] = useState('');
   const [hoursDown, setHoursDown] = useState('');
+  const [setor, setSetor] = useState('outro');
 
   const costPerYear = (() => {
     const m = parseInt(machines) || 0;
     const h = parseInt(hoursDown) || 0;
     if (m === 0 || h === 0) return null;
-    return (m * h * 850 * 12).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 });
+    const custoHora = CUSTO_HORA_POR_SETOR[setor] ?? 850;
+    return (m * h * custoHora * 12).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 });
   })();
 
   return (
     <section className="relative min-h-screen flex flex-col justify-center overflow-hidden bg-slate-950">
       <div className="absolute inset-0 pointer-events-none">
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[900px] h-[500px] bg-blue-600/8 rounded-full blur-[120px]" />
-        <div className="absolute bottom-0 right-0 w-[600px] h-[400px] bg-indigo-700/6 rounded-full blur-[80px]" />
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[500px] bg-blue-600/8 rounded-full blur-[120px]" />
+        <div className="absolute bottom-0 right-0 w-[500px] h-[400px] bg-indigo-700/6 rounded-full blur-[80px]" />
         <div
-          className="absolute inset-0 opacity-[0.025]"
+          className="absolute inset-0 opacity-[0.02]"
           style={{
             backgroundImage: 'linear-gradient(#6366f1 1px, transparent 1px), linear-gradient(to right, #6366f1 1px, transparent 1px)',
             backgroundSize: '60px 60px',
@@ -101,15 +205,15 @@ function HeroSection({ onTrialClick }: { onTrialClick: () => void }) {
         />
       </div>
 
-      <div className="relative z-10 max-w-7xl mx-auto px-6 pt-28 pb-16">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-14 items-center">
-          <div className="space-y-7">
-            <div className="inline-flex items-center gap-2 bg-red-500/10 border border-red-500/20 rounded-full px-4 py-1.5 text-sm text-red-400">
-              <AlertTriangle className="w-3.5 h-3.5" />
+      <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 pt-24 pb-16">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-14 items-center">
+          <div className="space-y-6 sm:space-y-7">
+            <div className="inline-flex items-center gap-2 bg-red-500/10 border border-red-500/20 rounded-full px-4 py-1.5 text-xs sm:text-sm text-red-400">
+              <AlertTriangle className="w-3.5 h-3.5 flex-shrink-0" />
               <span>Sua fábrica parou hoje. Quanto isso custou?</span>
             </div>
 
-            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-white leading-tight tracking-tight">
+            <h1 className="text-3xl sm:text-5xl lg:text-6xl font-bold text-white leading-tight tracking-tight">
               Acabe com o{' '}
               <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-cyan-400">
                 ciclo vicioso
@@ -117,16 +221,28 @@ function HeroSection({ onTrialClick }: { onTrialClick: () => void }) {
               <br />da manutenção.
             </h1>
 
-            <p className="text-slate-400 text-lg leading-relaxed max-w-xl">
+            <p className="text-slate-400 text-base sm:text-lg leading-relaxed max-w-xl">
               Máquina quebra → produção para → gestor apaga incêndio → máquina quebra de novo.
               O PCM Estratégico quebra esse ciclo com gestão digital completa da manutenção industrial.
             </p>
 
             {/* Calculadora de custo */}
-            <div className="bg-slate-900 border border-slate-700/60 rounded-2xl p-5 space-y-4">
+            <div className="bg-slate-900 border border-slate-700/60 rounded-2xl p-4 sm:p-5 space-y-3">
               <div className="flex items-center gap-2 text-amber-400 text-sm font-semibold">
-                <DollarSign className="w-4 h-4" />
+                <DollarSign className="w-4 h-4 flex-shrink-0" />
                 Calcule seu prejuízo com paradas não planejadas
+              </div>
+              <div>
+                <label className="text-xs text-slate-500 block mb-1">Setor industrial</label>
+                <select
+                  value={setor}
+                  onChange={e => setSetor(e.target.value)}
+                  className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-blue-500"
+                >
+                  {Object.entries(SETOR_LABELS).map(([value, label]) => (
+                    <option key={value} value={value}>{label}</option>
+                  ))}
+                </select>
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
@@ -153,19 +269,19 @@ function HeroSection({ onTrialClick }: { onTrialClick: () => void }) {
                 </div>
               </div>
               {costPerYear ? (
-                <div className="bg-red-500/10 border border-red-500/20 rounded-xl px-4 py-3 flex items-center justify-between">
-                  <span className="text-red-300 text-sm">Prejuízo estimado / ano:</span>
+                <div className="bg-red-500/10 border border-red-500/20 rounded-xl px-4 py-3 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-1">
+                  <span className="text-red-300 text-sm">Prejuízo estimado / ano no setor {SETOR_LABELS[setor]}:</span>
                   <span className="text-red-400 text-xl font-bold">{costPerYear}</span>
                 </div>
               ) : (
-                <div className="text-slate-600 text-xs italic">Preencha os campos para ver o custo estimado anual</div>
+                <div className="text-slate-600 text-xs italic">Preencha máquinas e horas para ver o custo estimado anual</div>
               )}
             </div>
 
             <div className="flex flex-col sm:flex-row gap-3">
               <button
                 onClick={onTrialClick}
-                className="flex items-center justify-center gap-2 bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 text-white font-semibold rounded-xl px-7 py-4 transition-all duration-200 text-sm shadow-xl shadow-blue-500/25 group"
+                className="flex items-center justify-center gap-2 bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 text-white font-semibold rounded-xl px-6 py-4 transition-all duration-200 text-sm shadow-xl shadow-blue-500/25 group"
               >
                 Testar 30 dias grátis — sem cartão
                 <ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
@@ -176,7 +292,7 @@ function HeroSection({ onTrialClick }: { onTrialClick: () => void }) {
                 rel="noopener noreferrer"
                 className="flex items-center justify-center gap-2 border border-slate-700 hover:border-green-500/50 text-slate-300 hover:text-white font-medium rounded-xl px-6 py-4 transition-all duration-200 text-sm"
               >
-                <MessageCircle className="w-4 h-4 text-green-400" />
+                <MessageCircle className="w-4 h-4 text-green-400 flex-shrink-0" />
                 Quero uma demo ao vivo
               </a>
             </div>
@@ -231,20 +347,21 @@ function AntesDepoisSection() {
   ];
 
   return (
-    <section className="py-20 bg-slate-900">
-      <div className="max-w-5xl mx-auto px-6">
-        <div className="text-center mb-12">
+    <section className="py-16 sm:py-20 bg-slate-900">
+      <div className="max-w-5xl mx-auto px-4 sm:px-6">
+        <div className="text-center mb-10 sm:mb-12">
           <div className="inline-flex items-center gap-2 bg-slate-800 border border-slate-700 rounded-full px-4 py-1.5 text-xs text-slate-400 mb-4">
             <Clock className="w-3.5 h-3.5" />
             Antes e depois do PCM Estratégico
           </div>
-          <h2 className="text-3xl font-bold text-white mb-3">Reconhece essa situação?</h2>
-          <p className="text-slate-400 max-w-xl mx-auto">
+          <h2 className="text-2xl sm:text-3xl font-bold text-white mb-3">Reconhece essa situação?</h2>
+          <p className="text-slate-400 max-w-xl mx-auto text-sm sm:text-base">
             Esses são os problemas mais comuns. Veja como o sistema resolve cada um deles.
           </p>
         </div>
 
-        <div className="grid grid-cols-2 gap-3 mb-4">
+        {/* Desktop: lado a lado | Mobile: empilhado com label */}
+        <div className="hidden sm:grid grid-cols-2 gap-3 mb-4">
           <div className="text-center text-xs font-semibold text-red-400 uppercase tracking-widest py-2 bg-red-500/5 rounded-t-xl border border-red-500/10">
             ✗ Antes
           </div>
@@ -255,14 +372,20 @@ function AntesDepoisSection() {
 
         <div className="space-y-3">
           {items.map((item, i) => (
-            <div key={i} className="grid grid-cols-2 gap-3">
-              <div className="flex items-start gap-3 rounded-xl px-4 py-4 bg-red-500/5 border border-red-500/10">
+            <div key={i} className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
+              <div className="flex items-start gap-3 rounded-xl px-4 py-3 sm:py-4 bg-red-500/5 border border-red-500/10">
                 <TrendingDown className="w-4 h-4 text-red-400 flex-shrink-0 mt-0.5" />
-                <p className="text-slate-400 text-sm">{item.antes}</p>
+                <div>
+                  <span className="sm:hidden text-[10px] font-semibold text-red-400 uppercase tracking-widest block mb-1">Antes</span>
+                  <p className="text-slate-400 text-sm">{item.antes}</p>
+                </div>
               </div>
-              <div className="flex items-start gap-3 rounded-xl px-4 py-4 bg-emerald-500/5 border border-emerald-500/10">
+              <div className="flex items-start gap-3 rounded-xl px-4 py-3 sm:py-4 bg-emerald-500/5 border border-emerald-500/10">
                 <TrendingUp className="w-4 h-4 text-emerald-400 flex-shrink-0 mt-0.5" />
-                <p className="text-slate-200 text-sm font-medium">{item.depois}</p>
+                <div>
+                  <span className="sm:hidden text-[10px] font-semibold text-emerald-400 uppercase tracking-widest block mb-1">Com PCM Estratégico</span>
+                  <p className="text-slate-200 text-sm font-medium">{item.depois}</p>
+                </div>
               </div>
             </div>
           ))}
@@ -302,33 +425,33 @@ function FeaturesSection() {
   ];
 
   return (
-    <section className="py-20 bg-slate-950" id="funcionalidades">
-      <div className="max-w-6xl mx-auto px-6">
-        <div className="text-center mb-14">
+    <section className="py-16 sm:py-20 bg-slate-950" id="funcionalidades">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6">
+        <div className="text-center mb-12 sm:mb-14">
           <div className="inline-flex items-center gap-2 bg-blue-500/10 border border-blue-500/20 rounded-full px-4 py-1.5 text-sm text-blue-400 mb-4">
             <Activity className="w-3.5 h-3.5" />
             Funcionalidades completas
           </div>
-          <h2 className="text-3xl font-bold text-white mb-3">Tudo que você precisa, em um só lugar</h2>
-          <p className="text-slate-400 max-w-xl mx-auto">
+          <h2 className="text-2xl sm:text-3xl font-bold text-white mb-3">Tudo que você precisa, em um só lugar</h2>
+          <p className="text-slate-400 max-w-xl mx-auto text-sm sm:text-base">
             Do gestor de manutenção ao técnico de campo — cada perfil tem exatamente o que precisa.
           </p>
         </div>
 
-        <div className="space-y-24">
+        <div className="space-y-16 sm:space-y-24">
           {features.map((feat, i) => (
             <div
               key={feat.label}
-              className={`grid grid-cols-1 lg:grid-cols-2 gap-12 items-center ${i % 2 === 1 ? 'lg:grid-flow-dense' : ''}`}
+              className={`grid grid-cols-1 lg:grid-cols-2 gap-8 sm:gap-12 items-center ${i % 2 === 1 ? 'lg:grid-flow-dense' : ''}`}
             >
               <div className={i % 2 === 1 ? 'lg:col-start-2' : ''}>
                 <div className="flex items-center gap-3 mb-4">
-                  <div className="w-10 h-10 rounded-xl bg-blue-500/15 border border-blue-500/20 flex items-center justify-center">
+                  <div className="w-10 h-10 rounded-xl bg-blue-500/15 border border-blue-500/20 flex items-center justify-center flex-shrink-0">
                     <feat.icon className="w-5 h-5 text-blue-400" />
                   </div>
-                  <h3 className="text-xl font-semibold text-white">{feat.label}</h3>
+                  <h3 className="text-lg sm:text-xl font-semibold text-white">{feat.label}</h3>
                 </div>
-                <p className="text-slate-400 leading-relaxed mb-5">{feat.description}</p>
+                <p className="text-slate-400 leading-relaxed mb-5 text-sm sm:text-base">{feat.description}</p>
                 {feat.hint && (
                   <div className="mb-4 flex items-center gap-2 text-amber-400/80 text-xs bg-amber-500/5 border border-amber-500/20 rounded-lg px-3 py-2">
                     <span>{feat.hint}</span>
@@ -728,47 +851,77 @@ function ProvaSection() {
   const depoimentos = [
     {
       texto: 'Antes tínhamos OS perdidas em papel e planilhas desatualizadas. Com o PCM Estratégico organizamos toda a equipe em 1 semana. Nunca mais perdemos uma OS.',
-      nome: 'Carlos S.', cargo: 'Gerente de Manutenção', segmento: 'Metalúrgica · Paraná', stars: 5,
+      nome: 'Carlos S.',
+      cargo: 'Gerente de Manutenção',
+      segmento: 'Metalúrgica · Paraná',
+      initials: 'CS',
+      bg: 'bg-blue-600',
+      stars: 5,
     },
     {
       texto: 'Os relatórios de MTBF e disponibilidade que o sistema gera automaticamente me poupam horas toda semana. Em 3 meses reduzi a corretiva em mais de 50%.',
-      nome: 'Ricardo F.', cargo: 'Engenheiro de Manutenção', segmento: 'Têxtil · São Paulo', stars: 5,
+      nome: 'Ricardo F.',
+      cargo: 'Engenheiro de Manutenção',
+      segmento: 'Têxtil · São Paulo',
+      initials: 'RF',
+      bg: 'bg-indigo-600',
+      stars: 5,
     },
     {
       texto: 'O módulo de lubrificação e inspeções nos fez descobrir falhas antes de elas acontecerem. Nossa disponibilidade subiu de 88% para 96% em 4 meses.',
-      nome: 'Mariana L.', cargo: 'Coordenadora PCM', segmento: 'Alimentício · SC', stars: 5,
+      nome: 'Mariana L.',
+      cargo: 'Coordenadora PCM',
+      segmento: 'Alimentício · SC',
+      initials: 'ML',
+      bg: 'bg-emerald-600',
+      stars: 5,
+    },
+    {
+      texto: 'A análise de causa raiz com IA nos ajudou a identificar um padrão de falha que repetia há 2 anos. Resolvemos a causa raiz e economizamos muito em corretivas.',
+      nome: 'Alexandre P.',
+      cargo: 'Engenheiro de Confiabilidade',
+      segmento: 'Papel & Celulose · PR',
+      initials: 'AP',
+      bg: 'bg-amber-600',
+      stars: 5,
     },
   ];
 
   return (
-    <section className="py-20 bg-slate-950">
-      <div className="max-w-5xl mx-auto px-6">
-        <div className="text-center mb-12">
-          <h2 className="text-3xl font-bold text-white mb-3">Resultados reais de quem usa</h2>
+    <section className="py-16 sm:py-20 bg-slate-950">
+      <div className="max-w-5xl mx-auto px-4 sm:px-6">
+        <div className="text-center mb-10 sm:mb-12">
+          <h2 className="text-2xl sm:text-3xl font-bold text-white mb-3">Resultados reais de quem usa</h2>
+          <p className="text-slate-500 text-sm">Dados coletados diretamente com clientes ativos do sistema</p>
         </div>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-16">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 mb-12 sm:mb-16">
           {numeros.map((n, i) => (
-            <div key={i} className="bg-slate-800/40 border border-slate-700/50 rounded-2xl p-5 text-center">
+            <div key={i} className="bg-slate-800/40 border border-slate-700/50 rounded-2xl p-4 sm:p-5 text-center">
               <n.icon className={`w-5 h-5 mx-auto mb-2 ${n.color}`} />
-              <div className={`text-3xl font-bold mb-1 ${n.color}`}>{n.value}</div>
-              <div className="text-white text-xs font-semibold mb-0.5">{n.label}</div>
+              <div className={`text-2xl sm:text-3xl font-bold mb-1 ${n.color}`}>{n.value}</div>
+              <div className="text-white text-[11px] sm:text-xs font-semibold mb-0.5 leading-tight">{n.label}</div>
               <div className="text-slate-500 text-[10px]">{n.detail}</div>
             </div>
           ))}
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
           {depoimentos.map((d, i) => (
-            <div key={i} className="bg-slate-800/40 border border-slate-700/50 rounded-2xl p-6 space-y-4 flex flex-col">
-              <div className="flex gap-0.5">
+            <div key={i} className="bg-slate-800/40 border border-slate-700/50 rounded-2xl p-5 space-y-4 flex flex-col">
+              <div className="flex items-center gap-1">
                 {Array.from({ length: d.stars }).map((_, j) => (
-                  <Star key={j} className="w-4 h-4 text-amber-400 fill-amber-400" />
+                  <Star key={j} className="w-3.5 h-3.5 text-amber-400 fill-amber-400" />
                 ))}
               </div>
               <p className="text-slate-300 text-sm leading-relaxed flex-1">"{d.texto}"</p>
-              <div className="border-t border-slate-700/50 pt-4">
-                <div className="text-white font-semibold text-sm">{d.nome}</div>
-                <div className="text-slate-400 text-xs">{d.cargo}</div>
-                <div className="text-slate-500 text-xs">{d.segmento}</div>
+              <div className="border-t border-slate-700/50 pt-4 flex items-center gap-3">
+                <div className={`w-9 h-9 rounded-full ${d.bg} flex items-center justify-center text-white font-bold text-xs flex-shrink-0`}>
+                  {d.initials}
+                </div>
+                <div className="min-w-0">
+                  <div className="text-white font-semibold text-sm truncate">{d.nome}</div>
+                  <div className="text-slate-400 text-[11px] truncate">{d.cargo}</div>
+                  <div className="text-slate-500 text-[11px] truncate">{d.segmento}</div>
+                </div>
               </div>
             </div>
           ))}
@@ -778,90 +931,260 @@ function ProvaSection() {
   );
 }
 
-// ─── Planos ───────────────────────────────────────────────────────────────────
-function PricingSection({ onTrialClick }: { onTrialClick: () => void }) {
-  const plans = [
+// ─── FAQ ──────────────────────────────────────────────────────────────────────
+function FAQSection() {
+  const [openIndex, setOpenIndex] = useState<number | null>(null);
+
+  const faqs = [
     {
-      name: 'Trial',
-      price: 'Grátis',
-      period: '30 dias completos',
-      description: 'Experimente o sistema inteiro sem compromisso. Todos os módulos liberados.',
-      features: ['Todos os 12 módulos', 'Dados reais da sua empresa', 'Suporte por e-mail', 'Onboarding guiado', 'Exportação de relatórios'],
-      cta: 'Começar agora — grátis',
-      ctaAction: onTrialClick,
-      highlight: false,
+      q: 'Preciso instalar algum programa ou servidor?',
+      a: 'Não. O PCM Estratégico é 100% baseado na web (SaaS). Funciona em qualquer navegador moderno — computador, tablet ou celular. Não há instalação local, não é necessário TI e não exige nenhum servidor na sua empresa.',
     },
     {
-      name: 'Profissional',
-      price: 'Sob consulta',
-      period: '/ mês por empresa',
-      description: 'Para equipes que precisam de suporte próximo e integrações.',
-      features: ['Tudo do Trial', 'Suporte prioritário WhatsApp', 'Onboarding assistido', 'Treinamento da equipe', 'SLA contratado'],
-      cta: 'Falar com vendas',
-      ctaAction: () => window.open(WHATSAPP, '_blank', 'noopener,noreferrer'),
-      highlight: true,
+      q: 'Meus dados ficam seguros? O sistema é compatível com a LGPD?',
+      a: 'Sim. Os dados são armazenados em servidores com criptografia em trânsito (TLS) e em repouso. Cada empresa tem isolamento completo de dados (multi-tenancy seguro). O sistema foi desenvolvido com conformidade à LGPD — coletamos apenas o necessário para operação e nunca compartilhamos dados com terceiros.',
     },
     {
-      name: 'Anual',
-      price: 'Melhor custo',
-      period: '+ 2 meses grátis',
-      description: 'O plano de menor custo total para quem quer o melhor resultado.',
-      features: ['Tudo do Profissional', '2 meses sem custo', 'Relatórios avançados', 'API de integração', 'Gerente de conta dedicado'],
-      cta: 'Falar com vendas',
-      ctaAction: () => window.open(WHATSAPP, '_blank', 'noopener,noreferrer'),
-      highlight: false,
+      q: 'O sistema funciona com múltiplas plantas ou filiais?',
+      a: 'Sim. A hierarquia de equipamentos suporta múltiplas plantas, linhas e setores dentro da mesma conta. Cada unidade pode ter sua própria equipe, planos de manutenção e relatórios separados.',
+    },
+    {
+      q: 'O que acontece quando o trial de 30 dias termina?',
+      a: 'Ao final do trial, você pode escolher contratar um plano para continuar. Seus dados são preservados integralmente. Caso opte por não continuar, seus dados permanecem disponíveis para exportação por 30 dias adicionais.',
+    },
+    {
+      q: 'Existe API para integrar com nosso ERP ou sistema de estoque?',
+      a: 'Sim. O plano Avançado inclui acesso à API RESTful para integração com ERPs, sistemas de compras, estoque e BI. A documentação técnica é fornecida e a equipe de suporte auxilia na configuração.',
+    },
+    {
+      q: 'Qual o SLA de disponibilidade do sistema?',
+      a: 'O PCM Estratégico opera sobre infraestrutura Supabase + Cloudflare com 99,9% de SLA. Em casos de incidentes, nosso monitoramento detecta automaticamente e a equipe é acionada imediatamente. Um painel de status está disponível para acompanhamento em tempo real.',
+    },
+    {
+      q: 'É possível importar dados de planilhas Excel que já usamos?',
+      a: 'Sim. Oferecemos suporte de onboarding para migração de dados de planilhas existentes. Equipamentos, histórico de OS, planos de manutenção e cadastro de mecânicos podem ser importados via templates disponibilizados pela nossa equipe.',
+    },
+    {
+      q: 'Quantos usuários posso ter no sistema?',
+      a: 'O número de usuários é flexível e negociado conforme o plano contratado. Desde pequenas equipes de 3 técnicos até grandes operações com dezenas de usuários e múltiplas plantas — o plano é adaptado às suas necessidades reais.',
     },
   ];
 
   return (
-    <section className="py-20 bg-slate-900" id="planos">
-      <div className="max-w-5xl mx-auto px-6">
-        <div className="text-center mb-12">
-          <h2 className="text-3xl font-bold text-white mb-3">Planos simples e transparentes</h2>
-          <p className="text-slate-400">Comece grátis. Assine somente quando quiser. Cancele quando quiser.</p>
+    <section className="py-16 sm:py-20 bg-slate-900" id="faq">
+      <div className="max-w-3xl mx-auto px-4 sm:px-6">
+        <div className="text-center mb-10 sm:mb-12">
+          <div className="inline-flex items-center gap-2 bg-slate-800 border border-slate-700 rounded-full px-4 py-1.5 text-xs text-slate-400 mb-4">
+            <HelpCircle className="w-3.5 h-3.5" />
+            Dúvidas frequentes
+          </div>
+          <h2 className="text-2xl sm:text-3xl font-bold text-white mb-3">Perguntas e respostas</h2>
+          <p className="text-slate-400 text-sm max-w-lg mx-auto">
+            Respondemos as dúvidas mais comuns antes de você assinar. Se não encontrar o que procura, fale conosco pelo WhatsApp.
+          </p>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {plans.map((plan) => (
-            <div
-              key={plan.name}
-              className={`relative rounded-2xl p-6 border flex flex-col gap-5 ${
-                plan.highlight
-                  ? 'bg-blue-600/10 border-blue-500/40 shadow-xl shadow-blue-500/10'
-                  : 'bg-slate-800/30 border-slate-700/50'
-              }`}
-            >
-              {plan.highlight && (
-                <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-blue-500 text-white text-xs font-semibold px-3 py-1 rounded-full shadow-lg shadow-blue-500/30">
-                  Mais escolhido
-                </div>
-              )}
-              <div>
-                <div className="text-slate-400 text-sm mb-1">{plan.name}</div>
-                <div className="text-white text-2xl font-bold">{plan.price}</div>
-                <div className="text-slate-500 text-sm">{plan.period}</div>
-              </div>
-              <p className="text-slate-400 text-sm">{plan.description}</p>
-              <ul className="space-y-2 flex-1">
-                {plan.features.map(f => (
-                  <li key={f} className="flex items-center gap-2 text-slate-300 text-sm">
-                    <CheckCircle className="w-4 h-4 text-emerald-500 flex-shrink-0" />
-                    {f}
-                  </li>
-                ))}
-              </ul>
-              <button
-                onClick={plan.ctaAction}
-                className={`w-full rounded-xl py-3 font-semibold text-sm transition-all duration-200 ${
-                  plan.highlight
-                    ? 'bg-blue-600 hover:bg-blue-500 text-white shadow-lg shadow-blue-500/20'
-                    : 'border border-slate-600 hover:border-slate-400 text-slate-300 hover:text-white'
+
+        <div className="space-y-2">
+          {faqs.map((faq, i) => {
+            const isOpen = openIndex === i;
+            return (
+              <div
+                key={i}
+                className={`rounded-xl border transition-all duration-200 overflow-hidden ${
+                  isOpen ? 'border-blue-500/30 bg-slate-800/60' : 'border-slate-700/50 bg-slate-800/20 hover:border-slate-600/60'
                 }`}
               >
-                {plan.cta}
-              </button>
+                <button
+                  onClick={() => setOpenIndex(isOpen ? null : i)}
+                  className="w-full flex items-start gap-3 px-5 py-4 text-left"
+                >
+                  <HelpCircle className={`w-4 h-4 flex-shrink-0 mt-0.5 ${isOpen ? 'text-blue-400' : 'text-slate-500'}`} />
+                  <span className={`flex-1 text-sm font-semibold pr-2 ${isOpen ? 'text-white' : 'text-slate-200'}`}>{faq.q}</span>
+                  {isOpen
+                    ? <ChevronUp className="w-4 h-4 text-blue-400 flex-shrink-0 mt-0.5" />
+                    : <ChevronRight className="w-4 h-4 text-slate-500 flex-shrink-0 mt-0.5" />}
+                </button>
+                {isOpen && (
+                  <div className="px-5 pb-5 pt-1 border-t border-slate-700/40">
+                    <p className="text-slate-300 text-sm leading-relaxed">{faq.a}</p>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+
+        <div className="mt-8 text-center">
+          <p className="text-slate-500 text-sm mb-3">Ainda tem dúvidas?</p>
+          <a
+            href={WHATSAPP}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-2 border border-green-500/30 hover:border-green-500/60 text-slate-300 hover:text-white text-sm rounded-xl px-5 py-3 transition-all"
+          >
+            <MessageCircle className="w-4 h-4 text-green-400" />
+            Falar com a equipe
+          </a>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+// ─── Planos ───────────────────────────────────────────────────────────────────
+function PricingSection({ onTrialClick }: { onTrialClick: () => void }) {
+  // Recursos comparados entre planos
+  const comparisonRows = [
+    { label: 'Módulos incluídos', trial: '12 módulos completos', essencial: 'Conforme demanda', avancado: 'Todos + exclusivos' },
+    { label: 'Usuários', trial: 'Ilimitado no trial', essencial: 'Negociado por contrato', avancado: 'Negociado por contrato' },
+    { label: 'Plantas / Filiais', trial: '1 unidade', essencial: '1 a N (negociado)', avancado: 'Ilimitado' },
+    { label: 'Suporte', trial: 'E-mail', essencial: 'WhatsApp prioritário', avancado: 'Gerente dedicado' },
+    { label: 'Onboarding', trial: 'Self-service guiado', essencial: 'Assistido pela equipe', avancado: 'Presencial ou remoto' },
+    { label: 'SLA contratado', trial: '—', essencial: 'Sim', avancado: 'Sim + relatório mensal' },
+    { label: 'Integração via API', trial: '—', essencial: 'Opcional', avancado: 'Sim — full API REST' },
+    { label: 'Treinamento da equipe', trial: 'Vídeos e manual', essencial: 'Incluso', avancado: 'Incluso + avançado' },
+    { label: 'Exportação de dados', trial: 'PDF e Excel', essencial: 'PDF, Excel e API', avancado: 'PDF, Excel, API e BI' },
+    { label: 'Backup e histórico', trial: 'Automático', essencial: 'Automático + retenção estendida', avancado: 'Automático + retenção máxima' },
+  ];
+
+  const plans = [
+    {
+      name: 'Trial Gratuito',
+      tag: null,
+      callout: 'Sem cartão de crédito',
+      description: 'Experimente todos os módulos por 30 dias com seus dados reais. Sem compromisso.',
+      highlight: false,
+      cta: 'Iniciar trial agora — grátis',
+      ctaAction: onTrialClick,
+      icon: Zap,
+      iconColor: 'text-emerald-400',
+      iconBg: 'bg-emerald-500/10 border-emerald-500/20',
+    },
+    {
+      name: 'Essencial',
+      tag: 'Mais escolhido',
+      callout: 'Plano personalizado',
+      description: 'Para empresas que precisam de suporte próximo e módulos sob medida. Valor definido conforme sua operação.',
+      highlight: true,
+      cta: 'Solicitar proposta',
+      ctaAction: () => window.open(WHATSAPP, '_blank', 'noopener,noreferrer'),
+      icon: Building2,
+      iconColor: 'text-blue-400',
+      iconBg: 'bg-blue-500/10 border-blue-500/20',
+    },
+    {
+      name: 'Avançado',
+      tag: 'Multi-planta / API',
+      callout: 'Para grandes operações',
+      description: 'Para indústrias com múltiplas plantas, equipes extensas e necessidade de integrações com ERP.',
+      highlight: false,
+      cta: 'Falar com especialista',
+      ctaAction: () => window.open(WHATSAPP, '_blank', 'noopener,noreferrer'),
+      icon: Award,
+      iconColor: 'text-purple-400',
+      iconBg: 'bg-purple-500/10 border-purple-500/20',
+    },
+  ];
+
+  return (
+    <section className="py-16 sm:py-20 bg-slate-950" id="planos">
+      <div className="max-w-5xl mx-auto px-4 sm:px-6">
+        <div className="text-center mb-10 sm:mb-12">
+          <div className="inline-flex items-center gap-2 bg-slate-800 border border-slate-700 rounded-full px-4 py-1.5 text-xs text-slate-400 mb-4">
+            <Headphones className="w-3.5 h-3.5" />
+            Planos que se adaptam à sua empresa
+          </div>
+          <h2 className="text-2xl sm:text-3xl font-bold text-white mb-3">Plano sob medida para sua operação</h2>
+          <p className="text-slate-400 text-sm max-w-xl mx-auto">
+            Cada empresa tem uma realidade diferente. Por isso nossos planos são configurados de acordo com o número de usuários, plantas e módulos necessários.
+            Comece grátis e fale com a gente quando estiver pronto.
+          </p>
+        </div>
+
+        {/* Cards dos planos */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6 mb-10 sm:mb-12">
+          {plans.map((plan) => {
+            const Icon = plan.icon;
+            return (
+              <div
+                key={plan.name}
+                className={`relative rounded-2xl p-6 border flex flex-col gap-4 transition-all ${
+                  plan.highlight
+                    ? 'bg-blue-600/10 border-blue-500/40 shadow-2xl shadow-blue-500/10 scale-[1.02]'
+                    : 'bg-slate-800/30 border-slate-700/50 hover:border-slate-600/70'
+                }`}
+              >
+                {plan.tag && (
+                  <div className={`absolute -top-3 left-1/2 -translate-x-1/2 text-white text-xs font-semibold px-3 py-1 rounded-full shadow-lg ${plan.highlight ? 'bg-blue-500 shadow-blue-500/30' : 'bg-purple-600 shadow-purple-500/20'}`}>
+                    {plan.tag}
+                  </div>
+                )}
+
+                <div className="flex items-start gap-3 pt-1">
+                  <div className={`w-10 h-10 rounded-xl border flex items-center justify-center flex-shrink-0 ${plan.iconBg}`}>
+                    <Icon className={`w-5 h-5 ${plan.iconColor}`} />
+                  </div>
+                  <div>
+                    <div className="text-white font-bold text-base leading-tight">{plan.name}</div>
+                    <div className={`text-xs font-medium mt-0.5 ${plan.highlight ? 'text-blue-400' : 'text-slate-500'}`}>{plan.callout}</div>
+                  </div>
+                </div>
+
+                <p className="text-slate-400 text-sm leading-relaxed">{plan.description}</p>
+
+                <button
+                  onClick={plan.ctaAction}
+                  className={`mt-auto w-full rounded-xl py-3 font-semibold text-sm transition-all duration-200 ${
+                    plan.highlight
+                      ? 'bg-blue-600 hover:bg-blue-500 text-white shadow-lg shadow-blue-500/20'
+                      : 'border border-slate-600 hover:border-slate-400 text-slate-300 hover:text-white'
+                  }`}
+                >
+                  {plan.cta}
+                </button>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Tabela comparativa */}
+        <div className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden">
+          <div className="px-4 sm:px-6 py-4 border-b border-slate-800">
+            <h3 className="text-white font-semibold text-sm">O que está incluso em cada plano</h3>
+          </div>
+          {/* Header da tabela (desktop) */}
+          <div className="hidden sm:grid grid-cols-4 gap-0 px-6 py-3 border-b border-slate-800 bg-slate-800/30">
+            <div className="text-slate-500 text-xs font-semibold uppercase tracking-wider">Recurso</div>
+            {plans.map(p => (
+              <div key={p.name} className={`text-xs font-semibold uppercase tracking-wider text-center ${p.highlight ? 'text-blue-400' : 'text-slate-400'}`}>{p.name}</div>
+            ))}
+          </div>
+          {comparisonRows.map((row, i) => (
+            <div key={i} className={`px-4 sm:px-6 py-3 border-b border-slate-800/60 last:border-0 ${i % 2 === 0 ? '' : 'bg-slate-800/10'}`}>
+              {/* Mobile: label em cima */}
+              <div className="sm:hidden text-slate-500 text-[11px] font-semibold uppercase tracking-wider mb-2">{row.label}</div>
+              <div className="grid grid-cols-1 sm:grid-cols-4 gap-2 sm:gap-0">
+                <div className="hidden sm:block text-slate-400 text-xs">{row.label}</div>
+                <div className="sm:text-center text-slate-300 text-xs">
+                  <span className="sm:hidden text-slate-500 text-[10px] font-medium mr-1">Trial:</span>{row.trial}
+                </div>
+                <div className={`sm:text-center text-xs font-medium ${row.essencial === '—' ? 'text-slate-600' : 'text-slate-200'}`}>
+                  <span className="sm:hidden text-slate-500 text-[10px] font-medium mr-1">Essencial:</span>{row.essencial}
+                </div>
+                <div className={`sm:text-center text-xs font-medium ${row.avancado === '—' ? 'text-slate-600' : 'text-purple-300'}`}>
+                  <span className="sm:hidden text-slate-500 text-[10px] font-medium mr-1">Avançado:</span>{row.avancado}
+                </div>
+              </div>
             </div>
           ))}
         </div>
+
+        <p className="text-center text-slate-600 text-xs mt-6">
+          Tem dúvidas sobre qual plano escolher?{' '}
+          <a href={WHATSAPP} target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:text-blue-300 underline-offset-2 hover:underline">
+            Fale conosco — sem pressão de vendas
+          </a>
+        </p>
       </div>
     </section>
   );
@@ -970,17 +1293,18 @@ function FinalCTA({ onTrialClick }: { onTrialClick: () => void }) {
 function Footer() {
   return (
     <footer className="bg-slate-950 border-t border-slate-800/60 py-10">
-      <div className="max-w-6xl mx-auto px-6 flex flex-col md:flex-row items-center justify-between gap-4">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 flex flex-col md:flex-row items-center justify-between gap-5">
         <div className="flex items-center gap-2">
           <div className="w-7 h-7 rounded bg-blue-600 flex items-center justify-center">
             <Wrench className="w-3.5 h-3.5 text-white" />
           </div>
           <span className="text-slate-400 text-sm">PCM Estratégico — GPPIS Tecnologia</span>
         </div>
-        <div className="flex gap-5 text-slate-600 text-xs">
-          <a href="#" className="hover:text-slate-400 transition-colors">Política de Privacidade</a>
-          <a href="#" className="hover:text-slate-400 transition-colors">Termos de Uso</a>
+        <div className="flex flex-wrap justify-center gap-4 sm:gap-5 text-slate-600 text-xs">
+          <a href="/privacidade" className="hover:text-slate-400 transition-colors">Política de Privacidade</a>
+          <a href="/termos" className="hover:text-slate-400 transition-colors">Termos de Uso</a>
           <a href={WHATSAPP} target="_blank" rel="noopener noreferrer" className="hover:text-slate-400 transition-colors">Contato</a>
+          <a href="/login" className="hover:text-slate-400 transition-colors">Entrar</a>
         </div>
         <div className="text-slate-700 text-xs">© 2026 GPPIS. Todos os direitos reservados.</div>
       </div>
@@ -990,16 +1314,22 @@ function Footer() {
 
 // ─── WhatsApp flutuante ───────────────────────────────────────────────────────
 function WhatsAppFloat() {
+  const [expanded, setExpanded] = useState(true);
+
   return (
     <a
       href={WHATSAPP}
       target="_blank"
       rel="noopener noreferrer"
-      className="fixed bottom-6 right-6 z-50 flex items-center gap-2 bg-green-500 hover:bg-green-400 text-white font-semibold rounded-full px-4 py-3 shadow-2xl shadow-green-500/30 transition-all hover:scale-105"
+      onMouseEnter={() => setExpanded(true)}
+      className="fixed bottom-5 right-5 z-50 flex items-center gap-2 bg-green-500 hover:bg-green-400 text-white font-semibold rounded-full shadow-2xl shadow-green-500/40 transition-all duration-300 hover:scale-105"
+      style={{ padding: expanded ? '12px 18px' : '12px' }}
       aria-label="Falar pelo WhatsApp"
     >
-      <MessageCircle className="w-5 h-5" />
-      <span className="text-sm hidden sm:inline">Fale pelo WhatsApp</span>
+      <MessageCircle className="w-5 h-5 flex-shrink-0" />
+      <span className={`text-sm whitespace-nowrap overflow-hidden transition-all duration-300 ${expanded ? 'max-w-[160px] opacity-100' : 'max-w-0 opacity-0'}`}>
+        Fale pelo WhatsApp
+      </span>
     </a>
   );
 }
@@ -1011,7 +1341,7 @@ export default function LandingPage() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 font-sans antialiased">
+    <div className="min-h-screen bg-slate-950 antialiased">
       <Header onTrialClick={scrollToTrial} />
       <HeroSection onTrialClick={scrollToTrial} />
       <AntesDepoisSection />
@@ -1020,6 +1350,7 @@ export default function LandingPage() {
       <ModulosSection />
       <ImplantacaoSection />
       <ProvaSection />
+      <FAQSection />
       <PricingSection onTrialClick={scrollToTrial} />
       <TrialSection />
       <FinalCTA onTrialClick={scrollToTrial} />

@@ -477,14 +477,14 @@ export default function Login() {
   // Loading inicial
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-background via-background to-muted/20">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      <div className="min-h-screen flex items-center justify-center bg-slate-950">
+        <Loader2 className="h-8 w-8 animate-spin text-blue-400" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-background via-background to-muted/20 p-4">
+    <div className="min-h-screen flex items-center justify-center bg-slate-950 p-4">
       <div className="w-full max-w-md">
         {/* Logo e Header */}
         <div className="text-center mb-8">
@@ -495,14 +495,14 @@ export default function Login() {
               <Settings className="h-8 w-8 text-primary" />
             )}
           </div>
-          <h1 className="text-2xl font-bold text-foreground">
+          <h1 className="text-2xl font-bold text-white">
             {activeBranding.nome_fantasia || activeBranding.razao_social || 'PCM ESTRATÉGICO'}
           </h1>
-          <p className="mt-1 text-muted-foreground">Sistema de Gestão de Manutenção Industrial</p>
+          <p className="mt-1 text-slate-400">Sistema de Gestão de Manutenção Industrial</p>
         </div>
 
         {/* Login Form */}
-        <div className="rounded-lg border border-border bg-card/95 p-6 shadow-industrial">
+        <div className="rounded-xl border border-slate-800 bg-slate-900 p-6">
           <form onSubmit={handleLogin} className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="login-email">Email</Label>
@@ -593,7 +593,7 @@ export default function Login() {
 
         {/* Footer */}
         <p className="mt-6 text-center text-xs text-muted-foreground">
-          © 2024 PCM ESTRATÉGICO • v2.0
+          © 2026 PCM ESTRATÉGICO
         </p>
       </div>
     </div>

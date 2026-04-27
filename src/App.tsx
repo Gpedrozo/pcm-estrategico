@@ -25,6 +25,8 @@ import Login from './pages/Login';
 
 const Owner = lazyWithRetry(() => import('./pages/Owner'))
 const LandingPage = lazyWithRetry(() => import('./pages/landing/LandingPage'))
+const Privacidade = lazyWithRetry(() => import('./pages/Privacidade'))
+const Termos = lazyWithRetry(() => import('./pages/Termos'))
 
 const Index = lazyWithRetry(() => import('./pages/Index'))
 const ChangePassword = lazyWithRetry(() => import('./pages/ChangePassword'))
@@ -418,6 +420,8 @@ function TenantRoutes() {
                 <Route path="/" element={resolveEmpresaSlug() === 'default' ? <LandingPage /> : <Index />} />
                 <Route path="/trial" element={resolveEmpresaSlug() === 'default' ? <LandingPage /> : <Index />} />
                 <Route path="/login" element={<Login />} />
+                <Route path="/privacidade" element={<Privacidade />} />
+                <Route path="/termos" element={<Termos />} />
                 <Route path="/change-password" element={<ChangePassword />} />
                 <Route path="/forgot-password" element={<ForgotPassword />} />
                 <Route path="/reset-password" element={<ResetPassword />} />
