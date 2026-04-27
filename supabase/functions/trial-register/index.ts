@@ -109,7 +109,7 @@ Deno.serve(async (req: Request) => {
   try {
     body = await req.json();
   } catch {
-    return fail(req, "Payload inválido.", 400);
+    return fail("Payload inválido.", 400, undefined, req);
   }
 
   const companyName = String(body.company_name ?? "").trim();
@@ -266,14 +266,14 @@ Deno.serve(async (req: Request) => {
     const tenantBase = Deno.env.get("VITE_TENANT_BASE_DOMAIN") ?? "gppis.com.br";
     const loginUrl = `https://${slug}.${tenantBase}/login`;
 
-    return ok(req, {
+    return ok({
       success: true,
       empresa: { id: empresaId, nome: companyName, slug },
       user: { email, nome: userName },
       subscription: { status: "teste", starts_at: startsAt, ends_at: endsAt },
       login_url: loginUrl,
       trial_ends_at: endsAt,
-    });
+    }, 200, req);
   } catch (err: any) {
     // Rollback: remover empresa e usuário criados em caso de falha
     if (authUserId) {
@@ -289,8 +289,8 @@ Deno.serve(async (req: Request) => {
 
     const msg = String(err?.message ?? "Erro interno ao criar trial.");
     if (msg.toLowerCase().includes("duplicate") || msg.toLowerCase().includes("already exists") || msg.toLowerCase().includes("already registered")) {
-      return fail(req, "Este e-mail já possui uma conta. Acesse pelo link do seu sistema ou use outro e-mail.", 409);
+      return fail("Este e-mail já possui uma conta. Acesse pelo link do seu sistema ou use outro e-mail.", 409, undefined, req);
     }
-    return fail(req, msg, 500);
+    return fail(msg, 500, undefined, req);
   }
 });

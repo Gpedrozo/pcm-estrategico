@@ -181,6 +181,10 @@ export function LubrificacaoForm({ open, onOpenChange, equipamentos, initialData
   useEffect(() => {
     if (!open || initialData) return;
     nextNumber.mutate('LUBRIFICACAO', {
+      onSuccess: (codigo) => {
+        setForm((prev) => ({ ...prev, codigo }));
+      },
+    });
   }, [open, initialData, nextNumber]);
 
   const nextExecution = useMemo(() => {

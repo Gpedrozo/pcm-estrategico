@@ -87,7 +87,7 @@ export default function CronogramaLubrificacao() {
       weeks.push(week);
     }
     return weeks;
-  }, [year, month]);
+  }, [year, month, monthStart, monthEnd]);
 
   const dayMap = useMemo(() => {
     if (!planos) return new Map<string, { plano: PlanoLubrificacao; date: Date }[]>();
@@ -102,7 +102,7 @@ export default function CronogramaLubrificacao() {
       }
     }
     return map;
-  }, [planos, year, month]);
+  }, [planos, year, month, monthStart, monthEnd]);
 
   const prevMonth = () => {
     if (month === 0) { setMonth(11); setYear(year - 1); } else setMonth(month - 1);

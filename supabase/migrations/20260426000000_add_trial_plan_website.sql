@@ -77,7 +77,6 @@ BEGIN
       ON CONFLICT DO NOTHING;
     END IF;
   END IF;
+  RAISE NOTICE '[migration] Plano trial criado/atualizado com sucesso.';
 END;
 $$;
-
-RAISE NOTICE '[migration] Plano trial criado/atualizado com sucesso.';

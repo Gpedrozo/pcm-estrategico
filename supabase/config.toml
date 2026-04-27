@@ -68,3 +68,6 @@ verify_jwt = false
 
 [functions.assistente-pcm]
 verify_jwt = true
+
+[functions.trial-register]
+verify_jwt = false
