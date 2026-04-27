@@ -1,5 +1,5 @@
 import { ManualSection, StepList, Checklist, FieldTable, ObjectiveBox } from "@/components/manual/ManualSection";
-import { ScreenMockup, MockSidebar, MockFormField, MockButton, MockTable, MockStatusBadge } from "@/components/manual/ScreenMockup";
+import { ScreenMockup, MockSidebar, MockFormField, MockButton, MockTable } from "@/components/manual/ScreenMockup";
 
 export default function ManualSolicitacoes() {
   return (

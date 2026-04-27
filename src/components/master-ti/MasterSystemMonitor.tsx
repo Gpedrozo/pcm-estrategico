@@ -58,7 +58,6 @@ export function MasterSystemMonitor() {
         const t0 = performance.now();
 
         try {
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any -- dynamic table name; not in generated types
           let query = (supabase as any)
             .from(table)
             .select('id', { count: 'exact', head: true })

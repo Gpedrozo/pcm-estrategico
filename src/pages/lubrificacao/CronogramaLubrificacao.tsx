@@ -70,8 +70,8 @@ export default function CronogramaLubrificacao() {
   const [year, setYear] = useState(today.getFullYear());
   const [month, setMonth] = useState(today.getMonth());
 
-  const monthStart = new Date(year, month, 1);
-  const monthEnd = new Date(year, month + 1, 0, 23, 59, 59);
+  const monthStart = useMemo(() => new Date(year, month, 1), [year, month]);
+  const monthEnd = useMemo(() => new Date(year, month + 1, 0, 23, 59, 59), [year, month]);
 
   const calendarWeeks = useMemo(() => {
     const firstDay = monthStart.getDay();

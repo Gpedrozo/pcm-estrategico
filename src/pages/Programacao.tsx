@@ -24,7 +24,7 @@ import {
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useEquipamentos } from '@/hooks/useEquipamentos';
-import { useMaintenanceScheduleExpanded, useUpdateMaintenanceStatus, type ExpandedScheduleRow } from '@/hooks/useMaintenanceSchedule';
+import { useMaintenanceScheduleExpanded, useUpdateMaintenanceStatus } from '@/hooks/useMaintenanceSchedule';
 import { usePontosPlano } from '@/hooks/usePontosPlano';
 import { useCreateOrdemServico } from '@/hooks/useOrdensServico';
 import { useDadosEmpresa } from '@/hooks/useDadosEmpresa';

@@ -8,9 +8,9 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { 
   FileText, Download, Calendar, BarChart3, PieChart, TrendingUp,
-  Wrench, Clock, DollarSign, AlertTriangle, FileSpreadsheet, Printer, Loader2,
-  Brain, Eye, Filter, Zap, Package, ShieldAlert, Droplets, Search,
-  Users, FileSignature, HardHat, Activity, ClipboardList, Building2, MapPin, Phone
+  Wrench, Clock, DollarSign, FileSpreadsheet, Loader2,
+  Brain, Eye, Filter, Zap,
+  Users, FileSignature, Activity
 } from 'lucide-react';
 import { useOrdensServico } from '@/hooks/useOrdensServico';
 import { useIndicadores } from '@/hooks/useIndicadores';

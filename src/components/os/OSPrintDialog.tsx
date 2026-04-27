@@ -52,7 +52,6 @@ export function OSPrintDialog({ os, trigger, solicitacaoNumero: solicitacaoNumer
     const osId = os.id;
     void (async () => {
       const table = await getSolicitacoesTable();
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- table name is a union of known names; 'solicitacoes' not yet in generated types
       const { data } = await (supabase
         .from(table as any)
         .select('numero_solicitacao')

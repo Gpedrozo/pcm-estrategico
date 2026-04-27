@@ -1,26 +1,17 @@
-import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
+
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Separator } from '@/components/ui/separator';
-import { Switch } from '@/components/ui/switch';
+
 import {
-  Plus, Search, Calendar, Clock, Settings, ChevronDown, ChevronRight,
-  GripVertical, Trash2, Edit, Play, FileText, Copy, History, CheckSquare,
-  Download, ListChecks, Timer, Wrench, LayoutList, AlertTriangle
+  Plus, Search, Calendar, Clock,
+  Wrench, LayoutList, AlertTriangle
 } from 'lucide-react';
-import { usePlanosPreventivos, useCreatePlanoPreventivo, useUpdatePlanoPreventivo, useDeletePlanoPreventivo, type PlanoPreventivo } from '@/hooks/usePlanosPreventivos';
+import { usePlanosPreventivos } from '@/hooks/usePlanosPreventivos';
 import { useEquipamentos } from '@/hooks/useEquipamentos';
-import { useAtividadesByPlano, useCreateAtividade, useUpdateAtividade, useDeleteAtividade, useCreateServico, useUpdateServico, useDeleteServico, type AtividadePreventiva, type ServicoPreventivo } from '@/hooks/useAtividadesPreventivas';
-import { useExecucoesByPlano, useCreateExecucao, type ExecucaoPreventiva } from '@/hooks/useExecucoesPreventivas';
-import { useTemplatesPreventivos, useCreateTemplate, useDeleteTemplate } from '@/hooks/useTemplatesPreventivos';
-import { useMecanicos } from '@/hooks/useMecanicos';
+
 import PlanoDetailPanel from '@/components/preventiva/PlanoDetailPanel';
 import PlanoFormDialog from '@/components/preventiva/PlanoFormDialog';
 import { useLocation } from 'react-router-dom';

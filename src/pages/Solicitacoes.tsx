@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -42,9 +42,13 @@ export default function Solicitacoes() {
   const createMutation = useCreateSolicitacao();
   const updateMutation = useUpdateSolicitacao();
 
-  const classificacoesOS = padronizacoes?.classificacoes_os?.length
-    ? padronizacoes.classificacoes_os
-    : ['EMERGENCIAL', 'URGENTE', 'PROGRAMAVEL'];
+  const classificacoesOS = useMemo(
+    () =>
+      padronizacoes?.classificacoes_os?.length
+        ? padronizacoes.classificacoes_os
+        : ['EMERGENCIAL', 'URGENTE', 'PROGRAMAVEL'],
+    [padronizacoes?.classificacoes_os]
+  );
 
   useEffect(() => {
     if (!classificacoesOS.length) return;

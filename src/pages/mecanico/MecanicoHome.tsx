@@ -80,7 +80,7 @@ export default function MecanicoHome() {
         });
       }
     };
-  }, []);
+  }, [registrarLogout]);
 
   const mecanico = useMemo(() => {
     const m = (mecanicos || []).find(m => m.id === mecanicoId);

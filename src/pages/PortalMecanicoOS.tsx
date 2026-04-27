@@ -46,7 +46,7 @@ export default function PortalMecanicoOS() {
     });
   }, [mecanicoLogado, ordens, search]);
 
-  const [validando, setValidando] = useState(false);
+  const [_validando, setValidando] = useState(false);
 
   const handleEntrar = async () => {
     const code = codigo.trim().toUpperCase();

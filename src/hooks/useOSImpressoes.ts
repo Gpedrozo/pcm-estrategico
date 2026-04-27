@@ -14,7 +14,6 @@ export interface OSImpressaoRow {
 
 // Helper: encapsula o cast necessário até 'os_impressoes' entrar em types.ts
 // (a tabela existe no banco mas ainda não foi incluída no gen types)
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const fromOSImpressoes = () => supabase.from('os_impressoes' as any);
 
 // Busca todas as impressões de um conjunto de OS ids (para a tabela do histórico)

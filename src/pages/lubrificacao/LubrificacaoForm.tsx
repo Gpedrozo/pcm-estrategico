@@ -152,12 +152,7 @@ export function LubrificacaoForm({ open, onOpenChange, equipamentos, initialData
       prioridade: initialData.prioridade || 'media',
       ultima_execucao: initialData.ultima_execucao || new Date().toISOString(),
       proxima_execucao: initialData.proxima_execucao || new Date().toISOString(),
-      status: initialData.status || 'programado',
-      ativo: initialData.ativo,
-    });
-  }, [open, initialData]);
-
-  // Load existing pontos when editing
+  }, [open, initialData, dataProgramada]);
   useEffect(() => {
     if (!open) return;
     if (initialData && pontosDB && pontosDB.length > 0) {
@@ -186,11 +181,7 @@ export function LubrificacaoForm({ open, onOpenChange, equipamentos, initialData
   useEffect(() => {
     if (!open || initialData) return;
     nextNumber.mutate('LUBRIFICACAO', {
-      onSuccess: (codigo) => {
-        setForm((prev) => ({ ...prev, codigo }));
-      },
-    });
-  }, [open, initialData]);
+  }, [open, initialData, nextNumber]);
 
   const nextExecution = useMemo(() => {
     const base = form.ultima_execucao || new Date().toISOString();

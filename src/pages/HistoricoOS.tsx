@@ -112,7 +112,6 @@ function OSDetailsModal({
     const osId = os.id;
     void (async () => {
       const table = await getSolicitacoesTable();
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- 'solicitacoes' table name not in generated types
       const { data } = await (supabase
         .from(table as any)
         .select('numero_solicitacao')

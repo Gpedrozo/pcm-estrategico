@@ -1556,7 +1556,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         : '';
 
       if (slug && slug !== 'www') {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any -- TODO: remove after supabase gen types --linked (RPC resolve_empresa_id_by_slug absent from types.ts)
         const { data: empresaIdBySlug } = await supabase.rpc('resolve_empresa_id_by_slug' as any, {
           p_slug: slug,
         });

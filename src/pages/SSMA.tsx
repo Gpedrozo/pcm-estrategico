@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Plus, Search, ShieldAlert, AlertTriangle, FileWarning, Calendar, GraduationCap, Trash2, HardHat, FileSearch2, BarChart3, Printer, FileSpreadsheet, FileText, PackagePlus, PackageMinus, ArrowDown, ArrowUp, RotateCcw, Users, Edit2, Loader2 } from 'lucide-react';
+import { Plus, Search, ShieldAlert, AlertTriangle, FileWarning, Calendar, GraduationCap, Trash2, HardHat, FileSearch2, Printer, FileSpreadsheet, FileText, PackagePlus, PackageMinus, ArrowDown, ArrowUp, RotateCcw, Users, Edit2, Loader2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useReactToPrint } from 'react-to-print';
 import { useIncidentesSSMA, useCreateIncidenteSSMA, usePermissoesTrabalho, useCreatePermissaoTrabalho } from '@/hooks/useSSMA';
@@ -21,7 +21,6 @@ import {
   diasParaVencer,
   TIPO_CURSO_LABELS,
   type TipoCurso,
-  type TreinamentoSSMARow,
 } from '@/hooks/useTreinamentosSSMA';
 import { useAPR, useCreateAPR, useDeleteAPR, CLASSIFICACAO_LABELS } from '@/hooks/useAPR';
 import { useColaboradoresSSMA, useCreateColaboradorSSMA, useUpdateColaboradorSSMA, useDeleteColaboradorSSMA, STATUS_COLABORADOR_LABELS, type ColaboradorSSMARow, type StatusColaborador } from '@/hooks/useColaboradoresSSMA';

@@ -24,7 +24,6 @@ import type {
   Lubrificante,
   LubrificanteInsert,
   TipoLubrificante,
-  MovimentacaoLubrificanteInsert,
 } from '@/types/lubrificacao';
 import { useToast } from '@/hooks/use-toast';
 import { useConfirmDialog } from '@/components/ui/confirm-dialog';
