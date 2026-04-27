@@ -24,6 +24,7 @@ import OwnerLogin from '@/owner/OwnerLogin';
 import Login from './pages/Login';
 
 const Owner = lazyWithRetry(() => import('./pages/Owner'))
+const LandingPage = lazyWithRetry(() => import('./pages/landing/LandingPage'))
 
 const Index = lazyWithRetry(() => import('./pages/Index'))
 const ChangePassword = lazyWithRetry(() => import('./pages/ChangePassword'))
@@ -183,7 +184,7 @@ const OwnerOnlyRoute = ({ children }: { children: React.ReactNode }) => {
   const lastTraceRef = useRef<string>('');
 
   useEffect(() => {
-    const isOwnerPath = location.pathname === '/' || location.pathname.startsWith('/owner');
+    const isOwnerPath = location.pathname === '/admin' || location.pathname.startsWith('/admin') || location.pathname.startsWith('/owner');
     const traceKey = [
       location.pathname,
       isAuthenticated ? '1' : '0',
@@ -293,6 +294,10 @@ function OwnerRoutes() {
   return (
     <Suspense fallback={<RouteLoading />}>
       <Routes>
+        {/* ── Rotas públicas: landing page e trial (sem autenticação) ── */}
+        <Route path="/" element={<LandingPage />} />
+        <Route path="/trial" element={<LandingPage />} />
+
         <Route
           path="/login"
           element={
@@ -332,7 +337,7 @@ function OwnerRoutes() {
         />
 
         <Route
-          path="/"
+          path="/admin"
           element={
             <EnvironmentGuard allowOwner>
               <OwnerOnlyRoute>
@@ -342,7 +347,7 @@ function OwnerRoutes() {
           }
         />
 
-        <Route path="/owner2" element={<Navigate to="/" replace />} />
+        <Route path="/owner2" element={<Navigate to="/admin" replace />} />
 
         {/* Manual de Operação — 22 capítulos (owner) */}
         <Route path="/manuais-operacao/imprimir" element={<EnvironmentGuard allowOwner><ManualPrintAll /></EnvironmentGuard>} />
