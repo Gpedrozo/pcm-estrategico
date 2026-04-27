@@ -14,7 +14,7 @@ import { TenantDomainMiddleware } from '@/components/guards/TenantDomainMiddlewa
 import { TenantQueryIsolationGuard } from '@/components/guards/TenantQueryIsolationGuard';
 import { TenantProvider } from "@/contexts/TenantContext";
 import { BrandingProvider } from "@/contexts/BrandingContext";
-import { isOwnerDomain } from "@/lib/security";
+import { isOwnerDomain, resolveEmpresaSlug } from "@/lib/security";
 import { Loader2 } from 'lucide-react'
 import { AppErrorBoundary } from '@/components/runtime/AppErrorBoundary';
 import { TelemetryProvider } from '@/components/runtime/TelemetryProvider';
@@ -184,7 +184,7 @@ const OwnerOnlyRoute = ({ children }: { children: React.ReactNode }) => {
   const lastTraceRef = useRef<string>('');
 
   useEffect(() => {
-    const isOwnerPath = location.pathname === '/admin' || location.pathname.startsWith('/admin') || location.pathname.startsWith('/owner');
+    const isOwnerPath = location.pathname === '/' || location.pathname.startsWith('/owner');
     const traceKey = [
       location.pathname,
       isAuthenticated ? '1' : '0',
@@ -294,10 +294,6 @@ function OwnerRoutes() {
   return (
     <Suspense fallback={<RouteLoading />}>
       <Routes>
-        {/* ── Rotas públicas: landing page e trial (sem autenticação) ── */}
-        <Route path="/" element={<LandingPage />} />
-        <Route path="/trial" element={<LandingPage />} />
-
         <Route
           path="/login"
           element={
@@ -337,7 +333,7 @@ function OwnerRoutes() {
         />
 
         <Route
-          path="/admin"
+          path="/"
           element={
             <EnvironmentGuard allowOwner>
               <OwnerOnlyRoute>
@@ -347,7 +343,7 @@ function OwnerRoutes() {
           }
         />
 
-        <Route path="/owner2" element={<Navigate to="/admin" replace />} />
+        <Route path="/owner2" element={<Navigate to="/" replace />} />
 
         {/* Manual de Operação — 22 capítulos (owner) */}
         <Route path="/manuais-operacao/imprimir" element={<EnvironmentGuard allowOwner><ManualPrintAll /></EnvironmentGuard>} />
@@ -418,7 +414,9 @@ function TenantRoutes() {
           <BrandingProvider>
             <Suspense fallback={<RouteLoading />}>
               <Routes>
-                <Route path="/" element={<Index />} />
+                {/* Domínio base (www.gppis.com.br) → site institucional; subdomínio de empresa → Index */}
+                <Route path="/" element={resolveEmpresaSlug() === 'default' ? <LandingPage /> : <Index />} />
+                <Route path="/trial" element={resolveEmpresaSlug() === 'default' ? <LandingPage /> : <Index />} />
                 <Route path="/login" element={<Login />} />
                 <Route path="/change-password" element={<ChangePassword />} />
                 <Route path="/forgot-password" element={<ForgotPassword />} />

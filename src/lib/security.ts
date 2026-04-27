@@ -118,7 +118,7 @@ export function buildSecureSignupMetadata(options: {
 }
 
 export function getPostLoginPath(role: AppRole, hostname?: string): string {
-  if (isOwnerDomain(hostname)) return '/admin';
+  if (isOwnerDomain(hostname)) return '/';
   if (role === 'MASTER_TI' || role === 'ADMIN_TI') return '/master-ti';
   if (role === 'TECHNICIAN' || role === 'MECANICO') return '/mecanico';
   if (role === 'SOLICITANTE') return '/operador';
