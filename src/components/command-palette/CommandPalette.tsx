@@ -11,7 +11,6 @@ import {
 } from '@/components/ui/command';
 import {
   LayoutDashboard,
-  FileText,
   FilePlus,
   FileCheck,
   History,

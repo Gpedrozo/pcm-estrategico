@@ -180,8 +180,8 @@ export function MasterContratosPanel() {
               const ends = fmt(String(c.ends_at ?? ''))
               const vigencia = starts !== '—' || ends !== '—' ? `${starts} → ${ends}` : '—'
               const hasDocumentContent = Boolean(String(c.content ?? c.summary ?? '').trim())
-              const isPrinting = activeAction === `print:${c.id}`
-              const isDownloading = activeAction === `pdf:${c.id}`
+              const _isPrinting = activeAction === `print:${c.id}`
+              const _isDownloading = activeAction === `pdf:${c.id}`
 
               return (
                 <tr key={String(c.id)} className="border-t border-border hover:bg-muted/40">

@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useState } from 'react';
 import {
   ArrowRight,
   CheckCircle,
@@ -454,7 +454,7 @@ function PricingSection({ onTrialClick }: { onTrialClick: () => void }) {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {plans.map((plan, i) => (
+          {plans.map((plan) => (
             <div
               key={plan.name}
               className={`relative rounded-2xl p-6 border flex flex-col gap-5 ${
@@ -665,8 +665,6 @@ function Footer() {
 
 // ─── Página principal ─────────────────────────────────────────────────────────
 export default function LandingPage() {
-  const trialRef = useRef<HTMLDivElement>(null);
-
   const scrollToTrial = () => {
     document.getElementById('trial')?.scrollIntoView({ behavior: 'smooth' });
   };

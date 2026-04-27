@@ -1,6 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
 import { MasterContratosPanel } from './MasterContratosPanel';
 import * as useOwner2Portal from '@/hooks/useOwner2Portal';
 import * as reportGenerator from '@/lib/reportGenerator';
@@ -18,7 +17,7 @@ vi.mock('@/contexts/AuthContext', () => ({
 
 // Mock UI components
 vi.mock('@/components/ui/sheet', () => ({
-  Sheet: ({ open, onOpenChange, children }: any) =>
+  Sheet: ({ open, _onOpenChange, children }: any) =>
     open ? <div data-testid="sheet">{children}</div> : null,
   SheetContent: ({ children }: any) => <div>{children}</div>,
   SheetHeader: ({ children }: any) => <div>{children}</div>,

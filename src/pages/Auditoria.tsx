@@ -20,7 +20,7 @@ import { generateAuditoriaPDF } from '@/lib/reportGenerator';
 import {
   Search, Filter, ClipboardList, User, Clock, Tag, AlertTriangle,
   Download, FileText, FileSpreadsheet, FileJson, BarChart3, Users, Loader2, ChevronDown,
-  Database, Globe, ChevronLeft, ChevronRight, Eye,
+  Globe, ChevronLeft, ChevronRight, Eye,
 } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
@@ -92,7 +92,7 @@ export default function Auditoria() {
   });
 
   // ── DB Rastreamento query (server-side paginated) ──
-  const { data: dbAuditData, isLoading: loadingDbAudit } = useQuery({
+  const { data: dbAuditData } = useQuery({
     queryKey: ['auditoria-db-tracking', tenantId, dbPage, dbSearch, dbTableFilter],
     queryFn: async () => {
       if (!tenantId) return { logs: [], total: 0 };

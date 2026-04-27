@@ -1,13 +1,15 @@
 import { useEffect, useState } from 'react';
 
+// ─── Dados estáticos dos mockups (fora dos componentes para evitar re-criação) ─
+const osList = [
+  { id: 'OS-2847', tipo: 'Corretiva', equipamento: 'Compressor Atlas Copco', status: 'Em andamento', cor: 'bg-amber-500' },
+  { id: 'OS-2848', tipo: 'Preventiva', equipamento: 'Torno CNC Romi', status: 'Concluída', cor: 'bg-emerald-500' },
+  { id: 'OS-2849', tipo: 'Preditiva', equipamento: 'Ponte Rolante 10t', status: 'Aberta', cor: 'bg-blue-500' },
+];
+
 // ─── Mockup do Dashboard PCM ────────────────────────────────────────────────
 export function DashboardMockup() {
   const [activeOS, setActiveOS] = useState(0);
-  const osList = [
-    { id: 'OS-2847', tipo: 'Corretiva', equipamento: 'Compressor Atlas Copco', status: 'Em andamento', cor: 'bg-amber-500' },
-    { id: 'OS-2848', tipo: 'Preventiva', equipamento: 'Torno CNC Romi', status: 'Concluída', cor: 'bg-emerald-500' },
-    { id: 'OS-2849', tipo: 'Preditiva', equipamento: 'Ponte Rolante 10t', status: 'Aberta', cor: 'bg-blue-500' },
-  ];
 
   useEffect(() => {
     const t = setInterval(() => setActiveOS(p => (p + 1) % osList.length), 2200);
@@ -83,19 +85,20 @@ export function DashboardMockup() {
 }
 
 // ─── Mockup do Calendário Preventivo ─────────────────────────────────────────
+const calendarioEvents: Record<number, { color: string; label: string }> = {
+  5: { color: 'bg-blue-500', label: 'Revisão' },
+  12: { color: 'bg-emerald-500', label: 'Lubrif.' },
+  18: { color: 'bg-amber-500', label: 'Inspeção' },
+  24: { color: 'bg-purple-500', label: 'Troca filtro' },
+  28: { color: 'bg-red-500', label: 'Calibração' },
+};
+
 export function CalendarioMockup() {
   const [highlight, setHighlight] = useState(5);
   const days = Array.from({ length: 30 }, (_, i) => i + 1);
-  const events: Record<number, { color: string; label: string }> = {
-    5: { color: 'bg-blue-500', label: 'Revisão' },
-    12: { color: 'bg-emerald-500', label: 'Lubrif.' },
-    18: { color: 'bg-amber-500', label: 'Inspeção' },
-    24: { color: 'bg-purple-500', label: 'Troca filtro' },
-    28: { color: 'bg-red-500', label: 'Calibração' },
-  };
 
   useEffect(() => {
-    const eventDays = Object.keys(events).map(Number);
+    const eventDays = Object.keys(calendarioEvents).map(Number);
     let idx = 0;
     const t = setInterval(() => {
       setHighlight(eventDays[idx % eventDays.length]);
@@ -133,7 +136,7 @@ export function CalendarioMockup() {
           {/* Dias vazios para começar em terça */}
           {[...Array(2)].map((_, i) => <div key={`e${i}`} />)}
           {days.map(day => {
-            const ev = events[day];
+            const ev = calendarioEvents[day];
             const isHighlight = day === highlight;
             return (
               <div
@@ -156,21 +159,21 @@ export function CalendarioMockup() {
 }
 
 // ─── Mockup do App Mecânico (mobile) ─────────────────────────────────────────
+const mobileSteps = [
+  { title: 'Minhas OS', subtitle: '3 tarefas hoje', icon: '🔧' },
+  { title: 'OS-2847 — Compressor', subtitle: 'Clique para iniciar', icon: '▶️' },
+  { title: 'Executando...', subtitle: 'Registrar ocorrência', icon: '📝' },
+  { title: 'OS Concluída ✓', subtitle: 'Registrado com sucesso', icon: '✅' },
+];
+
 export function MobileAppMockup() {
   const [step, setStep] = useState(0);
-  const steps = [
-    { title: 'Minhas OS', subtitle: '3 tarefas hoje', icon: '🔧' },
-    { title: 'OS-2847 — Compressor', subtitle: 'Clique para iniciar', icon: '▶️' },
-    { title: 'Executando...', subtitle: 'Registrar ocorrência', icon: '📝' },
-    { title: 'OS Concluída ✓', subtitle: 'Registrado com sucesso', icon: '✅' },
-  ];
-
   useEffect(() => {
-    const t = setInterval(() => setStep(p => (p + 1) % steps.length), 2000);
+    const t = setInterval(() => setStep(p => (p + 1) % mobileSteps.length), 2000);
     return () => clearInterval(t);
   }, []);
 
-  const cur = steps[step];
+  const cur = mobileSteps[step];
 
   return (
     <div className="mx-auto w-[200px] rounded-[28px] overflow-hidden shadow-2xl border-4 border-slate-700 bg-slate-900">

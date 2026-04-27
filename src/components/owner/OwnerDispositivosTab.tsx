@@ -11,7 +11,6 @@ import {
   useRemoveDispositivo,
   useDesativarTodosDispositivos,
 } from '@/hooks/useDispositivosMoveis';
-import { useToast } from '@/hooks/use-toast';
 import { useConfirmDialog } from '@/components/ui/confirm-dialog';
 import {
   Smartphone,
@@ -32,7 +31,6 @@ interface Props {
 }
 
 export default function OwnerDispositivosTab({ selectedEmpresaId, empresas: _empresas, runAction, busy: _busy }: Props) {
-  const { toast } = useToast();
   const { data: dispositivos, isLoading } = useDispositivosMoveis(selectedEmpresaId || undefined);
   const toggleDevice = useToggleDispositivo();
   const removeDevice = useRemoveDispositivo();

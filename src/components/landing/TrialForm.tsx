@@ -171,7 +171,9 @@ export function TrialForm({ onSuccess }: TrialFormProps) {
           if (ctx?.text) msg = await ctx.text();
           const parsed = JSON.parse(msg);
           if (parsed?.error) msg = parsed.error;
-        } catch {}
+        } catch {
+          // JSON parsing failed — use raw message
+        }
         setError(msg);
         return;
       }
