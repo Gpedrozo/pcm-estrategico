@@ -283,9 +283,9 @@ export function TrialForm({ onSuccess }: TrialFormProps) {
         </div>
         <span className="text-slate-400 text-xs leading-relaxed">
           Concordo com os{' '}
-          <a href="#" className="text-blue-400 hover:underline">Termos de Uso</a>
+          <a href="/termos" target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:underline">Termos de Uso</a>
           {' '}e a{' '}
-          <a href="#" className="text-blue-400 hover:underline">Política de Privacidade</a>
+          <a href="/privacidade" target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:underline">Política de Privacidade</a>
           . Sem cartão de crédito. Cancel quando quiser.
         </span>
       </label>

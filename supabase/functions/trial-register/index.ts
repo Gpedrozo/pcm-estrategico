@@ -1,4 +1,4 @@
-import "jsr:@supabase/functions-js/edge-runtime.d.ts";
+﻿import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { adminClient } from "../_shared/auth.ts";
 import { fail, ok, preflight, resolveCorsHeaders } from "../_shared/response.ts";
 
@@ -120,10 +120,10 @@ Deno.serve(async (req: Request) => {
   const segment = String(body.segment ?? "").trim() || "Não informado";
 
   // Validações
-  if (!companyName || companyName.length < 2) return fail(req, "Nome da empresa é obrigatório (mínimo 2 caracteres).", 400);
-  if (!userName || userName.length < 2) return fail(req, "Seu nome é obrigatório.", 400);
-  if (!validateEmail(email)) return fail(req, "E-mail inválido.", 400);
-  if (!validatePassword(password)) return fail(req, "Senha fraca. Use mínimo 8 caracteres, 1 maiúscula e 1 número.", 400);
+  if (!companyName || companyName.length < 2) return fail("Nome da empresa é obrigatório (mínimo 2 caracteres).", 400, undefined, req);
+  if (!userName || userName.length < 2) return fail("Seu nome é obrigatório.", 400, undefined, req);
+  if (!validateEmail(email)) return fail("E-mail inválido.", 400, undefined, req);
+  if (!validatePassword(password)) return fail("Senha fraca. Use mínimo 8 caracteres, 1 maiúscula e 1 número.", 400, undefined, req);
 
   const admin = adminClient();
   let authUserId: string | null = null;
