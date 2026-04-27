@@ -152,6 +152,9 @@ export function LubrificacaoForm({ open, onOpenChange, equipamentos, initialData
       prioridade: initialData.prioridade || 'media',
       ultima_execucao: initialData.ultima_execucao || new Date().toISOString(),
       proxima_execucao: initialData.proxima_execucao || new Date().toISOString(),
+      status: initialData.status || 'programado',
+      ativo: initialData.ativo ?? true,
+    });
   }, [open, initialData, dataProgramada]);
   useEffect(() => {
     if (!open) return;
