@@ -90,6 +90,106 @@ async function resolveTrialPlanId(admin: ReturnType<typeof adminClient>): Promis
   return fallback?.[0]?.id ?? null;
 }
 
+// ─── Cloudflare provisioning (mesmo padrão do owner-portal-admin) ───────────
+const TENANT_BASE_DOMAIN = (Deno.env.get("TENANT_BASE_DOMAIN")
+  ?? Deno.env.get("VITE_TENANT_BASE_DOMAIN")
+  ?? "gppis.com.br")
+  .trim().toLowerCase()
+  .replace(/^https?:\/\//, "")
+  .replace(/\/.*$/, "");
+
+function buildManagedTenantDomain(slug: string): string | null {
+  if (!TENANT_BASE_DOMAIN || !slug) return null;
+  return `${slug}.${TENANT_BASE_DOMAIN}`;
+}
+
+const CF_PAGES_AUTO_DOMAIN_ENABLED = (Deno.env.get("CF_PAGES_AUTO_DOMAIN_ENABLED") ?? "true").toLowerCase() !== "false";
+const CF_DNS_AUTO_RECORD_ENABLED   = (Deno.env.get("CF_DNS_AUTO_RECORD_ENABLED") ?? "true").toLowerCase() !== "false";
+const CF_API_TOKEN         = (Deno.env.get("CF_API_TOKEN") ?? "").trim();
+const CF_ACCOUNT_ID        = (Deno.env.get("CF_ACCOUNT_ID") ?? "").trim();
+const CF_PAGES_PROJECT_NAME = (Deno.env.get("CF_PAGES_PROJECT_NAME") ?? "").trim();
+const CF_ZONE_ID           = (Deno.env.get("CF_ZONE_ID") ?? "").trim();
+const CF_DNS_RECORD_TYPE   = (Deno.env.get("CF_DNS_RECORD_TYPE") ?? "CNAME").trim().toUpperCase();
+const CF_DNS_RECORD_TARGET = (Deno.env.get("CF_DNS_RECORD_TARGET") ?? "").trim().toLowerCase();
+const CF_DNS_RECORD_PROXIED = (Deno.env.get("CF_DNS_RECORD_PROXIED") ?? "true").toLowerCase() !== "false";
+const CF_DNS_RECORD_TTL    = Number(Deno.env.get("CF_DNS_RECORD_TTL") ?? "1");
+const CF_API_BASE_URL = "https://api.cloudflare.com/client/v4";
+
+async function cfRequest(path: string, init: RequestInit = {}) {
+  const res = await fetch(`${CF_API_BASE_URL}${path}`, {
+    ...init,
+    headers: { Authorization: `Bearer ${CF_API_TOKEN}`, ...(init.headers ?? {}) },
+  });
+  const text = await res.text().catch(() => "");
+  const payload = text ? JSON.parse(text) : null;
+  if (!res.ok || !payload?.success) {
+    const msg = payload?.errors?.[0]?.message ?? text ?? `HTTP ${res.status}`;
+    throw new Error(`Cloudflare API error: ${msg}`);
+  }
+  return payload;
+}
+
+async function ensureCloudflarePagesCustomDomain(domain: string): Promise<{ status: "ok" | "skipped" | "error"; message: string }> {
+  if (!CF_PAGES_AUTO_DOMAIN_ENABLED)
+    return { status: "skipped", message: "CF_PAGES_AUTO_DOMAIN_ENABLED=false" };
+  if (!CF_API_TOKEN || !CF_ACCOUNT_ID || !CF_PAGES_PROJECT_NAME)
+    return { status: "skipped", message: "CF_API_TOKEN/CF_ACCOUNT_ID/CF_PAGES_PROJECT_NAME nao configurados." };
+  const accountId = encodeURIComponent(CF_ACCOUNT_ID);
+  const projectName = encodeURIComponent(CF_PAGES_PROJECT_NAME);
+  const route = `/accounts/${accountId}/pages/projects/${projectName}/domains`;
+  try {
+    const list = await cfRequest(route, { method: "GET" });
+    const domains = Array.isArray(list?.result) ? list.result : [];
+    const exists = domains.some((d: any) => (d?.name ?? "").toLowerCase() === domain.toLowerCase());
+    if (!exists) {
+      await cfRequest(route, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: domain }),
+      });
+      return { status: "ok", message: `Dominio ${domain} provisionado no Cloudflare Pages.` };
+    }
+    return { status: "ok", message: `Dominio ${domain} ja estava provisionado no Cloudflare Pages.` };
+  } catch (e: any) {
+    return { status: "error", message: e?.message ?? "Falha ao provisionar dominio no Cloudflare Pages." };
+  }
+}
+
+async function ensureCloudflareDnsRecord(domain: string): Promise<{ status: "ok" | "skipped" | "error"; message: string }> {
+  if (!CF_DNS_AUTO_RECORD_ENABLED)
+    return { status: "skipped", message: "CF_DNS_AUTO_RECORD_ENABLED=false" };
+  if (!CF_API_TOKEN || !CF_ZONE_ID || !CF_DNS_RECORD_TARGET)
+    return { status: "skipped", message: "CF_API_TOKEN/CF_ZONE_ID/CF_DNS_RECORD_TARGET nao configurados." };
+  const zoneId = encodeURIComponent(CF_ZONE_ID);
+  const normalizedDomain = domain.trim().toLowerCase();
+  const recordType = ["A", "AAAA", "CNAME"].includes(CF_DNS_RECORD_TYPE) ? CF_DNS_RECORD_TYPE : "CNAME";
+  const ttl = Number.isFinite(CF_DNS_RECORD_TTL) && CF_DNS_RECORD_TTL >= 1 ? Math.trunc(CF_DNS_RECORD_TTL) : 1;
+  try {
+    const list = await cfRequest(`/zones/${zoneId}/dns_records?type=${encodeURIComponent(recordType)}&name=${encodeURIComponent(normalizedDomain)}`, { method: "GET" });
+    const records = Array.isArray(list?.result) ? list.result : [];
+    const existing = records.find((r: any) => String(r?.name ?? "").toLowerCase() === normalizedDomain);
+    const desired = { type: recordType, name: normalizedDomain, content: CF_DNS_RECORD_TARGET, ttl, proxied: CF_DNS_RECORD_PROXIED };
+    if (!existing?.id) {
+      await cfRequest(`/zones/${zoneId}/dns_records`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(desired) });
+      return { status: "ok", message: `DNS ${recordType} criado para ${normalizedDomain} -> ${CF_DNS_RECORD_TARGET}.` };
+    }
+    const needsUpdate = String(existing.content ?? "").trim().toLowerCase() !== CF_DNS_RECORD_TARGET || Boolean(existing.proxied) !== CF_DNS_RECORD_PROXIED;
+    if (needsUpdate) {
+      await cfRequest(`/zones/${zoneId}/dns_records/${encodeURIComponent(String(existing.id))}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(desired) });
+      return { status: "ok", message: `DNS ${recordType} atualizado para ${normalizedDomain}.` };
+    }
+    return { status: "ok", message: `DNS ${recordType} ja provisionado para ${normalizedDomain}.` };
+  } catch (e: any) {
+    return { status: "error", message: e?.message ?? "Falha ao provisionar DNS no Cloudflare." };
+  }
+}
+
+async function ensureCloudflareTenantDomain(domain: string) {
+  const dns = await ensureCloudflareDnsRecord(domain);
+  const pages = await ensureCloudflarePagesCustomDomain(domain);
+  return { dns, pages };
+}
+
 // ─── Handler principal ──────────────────────────────────────────────────────
 Deno.serve(async (req: Request) => {
   try {
@@ -170,6 +270,28 @@ Deno.serve(async (req: Request) => {
         source: "website_trial",
       }),
     });
+
+    // ── 3b. Provisionar subdomínio Cloudflare (DNS + Pages) ──────────────────
+    const managedDomain = buildManagedTenantDomain(slug);
+    let cloudflareWarning: string | null = null;
+    if (managedDomain) {
+      // Persiste dominio_custom em empresa_config (mesmo padrão do owner-portal-admin)
+      await admin.from("empresa_config").upsert({
+        empresa_id: empresaId,
+        dominio_custom: managedDomain,
+        nome_exibicao: companyName,
+      }, { onConflict: "empresa_id" });
+
+      // Provisiona DNS + Pages no Cloudflare
+      try {
+        const cfResult = await ensureCloudflareTenantDomain(managedDomain);
+        if (cfResult.dns.status === "error" || cfResult.pages.status === "error") {
+          cloudflareWarning = `Subdominio criado no banco, mas houve aviso no Cloudflare - DNS: ${cfResult.dns.message} Pages: ${cfResult.pages.message}`;
+        }
+      } catch (cfErr: any) {
+        cloudflareWarning = `Subdominio criado no banco, mas Cloudflare retornou erro: ${String(cfErr?.message ?? cfErr)}`;
+      }
+    }
 
     // ── 4. Criar usuário auth ────────────────────────────────────────────────
     const { data: authData, error: authError } = await admin.auth.admin.createUser({
@@ -267,7 +389,7 @@ Deno.serve(async (req: Request) => {
       resultado: "sucesso",
     });
 
-    const tenantBase = Deno.env.get("VITE_TENANT_BASE_DOMAIN") ?? "gppis.com.br";
+    const tenantBase = Deno.env.get("VITE_TENANT_BASE_DOMAIN") ?? TENANT_BASE_DOMAIN ?? "gppis.com.br";
     const loginUrl = `https://${slug}.${tenantBase}/login`;
 
     return ok({
@@ -277,6 +399,7 @@ Deno.serve(async (req: Request) => {
       subscription: { status: "teste", starts_at: startsAt, ends_at: endsAt },
       login_url: loginUrl,
       trial_ends_at: endsAt,
+      ...(cloudflareWarning ? { cloudflare_warning: cloudflareWarning } : {}),
     }, 200, req);
   } catch (err: any) {
     // Rollback: remover empresa e usuário criados em caso de falha
