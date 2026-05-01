@@ -1648,6 +1648,7 @@ const PLATFORM_TABLES = [
   "acoes_corretivas",
   "ai_root_cause_analysis",
   "analise_causa_raiz",
+  "analises_risco",
   "anomalias_inspecao",
   "areas",
   "assinaturas",
@@ -1657,6 +1658,7 @@ const PLATFORM_TABLES = [
   "auditoria",
   "auditoria_logs",
   "avaliacoes_fornecedores",
+  "colaboradores_ssma",
   "componentes_equipamento",
   "company_subscriptions",
   "configuracoes_sistema",
@@ -1665,6 +1667,7 @@ const PLATFORM_TABLES = [
   "contrato_alertas",
   "contratos",
   "dados_empresa",
+  "dispositivos_moveis",
   "document_layouts",
   "document_sequences",
   "documentos_tecnicos",
@@ -1672,11 +1675,13 @@ const PLATFORM_TABLES = [
   "enterprise_audit_logs",
   "enterprise_impersonation_sessions",
   "enterprise_subscriptions",
+  "epis",
   "equipamentos",
   "execucoes_lubrificacao",
   "execucoes_os",
   "execucoes_os_pausas",
   "execucoes_preventivas",
+  "fichas_seguranca",
   "fmea",
   "fornecedores",
   "incidentes_ssma",
@@ -1689,18 +1694,25 @@ const PLATFORM_TABLES = [
   "mecanicos",
   "medicoes_preditivas",
   "melhorias",
+  "movimentacoes_epi",
   "movimentacoes_materiais",
   "notificacoes",
   "orcamentos_manutencao",
   "ordens_servico",
+  "os_anexos",
+  "os_impressoes",
+  "paradas_equipamento",
   "permissoes_granulares",
   "permissoes_trabalho",
   "planos_lubrificacao",
   "planos_preventivos",
   "plantas",
   "profiles",
+  "qrcodes_vinculacao",
   "rate_limits",
   "rbac_user_roles",
+  "requisicoes_material",
+  "rotas_lubrificacao",
   "security_logs",
   "servicos_preventivos",
   "sistemas",
@@ -1711,6 +1723,7 @@ const PLATFORM_TABLES = [
   "support_tickets",
   "system_notifications",
   "templates_preventivos",
+  "treinamentos_ssma",
   "user_roles",
   "empresas",
 ];
@@ -5548,15 +5561,25 @@ Deno.serve(async (req) => {
       return fail("Senha invalida para confirmar a operacao.", 401, null, req);
     }
 
-    // == Busca empresa ==
+    // == Busca empresa (inclui soft-deleted: service_role bypassa RLS) ==
     const { data: company, error: companyError } = await admin
       .from("empresas")
-      .select("id,nome,slug")
+      .select("id,nome,slug,status,deleted_at")
       .eq("id", body.empresa_id)
       .maybeSingle();
 
     if (companyError) return fail(companyError.message, 400, null, req);
     if (!company?.id) return fail("Empresa nao encontrada", 404, null, req);
+
+    // == Se empresa esta em soft-delete (deleted_at IS NOT NULL), remove o bloqueio ==
+    // Isso garante que empresas previamente marcadas para exclusao sejam
+    // hard-deletadas imediatamente sem retornar HTTP 409.
+    if ((company as any).deleted_at) {
+      await admin
+        .from("empresas")
+        .update({ deleted_at: null, deleted_by: null, status: "blocked" })
+        .eq("id", body.empresa_id);
+    }
 
     // == Hard-delete: limpa todos os dados de tenant ==
     const cleanupResult = await cleanupCompanyTenantRows(admin, body.empresa_id, {
