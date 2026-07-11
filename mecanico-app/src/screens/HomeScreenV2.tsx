@@ -137,15 +137,14 @@ export default function HomeScreen() {
           <Text style={styles.headerTitle}>PCM Mecânico</Text>
           <Text style={styles.headerUser}>{mecanicoNome || 'Mecânico'}</Text>
         </View>
-        <TouchableOpacity
-          onPress={() => Alert.alert('Logout', 'Deseja sair?', [
-            { text: 'Cancelar', style: 'cancel' },
-            { text: 'Sair', onPress: logout },
-          ])}
-          style={styles.logoutBtn}
-        >
-          <Text style={styles.logoutText}>Sair</Text>
-        </TouchableOpacity>
+        <View style={styles.headerActions}>
+          <TouchableOpacity style={styles.iconButton} onPress={() => nav.navigate('Notifications')}>
+            <Text style={styles.iconButtonText}>🔔</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.iconButton} onPress={() => nav.navigate('Profile')}>
+            <Text style={styles.iconButtonText}>👤</Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
       {/* Search */}
@@ -194,6 +193,17 @@ const styles = StyleSheet.create({
   },
   headerTitle: { fontSize: SIZES.fontLG, fontWeight: '800', color: '#FFF' },
   headerUser: { fontSize: SIZES.fontSM, color: COLORS.primaryLight, marginTop: 2 },
+  headerActions: { flexDirection: 'row' },
+  iconButton: {
+    marginLeft: 10,
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: 'rgba(255,255,255,0.16)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  iconButtonText: { fontSize: 20 },
   logoutBtn: {
     backgroundColor: 'rgba(255,255,255,0.15)', paddingHorizontal: 16,
     paddingVertical: 8, borderRadius: SIZES.radiusSM,

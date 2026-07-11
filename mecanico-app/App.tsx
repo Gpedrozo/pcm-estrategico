@@ -11,6 +11,7 @@ import * as SplashScreen from 'expo-splash-screen';
 
 import { AuthProvider } from './src/contexts/AuthContext';
 import RootNavigator from './src/navigation/RootNavigator';
+import UpdateChecker from './src/components/UpdateChecker';
 import { COLORS } from './src/theme';
 import { hasSupabaseConfig } from './src/lib/supabase';
 
@@ -47,11 +48,13 @@ export default function App() {
   return (
     <SafeAreaProvider onLayout={onLayoutReady}>
       <StatusBar barStyle="light-content" backgroundColor={COLORS.headerBg} />
-      <AuthProvider>
-        <NavigationContainer>
-          <RootNavigator />
-        </NavigationContainer>
-      </AuthProvider>
+      <UpdateChecker>
+        <AuthProvider>
+          <NavigationContainer>
+            <RootNavigator />
+          </NavigationContainer>
+        </AuthProvider>
+      </UpdateChecker>
     </SafeAreaProvider>
   );
 }

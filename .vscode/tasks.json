@@ -1,0 +1,33 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "flutter pub get",
+      "type": "shell",
+      "command": "flutter pub get",
+      "problemMatcher": []
+    },
+    {
+      "label": "flutter run (chrome)",
+      "type": "shell",
+      "command": "flutter run -d chrome --dart-define=SUPABASE_URL=${input:SUPABASE_URL} --dart-define=SUPABASE_ANON_KEY=${input:SUPABASE_ANON_KEY}",
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      },
+      "problemMatcher": []
+    }
+  ],
+  "inputs": [
+    {
+      "id": "SUPABASE_URL",
+      "type": "promptString",
+      "description": "SUPABASE_URL (leave empty for none)"
+    },
+    {
+      "id": "SUPABASE_ANON_KEY",
+      "type": "promptString",
+      "description": "SUPABASE_ANON_KEY (leave empty for none)"
+    }
+  ]
+}
