@@ -1,4 +1,4 @@
-﻿-- ============================================================
+-- ============================================================
 -- 2026-04-28 — Remove soft-delete em empresas
 -- O botão "Excluir empresa" no owner passa a fazer hard-delete
 -- imediato. Não há período de carência de 30 dias.

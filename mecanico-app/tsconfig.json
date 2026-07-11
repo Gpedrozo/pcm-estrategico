@@ -3,7 +3,10 @@
     "strict": true,
     "target": "ESNext",
     "module": "CommonJS",
-    "lib": ["ES2020", "DOM"],
+    "lib": [
+      "ES2020",
+      "DOM"
+    ],
     "jsx": "react-native",
     "moduleResolution": "node",
     "esModuleInterop": true,
@@ -12,9 +15,17 @@
     "resolveJsonModule": true,
     "baseUrl": ".",
     "paths": {
-      "@/*": ["src/*"]
+      "@/*": [
+        "src/*"
+      ]
     }
   },
-  "include": ["src/**/*", "App.tsx"],
-  "exclude": ["node_modules"]
+  "include": [
+    "src/**/*",
+    "App.tsx"
+  ],
+  "exclude": [
+    "node_modules"
+  ],
+  "extends": "expo/tsconfig.base"
 }

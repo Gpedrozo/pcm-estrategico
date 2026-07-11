@@ -1,0 +1,48 @@
+=============================================
+PCM Mecânico - Build para Android
+=============================================
+
+PRÉ-REQUISITOS:
+- Computador Windows/Mac/Linux
+- Flutter SDK instalado
+- Android SDK (Android Studio ou linha de comando)
+- Dispositivo Android ou emulador
+
+PASSOS:
+
+1. Abra o terminal (CMD/PowerShell) na pasta do projeto:
+   cd "C:\Users\Gustavo Pedrozo Pint\pcm-estrategico-clone\flutter-mecanico"
+
+2. Limpe arquivos temporários e resolução:
+   del pubspec.lock
+   rmdir /s /q .dart_tool
+   rmdir /s /q stubs
+
+3. Baixe as dependências:
+   flutter pub get
+
+4. Conecte o celular Android via USB (ou inicie emulador)
+   Verifique: flutter devices
+
+5. Para testar no celular:
+   flutter run
+
+6. Para gerar APK de release:
+   flutter build apk --release
+
+   O APK será gerado em:
+   build\app\outputs\flutter-apk\app-release.apk
+
+7. Para gerar App Bundle (Play Store):
+   flutter build appbundle --release
+
+   O AAB será gerado em:
+   build\app\outputs\bundle\release\app-release.aab
+
+Para iOS (requer Mac + Xcode):
+   flutter build ios --release
+
+CONFIGURAÇÃO DO SUPABASE (OBRIGATÓRIO):
+Antes de publicar, edite o arquivo .env com as credenciais reais:
+   SUPABASE_URL=https://seu-projeto.supabase.co
+   SUPABASE_ANON_KEY=sua-chave-anon-aqui

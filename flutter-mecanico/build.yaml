@@ -1,0 +1,4 @@
+# Disable native assets for web builds to avoid path issues on Windows
+targets:
+  web:
+    native_assets: false
