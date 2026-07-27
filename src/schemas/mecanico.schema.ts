@@ -5,7 +5,7 @@ export const mecanicoSchema = z.object({
   telefone: z.string().optional().nullable(),
   tipo: z
     .enum(['INTERNO', 'PROPRIO', 'TERCEIRIZADO'])
-    .default('PROPRIO'),
+    .default('INTERNO'),
   especialidade: z.string().optional().nullable(),
   custo_hora: z.number().min(0, 'Custo/hora deve ser >= 0').optional().nullable(),
   ativo: z.boolean().default(true),
