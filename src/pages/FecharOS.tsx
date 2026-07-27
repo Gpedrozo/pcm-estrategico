@@ -164,7 +164,7 @@ export default function FecharOS() {
     const s = searchOS.toLowerCase();
     return pendingOS.filter(
       (os) =>
-        os.numero_os?.toLowerCase().includes(s) ||
+        String(os.numero_os ?? '').toLowerCase().includes(s) ||
         os.tag?.toLowerCase().includes(s) ||
         os.equipamento?.toLowerCase().includes(s) ||
         os.problema?.toLowerCase().includes(s),
