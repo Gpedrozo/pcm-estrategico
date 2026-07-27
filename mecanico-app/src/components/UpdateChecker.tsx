@@ -31,7 +31,7 @@ interface VersionInfo {
  * Compara duas versões semver (ex: "1.2.3" > "1.2.0")
  * Retorna: -1 se a < b, 0 se iguais, 1 se a > b
  */
-function compareVersions(a: string, b: string): number {
+export function compareVersions(a: string, b: string): number {
   const pa = a.split('.').map(Number);
   const pb = b.split('.').map(Number);
   for (let i = 0; i < 3; i++) {

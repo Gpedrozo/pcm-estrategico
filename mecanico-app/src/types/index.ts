@@ -147,6 +147,14 @@ export interface MaintenanceEvent {
   equipamento_id?: string;
 }
 
+export interface Notification {
+  id: string;
+  title: string;
+  description: string;
+  timestamp: string;
+  unread: boolean;
+}
+
 // ── Dados Empresa ──
 export interface DadosEmpresa {
   id: string;
@@ -165,6 +173,8 @@ export type RootStackParamList = {
   CriarSolicitacao: undefined;
   SolicitacaoDetalhe: { solicitacao: SolicitacaoManutencao };
   QRScan: undefined;
+  Notifications: undefined;
+  Profile: undefined;
 };
 
 export type MainTabParamList = {
