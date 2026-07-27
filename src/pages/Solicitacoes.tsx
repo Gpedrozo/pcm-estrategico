@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { TagEquipamentoInput } from '@/components/TagEquipamentoInput';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -485,17 +486,11 @@ export default function Solicitacoes() {
         <DialogContent className="max-w-lg">
           <DialogHeader><DialogTitle>Nova Solicitação</DialogTitle></DialogHeader>
           <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="space-y-2">
-              <Label>TAG do Equipamento *</Label>
-              <Select value={formData.tag} onValueChange={(v) => setFormData({...formData, tag: v})}>
-                <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
-                <SelectContent>
-                  {equipamentos?.filter(e => e.ativo).map(e => (
-                    <SelectItem key={e.id} value={e.tag}>{e.tag} - {e.nome}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+                <TagEquipamentoInput
+                  value={formData.tag}
+                  onChange={(v) => setFormData({...formData, tag: v})}
+                  required
+                />
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Solicitante *</Label>
