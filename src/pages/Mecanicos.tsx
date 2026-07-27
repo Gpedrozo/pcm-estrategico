@@ -226,7 +226,7 @@ export default function Mecanicos() {
       especialidade: formData.especialidade || null,
       custo_hora: formData.custo_hora ? parseFloat(formData.custo_hora) : null,
       codigo_acesso: formData.codigo_acesso || null,
-      senha_hash: formData.senha || null,
+      senha_acesso: formData.senha || null,
       escala_trabalho: formData.escala_trabalho || null,
       folgas_planejadas: formData.folgas_planejadas || null,
       ferias_inicio: formData.ferias_inicio || null,

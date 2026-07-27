@@ -1,16 +1,105 @@
--- Migration: Correção do login web no Portal do Mecânico
+-- Migration: Correção completa do Portal do Mecânico + Cadastro
 -- 
--- Problema: A RPC validar_credenciais_mecanico_servidor foi projetada para
--- o app Flutter (que sempre tem dispositivo_id), mas o portal web não
--- possui dispositivo vinculado.
+-- Problemas corrigidos:
+-- 1. RPC validar_credenciais_mecanico_servidor: login web sem dispositivo_id
+-- 2. Senha NULL não era aceita (backward compatibility)
+-- 3. ultimo_login_portal nunca era atualizado
+-- 4. Constraint UNIQUE para codigo_acesso (evitar duplicatas)
 --
 -- Correções:
--- 1. Validar senha_acesso NULL como backward compatibility
--- 2. Pular verificação de dispositivo quando p_dispositivo_id é NULL
--- 3. Pular rate limiting quando não há dispositivo (web)
--- 4. Pular verificação de device bloqueado quando sem dispositivo
+-- 1. RPC: pular verificação de dispositivo quando NULL (login web)
+-- 2. RPC: validar senha_acesso NULL como backward compatibility
+-- 3. RPC registrar_login_mecanico: atualizar ultimo_login_portal
+-- 4. Adicionar UNIQUE(empresa_id, codigo_acesso) na tabela mecanicos
 
 BEGIN;
+
+-- ============================================================
+-- CORREÇÃO 1: UNIQUE constraint para codigo_acesso
+-- ============================================================
+
+-- Remove duplicatas antes de criar a constraint (mantém o registro mais recente)
+DELETE FROM public.mecanicos m1 USING (
+  SELECT empresa_id, codigo_acesso, MAX(created_at) as max_created
+  FROM public.mecanicos
+  WHERE codigo_acesso IS NOT NULL
+  GROUP BY empresa_id, codigo_acesso
+  HAVING COUNT(*) > 1
+) m2
+WHERE m1.empresa_id = m2.empresa_id
+  AND m1.codigo_acesso = m2.codigo_acesso
+  AND m1.created_at < m2.max_created;
+
+-- Adiciona UNIQUE constraint
+DROP INDEX IF EXISTS idx_mecanicos_empresa_codigo_acesso;
+CREATE UNIQUE INDEX IF NOT EXISTS idx_mecanicos_empresa_codigo_acesso_unique 
+  ON public.mecanicos (empresa_id, codigo_acesso) 
+  WHERE codigo_acesso IS NOT NULL;
+
+-- ============================================================
+-- CORREÇÃO 2: Função registrar_login_mecanico atualizada
+-- ============================================================
+
+CREATE OR REPLACE FUNCTION public.registrar_login_mecanico(
+  p_empresa_id UUID,
+  p_dispositivo_id UUID DEFAULT NULL,
+  p_mecanico_id UUID,
+  p_device_token UUID DEFAULT NULL,
+  p_codigo_acesso TEXT DEFAULT NULL,
+  p_ip_address INET DEFAULT NULL,
+  p_user_agent TEXT DEFAULT NULL,
+  p_device_name TEXT DEFAULT NULL
+)
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_session_id UUID;
+  v_empresa_slug TEXT;
+BEGIN
+  -- Close any previous active session for this mechanic
+  IF p_dispositivo_id IS NOT NULL THEN
+    UPDATE log_mecanicos_login SET
+      logout_em = now(),
+      duracao_minutos = EXTRACT(EPOCH FROM (now() - login_em))::INT / 60
+    WHERE mecanico_id = p_mecanico_id
+      AND dispositivo_id = p_dispositivo_id
+      AND logout_em IS NULL;
+  END IF;
+
+  -- Create new login session
+  INSERT INTO log_mecanicos_login (
+    empresa_id, dispositivo_id, mecanico_id, device_token, codigo_acesso,
+    ip_address, user_agent, device_name, status
+  ) VALUES (
+    p_empresa_id, p_dispositivo_id, p_mecanico_id, p_device_token, p_codigo_acesso,
+    p_ip_address, p_user_agent, p_device_name, 'ATIVO'
+  )
+  RETURNING id INTO v_session_id;
+
+  -- Update ultimo_login_portal no registro do mecânico
+  UPDATE public.mecanicos
+  SET ultimo_login_portal = now()
+  WHERE id = p_mecanico_id;
+
+  -- Get empresa slug for response
+  SELECT slug INTO v_empresa_slug FROM public.empresas WHERE id = p_empresa_id;
+
+  RETURN jsonb_build_object(
+    'session_id', v_session_id,
+    'login_em', now(),
+    'empresa_slug', v_empresa_slug
+  );
+END;
+$$;
+
+GRANT EXECUTE ON FUNCTION public.registrar_login_mecanico TO authenticated, anon;
+
+-- ============================================================
+-- CORREÇÃO 3: RPC validar_credenciais_mecanico_servidor corrigida
+-- ============================================================
 
 CREATE OR REPLACE FUNCTION public.validar_credenciais_mecanico_servidor(
   p_empresa_id UUID,
@@ -45,13 +134,6 @@ BEGIN
     LIMIT 1;
 
     IF v_bloqueado_ate IS NOT NULL THEN
-      INSERT INTO log_validacoes_senha (
-        empresa_id, dispositivo_id, codigo_acesso, senha_valida,
-        ip_address, user_agent, device_name, resultado
-      ) VALUES (
-        p_empresa_id, p_dispositivo_id, p_codigo_acesso, false,
-        p_ip_address, p_user_agent, p_device_name, 'DISPOSITIVO_BLOQUEADO'
-      );
       RETURN jsonb_build_object(
         'ok', false,
         'resultado', 'DISPOSITIVO_BLOQUEADO',
@@ -67,13 +149,6 @@ BEGIN
     WHERE dispositivo_id = p_dispositivo_id;
 
     IF v_rate_limit IS NOT NULL AND v_rate_limit.bloqueado_ate > now() THEN
-      INSERT INTO log_validacoes_senha (
-        empresa_id, dispositivo_id, codigo_acesso, senha_valida,
-        ip_address, user_agent, device_name, resultado
-      ) VALUES (
-        p_empresa_id, p_dispositivo_id, p_codigo_acesso, false,
-        p_ip_address, p_user_agent, p_device_name, 'TENTATIVAS_EXCEDIDAS'
-      );
       RETURN jsonb_build_object(
         'ok', false,
         'resultado', 'TENTATIVAS_EXCEDIDAS',

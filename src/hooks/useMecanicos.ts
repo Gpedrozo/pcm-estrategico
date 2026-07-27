@@ -31,7 +31,7 @@ export interface MecanicoInsert {
   custo_hora?: number | null;
   ativo?: boolean;
   codigo_acesso?: string | null;
-  // senha_hash omitido intencionalmente — use o RPC login_mecanico para definir senha
+  senha_acesso?: string | null;
   escala_trabalho?: string | null;
   folgas_planejadas?: string | null;
   ferias_inicio?: string | null;
@@ -46,7 +46,7 @@ export interface MecanicoUpdate {
   custo_hora?: number | null;
   ativo?: boolean;
   codigo_acesso?: string | null;
-  // senha_hash omitido intencionalmente — use o RPC login_mecanico para definir senha
+  senha_acesso?: string | null;
   escala_trabalho?: string | null;
   folgas_planejadas?: string | null;
   ferias_inicio?: string | null;
