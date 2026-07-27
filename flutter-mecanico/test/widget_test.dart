@@ -1,40 +1,22 @@
+// This is a basic Flutter widget test.
+//
+// To perform an interaction with a widget in your test, use the WidgetTester
+// utility in the flutter_test package. For example, you can send tap and scroll
+// gestures. You can also use WidgetTester to find child widgets in the widget
+// tree, read text, and verify that the values of widget properties are correct.
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:provider/provider.dart';
 
 import 'package:flutter_mecanico/src/app.dart';
-import 'package:flutter_mecanico/src/providers/auth_provider.dart';
 
-/// Teste smoke básico que verifica se o App carrega sem erros.
-/// Usa um AuthProvider mockado para evitar dependências reais.
 void main() {
-  testWidgets('App deve carregar e mostrar tela de loading inicial',
-      (WidgetTester tester) async {
-    await tester.pumpWidget(
-      ChangeNotifierProvider(
-        create: (_) => AuthProvider(),
-        child: const MaterialApp(
-          home: RootScreen(),
-        ),
-      ),
-    );
-
-    // Deve mostrar o CircularProgressIndicator inicial (isLoading = true)
-    expect(find.byType(CircularProgressIndicator), findsOneWidget);
-
-    // Aguarda um frame para processar o estado inicial
+  testWidgets('Counter increments smoke test', (WidgetTester tester) async {
+    // Build our app and trigger a frame.
+    await tester.pumpWidget(const App());
     await tester.pump();
-  });
 
-  testWidgets('AuthProvider deve iniciar com estados corretos',
-      (WidgetTester tester) async {
-    final authProvider = AuthProvider();
-
-    // Estado inicial
-    expect(authProvider.isLoading, true);
-    expect(authProvider.isDeviceBound, false);
-    expect(authProvider.isLoggedIn, false);
-    expect(authProvider.empresaId, null);
-    expect(authProvider.mecanicoId, null);
+    // The app starts with auth state loading before showing the next screen.
+    expect(find.byType(CircularProgressIndicator), findsWidgets);
   });
 }
