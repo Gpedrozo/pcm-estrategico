@@ -1,10 +1,4 @@
 -- Migration: Correção completa do Portal do Mecânico + Cadastro
--- 
--- Problemas corrigidos:
--- 1. RPC validar_credenciais_mecanico_servidor: login web sem dispositivo_id
--- 2. Senha NULL não era aceita (backward compatibility)
--- 3. ultimo_login_portal nunca era atualizado
--- 4. Constraint UNIQUE para codigo_acesso (evitar duplicatas)
 
 BEGIN;
 
@@ -32,17 +26,10 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_mecanicos_empresa_codigo_acesso_unique
 -- CORREÇÃO 2: registrar_login_mecanico atualizada
 -- ============================================================
 
--- Remove TODOS os overloads existentes
-DO $$ DECLARE
-  r RECORD;
-BEGIN
-  FOR r IN SELECT oidvectortypes(proargtypes) as args
-           FROM pg_proc
-           WHERE pronamespace = 'public'::regnamespace
-             AND proname = 'registrar_login_mecanico'
-  LOOP
-    EXECUTE 'DROP FUNCTION IF EXISTS public.registrar_login_mecanico(' || r.args || ') CASCADE';
-  END LOOP;
+DO $$ DECLARE r RECORD; BEGIN
+  FOR r IN SELECT oidvectortypes(proargtypes) as args FROM pg_proc
+    WHERE pronamespace = 'public'::regnamespace AND proname = 'registrar_login_mecanico'
+  LOOP EXECUTE 'DROP FUNCTION IF EXISTS public.registrar_login_mecanico(' || r.args || ') CASCADE'; END LOOP;
 END $$;
 
 CREATE OR REPLACE FUNCTION public.registrar_login_mecanico(
@@ -55,54 +42,32 @@ CREATE OR REPLACE FUNCTION public.registrar_login_mecanico(
   p_user_agent TEXT DEFAULT NULL,
   p_device_name TEXT DEFAULT NULL
 )
-RETURNS JSONB
-LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
-DECLARE
-  v_session_id UUID;
-  v_empresa_slug TEXT;
+RETURNS JSONB LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+DECLARE v_session_id UUID; v_empresa_slug TEXT;
 BEGIN
   IF p_dispositivo_id IS NOT NULL THEN
-    UPDATE log_mecanicos_login SET
-      logout_em = now(),
+    UPDATE log_mecanicos_login SET logout_em = now(),
       duracao_minutos = EXTRACT(EPOCH FROM (now() - login_em))::INT / 60
-    WHERE mecanico_id = p_mecanico_id
-      AND dispositivo_id = p_dispositivo_id
-      AND logout_em IS NULL;
+    WHERE mecanico_id = p_mecanico_id AND dispositivo_id = p_dispositivo_id AND logout_em IS NULL;
   END IF;
-
-  INSERT INTO log_mecanicos_login (
-    empresa_id, dispositivo_id, mecanico_id, device_token, codigo_acesso,
-    ip_address, user_agent, device_name, status
-  ) VALUES (
-    p_empresa_id, p_dispositivo_id, p_mecanico_id, p_device_token, p_codigo_acesso,
-    p_ip_address, p_user_agent, p_device_name, 'ATIVO'
-  ) RETURNING id INTO v_session_id;
-
+  INSERT INTO log_mecanicos_login (empresa_id, dispositivo_id, mecanico_id, device_token, codigo_acesso, ip_address, user_agent, device_name, status)
+  VALUES (p_empresa_id, p_dispositivo_id, p_mecanico_id, p_device_token, p_codigo_acesso, p_ip_address, p_user_agent, p_device_name, 'ATIVO')
+  RETURNING id INTO v_session_id;
   UPDATE public.mecanicos SET ultimo_login_portal = now() WHERE id = p_mecanico_id;
-
   SELECT slug INTO v_empresa_slug FROM public.empresas WHERE id = p_empresa_id;
-
   RETURN jsonb_build_object('session_id', v_session_id, 'login_em', now(), 'empresa_slug', v_empresa_slug);
 END;
 $$;
-
 GRANT EXECUTE ON FUNCTION public.registrar_login_mecanico TO authenticated, anon;
 
 -- ============================================================
 -- CORREÇÃO 3: validar_credenciais_mecanico_servidor
 -- ============================================================
 
--- Remove TODOS os overloads existentes
-DO $$ DECLARE
-  r RECORD;
-BEGIN
-  FOR r IN SELECT oidvectortypes(proargtypes) as args
-           FROM pg_proc
-           WHERE pronamespace = 'public'::regnamespace
-             AND proname = 'validar_credenciais_mecanico_servidor'
-  LOOP
-    EXECUTE 'DROP FUNCTION IF EXISTS public.validar_credenciais_mecanico_servidor(' || r.args || ') CASCADE';
-  END LOOP;
+DO $$ DECLARE r RECORD; BEGIN
+  FOR r IN SELECT oidvectortypes(proargtypes) as args FROM pg_proc
+    WHERE pronamespace = 'public'::regnamespace AND proname = 'validar_credenciais_mecanico_servidor'
+  LOOP EXECUTE 'DROP FUNCTION IF EXISTS public.validar_credenciais_mecanico_servidor(' || r.args || ') CASCADE'; END LOOP;
 END $$;
 
 CREATE OR REPLACE FUNCTION public.validar_credenciais_mecanico_servidor(
@@ -114,8 +79,7 @@ CREATE OR REPLACE FUNCTION public.validar_credenciais_mecanico_servidor(
   p_user_agent TEXT DEFAULT NULL,
   p_device_name TEXT DEFAULT NULL
 )
-RETURNS JSONB
-LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+RETURNS JSONB LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
 DECLARE
   v_mecanico mecanicos;
   v_rate_limit mecanicos_rate_limit_state;
@@ -149,17 +113,16 @@ BEGIN
     RETURN jsonb_build_object('ok', false, 'resultado', 'SENHA_INCORRETA', 'motivo', 'Senha inválida para este código');
   END IF;
 
+  -- ⚡ CORRIGIDO: removido 'email' (coluna inexistente na tabela mecanicos)
   RETURN jsonb_build_object(
     'ok', true, 'resultado', 'SUCESSO',
     'mecanico_id', v_mecanico.id,
     'mecanico_nome', v_mecanico.nome,
     'especialidade', v_mecanico.especialidade,
-    'email', v_mecanico.email,
     'tentativas', 0
   );
 END;
 $$;
-
 GRANT EXECUTE ON FUNCTION public.validar_credenciais_mecanico_servidor TO authenticated, anon;
 
 COMMIT;
