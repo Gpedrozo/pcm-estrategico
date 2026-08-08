@@ -54,7 +54,7 @@ jobs:
 
       - name: Upload build logs on failure
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: gradle-build-logs
           path: |
@@ -69,7 +69,7 @@ jobs:
           cp android/app/build/outputs/apk/release/app-release.apk output/pcm-mecanico.apk
 
       - name: Upload APK artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: pcm-mecanico-apk
           path: mecanico-app/output/pcm-mecanico.apk
